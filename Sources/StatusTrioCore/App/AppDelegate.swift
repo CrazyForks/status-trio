@@ -17,6 +17,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         self.singleInstanceGuard = singleInstanceGuard
 
+        NSApplication.shared.mainMenu = AppMenuBuilder.makeMainMenu()
         NSApplication.shared.setActivationPolicy(.accessory)
         updaterManager.start()
         let environment = AppEnvironment.live()
