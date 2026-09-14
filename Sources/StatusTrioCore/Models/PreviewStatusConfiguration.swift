@@ -16,6 +16,7 @@ struct PreviewStatusConfiguration: Equatable, Sendable {
     var wifiState: WiFiState
     var wifiRSSI: Int
     var wifiSSID: String
+    var isWiredConnection: Bool
     var volumeScalar: Double
     var isMuted: Bool
     var virtualOutputDevices: [PreviewVirtualOutputDevice]
@@ -31,6 +32,7 @@ struct PreviewStatusConfiguration: Equatable, Sendable {
         wifiState: .connected,
         wifiRSSI: -55,
         wifiSSID: "Preview Wi-Fi",
+        isWiredConnection: false,
         volumeScalar: 0.65,
         isMuted: false,
         virtualOutputDevices: [
@@ -69,6 +71,11 @@ struct PreviewStatusConfiguration: Equatable, Sendable {
             deviceName: currentOutputDevice?.name,
             outputDevices: outputDevices
         )
-        return StatusSnapshot(battery: battery, wifi: wifi, volume: volume)
+        return StatusSnapshot(
+            battery: battery,
+            wifi: wifi,
+            connection: isWiredConnection ? .ethernet : .unknown,
+            volume: volume
+        )
     }
 }

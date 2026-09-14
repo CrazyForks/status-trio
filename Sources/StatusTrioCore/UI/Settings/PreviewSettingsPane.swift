@@ -89,6 +89,11 @@ struct PreviewSettingsPane: View {
             VStack(alignment: .leading, spacing: 16) {
                 sectionTitle(.settingsPreviewWiFiSection)
 
+                PreferenceCheckboxRow(
+                    label: .ethernetAccessibilityConnected,
+                    isOn: previewBinding(\.isWiredConnection)
+                )
+
                 PreferenceRow(
                     label: .settingsPreviewWiFiState,
                     placesControlInline: true

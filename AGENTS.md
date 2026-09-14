@@ -1,5 +1,13 @@
 # Status Trio Agent Rules
 
+## Preview Branch Workflow
+
+- Work in `codex/preview-mode` must only change Preview-specific behavior and tooling.
+- Do not modify, reimplement, or "fix" shared/main application behavior while working in the Preview branch.
+- When main adds functionality, merge `main` into `codex/preview-mode` and adapt Preview code to use that implementation instead of duplicating it.
+- When reviewing or testing changes from `main`, report bugs, risks, and questions to the user. Do not patch main code yourself.
+- Never merge the Preview branch into `main` or publish it as a production release.
+
 ## Highest Priority: Match the CI Toolchain
 
 The release workflow is the acceptance environment:

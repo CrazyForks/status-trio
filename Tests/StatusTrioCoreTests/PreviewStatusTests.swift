@@ -84,6 +84,13 @@ final class PreviewStatusTests: XCTestCase {
         store.stop()
     }
 
+    func testPreviewConfigurationCanUseMainEthernetConnectionState() {
+        var preview = PreviewStatusConfiguration.standard
+        preview.isWiredConnection = true
+
+        XCTAssertEqual(preview.snapshot.connection, .ethernet)
+    }
+
     func testPreviewConfigurationBuildsMultipleVirtualOutputs() {
         var preview = PreviewStatusConfiguration.standard
         preview.virtualOutputDevices = [
