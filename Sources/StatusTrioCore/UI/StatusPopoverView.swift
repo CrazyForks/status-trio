@@ -233,12 +233,12 @@ struct StatusPopoverView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             BatteryStatusView(
-                battery: store.popupSnapshot.battery,
+                battery: store.displayedSnapshot.battery,
                 onOpenBatterySettings: openBatterySettings
             )
             Divider()
             WiFiStatusView(
-                wifi: store.popupSnapshot.wifi,
+                wifi: store.displayedSnapshot.wifi,
                 onRequestNameAccess: requestWiFiNameAccess,
                 onOpenWiFiSettings: openWiFiSettings,
                 onOpenLocationSettings: openLocationSettings

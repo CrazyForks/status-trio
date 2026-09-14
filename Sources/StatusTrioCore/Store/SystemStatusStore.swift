@@ -171,8 +171,12 @@ final class SystemStatusStore: ObservableObject {
         stopPreviewBatteryAnimation()
     }
 
+    var displayedSnapshot: StatusSnapshot {
+        isPreviewEnabled ? previewStatus.snapshot : snapshot
+    }
+
     var displayedVolume: VolumeStatus {
-        isPreviewEnabled ? previewStatus.snapshot.volume : liveVolume
+        displayedSnapshot.volume
     }
 
     var isVolumeControlAvailable: Bool {

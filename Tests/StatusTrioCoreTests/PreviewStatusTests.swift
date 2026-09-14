@@ -40,6 +40,7 @@ final class PreviewStatusTests: XCTestCase {
         store.start()
         store.setPreviewEnabled(true)
         store.updatePreview(\.batteryPercentage, to: 37)
+        store.updatePreview(\.isCharging, to: true)
 
         var cancellables = Set<AnyCancellable>()
         let realUpdatePublished = expectation(description: "real update remains hidden")
@@ -57,6 +58,8 @@ final class PreviewStatusTests: XCTestCase {
         await fulfillment(of: [realUpdatePublished], timeout: 0.1)
 
         XCTAssertTrue(store.isPreviewEnabled)
+        XCTAssertEqual(store.displayedSnapshot.battery.percentage, 37)
+        XCTAssertTrue(store.displayedSnapshot.battery.isCharging)
         XCTAssertEqual(store.snapshot.battery.percentage, 37)
         cancellables.removeAll()
         store.stop()

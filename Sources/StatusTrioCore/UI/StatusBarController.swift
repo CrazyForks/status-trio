@@ -101,7 +101,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             .sink { [weak self] iconSize in
                 guard let self else { return }
                 self.render(
-                    snapshot: self.store.snapshot,
+                    snapshot: self.store.displayedSnapshot,
                     iconSize: iconSize,
                     options: self.settings.batteryIconOptions
                 )
@@ -130,7 +130,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
                 textScale: symbolScale * BatteryIconOptions.defaultTextScale
             )
             self.render(
-                snapshot: self.store.snapshot,
+                snapshot: self.store.displayedSnapshot,
                 iconSize: self.settings.iconSize,
                 options: options
             )
@@ -369,7 +369,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     }
 
     private func renderLatestSnapshot() {
-        render(snapshot: store.snapshot)
+        render(snapshot: store.displayedSnapshot)
     }
 
     static func resolvedAppearance(
