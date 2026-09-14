@@ -6,7 +6,8 @@ struct PreviewSettingsPane: View {
     @State private var newOutputName = ""
 
     var body: some View {
-        PreferencesPane {
+        ScrollView {
+            PreferencesPane {
             PreferenceCheckboxRow(
                 label: .settingsPreviewEnabled,
                 description: .settingsPreviewEnabledDescription,
@@ -234,7 +235,9 @@ struct PreviewSettingsPane: View {
             }
             .disabled(!statusStore.isPreviewEnabled)
             .opacity(statusStore.isPreviewEnabled ? 1 : 0.55)
+            }
         }
+        .frame(width: SettingsTabViewController.contentWidth, height: 620)
     }
 
     private var volumePercentage: Int {

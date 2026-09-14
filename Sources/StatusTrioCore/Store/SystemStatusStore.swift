@@ -156,6 +156,10 @@ final class SystemStatusStore: ObservableObject {
         stopPreviewBatteryAnimation()
     }
 
+    var displayedVolume: VolumeStatus {
+        isPreviewEnabled ? previewStatus.snapshot.volume : liveVolume
+    }
+
     var isVolumeControlAvailable: Bool {
         isPreviewEnabled || (volumeController != nil && liveVolume.scalar != nil)
     }

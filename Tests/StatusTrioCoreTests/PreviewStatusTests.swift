@@ -109,8 +109,10 @@ final class PreviewStatusTests: XCTestCase {
         store.selectPreviewOutputDevice(id: added?.id ?? 0)
 
         XCTAssertEqual(store.snapshot.volume.deviceName, "Desk Speakers")
+        XCTAssertEqual(store.displayedVolume.deviceName, "Desk Speakers")
+        XCTAssertEqual(store.displayedVolume.outputDevices.count, 2)
         XCTAssertEqual(
-            store.snapshot.volume.outputDevices.first(where: \.isCurrent)?.id,
+            store.displayedVolume.outputDevices.first(where: \.isCurrent)?.id,
             added?.id
         )
     }
