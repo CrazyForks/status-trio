@@ -63,6 +63,10 @@
 "settings.preview.volume.section" = "音量";
 "settings.preview.volume.level" = "音量大小";
 "settings.preview.volume.muted" = "静音";
+"settings.preview.virtualOutputs.section" = "虚拟输出源";
+"settings.preview.virtualOutputs.namePlaceholder" = "输出源名称";
+"settings.preview.virtualOutputs.add" = "添加";
+"settings.preview.virtualOutputs.remove" = "删除";
 
 "battery.title" = "电池 · %d%%";
 "battery.state.notPresent" = "无电池设备";

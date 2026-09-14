@@ -1,4 +1,10 @@
+import CoreAudio
 import Foundation
+
+struct PreviewVirtualOutputDevice: Identifiable, Equatable, Sendable {
+    let id: AudioDeviceID
+    var name: String
+}
 
 struct PreviewStatusConfiguration: Equatable, Sendable {
     var batteryPercentage: Int
@@ -12,6 +18,8 @@ struct PreviewStatusConfiguration: Equatable, Sendable {
     var wifiSSID: String
     var volumeScalar: Double
     var isMuted: Bool
+    var virtualOutputDevices: [PreviewVirtualOutputDevice]
+    var selectedVirtualOutputDeviceID: AudioDeviceID?
 
     static let standard = PreviewStatusConfiguration(
         batteryPercentage: 72,
@@ -24,7 +32,11 @@ struct PreviewStatusConfiguration: Equatable, Sendable {
         wifiRSSI: -55,
         wifiSSID: "Preview Wi-Fi",
         volumeScalar: 0.65,
-        isMuted: false
+        isMuted: false,
+        virtualOutputDevices: [
+            PreviewVirtualOutputDevice(id: 1000, name: "Preview Output")
+        ],
+        selectedVirtualOutputDeviceID: 1000
     )
 
     var snapshot: StatusSnapshot {
@@ -42,17 +54,20 @@ struct PreviewStatusConfiguration: Equatable, Sendable {
             ssid: wifiSSID.isEmpty ? nil : wifiSSID,
             nameAccess: .authorized
         )
-        let outputDevice = AudioOutputDevice(
-            id: 0,
-            name: "Preview Output",
-            isCurrent: true,
-            volume: volumeScalar
-        )
+        let outputDevices = virtualOutputDevices.map { device in
+            AudioOutputDevice(
+                id: device.id,
+                name: device.name,
+                isCurrent: device.id == selectedVirtualOutputDeviceID,
+                volume: volumeScalar
+            )
+        }
+        let currentOutputDevice = outputDevices.first(where: \.isCurrent)
         let volume = VolumeStatus(
             scalar: volumeScalar,
             isMuted: isMuted,
-            deviceName: outputDevice.name,
-            outputDevices: [outputDevice]
+            deviceName: currentOutputDevice?.name,
+            outputDevices: outputDevices
         )
         return StatusSnapshot(battery: battery, wifi: wifi, volume: volume)
     }

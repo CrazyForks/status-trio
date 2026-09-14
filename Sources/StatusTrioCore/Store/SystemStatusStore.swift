@@ -1,5 +1,6 @@
 import AppKit
 import Combine
+import CoreAudio
 import Foundation
 
 @MainActor
@@ -193,17 +194,57 @@ final class SystemStatusStore: ObservableObject {
         isPreviewBatteryAnimationRunning = false
     }
 
+    func addPreviewOutputDevice(named name: String) {
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let fallbackName = "Virtual Output \(previewStatus.virtualOutputDevices.count + 1)"
+        let device = PreviewVirtualOutputDevice(
+            id: nextPreviewOutputDeviceID(),
+            name: trimmedName.isEmpty ? fallbackName : trimmedName
+        )
+
+        var next = previewStatus
+        next.virtualOutputDevices.append(device)
+        if next.selectedVirtualOutputDeviceID == nil {
+            next.selectedVirtualOutputDeviceID = device.id
+        }
+        updatePreviewConfiguration(next)
+    }
+
+    func removePreviewOutputDevice(id: AudioDeviceID) {
+        var next = previewStatus
+        next.virtualOutputDevices.removeAll { $0.id == id }
+        if next.selectedVirtualOutputDeviceID == id {
+            next.selectedVirtualOutputDeviceID = next.virtualOutputDevices.first?.id
+        }
+        updatePreviewConfiguration(next)
+    }
+
+    func renamePreviewOutputDevice(id: AudioDeviceID, name: String) {
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedName.isEmpty,
+              let index = previewStatus.virtualOutputDevices.firstIndex(where: { $0.id == id }) else {
+            return
+        }
+
+        var next = previewStatus
+        next.virtualOutputDevices[index].name = trimmedName
+        updatePreviewConfiguration(next)
+    }
+
+    func selectPreviewOutputDevice(id: AudioDeviceID) {
+        guard previewStatus.virtualOutputDevices.contains(where: { $0.id == id }) else { return }
+        var next = previewStatus
+        next.selectedVirtualOutputDeviceID = id
+        updatePreviewConfiguration(next)
+    }
+
     func updatePreview<Value>(
         _ keyPath: WritableKeyPath<PreviewStatusConfiguration, Value>,
         to value: Value
     ) {
         var next = previewStatus
         next[keyPath: keyPath] = value
-        guard next != previewStatus else { return }
-        previewStatus = next
-        if isPreviewEnabled {
-            publishImmediately(next.snapshot)
-        }
+        updatePreviewConfiguration(next)
     }
 
     func setVolume(_ scalar: Double) {
@@ -238,7 +279,11 @@ final class SystemStatusStore: ObservableObject {
     }
 
     func selectOutputDevice(_ device: AudioOutputDevice) {
-        guard !hasStopped, !isPreviewEnabled else { return }
+        guard !hasStopped else { return }
+        if isPreviewEnabled {
+            selectPreviewOutputDevice(id: device.id)
+            return
+        }
         volumeController?.selectOutputDevice(device.id)
     }
 
@@ -266,6 +311,18 @@ final class SystemStatusStore: ObservableObject {
         batteryMonitor.recover()
         wifiMonitor.recover()
         volumeMonitor.recover()
+    }
+
+    private func updatePreviewConfiguration(_ next: PreviewStatusConfiguration) {
+        guard next != previewStatus else { return }
+        previewStatus = next
+        if isPreviewEnabled {
+            publishImmediately(next.snapshot)
+        }
+    }
+
+    private func nextPreviewOutputDeviceID() -> AudioDeviceID {
+        (previewStatus.virtualOutputDevices.map(\.id).max() ?? 999) + 1
     }
 
     private func applyBattery(_ value: BatteryStatus) {

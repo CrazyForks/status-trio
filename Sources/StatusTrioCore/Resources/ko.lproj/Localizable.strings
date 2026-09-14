@@ -63,6 +63,10 @@
 "settings.preview.volume.section" = "볼륨";
 "settings.preview.volume.level" = "볼륨 수준";
 "settings.preview.volume.muted" = "음소거됨";
+"settings.preview.virtualOutputs.section" = "가상 출력";
+"settings.preview.virtualOutputs.namePlaceholder" = "출력 이름";
+"settings.preview.virtualOutputs.add" = "추가";
+"settings.preview.virtualOutputs.remove" = "삭제";
 
 "battery.title" = "배터리 · %d%%";
 "battery.state.notPresent" = "배터리 없음";

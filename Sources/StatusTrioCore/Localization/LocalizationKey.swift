@@ -65,6 +65,10 @@ enum LocalizationKey: String, CaseIterable, Hashable, Sendable {
     case settingsPreviewVolumeSection = "settings.preview.volume.section"
     case settingsPreviewVolumeLevel = "settings.preview.volume.level"
     case settingsPreviewVolumeMuted = "settings.preview.volume.muted"
+    case settingsPreviewVirtualOutputsSection = "settings.preview.virtualOutputs.section"
+    case settingsPreviewVirtualOutputsNamePlaceholder = "settings.preview.virtualOutputs.namePlaceholder"
+    case settingsPreviewVirtualOutputsAdd = "settings.preview.virtualOutputs.add"
+    case settingsPreviewVirtualOutputsRemove = "settings.preview.virtualOutputs.remove"
 
     case batteryTitle = "battery.title"
     case batteryStateNotPresent = "battery.state.notPresent"

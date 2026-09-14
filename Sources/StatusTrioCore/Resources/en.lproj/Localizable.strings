@@ -63,6 +63,10 @@
 "settings.preview.volume.section" = "Volume";
 "settings.preview.volume.level" = "Volume level";
 "settings.preview.volume.muted" = "Muted";
+"settings.preview.virtualOutputs.section" = "Virtual outputs";
+"settings.preview.virtualOutputs.namePlaceholder" = "Output name";
+"settings.preview.virtualOutputs.add" = "Add";
+"settings.preview.virtualOutputs.remove" = "Remove";
 
 "battery.title" = "Battery · %d%%";
 "battery.state.notPresent" = "No battery";

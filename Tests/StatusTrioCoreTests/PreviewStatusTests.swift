@@ -84,6 +84,57 @@ final class PreviewStatusTests: XCTestCase {
         store.stop()
     }
 
+    func testPreviewConfigurationBuildsMultipleVirtualOutputs() {
+        var preview = PreviewStatusConfiguration.standard
+        preview.virtualOutputDevices = [
+            PreviewVirtualOutputDevice(id: 1, name: "Studio Display"),
+            PreviewVirtualOutputDevice(id: 2, name: "USB Speakers")
+        ]
+        preview.selectedVirtualOutputDeviceID = 2
+
+        let outputDevices = preview.snapshot.volume.outputDevices
+
+        XCTAssertEqual(outputDevices.map(\.name), ["Studio Display", "USB Speakers"])
+        XCTAssertEqual(outputDevices.filter(\.isCurrent).map(\.id), [2])
+        XCTAssertEqual(preview.snapshot.volume.deviceName, "USB Speakers")
+    }
+
+    func testAddingAndSelectingVirtualOutputUpdatesPreviewSnapshot() {
+        let store = makeStore(battery: PreviewFakeBatteryMonitor())
+        store.setPreviewEnabled(true)
+        store.addPreviewOutputDevice(named: "Desk Speakers")
+        let added = store.previewStatus.virtualOutputDevices.last
+
+        XCTAssertEqual(added?.name, "Desk Speakers")
+        store.selectPreviewOutputDevice(id: added?.id ?? 0)
+
+        XCTAssertEqual(store.snapshot.volume.deviceName, "Desk Speakers")
+        XCTAssertEqual(
+            store.snapshot.volume.outputDevices.first(where: \.isCurrent)?.id,
+            added?.id
+        )
+    }
+
+    func testRemovingCurrentVirtualOutputSelectsFirstRemainingOutput() {
+        let store = makeStore(battery: PreviewFakeBatteryMonitor())
+        store.setPreviewEnabled(true)
+        store.addPreviewOutputDevice(named: "Second Output")
+        let second = store.previewStatus.virtualOutputDevices.last
+        store.selectPreviewOutputDevice(id: second?.id ?? 0)
+
+        store.removePreviewOutputDevice(id: second?.id ?? 0)
+
+        XCTAssertEqual(store.previewStatus.virtualOutputDevices.count, 1)
+        XCTAssertEqual(
+            store.previewStatus.selectedVirtualOutputDeviceID,
+            store.previewStatus.virtualOutputDevices.first?.id
+        )
+        XCTAssertEqual(
+            store.snapshot.volume.deviceName,
+            store.previewStatus.virtualOutputDevices.first?.name
+        )
+    }
+
     func testPreviewSnapshotUpdatesBypassLiveDebounce() {
         XCTAssertFalse(
             StatusBarController.shouldDebounceSnapshotUpdates(isPreviewEnabled: true)

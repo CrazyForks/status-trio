@@ -3,6 +3,7 @@ import SwiftUI
 struct PreviewSettingsPane: View {
     @ObservedObject var statusStore: SystemStatusStore
     @EnvironmentObject private var localization: Localization
+    @State private var newOutputName = ""
 
     var body: some View {
         PreferencesPane {
@@ -159,6 +160,77 @@ struct PreviewSettingsPane: View {
                     label: .settingsPreviewVolumeMuted,
                     isOn: previewBinding(\.isMuted)
                 )
+            }
+            .disabled(!statusStore.isPreviewEnabled)
+            .opacity(statusStore.isPreviewEnabled ? 1 : 0.55)
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 12) {
+                sectionTitle(.settingsPreviewVirtualOutputsSection)
+
+                HStack(spacing: 8) {
+                    TextField(
+                        localization.string(.settingsPreviewVirtualOutputsNamePlaceholder),
+                        text: $newOutputName
+                    )
+                    .textFieldStyle(.roundedBorder)
+
+                    Button(localization.string(.settingsPreviewVirtualOutputsAdd)) {
+                        statusStore.addPreviewOutputDevice(named: newOutputName)
+                        newOutputName = ""
+                    }
+                    .buttonStyle(.bordered)
+                }
+
+                ForEach(statusStore.previewStatus.virtualOutputDevices) { device in
+                    HStack(spacing: 8) {
+                        Button {
+                            statusStore.selectPreviewOutputDevice(id: device.id)
+                        } label: {
+                            Image(
+                                systemName: device.id == statusStore.previewStatus.selectedVirtualOutputDeviceID
+                                    ? "checkmark.circle.fill"
+                                    : "circle"
+                            )
+                            .foregroundStyle(
+                                device.id == statusStore.previewStatus.selectedVirtualOutputDeviceID
+                                    ? Color.accentColor
+                                    : Color.secondary
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        .help(
+                            device.id == statusStore.previewStatus.selectedVirtualOutputDeviceID
+                                ? localization.string(.volumeOutputCurrent)
+                                : localization.format(.volumeOutputSwitchTo, device.name)
+                        )
+
+                        TextField(
+                            localization.string(.settingsPreviewVirtualOutputsNamePlaceholder),
+                            text: Binding(
+                                get: { device.name },
+                                set: {
+                                    statusStore.renamePreviewOutputDevice(
+                                        id: device.id,
+                                        name: $0
+                                    )
+                                }
+                            )
+                        )
+                        .textFieldStyle(.plain)
+
+                        Button {
+                            statusStore.removePreviewOutputDevice(id: device.id)
+                        } label: {
+                            Image(systemName: "trash")
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(.secondary)
+                        .help(localization.string(.settingsPreviewVirtualOutputsRemove))
+                    }
+                    .padding(.vertical, 2)
+                }
             }
             .disabled(!statusStore.isPreviewEnabled)
             .opacity(statusStore.isPreviewEnabled ? 1 : 0.55)

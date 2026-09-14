@@ -58,6 +58,10 @@
 "settings.preview.volume.section" = "مستوى الصوت";
 "settings.preview.volume.level" = "مستوى الصوت";
 "settings.preview.volume.muted" = "مكتوم";
+"settings.preview.virtualOutputs.section" = "مخارج افتراضية";
+"settings.preview.virtualOutputs.namePlaceholder" = "اسم المخرج";
+"settings.preview.virtualOutputs.add" = "إضافة";
+"settings.preview.virtualOutputs.remove" = "إزالة";
 
 "battery.title" = "البطارية · %d%%";
 "battery.state.notPresent" = "لا توجد بطارية";

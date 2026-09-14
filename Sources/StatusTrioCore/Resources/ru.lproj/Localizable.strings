@@ -63,6 +63,10 @@
 "settings.preview.volume.section" = "Громкость";
 "settings.preview.volume.level" = "Уровень громкости";
 "settings.preview.volume.muted" = "Без звука";
+"settings.preview.virtualOutputs.section" = "Виртуальные выходы";
+"settings.preview.virtualOutputs.namePlaceholder" = "Имя выхода";
+"settings.preview.virtualOutputs.add" = "Добавить";
+"settings.preview.virtualOutputs.remove" = "Удалить";
 
 "battery.title" = "Батарея · %d%%";
 "battery.state.notPresent" = "Батарея отсутствует";

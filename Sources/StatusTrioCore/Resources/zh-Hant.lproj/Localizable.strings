@@ -63,6 +63,10 @@
 "settings.preview.volume.section" = "音量";
 "settings.preview.volume.level" = "音量大小";
 "settings.preview.volume.muted" = "靜音";
+"settings.preview.virtualOutputs.section" = "虛擬輸出來源";
+"settings.preview.virtualOutputs.namePlaceholder" = "輸出來源名稱";
+"settings.preview.virtualOutputs.add" = "新增";
+"settings.preview.virtualOutputs.remove" = "刪除";
 
 "battery.title" = "電池 · %d%%";
 "battery.state.notPresent" = "無電池裝置";

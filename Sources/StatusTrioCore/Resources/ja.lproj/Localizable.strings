@@ -63,6 +63,10 @@
 "settings.preview.volume.section" = "音量";
 "settings.preview.volume.level" = "音量レベル";
 "settings.preview.volume.muted" = "ミュート";
+"settings.preview.virtualOutputs.section" = "仮想出力";
+"settings.preview.virtualOutputs.namePlaceholder" = "出力名";
+"settings.preview.virtualOutputs.add" = "追加";
+"settings.preview.virtualOutputs.remove" = "削除";
 
 "battery.title" = "バッテリー · %d%%";
 "battery.state.notPresent" = "バッテリーなし";

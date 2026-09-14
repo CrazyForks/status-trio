@@ -63,6 +63,10 @@
 "settings.preview.volume.section" = "Lautstärke";
 "settings.preview.volume.level" = "Lautstärkepegel";
 "settings.preview.volume.muted" = "Stumm";
+"settings.preview.virtualOutputs.section" = "Virtuelle Ausgänge";
+"settings.preview.virtualOutputs.namePlaceholder" = "Ausgangsname";
+"settings.preview.virtualOutputs.add" = "Hinzufügen";
+"settings.preview.virtualOutputs.remove" = "Entfernen";
 
 "battery.title" = "Batterie · %d%%";
 "battery.state.notPresent" = "Keine Batterie";
