@@ -127,6 +127,40 @@ final class LocalizationTests: XCTestCase {
         XCTAssertEqual(localization.string(.menuSettings), "Einstellungen…")
     }
 
+    func testOnlyChineseLanguagesUseTheExtendedAboutLinks() {
+        let detected = Set(AppLanguage.allCases.filter(\.isChinese))
+
+        XCTAssertEqual(detected, [.simplifiedChinese, .traditionalChinese])
+    }
+
+    func testAboutLinkLabelsStayCompact() throws {
+        for language in AppLanguage.allCases {
+            let bundle = try XCTUnwrap(Localization.resourceBundle(for: language))
+
+            let repository = bundle.localizedString(
+                forKey: LocalizationKey.settingsAboutRepository.rawValue,
+                value: nil,
+                table: nil
+            )
+            XCTAssertEqual(
+                repository,
+                "GitHub",
+                "\(language.rawValue) repository label should stay short"
+            )
+
+            let project = bundle.localizedString(
+                forKey: LocalizationKey.settingsAboutProject.rawValue,
+                value: nil,
+                table: nil
+            )
+            XCTAssertLessThanOrEqual(
+                project.count,
+                10,
+                "\(language.rawValue) project label is too long: \(project)"
+            )
+        }
+    }
+
     private func placeholderCount(in value: String) -> Int {
         let pattern = #"%(?:\d+\$)?[-+#0 ]*\d*(?:\.\d+)?[d@%]"#
         let regex = try! NSRegularExpression(pattern: pattern)

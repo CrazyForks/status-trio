@@ -24,6 +24,7 @@ final class CoreAudioOutputController: AudioOutputControlling {
                 return AudioOutputDevice(
                     id: deviceID,
                     name: deviceName(for: deviceID),
+                    uid: deviceUID(for: deviceID),
                     isCurrent: deviceID == currentDeviceID,
                     volume: volume(for: deviceID)
                 )
@@ -191,7 +192,24 @@ final class CoreAudioOutputController: AudioOutputControlling {
     }
 
     private func deviceName(for deviceID: AudioDeviceID) -> String? {
-        var address = propertyAddress(selector: kAudioObjectPropertyName)
+        stringProperty(
+            for: deviceID,
+            selector: kAudioObjectPropertyName
+        )
+    }
+
+    private func deviceUID(for deviceID: AudioDeviceID) -> String? {
+        stringProperty(
+            for: deviceID,
+            selector: kAudioDevicePropertyDeviceUID
+        )
+    }
+
+    private func stringProperty(
+        for deviceID: AudioDeviceID,
+        selector: AudioObjectPropertySelector
+    ) -> String? {
+        var address = propertyAddress(selector: selector)
         var name: Unmanaged<CFString>?
         var dataSize = UInt32(MemoryLayout<Unmanaged<CFString>?>.size)
         let status = AudioObjectGetPropertyData(

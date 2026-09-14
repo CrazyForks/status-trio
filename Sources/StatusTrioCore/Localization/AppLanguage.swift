@@ -54,6 +54,12 @@ enum AppLanguage: String, CaseIterable, Identifiable, Sendable {
         self == .arabic ? .rightToLeft : .leftToRight
     }
 
+    /// Chinese locales keep the extra About links whose labels are short enough
+    /// to stay readable; other locales show a reduced icon set instead.
+    var isChinese: Bool {
+        self == .simplifiedChinese || self == .traditionalChinese
+    }
+
     var nsLayoutDirection: NSUserInterfaceLayoutDirection {
         self == .arabic ? .rightToLeft : .leftToRight
     }

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct VolumeControlsView: View {
     @EnvironmentObject private var localization: Localization
+    @ObservedObject var settings: SettingsStore
     let volume: VolumeStatus
     let isEnabled: Bool
     let onVolumeChange: (Double) -> Void
@@ -80,6 +81,7 @@ struct VolumeControlsView: View {
             }
 
             OutputDeviceList(
+                settings: settings,
                 devices: volume.outputDevices,
                 onSelect: onSelectOutputDevice
             )

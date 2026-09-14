@@ -642,6 +642,16 @@ final class StatusIconRendererTests: XCTestCase {
         XCTAssertNotNil(image.tiffRepresentation)
     }
 
+    func testWiFiStatusImageKeepsTransparentBorderAroundStrokes() throws {
+        let image = StatusIconRenderer.wifiImage(
+            wifi: WiFiStatus(state: .connected, rssi: -55),
+            size: 16
+        )
+        let pixels = try renderPixels(image: image)
+
+        XCTAssertEqual(pixels.maximumAlphaOnEdges, 0)
+    }
+
     func testConnectedZeroBarsMatchesFullMutedSignalAndDiffersFromHigherBars() throws {
         let zeroBars = StatusSnapshot(
             battery: .placeholder,
@@ -1022,6 +1032,23 @@ private struct PixelBuffer {
     let height: Int
     let bytes: [UInt8]
 
+    var maximumAlphaOnEdges: UInt8 {
+        guard width > 0, height > 0 else { return 0 }
+
+        var maximum: UInt8 = 0
+        for x in 0..<width {
+            maximum = max(maximum, alphaAt(x: x, y: 0))
+            maximum = max(maximum, alphaAt(x: x, y: height - 1))
+        }
+        if height > 2 {
+            for y in 1..<(height - 1) {
+                maximum = max(maximum, alphaAt(x: 0, y: y))
+                maximum = max(maximum, alphaAt(x: width - 1, y: y))
+            }
+        }
+        return maximum
+    }
+
     init(image: CGImage) throws {
         width = image.width
         height = image.height
@@ -1118,5 +1145,9 @@ private struct PixelBuffer {
 
     private func pixelsPerSVGUnit(size: CGFloat, scale: CGFloat) -> CGFloat {
         size * scale / StatusIconGeometry.canvas.width
+    }
+
+    private func alphaAt(x: Int, y: Int) -> UInt8 {
+        bytes[(y * width + x) * 4 + 3]
     }
 }

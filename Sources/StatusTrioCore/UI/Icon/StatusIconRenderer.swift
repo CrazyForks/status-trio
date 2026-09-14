@@ -3,11 +3,12 @@ import CoreGraphics
 import CoreText
 
 enum StatusIconRenderer {
+    // Keep the 7pt rounded Wi-Fi strokes fully inside the bitmap.
     private static let wifiCanvasBounds = CGRect(
-        x: 38.6,
-        y: 43.25,
-        width: 42.2,
-        height: 42.2
+        x: 31.5,
+        y: 34.4,
+        width: 56,
+        height: 56
     )
 
     static func image(

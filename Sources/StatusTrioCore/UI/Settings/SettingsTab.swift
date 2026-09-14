@@ -3,6 +3,7 @@ import SwiftUI
 enum SettingsTab: String, CaseIterable, Identifiable {
     case basics
     case menuBar
+    case audio
     case battery
     case updates
     case about
@@ -14,6 +15,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
         switch self {
         case .basics: .settingsTabBasics
         case .menuBar: .settingsTabMenuBar
+        case .audio: .settingsTabAudio
         case .battery: .settingsTabBattery
         case .updates: .settingsUpdatesTitle
         case .about: .settingsTabAbout
@@ -25,6 +27,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
         switch self {
         case .basics: "gearshape"
         case .menuBar: "menubar.rectangle"
+        case .audio: "hifispeaker"
         case .battery: "battery.100percent"
         case .updates: "arrow.triangle.2.circlepath"
         case .about: "info.circle"
@@ -36,6 +39,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
         switch self {
         case .basics: .blue
         case .menuBar: .indigo
+        case .audio: .cyan
         case .battery: .green
         case .updates: .orange
         case .about: .gray

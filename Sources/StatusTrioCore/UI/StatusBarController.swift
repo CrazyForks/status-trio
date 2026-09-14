@@ -210,6 +210,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         let rootView = LocalizedRootView(localization: localization) {
             StatusPopoverView(
                 store: store,
+                settings: settings,
                 requestWiFiNameAccess: handleRequestWiFiNameAccess,
                 openBatterySettings: handleOpenBatterySettings,
                 openWiFiSettings: handleOpenWiFiSettings,

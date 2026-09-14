@@ -17,6 +17,12 @@ final class SettingsStore: ObservableObject {
     static let batteryCriticalThresholdDefaultsKey = "batteryCriticalThreshold"
     static let batterySymbolScaleDefaultsKey = "batterySymbolScale"
 
+    static let outputDeviceLimitRange: ClosedRange<Int> = 1...20
+    static let defaultMaxVisibleOutputDevices = 5
+    static let maxVisibleOutputDevicesDefaultsKey = "maxVisibleOutputDevices"
+    static let alwaysShowsAllOutputDevicesDefaultsKey = "alwaysShowsAllOutputDevices"
+    static let outputDeviceOrderDefaultsKey = "outputDeviceOrder"
+
     @Published var iconSize: Double {
         didSet {
             let clamped = Self.clampedIconSize(iconSize)
@@ -69,6 +75,81 @@ final class SettingsStore: ObservableObject {
         }
     }
 
+    @Published var maxVisibleOutputDevices: Int {
+        didSet {
+            let clamped = Self.clampedOutputDeviceLimit(maxVisibleOutputDevices)
+            guard clamped == maxVisibleOutputDevices else {
+                maxVisibleOutputDevices = clamped
+                return
+            }
+            defaults.set(clamped, forKey: Self.maxVisibleOutputDevicesDefaultsKey)
+        }
+    }
+
+    @Published var alwaysShowsAllOutputDevices: Bool {
+        didSet {
+            defaults.set(
+                alwaysShowsAllOutputDevices,
+                forKey: Self.alwaysShowsAllOutputDevicesDefaultsKey
+            )
+        }
+    }
+
+    @Published private(set) var outputDeviceOrder: [String] {
+        didSet {
+            defaults.set(outputDeviceOrder, forKey: Self.outputDeviceOrderDefaultsKey)
+        }
+    }
+
+    var visibleOutputDeviceLimit: Int? {
+        alwaysShowsAllOutputDevices ? nil : maxVisibleOutputDevices
+    }
+
+    func orderedOutputDevices(_ devices: [AudioOutputDevice]) -> [AudioOutputDevice] {
+        guard !outputDeviceOrder.isEmpty else { return devices }
+
+        var ranks: [String: Int] = [:]
+        for (index, uid) in outputDeviceOrder.enumerated() where ranks[uid] == nil {
+            ranks[uid] = index
+        }
+
+        return devices.enumerated()
+            .sorted { lhs, rhs in
+                let leftRank = lhs.element.uid.flatMap { ranks[$0] } ?? Int.max
+                let rightRank = rhs.element.uid.flatMap { ranks[$0] } ?? Int.max
+                if leftRank != rightRank {
+                    return leftRank < rightRank
+                }
+                return lhs.offset < rhs.offset
+            }
+            .map(\.element)
+    }
+
+    func moveOutputDevices(
+        fromOffsets source: IndexSet,
+        toOffset destination: Int,
+        in devices: [AudioOutputDevice]
+    ) {
+        guard !source.isEmpty,
+              source.allSatisfy({ devices.indices.contains($0) }),
+              (0...devices.count).contains(destination) else {
+            return
+        }
+
+        let movedDevices = source.map { devices[$0] }
+        let remainingDevices = devices.enumerated()
+            .filter { !source.contains($0.offset) }
+            .map(\.element)
+        let insertionOffset = destination - source.filter { $0 < destination }.count
+
+        var reorderedDevices = remainingDevices
+        reorderedDevices.insert(
+            contentsOf: movedDevices,
+            at: min(insertionOffset, reorderedDevices.count)
+        )
+        outputDeviceOrder = reorderedDevices.compactMap(\.uid)
+    }
+
     var isBatterySymbolSizeEnabled: Bool {
         showsBatteryPercentage || showsChargingIndicator
     }
@@ -90,6 +171,8 @@ final class SettingsStore: ObservableObject {
         let storedIconSize = (defaults.object(forKey: Self.iconSizeDefaultsKey) as? NSNumber)?.doubleValue
         let storedCriticalThreshold = (defaults.object(forKey: Self.batteryCriticalThresholdDefaultsKey) as? NSNumber)?.doubleValue
         let storedBatterySymbolScale = (defaults.object(forKey: Self.batterySymbolScaleDefaultsKey) as? NSNumber)?.doubleValue
+        let storedOutputDeviceLimit = (defaults.object(forKey: Self.maxVisibleOutputDevicesDefaultsKey) as? NSNumber)?.intValue
+        let storedOutputDeviceOrder = defaults.stringArray(forKey: Self.outputDeviceOrderDefaultsKey) ?? []
 
         self.iconSize = Self.clampedIconSize(storedIconSize ?? Self.defaultIconSize)
         self.showsBatteryPercentage = defaults.object(forKey: Self.showsBatteryPercentageDefaultsKey) as? Bool ?? true
@@ -101,6 +184,13 @@ final class SettingsStore: ObservableObject {
         self.batteryCriticalThreshold = Self.clampedBatteryCriticalThreshold(
             storedCriticalThreshold ?? Self.defaultBatteryCriticalThreshold
         )
+        self.maxVisibleOutputDevices = Self.clampedOutputDeviceLimit(
+            storedOutputDeviceLimit ?? Self.defaultMaxVisibleOutputDevices
+        )
+        self.alwaysShowsAllOutputDevices = defaults.object(
+            forKey: Self.alwaysShowsAllOutputDevicesDefaultsKey
+        ) as? Bool ?? false
+        self.outputDeviceOrder = storedOutputDeviceOrder
     }
 
     static func clampedIconSize(_ value: Double) -> Double {
@@ -122,5 +212,9 @@ final class SettingsStore: ObservableObject {
             batteryCriticalThresholdRange.upperBound,
             max(batteryCriticalThresholdRange.lowerBound, value)
         ).rounded()
+    }
+
+    static func clampedOutputDeviceLimit(_ value: Int) -> Int {
+        min(outputDeviceLimitRange.upperBound, max(outputDeviceLimitRange.lowerBound, value))
     }
 }

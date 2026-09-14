@@ -5,7 +5,7 @@ struct WiFiStatusIcon: View {
     let wifi: WiFiStatus
 
     var body: some View {
-        Image(nsImage: StatusIconRenderer.wifiImage(wifi: wifi, size: 18))
+        Image(nsImage: StatusIconRenderer.wifiImage(wifi: wifi, size: 16))
             .renderingMode(.template)
             .foregroundStyle(.secondary)
             .frame(width: 24, height: 24)

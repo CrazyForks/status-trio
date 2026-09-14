@@ -1,5 +1,6 @@
 import AppKit
 import Combine
+import CoreAudio
 import XCTest
 @testable import StatusTrioCore
 
@@ -159,6 +160,90 @@ final class SettingsStoreTests: XCTestCase {
         }
     }
 
+    func testOutputDeviceDisplayDefaults() {
+        let store = SettingsStore(defaults: makeSuite().defaults)
+
+        XCTAssertEqual(SettingsStore.outputDeviceLimitRange, 1...20)
+        XCTAssertEqual(store.maxVisibleOutputDevices, 5)
+        XCTAssertFalse(store.alwaysShowsAllOutputDevices)
+        XCTAssertEqual(store.visibleOutputDeviceLimit, 5)
+    }
+
+    func testOutputDeviceDisplaySettingsPersist() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+
+        let first = SettingsStore(defaults: suite.defaults)
+        first.maxVisibleOutputDevices = 8
+        first.alwaysShowsAllOutputDevices = true
+
+        let second = SettingsStore(defaults: suite.defaults)
+        XCTAssertEqual(second.maxVisibleOutputDevices, 8)
+        XCTAssertTrue(second.alwaysShowsAllOutputDevices)
+        XCTAssertNil(second.visibleOutputDeviceLimit)
+    }
+
+    func testMaxVisibleOutputDevicesIsClamped() {
+        let store = SettingsStore(defaults: makeSuite().defaults)
+
+        store.maxVisibleOutputDevices = 50
+        XCTAssertEqual(store.maxVisibleOutputDevices, 20)
+
+        store.maxVisibleOutputDevices = 0
+        XCTAssertEqual(store.maxVisibleOutputDevices, 1)
+    }
+
+    func testMovingOutputDevicesPersistsCustomOrder() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+
+        let devices = [
+            makeOutputDevice(id: 1, uid: "device-a"),
+            makeOutputDevice(id: 2, uid: "device-b"),
+            makeOutputDevice(id: 3, uid: "device-c")
+        ]
+        let store = SettingsStore(defaults: suite.defaults)
+
+        store.moveOutputDevices(
+            fromOffsets: IndexSet(integer: 2),
+            toOffset: 0,
+            in: devices
+        )
+
+        XCTAssertEqual(store.outputDeviceOrder, ["device-c", "device-a", "device-b"])
+        XCTAssertEqual(
+            SettingsStore(defaults: suite.defaults)
+                .orderedOutputDevices(devices)
+                .compactMap(\.uid),
+            ["device-c", "device-a", "device-b"]
+        )
+    }
+
+    func testUnlistedOutputDevicesAreAppendedAfterCustomOrder() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+
+        let devices = [
+            makeOutputDevice(id: 1, uid: "device-a"),
+            makeOutputDevice(id: 2, uid: "device-b")
+        ]
+        let store = SettingsStore(defaults: suite.defaults)
+        store.moveOutputDevices(
+            fromOffsets: IndexSet(integer: 1),
+            toOffset: 0,
+            in: devices
+        )
+
+        let updatedDevices = devices + [
+            makeOutputDevice(id: 3, uid: "device-c")
+        ]
+
+        XCTAssertEqual(
+            store.orderedOutputDevices(updatedDevices).compactMap(\.uid),
+            ["device-b", "device-a", "device-c"]
+        )
+    }
+
     func testEveryConfigurableSizeRendersAtThatSize() throws {
         let appearance = try XCTUnwrap(NSAppearance(named: .aqua))
 
@@ -189,5 +274,14 @@ final class SettingsStoreTests: XCTestCase {
 
     private func clear(_ suite: (defaults: UserDefaults, name: String)) {
         suite.defaults.removePersistentDomain(forName: suite.name)
+    }
+
+    private func makeOutputDevice(id: AudioDeviceID, uid: String) -> AudioOutputDevice {
+        AudioOutputDevice(
+            id: id,
+            name: uid,
+            uid: uid,
+            isCurrent: false
+        )
     }
 }

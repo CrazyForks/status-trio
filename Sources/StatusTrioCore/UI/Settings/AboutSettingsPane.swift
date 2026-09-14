@@ -67,14 +67,16 @@ struct AboutSettingsPane: View {
                 .buttonStyle(.bordered)
                 .controlSize(.small)
 
-                Link(destination: AppMetadata.authorWebsiteURL) {
-                    Label(
-                        localization.string(.settingsAboutWebsite),
-                        systemImage: "globe"
-                    )
+                if localization.resolvedLanguage.isChinese {
+                    Link(destination: AppMetadata.authorWebsiteURL) {
+                        Label(
+                            localization.string(.settingsAboutWebsite),
+                            systemImage: "globe"
+                        )
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
                 }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
             }
         }
     }

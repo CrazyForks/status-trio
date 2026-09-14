@@ -221,6 +221,7 @@ enum StatusPresentation {
 
 struct StatusPopoverView: View {
     @ObservedObject var store: SystemStatusStore
+    @ObservedObject var settings: SettingsStore
     @EnvironmentObject private var localization: Localization
     let requestWiFiNameAccess: () -> Void
     let openBatterySettings: () -> Void
@@ -245,6 +246,7 @@ struct StatusPopoverView: View {
             )
             Divider()
             VolumeControlsView(
+                settings: settings,
                 volume: store.displayedVolume,
                 isEnabled: store.isVolumeControlAvailable,
                 onVolumeChange: store.setVolume,
