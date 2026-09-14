@@ -1,5 +1,6 @@
 import AppKit
 import Combine
+import CoreAudio
 import XCTest
 @testable import StatusTrioCore
 
@@ -79,6 +80,78 @@ final class SystemStatusStoreTests: XCTestCase {
         await fulfillment(of: [finalPopupUpdate], timeout: 1)
 
         XCTAssertEqual(store.popupSnapshot.battery.percentage, 55)
+        cancellables.removeAll()
+        store.stop()
+    }
+
+    func testSetVolumeUpdatesVisibleVolumeImmediately() async {
+        let volume = FakeVolumeMonitor()
+        let sleeper = ManualSleeper()
+        let store = SystemStatusStore(
+            batteryMonitor: FakeBatteryMonitor(),
+            wifiMonitor: FakeWiFiMonitor(),
+            volumeMonitor: volume,
+            refreshInterval: .seconds(60),
+            popupDebounceSleep: { _ in await sleeper.sleep() }
+        )
+
+        store.start()
+        volume.send(
+            VolumeStatus(
+                scalar: 0.4,
+                isMuted: false,
+                deviceName: "Speaker"
+            )
+        )
+        await drainMainActorTasks()
+
+        store.setVolume(0.7)
+
+        XCTAssertEqual(store.liveVolume.scalar, 0.7)
+        XCTAssertEqual(store.snapshot.volume.scalar, 0.7)
+        XCTAssertEqual(volume.setVolumeValues, [0.7])
+
+        sleeper.releaseAll()
+        store.stop()
+    }
+
+    func testLiveVolumeUsesSnapshotWhilePopupSnapshotIsDebounced() async {
+        let volume = FakeVolumeMonitor()
+        let sleeper = ManualSleeper()
+        let store = SystemStatusStore(
+            batteryMonitor: FakeBatteryMonitor(),
+            wifiMonitor: FakeWiFiMonitor(),
+            volumeMonitor: volume,
+            refreshInterval: .seconds(60),
+            popupDebounceSleep: { _ in await sleeper.sleep() }
+        )
+        let liveUpdate = expectation(description: "live volume snapshot published")
+        var cancellables = Set<AnyCancellable>()
+        store.$snapshot
+            .dropFirst()
+            .sink { snapshot in
+                if snapshot.volume.scalar == 0.42 {
+                    liveUpdate.fulfill()
+                }
+            }
+            .store(in: &cancellables)
+
+        store.start()
+        volume.send(
+            VolumeStatus(
+                scalar: 0.42,
+                isMuted: false,
+                deviceName: "Speaker"
+            )
+        )
+        await fulfillment(of: [liveUpdate], timeout: 1)
+        await sleeper.waitForCallCount(1)
+
+        XCTAssertEqual(store.snapshot.volume.scalar, 0.42)
+        XCTAssertNil(store.popupSnapshot.volume.scalar)
+        XCTAssertEqual(store.liveVolume.scalar, 0.42)
+
+        sleeper.releaseAll()
         cancellables.removeAll()
         store.stop()
     }
@@ -699,12 +772,15 @@ private final class FakeWiFiMonitor: WiFiMonitoring {
 }
 
 @MainActor
-private final class FakeVolumeMonitor: VolumeMonitoring {
+private final class FakeVolumeMonitor: VolumeMonitoring, VolumeControlling {
     let updates: AsyncStream<VolumeStatus>
     private(set) var startCount = 0
     private(set) var stopCount = 0
     private(set) var refreshCount = 0
     private(set) var recoverCount = 0
+    private(set) var setVolumeValues: [Double] = []
+    private(set) var toggleMuteCount = 0
+    private(set) var selectedOutputDeviceIDs: [AudioDeviceID] = []
     var onRecover: (() -> Void)?
     var onRefresh: (() -> Void)?
     private let continuation: AsyncStream<VolumeStatus>.Continuation
@@ -722,6 +798,15 @@ private final class FakeVolumeMonitor: VolumeMonitoring {
     func recover() {
         recoverCount += 1
         onRecover?()
+    }
+    func setVolume(_ scalar: Double) {
+        setVolumeValues.append(scalar)
+    }
+    func toggleMute() {
+        toggleMuteCount += 1
+    }
+    func selectOutputDevice(_ deviceID: AudioDeviceID) {
+        selectedOutputDeviceIDs.append(deviceID)
     }
     func send(_ value: VolumeStatus) { continuation.yield(value) }
 }

@@ -2,6 +2,10 @@ import AppKit
 import Combine
 import SwiftUI
 
+private struct UncheckedSendableNSEvent: @unchecked Sendable {
+    let event: NSEvent
+}
+
 @MainActor
 final class StatusBarController: NSObject, NSPopoverDelegate {
     static let iconSnapshotDebounceInterval: TimeInterval = 0.5
@@ -25,6 +29,9 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     private let quitAction: () -> Void
     private var appearanceObservations: [NSKeyValueObservation] = []
     private var popoverDismissMonitor: Any?
+    private var volumeScrollMonitor: Any?
+    private let volumeScrollAdjustment = PopupVolumeScrollAdjustment()
+    private var volumeScrollSession = PopupVolumeScrollSession()
 
     init(
         store: SystemStatusStore,
@@ -233,6 +240,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             NSApp.activate(ignoringOtherApps: true)
             popover.contentViewController?.view.window?.makeKey()
             installPopoverDismissMonitor()
+            installVolumeScrollMonitor()
         }
     }
 
@@ -253,8 +261,80 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         self.popoverDismissMonitor = nil
     }
 
+    private func installVolumeScrollMonitor() {
+        removeVolumeScrollMonitor()
+        volumeScrollMonitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { [weak self] event in
+            // Local event monitors run on the main thread. Keep the non-Sendable
+            // event inside this synchronous callback while hopping isolation.
+            let boxedEvent = UncheckedSendableNSEvent(event: event)
+            let shouldConsume = MainActor.assumeIsolated {
+                self?.shouldConsumeVolumeScrollWheel(boxedEvent.event) ?? false
+            }
+            return shouldConsume ? nil : event
+        }
+    }
+
+    private func removeVolumeScrollMonitor() {
+        guard let volumeScrollMonitor else { return }
+        NSEvent.removeMonitor(volumeScrollMonitor)
+        self.volumeScrollMonitor = nil
+        resetVolumeScrollSession()
+    }
+
+    private func shouldConsumeVolumeScrollWheel(_ event: NSEvent) -> Bool {
+        guard event.window === popover.contentViewController?.view.window,
+              store.isVolumeControlAvailable,
+              !isPointerOverScrollView(event) else {
+            return false
+        }
+        guard event.momentumPhase.isEmpty else { return true }
+
+        guard let currentScalar = volumeScrollSession.scalar(
+            at: event.timestamp,
+            fallback: store.popupSnapshot.volume.scalar
+        ) else {
+            return false
+        }
+        let delta = volumeScrollAdjustment.volumeDelta(
+            deltaY: Double(event.scrollingDeltaY),
+            isPrecise: event.hasPreciseScrollingDeltas
+        )
+        guard let delta else { return true }
+
+        let nextScalar = volumeScrollSession.applying(
+            delta: delta,
+            to: currentScalar
+        )
+        if volumeScrollSession.shouldUnmute(
+            isMuted: store.popupSnapshot.volume.isMuted,
+            isIncreasing: delta > 0
+        ) {
+            store.toggleMute()
+        }
+        store.setVolume(nextScalar)
+        return true
+    }
+
+    private func isPointerOverScrollView(_ event: NSEvent) -> Bool {
+        guard let rootView = popover.contentViewController?.view else { return false }
+        let point = rootView.convert(event.locationInWindow, from: nil)
+        var view = rootView.hitTest(point)
+        while let currentView = view {
+            if currentView is NSScrollView {
+                return true
+            }
+            view = currentView.superview
+        }
+        return false
+    }
+
+    private func resetVolumeScrollSession() {
+        volumeScrollSession.reset()
+    }
+
     func popoverDidClose(_ notification: Notification) {
         removePopoverDismissMonitor()
+        removeVolumeScrollMonitor()
     }
 
     private func render(snapshot: StatusSnapshot) {

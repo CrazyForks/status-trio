@@ -245,7 +245,7 @@ struct StatusPopoverView: View {
             )
             Divider()
             VolumeControlsView(
-                volume: store.popupSnapshot.volume,
+                volume: store.liveVolume,
                 isEnabled: store.isVolumeControlAvailable,
                 onVolumeChange: store.setVolume,
                 onToggleMute: store.toggleMute,

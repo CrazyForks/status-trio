@@ -11,6 +11,7 @@ final class SystemStatusStore: ObservableObject {
     @Published private(set) var isPreviewEnabled = false
     @Published private(set) var isPreviewBatteryAnimationRunning = false
     @Published private(set) var previewStatus = PreviewStatusConfiguration.standard
+    @Published private(set) var liveVolume: VolumeStatus
 
     private let batteryMonitor: any BatteryMonitoring
     private let wifiMonitor: any WiFiMonitoring
@@ -60,6 +61,7 @@ final class SystemStatusStore: ObservableObject {
         self.liveSnapshot = initialSnapshot
         self.snapshot = initialSnapshot
         self.popupSnapshot = initialSnapshot
+        self.liveVolume = initialSnapshot.volume
     }
 
     deinit {
@@ -154,7 +156,7 @@ final class SystemStatusStore: ObservableObject {
     }
 
     var isVolumeControlAvailable: Bool {
-        isPreviewEnabled || (volumeController != nil && popupSnapshot.volume.scalar != nil)
+        isPreviewEnabled || (volumeController != nil && liveVolume.scalar != nil)
     }
 
     func setPreviewEnabled(_ enabled: Bool) {
@@ -213,7 +215,12 @@ final class SystemStatusStore: ObservableObject {
             )
             return
         }
-        volumeController?.setVolume(scalar)
+
+        guard volumeController != nil, scalar.isFinite else { return }
+        liveVolume = liveVolume.replacingScalar(min(1, max(0, scalar)))
+        liveSnapshot = liveSnapshot.replacingVolume(liveVolume)
+        publish(liveSnapshot)
+        volumeController?.setVolume(liveVolume.scalar ?? 0)
     }
 
     func toggleMute() {
@@ -222,6 +229,11 @@ final class SystemStatusStore: ObservableObject {
             updatePreview(\.isMuted, to: !previewStatus.isMuted)
             return
         }
+
+        guard volumeController != nil, liveVolume.scalar != nil else { return }
+        liveVolume = liveVolume.replacingMuted(!liveVolume.isMuted)
+        liveSnapshot = liveSnapshot.replacingVolume(liveVolume)
+        publish(liveSnapshot)
         volumeController?.toggleMute()
     }
 
@@ -267,6 +279,7 @@ final class SystemStatusStore: ObservableObject {
     }
 
     private func applyVolume(_ value: VolumeStatus) {
+        liveVolume = value
         liveSnapshot = liveSnapshot.replacingVolume(value)
         publishLiveSnapshot()
     }
@@ -339,6 +352,26 @@ final class SystemStatusStore: ObservableObject {
                   next == self.liveSnapshot else { return }
             self.popupSnapshot = next
         }
+    }
+}
+
+private extension VolumeStatus {
+    func replacingScalar(_ scalar: Double) -> VolumeStatus {
+        VolumeStatus(
+            scalar: scalar,
+            isMuted: isMuted,
+            deviceName: deviceName,
+            outputDevices: outputDevices
+        )
+    }
+
+    func replacingMuted(_ isMuted: Bool) -> VolumeStatus {
+        VolumeStatus(
+            scalar: scalar,
+            isMuted: isMuted,
+            deviceName: deviceName,
+            outputDevices: outputDevices
+        )
     }
 }
 

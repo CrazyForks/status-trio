@@ -42,6 +42,10 @@ tag 必须与 `CFBundleShortVersionString` 一致。构建号必须大于 appcas
 - `publish=false`：只构建 DMG，并上传为 Actions artifact
 - `publish=true`：创建 Release 并更新 Sparkle appcast
 
+## Release notes 规则
+
+Release notes 必须始终使用英文，包括 GitHub Release 正文、Sparkle `appcast.xml` 描述、手动 workflow 的 `release_notes` 输入以及发布公告。不要使用中文或其他语言。
+
 ## 第一次配置
 
 ### 1. 配置 Sparkle EdDSA 私钥

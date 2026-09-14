@@ -6,6 +6,19 @@
     <description>Most recent changes for Status Trio.</description>
     <language>en</language>
     <item>
+      <title>Version 1.0.2 (Build 3)</title>
+      <pubDate>Sun, 13 Sep 2026 13:42:57 +0000</pubDate>
+      <sparkle:version>3</sparkle:version>
+      <sparkle:shortVersionString>1.0.2</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[<ul><li>Adjust volume by scrolling inside the popup.</li><li>Support continuous trackpad adjustments with immediate volume display updates.</li><li>Preserve independent scrolling for the output device list.</li></ul><p>After copying the app into <code>/Applications</code>, remove the quarantine attribute and open it:</p><pre><code>xattr -dr com.apple.quarantine "/Applications/Status Trio.app"
+open "/Applications/Status Trio.app"</code></pre><p>Alternatively, try to open the app once, then go to <strong>System Settings → Privacy &amp; Security</strong> and choose <strong>Open Anyway</strong>.</p>]]></description>
+      <enclosure url="https://github.com/lingyired/status-trio/releases/download/v1.0.2/StatusTrio-1.0.2.dmg"
+                 type="application/octet-stream"
+                 sparkle:edSignature="D45DY/TuhPhDTO4Bg2LylU29Tofr7YemdXI0rB0nlZC6X5ncBc2heF44lbHTpLqgCFeqo34NLYTknGXFcsbCAw=="
+                 length="2276356" />
+    </item>
+    <item>
       <title>Version 1.0.1 (Build 2)</title>
       <pubDate>Sun, 13 Sep 2026 12:51:03 +0000</pubDate>
       <sparkle:version>2</sparkle:version>

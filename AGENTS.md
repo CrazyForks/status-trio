@@ -43,6 +43,7 @@ Do not create a release if that preflight has not passed.
 
 ## Release Rules
 
+- Release notes must always be written in English. This includes GitHub Release bodies, Sparkle appcast descriptions, `release_notes` workflow inputs, and release announcements.
 - Release through `.github/workflows/release.yml`; do not publish manually unless the workflow is unavailable and the user explicitly asks for a manual fallback.
 - Version and build numbers must be explicit and must increase the published build number.
 - Confirm tests, DMG creation, Release upload, and appcast publication in the workflow result.
