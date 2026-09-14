@@ -598,6 +598,33 @@ final class SystemStatusStoreTests: XCTestCase {
         store.stop()
     }
 
+    func testConnectionUpdateSurvivesLaterMonitorUpdates() async {
+        let battery = FakeBatteryMonitor()
+        let connection = FakeNetworkConnectionMonitor()
+        let store = makeStore(
+            battery: battery,
+            wifi: FakeWiFiMonitor(),
+            volume: FakeVolumeMonitor(),
+            connection: connection
+        )
+
+        store.start()
+        connection.send(.ethernet)
+        for _ in 0..<100 where store.snapshot.connection != .ethernet {
+            await Task.yield()
+        }
+        XCTAssertEqual(store.snapshot.connection, .ethernet)
+
+        battery.send(makeBattery(percentage: 42))
+        for _ in 0..<100 where store.snapshot.battery.percentage != 42 {
+            await Task.yield()
+        }
+
+        XCTAssertEqual(store.snapshot.battery.percentage, 42)
+        XCTAssertEqual(store.snapshot.connection, .ethernet)
+        store.stop()
+    }
+
     func testConnectionMonitorUpdateIsPublished() async {
         let connection = FakeNetworkConnectionMonitor()
         let store = makeStore(

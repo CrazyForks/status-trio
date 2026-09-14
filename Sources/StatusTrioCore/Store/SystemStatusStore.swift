@@ -360,7 +360,11 @@ final class SystemStatusStore: ObservableObject {
     }
 
     private func applyConnection(_ value: NetworkConnection) {
-        publish(snapshot.replacingConnection(value))
+        // Preview branch adaptation: main treats snapshot as the canonical state,
+        // while this branch keeps a separate liveSnapshot so Preview data can be
+        // isolated. Keep this implementation Preview-only during future merges.
+        liveSnapshot = liveSnapshot.replacingConnection(value)
+        publishLiveSnapshot()
     }
 
     private func applyVolume(_ value: VolumeStatus) {
