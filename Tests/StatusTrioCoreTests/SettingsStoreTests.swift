@@ -7,7 +7,7 @@ import XCTest
 @MainActor
 final class SettingsStoreTests: XCTestCase {
     func testDefaultsMatchSpecifiedRange() {
-        XCTAssertEqual(SettingsStore.iconSizeRange, 20...32)
+        XCTAssertEqual(SettingsStore.iconSizeRange, 16...36)
 
         let store = SettingsStore(defaults: makeSuite().defaults)
         XCTAssertEqual(store.iconSize, 28, accuracy: 0.001)
@@ -104,7 +104,7 @@ final class SettingsStoreTests: XCTestCase {
 
         store.iconSize = 120
 
-        XCTAssertEqual(store.iconSize, 32, accuracy: 0.001)
+        XCTAssertEqual(store.iconSize, 36, accuracy: 0.001)
     }
 
     func testIconSizeBelowRangeIsClampedToLowerBound() {
@@ -112,7 +112,7 @@ final class SettingsStoreTests: XCTestCase {
 
         store.iconSize = 3
 
-        XCTAssertEqual(store.iconSize, 20, accuracy: 0.001)
+        XCTAssertEqual(store.iconSize, 16, accuracy: 0.001)
     }
 
     func testIconSizePersistsAcrossStoreInstances() {
@@ -129,7 +129,7 @@ final class SettingsStoreTests: XCTestCase {
         defer { clear(suite) }
         suite.defaults.set(120, forKey: SettingsStore.iconSizeDefaultsKey)
 
-        XCTAssertEqual(SettingsStore(defaults: suite.defaults).iconSize, 32, accuracy: 0.001)
+        XCTAssertEqual(SettingsStore(defaults: suite.defaults).iconSize, 36, accuracy: 0.001)
     }
 
     func testStoredNonNumericValueFallsBackToDefault() {

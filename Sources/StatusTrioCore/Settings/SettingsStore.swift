@@ -3,7 +3,7 @@ import Foundation
 
 @MainActor
 final class SettingsStore: ObservableObject {
-    static let iconSizeRange: ClosedRange<Double> = 20...32
+    static let iconSizeRange: ClosedRange<Double> = 16...36
     static let defaultIconSize: Double = 28
     static let iconSizeDefaultsKey = "menuBarIconSize"
 

@@ -8,6 +8,7 @@ final class UpdaterManager: NSObject, ObservableObject, SPUUpdaterDelegate {
     static let shared = UpdaterManager()
 
     @Published private(set) var canCheckForUpdates = false
+    @Published private(set) var automaticallyChecksForUpdates = false
 
     private lazy var controller = SPUStandardUpdaterController(
         startingUpdater: false,
@@ -16,21 +17,10 @@ final class UpdaterManager: NSObject, ObservableObject, SPUUpdaterDelegate {
     )
     private var isShowingManualUpdateUI = false
 
-    var automaticallyChecksForUpdates: Bool {
-        get {
-            if PreviewAppIdentity.isPreviewBuild { return false }
-            return controller.updater.automaticallyChecksForUpdates
-        }
-        set {
-            guard !PreviewAppIdentity.isPreviewBuild else { return }
-            controller.updater.automaticallyChecksForUpdates = newValue
-        }
-    }
-
     var automaticallyChecksForUpdatesBinding: Binding<Bool> {
         Binding(
             get: { self.automaticallyChecksForUpdates },
-            set: { self.automaticallyChecksForUpdates = $0 }
+            set: { self.controller.updater.automaticallyChecksForUpdates = $0 }
         )
     }
 
@@ -39,6 +29,8 @@ final class UpdaterManager: NSObject, ObservableObject, SPUUpdaterDelegate {
 
         controller.updater.publisher(for: \.canCheckForUpdates)
             .assign(to: &$canCheckForUpdates)
+        controller.updater.publisher(for: \.automaticallyChecksForUpdates)
+            .assign(to: &$automaticallyChecksForUpdates)
     }
 
     func start() {
