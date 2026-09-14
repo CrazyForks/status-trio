@@ -99,6 +99,8 @@
 "wifi.value.temporary" = "임시 연결";
 "wifi.value.shared" = "공유 중";
 "wifi.value.unavailable" = "사용할 수 없음";
+"wifi.value.wired" = "유선 연결";
+"wifi.subtitle.wired" = "유선 연결 사용 중";
 "wifi.subtitle.connected" = "연결됨";
 "wifi.subtitle.notAssociated" = "Wi-Fi가 켜져 있지만 연결되지 않음";
 "wifi.subtitle.off" = "Wi-Fi가 꺼져 있거나 사용할 수 없음";

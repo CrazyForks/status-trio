@@ -84,6 +84,15 @@ final class PreviewStatusTests: XCTestCase {
         store.stop()
     }
 
+    func testPreviewConfigurationSupportsWiredWiFiState() {
+        var preview = PreviewStatusConfiguration.standard
+        preview.wifiState = .wired
+        preview.wifiSSID = ""
+
+        XCTAssertEqual(preview.snapshot.wifi.state, .wired)
+        XCTAssertNil(preview.snapshot.wifi.ssid)
+    }
+
     func testPreviewConfigurationBuildsMultipleVirtualOutputs() {
         var preview = PreviewStatusConfiguration.standard
         preview.virtualOutputDevices = [

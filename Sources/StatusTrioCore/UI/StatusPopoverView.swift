@@ -110,6 +110,8 @@ enum StatusPresentation {
         localization: Localization
     ) -> String {
         switch wifi.state {
+        case .wired:
+            return localization.string(.wifiValueWired)
         case .connected:
             return localization.format(
                 .wifiValueBars,
@@ -141,6 +143,8 @@ enum StatusPresentation {
         }
 
         switch wifi.state {
+        case .wired:
+            return localization.string(.wifiSubtitleWired)
         case .connected:
             return localization.string(.wifiSubtitleConnected)
         case .notAssociated:

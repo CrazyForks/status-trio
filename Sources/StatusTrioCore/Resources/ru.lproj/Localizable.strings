@@ -99,6 +99,8 @@
 "wifi.value.temporary" = "Временно";
 "wifi.value.shared" = "Общий доступ";
 "wifi.value.unavailable" = "Недоступно";
+"wifi.value.wired" = "Проводное";
+"wifi.subtitle.wired" = "Проводное подключение";
 "wifi.subtitle.connected" = "Подключено";
 "wifi.subtitle.notAssociated" = "Wi‑Fi включён, но нет подключения";
 "wifi.subtitle.off" = "Wi‑Fi выключен или недоступен";

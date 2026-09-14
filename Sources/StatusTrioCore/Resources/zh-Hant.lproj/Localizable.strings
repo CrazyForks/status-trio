@@ -99,6 +99,8 @@
 "wifi.value.temporary" = "臨時連線";
 "wifi.value.shared" = "正在分享";
 "wifi.value.unavailable" = "無法使用";
+"wifi.value.wired" = "有線連接";
+"wifi.subtitle.wired" = "正在使用有線連接";
 "wifi.subtitle.connected" = "已連接";
 "wifi.subtitle.notAssociated" = "Wi-Fi 已開啟，但未關聯";
 "wifi.subtitle.off" = "Wi-Fi 已關閉或無法使用";

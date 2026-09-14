@@ -96,6 +96,7 @@ enum LocalizationKey: String, CaseIterable, Hashable, Sendable {
 
     case wifiTitle = "wifi.title"
     case wifiValueBars = "wifi.value.bars"
+    case wifiValueWired = "wifi.value.wired"
     case wifiValueNotAssociated = "wifi.value.notAssociated"
     case wifiValueOff = "wifi.value.off"
     case wifiValueNoInternet = "wifi.value.noInternet"
@@ -104,6 +105,7 @@ enum LocalizationKey: String, CaseIterable, Hashable, Sendable {
     case wifiValueShared = "wifi.value.shared"
     case wifiValueUnavailable = "wifi.value.unavailable"
     case wifiSubtitleConnected = "wifi.subtitle.connected"
+    case wifiSubtitleWired = "wifi.subtitle.wired"
     case wifiSubtitleNotAssociated = "wifi.subtitle.notAssociated"
     case wifiSubtitleOff = "wifi.subtitle.off"
     case wifiSubtitleNoInternet = "wifi.subtitle.noInternet"

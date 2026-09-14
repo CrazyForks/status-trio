@@ -99,6 +99,8 @@
 "wifi.value.temporary" = "Temporär";
 "wifi.value.shared" = "Wird geteilt";
 "wifi.value.unavailable" = "Nicht verfügbar";
+"wifi.value.wired" = "Kabelgebunden";
+"wifi.subtitle.wired" = "Kabelgebundene Verbindung";
 "wifi.subtitle.connected" = "Verbunden";
 "wifi.subtitle.notAssociated" = "Wi‑Fi ist aktiviert, aber nicht verbunden";
 "wifi.subtitle.off" = "Wi‑Fi ist aus oder nicht verfügbar";

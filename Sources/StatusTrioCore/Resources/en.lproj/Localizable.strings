@@ -99,6 +99,8 @@
 "wifi.value.temporary" = "Temporary";
 "wifi.value.shared" = "Sharing";
 "wifi.value.unavailable" = "Unavailable";
+"wifi.value.wired" = "Wired";
+"wifi.subtitle.wired" = "Using a wired connection";
 "wifi.subtitle.connected" = "Connected";
 "wifi.subtitle.notAssociated" = "Wi-Fi is on but not associated";
 "wifi.subtitle.off" = "Wi-Fi is off or unavailable";
