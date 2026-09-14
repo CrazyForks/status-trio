@@ -10,4 +10,8 @@ enum PreviewAppIdentity {
     static var userDefaults: UserDefaults {
         UserDefaults(suiteName: defaultsSuiteName) ?? .standard
     }
+
+    static func popupSettingsTitle(localizedTitle: String) -> String {
+        isPreviewBuild ? "[preview] \(localizedTitle)" : localizedTitle
+    }
 }

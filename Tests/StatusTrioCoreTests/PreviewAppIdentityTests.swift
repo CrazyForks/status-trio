@@ -3,6 +3,13 @@ import XCTest
 @testable import StatusTrioCore
 
 final class PreviewAppIdentityTests: XCTestCase {
+    func testPopupSettingsTitleUsesPreviewPrefix() {
+        XCTAssertEqual(
+            PreviewAppIdentity.popupSettingsTitle(localizedTitle: "Settings…"),
+            "[preview] Settings…"
+        )
+    }
+
     func testPreviewUsesIndependentRuntimeIdentity() {
         XCTAssertEqual(
             PreviewAppIdentity.bundleIdentifier,

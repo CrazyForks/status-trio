@@ -255,7 +255,11 @@ struct StatusPopoverView: View {
 
             Divider()
 
-            Button(localization.string(.menuSettings)) {
+            Button(
+                PreviewAppIdentity.popupSettingsTitle(
+                    localizedTitle: localization.string(.menuSettings)
+                )
+            ) {
                 openSettings()
             }
             .buttonStyle(.plain)
