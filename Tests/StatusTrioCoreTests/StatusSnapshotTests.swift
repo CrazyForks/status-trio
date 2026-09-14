@@ -66,6 +66,7 @@ final class StatusSnapshotTests: XCTestCase {
         XCTAssertFalse(snapshot.battery.isLowPowerMode)
         XCTAssertFalse(snapshot.battery.isConnectedToPower)
         XCTAssertEqual(snapshot.wifi, .placeholder)
+        XCTAssertEqual(snapshot.connection, .unknown)
         XCTAssertEqual(snapshot.volume, .placeholder)
     }
 

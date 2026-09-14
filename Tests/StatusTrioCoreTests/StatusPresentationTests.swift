@@ -212,6 +212,28 @@ final class StatusPresentationTests: XCTestCase {
         )
     }
 
+    func testStatusItemAccessibilitySummaryUsesEthernetWhenWired() {
+        let localization = makeLocalization(.simplifiedChinese)
+        let snapshot = StatusSnapshot(
+            battery: makeBattery(percentage: 73),
+            wifi: WiFiStatus(state: .connected, rssi: -55),
+            connection: .ethernet,
+            volume: VolumeStatus(
+                scalar: 0.5,
+                isMuted: false,
+                deviceName: "MacBook Pro Speakers"
+            )
+        )
+
+        XCTAssertEqual(
+            StatusPresentation.statusItemAccessibilityValue(
+                snapshot,
+                localization: localization
+            ),
+            "电池 73%，以太网已连接，音量 50% · 2 格"
+        )
+    }
+
     func testEnglishStatusPresentation() {
         let localization = makeLocalization(.english)
 

@@ -140,6 +140,63 @@ enum StatusIconGeometry {
         )
     }
 
+    static let ethernetStrokeWidth: CGFloat = 4.886659979939819
+    static let ethernetDotRadius: CGFloat = 2.4433299899699095
+
+    private static let ethernetSourceBounds = CGRect(
+        x: 56.132,
+        y: 75.812,
+        width: 87.736,
+        height: 46.376
+    )
+    private static let ethernetTargetBounds = CGRect(
+        x: 31.5,
+        y: 51.19959879638917,
+        width: 56,
+        height: 29.60080240722166
+    )
+
+    static func ethernetChevrons() -> [CGPath] {
+        let left = ethernetPolyline([
+            CGPoint(x: 79.32, y: 79.64),
+            CGPoint(x: 59.96, y: 99),
+            CGPoint(x: 79.32, y: 118.36)
+        ])
+        let right = ethernetPolyline([
+            CGPoint(x: 120.68, y: 79.64),
+            CGPoint(x: 140.04, y: 99),
+            CGPoint(x: 120.68, y: 118.36)
+        ])
+        return [left, right]
+    }
+
+    static func ethernetDots() -> [CGPoint] {
+        [
+            ethernetPoint(x: 84.688, y: 99),
+            ethernetPoint(x: 100, y: 99),
+            ethernetPoint(x: 115.312, y: 99)
+        ]
+    }
+
+    private static func ethernetPolyline(_ points: [CGPoint]) -> CGPath {
+        let path = CGMutablePath()
+        guard let first = points.first else { return path }
+        path.move(to: ethernetPoint(x: first.x, y: first.y))
+        for point in points.dropFirst() {
+            path.addLine(to: ethernetPoint(x: point.x, y: point.y))
+        }
+        return path
+    }
+
+    private static func ethernetPoint(x: CGFloat, y: CGFloat) -> CGPoint {
+        let scaleX = ethernetTargetBounds.width / ethernetSourceBounds.width
+        let scaleY = ethernetTargetBounds.height / ethernetSourceBounds.height
+        return CGPoint(
+            x: ethernetTargetBounds.minX + (x - ethernetSourceBounds.minX) * scaleX,
+            y: ethernetTargetBounds.minY + (y - ethernetSourceBounds.minY) * scaleY
+        )
+    }
+
     static func temporaryWedge() -> CGPath {
         let path = CGMutablePath()
         path.addPath(wifiOuterArc())

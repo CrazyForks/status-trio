@@ -38,9 +38,8 @@ struct OutputDeviceList: View {
                                 )
                             )
                             .font(.callout)
-
-                            Spacer()
                         }
+                        .frame(maxWidth: .infinity, alignment: .center)
                         .foregroundStyle(.secondary)
                         .padding(.vertical, 5)
                         .contentShape(Rectangle())

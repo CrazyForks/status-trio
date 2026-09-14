@@ -134,7 +134,11 @@ enum StatusIconRenderer {
             foreground: foreground,
             criticalColor: criticalColor
         )
-        drawWiFi(snapshot.wifi, in: context, foreground: foreground)
+        if snapshot.connection == .ethernet {
+            drawEthernet(in: context, foreground: foreground)
+        } else {
+            drawWiFi(snapshot.wifi, in: context, foreground: foreground)
+        }
         drawVolume(snapshot.volume, in: context, foreground: foreground)
     }
 
@@ -300,6 +304,31 @@ enum StatusIconRenderer {
             return fallback
         }
         return NSFont(descriptor: descriptor, size: size) ?? fallback
+    }
+
+    private static func drawEthernet(
+        in context: CGContext,
+        foreground: CGColor
+    ) {
+        context.setStrokeColor(foreground)
+        context.setLineWidth(StatusIconGeometry.ethernetStrokeWidth)
+        for path in StatusIconGeometry.ethernetChevrons() {
+            context.addPath(path)
+            context.strokePath()
+        }
+
+        context.setFillColor(foreground)
+        let radius = StatusIconGeometry.ethernetDotRadius
+        for point in StatusIconGeometry.ethernetDots() {
+            context.fillEllipse(
+                in: CGRect(
+                    x: point.x - radius,
+                    y: point.y - radius,
+                    width: radius * 2,
+                    height: radius * 2
+                )
+            )
+        }
     }
 
     private static func drawWiFi(

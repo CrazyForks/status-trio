@@ -25,11 +25,13 @@ final class AppEnvironment {
     static func makeStore(
         batteryMonitor: any BatteryMonitoring,
         wifiMonitor: any WiFiMonitoring,
+        connectionMonitor: (any NetworkConnectionMonitoring)? = nil,
         volumeMonitor: any VolumeMonitoring
     ) -> SystemStatusStore {
         SystemStatusStore(
             batteryMonitor: batteryMonitor,
             wifiMonitor: wifiMonitor,
+            connectionMonitor: connectionMonitor,
             volumeMonitor: volumeMonitor
         )
     }
@@ -38,6 +40,7 @@ final class AppEnvironment {
         let store = makeStore(
             batteryMonitor: BatteryMonitor(),
             wifiMonitor: WiFiMonitor(),
+            connectionMonitor: NetworkConnectionMonitor(),
             volumeMonitor: VolumeMonitor(outputController: CoreAudioOutputController())
         )
         let defaults = PreviewAppIdentity.userDefaults

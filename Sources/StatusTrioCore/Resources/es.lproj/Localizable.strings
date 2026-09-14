@@ -113,6 +113,7 @@
 "wifi.action.openLocationSettings" = "Permitir ubicación en Ajustes";
 "wifi.action.openSettings" = "Abrir ajustes de Wi-Fi";
 "wifi.accessibility.withSSID" = "Wi-Fi %@, %@";
+"ethernet.accessibility.connected" = "Ethernet conectado";
 "volume.title" = "Volumen · %d%%";
 "volume.titleUnavailable" = "Volumen · —";
 "volume.muted" = "Silenciado";

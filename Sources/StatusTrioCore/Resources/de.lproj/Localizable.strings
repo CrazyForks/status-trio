@@ -113,6 +113,7 @@
 "wifi.action.openLocationSettings" = "Standort in Einstellungen erlauben";
 "wifi.action.openSettings" = "Wi‑Fi-Einstellungen öffnen";
 "wifi.accessibility.withSSID" = "Wi‑Fi %@, %@";
+"ethernet.accessibility.connected" = "Ethernet verbunden";
 "volume.title" = "Lautstärke · %d%%";
 "volume.titleUnavailable" = "Lautstärke · —";
 "volume.muted" = "Stumm";

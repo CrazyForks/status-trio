@@ -113,6 +113,7 @@
 "wifi.action.openLocationSettings" = "去设置中允许定位";
 "wifi.action.openSettings" = "打开 Wi-Fi 设置";
 "wifi.accessibility.withSSID" = "Wi-Fi %@，%@";
+"ethernet.accessibility.connected" = "以太网已连接";
 "volume.title" = "音量 · %d%%";
 "volume.titleUnavailable" = "音量 · —";
 "volume.muted" = "静音";

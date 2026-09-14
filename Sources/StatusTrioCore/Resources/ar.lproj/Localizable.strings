@@ -113,6 +113,7 @@
 "wifi.action.openLocationSettings" = "السماح بالموقع في الإعدادات";
 "wifi.action.openSettings" = "فتح إعدادات Wi‑Fi";
 "wifi.accessibility.withSSID" = "Wi‑Fi %@، %@";
+"ethernet.accessibility.connected" = "إيثرنت متصل";
 "volume.title" = "مستوى الصوت · %d%%";
 "volume.titleUnavailable" = "مستوى الصوت · —";
 "volume.muted" = "صامت";

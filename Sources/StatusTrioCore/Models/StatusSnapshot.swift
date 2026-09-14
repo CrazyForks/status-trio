@@ -119,7 +119,20 @@ struct VolumeStatus: Equatable, Sendable {
 struct StatusSnapshot: Equatable, Sendable {
     let battery: BatteryStatus
     let wifi: WiFiStatus
+    let connection: NetworkConnection
     let volume: VolumeStatus
+
+    init(
+        battery: BatteryStatus,
+        wifi: WiFiStatus,
+        connection: NetworkConnection = .unknown,
+        volume: VolumeStatus
+    ) {
+        self.battery = battery
+        self.wifi = wifi
+        self.connection = connection
+        self.volume = volume
+    }
 
     static let placeholder = StatusSnapshot(
         battery: .placeholder,

@@ -113,6 +113,7 @@
 "wifi.action.openLocationSettings" = "設定で位置情報を許可";
 "wifi.action.openSettings" = "Wi-Fi設定を開く";
 "wifi.accessibility.withSSID" = "Wi-Fi %@、%@";
+"ethernet.accessibility.connected" = "イーサネット接続済み";
 "volume.title" = "音量 · %d%%";
 "volume.titleUnavailable" = "音量 · —";
 "volume.muted" = "ミュート中";

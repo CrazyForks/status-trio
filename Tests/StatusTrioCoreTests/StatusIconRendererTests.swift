@@ -775,6 +775,30 @@ final class StatusIconRendererTests: XCTestCase {
         )
     }
 
+    func testEthernetConnectionDrawsThreeDotMark() throws {
+        let snapshot = StatusSnapshot(
+            battery: .placeholder,
+            wifi: WiFiStatus(state: .connected, rssi: -50),
+            connection: .ethernet,
+            volume: .placeholder
+        )
+        let pixels = try PixelBuffer(
+            image: try XCTUnwrap(StatusIconRenderer.render(
+                snapshot: snapshot,
+                size: 20,
+                scale: 16,
+                foreground: CGColor(gray: 1, alpha: 1)
+            ))
+        )
+
+        for dot in StatusIconGeometry.ethernetDots() {
+            XCTAssertGreaterThan(
+                pixels.alpha(atSVGPoint: dot, size: 20, scale: 16),
+                230
+            )
+        }
+    }
+
     func testTemporaryAndSharedStatesRenderExpectedSizeAndMasks() throws {
         let temporarySnapshot = StatusSnapshot(
             battery: .placeholder,

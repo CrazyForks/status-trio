@@ -29,10 +29,9 @@ enum StatusPresentation {
             batterySummary = localization.string(.batteryStateNotPresent)
         }
 
-        let wifiSummary = wifiAccessibilitySummary(
-            snapshot.wifi,
-            localization: localization
-        )
+        let networkSummary = snapshot.connection == .ethernet
+            ? localization.string(.ethernetAccessibilityConnected)
+            : wifiAccessibilitySummary(snapshot.wifi, localization: localization)
         let volumeSummary = localization.format(
             .accessibilityVolume,
             volumeValue(snapshot.volume, localization: localization)
@@ -41,7 +40,7 @@ enum StatusPresentation {
         return localization.format(
             .accessibilityStatus,
             batterySummary,
-            wifiSummary,
+            networkSummary,
             volumeSummary
         )
     }

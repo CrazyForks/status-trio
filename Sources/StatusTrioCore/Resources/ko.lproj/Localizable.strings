@@ -113,6 +113,7 @@
 "wifi.action.openLocationSettings" = "설정에서 위치 허용";
 "wifi.action.openSettings" = "Wi-Fi 설정 열기";
 "wifi.accessibility.withSSID" = "Wi-Fi %@, %@";
+"ethernet.accessibility.connected" = "이더넷 연결됨";
 "volume.title" = "볼륨 · %d%%";
 "volume.titleUnavailable" = "볼륨 · —";
 "volume.muted" = "음소거됨";

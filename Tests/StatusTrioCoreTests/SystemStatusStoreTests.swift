@@ -240,6 +240,33 @@ final class SystemStatusStoreTests: XCTestCase {
         store.stop()
     }
 
+    func testMakeStoreUsesInjectedConnectionMonitor() async {
+        let connection = FakeNetworkConnectionMonitor()
+        let store = AppEnvironment.makeStore(
+            batteryMonitor: FakeBatteryMonitor(),
+            wifiMonitor: FakeWiFiMonitor(),
+            connectionMonitor: connection,
+            volumeMonitor: FakeVolumeMonitor()
+        )
+        let updateApplied = expectation(description: "injected connection monitor update applied")
+        var cancellables = Set<AnyCancellable>()
+        store.$snapshot
+            .dropFirst()
+            .sink { snapshot in
+                guard snapshot.connection == .ethernet else { return }
+                updateApplied.fulfill()
+            }
+            .store(in: &cancellables)
+
+        store.start()
+        connection.send(.ethernet)
+        await fulfillment(of: [updateApplied], timeout: 1)
+
+        XCTAssertEqual(store.snapshot.connection, .ethernet)
+        cancellables.removeAll()
+        store.stop()
+    }
+
     func testMakeStoreUsesInjectedMonitors() async {
         let battery = FakeBatteryMonitor()
         let store = AppEnvironment.makeStore(
@@ -571,13 +598,51 @@ final class SystemStatusStoreTests: XCTestCase {
         store.stop()
     }
 
+    func testConnectionMonitorUpdateIsPublished() async {
+        let connection = FakeNetworkConnectionMonitor()
+        let store = makeStore(
+            battery: FakeBatteryMonitor(),
+            wifi: FakeWiFiMonitor(),
+            volume: FakeVolumeMonitor(),
+            connection: connection
+        )
+        let updated = expectation(description: "connection update published")
+        var cancellables = Set<AnyCancellable>()
+        store.$snapshot
+            .dropFirst()
+            .sink { snapshot in
+                guard snapshot.connection == .ethernet else { return }
+                updated.fulfill()
+            }
+            .store(in: &cancellables)
+
+        store.start()
+        connection.send(.ethernet)
+        await fulfillment(of: [updated], timeout: 1)
+
+        XCTAssertEqual(store.snapshot.connection, .ethernet)
+        cancellables.removeAll()
+        store.stop()
+    }
+
     private func makeStore(
         battery: FakeBatteryMonitor,
         wifi: FakeWiFiMonitor,
         volume: FakeVolumeMonitor,
+        connection: FakeNetworkConnectionMonitor? = nil,
         wakeNotificationCenter: NotificationCenter = NSWorkspace.shared.notificationCenter
     ) -> SystemStatusStore {
-        SystemStatusStore(
+        if let connection {
+            return SystemStatusStore(
+                batteryMonitor: battery,
+                wifiMonitor: wifi,
+                connectionMonitor: connection,
+                volumeMonitor: volume,
+                refreshInterval: .seconds(60),
+                wakeNotificationCenter: wakeNotificationCenter
+            )
+        }
+        return SystemStatusStore(
             batteryMonitor: battery,
             wifiMonitor: wifi,
             volumeMonitor: volume,
@@ -701,6 +766,18 @@ private final class SpyWakeNotificationCenter: NotificationCenter, @unchecked Se
         removeCount += 1
         super.removeObserver(observer)
     }
+}
+
+@MainActor
+private final class FakeNetworkConnectionMonitor: NetworkConnectionMonitoring {
+    let updates: AsyncStream<NetworkConnection>
+    private let continuation: AsyncStream<NetworkConnection>.Continuation
+
+    init() { (updates, continuation) = AsyncStream.makeStream() }
+    func start() {}
+    func stop() { continuation.finish() }
+    func recover() {}
+    func send(_ value: NetworkConnection) { continuation.yield(value) }
 }
 
 @MainActor

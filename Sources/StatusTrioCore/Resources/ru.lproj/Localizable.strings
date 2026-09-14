@@ -113,6 +113,7 @@
 "wifi.action.openLocationSettings" = "Разрешить геолокацию в Настройках";
 "wifi.action.openSettings" = "Открыть настройки Wi‑Fi";
 "wifi.accessibility.withSSID" = "Wi‑Fi %@, %@";
+"ethernet.accessibility.connected" = "Ethernet подключён";
 "volume.title" = "Громкость · %d%%";
 "volume.titleUnavailable" = "Громкость · —";
 "volume.muted" = "Без звука";

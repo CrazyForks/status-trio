@@ -189,6 +189,40 @@ final class StatusIconGeometryTests: XCTestCase {
         assertPathBounds(paths[2], equals: CGRect(x: 51, y: 58, width: 17, height: 0))
     }
 
+    func testEthernetMarkMatchesAttachedSVGGeometry() {
+        let chevrons = StatusIconGeometry.ethernetChevrons()
+        let dots = StatusIconGeometry.ethernetDots()
+
+        XCTAssertEqual(chevrons.count, 2)
+        XCTAssertFalse(chevrons[0].isEmpty)
+        XCTAssertFalse(chevrons[1].isEmpty)
+        assertPathBounds(
+            chevrons[0],
+            equals: CGRect(
+                x: 33.94332998996991,
+                y: 53.64292878635908,
+                width: 12.357071213640918,
+                height: 24.71414242728184
+            )
+        )
+        assertPathBounds(
+            chevrons[1],
+            equals: CGRect(
+                x: 72.69959879638917,
+                y: 53.64292878635908,
+                width: 12.357071213640896,
+                height: 24.71414242728184
+            )
+        )
+
+        XCTAssertEqual(dots.count, 3)
+        assertPoint(dots[0], equals: CGPoint(x: 49.726680040120364, y: 66))
+        assertPoint(dots[1], equals: CGPoint(x: 59.5, y: 66))
+        assertPoint(dots[2], equals: CGPoint(x: 69.27331995987964, y: 66))
+        XCTAssertEqual(StatusIconGeometry.ethernetStrokeWidth, 4.886659979939819, accuracy: 0.01)
+        XCTAssertEqual(StatusIconGeometry.ethernetDotRadius, 2.4433299899699095, accuracy: 0.01)
+    }
+
     func testVolumeDots() {
         let dots = StatusIconGeometry.volumeDots()
         let expected = [
