@@ -15,30 +15,28 @@ enum StatusIconRenderer {
         snapshot: StatusSnapshot,
         size: CGFloat,
         options: BatteryIconOptions = .standard,
-        appearance: NSAppearance
+        connectionOptions: ConnectionIconOptions = .standard
     ) -> NSImage {
-        let image = NSImage(size: NSSize(width: size, height: size))
-
-        appearance.performAsCurrentDrawingAppearance {
+        // Resolve colors while AppKit draws into each menu bar. A pre-rendered
+        // bitmap would keep the first display's light or dark foreground.
+        NSImage(size: NSSize(width: size, height: size), flipped: false) { _ in
             let foreground = NSColor.labelColor.usingColorSpace(.deviceRGB)?.cgColor
                 ?? CGColor(gray: 1, alpha: 1)
             let criticalColor = NSColor.systemRed.usingColorSpace(.deviceRGB)?.cgColor
                 ?? Self.defaultCriticalColor
-            image.lockFocus()
-            defer { image.unlockFocus() }
 
-            guard let context = NSGraphicsContext.current?.cgContext else { return }
+            guard let context = NSGraphicsContext.current?.cgContext else { return false }
             draw(
                 snapshot: snapshot,
                 options: options,
+                connectionOptions: connectionOptions,
                 in: context,
                 size: size,
                 foreground: foreground,
                 criticalColor: criticalColor
             )
+            return true
         }
-
-        return image
     }
 
     static func wifiImage(wifi: WiFiStatus, size: CGFloat) -> NSImage {
@@ -60,6 +58,7 @@ enum StatusIconRenderer {
 
         drawWiFi(
             wifi,
+            options: .standard,
             in: context,
             foreground: CGColor(gray: 1, alpha: 1)
         )
@@ -72,7 +71,8 @@ enum StatusIconRenderer {
         size: CGFloat,
         scale: CGFloat,
         foreground: CGColor,
-        options: BatteryIconOptions = .standard
+        options: BatteryIconOptions = .standard,
+        connectionOptions: ConnectionIconOptions = .standard
     ) -> CGImage? {
         guard size.isFinite, scale.isFinite, size > 0, scale > 0 else { return nil }
 
@@ -101,6 +101,7 @@ enum StatusIconRenderer {
         draw(
             snapshot: snapshot,
             options: options,
+            connectionOptions: connectionOptions,
             in: context,
             size: size,
             foreground: foreground,
@@ -112,6 +113,7 @@ enum StatusIconRenderer {
     private static func draw(
         snapshot: StatusSnapshot,
         options: BatteryIconOptions,
+        connectionOptions: ConnectionIconOptions,
         in context: CGContext,
         size: CGFloat,
         foreground: CGColor,
@@ -135,9 +137,18 @@ enum StatusIconRenderer {
             criticalColor: criticalColor
         )
         if snapshot.connection == .ethernet {
-            drawEthernet(in: context, foreground: foreground)
+            if connectionOptions.showsWiFiIconForEthernet {
+                drawStandardWiFi(snapshot.wifi, in: context, foreground: foreground)
+            } else {
+                drawEthernet(in: context, foreground: foreground)
+            }
         } else {
-            drawWiFi(snapshot.wifi, in: context, foreground: foreground)
+            drawWiFi(
+                snapshot.wifi,
+                options: connectionOptions,
+                in: context,
+                foreground: foreground
+            )
         }
         drawVolume(snapshot.volume, in: context, foreground: foreground)
     }
@@ -333,21 +344,17 @@ enum StatusIconRenderer {
 
     private static func drawWiFi(
         _ wifi: WiFiStatus,
+        options: ConnectionIconOptions,
         in context: CGContext,
         foreground: CGColor
     ) {
         let mutedColor = foreground.copy(alpha: 0.30) ?? foreground
-        let bars = StatusMappings.wifiBars(rssi: wifi.rssi)
 
         context.setLineWidth(7)
 
         switch wifi.state {
         case .connected:
-            if bars == 0 {
-                drawWiFiSignal(level: 3, color: mutedColor, in: context)
-            } else {
-                drawWiFiSignal(level: bars, color: foreground, in: context)
-            }
+            drawStandardWiFi(wifi, in: context, foreground: foreground)
         case .notAssociated, .off, .unavailable:
             drawWiFiSignal(level: 3, color: mutedColor, in: context)
 
@@ -369,6 +376,8 @@ enum StatusIconRenderer {
             context.setFillColor(mutedColor)
             context.addPath(overlay.dot)
             context.fillPath()
+        case .hotspot where options.showsWiFiIconForHotspot:
+            drawStandardWiFi(wifi, in: context, foreground: foreground)
         case .hotspot:
             context.setStrokeColor(foreground)
             context.setLineWidth(5)
@@ -376,6 +385,8 @@ enum StatusIconRenderer {
                 context.addPath(path)
                 context.strokePath()
             }
+        case .temporary where options.showsWiFiIconForTemporaryConnection:
+            drawStandardWiFi(wifi, in: context, foreground: foreground)
         case .temporary:
             context.setFillColor(foreground)
             context.setStrokeColor(foreground)
@@ -391,6 +402,8 @@ enum StatusIconRenderer {
             context.addPath(StatusIconGeometry.temporaryScreenStand())
             context.fillPath()
             context.restoreGState()
+        case .shared where options.showsWiFiIconForInternetSharing:
+            drawStandardWiFi(wifi, in: context, foreground: foreground)
         case .shared:
             context.setFillColor(foreground)
             context.setStrokeColor(foreground)
@@ -403,6 +416,21 @@ enum StatusIconRenderer {
             context.addPath(StatusIconGeometry.sharedArrowCutout())
             context.fillPath()
             context.restoreGState()
+        }
+    }
+
+    private static func drawStandardWiFi(
+        _ wifi: WiFiStatus,
+        in context: CGContext,
+        foreground: CGColor
+    ) {
+        context.setLineWidth(7)
+        let bars = StatusMappings.wifiBars(rssi: wifi.rssi)
+        if bars == 0 {
+            let mutedColor = foreground.copy(alpha: 0.30) ?? foreground
+            drawWiFiSignal(level: 3, color: mutedColor, in: context)
+        } else {
+            drawWiFiSignal(level: bars, color: foreground, in: context)
         }
     }
 

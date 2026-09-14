@@ -20,6 +20,12 @@
 "settings.tab.battery" = "电池";
 "settings.tab.about" = "关于";
 "settings.menuBar.title" = "菜单栏图标";
+"settings.menuBar.connectionIcons" = "连接图标样式";
+"settings.menuBar.connectionIcons.description" = "启用后，对应状态改用普通 Wi‑Fi 信号图标，不再显示其专用标记。";
+"settings.menuBar.wifiIconForEthernet" = "有线连接使用 Wi‑Fi 图标";
+"settings.menuBar.wifiIconForHotspot" = "个人热点使用 Wi‑Fi 图标";
+"settings.menuBar.wifiIconForTemporaryConnection" = "临时连接使用 Wi‑Fi 图标";
+"settings.menuBar.wifiIconForInternetSharing" = "互联网共享使用 Wi‑Fi 图标";
 "settings.audio.maximumVisible" = "最多显示输出设备";
 "settings.audio.maximumVisibleDescription" = "超过该数量时显示“展开”按钮。";
 "settings.audio.showAll" = "始终全部展开";

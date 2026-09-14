@@ -614,11 +614,9 @@ final class StatusIconRendererTests: XCTestCase {
     }
 
     func testAppKitWrapperProducesBitmapRepresentation() throws {
-        let appearance = try XCTUnwrap(NSAppearance(named: .aqua))
         let image = StatusIconRenderer.image(
             snapshot: .placeholder,
-            size: 28,
-            appearance: appearance
+            size: 28
         )
 
         XCTAssertEqual(image.size.width, 28, accuracy: 0.01)
@@ -710,7 +708,7 @@ final class StatusIconRendererTests: XCTestCase {
         }
     }
 
-    func testRendererResolvesForegroundForAquaAndDarkAqua() throws {
+    func testRendererResolvesForegroundForEachDrawingAppearance() throws {
         let snapshot = StatusSnapshot(
             battery: .placeholder,
             wifi: WiFiStatus(state: .connected, rssi: -55),
@@ -718,16 +716,12 @@ final class StatusIconRendererTests: XCTestCase {
         )
         let aqua = try XCTUnwrap(NSAppearance(named: .aqua))
         let darkAqua = try XCTUnwrap(NSAppearance(named: .darkAqua))
-        let aquaPixels = try renderPixels(image: StatusIconRenderer.image(
+        let image = StatusIconRenderer.image(
             snapshot: snapshot,
-            size: 20,
-            appearance: aqua
-        ))
-        let darkAquaPixels = try renderPixels(image: StatusIconRenderer.image(
-            snapshot: snapshot,
-            size: 20,
-            appearance: darkAqua
-        ))
+            size: 20
+        )
+        let aquaPixels = try renderPixels(image: image, appearance: aqua)
+        let darkAquaPixels = try renderPixels(image: image, appearance: darkAqua)
         let aquaLuminance = try XCTUnwrap(aquaPixels.averageOpaqueLuminance())
         let darkAquaLuminance = try XCTUnwrap(darkAquaPixels.averageOpaqueLuminance())
 
@@ -797,6 +791,86 @@ final class StatusIconRendererTests: XCTestCase {
                 230
             )
         }
+    }
+
+    func testEthernetConnectionUsesStandardWiFiSignalWhenEnabled() throws {
+        let ethernetSnapshot = StatusSnapshot(
+            battery: .placeholder,
+            wifi: WiFiStatus(state: .hotspot, rssi: -55),
+            connection: .ethernet,
+            volume: .placeholder
+        )
+        let standardWiFiSnapshot = StatusSnapshot(
+            battery: .placeholder,
+            wifi: WiFiStatus(state: .connected, rssi: -55),
+            volume: .placeholder
+        )
+        let ethernetPixels = try renderPixels(
+            ethernetSnapshot,
+            connectionOptions: ConnectionIconOptions(
+                showsWiFiIconForEthernet: true
+            )
+        )
+        let standardWiFiPixels = try renderPixels(standardWiFiSnapshot)
+
+        XCTAssertEqual(ethernetPixels.bytes, standardWiFiPixels.bytes)
+    }
+
+    func testWiFiIconOptionsReplaceEachSpecialConnectionMark() throws {
+        let cases: [(WiFiState, ConnectionIconOptions)] = [
+            (
+                .hotspot,
+                ConnectionIconOptions(showsWiFiIconForHotspot: true)
+            ),
+            (
+                .temporary,
+                ConnectionIconOptions(showsWiFiIconForTemporaryConnection: true)
+            ),
+            (
+                .shared,
+                ConnectionIconOptions(showsWiFiIconForInternetSharing: true)
+            )
+        ]
+        let standardWiFiPixels = try renderPixels(
+            StatusSnapshot(
+                battery: .placeholder,
+                wifi: WiFiStatus(state: .connected, rssi: -55),
+                volume: .placeholder
+            )
+        )
+
+        for (state, connectionOptions) in cases {
+            let pixels = try renderPixels(
+                StatusSnapshot(
+                    battery: .placeholder,
+                    wifi: WiFiStatus(state: state, rssi: -55),
+                    volume: .placeholder
+                ),
+                connectionOptions: connectionOptions
+            )
+
+            XCTAssertEqual(pixels.bytes, standardWiFiPixels.bytes, "\(state)")
+        }
+    }
+
+    func testWiFiIconOptionUsesMutedFullSignalWhenRSSIIsMissing() throws {
+        let specialPixels = try renderPixels(
+            StatusSnapshot(
+                battery: .placeholder,
+                wifi: WiFiStatus(state: .hotspot, rssi: nil),
+                volume: .placeholder
+            ),
+            connectionOptions: ConnectionIconOptions(showsWiFiIconForHotspot: true)
+        )
+        let standardPixels = try renderPixels(
+            StatusSnapshot(
+                battery: .placeholder,
+                wifi: WiFiStatus(state: .connected, rssi: nil),
+                volume: .placeholder
+            )
+        )
+
+        XCTAssertEqual(specialPixels.bytes, standardPixels.bytes)
     }
 
     func testTemporaryAndSharedStatesRenderExpectedSizeAndMasks() throws {
@@ -1031,12 +1105,20 @@ final class StatusIconRendererTests: XCTestCase {
     }
 
     private func renderPixels(_ snapshot: StatusSnapshot) throws -> PixelBuffer {
+        try renderPixels(snapshot, connectionOptions: .standard)
+    }
+
+    private func renderPixels(
+        _ snapshot: StatusSnapshot,
+        connectionOptions: ConnectionIconOptions
+    ) throws -> PixelBuffer {
         try PixelBuffer(
             image: try XCTUnwrap(StatusIconRenderer.render(
                 snapshot: snapshot,
                 size: 20,
                 scale: 8,
-                foreground: CGColor(gray: 1, alpha: 1)
+                foreground: CGColor(gray: 1, alpha: 1),
+                connectionOptions: connectionOptions
             ))
         )
     }
@@ -1048,6 +1130,37 @@ final class StatusIconRendererTests: XCTestCase {
         return try PixelBuffer(
             image: try XCTUnwrap(bitmap.cgImage)
         )
+    }
+
+    private func renderPixels(
+        image: NSImage,
+        appearance: NSAppearance
+    ) throws -> PixelBuffer {
+        let width = Int(image.size.width.rounded(.up))
+        let height = Int(image.size.height.rounded(.up))
+        let bitmap = try XCTUnwrap(NSBitmapImageRep(
+            bitmapDataPlanes: nil,
+            pixelsWide: width,
+            pixelsHigh: height,
+            bitsPerSample: 8,
+            samplesPerPixel: 4,
+            hasAlpha: true,
+            isPlanar: false,
+            colorSpaceName: .deviceRGB,
+            bytesPerRow: 0,
+            bitsPerPixel: 0
+        ))
+        bitmap.size = image.size
+        let context = try XCTUnwrap(NSGraphicsContext(bitmapImageRep: bitmap))
+
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = context
+        appearance.performAsCurrentDrawingAppearance {
+            image.draw(in: NSRect(origin: .zero, size: image.size))
+        }
+        NSGraphicsContext.restoreGraphicsState()
+
+        return try PixelBuffer(image: try XCTUnwrap(bitmap.cgImage))
     }
 }
 

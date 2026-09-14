@@ -20,6 +20,12 @@
 "settings.tab.battery" = "Batteria";
 "settings.tab.about" = "Informazioni";
 "settings.menuBar.title" = "Icona della barra dei menu";
+"settings.menuBar.connectionIcons" = "Stile delle icone di connessione";
+"settings.menuBar.connectionIcons.description" = "Se attivato, lo stato selezionato usa l’icona standard del segnale Wi-Fi invece del simbolo dedicato.";
+"settings.menuBar.wifiIconForEthernet" = "Usa l’icona Wi-Fi per Ethernet";
+"settings.menuBar.wifiIconForHotspot" = "Usa l’icona Wi-Fi per hotspot personale";
+"settings.menuBar.wifiIconForTemporaryConnection" = "Usa l’icona Wi-Fi per connessione temporanea";
+"settings.menuBar.wifiIconForInternetSharing" = "Usa l’icona Wi-Fi per condivisione Internet";
 "settings.audio.maximumVisible" = "Numero massimo di dispositivi visibili";
 "settings.audio.maximumVisibleDescription" = "Numero di dispositivi mostrati prima del comando Espandi.";
 "settings.audio.showAll" = "Mostra sempre tutti i dispositivi";

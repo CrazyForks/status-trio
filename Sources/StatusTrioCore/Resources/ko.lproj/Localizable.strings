@@ -20,6 +20,12 @@
 "settings.tab.battery" = "배터리";
 "settings.tab.about" = "정보";
 "settings.menuBar.title" = "메뉴 막대 아이콘";
+"settings.menuBar.connectionIcons" = "연결 아이콘 스타일";
+"settings.menuBar.connectionIcons.description" = "활성화하면 선택한 상태가 전용 표시 대신 표준 Wi-Fi 신호 아이콘으로 표시됩니다.";
+"settings.menuBar.wifiIconForEthernet" = "Ethernet에 Wi-Fi 아이콘 사용";
+"settings.menuBar.wifiIconForHotspot" = "개인 핫스팟에 Wi-Fi 아이콘 사용";
+"settings.menuBar.wifiIconForTemporaryConnection" = "임시 연결에 Wi-Fi 아이콘 사용";
+"settings.menuBar.wifiIconForInternetSharing" = "인터넷 공유에 Wi-Fi 아이콘 사용";
 "settings.audio.maximumVisible" = "표시할 최대 출력 장치 수";
 "settings.audio.maximumVisibleDescription" = "‘펼치기’ 컨트롤 전에 표시할 출력 장치 수입니다.";
 "settings.audio.showAll" = "항상 모든 출력 장치 표시";

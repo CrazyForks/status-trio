@@ -15,6 +15,12 @@
 "settings.tab.battery" = "البطارية";
 "settings.tab.about" = "حول";
 "settings.menuBar.title" = "رمز شريط القوائم";
+"settings.menuBar.connectionIcons" = "نمط أيقونات الاتصال";
+"settings.menuBar.connectionIcons.description" = "عند التمكين، تستخدم الحالة المحددة أيقونة إشارة Wi-Fi القياسية بدلًا من علامتها الخاصة.";
+"settings.menuBar.wifiIconForEthernet" = "استخدام أيقونة Wi-Fi لإيثرنت";
+"settings.menuBar.wifiIconForHotspot" = "استخدام أيقونة Wi-Fi لنقطة الاتصال الشخصية";
+"settings.menuBar.wifiIconForTemporaryConnection" = "استخدام أيقونة Wi-Fi للاتصال المؤقت";
+"settings.menuBar.wifiIconForInternetSharing" = "استخدام أيقونة Wi-Fi لمشاركة الإنترنت";
 "settings.audio.maximumVisible" = "الحد الأقصى لأجهزة الإخراج الظاهرة";
 "settings.audio.maximumVisibleDescription" = "عدد أجهزة الإخراج المعروضة قبل زر التوسيع.";
 "settings.audio.showAll" = "إظهار كل أجهزة الإخراج دائمًا";

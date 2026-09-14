@@ -30,6 +30,7 @@ Status Trio is a native macOS menubar app that combines Wi-Fi, battery, and volu
 
 - **One combined status icon** — keeps battery, Wi-Fi, and volume in a single menu bar item.
 - **Configurable rendering** — choose an icon size from 20–32 pt, with 28 pt as the default.
+- **Connection icon choices** — optionally use the standard Wi-Fi signal icon for Ethernet, Personal Hotspot, temporary connections, or Internet Sharing.
 - **Detailed battery status** — percentage, charging bolt, estimated time to full, Low Power Mode, and a Battery Settings shortcut.
 - **Wi-Fi awareness** — signal strength, current network name, and common connection states.
 - **Volume at a glance** — output level and mute state, with controls available from the popover.
@@ -92,7 +93,7 @@ Do not disable Gatekeeper globally. Subsequent Sparkle updates are authenticated
 
 - **Left-click** the menu bar icon to open the status popover.
 - **Right-click** it for the native menu, including version and quit actions.
-- Open **Settings** to change the icon size, battery display options, language, update checks, and launch-at-login behavior.
+- Open **Settings** to change the icon size, connection icon style, battery display options, language, update checks, and launch-at-login behavior.
 - Enable the current Wi-Fi network name when prompted; macOS requests location access for this optional detail.
 
 ## Languages

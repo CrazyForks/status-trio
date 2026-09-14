@@ -20,6 +20,12 @@
 "settings.tab.battery" = "Batterie";
 "settings.tab.about" = "Über";
 "settings.menuBar.title" = "Menüleistensymbol";
+"settings.menuBar.connectionIcons" = "Stil der Verbindungssymbole";
+"settings.menuBar.connectionIcons.description" = "Wenn aktiviert, verwendet der ausgewählte Status das standardmäßige WLAN-Signal-Symbol anstelle seiner speziellen Markierung.";
+"settings.menuBar.wifiIconForEthernet" = "WLAN-Symbol für Ethernet verwenden";
+"settings.menuBar.wifiIconForHotspot" = "WLAN-Symbol für persönlichen Hotspot verwenden";
+"settings.menuBar.wifiIconForTemporaryConnection" = "WLAN-Symbol für temporäre Verbindung verwenden";
+"settings.menuBar.wifiIconForInternetSharing" = "WLAN-Symbol für Internetfreigabe verwenden";
 "settings.audio.maximumVisible" = "Maximal sichtbare Ausgabegeräte";
 "settings.audio.maximumVisibleDescription" = "Anzahl der Ausgabegeräte, die vor „Erweitern“ angezeigt werden.";
 "settings.audio.showAll" = "Immer alle Ausgabegeräte anzeigen";

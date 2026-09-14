@@ -25,6 +25,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     private var localizationCancellable: AnyCancellable?
     private var iconSizeCancellable: AnyCancellable?
     private var batteryOptionsCancellable: AnyCancellable?
+    private var connectionIconOptionsCancellable: AnyCancellable?
+    private var screenParametersCancellable: AnyCancellable?
     private let openSettings: () -> Void
     private let quitAction: () -> Void
     private var appearanceObservations: [NSKeyValueObservation] = []
@@ -103,7 +105,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
                 self.render(
                     snapshot: self.store.displayedSnapshot,
                     iconSize: iconSize,
-                    options: self.settings.batteryIconOptions
+                    options: self.settings.batteryIconOptions,
+                    connectionOptions: self.settings.connectionIconOptions
                 )
             }
 
@@ -132,7 +135,35 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             self.render(
                 snapshot: self.store.displayedSnapshot,
                 iconSize: self.settings.iconSize,
-                options: options
+                options: options,
+                connectionOptions: self.settings.connectionIconOptions
+            )
+        }
+
+        connectionIconOptionsCancellable = Publishers.CombineLatest4(
+            settings.$showsWiFiIconForEthernet,
+            settings.$showsWiFiIconForHotspot,
+            settings.$showsWiFiIconForTemporaryConnection,
+            settings.$showsWiFiIconForInternetSharing
+        )
+        .sink { [weak self] values in
+            guard let self else { return }
+            let (
+                showsForEthernet,
+                showsForHotspot,
+                showsForTemporaryConnection,
+                showsForInternetSharing
+            ) = values
+            self.render(
+                snapshot: self.store.snapshot,
+                iconSize: self.settings.iconSize,
+                options: self.settings.batteryIconOptions,
+                connectionOptions: ConnectionIconOptions(
+                    showsWiFiIconForEthernet: showsForEthernet,
+                    showsWiFiIconForHotspot: showsForHotspot,
+                    showsWiFiIconForTemporaryConnection: showsForTemporaryConnection,
+                    showsWiFiIconForInternetSharing: showsForInternetSharing
+                )
             )
         }
 
@@ -149,6 +180,15 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
                 self?.renderLatestSnapshot()
             }
         })
+
+        screenParametersCancellable = NotificationCenter.default.publisher(
+            for: NSApplication.didChangeScreenParametersNotification,
+            object: NSApp
+        )
+        .receive(on: RunLoop.main)
+        .sink { [weak self] _ in
+            self?.renderLatestSnapshot()
+        }
     }
 
     static func shouldDebounceSnapshotUpdates(isPreviewEnabled: Bool) -> Bool {
@@ -342,21 +382,23 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         render(
             snapshot: snapshot,
             iconSize: settings.iconSize,
-            options: settings.batteryIconOptions
+            options: settings.batteryIconOptions,
+            connectionOptions: settings.connectionIconOptions
         )
     }
 
     private func render(
         snapshot: StatusSnapshot,
         iconSize: Double,
-        options: BatteryIconOptions
+        options: BatteryIconOptions,
+        connectionOptions: ConnectionIconOptions
     ) {
         guard let button = statusItem.button else { return }
         button.image = StatusIconRenderer.image(
             snapshot: snapshot,
             size: iconSize,
             options: options,
-            appearance: Self.resolvedAppearance(button: button)
+            connectionOptions: connectionOptions
         )
         button.setNeedsDisplay(button.bounds)
         button.setAccessibilityLabel(StatusPresentation.statusItemAccessibilityLabel)
@@ -370,15 +412,6 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
 
     private func renderLatestSnapshot() {
         render(snapshot: store.displayedSnapshot)
-    }
-
-    static func resolvedAppearance(
-        button: NSStatusBarButton?,
-        application: NSApplication = .shared
-    ) -> NSAppearance {
-        button?.window?.effectiveAppearance
-            ?? button?.effectiveAppearance
-            ?? application.effectiveAppearance
     }
 
     private static var appVersion: String {

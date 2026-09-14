@@ -16,6 +16,10 @@ final class SettingsStore: ObservableObject {
     static let usesBatteryStatusColorsDefaultsKey = "usesBatteryStatusColors"
     static let batteryCriticalThresholdDefaultsKey = "batteryCriticalThreshold"
     static let batterySymbolScaleDefaultsKey = "batterySymbolScale"
+    static let showsWiFiIconForEthernetDefaultsKey = "showsWiFiIconForEthernet"
+    static let showsWiFiIconForHotspotDefaultsKey = "showsWiFiIconForHotspot"
+    static let showsWiFiIconForTemporaryConnectionDefaultsKey = "showsWiFiIconForTemporaryConnection"
+    static let showsWiFiIconForInternetSharingDefaultsKey = "showsWiFiIconForInternetSharing"
 
     static let outputDeviceLimitRange: ClosedRange<Int> = 1...20
     static let defaultMaxVisibleOutputDevices = 5
@@ -72,6 +76,42 @@ final class SettingsStore: ObservableObject {
                 return
             }
             defaults.set(clamped, forKey: Self.batteryCriticalThresholdDefaultsKey)
+        }
+    }
+
+    @Published var showsWiFiIconForEthernet: Bool {
+        didSet {
+            defaults.set(
+                showsWiFiIconForEthernet,
+                forKey: Self.showsWiFiIconForEthernetDefaultsKey
+            )
+        }
+    }
+
+    @Published var showsWiFiIconForHotspot: Bool {
+        didSet {
+            defaults.set(
+                showsWiFiIconForHotspot,
+                forKey: Self.showsWiFiIconForHotspotDefaultsKey
+            )
+        }
+    }
+
+    @Published var showsWiFiIconForTemporaryConnection: Bool {
+        didSet {
+            defaults.set(
+                showsWiFiIconForTemporaryConnection,
+                forKey: Self.showsWiFiIconForTemporaryConnectionDefaultsKey
+            )
+        }
+    }
+
+    @Published var showsWiFiIconForInternetSharing: Bool {
+        didSet {
+            defaults.set(
+                showsWiFiIconForInternetSharing,
+                forKey: Self.showsWiFiIconForInternetSharingDefaultsKey
+            )
         }
     }
 
@@ -164,6 +204,15 @@ final class SettingsStore: ObservableObject {
         )
     }
 
+    var connectionIconOptions: ConnectionIconOptions {
+        ConnectionIconOptions(
+            showsWiFiIconForEthernet: showsWiFiIconForEthernet,
+            showsWiFiIconForHotspot: showsWiFiIconForHotspot,
+            showsWiFiIconForTemporaryConnection: showsWiFiIconForTemporaryConnection,
+            showsWiFiIconForInternetSharing: showsWiFiIconForInternetSharing
+        )
+    }
+
     private let defaults: UserDefaults
 
     init(defaults: UserDefaults = .standard) {
@@ -184,6 +233,18 @@ final class SettingsStore: ObservableObject {
         self.batteryCriticalThreshold = Self.clampedBatteryCriticalThreshold(
             storedCriticalThreshold ?? Self.defaultBatteryCriticalThreshold
         )
+        self.showsWiFiIconForEthernet = defaults.object(
+            forKey: Self.showsWiFiIconForEthernetDefaultsKey
+        ) as? Bool ?? false
+        self.showsWiFiIconForHotspot = defaults.object(
+            forKey: Self.showsWiFiIconForHotspotDefaultsKey
+        ) as? Bool ?? false
+        self.showsWiFiIconForTemporaryConnection = defaults.object(
+            forKey: Self.showsWiFiIconForTemporaryConnectionDefaultsKey
+        ) as? Bool ?? false
+        self.showsWiFiIconForInternetSharing = defaults.object(
+            forKey: Self.showsWiFiIconForInternetSharingDefaultsKey
+        ) as? Bool ?? false
         self.maxVisibleOutputDevices = Self.clampedOutputDeviceLimit(
             storedOutputDeviceLimit ?? Self.defaultMaxVisibleOutputDevices
         )

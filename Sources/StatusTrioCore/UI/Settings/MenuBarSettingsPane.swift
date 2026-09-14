@@ -42,6 +42,35 @@ struct MenuBarSettingsPane: View {
                     }
                 }
             }
+
+            Divider()
+
+            PreferenceRow(
+                label: .settingsMenuBarConnectionIcons,
+                description: .settingsMenuBarConnectionIconsDescription
+            ) {
+                VStack(alignment: .leading, spacing: 8) {
+                    PreferenceCheckboxRow(
+                        label: .settingsMenuBarWiFiIconForEthernet,
+                        isOn: $store.showsWiFiIconForEthernet
+                    )
+
+                    PreferenceCheckboxRow(
+                        label: .settingsMenuBarWiFiIconForHotspot,
+                        isOn: $store.showsWiFiIconForHotspot
+                    )
+
+                    PreferenceCheckboxRow(
+                        label: .settingsMenuBarWiFiIconForTemporaryConnection,
+                        isOn: $store.showsWiFiIconForTemporaryConnection
+                    )
+
+                    PreferenceCheckboxRow(
+                        label: .settingsMenuBarWiFiIconForInternetSharing,
+                        isOn: $store.showsWiFiIconForInternetSharing
+                    )
+                }
+            }
         }
     }
 }

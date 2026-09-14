@@ -43,6 +43,33 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(second.batterySymbolScale, 0.95, accuracy: 0.001)
     }
 
+    func testConnectionIconDisplayDefaults() {
+        let store = SettingsStore(defaults: makeSuite().defaults)
+
+        XCTAssertFalse(store.showsWiFiIconForEthernet)
+        XCTAssertFalse(store.showsWiFiIconForHotspot)
+        XCTAssertFalse(store.showsWiFiIconForTemporaryConnection)
+        XCTAssertFalse(store.showsWiFiIconForInternetSharing)
+        XCTAssertEqual(store.connectionIconOptions, .standard)
+    }
+
+    func testConnectionIconDisplaySettingsPersistAcrossStoreInstances() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+
+        let first = SettingsStore(defaults: suite.defaults)
+        first.showsWiFiIconForEthernet = true
+        first.showsWiFiIconForHotspot = true
+        first.showsWiFiIconForTemporaryConnection = true
+        first.showsWiFiIconForInternetSharing = true
+
+        let second = SettingsStore(defaults: suite.defaults)
+        XCTAssertTrue(second.showsWiFiIconForEthernet)
+        XCTAssertTrue(second.showsWiFiIconForHotspot)
+        XCTAssertTrue(second.showsWiFiIconForTemporaryConnection)
+        XCTAssertTrue(second.showsWiFiIconForInternetSharing)
+    }
+
     func testBatteryCriticalThresholdIsClamped() {
         let store = SettingsStore(defaults: makeSuite().defaults)
 
@@ -245,8 +272,6 @@ final class SettingsStoreTests: XCTestCase {
     }
 
     func testEveryConfigurableSizeRendersAtThatSize() throws {
-        let appearance = try XCTUnwrap(NSAppearance(named: .aqua))
-
         for value in stride(
             from: SettingsStore.iconSizeRange.lowerBound,
             through: SettingsStore.iconSizeRange.upperBound,
@@ -254,8 +279,7 @@ final class SettingsStoreTests: XCTestCase {
         ) {
             let image = StatusIconRenderer.image(
                 snapshot: .placeholder,
-                size: value,
-                appearance: appearance
+                size: value
             )
 
             XCTAssertEqual(image.size.width, value, accuracy: 0.01, "width at \(value) pt")

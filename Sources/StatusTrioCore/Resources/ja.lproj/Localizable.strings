@@ -20,6 +20,12 @@
 "settings.tab.battery" = "バッテリー";
 "settings.tab.about" = "このアプリについて";
 "settings.menuBar.title" = "メニューバーアイコン";
+"settings.menuBar.connectionIcons" = "接続アイコンのスタイル";
+"settings.menuBar.connectionIcons.description" = "有効にすると、選択した状態は専用マークではなく標準の Wi-Fi シグナルアイコンで表示されます。";
+"settings.menuBar.wifiIconForEthernet" = "Ethernet に Wi-Fi アイコンを使用";
+"settings.menuBar.wifiIconForHotspot" = "個人用ホットスポットに Wi-Fi アイコンを使用";
+"settings.menuBar.wifiIconForTemporaryConnection" = "一時接続に Wi-Fi アイコンを使用";
+"settings.menuBar.wifiIconForInternetSharing" = "インターネット共有に Wi-Fi アイコンを使用";
 "settings.audio.maximumVisible" = "表示する出力デバイスの最大数";
 "settings.audio.maximumVisibleDescription" = "「展開」を表示する前に表示する出力デバイス数です。";
 "settings.audio.showAll" = "常にすべての出力デバイスを表示";

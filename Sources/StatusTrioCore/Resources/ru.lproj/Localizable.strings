@@ -20,6 +20,12 @@
 "settings.tab.battery" = "Батарея";
 "settings.tab.about" = "О программе";
 "settings.menuBar.title" = "Значок в строке меню";
+"settings.menuBar.connectionIcons" = "Стиль значков подключения";
+"settings.menuBar.connectionIcons.description" = "Если включено, выбранное состояние отображается стандартным значком сигнала Wi-Fi вместо специального обозначения.";
+"settings.menuBar.wifiIconForEthernet" = "Использовать значок Wi-Fi для Ethernet";
+"settings.menuBar.wifiIconForHotspot" = "Использовать значок Wi-Fi для точки доступа";
+"settings.menuBar.wifiIconForTemporaryConnection" = "Использовать значок Wi-Fi для временного подключения";
+"settings.menuBar.wifiIconForInternetSharing" = "Использовать значок Wi-Fi для общего доступа к интернету";
 "settings.audio.maximumVisible" = "Максимум видимых устройств вывода";
 "settings.audio.maximumVisibleDescription" = "Сколько устройств вывода показывать до кнопки «Развернуть».";
 "settings.audio.showAll" = "Всегда показывать все устройства вывода";
