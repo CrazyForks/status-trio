@@ -6,10 +6,16 @@ final class SettingsTabViewController: NSTabViewController {
     static let contentWidth: CGFloat = 450
 
     private let store: SettingsStore
+    private let statusStore: SystemStatusStore
     private let localization: Localization
 
-    init(store: SettingsStore, localization: Localization) {
+    init(
+        store: SettingsStore,
+        statusStore: SystemStatusStore,
+        localization: Localization
+    ) {
         self.store = store
+        self.statusStore = statusStore
         self.localization = localization
         super.init(nibName: nil, bundle: nil)
         tabStyle = .toolbar
@@ -73,7 +79,11 @@ final class SettingsTabViewController: NSTabViewController {
             let viewController = SettingsVisualEffectViewController(
                 localization: localization
             ) {
-                SettingsDetailView(tab: tab, store: store)
+                SettingsDetailView(
+                    tab: tab,
+                    store: store,
+                    statusStore: statusStore
+                )
             }
             viewController.view.frame.size.width = Self.contentWidth
 

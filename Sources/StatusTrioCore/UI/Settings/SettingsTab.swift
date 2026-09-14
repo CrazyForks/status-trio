@@ -6,6 +6,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
     case battery
     case updates
     case about
+    case preview
 
     var id: Self { self }
 
@@ -16,6 +17,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
         case .battery: .settingsTabBattery
         case .updates: .settingsUpdatesTitle
         case .about: .settingsTabAbout
+        case .preview: .settingsTabPreview
         }
     }
 
@@ -26,6 +28,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
         case .battery: "battery.100percent"
         case .updates: "arrow.triangle.2.circlepath"
         case .about: "info.circle"
+        case .preview: "sparkles"
         }
     }
 
@@ -36,6 +39,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
         case .battery: .green
         case .updates: .orange
         case .about: .gray
+        case .preview: .purple
         }
     }
 }

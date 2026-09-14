@@ -3,6 +3,7 @@ import SwiftUI
 struct SettingsDetailView: View {
     let tab: SettingsTab
     @ObservedObject var store: SettingsStore
+    @ObservedObject var statusStore: SystemStatusStore
     @EnvironmentObject private var localization: Localization
 
     @ViewBuilder
@@ -18,6 +19,8 @@ struct SettingsDetailView: View {
             UpdatesSettingsPane()
         case .about:
             AboutSettingsPane()
+        case .preview:
+            PreviewSettingsPane(statusStore: statusStore)
         }
     }
 }

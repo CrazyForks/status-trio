@@ -4,13 +4,17 @@ import Foundation
 final class SingleInstanceGuard {
     static var defaultLockPath: String {
         FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Application Support/StatusTrio", isDirectory: true)
+            .appendingPathComponent("Library/Application Support", isDirectory: true)
+            .appendingPathComponent(
+                PreviewAppIdentity.applicationSupportDirectoryName,
+                isDirectory: true
+            )
             .appendingPathComponent(lockFileName(for: Bundle.main.bundleIdentifier))
             .path
     }
 
     static func lockFileName(for bundleIdentifier: String?) -> String {
-        let fallbackIdentifier = "com.lingsmbp.StatusTrio"
+        let fallbackIdentifier = PreviewAppIdentity.bundleIdentifier
         let identifier = bundleIdentifier?
             .trimmingCharacters(in: .whitespacesAndNewlines)
         let resolvedIdentifier = identifier.flatMap { $0.isEmpty ? nil : $0 }

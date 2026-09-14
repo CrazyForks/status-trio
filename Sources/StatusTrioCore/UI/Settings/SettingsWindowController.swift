@@ -5,13 +5,19 @@ import SwiftUI
 @MainActor
 final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     private let store: SettingsStore
+    private let statusStore: SystemStatusStore
     private let localization: Localization
     private var localizationCancellable: AnyCancellable?
     private var tabController: SettingsTabViewController?
     private var ownsActivationPolicy = false
 
-    init(store: SettingsStore, localization: Localization) {
+    init(
+        store: SettingsStore,
+        statusStore: SystemStatusStore,
+        localization: Localization
+    ) {
         self.store = store
+        self.statusStore = statusStore
         self.localization = localization
         super.init(window: nil)
 
@@ -43,6 +49,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     private func makeWindow() -> NSWindow {
         let tabController = SettingsTabViewController(
             store: store,
+            statusStore: statusStore,
             localization: localization
         )
         self.tabController = tabController

@@ -17,8 +17,14 @@ final class UpdaterManager: NSObject, ObservableObject, SPUUpdaterDelegate {
     private var isShowingManualUpdateUI = false
 
     var automaticallyChecksForUpdates: Bool {
-        get { controller.updater.automaticallyChecksForUpdates }
-        set { controller.updater.automaticallyChecksForUpdates = newValue }
+        get {
+            if PreviewAppIdentity.isPreviewBuild { return false }
+            return controller.updater.automaticallyChecksForUpdates
+        }
+        set {
+            guard !PreviewAppIdentity.isPreviewBuild else { return }
+            controller.updater.automaticallyChecksForUpdates = newValue
+        }
     }
 
     var automaticallyChecksForUpdatesBinding: Binding<Bool> {
@@ -36,6 +42,7 @@ final class UpdaterManager: NSObject, ObservableObject, SPUUpdaterDelegate {
     }
 
     func start() {
+        guard !PreviewAppIdentity.isPreviewBuild else { return }
         #if DEBUG
         return
         #else
@@ -44,6 +51,7 @@ final class UpdaterManager: NSObject, ObservableObject, SPUUpdaterDelegate {
     }
 
     func checkForUpdates() {
+        guard !PreviewAppIdentity.isPreviewBuild else { return }
         #if DEBUG
         return
         #else

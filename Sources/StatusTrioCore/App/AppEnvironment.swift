@@ -40,10 +40,12 @@ final class AppEnvironment {
             wifiMonitor: WiFiMonitor(),
             volumeMonitor: VolumeMonitor(outputController: CoreAudioOutputController())
         )
-        let settings = SettingsStore()
-        let localization = Localization()
+        let defaults = PreviewAppIdentity.userDefaults
+        let settings = SettingsStore(defaults: defaults)
+        let localization = Localization(defaults: defaults)
         let settingsWindowController = SettingsWindowController(
             store: settings,
+            statusStore: store,
             localization: localization
         )
         let controller = StatusBarController(

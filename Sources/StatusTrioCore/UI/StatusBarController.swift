@@ -49,10 +49,27 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         let snapshotUpdates = store.$snapshot
             .removeDuplicates()
             .dropFirst()
+
+        let liveSnapshotUpdates = snapshotUpdates
+            .filter { [weak self] _ in
+                guard let self else { return false }
+                return Self.shouldDebounceSnapshotUpdates(
+                    isPreviewEnabled: self.store.isPreviewEnabled
+                )
+            }
             .debounce(
                 for: .seconds(Self.iconSnapshotDebounceInterval),
                 scheduler: RunLoop.main
             )
+            .map { _ in () }
+
+        let previewSnapshotUpdates = snapshotUpdates
+            .filter { [weak self] _ in
+                guard let self else { return false }
+                return !Self.shouldDebounceSnapshotUpdates(
+                    isPreviewEnabled: self.store.isPreviewEnabled
+                )
+            }
             .map { _ in () }
 
         let periodicUpdates = Timer.publish(
@@ -63,10 +80,14 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         .autoconnect()
         .map { _ in () }
 
-        cancellable = Publishers.Merge(snapshotUpdates, periodicUpdates)
-            .sink { [weak self] in
-                self?.renderLatestSnapshot()
-            }
+        cancellable = Publishers.Merge3(
+            liveSnapshotUpdates,
+            previewSnapshotUpdates,
+            periodicUpdates
+        )
+        .sink { [weak self] in
+            self?.renderLatestSnapshot()
+        }
 
         iconSizeCancellable = settings.$iconSize
             .removeDuplicates()
@@ -121,6 +142,10 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
                 self?.renderLatestSnapshot()
             }
         })
+    }
+
+    static func shouldDebounceSnapshotUpdates(isPreviewEnabled: Bool) -> Bool {
+        !isPreviewEnabled
     }
 
     static func clickKind(eventType: NSEvent.EventType, modifiers: NSEvent.ModifierFlags) -> ClickKind? {

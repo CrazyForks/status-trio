@@ -14,11 +14,11 @@ final class SingleInstanceGuardTests: XCTestCase {
         )
         XCTAssertEqual(
             SingleInstanceGuard.lockFileName(for: nil),
-            "com.lingsmbp.StatusTrio.lock"
+            "com.lingsmbp.StatusTrio.preview.lock"
         )
         XCTAssertEqual(
             SingleInstanceGuard.lockFileName(for: "  "),
-            "com.lingsmbp.StatusTrio.lock"
+            "com.lingsmbp.StatusTrio.preview.lock"
         )
     }
 

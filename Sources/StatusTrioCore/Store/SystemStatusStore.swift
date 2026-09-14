@@ -8,6 +8,9 @@ final class SystemStatusStore: ObservableObject {
 
     @Published private(set) var snapshot: StatusSnapshot
     @Published private(set) var popupSnapshot: StatusSnapshot
+    @Published private(set) var isPreviewEnabled = false
+    @Published private(set) var isPreviewBatteryAnimationRunning = false
+    @Published private(set) var previewStatus = PreviewStatusConfiguration.standard
 
     private let batteryMonitor: any BatteryMonitoring
     private let wifiMonitor: any WiFiMonitoring
@@ -16,11 +19,14 @@ final class SystemStatusStore: ObservableObject {
     private let refreshInterval: Duration
     private let sleep: @Sendable (Duration) async throws -> Void
     private let popupDebounceSleep: @Sendable (Duration) async throws -> Void
+    private let previewAnimationSleep: @Sendable (Duration) async throws -> Void
     private let wakeNotificationCenter: NotificationCenter
     private var monitorTasks: [Task<Void, Never>] = []
     private var refreshTask: Task<Void, Never>?
     private var popupPublishTask: Task<Void, Never>?
+    private var previewAnimationTask: Task<Void, Never>?
     nonisolated(unsafe) private var wakeObserver: NSObjectProtocol?
+    private var liveSnapshot: StatusSnapshot
     private var lastPublishedSnapshot: StatusSnapshot?
     private var hasStarted = false
     private var hasStopped = false
@@ -36,6 +42,9 @@ final class SystemStatusStore: ObservableObject {
         popupDebounceSleep: @escaping @Sendable (Duration) async throws -> Void = {
             try await Task.sleep(for: $0)
         },
+        previewAnimationSleep: @escaping @Sendable (Duration) async throws -> Void = {
+            try await Task.sleep(for: $0)
+        },
         wakeNotificationCenter: NotificationCenter = NSWorkspace.shared.notificationCenter,
         initialSnapshot: StatusSnapshot = .placeholder
     ) {
@@ -46,7 +55,9 @@ final class SystemStatusStore: ObservableObject {
         self.refreshInterval = refreshInterval
         self.sleep = sleep
         self.popupDebounceSleep = popupDebounceSleep
+        self.previewAnimationSleep = previewAnimationSleep
         self.wakeNotificationCenter = wakeNotificationCenter
+        self.liveSnapshot = initialSnapshot
         self.snapshot = initialSnapshot
         self.popupSnapshot = initialSnapshot
     }
@@ -58,6 +69,7 @@ final class SystemStatusStore: ObservableObject {
         monitorTasks.forEach { $0.cancel() }
         refreshTask?.cancel()
         popupPublishTask?.cancel()
+        previewAnimationTask?.cancel()
     }
 
     func start() {
@@ -138,29 +150,88 @@ final class SystemStatusStore: ObservableObject {
         refreshTask = nil
         popupPublishTask?.cancel()
         popupPublishTask = nil
+        stopPreviewBatteryAnimation()
     }
 
     var isVolumeControlAvailable: Bool {
-        volumeController != nil && popupSnapshot.volume.scalar != nil
+        isPreviewEnabled || (volumeController != nil && popupSnapshot.volume.scalar != nil)
+    }
+
+    func setPreviewEnabled(_ enabled: Bool) {
+        guard !hasStopped, enabled != isPreviewEnabled else { return }
+        if !enabled {
+            stopPreviewBatteryAnimation()
+        }
+        isPreviewEnabled = enabled
+        publishImmediately(enabled ? previewStatus.snapshot : liveSnapshot)
+    }
+
+    func togglePreviewBatteryAnimation() {
+        if isPreviewBatteryAnimationRunning {
+            stopPreviewBatteryAnimation()
+        } else {
+            startPreviewBatteryAnimation()
+        }
+    }
+
+    func startPreviewBatteryAnimation() {
+        guard !hasStopped else { return }
+        previewAnimationTask?.cancel()
+        setPreviewEnabled(true)
+        isPreviewBatteryAnimationRunning = true
+        previewAnimationTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            await self.runPreviewBatteryAnimation()
+        }
+    }
+
+    func stopPreviewBatteryAnimation() {
+        previewAnimationTask?.cancel()
+        previewAnimationTask = nil
+        isPreviewBatteryAnimationRunning = false
+    }
+
+    func updatePreview<Value>(
+        _ keyPath: WritableKeyPath<PreviewStatusConfiguration, Value>,
+        to value: Value
+    ) {
+        var next = previewStatus
+        next[keyPath: keyPath] = value
+        guard next != previewStatus else { return }
+        previewStatus = next
+        if isPreviewEnabled {
+            publishImmediately(next.snapshot)
+        }
     }
 
     func setVolume(_ scalar: Double) {
         guard !hasStopped else { return }
+        if isPreviewEnabled {
+            updatePreview(
+                \.volumeScalar,
+                to: min(1, max(0, scalar))
+            )
+            return
+        }
         volumeController?.setVolume(scalar)
     }
 
     func toggleMute() {
         guard !hasStopped else { return }
+        if isPreviewEnabled {
+            updatePreview(\.isMuted, to: !previewStatus.isMuted)
+            return
+        }
         volumeController?.toggleMute()
     }
 
     func selectOutputDevice(_ device: AudioOutputDevice) {
-        guard !hasStopped else { return }
+        guard !hasStopped, !isPreviewEnabled else { return }
         volumeController?.selectOutputDevice(device.id)
     }
 
     func requestWiFiNameAccess() {
-        guard !hasStopped else { return }
+        guard !hasStopped, !isPreviewEnabled else { return }
         wifiMonitor.requestNameAccess()
     }
 
@@ -186,15 +257,65 @@ final class SystemStatusStore: ObservableObject {
     }
 
     private func applyBattery(_ value: BatteryStatus) {
-        publish(snapshot.replacingBattery(value))
+        liveSnapshot = liveSnapshot.replacingBattery(value)
+        publishLiveSnapshot()
     }
 
     private func applyWiFi(_ value: WiFiStatus) {
-        publish(snapshot.replacingWiFi(value))
+        liveSnapshot = liveSnapshot.replacingWiFi(value)
+        publishLiveSnapshot()
     }
 
     private func applyVolume(_ value: VolumeStatus) {
-        publish(snapshot.replacingVolume(value))
+        liveSnapshot = liveSnapshot.replacingVolume(value)
+        publishLiveSnapshot()
+    }
+
+    private func runPreviewBatteryAnimation() async {
+        defer {
+            if !Task.isCancelled {
+                isPreviewBatteryAnimationRunning = false
+            }
+        }
+
+        for frame in PreviewBatteryAnimation.frames {
+            guard !Task.isCancelled, isPreviewEnabled else { return }
+            applyPreviewBatteryAnimationFrame(frame)
+
+            do {
+                try await previewAnimationSleep(PreviewBatteryAnimation.frameInterval)
+            } catch {
+                return
+            }
+        }
+    }
+
+    private func applyPreviewBatteryAnimationFrame(_ frame: PreviewBatteryAnimationFrame) {
+        var next = previewStatus
+        next.batteryPercentage = frame.percentage
+        next.isBatteryPresent = true
+        next.isCharging = frame.isCharging
+        next.isCharged = frame.isCharged
+        next.isLowPowerMode = frame.isLowPowerMode
+        next.isConnectedToPower = frame.isConnectedToPower
+
+        guard next != previewStatus else { return }
+        previewStatus = next
+        if isPreviewEnabled {
+            publishImmediately(next.snapshot)
+        }
+    }
+
+    private func publishLiveSnapshot() {
+        guard !isPreviewEnabled else { return }
+        publish(liveSnapshot)
+    }
+
+    private func publishImmediately(_ next: StatusSnapshot) {
+        guard !hasStopped else { return }
+        lastPublishedSnapshot = next
+        snapshot = next
+        popupSnapshot = next
     }
 
     private func publish(_ next: StatusSnapshot) {
@@ -213,7 +334,9 @@ final class SystemStatusStore: ObservableObject {
             } catch {
                 return
             }
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled,
+                  !self.isPreviewEnabled,
+                  next == self.liveSnapshot else { return }
             self.popupSnapshot = next
         }
     }

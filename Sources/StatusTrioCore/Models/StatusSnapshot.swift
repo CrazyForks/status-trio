@@ -42,7 +42,7 @@ struct BatteryStatus: Equatable, Sendable {
     )
 }
 
-enum WiFiState: Equatable, Sendable {
+enum WiFiState: CaseIterable, Hashable, Sendable {
     case connected
     case notAssociated
     case off
