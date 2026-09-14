@@ -281,8 +281,6 @@ struct PreviewSettingsPane: View {
 
     private func wifiStateTitle(_ state: WiFiState) -> String {
         switch state {
-        case .wired:
-            localization.string(.wifiValueWired)
         case .connected:
             localization.string(.wifiSubtitleConnected)
         case .notAssociated:

@@ -41,7 +41,6 @@ final class StatusSnapshotTests: XCTestCase {
         XCTAssertTrue(WiFiState.hotspot.isNetworkAssociated)
         XCTAssertTrue(WiFiState.temporary.isNetworkAssociated)
         XCTAssertTrue(WiFiState.shared.isNetworkAssociated)
-        XCTAssertFalse(WiFiState.wired.isNetworkAssociated)
         XCTAssertFalse(WiFiState.notAssociated.isNetworkAssociated)
         XCTAssertFalse(WiFiState.off.isNetworkAssociated)
         XCTAssertFalse(WiFiState.unavailable.isNetworkAssociated)

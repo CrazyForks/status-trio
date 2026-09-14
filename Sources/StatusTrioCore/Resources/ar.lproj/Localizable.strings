@@ -99,8 +99,6 @@
 "wifi.value.temporary" = "مؤقت";
 "wifi.value.shared" = "قيد المشاركة";
 "wifi.value.unavailable" = "غير متاح";
-"wifi.value.wired" = "سلكي";
-"wifi.subtitle.wired" = "اتصال سلكي";
 "wifi.subtitle.connected" = "متصل";
 "wifi.subtitle.notAssociated" = "Wi‑Fi قيد التشغيل لكنه غير مرتبط";
 "wifi.subtitle.off" = "Wi‑Fi مغلق أو غير متاح";

@@ -342,21 +342,6 @@ enum StatusIconRenderer {
         context.setLineWidth(7)
 
         switch wifi.state {
-        case .wired:
-            context.setStrokeColor(foreground)
-            context.setLineWidth(5)
-            for path in StatusIconGeometry.wiredProngs() {
-                context.addPath(path)
-                context.strokePath()
-            }
-
-            context.setFillColor(foreground)
-            context.addPath(StatusIconGeometry.wiredPlug())
-            context.fillPath()
-
-            context.setLineWidth(6)
-            context.addPath(StatusIconGeometry.wiredCable())
-            context.strokePath()
         case .connected:
             if bars == 0 {
                 drawWiFiSignal(level: 3, color: mutedColor, in: context)

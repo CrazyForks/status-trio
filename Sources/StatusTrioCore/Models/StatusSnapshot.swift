@@ -44,7 +44,6 @@ struct BatteryStatus: Equatable, Sendable {
 
 enum WiFiState: CaseIterable, Hashable, Sendable {
     case connected
-    case wired
     case notAssociated
     case off
     case noInternet
@@ -57,7 +56,7 @@ enum WiFiState: CaseIterable, Hashable, Sendable {
         switch self {
         case .connected, .noInternet, .hotspot, .temporary, .shared:
             true
-        case .wired, .notAssociated, .off, .unavailable:
+        case .notAssociated, .off, .unavailable:
             false
         }
     }

@@ -99,8 +99,6 @@
 "wifi.value.temporary" = "一時接続";
 "wifi.value.shared" = "共有中";
 "wifi.value.unavailable" = "利用不可";
-"wifi.value.wired" = "有線接続";
-"wifi.subtitle.wired" = "有線接続を使用中";
 "wifi.subtitle.connected" = "接続済み";
 "wifi.subtitle.notAssociated" = "Wi-Fiはオンですが未接続です";
 "wifi.subtitle.off" = "Wi-Fiはオフまたは利用できません";

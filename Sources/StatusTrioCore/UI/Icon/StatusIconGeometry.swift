@@ -246,33 +246,6 @@ enum StatusIconGeometry {
         return path
     }
 
-    static func wiredPlug() -> CGPath {
-        let path = CGMutablePath()
-        path.addRoundedRect(
-            in: CGRect(x: 48, y: 48, width: 23, height: 17),
-            cornerWidth: 4,
-            cornerHeight: 4
-        )
-        return path
-    }
-
-    static func wiredCable() -> CGPath {
-        let path = CGMutablePath()
-        path.move(to: CGPoint(x: 59.5, y: 65))
-        path.addLine(to: CGPoint(x: 59.5, y: 73))
-        path.addLine(to: CGPoint(x: 69, y: 78.5))
-        return path
-    }
-
-    static func wiredProngs() -> [CGPath] {
-        [53.0, 59.5, 66.0].map { x in
-            let path = CGMutablePath()
-            path.move(to: CGPoint(x: x, y: 42))
-            path.addLine(to: CGPoint(x: x, y: 48))
-            return path
-        }
-    }
-
     static func wifiDot() -> CGPath {
         let path = CGMutablePath()
         path.move(to: CGPoint(x: 59.5, y: 69.9))
