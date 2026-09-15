@@ -33,10 +33,20 @@ final class SettingsStore: ObservableObject {
     static let popupSectionOrderDefaultsKey = "popupSectionOrder"
 
     static let appIconPlacementDefaultsKey = "appIconPlacement"
+    static let dockIconBackgroundStyleDefaultsKey = "dockIconBackgroundStyle"
 
     @Published var appIconPlacement: AppIconPlacement {
         didSet {
             defaults.set(appIconPlacement.rawValue, forKey: Self.appIconPlacementDefaultsKey)
+        }
+    }
+
+    @Published var dockIconBackgroundStyle: DockIconBackgroundStyle {
+        didSet {
+            defaults.set(
+                dockIconBackgroundStyle.rawValue,
+                forKey: Self.dockIconBackgroundStyleDefaultsKey
+            )
         }
     }
 
@@ -276,6 +286,12 @@ final class SettingsStore: ObservableObject {
         self.appIconPlacement = storedAppIconPlacement
             .flatMap(AppIconPlacement.init(rawValue:))
             ?? .menuBar
+        let storedDockIconBackgroundStyle = defaults.string(
+            forKey: Self.dockIconBackgroundStyleDefaultsKey
+        )
+        self.dockIconBackgroundStyle = storedDockIconBackgroundStyle
+            .flatMap(DockIconBackgroundStyle.init(rawValue:))
+            ?? .dark
         self.iconSize = Self.clampedIconSize(storedIconSize ?? Self.defaultIconSize)
         self.showsBatteryPercentage = defaults.object(forKey: Self.showsBatteryPercentageDefaultsKey) as? Bool ?? true
         self.showsChargingIndicator = defaults.object(forKey: Self.showsChargingIndicatorDefaultsKey) as? Bool ?? true

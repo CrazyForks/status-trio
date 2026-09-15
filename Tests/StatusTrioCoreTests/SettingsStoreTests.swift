@@ -389,6 +389,50 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(published, [.dock, .both])
     }
 
+    func testDockIconBackgroundStyleDefaultsToDark() {
+        let store = SettingsStore(defaults: makeSuite().defaults)
+
+        XCTAssertEqual(store.dockIconBackgroundStyle, .dark)
+    }
+
+    func testDockIconBackgroundStylePersistsAcrossStoreInstances() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+
+        let first = SettingsStore(defaults: suite.defaults)
+        first.dockIconBackgroundStyle = .light
+
+        XCTAssertEqual(SettingsStore(defaults: suite.defaults).dockIconBackgroundStyle, .light)
+    }
+
+    func testUnknownDockIconBackgroundStyleFallsBackToDark() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+        suite.defaults.set(
+            "rainbow",
+            forKey: SettingsStore.dockIconBackgroundStyleDefaultsKey
+        )
+
+        XCTAssertEqual(SettingsStore(defaults: suite.defaults).dockIconBackgroundStyle, .dark)
+    }
+
+    func testDockIconBackgroundStylePublishesChanges() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+
+        let store = SettingsStore(defaults: suite.defaults)
+        var published: [DockIconBackgroundStyle] = []
+        let cancellable = store.$dockIconBackgroundStyle.dropFirst().sink {
+            published.append($0)
+        }
+        defer { cancellable.cancel() }
+
+        store.dockIconBackgroundStyle = .light
+        store.dockIconBackgroundStyle = .dark
+
+        XCTAssertEqual(published, [.light, .dark])
+    }
+
     private func makeSuite() -> (defaults: UserDefaults, name: String) {
         let name = "StatusTrioCoreTests.SettingsStore.\(UUID().uuidString)"
         guard let defaults = UserDefaults(suiteName: name) else {
