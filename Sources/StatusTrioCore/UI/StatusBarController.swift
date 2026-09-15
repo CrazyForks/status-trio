@@ -14,6 +14,8 @@ private struct StatusBarAccessibilityKey: Equatable {
 @MainActor
 final class StatusBarController: NSObject, NSPopoverDelegate {
     static let iconSnapshotDebounceInterval: TimeInterval = 0.5
+    static let popoverToggleLockoutInterval: TimeInterval = 0.25
+    static let popoverContentReleaseDelay: TimeInterval = 60
 
     enum ClickKind: Equatable {
         case left
@@ -43,6 +45,13 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     private let volumeScrollAdjustment = PopupVolumeScrollAdjustment()
     private var volumeScrollSession = PopupVolumeScrollSession()
     private var dockAnchorWindow: NSWindow?
+    private var popoverToggleGate = PopoverToggleGate(
+        lockout: StatusBarController.popoverToggleLockoutInterval
+    )
+    private var popoverContentRetention = PopoverContentRetention(
+        releaseDelay: StatusBarController.popoverContentReleaseDelay
+    )
+    private var popoverContentReleaseTask: Task<Void, Never>?
 
     init(
         store: SystemStatusStore,
@@ -261,6 +270,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     }
 
     private func togglePopover() {
+        guard popoverToggleGate.shouldAccept(at: Date()) else { return }
         guard let button = statusItem.button else { return }
         if popover.isShown {
             popover.performClose(nil)
@@ -275,6 +285,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
 
     /// Shows the same popover for a Dock icon click, above the clicked icon.
     func togglePopover(anchoredAtScreenPoint point: NSPoint) {
+        guard popoverToggleGate.shouldAccept(at: Date()) else { return }
         if popover.isShown {
             popover.performClose(nil)
             return
@@ -293,6 +304,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         of view: NSView,
         preferredEdge: NSRectEdge
     ) {
+        cancelPopoverContentRelease()
+        popoverContentRetention.markOpened()
         store.setPopoverVisible(true)
         installPopoverContentIfNeeded()
         // Activate first: a transient popover shown while the app is still
@@ -428,7 +441,28 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         removePopoverDismissMonitor()
         removeVolumeScrollMonitor()
         store.setPopoverVisible(false)
-        popover.contentViewController = nil
+        schedulePopoverContentRelease()
+    }
+
+    /// Keeping the built content for a while makes rapid reopen cheap; releasing
+    /// it later keeps idle memory low.
+    private func schedulePopoverContentRelease() {
+        cancelPopoverContentRelease()
+        popoverContentRetention.markClosed(at: Date())
+        let delay = Self.popoverContentReleaseDelay
+        popoverContentReleaseTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(delay))
+            guard !Task.isCancelled, let self else { return }
+            guard popoverContentRetention.shouldRelease(at: Date()), !popover.isShown else { return }
+            popover.contentViewController = nil
+            popoverContentReleaseTask = nil
+        }
+    }
+
+    private func cancelPopoverContentRelease() {
+        popoverContentReleaseTask?.cancel()
+        popoverContentReleaseTask = nil
+        popoverContentRetention.markOpened()
     }
 
     private func render(status: MenuBarStatus) {
