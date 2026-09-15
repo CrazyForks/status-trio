@@ -2,6 +2,7 @@ import AppKit
 import XCTest
 @testable import StatusTrioCore
 
+@MainActor
 final class DockIconRendererTests: XCTestCase {
     func testDockIconHasExpectedLogicalAndPixelSize() throws {
         let image = try XCTUnwrap(DockIconRenderer.image(status: .placeholder))

@@ -1,6 +1,7 @@
 import AppKit
 import CoreGraphics
 
+@MainActor
 enum DockIconRenderer {
     static let logicalSize: CGFloat = 256
     static let pixelSize = 512
@@ -75,17 +76,14 @@ enum DockIconRenderer {
         let palette = palette(for: backgroundStyle)
 
         let canvasLength = CGFloat(pixelSize)
-        guard let context = CGContext(
-            data: nil,
-            width: pixelSize,
-            height: pixelSize,
-            bitsPerComponent: 8,
-            bytesPerRow: pixelSize * 4,
-            space: CGColorSpaceCreateDeviceRGB(),
-            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-        ) else {
-            return nil
-        }
+        guard let context = scratchContext() else { return nil }
+
+        // Reuse one bitmap buffer across renders: the Dock icon is redrawn on
+        // every status change, and allocating a fresh bitmap each time leaves the
+        // freed pages in the process.
+        context.saveGState()
+        defer { context.restoreGState() }
+        context.clear(CGRect(x: 0, y: 0, width: canvasLength, height: canvasLength))
 
         context.scaleBy(x: canvasLength / designLength, y: canvasLength / designLength)
 
@@ -126,6 +124,23 @@ enum DockIconRenderer {
         image.addRepresentation(representation)
         image.isTemplate = false
         return image
+    }
+
+    private static var reusedContext: CGContext?
+
+    private static func scratchContext() -> CGContext? {
+        if let reusedContext { return reusedContext }
+        let context = CGContext(
+            data: nil,
+            width: pixelSize,
+            height: pixelSize,
+            bitsPerComponent: 8,
+            bytesPerRow: pixelSize * 4,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        )
+        reusedContext = context
+        return context
     }
 
     private static func roundedRect(_ rect: CGRect, cornerRadius: CGFloat) -> CGPath {

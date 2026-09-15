@@ -1,4 +1,4 @@
-struct ConnectionIconOptions: Equatable, Sendable {
+struct ConnectionIconOptions: Equatable, Hashable, Sendable {
     let showsWiFiIconForEthernet: Bool
     let showsWiFiIconForHotspot: Bool
     let showsWiFiIconForTemporaryConnection: Bool

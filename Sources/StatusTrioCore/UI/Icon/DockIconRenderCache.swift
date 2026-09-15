@@ -1,8 +1,45 @@
-struct DockIconRenderKey: Equatable {
-    let status: MenuBarStatus
+/// Identifies what the Dock icon actually draws, so signal noise that cannot
+/// change a pixel (a different RSSI inside the same bar count, a different volume
+/// inside the same dot count) does not trigger another render.
+struct DockIconRenderKey: Equatable, Hashable {
+    let batteryPercentage: Int
+    let showsChargingBolt: Bool
+    let batteryColorRole: BatteryColorRole
+    let connection: NetworkConnection
+    let wifiState: WiFiState
+    let wifiBars: Int
+    let volumeSteps: Int
     let options: BatteryIconOptions
     let connectionOptions: ConnectionIconOptions
     let backgroundStyle: DockIconBackgroundStyle
+
+    init(
+        status: MenuBarStatus,
+        options: BatteryIconOptions,
+        connectionOptions: ConnectionIconOptions,
+        backgroundStyle: DockIconBackgroundStyle
+    ) {
+        self.batteryPercentage = status.battery.percentage
+        self.showsChargingBolt = status.battery.isPresent
+            && (status.battery.isCharging || status.battery.isConnectedToPower)
+            && options.showsChargingIndicator
+        self.batteryColorRole = options.usesStatusColors
+            ? StatusMappings.batteryColorRole(
+                status.battery,
+                criticalThreshold: options.criticalThreshold
+            )
+            : .foreground
+        self.connection = status.connection
+        self.wifiState = status.wifi.state
+        self.wifiBars = StatusMappings.wifiBars(rssi: status.wifi.rssi)
+        self.volumeSteps = StatusMappings.volumeSteps(
+            scalar: status.volume.scalar,
+            isMuted: status.volume.isMuted
+        ) ?? 0
+        self.options = options
+        self.connectionOptions = connectionOptions
+        self.backgroundStyle = backgroundStyle
+    }
 }
 
 struct DockIconRenderCache {
@@ -18,3 +55,44 @@ struct DockIconRenderCache {
         lastKey = nil
     }
 }
+
+/// Keeps the images that were rendered for recent states, so recurring states
+/// (the same volume steps, battery percentage, or Wi-Fi bars) reuse an image
+/// instead of allocating another one.
+@MainActor
+final class DockIconImageCache {
+    private let limit: Int
+    private var images: [DockIconRenderKey: NSImage] = [:]
+    private var order: [DockIconRenderKey] = []
+
+    init(limit: Int = 12) {
+        self.limit = max(1, limit)
+    }
+
+    func image(for key: DockIconRenderKey) -> NSImage? {
+        guard let image = images[key] else { return nil }
+        touch(key)
+        return image
+    }
+
+    func store(_ image: NSImage, for key: DockIconRenderKey) {
+        images[key] = image
+        touch(key)
+
+        while order.count > limit {
+            let oldest = order.removeFirst()
+            images[oldest] = nil
+        }
+    }
+
+    func reset() {
+        images.removeAll()
+        order.removeAll()
+    }
+
+    private func touch(_ key: DockIconRenderKey) {
+        order.removeAll { $0 == key }
+        order.append(key)
+    }
+}
+import AppKit

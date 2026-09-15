@@ -34,6 +34,7 @@ final class AppIconController {
     private let monitor: SystemIconAppearanceMonitor
     private var cancellables: Set<AnyCancellable> = []
     private var renderCache = DockIconRenderCache()
+    private let imageCache = DockIconImageCache()
     private var hasRenderedDockIcon = false
     private var currentPlacement: AppIconPlacement
     private var currentBatteryOptions: BatteryIconOptions
@@ -256,16 +257,23 @@ final class AppIconController {
             theme: theme(),
             isDarkAppearance: isDarkAppearance()
         )
+        let status = MenuBarStatus(snapshot: store.snapshot)
         let key = DockIconRenderKey(
-            status: MenuBarStatus(snapshot: store.snapshot),
+            status: status,
             options: currentBatteryOptions,
             connectionOptions: currentConnectionOptions,
             backgroundStyle: backgroundStyle
         )
         guard renderCache.shouldRender(key) else { return }
 
+        if let cached = imageCache.image(for: key) {
+            application.setApplicationIconImage(cached)
+            hasRenderedDockIcon = true
+            return
+        }
+
         guard let image = renderDockIcon(
-            key.status,
+            status,
             currentBatteryOptions,
             currentConnectionOptions,
             backgroundStyle
@@ -276,6 +284,7 @@ final class AppIconController {
             return
         }
 
+        imageCache.store(image, for: key)
         application.setApplicationIconImage(image)
         hasRenderedDockIcon = true
     }

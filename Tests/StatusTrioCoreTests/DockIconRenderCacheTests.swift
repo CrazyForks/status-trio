@@ -1,6 +1,8 @@
+import AppKit
 import Testing
 @testable import StatusTrioCore
 
+@MainActor
 struct DockIconRenderCacheTests {
     @Test func skipsEqualKeysAndRendersAfterReset() {
         var cache = DockIconRenderCache()
@@ -95,5 +97,50 @@ struct DockIconRenderCacheTests {
         #expect(rendersDark)
         #expect(rendersLight)
         #expect(rendersDarkAgain)
+    }
+
+    @Test func reusesTheImageForARepeatedState() {
+        let cache = DockIconImageCache()
+        let key = DockIconRenderKey(
+            status: .placeholder,
+            options: .standard,
+            connectionOptions: .standard,
+            backgroundStyle: .dark
+        )
+        let image = NSImage(size: NSSize(width: 256, height: 256))
+
+        #expect(cache.image(for: key) == nil)
+        cache.store(image, for: key)
+        #expect(cache.image(for: key) === image)
+    }
+
+    @Test func evictsTheOldestImageWhenFull() {
+        let cache = DockIconImageCache(limit: 2)
+        let keys = [0, 1, 2].map { percentage in
+            DockIconRenderKey(
+                status: MenuBarStatus(snapshot: StatusSnapshot(
+                    battery: BatteryStatus(
+                        rawPercentage: percentage,
+                        isPresent: true,
+                        isCharging: false,
+                        isLowPowerMode: false,
+                        isConnectedToPower: false
+                    ),
+                    wifi: .placeholder,
+                    volume: .placeholder
+                )),
+                options: .standard,
+                connectionOptions: .standard,
+                backgroundStyle: .dark
+            )
+        }
+
+        for key in keys {
+            cache.store(NSImage(size: NSSize(width: 256, height: 256)), for: key)
+        }
+
+        #expect(cache.image(for: keys[0]) == nil)
+        #expect(cache.image(for: keys[1]) != nil)
+        #expect(cache.image(for: keys[2]) != nil)
     }
 }
