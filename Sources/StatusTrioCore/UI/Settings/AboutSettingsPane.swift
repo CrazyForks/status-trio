@@ -7,7 +7,9 @@ struct AboutSettingsPane: View {
     var body: some View {
         PreferencesPane {
             HStack(alignment: .top, spacing: 14) {
-                Image(nsImage: NSApplication.shared.applicationIconImage)
+                // Prefer the packaged icon: the live status artwork belongs to the
+                // Dock tile, not to the app's identity.
+                Image(nsImage: AppIconImage.bundled() ?? NSApplication.shared.applicationIconImage)
                     .resizable()
                     .interpolation(.high)
                     .aspectRatio(contentMode: .fit)
