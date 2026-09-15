@@ -32,6 +32,7 @@ enum LocalizationKey: String, CaseIterable, Hashable, Sendable {
     case settingsAppIconPlacementBoth = "settings.appIconPlacement.both"
     case settingsDockIconBackground = "settings.dockIconBackground"
     case settingsDockIconBackgroundDescription = "settings.dockIconBackground.description"
+    case settingsDockIconBackgroundSystem = "settings.dockIconBackground.system"
     case settingsDockIconBackgroundDark = "settings.dockIconBackground.dark"
     case settingsDockIconBackgroundLight = "settings.dockIconBackground.light"
     case settingsIconSize = "settings.iconSize"

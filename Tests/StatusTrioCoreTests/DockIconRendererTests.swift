@@ -97,6 +97,29 @@ final class DockIconRendererTests: XCTestCase {
         XCTAssertLessThanOrEqual(abs(Int(body.blue) - 23), 3)
     }
 
+    func testClearStyleUsesTranslucentLightBody() throws {
+        let pixels = try pixels(for: .placeholder, backgroundStyle: .clear)
+        let margin = pixels.rgba(x: 512, y: 8)
+        let body = pixels.rgba(x: 120, y: 512)
+
+        XCTAssertEqual(margin.alpha, 0)
+        XCTAssertGreaterThan(body.alpha, 80)
+        XCTAssertLessThan(body.alpha, 240)
+        XCTAssertGreaterThanOrEqual(Int(body.red), Int(body.alpha) - 20)
+    }
+
+    func testClearStyleKeepsDarkGlyph() throws {
+        let pixels = try pixels(for: .placeholder, backgroundStyle: .clear)
+
+        XCTAssertTrue(pixels.containsColor(
+            red: 29.0 / 255.0,
+            green: 29.0 / 255.0,
+            blue: 31.0 / 255.0,
+            tolerance: 0.08,
+            minimumAlpha: 0.9
+        ))
+    }
+
     func testOptionsChangeRenderedInk() throws {
         let status = MenuBarStatus.placeholder
         let withValue = try pixels(

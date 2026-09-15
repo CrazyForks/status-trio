@@ -33,7 +33,7 @@ final class SettingsStore: ObservableObject {
     static let popupSectionOrderDefaultsKey = "popupSectionOrder"
 
     static let appIconPlacementDefaultsKey = "appIconPlacement"
-    static let dockIconBackgroundStyleDefaultsKey = "dockIconBackgroundStyle"
+    static let dockIconBackgroundPreferenceDefaultsKey = "dockIconBackgroundPreference"
 
     @Published var appIconPlacement: AppIconPlacement {
         didSet {
@@ -41,11 +41,11 @@ final class SettingsStore: ObservableObject {
         }
     }
 
-    @Published var dockIconBackgroundStyle: DockIconBackgroundStyle {
+    @Published var dockIconBackgroundPreference: DockIconBackgroundPreference {
         didSet {
             defaults.set(
-                dockIconBackgroundStyle.rawValue,
-                forKey: Self.dockIconBackgroundStyleDefaultsKey
+                dockIconBackgroundPreference.rawValue,
+                forKey: Self.dockIconBackgroundPreferenceDefaultsKey
             )
         }
     }
@@ -286,12 +286,12 @@ final class SettingsStore: ObservableObject {
         self.appIconPlacement = storedAppIconPlacement
             .flatMap(AppIconPlacement.init(rawValue:))
             ?? .menuBar
-        let storedDockIconBackgroundStyle = defaults.string(
-            forKey: Self.dockIconBackgroundStyleDefaultsKey
+        let storedDockIconBackgroundPreference = defaults.string(
+            forKey: Self.dockIconBackgroundPreferenceDefaultsKey
         )
-        self.dockIconBackgroundStyle = storedDockIconBackgroundStyle
-            .flatMap(DockIconBackgroundStyle.init(rawValue:))
-            ?? .dark
+        self.dockIconBackgroundPreference = storedDockIconBackgroundPreference
+            .flatMap(DockIconBackgroundPreference.init(rawValue:))
+            ?? .system
         self.iconSize = Self.clampedIconSize(storedIconSize ?? Self.defaultIconSize)
         self.showsBatteryPercentage = defaults.object(forKey: Self.showsBatteryPercentageDefaultsKey) as? Bool ?? true
         self.showsChargingIndicator = defaults.object(forKey: Self.showsChargingIndicatorDefaultsKey) as? Bool ?? true

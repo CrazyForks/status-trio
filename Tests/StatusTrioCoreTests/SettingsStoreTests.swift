@@ -389,48 +389,54 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(published, [.dock, .both])
     }
 
-    func testDockIconBackgroundStyleDefaultsToDark() {
+    func testDockIconBackgroundPreferenceDefaultsToSystem() {
         let store = SettingsStore(defaults: makeSuite().defaults)
 
-        XCTAssertEqual(store.dockIconBackgroundStyle, .dark)
+        XCTAssertEqual(store.dockIconBackgroundPreference, .system)
     }
 
-    func testDockIconBackgroundStylePersistsAcrossStoreInstances() {
+    func testDockIconBackgroundPreferencePersistsAcrossStoreInstances() {
         let suite = makeSuite()
         defer { clear(suite) }
 
         let first = SettingsStore(defaults: suite.defaults)
-        first.dockIconBackgroundStyle = .light
+        first.dockIconBackgroundPreference = .light
 
-        XCTAssertEqual(SettingsStore(defaults: suite.defaults).dockIconBackgroundStyle, .light)
+        XCTAssertEqual(
+            SettingsStore(defaults: suite.defaults).dockIconBackgroundPreference,
+            .light
+        )
     }
 
-    func testUnknownDockIconBackgroundStyleFallsBackToDark() {
+    func testUnknownDockIconBackgroundPreferenceFallsBackToSystem() {
         let suite = makeSuite()
         defer { clear(suite) }
         suite.defaults.set(
             "rainbow",
-            forKey: SettingsStore.dockIconBackgroundStyleDefaultsKey
+            forKey: SettingsStore.dockIconBackgroundPreferenceDefaultsKey
         )
 
-        XCTAssertEqual(SettingsStore(defaults: suite.defaults).dockIconBackgroundStyle, .dark)
+        XCTAssertEqual(
+            SettingsStore(defaults: suite.defaults).dockIconBackgroundPreference,
+            .system
+        )
     }
 
-    func testDockIconBackgroundStylePublishesChanges() {
+    func testDockIconBackgroundPreferencePublishesChanges() {
         let suite = makeSuite()
         defer { clear(suite) }
 
         let store = SettingsStore(defaults: suite.defaults)
-        var published: [DockIconBackgroundStyle] = []
-        let cancellable = store.$dockIconBackgroundStyle.dropFirst().sink {
+        var published: [DockIconBackgroundPreference] = []
+        let cancellable = store.$dockIconBackgroundPreference.dropFirst().sink {
             published.append($0)
         }
         defer { cancellable.cancel() }
 
-        store.dockIconBackgroundStyle = .light
-        store.dockIconBackgroundStyle = .dark
+        store.dockIconBackgroundPreference = .light
+        store.dockIconBackgroundPreference = .system
 
-        XCTAssertEqual(published, [.light, .dark])
+        XCTAssertEqual(published, [.light, .system])
     }
 
     private func makeSuite() -> (defaults: UserDefaults, name: String) {

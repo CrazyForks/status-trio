@@ -18,6 +18,7 @@
 "settings.appIconPlacement.both" = "两处";
 "settings.dockIconBackground" = "Dock 图标背景";
 "settings.dockIconBackground.description" = "仅影响程序坞中显示的实时图标。";
+"settings.dockIconBackground.system" = "跟随系统";
 "settings.dockIconBackground.dark" = "深色";
 "settings.dockIconBackground.light" = "浅色";
 "settings.iconSize" = "图标渲染范围";

@@ -18,6 +18,7 @@
 "settings.appIconPlacement.both" = "Entrambi";
 "settings.dockIconBackground" = "Sfondo icona Dock";
 "settings.dockIconBackground.description" = "Si applica all’icona dinamica mostrata nel Dock.";
+"settings.dockIconBackground.system" = "Segui il sistema";
 "settings.dockIconBackground.dark" = "Scuro";
 "settings.dockIconBackground.light" = "Chiaro";
 "settings.iconSize" = "Dimensione icona";

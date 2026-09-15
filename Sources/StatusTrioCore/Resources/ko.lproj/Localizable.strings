@@ -18,6 +18,7 @@
 "settings.appIconPlacement.both" = "둘 다";
 "settings.dockIconBackground" = "Dock 아이콘 배경";
 "settings.dockIconBackground.description" = "Dock에 표시되는 실시간 아이콘에 적용됩니다.";
+"settings.dockIconBackground.system" = "시스템 설정 따르기";
 "settings.dockIconBackground.dark" = "어두운 색";
 "settings.dockIconBackground.light" = "밝은 색";
 "settings.iconSize" = "아이콘 표시 크기";

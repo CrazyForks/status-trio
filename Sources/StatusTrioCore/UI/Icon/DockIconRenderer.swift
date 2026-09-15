@@ -19,10 +19,15 @@ enum DockIconRenderer {
     // without a Generic RGB to Device RGB conversion.
     private static let colorSpace = CGColorSpaceCreateDeviceRGB()
 
-    private static func color(red: CGFloat, green: CGFloat, blue: CGFloat) -> CGColor {
+    private static func color(
+        red: CGFloat,
+        green: CGFloat,
+        blue: CGFloat,
+        alpha: CGFloat = 1
+    ) -> CGColor {
         CGColor(
             colorSpace: colorSpace,
-            components: [red, green, blue, 1]
+            components: [red, green, blue, alpha]
         ) ?? CGColor(gray: 0, alpha: 1)
     }
 
@@ -44,6 +49,14 @@ enum DockIconRenderer {
             Palette(
                 body: color(red: 1, green: 1, blue: 1),
                 border: color(red: 210.0 / 255.0, green: 210.0 / 255.0, blue: 215.0 / 255.0),
+                foreground: color(red: 29.0 / 255.0, green: 29.0 / 255.0, blue: 31.0 / 255.0)
+            )
+        case .clear:
+            // Approximation of the system's "clear" glass: a translucent light
+            // tile with a bright rim so the Dock shows through.
+            Palette(
+                body: color(red: 1, green: 1, blue: 1, alpha: 0.55),
+                border: color(red: 1, green: 1, blue: 1, alpha: 0.8),
                 foreground: color(red: 29.0 / 255.0, green: 29.0 / 255.0, blue: 31.0 / 255.0)
             )
         }

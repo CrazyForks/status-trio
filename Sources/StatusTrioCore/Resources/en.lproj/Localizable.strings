@@ -18,6 +18,7 @@
 "settings.appIconPlacement.both" = "Both";
 "settings.dockIconBackground" = "Dock Icon Background";
 "settings.dockIconBackground.description" = "Applies to the live icon shown in the Dock.";
+"settings.dockIconBackground.system" = "Follow System";
 "settings.dockIconBackground.dark" = "Dark";
 "settings.dockIconBackground.light" = "Light";
 "settings.iconSize" = "Icon Size";

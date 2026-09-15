@@ -112,15 +112,80 @@ struct AppIconControllerTests {
         #expect(harness.log.renderCount == 1)
     }
 
-    @Test func changingBackgroundStyleRendersAgain() throws {
+    @Test func changingBackgroundPreferenceRendersAgain() throws {
         let harness = try AppIconControllerHarness(initialPlacement: .dock)
         defer { harness.cleanUp() }
         harness.controller.start()
         harness.log.reset()
 
-        harness.settings.dockIconBackgroundStyle = .light
+        harness.settings.dockIconBackgroundPreference = .dark
 
         #expect(harness.log.events == ["dock:image"])
+        #expect(harness.log.backgroundStyles == [.dark])
+    }
+
+    @Test func systemPreferenceUsesTheDefaultLightBackground() throws {
+        let harness = try AppIconControllerHarness(
+            initialPlacement: .dock,
+            systemTheme: .default
+        )
+        defer { harness.cleanUp() }
+
+        harness.controller.start()
+
+        #expect(harness.log.backgroundStyles == [.light])
+    }
+
+    @Test func systemPreferenceUsesDarkForDarkThemes() throws {
+        let harness = try AppIconControllerHarness(
+            initialPlacement: .dock,
+            systemTheme: SystemIconAppearanceTheme(style: .defaultStyle, appearance: .dark)
+        )
+        defer { harness.cleanUp() }
+
+        harness.controller.start()
+
+        #expect(harness.log.backgroundStyles == [.dark])
+    }
+
+    @Test func systemPreferenceUsesClearForClearThemes() throws {
+        let harness = try AppIconControllerHarness(
+            initialPlacement: .dock,
+            systemTheme: SystemIconAppearanceTheme(style: .clear, appearance: .dark)
+        )
+        defer { harness.cleanUp() }
+
+        harness.controller.start()
+
+        #expect(harness.log.backgroundStyles == [.clear])
+    }
+
+    @Test func systemPreferenceUsesAppearanceForAutomaticThemes() throws {
+        let harness = try AppIconControllerHarness(
+            initialPlacement: .dock,
+            systemTheme: SystemIconAppearanceTheme(
+                style: .defaultStyle,
+                appearance: .automatic
+            ),
+            isDarkAppearance: true
+        )
+        defer { harness.cleanUp() }
+
+        harness.controller.start()
+
+        #expect(harness.log.backgroundStyles == [.dark])
+    }
+
+    @Test func explicitPreferenceIgnoresTheSystemTheme() throws {
+        let harness = try AppIconControllerHarness(
+            initialPlacement: .dock,
+            systemTheme: SystemIconAppearanceTheme(style: .clear, appearance: .dark)
+        )
+        defer { harness.cleanUp() }
+        harness.settings.dockIconBackgroundPreference = .light
+
+        harness.controller.start()
+
         #expect(harness.log.backgroundStyles == [.light])
     }
 
@@ -154,7 +219,9 @@ private final class AppIconControllerHarness {
 
     init(
         initialPlacement: AppIconPlacement = .menuBar,
-        acceptsActivationPolicy: Bool = true
+        acceptsActivationPolicy: Bool = true,
+        systemTheme: SystemIconAppearanceTheme = .default,
+        isDarkAppearance: Bool = false
     ) throws {
         suiteName = "StatusTrioCoreTests.AppIconController.\(UUID().uuidString)"
         guard let defaults = UserDefaults(suiteName: suiteName) else {
@@ -197,7 +264,9 @@ private final class AppIconControllerHarness {
                 log.renderCount += 1
                 log.backgroundStyles.append(backgroundStyle)
                 return NSImage(size: NSSize(width: 512, height: 512))
-            }
+            },
+            theme: { systemTheme },
+            isDarkAppearance: { isDarkAppearance }
         )
 
         store.start()

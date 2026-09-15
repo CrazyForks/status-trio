@@ -3,6 +3,10 @@ import Testing
 
 struct DockIconBackgroundStyleTests {
     @Test func exposesDarkAndLightStyles() {
-        #expect(DockIconBackgroundStyle.allCases == [.dark, .light])
+        #expect(DockIconBackgroundStyle.allCases == [.dark, .light, .clear])
+    }
+
+    @Test func exposesSystemDarkAndLightPreferences() {
+        #expect(DockIconBackgroundPreference.allCases == [.system, .dark, .light])
     }
 }

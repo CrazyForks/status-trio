@@ -18,6 +18,7 @@
 "settings.appIconPlacement.both" = "Beide";
 "settings.dockIconBackground" = "Dock-Symbol Hintergrund";
 "settings.dockIconBackground.description" = "Gilt für das Live-Symbol im Dock.";
+"settings.dockIconBackground.system" = "Systemeinstellung folgen";
 "settings.dockIconBackground.dark" = "Dunkel";
 "settings.dockIconBackground.light" = "Hell";
 "settings.iconSize" = "Symbolgröße";

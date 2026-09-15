@@ -126,12 +126,14 @@ struct BasicsSettingsPane: View {
         ) {
             Picker(
                 localization.string(.settingsDockIconBackground),
-                selection: $store.dockIconBackgroundStyle
+                selection: $store.dockIconBackgroundPreference
             ) {
+                Text(localization.string(.settingsDockIconBackgroundSystem))
+                    .tag(DockIconBackgroundPreference.system)
                 Text(localization.string(.settingsDockIconBackgroundDark))
-                    .tag(DockIconBackgroundStyle.dark)
+                    .tag(DockIconBackgroundPreference.dark)
                 Text(localization.string(.settingsDockIconBackgroundLight))
-                    .tag(DockIconBackgroundStyle.light)
+                    .tag(DockIconBackgroundPreference.light)
             }
             .pickerStyle(.segmented)
             .labelsHidden()

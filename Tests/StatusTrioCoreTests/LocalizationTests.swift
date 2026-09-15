@@ -209,6 +209,7 @@ final class LocalizationTests: XCTestCase {
 
     func testDockIconBackgroundLabelsStayCompact() throws {
         let optionKeys: [LocalizationKey] = [
+            .settingsDockIconBackgroundSystem,
             .settingsDockIconBackgroundDark,
             .settingsDockIconBackgroundLight
         ]

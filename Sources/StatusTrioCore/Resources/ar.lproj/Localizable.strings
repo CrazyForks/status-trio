@@ -76,6 +76,7 @@
 "settings.appIconPlacement.both" = "كلاهما";
 "settings.dockIconBackground" = "خلفية أيقونة Dock";
 "settings.dockIconBackground.description" = "ينطبق على الأيقونة المباشرة الظاهرة في Dock.";
+"settings.dockIconBackground.system" = "اتباع النظام";
 "settings.dockIconBackground.dark" = "داكن";
 "settings.dockIconBackground.light" = "فاتح";
 "wifi.title" = "Wi-Fi";

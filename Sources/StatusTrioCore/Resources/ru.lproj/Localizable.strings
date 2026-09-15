@@ -18,6 +18,7 @@
 "settings.appIconPlacement.both" = "Оба";
 "settings.dockIconBackground" = "Фон значка Dock";
 "settings.dockIconBackground.description" = "Применяется к динамическому значку в Dock.";
+"settings.dockIconBackground.system" = "Как в системе";
 "settings.dockIconBackground.dark" = "Тёмный";
 "settings.dockIconBackground.light" = "Светлый";
 "settings.iconSize" = "Размер значка";

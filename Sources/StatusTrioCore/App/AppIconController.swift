@@ -29,13 +29,15 @@ final class AppIconController {
     private let application: any ApplicationDockIconApplying
     private let setMenuBarVisible: (Bool) -> Void
     private let renderDockIcon: DockRenderer
+    private let theme: () -> SystemIconAppearanceTheme
+    private let isDarkAppearance: () -> Bool
     private var cancellables: Set<AnyCancellable> = []
     private var renderCache = DockIconRenderCache()
     private var hasRenderedDockIcon = false
     private var currentPlacement: AppIconPlacement
     private var currentBatteryOptions: BatteryIconOptions
     private var currentConnectionOptions: ConnectionIconOptions
-    private var currentBackgroundStyle: DockIconBackgroundStyle
+    private var currentBackgroundPreference: DockIconBackgroundPreference
     private var isStarted = false
 
     init(
@@ -44,7 +46,14 @@ final class AppIconController {
         activationPolicy: AppActivationPolicy,
         application: any ApplicationDockIconApplying = NSApplication.shared,
         setMenuBarVisible: @escaping (Bool) -> Void,
-        renderDockIcon: @escaping DockRenderer
+        renderDockIcon: @escaping DockRenderer,
+        theme: @escaping () -> SystemIconAppearanceTheme = {
+            SystemIconAppearanceReader.current()
+        },
+        isDarkAppearance: @escaping () -> Bool = {
+            NSApplication.shared.effectiveAppearance
+                .bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+        }
     ) {
         self.store = store
         self.settings = settings
@@ -52,15 +61,24 @@ final class AppIconController {
         self.application = application
         self.setMenuBarVisible = setMenuBarVisible
         self.renderDockIcon = renderDockIcon
+        self.theme = theme
+        self.isDarkAppearance = isDarkAppearance
         self.currentPlacement = settings.appIconPlacement
         self.currentBatteryOptions = settings.batteryIconOptions
         self.currentConnectionOptions = settings.connectionIconOptions
-        self.currentBackgroundStyle = settings.dockIconBackgroundStyle
+        self.currentBackgroundPreference = settings.dockIconBackgroundPreference
     }
 
     func start() {
         guard !isStarted else { return }
         isStarted = true
+
+        // Adopt whatever the settings hold now: they can change between
+        // construction and the first start.
+        currentPlacement = settings.appIconPlacement
+        currentBatteryOptions = settings.batteryIconOptions
+        currentConnectionOptions = settings.connectionIconOptions
+        currentBackgroundPreference = settings.dockIconBackgroundPreference
 
         apply(currentPlacement)
         activationPolicy.dockTileVisibilityDidChange = { [weak self] _ in
@@ -179,12 +197,12 @@ final class AppIconController {
     }
 
     private func subscribeToBackgroundStyle() {
-        settings.$dockIconBackgroundStyle
+        settings.$dockIconBackgroundPreference
             .removeDuplicates()
             .dropFirst()
-            .sink { [weak self] backgroundStyle in
+            .sink { [weak self] preference in
                 guard let self else { return }
-                currentBackgroundStyle = backgroundStyle
+                currentBackgroundPreference = preference
                 renderLatestDockIcon()
             }
             .store(in: &cancellables)
@@ -210,11 +228,16 @@ final class AppIconController {
     private func renderLatestDockIcon() {
         guard activationPolicy.isDockTileVisible else { return }
 
+        let backgroundStyle = DockIconBackgroundResolver.style(
+            for: currentBackgroundPreference,
+            theme: theme(),
+            isDarkAppearance: isDarkAppearance()
+        )
         let key = DockIconRenderKey(
             status: MenuBarStatus(snapshot: store.snapshot),
             options: currentBatteryOptions,
             connectionOptions: currentConnectionOptions,
-            backgroundStyle: currentBackgroundStyle
+            backgroundStyle: backgroundStyle
         )
         guard renderCache.shouldRender(key) else { return }
 
@@ -222,7 +245,7 @@ final class AppIconController {
             key.status,
             currentBatteryOptions,
             currentConnectionOptions,
-            currentBackgroundStyle
+            backgroundStyle
         ) else {
             if !hasRenderedDockIcon {
                 application.setApplicationIconImage(nil)

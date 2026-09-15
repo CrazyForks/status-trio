@@ -18,6 +18,7 @@
 "settings.appIconPlacement.both" = "両方";
 "settings.dockIconBackground" = "Dock アイコンの背景";
 "settings.dockIconBackground.description" = "Dock に表示されるライブアイコンに適用されます。";
+"settings.dockIconBackground.system" = "システム設定を使用";
 "settings.dockIconBackground.dark" = "ダーク";
 "settings.dockIconBackground.light" = "ライト";
 "settings.iconSize" = "アイコンの表示サイズ";
