@@ -185,6 +185,7 @@
 "bluetooth.openDetails" = "打开详情查看设备状态";
 "bluetooth.title" = "蓝牙";
 "bluetooth.action.openSettings" = "打开蓝牙设置";
+"bluetooth.action.requestAuthorization" = "允许蓝牙以显示设备状态";
 "bluetooth.refresh" = "刷新设备";
 "bluetooth.off" = "蓝牙已关闭。";
 "bluetooth.unavailable" = "蓝牙不可用。";

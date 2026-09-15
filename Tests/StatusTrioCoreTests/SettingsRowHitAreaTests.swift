@@ -17,6 +17,7 @@ final class SettingsRowHitAreaTests: XCTestCase {
             store: store,
             settings: settings,
             requestWiFiNameAccess: {},
+            requestBluetoothAuthorization: {},
             openBatterySettings: {},
             openWiFiSettings: {},
             openLocationSettings: {},

@@ -254,6 +254,7 @@ struct StatusPopoverView: View {
     @ObservedObject var settings: SettingsStore
     @EnvironmentObject private var localization: Localization
     let requestWiFiNameAccess: () -> Void
+    let requestBluetoothAuthorization: () -> Void
     let openBatterySettings: () -> Void
     let openWiFiSettings: () -> Void
     let openLocationSettings: () -> Void
@@ -282,6 +283,7 @@ struct StatusPopoverView: View {
                 BluetoothDeviceListView(
                     controller: store.bluetoothDevices,
                     onBack: { panel = .summary },
+                    onRequestAuthorization: requestBluetoothAuthorization,
                     onOpenBluetoothSettings: openBluetoothSettings
                 )
             }
@@ -342,9 +344,10 @@ struct StatusPopoverView: View {
             BluetoothStatusView(
                 controller: store.bluetoothDevices,
                 onOpenDetails: {
-                    store.activateBluetoothPanel()
+                    requestBluetoothAuthorization()
                     panel = .bluetooth
                 },
+                onRequestAuthorization: requestBluetoothAuthorization,
                 onOpenBluetoothSettings: openBluetoothSettings
             )
         case .volume:

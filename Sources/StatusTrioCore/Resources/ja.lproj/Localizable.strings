@@ -185,6 +185,7 @@
 "bluetooth.openDetails" = "Open details to view device status";
 "bluetooth.title" = "Bluetooth";
 "bluetooth.action.openSettings" = "Open Bluetooth Settings";
+"bluetooth.action.requestAuthorization" = "デバイス状態を表示するために Bluetooth を許可";
 "bluetooth.refresh" = "Refresh devices";
 "bluetooth.off" = "Bluetooth is off.";
 "bluetooth.unavailable" = "Bluetooth is unavailable.";

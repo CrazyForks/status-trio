@@ -17,6 +17,7 @@ protocol BluetoothPairedDeviceReading: AnyObject {
 @MainActor
 protocol BluetoothStateMonitoring: AnyObject {
     var onStateChange: ((BluetoothAuthorizationStatus, BluetoothManagerState) -> Void)? { get set }
+    var authorization: BluetoothAuthorizationStatus { get }
     func start()
     func stop()
 }
@@ -82,6 +83,16 @@ final class CoreBluetoothStateMonitor: NSObject, @preconcurrency CBCentralManage
     var onStateChange: ((BluetoothAuthorizationStatus, BluetoothManagerState) -> Void)?
     private var centralManager: CBCentralManager?
 
+    var authorization: BluetoothAuthorizationStatus {
+        switch CBManager.authorization {
+        case .notDetermined: .notDetermined
+        case .allowedAlways: .allowed
+        case .denied: .denied
+        case .restricted: .restricted
+        @unknown default: .restricted
+        }
+    }
+
     func start() {
         guard centralManager == nil else {
             publishState()
@@ -105,17 +116,7 @@ final class CoreBluetoothStateMonitor: NSObject, @preconcurrency CBCentralManage
     }
 
     private func publishState() {
-        onStateChange?(authorizationStatus(), managerState())
-    }
-
-    private func authorizationStatus() -> BluetoothAuthorizationStatus {
-        switch CBManager.authorization {
-        case .notDetermined: .notDetermined
-        case .allowedAlways: .allowed
-        case .denied: .denied
-        case .restricted: .restricted
-        @unknown default: .restricted
-        }
+        onStateChange?(authorization, managerState())
     }
 
     private func managerState() -> BluetoothManagerState {
@@ -168,6 +169,20 @@ final class BluetoothDeviceController: ObservableObject {
 
     var connectedDevices: [BluetoothDevice] {
         BluetoothDevicePresentation.grouped(devices).connected
+    }
+
+    func prepareForPresentation() {
+        guard !isActive else { return }
+        switch stateMonitor.authorization {
+        case .notDetermined:
+            availability = .authorizationNotDetermined
+        case .denied:
+            availability = .authorizationDenied
+        case .restricted:
+            availability = .authorizationRestricted
+        case .allowed:
+            availability = .idle
+        }
     }
 
     func activate() {

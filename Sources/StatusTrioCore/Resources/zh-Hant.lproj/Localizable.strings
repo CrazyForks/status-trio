@@ -185,6 +185,7 @@
 "bluetooth.openDetails" = "Open details to view device status";
 "bluetooth.title" = "Bluetooth";
 "bluetooth.action.openSettings" = "Open Bluetooth Settings";
+"bluetooth.action.requestAuthorization" = "允許藍牙以顯示裝置狀態";
 "bluetooth.refresh" = "Refresh devices";
 "bluetooth.off" = "Bluetooth is off.";
 "bluetooth.unavailable" = "Bluetooth is unavailable.";

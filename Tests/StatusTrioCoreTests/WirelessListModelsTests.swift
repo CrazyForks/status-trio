@@ -283,7 +283,7 @@ private final class BluetoothReaderStub: BluetoothPairedDeviceReading {
 @MainActor
 private final class BluetoothStateMonitorStub: BluetoothStateMonitoring {
     var onStateChange: ((BluetoothAuthorizationStatus, BluetoothManagerState) -> Void)?
-    private var authorization: BluetoothAuthorizationStatus
+    var authorization: BluetoothAuthorizationStatus
     private var managerState: BluetoothManagerState
     private(set) var startCount = 0
     private(set) var stopCount = 0

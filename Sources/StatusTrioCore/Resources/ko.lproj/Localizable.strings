@@ -185,6 +185,7 @@
 "bluetooth.openDetails" = "Open details to view device status";
 "bluetooth.title" = "Bluetooth";
 "bluetooth.action.openSettings" = "Open Bluetooth Settings";
+"bluetooth.action.requestAuthorization" = "기기 상태를 표시하도록 Bluetooth 허용";
 "bluetooth.refresh" = "Refresh devices";
 "bluetooth.off" = "Bluetooth is off.";
 "bluetooth.unavailable" = "Bluetooth is unavailable.";

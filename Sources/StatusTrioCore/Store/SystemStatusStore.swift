@@ -202,6 +202,11 @@ final class SystemStatusStore: ObservableObject {
         wifiMonitor.requestNameAccess()
     }
 
+    func requestBluetoothAuthorization() {
+        guard !hasStopped else { return }
+        bluetoothDevices.activate()
+    }
+
     func refreshForPopoverOpening() {
         setPopoverVisible(true)
     }
@@ -221,6 +226,7 @@ final class SystemStatusStore: ObservableObject {
         popupPublishTask?.cancel()
         popupPublishTask = nil
         popupSnapshot = snapshot
+        bluetoothDevices.prepareForPresentation()
         refreshAll()
         wifiNetworks.refresh(nameAccess: popupSnapshot.wifi.nameAccess)
     }
@@ -228,11 +234,6 @@ final class SystemStatusStore: ObservableObject {
     func activateWiFiPanel() {
         guard !hasStopped else { return }
         wifiNetworks.activate(nameAccess: popupSnapshot.wifi.nameAccess)
-    }
-
-    func activateBluetoothPanel() {
-        guard !hasStopped else { return }
-        bluetoothDevices.activate()
     }
 
     func closePopoverDetails() {

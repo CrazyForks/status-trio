@@ -256,6 +256,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
                 store: store,
                 settings: settings,
                 requestWiFiNameAccess: handleRequestWiFiNameAccess,
+                requestBluetoothAuthorization: handleRequestBluetoothAuthorization,
                 openBatterySettings: handleOpenBatterySettings,
                 openWiFiSettings: handleOpenWiFiSettings,
                 openLocationSettings: handleOpenLocationSettings,
@@ -556,6 +557,11 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     @objc private func handleRequestWiFiNameAccess() {
         NSApp.activate()
         store.requestWiFiNameAccess()
+    }
+
+    @objc private func handleRequestBluetoothAuthorization() {
+        NSApp.activate()
+        store.requestBluetoothAuthorization()
     }
 
     @objc private func handleOpenBatterySettings() {

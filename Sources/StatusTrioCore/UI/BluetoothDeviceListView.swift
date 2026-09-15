@@ -4,6 +4,7 @@ struct BluetoothStatusView: View {
     @ObservedObject var controller: BluetoothDeviceController
     @EnvironmentObject private var localization: Localization
     let onOpenDetails: () -> Void
+    let onRequestAuthorization: () -> Void
     let onOpenBluetoothSettings: () -> Void
 
     var body: some View {
@@ -15,11 +16,7 @@ struct BluetoothStatusView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(localization.string(.bluetoothTitle))
                             .font(.headline)
-                        Text(summary)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                            .truncationMode(.tail)
+                        subtitle
                     }
                     Spacer()
                     Image(systemName: "chevron.right")
@@ -37,6 +34,25 @@ struct BluetoothStatusView: View {
                 .foregroundStyle(.secondary)
                 .help(localization.string(.bluetoothActionOpenSettings))
                 .frame(width: 24, height: 24)
+        }
+    }
+
+    @ViewBuilder
+    private var subtitle: some View {
+        if controller.availability == .authorizationNotDetermined {
+            Button(
+                localization.string(.bluetoothActionRequestAuthorization),
+                action: onRequestAuthorization
+            )
+            .buttonStyle(.link)
+            .font(.caption)
+            .lineLimit(1)
+        } else {
+            Text(summary)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .truncationMode(.tail)
         }
     }
 
@@ -70,6 +86,7 @@ struct BluetoothDeviceListView: View {
     @ObservedObject var controller: BluetoothDeviceController
     @EnvironmentObject private var localization: Localization
     let onBack: () -> Void
+    let onRequestAuthorization: () -> Void
     let onOpenBluetoothSettings: () -> Void
 
     var body: some View {
@@ -151,9 +168,12 @@ struct BluetoothDeviceListView: View {
             .font(.caption)
             .foregroundStyle(.secondary)
         case .authorizationNotDetermined:
-            Text(localization.string(.bluetoothAuthorizationNotDetermined))
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            Button(
+                localization.string(.bluetoothActionRequestAuthorization),
+                action: onRequestAuthorization
+            )
+            .buttonStyle(.link)
+            .font(.caption)
         case .authorizationDenied:
             Button(localization.string(.bluetoothAuthorizationDenied), action: onOpenBluetoothSettings)
                 .buttonStyle(.link)

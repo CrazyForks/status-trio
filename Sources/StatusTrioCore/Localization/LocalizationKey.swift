@@ -179,6 +179,7 @@ enum LocalizationKey: String, CaseIterable, Hashable, Sendable {
     case bluetoothOpenDetails = "bluetooth.openDetails"
     case bluetoothTitle = "bluetooth.title"
     case bluetoothActionOpenSettings = "bluetooth.action.openSettings"
+    case bluetoothActionRequestAuthorization = "bluetooth.action.requestAuthorization"
     case bluetoothRefresh = "bluetooth.refresh"
     case bluetoothOff = "bluetooth.off"
     case bluetoothUnavailable = "bluetooth.unavailable"

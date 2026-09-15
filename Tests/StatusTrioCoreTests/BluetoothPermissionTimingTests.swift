@@ -4,8 +4,8 @@ import XCTest
 
 @MainActor
 final class BluetoothPermissionTimingTests: XCTestCase {
-    func testBluetoothStartsOnlyWhenDetailsPanelIsActivated() {
-        let stateMonitor = BluetoothStateMonitorSpy()
+    func testOpeningPopoverExposesBluetoothAuthorizationWithoutStartingMonitor() {
+        let stateMonitor = BluetoothStateMonitorSpy(authorization: .notDetermined)
         let bluetoothController = BluetoothDeviceController(
             stateMonitor: stateMonitor,
             notificationCenter: NotificationCenter(),
@@ -19,9 +19,27 @@ final class BluetoothPermissionTimingTests: XCTestCase {
         )
 
         store.setPopoverVisible(true)
-        XCTAssertEqual(stateMonitor.startCount, 0)
 
-        store.activateBluetoothPanel()
+        XCTAssertEqual(bluetoothController.availability, .authorizationNotDetermined)
+        XCTAssertEqual(stateMonitor.startCount, 0)
+    }
+
+    func testRequestingBluetoothAuthorizationStartsStateMonitor() {
+        let stateMonitor = BluetoothStateMonitorSpy(authorization: .notDetermined)
+        let bluetoothController = BluetoothDeviceController(
+            stateMonitor: stateMonitor,
+            notificationCenter: NotificationCenter(),
+            workspaceNotificationCenter: NotificationCenter()
+        )
+        let store = SystemStatusStore(
+            batteryMonitor: EmptyBatteryMonitorForBluetoothTiming(),
+            wifiMonitor: EmptyWiFiMonitorForBluetoothTiming(),
+            volumeMonitor: EmptyVolumeMonitorForBluetoothTiming(),
+            bluetoothDevices: bluetoothController
+        )
+
+        store.requestBluetoothAuthorization()
+
         XCTAssertEqual(stateMonitor.startCount, 1)
     }
 }
@@ -30,6 +48,11 @@ final class BluetoothPermissionTimingTests: XCTestCase {
 private final class BluetoothStateMonitorSpy: BluetoothStateMonitoring {
     var onStateChange: ((BluetoothAuthorizationStatus, BluetoothManagerState) -> Void)?
     private(set) var startCount = 0
+    let authorization: BluetoothAuthorizationStatus
+
+    init(authorization: BluetoothAuthorizationStatus = .notDetermined) {
+        self.authorization = authorization
+    }
 
     func start() {
         startCount += 1
