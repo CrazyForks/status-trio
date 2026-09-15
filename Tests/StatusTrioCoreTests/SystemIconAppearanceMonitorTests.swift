@@ -59,4 +59,28 @@ struct SystemIconAppearanceMonitorTests {
 
         #expect(reported.isEmpty)
     }
+
+    @Test func pollsUntilStopped() async throws {
+        let center = NotificationCenter()
+        var theme = SystemIconAppearanceTheme.default
+        let monitor = SystemIconAppearanceMonitor(
+            readTheme: { theme },
+            notificationCenter: center,
+            pollingInterval: 0.05
+        )
+        var reported: [SystemIconAppearanceTheme] = []
+        monitor.onChange = { reported.append($0) }
+        monitor.start()
+
+        let clearTheme = SystemIconAppearanceTheme(style: .clear, appearance: .dark)
+        theme = clearTheme
+        try await Task.sleep(for: .milliseconds(600))
+
+        #expect(reported == [clearTheme])
+
+        monitor.stop()
+        theme = SystemIconAppearanceTheme(style: .tinted, appearance: .dark)
+        try await Task.sleep(for: .milliseconds(300))
+        #expect(reported == [clearTheme])
+    }
 }
