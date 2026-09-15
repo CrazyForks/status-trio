@@ -31,6 +31,7 @@ final class AppIconController {
     private let renderDockIcon: DockRenderer
     private let theme: () -> SystemIconAppearanceTheme
     private let isDarkAppearance: () -> Bool
+    private let monitor: SystemIconAppearanceMonitor
     private var cancellables: Set<AnyCancellable> = []
     private var renderCache = DockIconRenderCache()
     private var hasRenderedDockIcon = false
@@ -53,7 +54,8 @@ final class AppIconController {
         isDarkAppearance: @escaping () -> Bool = {
             NSApplication.shared.effectiveAppearance
                 .bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
-        }
+        },
+        notificationCenter: NotificationCenter = .default
     ) {
         self.store = store
         self.settings = settings
@@ -63,6 +65,10 @@ final class AppIconController {
         self.renderDockIcon = renderDockIcon
         self.theme = theme
         self.isDarkAppearance = isDarkAppearance
+        self.monitor = SystemIconAppearanceMonitor(
+            readTheme: theme,
+            notificationCenter: notificationCenter
+        )
         self.currentPlacement = settings.appIconPlacement
         self.currentBatteryOptions = settings.batteryIconOptions
         self.currentConnectionOptions = settings.connectionIconOptions
@@ -84,6 +90,10 @@ final class AppIconController {
         activationPolicy.dockTileVisibilityDidChange = { [weak self] _ in
             self?.dockTileVisibilityChanged()
         }
+        monitor.onChange = { [weak self] _ in
+            self?.renderLatestDockIcon()
+        }
+        monitor.start()
         subscribeToPlacement()
         subscribeToSnapshot()
         subscribeToBatteryOptions()
@@ -96,6 +106,8 @@ final class AppIconController {
         isStarted = false
         cancellables.removeAll()
         activationPolicy.dockTileVisibilityDidChange = nil
+        monitor.onChange = nil
+        monitor.stop()
         clearDockIcon()
     }
 

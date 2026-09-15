@@ -124,10 +124,31 @@ struct AppIconControllerTests {
         #expect(harness.log.backgroundStyles == [.dark])
     }
 
+    @Test func reRendersWhenTheSystemIconStyleChanges() throws {
+        let notificationCenter = NotificationCenter()
+        var theme = SystemIconAppearanceTheme.default
+        let harness = try AppIconControllerHarness(
+            initialPlacement: .dock,
+            systemTheme: { theme },
+            notificationCenter: notificationCenter
+        )
+        defer { harness.cleanUp() }
+        harness.controller.start()
+        harness.log.reset()
+
+        theme = SystemIconAppearanceTheme(style: .clear, appearance: .dark)
+        notificationCenter.post(
+            name: SystemIconAppearanceMonitor.didChangeNotificationName,
+            object: nil
+        )
+
+        #expect(harness.log.backgroundStyles == [.clear])
+    }
+
     @Test func systemPreferenceUsesTheDefaultLightBackground() throws {
         let harness = try AppIconControllerHarness(
             initialPlacement: .dock,
-            systemTheme: .default
+            systemTheme: { .default }
         )
         defer { harness.cleanUp() }
 
@@ -139,7 +160,7 @@ struct AppIconControllerTests {
     @Test func systemPreferenceUsesDarkForDarkThemes() throws {
         let harness = try AppIconControllerHarness(
             initialPlacement: .dock,
-            systemTheme: SystemIconAppearanceTheme(style: .defaultStyle, appearance: .dark)
+            systemTheme: { SystemIconAppearanceTheme(style: .defaultStyle, appearance: .dark) }
         )
         defer { harness.cleanUp() }
 
@@ -151,7 +172,7 @@ struct AppIconControllerTests {
     @Test func systemPreferenceUsesClearForClearThemes() throws {
         let harness = try AppIconControllerHarness(
             initialPlacement: .dock,
-            systemTheme: SystemIconAppearanceTheme(style: .clear, appearance: .dark)
+            systemTheme: { SystemIconAppearanceTheme(style: .clear, appearance: .dark) }
         )
         defer { harness.cleanUp() }
 
@@ -163,10 +184,9 @@ struct AppIconControllerTests {
     @Test func systemPreferenceUsesAppearanceForAutomaticThemes() throws {
         let harness = try AppIconControllerHarness(
             initialPlacement: .dock,
-            systemTheme: SystemIconAppearanceTheme(
-                style: .defaultStyle,
-                appearance: .automatic
-            ),
+            systemTheme: {
+                SystemIconAppearanceTheme(style: .defaultStyle, appearance: .automatic)
+            },
             isDarkAppearance: true
         )
         defer { harness.cleanUp() }
@@ -179,7 +199,7 @@ struct AppIconControllerTests {
     @Test func explicitPreferenceIgnoresTheSystemTheme() throws {
         let harness = try AppIconControllerHarness(
             initialPlacement: .dock,
-            systemTheme: SystemIconAppearanceTheme(style: .clear, appearance: .dark)
+            systemTheme: { SystemIconAppearanceTheme(style: .clear, appearance: .dark) }
         )
         defer { harness.cleanUp() }
         harness.settings.dockIconBackgroundPreference = .light
@@ -220,8 +240,9 @@ private final class AppIconControllerHarness {
     init(
         initialPlacement: AppIconPlacement = .menuBar,
         acceptsActivationPolicy: Bool = true,
-        systemTheme: SystemIconAppearanceTheme = .default,
-        isDarkAppearance: Bool = false
+        systemTheme: @escaping () -> SystemIconAppearanceTheme = { .default },
+        isDarkAppearance: Bool = false,
+        notificationCenter: NotificationCenter = .default
     ) throws {
         suiteName = "StatusTrioCoreTests.AppIconController.\(UUID().uuidString)"
         guard let defaults = UserDefaults(suiteName: suiteName) else {
@@ -265,8 +286,9 @@ private final class AppIconControllerHarness {
                 log.backgroundStyles.append(backgroundStyle)
                 return NSImage(size: NSSize(width: 512, height: 512))
             },
-            theme: { systemTheme },
-            isDarkAppearance: { isDarkAppearance }
+            theme: systemTheme,
+            isDarkAppearance: { isDarkAppearance },
+            notificationCenter: notificationCenter
         )
 
         store.start()
