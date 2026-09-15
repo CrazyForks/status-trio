@@ -39,6 +39,7 @@ final class AppIconController {
     private var currentBatteryOptions: BatteryIconOptions
     private var currentConnectionOptions: ConnectionIconOptions
     private var currentBackgroundPreference: DockIconBackgroundPreference
+    private var isDockTileVisible: Bool
     private var isStarted = false
 
     init(
@@ -73,6 +74,7 @@ final class AppIconController {
         self.currentBatteryOptions = settings.batteryIconOptions
         self.currentConnectionOptions = settings.connectionIconOptions
         self.currentBackgroundPreference = settings.dockIconBackgroundPreference
+        self.isDockTileVisible = activationPolicy.isRegularApp
     }
 
     func start() {
@@ -85,11 +87,18 @@ final class AppIconController {
         currentBatteryOptions = settings.batteryIconOptions
         currentConnectionOptions = settings.connectionIconOptions
         currentBackgroundPreference = settings.dockIconBackgroundPreference
-
         apply(currentPlacement)
-        activationPolicy.dockTileVisibilityDidChange = { [weak self] _ in
-            self?.dockTileVisibilityChanged()
-        }
+        activationPolicy.$isRegularApp
+            .removeDuplicates()
+            .dropFirst()
+            .sink { [weak self] isRegular in
+                // @Published emits before the stored value changes, so use the
+                // value the publisher delivered.
+                guard let self else { return }
+                isDockTileVisible = isRegular
+                dockTileVisibilityChanged()
+            }
+            .store(in: &cancellables)
         monitor.onChange = { [weak self] _ in
             self?.renderLatestDockIcon()
         }
@@ -105,14 +114,13 @@ final class AppIconController {
         guard isStarted else { return }
         isStarted = false
         cancellables.removeAll()
-        activationPolicy.dockTileVisibilityDidChange = nil
         monitor.onChange = nil
         monitor.stop()
         clearDockIcon()
     }
 
     private func dockTileVisibilityChanged() {
-        guard activationPolicy.isDockTileVisible else {
+        guard isDockTileVisible else {
             clearDockIcon()
             return
         }
@@ -224,7 +232,9 @@ final class AppIconController {
         currentPlacement = placement
 
         if placement.showsDockIcon {
-            guard activationPolicy.setDockIconVisible(true) else {
+            let didActivate = activationPolicy.setDockIconVisible(true)
+            isDockTileVisible = activationPolicy.isRegularApp
+            guard didActivate else {
                 // Never trade the Menu Bar away for a Dock tile AppKit refused.
                 setMenuBarVisible(true)
                 return
@@ -234,11 +244,12 @@ final class AppIconController {
         } else {
             setMenuBarVisible(true)
             _ = activationPolicy.setDockIconVisible(false)
+            isDockTileVisible = activationPolicy.isRegularApp
         }
     }
 
     private func renderLatestDockIcon() {
-        guard activationPolicy.isDockTileVisible else { return }
+        guard isDockTileVisible else { return }
 
         let backgroundStyle = DockIconBackgroundResolver.style(
             for: currentBackgroundPreference,

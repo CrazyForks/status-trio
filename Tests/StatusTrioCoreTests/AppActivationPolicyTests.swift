@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import Testing
 @testable import StatusTrioCore
 
@@ -69,11 +70,12 @@ struct AppActivationPolicyTests {
         #expect(policy.setDockIconVisible(true) == false)
     }
 
-    @Test func reportsDockTileVisibilityWhileTemporaryOwnerIsActive() {
+    @Test func reportsRegularModeWhileTemporaryOwnerIsActive() {
         let application = ActivationPolicyApplicationSpy()
         let policy = AppActivationPolicy(application: application)
         var reported: [Bool] = []
-        policy.dockTileVisibilityDidChange = { reported.append($0) }
+        let cancellable = policy.$isRegularApp.dropFirst().sink { reported.append($0) }
+        defer { cancellable.cancel() }
 
         policy.enterTemporaryRegularMode()
         policy.enterTemporaryRegularMode()
@@ -81,14 +83,15 @@ struct AppActivationPolicyTests {
         policy.leaveTemporaryRegularMode()
 
         #expect(reported == [true, false])
-        #expect(policy.isDockTileVisible == false)
+        #expect(policy.isRegularApp == false)
     }
 
-    @Test func reportsDockTileVisibilityWhenPlacementKeepsIt() {
+    @Test func reportsRegularModeWhenPlacementKeepsIt() {
         let application = ActivationPolicyApplicationSpy()
         let policy = AppActivationPolicy(application: application)
         var reported: [Bool] = []
-        policy.dockTileVisibilityDidChange = { reported.append($0) }
+        let cancellable = policy.$isRegularApp.dropFirst().sink { reported.append($0) }
+        defer { cancellable.cancel() }
 
         policy.enterTemporaryRegularMode()
         policy.setDockIconVisible(true)

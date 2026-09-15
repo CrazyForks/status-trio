@@ -8,7 +8,12 @@ final class MainMenuControllerTests: XCTestCase {
         let environment = try makeEnvironment()
         defer { environment.cleanUp() }
 
-        let controller = MainMenuController(localization: environment.localization) {}
+        let policy = AppActivationPolicy(application: MainMenuActivationSpy())
+        policy.enterTemporaryRegularMode()
+        let controller = MainMenuController(
+            activationPolicy: policy,
+            localization: environment.localization
+        ) {}
         controller.start()
         defer { controller.stop() }
 
@@ -44,8 +49,13 @@ final class MainMenuControllerTests: XCTestCase {
         let environment = try makeEnvironment()
         defer { environment.cleanUp() }
 
+        let policy = AppActivationPolicy(application: MainMenuActivationSpy())
+        policy.enterTemporaryRegularMode()
         var openCount = 0
-        let controller = MainMenuController(localization: environment.localization) {
+        let controller = MainMenuController(
+            activationPolicy: policy,
+            localization: environment.localization
+        ) {
             openCount += 1
         }
         controller.start()
@@ -62,12 +72,38 @@ final class MainMenuControllerTests: XCTestCase {
         let environment = try makeEnvironment()
         defer { environment.cleanUp() }
 
-        let controller = MainMenuController(localization: environment.localization) {}
+        let policy = AppActivationPolicy(application: MainMenuActivationSpy())
+        policy.enterTemporaryRegularMode()
+        let controller = MainMenuController(
+            activationPolicy: policy,
+            localization: environment.localization
+        ) {}
         controller.start()
         XCTAssertNotNil(NSApplication.shared.mainMenu)
 
         controller.stop()
 
+        XCTAssertNil(NSApplication.shared.mainMenu)
+    }
+
+    func testInstallsTheMenuOnlyWhileTheAppIsRegular() throws {
+        let environment = try makeEnvironment()
+        defer { environment.cleanUp() }
+
+        let policy = AppActivationPolicy(application: MainMenuActivationSpy())
+        let controller = MainMenuController(
+            activationPolicy: policy,
+            localization: environment.localization
+        ) {}
+        controller.start()
+        defer { controller.stop() }
+
+        XCTAssertNil(NSApplication.shared.mainMenu)
+
+        policy.enterTemporaryRegularMode()
+        XCTAssertNotNil(NSApplication.shared.mainMenu)
+
+        policy.leaveTemporaryRegularMode()
         XCTAssertNil(NSApplication.shared.mainMenu)
     }
 
@@ -82,5 +118,15 @@ final class MainMenuControllerTests: XCTestCase {
         defaults.removePersistentDomain(forName: name)
         let localization = Localization(defaults: defaults, preferredLanguages: ["en"])
         return (localization, { defaults.removePersistentDomain(forName: name) })
+    }
+}
+
+@MainActor
+private final class MainMenuActivationSpy: ApplicationActivationPolicyApplying {
+    private(set) var currentActivationPolicy: NSApplication.ActivationPolicy = .accessory
+
+    func setActivationPolicy(_ activationPolicy: NSApplication.ActivationPolicy) -> Bool {
+        currentActivationPolicy = activationPolicy
+        return true
     }
 }

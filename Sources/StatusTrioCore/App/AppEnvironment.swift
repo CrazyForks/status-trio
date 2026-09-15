@@ -101,6 +101,7 @@ final class AppEnvironment {
             }
         )
         let mainMenuController = MainMenuController(
+            activationPolicy: activationPolicy,
             localization: localization,
             openSettings: { settingsWindowController.show() }
         )
