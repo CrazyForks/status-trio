@@ -29,11 +29,9 @@ struct WiFiStatusView: View {
                         subtitle
                     }
                     Spacer()
-                    if StatusMappings.showsWiFiDetailsChevron(for: wifi) {
-                        Image(systemName: "chevron.right")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.tertiary)
-                    }
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.tertiary)
                 }
                 .contentShape(Rectangle())
             }

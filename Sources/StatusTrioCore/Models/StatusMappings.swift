@@ -42,10 +42,6 @@ enum StatusMappings {
         }
     }
 
-    static func showsWiFiDetailsChevron(for wifi: WiFiStatus) -> Bool {
-        !wifi.state.isNetworkAssociated || wifi.nameAccess == .authorized
-    }
-
     static func volumeSteps(scalar: Double?, isMuted: Bool) -> Int? {
         guard let scalar else { return nil }
         let clamped = min(1, max(0, scalar))

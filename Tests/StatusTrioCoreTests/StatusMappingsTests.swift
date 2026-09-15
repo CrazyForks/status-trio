@@ -55,34 +55,6 @@ final class StatusMappingsTests: XCTestCase {
         )
     }
 
-    func testWiFiDetailsChevronOnlyAppearsWhenLocationPermissionIsNotBlocking() {
-        XCTAssertTrue(
-            StatusMappings.showsWiFiDetailsChevron(
-                for: WiFiStatus(state: .connected, rssi: -50, nameAccess: .authorized)
-            )
-        )
-        XCTAssertFalse(
-            StatusMappings.showsWiFiDetailsChevron(
-                for: WiFiStatus(state: .connected, rssi: -50, nameAccess: .notDetermined)
-            )
-        )
-        XCTAssertFalse(
-            StatusMappings.showsWiFiDetailsChevron(
-                for: WiFiStatus(state: .connected, rssi: -50, nameAccess: .denied)
-            )
-        )
-        XCTAssertFalse(
-            StatusMappings.showsWiFiDetailsChevron(
-                for: WiFiStatus(state: .connected, rssi: -50, nameAccess: .restricted)
-            )
-        )
-        XCTAssertTrue(
-            StatusMappings.showsWiFiDetailsChevron(
-                for: WiFiStatus(state: .off, rssi: nil, nameAccess: .notDetermined)
-            )
-        )
-    }
-
     func testVolumeBoundaries() {
         XCTAssertEqual(StatusMappings.volumeSteps(scalar: 0, isMuted: false), 0)
         XCTAssertEqual(StatusMappings.volumeSteps(scalar: -0.1, isMuted: false), 0)
