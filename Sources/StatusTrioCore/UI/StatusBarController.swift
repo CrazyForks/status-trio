@@ -36,6 +36,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     private let quitAction: () -> Void
     private var appearanceObservations: [NSKeyValueObservation] = []
     private var renderCache = StatusBarRenderCache()
+    private var isStatusItemVisible: Bool
     private var accessibilityKey: StatusBarAccessibilityKey?
     private var popoverDismissMonitor: Any?
     private var volumeScrollMonitor: Any?
@@ -46,6 +47,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         store: SystemStatusStore,
         settings: SettingsStore,
         localization: Localization,
+        isVisible: Bool = true,
         openSettings: @escaping () -> Void,
         quitAction: @escaping () -> Void
     ) {
@@ -54,9 +56,11 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         self.localization = localization
         self.openSettings = openSettings
         self.quitAction = quitAction
+        self.isStatusItemVisible = isVisible
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         super.init()
 
+        statusItem.isVisible = isVisible
         configureButton()
         configurePopover()
         observeAppearanceChanges()
@@ -174,6 +178,21 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             return .left
         }
         return nil
+    }
+
+    func setVisible(_ isVisible: Bool) {
+        guard isStatusItemVisible != isVisible else { return }
+        isStatusItemVisible = isVisible
+
+        if isVisible {
+            statusItem.isVisible = true
+            renderCache = StatusBarRenderCache()
+            renderLatestSnapshot()
+        } else {
+            popover.performClose(nil)
+            store.setPopoverVisible(false)
+            statusItem.isVisible = false
+        }
     }
 
     private func configureButton() {
@@ -371,7 +390,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         options: BatteryIconOptions,
         connectionOptions: ConnectionIconOptions
     ) {
-        guard let button = statusItem.button else { return }
+        guard isStatusItemVisible, let button = statusItem.button else { return }
 
         let key = StatusBarRenderKey(
             status: status,
