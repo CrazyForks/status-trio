@@ -26,16 +26,41 @@ enum DockIconRenderer {
         ) ?? CGColor(gray: 0, alpha: 1)
     }
 
+    private struct Palette {
+        let body: CGColor
+        let border: CGColor
+        let foreground: CGColor
+    }
+
+    private static func palette(for style: DockIconBackgroundStyle) -> Palette {
+        switch style {
+        case .dark:
+            Palette(
+                body: color(red: 21.0 / 255.0, green: 21.0 / 255.0, blue: 23.0 / 255.0),
+                border: color(red: 58.0 / 255.0, green: 58.0 / 255.0, blue: 61.0 / 255.0),
+                foreground: color(red: 1, green: 1, blue: 1)
+            )
+        case .light:
+            Palette(
+                body: color(red: 1, green: 1, blue: 1),
+                border: color(red: 210.0 / 255.0, green: 210.0 / 255.0, blue: 215.0 / 255.0),
+                foreground: color(red: 29.0 / 255.0, green: 29.0 / 255.0, blue: 31.0 / 255.0)
+            )
+        }
+    }
+
     static func image(
         status: MenuBarStatus,
         options: BatteryIconOptions = .standard,
-        connectionOptions: ConnectionIconOptions = .standard
+        connectionOptions: ConnectionIconOptions = .standard,
+        backgroundStyle: DockIconBackgroundStyle = .dark
     ) -> NSImage? {
+        let palette = palette(for: backgroundStyle)
         guard let glyph = StatusIconRenderer.render(
             menuBarStatus: status,
             size: glyphSVGSize,
             scale: 1,
-            foreground: CGColor(gray: 1, alpha: 1),
+            foreground: palette.foreground,
             options: options,
             connectionOptions: connectionOptions
         ) else {
@@ -59,14 +84,14 @@ enum DockIconRenderer {
             bodyRect,
             cornerRadius: bodyCornerRadius
         ))
-        context.setFillColor(color(red: 21.0 / 255.0, green: 21.0 / 255.0, blue: 23.0 / 255.0))
+        context.setFillColor(palette.body)
         context.fillPath()
 
         context.addPath(roundedRect(
             borderRect,
             cornerRadius: borderCornerRadius
         ))
-        context.setStrokeColor(color(red: 58.0 / 255.0, green: 58.0 / 255.0, blue: 61.0 / 255.0))
+        context.setStrokeColor(palette.border)
         context.setLineWidth(2)
         context.strokePath()
 
