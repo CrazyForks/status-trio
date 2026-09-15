@@ -27,7 +27,9 @@
     <key>NSHighResolutionCapable</key>
     <true/>
     <key>NSLocationWhenInUseUsageDescription</key>
-    <string>Used to show the current Wi-Fi network name in the popover.</string>
+    <string>Used to show the current Wi-Fi network name in the popover and, when you open Wi-Fi details, to read network names, scan results, and connection information.</string>
+    <key>NSBluetoothAlwaysUsageDescription</key>
+    <string>Used only when you open Bluetooth details to show paired-device connection status.</string>
     <key>SUEnableInstallerLauncherService</key>
     <true/>
     <key>SUFeedURL</key>
