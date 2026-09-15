@@ -16,6 +16,10 @@
 "settings.appIconPlacement.menuBar" = "選單列";
 "settings.appIconPlacement.dock" = "Dock";
 "settings.appIconPlacement.both" = "兩處";
+"settings.dockIconBackground" = "Dock 圖示背景";
+"settings.dockIconBackground.description" = "僅影響 Dock 中顯示的即時圖示。";
+"settings.dockIconBackground.dark" = "深色";
+"settings.dockIconBackground.light" = "淺色";
 "settings.iconSize" = "圖示顯示尺寸";
 "settings.iconSize.accessibilityValue" = "%d 點";
 "settings.iconSize.description" = "調整選單列圖示的繪製尺寸，可選 16–36 pt。";

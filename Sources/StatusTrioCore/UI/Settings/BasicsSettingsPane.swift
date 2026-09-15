@@ -25,6 +25,10 @@ struct BasicsSettingsPane: View {
 
             Divider()
 
+            dockIconBackgroundSection
+
+            Divider()
+
             PreferenceRow(
                 label: .settingsLanguage,
                 description: .settingsLanguageDescription,
@@ -108,6 +112,26 @@ struct BasicsSettingsPane: View {
                     .tag(AppIconPlacement.dock)
                 Text(localization.string(.settingsAppIconPlacementBoth))
                     .tag(AppIconPlacement.both)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .frame(maxWidth: .infinity)
+        }
+    }
+
+    private var dockIconBackgroundSection: some View {
+        PreferenceRow(
+            label: .settingsDockIconBackground,
+            description: .settingsDockIconBackgroundDescription
+        ) {
+            Picker(
+                localization.string(.settingsDockIconBackground),
+                selection: $store.dockIconBackgroundStyle
+            ) {
+                Text(localization.string(.settingsDockIconBackgroundDark))
+                    .tag(DockIconBackgroundStyle.dark)
+                Text(localization.string(.settingsDockIconBackgroundLight))
+                    .tag(DockIconBackgroundStyle.light)
             }
             .pickerStyle(.segmented)
             .labelsHidden()

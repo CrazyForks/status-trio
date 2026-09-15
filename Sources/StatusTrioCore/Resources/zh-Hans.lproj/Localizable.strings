@@ -16,6 +16,10 @@
 "settings.appIconPlacement.menuBar" = "菜单栏";
 "settings.appIconPlacement.dock" = "程序坞";
 "settings.appIconPlacement.both" = "两处";
+"settings.dockIconBackground" = "Dock 图标背景";
+"settings.dockIconBackground.description" = "仅影响程序坞中显示的实时图标。";
+"settings.dockIconBackground.dark" = "深色";
+"settings.dockIconBackground.light" = "浅色";
 "settings.iconSize" = "图标渲染范围";
 "settings.iconSize.accessibilityValue" = "%d 点";
 "settings.iconSize.description" = "调整菜单栏图标的渲染尺寸，可选 16–36 pt。";

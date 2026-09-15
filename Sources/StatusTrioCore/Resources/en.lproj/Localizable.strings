@@ -16,6 +16,10 @@
 "settings.appIconPlacement.menuBar" = "Menu Bar";
 "settings.appIconPlacement.dock" = "Dock";
 "settings.appIconPlacement.both" = "Both";
+"settings.dockIconBackground" = "Dock Icon Background";
+"settings.dockIconBackground.description" = "Applies to the live icon shown in the Dock.";
+"settings.dockIconBackground.dark" = "Dark";
+"settings.dockIconBackground.light" = "Light";
 "settings.iconSize" = "Icon Size";
 "settings.iconSize.accessibilityValue" = "%d points";
 "settings.iconSize.description" = "Adjusts the menu bar icon render size from 16–36 pt.";

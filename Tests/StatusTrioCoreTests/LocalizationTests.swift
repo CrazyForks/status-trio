@@ -207,6 +207,31 @@ final class LocalizationTests: XCTestCase {
         }
     }
 
+    func testDockIconBackgroundLabelsStayCompact() throws {
+        let optionKeys: [LocalizationKey] = [
+            .settingsDockIconBackgroundDark,
+            .settingsDockIconBackgroundLight
+        ]
+
+        for language in AppLanguage.allCases {
+            let bundle = try XCTUnwrap(Localization.resourceBundle(for: language))
+
+            for key in optionKeys {
+                let value = bundle.localizedString(
+                    forKey: key.rawValue,
+                    value: nil,
+                    table: nil
+                )
+                XCTAssertFalse(value.isEmpty, "\(language.rawValue) missing \(key.rawValue)")
+                XCTAssertLessThanOrEqual(
+                    value.count,
+                    24,
+                    "\(language.rawValue) \(key.rawValue) is too long: \(value)"
+                )
+            }
+        }
+    }
+
     private func placeholderCount(in value: String) -> Int {
         let pattern = #"%(?:\d+\$)?[-+#0 ]*\d*(?:\.\d+)?[d@%]"#
         let regex = try! NSRegularExpression(pattern: pattern)

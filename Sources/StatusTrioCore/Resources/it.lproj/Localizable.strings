@@ -16,6 +16,10 @@
 "settings.appIconPlacement.menuBar" = "Barra dei menu";
 "settings.appIconPlacement.dock" = "Dock";
 "settings.appIconPlacement.both" = "Entrambi";
+"settings.dockIconBackground" = "Sfondo icona Dock";
+"settings.dockIconBackground.description" = "Si applica all’icona dinamica mostrata nel Dock.";
+"settings.dockIconBackground.dark" = "Scuro";
+"settings.dockIconBackground.light" = "Chiaro";
 "settings.iconSize" = "Dimensione icona";
 "settings.iconSize.accessibilityValue" = "%d punti";
 "settings.iconSize.description" = "Regola la dimensione di rendering dell’icona nella barra dei menu da 16 a 36 pt.";

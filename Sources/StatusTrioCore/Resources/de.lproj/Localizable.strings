@@ -16,6 +16,10 @@
 "settings.appIconPlacement.menuBar" = "Menüleiste";
 "settings.appIconPlacement.dock" = "Dock";
 "settings.appIconPlacement.both" = "Beide";
+"settings.dockIconBackground" = "Dock-Symbol Hintergrund";
+"settings.dockIconBackground.description" = "Gilt für das Live-Symbol im Dock.";
+"settings.dockIconBackground.dark" = "Dunkel";
+"settings.dockIconBackground.light" = "Hell";
 "settings.iconSize" = "Symbolgröße";
 "settings.iconSize.accessibilityValue" = "%d Punkte";
 "settings.iconSize.description" = "Passt die Darstellungsgröße des Menüleistensymbols auf 16–36 pt an.";

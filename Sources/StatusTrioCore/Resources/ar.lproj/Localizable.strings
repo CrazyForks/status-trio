@@ -74,6 +74,10 @@
 "settings.appIconPlacement.menuBar" = "شريط القوائم";
 "settings.appIconPlacement.dock" = "Dock";
 "settings.appIconPlacement.both" = "كلاهما";
+"settings.dockIconBackground" = "خلفية أيقونة Dock";
+"settings.dockIconBackground.description" = "ينطبق على الأيقونة المباشرة الظاهرة في Dock.";
+"settings.dockIconBackground.dark" = "داكن";
+"settings.dockIconBackground.light" = "فاتح";
 "wifi.title" = "Wi-Fi";
 "network.title" = "الشبكة";
 "wifi.value.bars" = "%d أشرطة";
