@@ -75,7 +75,7 @@
 "settings.appIconPlacement.dock" = "Dock";
 "settings.appIconPlacement.both" = "كلاهما";
 "settings.dockIconBackground" = "خلفية أيقونة Dock";
-"settings.dockIconBackground.description" = "ينطبق على الأيقونة المباشرة في Dock. يقرأ «اتباع النظام» إعداد «نمط الرموز والودجات» في إعدادات النظام › المظهر.";
+"settings.dockIconBackground.description" = "ينطبق على الأيقونة المباشرة في Dock. يقرأ «اتباع النظام» إعداد «نمط الرموز والودجات» في إعدادات النظام › المظهر (macOS 26 أو أحدث).";
 "settings.dockIconBackground.system" = "اتباع النظام";
 "settings.dockIconBackground.dark" = "داكن";
 "settings.dockIconBackground.light" = "فاتح";

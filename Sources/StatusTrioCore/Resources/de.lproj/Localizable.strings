@@ -17,7 +17,7 @@
 "settings.appIconPlacement.dock" = "Dock";
 "settings.appIconPlacement.both" = "Beide";
 "settings.dockIconBackground" = "Dock-Symbol Hintergrund";
-"settings.dockIconBackground.description" = "Gilt für das Live-Symbol im Dock. „Systemeinstellung folgen“ liest „Symbol- und Widgetstil“ in Systemeinstellungen › Erscheinungsbild.";
+"settings.dockIconBackground.description" = "Gilt für das Live-Symbol im Dock. „Systemeinstellung folgen“ liest „Symbol- und Widgetstil“ in Systemeinstellungen › Erscheinungsbild (macOS 26 oder neuer).";
 "settings.dockIconBackground.system" = "Systemeinstellung folgen";
 "settings.dockIconBackground.dark" = "Dunkel";
 "settings.dockIconBackground.light" = "Hell";

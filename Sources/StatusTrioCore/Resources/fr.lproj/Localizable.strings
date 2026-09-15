@@ -17,7 +17,7 @@
 "settings.appIconPlacement.dock" = "Dock";
 "settings.appIconPlacement.both" = "Les deux";
 "settings.dockIconBackground" = "Fond de l’icône du Dock";
-"settings.dockIconBackground.description" = "S’applique à l’icône dynamique du Dock. « Suivre le système » lit « Style des icônes et widgets » dans Réglages du système › Apparence.";
+"settings.dockIconBackground.description" = "S’applique à l’icône dynamique du Dock. « Suivre le système » lit « Style des icônes et widgets » dans Réglages du système › Apparence (macOS 26 ou ultérieur).";
 "settings.dockIconBackground.system" = "Suivre le système";
 "settings.dockIconBackground.dark" = "Sombre";
 "settings.dockIconBackground.light" = "Clair";

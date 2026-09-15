@@ -17,7 +17,7 @@
 "settings.appIconPlacement.dock" = "Dock";
 "settings.appIconPlacement.both" = "둘 다";
 "settings.dockIconBackground" = "Dock 아이콘 배경";
-"settings.dockIconBackground.description" = "Dock에 표시되는 실시간 아이콘에 적용됩니다. '시스템 설정 따르기'는 '시스템 설정 › 모양 › 아이콘 및 위젯 스타일'을 읽습니다.";
+"settings.dockIconBackground.description" = "Dock에 표시되는 실시간 아이콘에 적용됩니다. '시스템 설정 따르기'는 '시스템 설정 › 모양 › 아이콘 및 위젯 스타일'을 읽습니다(macOS 26 이상).";
 "settings.dockIconBackground.system" = "시스템 설정 따르기";
 "settings.dockIconBackground.dark" = "어두운 색";
 "settings.dockIconBackground.light" = "밝은 색";
