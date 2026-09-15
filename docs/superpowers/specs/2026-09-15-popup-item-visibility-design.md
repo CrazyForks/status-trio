@@ -1,86 +1,69 @@
-# Popup Item Visibility Design
+# Popup 项目显示开关设计
 
-## Goal
+## 目标
 
-Let users choose which status sections appear in the status popup. The existing
-order preference remains available, but order and visibility become independent
-settings.
+允许用户选择哪些状态项目显示在状态 Popup 中。现有排序偏好继续保留，但排序和显示开关成为两个相互独立的能力。
 
-## Defaults and Migration
+## 默认值与迁移
 
-- Battery, Network, and Volume are enabled by default.
-- Bluetooth is disabled by default.
-- A fresh install therefore shows Battery, Network, and Volume in the popup.
-- Existing installs without a visibility preference also adopt these defaults.
-- Existing popup ordering is preserved. Disabled sections keep their position
-  in the settings list and reappear at that position when enabled again.
-- Unknown persisted section identifiers are ignored.
+- 电量、网络和音量默认开启。
+- 蓝牙默认关闭。
+- 全新安装时，Popup 默认显示电量、网络和音量。
+- 已有用户如果尚未保存过显示开关，也采用以上默认值。
+- 已有 Popup 排序保持不变。关闭的项目继续保留在设置列表中的原位置，重新开启后回到原来的顺序位置。
+- 持久化数据中的未知项目标识会被忽略。
 
-## Settings UI
+## 设置界面
 
-The existing Popup Order section becomes Popup Items.
+现有的“Popup 排序”区域改为“Popup 项目”。
 
-- Every row has a checkbox-style visibility toggle, the section icon and title,
-  and the existing drag handle.
-- Changing a toggle immediately updates popup visibility and persists it.
-- Dragging continues to change only the full section order, including disabled
-  sections.
-- These settings affect the popup only. They do not change menu bar icon
-  behavior or monitor availability for Battery, Network, or Volume.
+- 每一行包含复选框样式的显示开关、项目图标和名称，以及现有的拖拽手柄。
+- 修改开关后立即更新 Popup 显示状态并持久化。
+- 拖拽仍然只调整所有项目的完整顺序，包括当前关闭的项目。
+- 这些设置只影响 Popup，不改变菜单栏图标行为，也不改变电量、网络和音量监控器的可用性。
 
-## Popup Rendering
+## Popup 渲染
 
-The popup renders the stored order filtered by the enabled section set.
+Popup 根据保存的顺序过滤出已开启的项目进行渲染。
 
-- Dividers are inserted only between visible sections.
-- Bluetooth is absent from the initial popup because it is disabled by default.
-- Network keeps its existing default behavior and permission flow. Selecting the
-  Network permission action still requests location access in the same way as
-  before.
+- 分隔线只插入到可见项目之间。
+- 因为蓝牙默认关闭，所以初始 Popup 中不会显示蓝牙。
+- 网络保持现有默认行为和权限流程。选择网络权限操作时，仍然按照现有方式申请定位权限。
 
-## Bluetooth Permission Flow
+## 蓝牙权限流程
 
-Bluetooth remains lazy: the app does not create `CBCentralManager` at launch.
+蓝牙继续采用延迟启动策略：App 启动时不会创建 `CBCentralManager`。
 
-- Enabling the Bluetooth row is the first action allowed to start
-  `BluetoothDeviceController` and trigger the macOS Bluetooth permission
-  prompt.
-- The settings window activates the app before starting CoreBluetooth so the
-  system prompt is presented in front.
-- The app does not cancel the preference if permission is denied or dismissed.
-  The Bluetooth popup continues to show the existing denied, restricted, or
-  retry states.
-- Disabling Bluetooth stops the Bluetooth monitor and removes the Bluetooth
-  section from the popup.
-- Opening the popup by itself must not start CoreBluetooth.
+- 在设置中开启蓝牙，是第一个允许启动 `BluetoothDeviceController` 并触发 macOS 蓝牙权限弹窗的操作。
+- 设置窗口会先激活 App，再启动 CoreBluetooth，确保系统权限弹窗显示在前台。
+- 如果用户拒绝或关闭权限弹窗，App 不会自动关闭该偏好。蓝牙 Popup 继续显示现有的拒绝、受限或重试状态。
+- 关闭蓝牙时停止蓝牙监控，并从 Popup 中移除蓝牙项目。
+- 仅打开 Popup 不得启动 CoreBluetooth。
 
-## Data Model
+## 数据模型
 
-`SettingsStore` owns a persisted set of enabled `PopupSection` values.
+`SettingsStore` 负责保存已开启的 `PopupSection` 集合。
 
-- The full order remains `popupSectionOrder`.
-- `visiblePopupSections` returns `popupSectionOrder` filtered by the enabled set.
-- `setPopupSection(_:enabled:)` updates and persists visibility.
-- Missing storage uses the default set: Battery, Network, and Volume.
+- 完整顺序继续由 `popupSectionOrder` 保存。
+- `visiblePopupSections` 根据已开启集合过滤 `popupSectionOrder`。
+- `setPopupSection(_:enabled:)` 更新并持久化显示开关。
+- 未保存过显示开关时，使用默认集合：电量、网络和音量。
 
-`SystemStatusStore` exposes Bluetooth lifecycle methods used by the settings UI:
+`SystemStatusStore` 向设置界面提供蓝牙生命周期方法：
 
-- Enabling starts Bluetooth monitoring and requests authorization.
-- Disabling stops Bluetooth monitoring.
+- 开启时启动蓝牙监控并申请权限。
+- 关闭时停止蓝牙监控。
 
-## Testing
+## 测试
 
-- Settings tests cover defaults, persistence, sanitization, and filtering by
-  visibility without changing order.
-- Bluetooth timing tests verify that opening the popup does not start
-  CoreBluetooth, enabling Bluetooth does, and disabling Bluetooth stops it.
-- Existing localization coverage must pass for all supported languages.
-- Run `swift test` and `swift build -c release`.
-- Run a non-publishing release workflow preflight because the change touches
-  `@MainActor`, SwiftUI bindings, and CoreBluetooth lifecycle.
+- 设置测试覆盖默认值、持久化、数据清理，以及在不改变顺序的情况下按显示开关过滤。
+- 蓝牙时序测试验证：仅打开 Popup 不启动 CoreBluetooth；开启蓝牙会启动；关闭蓝牙会停止。
+- 现有全部语言本地化测试必须通过。
+- 运行 `swift test` 和 `swift build -c release`。
+- 因为改动涉及 `@MainActor`、SwiftUI 绑定和 CoreBluetooth 生命周期，必须运行一次 `publish=false` 的 release workflow 预检。
 
-## Out of Scope
+## 不在本次范围内
 
-- Changing menu bar icon visibility.
-- Adding or removing `PopupSection` cases.
-- Requesting Bluetooth permission before the user enables the Bluetooth item.
+- 修改菜单栏图标显示开关。
+- 增加或删除 `PopupSection` 类型。
+- 在用户开启蓝牙项目之前申请蓝牙权限。
