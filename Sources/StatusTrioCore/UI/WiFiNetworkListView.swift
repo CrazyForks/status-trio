@@ -187,8 +187,9 @@ struct WiFiNetworkListView: View {
         case .idle, .connecting(_), .ready:
             if wifi.nameAccess == .notDetermined {
                 Button(localization.string(.wifiActionRequestNameAccess), action: onRequestNameAccess)
-                    .buttonStyle(.link)
+                    .buttonStyle(.plain)
                     .font(.caption)
+                    .foregroundStyle(.secondary)
             }
         }
     }

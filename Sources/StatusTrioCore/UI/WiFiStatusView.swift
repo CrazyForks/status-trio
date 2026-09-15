@@ -54,8 +54,9 @@ struct WiFiStatusView: View {
                 .truncationMode(.tail)
         } else if wifi.state.isNetworkAssociated && wifi.nameAccess == .notDetermined {
             Button(localization.string(.wifiActionRequestNameAccess), action: onRequestNameAccess)
-                .buttonStyle(.link)
+                .buttonStyle(.plain)
                 .font(.caption)
+                .foregroundStyle(.secondary)
                 .lineLimit(1)
         } else if wifi.state.isNetworkAssociated
                     && (wifi.nameAccess == .denied || wifi.nameAccess == .restricted) {
