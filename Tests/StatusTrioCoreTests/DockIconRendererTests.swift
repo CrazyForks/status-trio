@@ -9,17 +9,17 @@ final class DockIconRendererTests: XCTestCase {
             image.representations.first as? NSBitmapImageRep
         )
 
-        XCTAssertEqual(image.size, NSSize(width: 512, height: 512))
-        XCTAssertEqual(representation.pixelsWide, 1024)
-        XCTAssertEqual(representation.pixelsHigh, 1024)
+        XCTAssertEqual(image.size, NSSize(width: 256, height: 256))
+        XCTAssertEqual(representation.pixelsWide, 512)
+        XCTAssertEqual(representation.pixelsHigh, 512)
         XCTAssertFalse(image.isTemplate)
     }
 
     func testDockIconKeepsTransparentMarginAndDarkBody() throws {
         let pixels = try pixels(for: .placeholder)
         let corner = pixels.rgba(x: 0, y: 0)
-        let margin = pixels.rgba(x: 512, y: 8)
-        let body = pixels.rgba(x: 120, y: 512)
+        let margin = pixels.rgba(x: pixels.width / 2, y: pixels.height / 50)
+        let body = pixels.rgba(x: pixels.width * 12 / 100, y: pixels.height / 2)
 
         XCTAssertEqual(corner.alpha, 0)
         XCTAssertEqual(margin.alpha, 0)
@@ -54,8 +54,8 @@ final class DockIconRendererTests: XCTestCase {
 
     func testLightStyleUsesWhiteBody() throws {
         let pixels = try pixels(for: .placeholder, backgroundStyle: .light)
-        let margin = pixels.rgba(x: 512, y: 8)
-        let body = pixels.rgba(x: 120, y: 512)
+        let margin = pixels.rgba(x: pixels.width / 2, y: pixels.height / 50)
+        let body = pixels.rgba(x: pixels.width * 12 / 100, y: pixels.height / 2)
 
         XCTAssertEqual(margin.alpha, 0)
         XCTAssertGreaterThan(body.alpha, 250)
@@ -90,7 +90,7 @@ final class DockIconRendererTests: XCTestCase {
 
     func testDarkStyleStaysUnchangedByLightPalette() throws {
         let pixels = try pixels(for: .placeholder, backgroundStyle: .dark)
-        let body = pixels.rgba(x: 120, y: 512)
+        let body = pixels.rgba(x: pixels.width * 12 / 100, y: pixels.height / 2)
 
         XCTAssertLessThanOrEqual(abs(Int(body.red) - 21), 3)
         XCTAssertLessThanOrEqual(abs(Int(body.green) - 21), 3)
@@ -99,8 +99,8 @@ final class DockIconRendererTests: XCTestCase {
 
     func testClearStyleUsesTranslucentLightBody() throws {
         let pixels = try pixels(for: .placeholder, backgroundStyle: .clear)
-        let margin = pixels.rgba(x: 512, y: 8)
-        let body = pixels.rgba(x: 120, y: 512)
+        let margin = pixels.rgba(x: pixels.width / 2, y: pixels.height / 50)
+        let body = pixels.rgba(x: pixels.width * 12 / 100, y: pixels.height / 2)
 
         XCTAssertEqual(margin.alpha, 0)
         XCTAssertGreaterThan(body.alpha, 80)

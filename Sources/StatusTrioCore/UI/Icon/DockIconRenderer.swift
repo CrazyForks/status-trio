@@ -2,8 +2,12 @@ import AppKit
 import CoreGraphics
 
 enum DockIconRenderer {
-    static let logicalSize: CGFloat = 512
-    static let pixelSize = 1024
+    static let logicalSize: CGFloat = 256
+    static let pixelSize = 512
+
+    /// All geometry below is expressed in the AppIcon.svg 1024 pt design space
+    /// and scaled down when the bitmap is rendered.
+    private static let designLength: CGFloat = 1024
 
     // Geometry mirrors Support/AppIcon.svg.
     private static let bodyRect = CGRect(x: 64, y: 64, width: 896, height: 896)
@@ -69,16 +73,6 @@ enum DockIconRenderer {
         backgroundStyle: DockIconBackgroundStyle = .dark
     ) -> NSImage? {
         let palette = palette(for: backgroundStyle)
-        guard let glyph = StatusIconRenderer.render(
-            menuBarStatus: status,
-            size: glyphSVGSize,
-            scale: 1,
-            foreground: palette.foreground,
-            options: options,
-            connectionOptions: connectionOptions
-        ) else {
-            return nil
-        }
 
         let canvasLength = CGFloat(pixelSize)
         guard let context = CGContext(
@@ -92,6 +86,8 @@ enum DockIconRenderer {
         ) else {
             return nil
         }
+
+        context.scaleBy(x: canvasLength / designLength, y: canvasLength / designLength)
 
         context.addPath(roundedRect(
             bodyRect,
@@ -108,14 +104,17 @@ enum DockIconRenderer {
         context.setLineWidth(2)
         context.strokePath()
 
-        context.draw(
-            glyph,
-            in: CGRect(
+        StatusIconRenderer.draw(
+            menuBarStatus: status,
+            options: options,
+            connectionOptions: connectionOptions,
+            foreground: palette.foreground,
+            in: context,
+            origin: CGPoint(
                 x: glyphSVGOrigin.x,
-                y: canvasLength - glyphSVGOrigin.y - glyphSVGSize,
-                width: glyphSVGSize,
-                height: glyphSVGSize
-            )
+                y: designLength - glyphSVGOrigin.y - glyphSVGSize
+            ),
+            size: glyphSVGSize
         )
 
         guard let output = context.makeImage() else { return nil }
