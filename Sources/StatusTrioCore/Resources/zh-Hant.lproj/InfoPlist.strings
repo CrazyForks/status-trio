@@ -1,1 +1,2 @@
-"NSLocationWhenInUseUsageDescription" = "用於在彈出式視窗中顯示目前連接的 Wi-Fi 網路名稱。";
+"NSLocationWhenInUseUsageDescription" = "Used to show the current Wi-Fi network name in the popover and, when you open Wi-Fi details, to read network names, scan results, and connection information.";
+"NSBluetoothAlwaysUsageDescription" = "Used only when you open Bluetooth details to show paired-device connection status.";

@@ -20,6 +20,7 @@ final class SettingsRowHitAreaTests: XCTestCase {
             openBatterySettings: {},
             openWiFiSettings: {},
             openLocationSettings: {},
+            openBluetoothSettings: {},
             openSettings: {},
             openSoundSettings: {},
             quit: {}
@@ -32,7 +33,7 @@ final class SettingsRowHitAreaTests: XCTestCase {
         )
 
         XCTAssertTrue(
-            hitAreaWidths.contains { abs($0 - 272) < 0.5 },
+            hitAreaWidths.contains { abs($0 - 268) < 0.5 },
             "Expected the Settings row to react across the popup content width, got \(hitAreaWidths)"
         )
     }

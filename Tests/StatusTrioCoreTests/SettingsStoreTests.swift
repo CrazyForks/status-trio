@@ -297,10 +297,10 @@ final class SettingsStoreTests: XCTestCase {
         )
     }
 
-    func testPopupSectionOrderDefaultsToBatteryNetworkVolume() {
+    func testPopupSectionOrderDefaultsToBatteryNetworkBluetoothVolume() {
         let store = SettingsStore(defaults: makeSuite().defaults)
 
-        XCTAssertEqual(store.popupSectionOrder, [.battery, .network, .volume])
+        XCTAssertEqual(store.popupSectionOrder, [.battery, .network, .bluetooth, .volume])
     }
 
     func testMovingPopupSectionsPersistsOrder() {
@@ -309,14 +309,14 @@ final class SettingsStoreTests: XCTestCase {
 
         let store = SettingsStore(defaults: suite.defaults)
         store.movePopupSections(
-            fromOffsets: IndexSet(integer: 2),
+            fromOffsets: IndexSet(integer: 3),
             toOffset: 0
         )
 
-        XCTAssertEqual(store.popupSectionOrder, [.volume, .battery, .network])
+        XCTAssertEqual(store.popupSectionOrder, [.volume, .battery, .network, .bluetooth])
         XCTAssertEqual(
             SettingsStore(defaults: suite.defaults).popupSectionOrder,
-            [.volume, .battery, .network]
+            [.volume, .battery, .network, .bluetooth]
         )
     }
 
@@ -331,10 +331,22 @@ final class SettingsStoreTests: XCTestCase {
 
         let store = SettingsStore(defaults: suite.defaults)
 
-        XCTAssertEqual(store.popupSectionOrder, [.volume, .network, .battery])
+        XCTAssertEqual(store.popupSectionOrder, [.volume, .network, .battery, .bluetooth])
+    }
+
+    func testPopupSectionMetadataIncludesBluetooth() {
+        XCTAssertEqual(PopupSection.bluetooth.titleKey, .bluetoothTitle)
+        XCTAssertNotNil(BluetoothIcon.templateImage)
+        XCTAssertNotNil(
+            NSImage(
+                systemSymbolName: PopupSection.bluetooth.systemImage,
+                accessibilityDescription: nil
+            )
+        )
     }
 
     func testEveryConfigurableSizeRendersAtThatSize() throws {
+
         for value in stride(
             from: SettingsStore.iconSizeRange.lowerBound,
             through: SettingsStore.iconSizeRange.upperBound,

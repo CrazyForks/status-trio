@@ -259,6 +259,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
                 openBatterySettings: handleOpenBatterySettings,
                 openWiFiSettings: handleOpenWiFiSettings,
                 openLocationSettings: handleOpenLocationSettings,
+                openBluetoothSettings: handleOpenBluetoothSettings,
                 openSettings: handleOpenSettings,
                 openSoundSettings: handleOpenSoundSettings,
                 quit: quitAction
@@ -453,7 +454,16 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         removePopoverDismissMonitor()
         removeVolumeScrollMonitor()
         store.setPopoverVisible(false)
-        schedulePopoverContentRelease()
+        // A detail panel keeps its own SwiftUI state, so reusing the built content
+        // would reopen on that panel; drop it straight away in that case.
+        let hadOpenDetails = store.hasActivePopoverDetails
+        store.closePopoverDetails()
+        if hadOpenDetails {
+            cancelPopoverContentRelease()
+            popover.contentViewController = nil
+        } else {
+            schedulePopoverContentRelease()
+        }
     }
 
     /// Keeping the built content for a while makes rapid reopen cheap; releasing
@@ -568,6 +578,11 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         Self.openSystemSoundSettings()
     }
 
+    private func handleOpenBluetoothSettings() {
+        popover.performClose(nil)
+        Self.openSystemSettings(Self.bluetoothSettingsURLs)
+    }
+
     static let batterySettingsURLs = [
         "x-apple.systempreferences:com.apple.Battery-Settings.extension",
         "x-apple.systempreferences:com.apple.preference.battery"
@@ -577,6 +592,12 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     static let wifiSettingsURLs = [
         "x-apple.systempreferences:com.apple.Network-Settings.extension",
         "x-apple.systempreferences:com.apple.preference.network"
+    ]
+    .compactMap(URL.init(string:))
+
+    static let bluetoothSettingsURLs = [
+        "x-apple.systempreferences:com.apple.BluetoothSettings",
+        "x-apple.systempreferences:com.apple.preference.bluetooth"
     ]
     .compactMap(URL.init(string:))
 

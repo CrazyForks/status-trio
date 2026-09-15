@@ -46,6 +46,31 @@ final class SystemStatusStoreTests: XCTestCase {
         XCTAssertEqual(SystemStatusStore.popupDebounceInterval, .milliseconds(500))
     }
 
+    func testReportsWhetherPopoverDetailsAreOpen() {
+        let wifiNetworks = WiFiNetworkController()
+        let bluetoothDevices = BluetoothDeviceController()
+        let store = SystemStatusStore(
+            batteryMonitor: FakeBatteryMonitor(),
+            wifiMonitor: FakeWiFiMonitor(),
+            volumeMonitor: FakeVolumeMonitor(),
+            wifiNetworks: wifiNetworks,
+            bluetoothDevices: bluetoothDevices
+        )
+        XCTAssertFalse(store.hasActivePopoverDetails)
+
+        wifiNetworks.activate(nameAccess: .authorized)
+        XCTAssertTrue(store.hasActivePopoverDetails)
+
+        store.closePopoverDetails()
+        XCTAssertFalse(store.hasActivePopoverDetails)
+
+        bluetoothDevices.activate()
+        XCTAssertTrue(store.hasActivePopoverDetails)
+
+        store.closePopoverDetails()
+        XCTAssertFalse(store.hasActivePopoverDetails)
+    }
+
     func testPopupSnapshotDebouncesRapidUpdates() async {
         let battery = FakeBatteryMonitor()
         let sleeper = ManualSleeper()

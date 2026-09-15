@@ -9,6 +9,8 @@ final class SystemStatusStore: ObservableObject {
     @Published private(set) var snapshot: StatusSnapshot
     @Published private(set) var popupSnapshot: StatusSnapshot
     @Published private(set) var liveVolume: VolumeStatus
+    let wifiNetworks: WiFiNetworkController
+    let bluetoothDevices: BluetoothDeviceController
 
     private let batteryMonitor: any BatteryMonitoring
     private let wifiMonitor: any WiFiMonitoring
@@ -41,6 +43,8 @@ final class SystemStatusStore: ObservableObject {
             try await Task.sleep(for: $0)
         },
         wakeNotificationCenter: NotificationCenter = NSWorkspace.shared.notificationCenter,
+        wifiNetworks: WiFiNetworkController = WiFiNetworkController(),
+        bluetoothDevices: BluetoothDeviceController = BluetoothDeviceController(),
         initialSnapshot: StatusSnapshot = .placeholder
     ) {
         self.batteryMonitor = batteryMonitor
@@ -52,6 +56,8 @@ final class SystemStatusStore: ObservableObject {
         self.sleep = sleep
         self.popupDebounceSleep = popupDebounceSleep
         self.wakeNotificationCenter = wakeNotificationCenter
+        self.wifiNetworks = wifiNetworks
+        self.bluetoothDevices = bluetoothDevices
         self.snapshot = initialSnapshot
         self.popupSnapshot = initialSnapshot
         self.liveVolume = initialSnapshot.volume
@@ -156,6 +162,8 @@ final class SystemStatusStore: ObservableObject {
         refreshTask = nil
         popupPublishTask?.cancel()
         popupPublishTask = nil
+        wifiNetworks.deactivate()
+        bluetoothDevices.deactivate()
     }
 
     var isVolumeControlAvailable: Bool {
@@ -214,6 +222,27 @@ final class SystemStatusStore: ObservableObject {
         popupPublishTask = nil
         popupSnapshot = snapshot
         refreshAll()
+        wifiNetworks.refresh(nameAccess: popupSnapshot.wifi.nameAccess)
+    }
+
+    func activateWiFiPanel() {
+        guard !hasStopped else { return }
+        wifiNetworks.activate(nameAccess: popupSnapshot.wifi.nameAccess)
+    }
+
+    func activateBluetoothPanel() {
+        guard !hasStopped else { return }
+        bluetoothDevices.activate()
+    }
+
+    func closePopoverDetails() {
+        wifiNetworks.deactivate()
+        bluetoothDevices.deactivate()
+    }
+
+    /// Whether a popover detail panel (Wi-Fi or Bluetooth list) is currently open.
+    var hasActivePopoverDetails: Bool {
+        wifiNetworks.isActive || bluetoothDevices.isActive
     }
 
     func refreshAll() {
@@ -236,6 +265,7 @@ final class SystemStatusStore: ObservableObject {
 
     private func applyWiFi(_ value: WiFiStatus) {
         publish(snapshot.replacingWiFi(value))
+        wifiNetworks.refresh(nameAccess: value.nameAccess)
     }
 
     private func applyConnection(_ value: NetworkConnection) {
