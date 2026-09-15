@@ -8,7 +8,7 @@ struct AppIconControllerTests {
         let harness = try AppIconControllerHarness()
         defer { harness.cleanUp() }
         harness.controller.start()
-        harness.log.events.removeAll()
+        harness.log.reset()
 
         harness.settings.appIconPlacement = .dock
 
@@ -19,7 +19,7 @@ struct AppIconControllerTests {
         let harness = try AppIconControllerHarness(acceptsActivationPolicy: false)
         defer { harness.cleanUp() }
         harness.controller.start()
-        harness.log.events.removeAll()
+        harness.log.reset()
 
         harness.settings.appIconPlacement = .dock
 
@@ -34,7 +34,7 @@ struct AppIconControllerTests {
         defer { harness.cleanUp() }
         harness.controller.start()
         harness.activationPolicy.enterTemporaryRegularMode()
-        harness.log.events.removeAll()
+        harness.log.reset()
 
         harness.settings.appIconPlacement = .dock
 
@@ -45,7 +45,7 @@ struct AppIconControllerTests {
         let harness = try AppIconControllerHarness(initialPlacement: .dock)
         defer { harness.cleanUp() }
         harness.controller.start()
-        harness.log.events.removeAll()
+        harness.log.reset()
 
         harness.settings.appIconPlacement = .menuBar
 
@@ -55,7 +55,7 @@ struct AppIconControllerTests {
     @Test func bothPlacementKeepsMenuBarVisible() throws {
         let harness = try AppIconControllerHarness(initialPlacement: .both)
         defer { harness.cleanUp() }
-        harness.log.events.removeAll()
+        harness.log.reset()
 
         harness.controller.start()
 
@@ -66,7 +66,7 @@ struct AppIconControllerTests {
         let harness = try AppIconControllerHarness(initialPlacement: .menuBar)
         defer { harness.cleanUp() }
         harness.controller.start()
-        harness.log.renderCount = 0
+        harness.log.reset()
 
         harness.publishDifferentSnapshot()
         try await Task.sleep(for: .milliseconds(900))
@@ -78,12 +78,24 @@ struct AppIconControllerTests {
         let harness = try AppIconControllerHarness(initialPlacement: .dock)
         defer { harness.cleanUp() }
         harness.controller.start()
-        harness.log.renderCount = 0
+        harness.log.reset()
 
         harness.publishDifferentSnapshot()
         try await Task.sleep(for: .milliseconds(900))
 
         #expect(harness.log.renderCount == 1)
+    }
+
+    @Test func changingBackgroundStyleRendersAgain() throws {
+        let harness = try AppIconControllerHarness(initialPlacement: .dock)
+        defer { harness.cleanUp() }
+        harness.controller.start()
+        harness.log.reset()
+
+        harness.settings.dockIconBackgroundStyle = .light
+
+        #expect(harness.log.events == ["dock:image"])
+        #expect(harness.log.backgroundStyles == [.light])
     }
 
     @Test func stopRestoresBundledDockIcon() throws {
@@ -95,7 +107,7 @@ struct AppIconControllerTests {
         harness.controller.stop()
 
         #expect(harness.application.applicationIconImage == nil)
-        harness.log.events.removeAll()
+        harness.log.reset()
         harness.controller.stop()
         #expect(harness.log.events.isEmpty)
     }
@@ -155,8 +167,9 @@ private final class AppIconControllerHarness {
             setMenuBarVisible: { isVisible in
                 log.events.append(isVisible ? "menu:true" : "menu:false")
             },
-            renderDockIcon: { _, _, _ in
+            renderDockIcon: { _, _, _, backgroundStyle in
                 log.renderCount += 1
+                log.backgroundStyles.append(backgroundStyle)
                 return NSImage(size: NSSize(width: 512, height: 512))
             }
         )
@@ -188,6 +201,13 @@ private enum AppIconHarnessError: Error {
 private final class AppIconEventLog {
     var events: [String] = []
     var renderCount = 0
+    var backgroundStyles: [DockIconBackgroundStyle] = []
+
+    func reset() {
+        events.removeAll()
+        renderCount = 0
+        backgroundStyles.removeAll()
+    }
 }
 
 @MainActor

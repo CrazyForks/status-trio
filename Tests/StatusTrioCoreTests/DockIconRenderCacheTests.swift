@@ -7,7 +7,8 @@ struct DockIconRenderCacheTests {
         let key = DockIconRenderKey(
             status: .placeholder,
             options: .standard,
-            connectionOptions: .standard
+            connectionOptions: .standard,
+            backgroundStyle: .dark
         )
 
         let rendersFirstTime = cache.shouldRender(key)
@@ -24,7 +25,8 @@ struct DockIconRenderCacheTests {
         let first = DockIconRenderKey(
             status: .placeholder,
             options: .standard,
-            connectionOptions: .standard
+            connectionOptions: .standard,
+            backgroundStyle: .dark
         )
         let second = DockIconRenderKey(
             status: MenuBarStatus(snapshot: StatusSnapshot(
@@ -33,7 +35,8 @@ struct DockIconRenderCacheTests {
                 volume: .placeholder
             )),
             options: .standard,
-            connectionOptions: .standard
+            connectionOptions: .standard,
+            backgroundStyle: .dark
         )
 
         let rendersFirst = cache.shouldRender(first)
@@ -49,7 +52,8 @@ struct DockIconRenderCacheTests {
         let base = DockIconRenderKey(
             status: .placeholder,
             options: .standard,
-            connectionOptions: .standard
+            connectionOptions: .standard,
+            backgroundStyle: .dark
         )
         let changedOptions = DockIconRenderKey(
             status: .placeholder,
@@ -59,12 +63,37 @@ struct DockIconRenderCacheTests {
                 usesStatusColors: false,
                 criticalThreshold: 30
             ),
-            connectionOptions: .standard
+            connectionOptions: .standard,
+            backgroundStyle: .dark
         )
 
         let rendersBase = cache.shouldRender(base)
         let rendersChangedOptions = cache.shouldRender(changedOptions)
         #expect(rendersBase)
         #expect(rendersChangedOptions)
+    }
+
+    @Test func rendersAgainWhenBackgroundStyleChanges() {
+        var cache = DockIconRenderCache()
+        let darkKey = DockIconRenderKey(
+            status: .placeholder,
+            options: .standard,
+            connectionOptions: .standard,
+            backgroundStyle: .dark
+        )
+        let lightKey = DockIconRenderKey(
+            status: .placeholder,
+            options: .standard,
+            connectionOptions: .standard,
+            backgroundStyle: .light
+        )
+
+        let rendersDark = cache.shouldRender(darkKey)
+        let rendersLight = cache.shouldRender(lightKey)
+        let rendersDarkAgain = cache.shouldRender(darkKey)
+
+        #expect(rendersDark)
+        #expect(rendersLight)
+        #expect(rendersDarkAgain)
     }
 }

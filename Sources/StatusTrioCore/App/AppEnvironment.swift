@@ -86,11 +86,12 @@ final class AppEnvironment {
             setMenuBarVisible: { isVisible in
                 controller.setVisible(isVisible)
             },
-            renderDockIcon: { status, options, connectionOptions in
+            renderDockIcon: { status, options, connectionOptions, backgroundStyle in
                 DockIconRenderer.image(
                     status: status,
                     options: options,
-                    connectionOptions: connectionOptions
+                    connectionOptions: connectionOptions,
+                    backgroundStyle: backgroundStyle
                 )
             }
         )

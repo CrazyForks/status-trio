@@ -17,7 +17,8 @@ final class AppIconController {
     typealias DockRenderer = (
         _ status: MenuBarStatus,
         _ options: BatteryIconOptions,
-        _ connectionOptions: ConnectionIconOptions
+        _ connectionOptions: ConnectionIconOptions,
+        _ backgroundStyle: DockIconBackgroundStyle
     ) -> NSImage?
 
     static let snapshotDebounceInterval: TimeInterval = 0.5
@@ -34,6 +35,7 @@ final class AppIconController {
     private var currentPlacement: AppIconPlacement
     private var currentBatteryOptions: BatteryIconOptions
     private var currentConnectionOptions: ConnectionIconOptions
+    private var currentBackgroundStyle: DockIconBackgroundStyle
     private var isStarted = false
 
     init(
@@ -53,6 +55,7 @@ final class AppIconController {
         self.currentPlacement = settings.appIconPlacement
         self.currentBatteryOptions = settings.batteryIconOptions
         self.currentConnectionOptions = settings.connectionIconOptions
+        self.currentBackgroundStyle = settings.dockIconBackgroundStyle
     }
 
     func start() {
@@ -64,6 +67,7 @@ final class AppIconController {
         subscribeToSnapshot()
         subscribeToBatteryOptions()
         subscribeToConnectionOptions()
+        subscribeToBackgroundStyle()
     }
 
     func stop() {
@@ -157,6 +161,18 @@ final class AppIconController {
         .store(in: &cancellables)
     }
 
+    private func subscribeToBackgroundStyle() {
+        settings.$dockIconBackgroundStyle
+            .removeDuplicates()
+            .dropFirst()
+            .sink { [weak self] backgroundStyle in
+                guard let self else { return }
+                currentBackgroundStyle = backgroundStyle
+                renderLatestDockIcon()
+            }
+            .store(in: &cancellables)
+    }
+
     private func apply(_ placement: AppIconPlacement) {
         currentPlacement = placement
 
@@ -183,14 +199,16 @@ final class AppIconController {
         let key = DockIconRenderKey(
             status: MenuBarStatus(snapshot: store.snapshot),
             options: currentBatteryOptions,
-            connectionOptions: currentConnectionOptions
+            connectionOptions: currentConnectionOptions,
+            backgroundStyle: currentBackgroundStyle
         )
         guard renderCache.shouldRender(key) else { return }
 
         guard let image = renderDockIcon(
             key.status,
             currentBatteryOptions,
-            currentConnectionOptions
+            currentConnectionOptions,
+            currentBackgroundStyle
         ) else {
             if !hasRenderedDockIcon {
                 application.setApplicationIconImage(nil)

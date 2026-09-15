@@ -2,6 +2,7 @@ struct DockIconRenderKey: Equatable {
     let status: MenuBarStatus
     let options: BatteryIconOptions
     let connectionOptions: ConnectionIconOptions
+    let backgroundStyle: DockIconBackgroundStyle
 }
 
 struct DockIconRenderCache {
