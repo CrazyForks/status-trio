@@ -2,10 +2,15 @@ import AppKit
 
 @MainActor
 protocol ApplicationActivationPolicyApplying: AnyObject {
+    var currentActivationPolicy: NSApplication.ActivationPolicy { get }
     func setActivationPolicy(_ activationPolicy: NSApplication.ActivationPolicy) -> Bool
 }
 
-extension NSApplication: ApplicationActivationPolicyApplying {}
+extension NSApplication: ApplicationActivationPolicyApplying {
+    var currentActivationPolicy: NSApplication.ActivationPolicy {
+        activationPolicy()
+    }
+}
 
 @MainActor
 final class AppActivationPolicy {
@@ -39,6 +44,10 @@ final class AppActivationPolicy {
             || temporaryRegularRequestCount > 0
             ? .regular
             : .accessory
-        return application.setActivationPolicy(policy)
+        // AppKit reports a redundant request as a failure even though the app is
+        // already in the requested state, so confirm against the live policy
+        // before treating a false result as a rejected transition.
+        let didApply = application.setActivationPolicy(policy)
+        return didApply || application.currentActivationPolicy == policy
     }
 }

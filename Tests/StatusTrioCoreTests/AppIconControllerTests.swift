@@ -26,6 +26,21 @@ struct AppIconControllerTests {
         #expect(harness.log.events == ["policy:regular", "menu:true"])
     }
 
+    @Test func dockOnlyHidesMenuBarWhileAppIsAlreadyRegular() throws {
+        // AppKit reports a redundant policy request as a failure even though the
+        // app already has the requested policy, which is what happens while the
+        // Settings window keeps the app in regular mode.
+        let harness = try AppIconControllerHarness(initialPlacement: .menuBar)
+        defer { harness.cleanUp() }
+        harness.controller.start()
+        harness.activationPolicy.enterTemporaryRegularMode()
+        harness.log.events.removeAll()
+
+        harness.settings.appIconPlacement = .dock
+
+        #expect(harness.log.events == ["policy:regular", "dock:image", "menu:false"])
+    }
+
     @Test func menuBarOnlyRestoresMenuBeforeRemovingDock() throws {
         let harness = try AppIconControllerHarness(initialPlacement: .dock)
         defer { harness.cleanUp() }
@@ -179,17 +194,27 @@ private final class AppIconEventLog {
 private final class AppIconApplicationSpy: ApplicationActivationPolicyApplying, ApplicationDockIconApplying {
     private let log: AppIconEventLog
     private let acceptsActivationPolicy: Bool
+    private(set) var currentActivationPolicy: NSApplication.ActivationPolicy
 
     private(set) var applicationIconImage: NSImage?
 
-    init(log: AppIconEventLog, acceptsActivationPolicy: Bool) {
+    init(
+        log: AppIconEventLog,
+        acceptsActivationPolicy: Bool,
+        currentActivationPolicy: NSApplication.ActivationPolicy = .accessory
+    ) {
         self.log = log
         self.acceptsActivationPolicy = acceptsActivationPolicy
+        self.currentActivationPolicy = currentActivationPolicy
     }
 
     func setActivationPolicy(_ activationPolicy: NSApplication.ActivationPolicy) -> Bool {
         log.events.append(activationPolicy == .regular ? "policy:regular" : "policy:accessory")
-        return acceptsActivationPolicy
+        guard acceptsActivationPolicy, currentActivationPolicy != activationPolicy else {
+            return false
+        }
+        currentActivationPolicy = activationPolicy
+        return true
     }
 
     func setApplicationIconImage(_ image: NSImage?) {

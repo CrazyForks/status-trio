@@ -95,9 +95,12 @@ final class SettingsWindowControllerTests: XCTestCase {
 @MainActor
 private final class SettingsActivationPolicyApplicationSpy: ApplicationActivationPolicyApplying {
     private(set) var policies: [NSApplication.ActivationPolicy] = []
+    private(set) var currentActivationPolicy: NSApplication.ActivationPolicy = .accessory
 
     func setActivationPolicy(_ activationPolicy: NSApplication.ActivationPolicy) -> Bool {
         policies.append(activationPolicy)
+        guard currentActivationPolicy != activationPolicy else { return false }
+        currentActivationPolicy = activationPolicy
         return true
     }
 }

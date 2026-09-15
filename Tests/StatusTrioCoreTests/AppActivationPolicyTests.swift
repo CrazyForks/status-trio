@@ -46,19 +46,45 @@ struct AppActivationPolicyTests {
 
         #expect(application.policies == [.regular, .accessory])
     }
+
+    @Test func treatsAlreadyAppliedPolicyAsSuccess() {
+        // AppKit reports false for redundant requests even though the app already
+        // has the requested policy.
+        let application = ActivationPolicyApplicationSpy(
+            result: false,
+            currentPolicy: .regular
+        )
+        let policy = AppActivationPolicy(application: application)
+
+        #expect(policy.setDockIconVisible(true))
+    }
+
+    @Test func reportsFailureWhenPolicyDidNotChange() {
+        let application = ActivationPolicyApplicationSpy(
+            result: false,
+            currentPolicy: .accessory
+        )
+        let policy = AppActivationPolicy(application: application)
+
+        #expect(policy.setDockIconVisible(true) == false)
+    }
 }
 
 @MainActor
 private final class ActivationPolicyApplicationSpy: ApplicationActivationPolicyApplying {
     private let result: Bool
     private(set) var policies: [NSApplication.ActivationPolicy] = []
+    private(set) var currentActivationPolicy: NSApplication.ActivationPolicy
 
-    init(result: Bool = true) {
+    init(result: Bool = true, currentPolicy: NSApplication.ActivationPolicy = .accessory) {
         self.result = result
+        self.currentActivationPolicy = currentPolicy
     }
 
     func setActivationPolicy(_ activationPolicy: NSApplication.ActivationPolicy) -> Bool {
         policies.append(activationPolicy)
+        guard result else { return false }
+        currentActivationPolicy = activationPolicy
         return result
     }
 }
