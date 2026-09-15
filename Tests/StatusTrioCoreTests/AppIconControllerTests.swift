@@ -38,7 +38,8 @@ struct AppIconControllerTests {
 
         harness.settings.appIconPlacement = .dock
 
-        #expect(harness.log.events == ["policy:regular", "dock:image", "menu:false"])
+        #expect(harness.log.events == ["policy:regular", "menu:false"])
+        #expect(harness.application.applicationIconImage != nil)
     }
 
     @Test func menuBarOnlyRestoresMenuBeforeRemovingDock() throws {
@@ -49,7 +50,32 @@ struct AppIconControllerTests {
 
         harness.settings.appIconPlacement = .menuBar
 
-        #expect(harness.log.events == ["menu:true", "dock:nil", "policy:accessory"])
+        #expect(harness.log.events == ["menu:true", "policy:accessory", "dock:nil"])
+    }
+
+    @Test func menuBarOnlyShowsLiveDockIconWhileWindowKeepsAppRegular() throws {
+        let harness = try AppIconControllerHarness(initialPlacement: .menuBar)
+        defer { harness.cleanUp() }
+        harness.controller.start()
+        harness.log.reset()
+
+        harness.activationPolicy.enterTemporaryRegularMode()
+
+        #expect(harness.log.events == ["policy:regular", "dock:image"])
+        #expect(harness.application.applicationIconImage != nil)
+    }
+
+    @Test func menuBarOnlyRemovesLiveDockIconAfterLastWindowCloses() throws {
+        let harness = try AppIconControllerHarness(initialPlacement: .menuBar)
+        defer { harness.cleanUp() }
+        harness.controller.start()
+        harness.activationPolicy.enterTemporaryRegularMode()
+        harness.log.reset()
+
+        harness.activationPolicy.leaveTemporaryRegularMode()
+
+        #expect(harness.log.events == ["policy:accessory", "dock:nil"])
+        #expect(harness.application.applicationIconImage == nil)
     }
 
     @Test func bothPlacementKeepsMenuBarVisible() throws {

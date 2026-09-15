@@ -63,6 +63,9 @@ final class AppIconController {
         isStarted = true
 
         apply(currentPlacement)
+        activationPolicy.dockTileVisibilityDidChange = { [weak self] _ in
+            self?.dockTileVisibilityChanged()
+        }
         subscribeToPlacement()
         subscribeToSnapshot()
         subscribeToBatteryOptions()
@@ -74,9 +77,23 @@ final class AppIconController {
         guard isStarted else { return }
         isStarted = false
         cancellables.removeAll()
+        activationPolicy.dockTileVisibilityDidChange = nil
+        clearDockIcon()
+    }
+
+    private func dockTileVisibilityChanged() {
+        guard activationPolicy.isDockTileVisible else {
+            clearDockIcon()
+            return
+        }
+        renderLatestDockIcon()
+    }
+
+    private func clearDockIcon() {
+        defer { renderCache.reset() }
+        guard hasRenderedDockIcon else { return }
         application.setApplicationIconImage(nil)
         hasRenderedDockIcon = false
-        renderCache.reset()
     }
 
     private func subscribeToPlacement() {
@@ -186,15 +203,12 @@ final class AppIconController {
             setMenuBarVisible(placement.showsMenuBarIcon)
         } else {
             setMenuBarVisible(true)
-            application.setApplicationIconImage(nil)
-            hasRenderedDockIcon = false
-            renderCache.reset()
             _ = activationPolicy.setDockIconVisible(false)
         }
     }
 
     private func renderLatestDockIcon() {
-        guard currentPlacement.showsDockIcon else { return }
+        guard activationPolicy.isDockTileVisible else { return }
 
         let key = DockIconRenderKey(
             status: MenuBarStatus(snapshot: store.snapshot),

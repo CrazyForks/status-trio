@@ -68,6 +68,35 @@ struct AppActivationPolicyTests {
 
         #expect(policy.setDockIconVisible(true) == false)
     }
+
+    @Test func reportsDockTileVisibilityWhileTemporaryOwnerIsActive() {
+        let application = ActivationPolicyApplicationSpy()
+        let policy = AppActivationPolicy(application: application)
+        var reported: [Bool] = []
+        policy.dockTileVisibilityDidChange = { reported.append($0) }
+
+        policy.enterTemporaryRegularMode()
+        policy.enterTemporaryRegularMode()
+        policy.leaveTemporaryRegularMode()
+        policy.leaveTemporaryRegularMode()
+
+        #expect(reported == [true, false])
+        #expect(policy.isDockTileVisible == false)
+    }
+
+    @Test func reportsDockTileVisibilityWhenPlacementKeepsIt() {
+        let application = ActivationPolicyApplicationSpy()
+        let policy = AppActivationPolicy(application: application)
+        var reported: [Bool] = []
+        policy.dockTileVisibilityDidChange = { reported.append($0) }
+
+        policy.enterTemporaryRegularMode()
+        policy.setDockIconVisible(true)
+        policy.leaveTemporaryRegularMode()
+        policy.setDockIconVisible(false)
+
+        #expect(reported == [true, false])
+    }
 }
 
 @MainActor
