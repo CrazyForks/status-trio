@@ -132,7 +132,6 @@ struct BluetoothDeviceListView: View {
                 .buttonStyle(.plain)
         }
         .onAppear { controller.activate() }
-        .onDisappear { controller.deactivate() }
     }
 
     private func section(_ title: String, devices: [BluetoothDevice]) -> some View {

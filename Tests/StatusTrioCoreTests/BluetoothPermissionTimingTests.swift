@@ -63,6 +63,34 @@ final class BluetoothPermissionTimingTests: XCTestCase {
         store.setBluetoothEnabled(false)
         XCTAssertEqual(stateMonitor.stopCount, 1)
     }
+
+    func testEnabledBluetoothMonitorSurvivesPopupClose() {
+        let stateMonitor = BluetoothStateMonitorSpy(authorization: .notDetermined)
+        let bluetoothController = BluetoothDeviceController(
+            stateMonitor: stateMonitor,
+            notificationCenter: NotificationCenter(),
+            workspaceNotificationCenter: NotificationCenter()
+        )
+        let store = SystemStatusStore(
+            batteryMonitor: EmptyBatteryMonitorForBluetoothTiming(),
+            wifiMonitor: EmptyWiFiMonitorForBluetoothTiming(),
+            volumeMonitor: EmptyVolumeMonitorForBluetoothTiming(),
+            bluetoothDevices: bluetoothController
+        )
+
+        store.setBluetoothEnabled(true)
+        XCTAssertEqual(stateMonitor.startCount, 1)
+
+        store.setPopoverVisible(true)
+        store.setPopoverVisible(false)
+        store.closePopoverDetails()
+
+        XCTAssertEqual(stateMonitor.stopCount, 0)
+        XCTAssertFalse(store.hasActivePopoverDetails)
+
+        store.setBluetoothEnabled(false)
+        XCTAssertEqual(stateMonitor.stopCount, 1)
+    }
 }
 
 @MainActor

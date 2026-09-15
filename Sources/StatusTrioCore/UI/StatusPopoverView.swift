@@ -282,7 +282,10 @@ struct StatusPopoverView: View {
             case .bluetooth:
                 BluetoothDeviceListView(
                     controller: store.bluetoothDevices,
-                    onBack: { panel = .summary },
+                    onBack: {
+                        store.closeBluetoothDetails()
+                        panel = .summary
+                    },
                     onRequestAuthorization: requestBluetoothAuthorization,
                     onOpenBluetoothSettings: openBluetoothSettings
                 )
@@ -346,7 +349,7 @@ struct StatusPopoverView: View {
             BluetoothStatusView(
                 controller: store.bluetoothDevices,
                 onOpenDetails: {
-                    requestBluetoothAuthorization()
+                    store.openBluetoothDetails()
                     panel = .bluetooth
                 },
                 onRequestAuthorization: requestBluetoothAuthorization,

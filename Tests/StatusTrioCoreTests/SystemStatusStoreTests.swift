@@ -64,10 +64,16 @@ final class SystemStatusStoreTests: XCTestCase {
         store.closePopoverDetails()
         XCTAssertFalse(store.hasActivePopoverDetails)
 
-        bluetoothDevices.activate()
+        store.openBluetoothDetails()
         XCTAssertTrue(store.hasActivePopoverDetails)
 
-        store.closePopoverDetails()
+        store.closeBluetoothDetails()
+        XCTAssertFalse(store.hasActivePopoverDetails)
+
+        store.setBluetoothEnabled(true)
+        XCTAssertFalse(store.hasActivePopoverDetails)
+
+        store.setBluetoothEnabled(false)
         XCTAssertFalse(store.hasActivePopoverDetails)
     }
 
