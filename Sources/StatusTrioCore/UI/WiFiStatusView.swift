@@ -12,7 +12,14 @@ struct WiFiStatusView: View {
     var body: some View {
         HStack(spacing: 10) {
             Button {
-                onOpenDetails(NSEvent.modifierFlags.contains(.option))
+                switch StatusMappings.wifiSummaryAction(for: wifi) {
+                case .openDetails:
+                    onOpenDetails(NSEvent.modifierFlags.contains(.option))
+                case .requestNameAccess:
+                    onRequestNameAccess()
+                case .openLocationSettings:
+                    onOpenLocationSettings()
+                }
             } label: {
                 HStack(spacing: 10) {
                     WiFiStatusIcon(wifi: wifi)
@@ -22,9 +29,11 @@ struct WiFiStatusView: View {
                         subtitle
                     }
                     Spacer()
-                    Image(systemName: "chevron.right")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.tertiary)
+                    if StatusMappings.showsWiFiDetailsChevron(for: wifi) {
+                        Image(systemName: "chevron.right")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.tertiary)
+                    }
                 }
                 .contentShape(Rectangle())
             }
