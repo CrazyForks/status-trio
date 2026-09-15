@@ -17,14 +17,21 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         self.singleInstanceGuard = singleInstanceGuard
 
-        NSApplication.shared.setActivationPolicy(.accessory)
-        updaterManager.start()
         let environment = AppEnvironment.live()
         self.environment = environment
-        environment.store.start()
+        updaterManager.start()
+        environment.start()
     }
 
     public func applicationWillTerminate(_ notification: Notification) {
-        environment?.store.stop()
+        environment?.stop()
+    }
+
+    public func applicationShouldHandleReopen(
+        _ sender: NSApplication,
+        hasVisibleWindows flag: Bool
+    ) -> Bool {
+        environment?.settingsWindowController.show()
+        return false
     }
 }

@@ -8,6 +8,7 @@ final class AppEnvironment {
     let statusBarController: StatusBarController
     let settingsWindowController: SettingsWindowController
     let activationPolicy: AppActivationPolicy
+    let appIconController: AppIconController
 
     init(
         store: SystemStatusStore,
@@ -15,7 +16,8 @@ final class AppEnvironment {
         localization: Localization,
         statusBarController: StatusBarController,
         settingsWindowController: SettingsWindowController,
-        activationPolicy: AppActivationPolicy
+        activationPolicy: AppActivationPolicy,
+        appIconController: AppIconController
     ) {
         self.store = store
         self.settings = settings
@@ -23,6 +25,17 @@ final class AppEnvironment {
         self.statusBarController = statusBarController
         self.settingsWindowController = settingsWindowController
         self.activationPolicy = activationPolicy
+        self.appIconController = appIconController
+    }
+
+    func start() {
+        appIconController.start()
+        store.start()
+    }
+
+    func stop() {
+        appIconController.stop()
+        store.stop()
     }
 
     static func makeStore(
@@ -62,8 +75,24 @@ final class AppEnvironment {
             store: store,
             settings: settings,
             localization: localization,
+            isVisible: settings.appIconPlacement.showsMenuBarIcon,
             openSettings: { settingsWindowController.show() },
             quitAction: { NSApplication.shared.terminate(nil) }
+        )
+        let appIconController = AppIconController(
+            store: store,
+            settings: settings,
+            activationPolicy: activationPolicy,
+            setMenuBarVisible: { isVisible in
+                controller.setVisible(isVisible)
+            },
+            renderDockIcon: { status, options, connectionOptions in
+                DockIconRenderer.image(
+                    status: status,
+                    options: options,
+                    connectionOptions: connectionOptions
+                )
+            }
         )
         return AppEnvironment(
             store: store,
@@ -71,7 +100,8 @@ final class AppEnvironment {
             localization: localization,
             statusBarController: controller,
             settingsWindowController: settingsWindowController,
-            activationPolicy: activationPolicy
+            activationPolicy: activationPolicy,
+            appIconController: appIconController
         )
     }
 }
