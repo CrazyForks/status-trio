@@ -294,15 +294,17 @@ struct StatusPopoverView: View {
 
     private var summary: some View {
         VStack(alignment: .leading, spacing: 12) {
-            ForEach(settings.popupSectionOrder) { section in
+            ForEach(settings.visiblePopupSections) { section in
                 popupSection(section)
 
-                if section != settings.popupSectionOrder.last {
+                if section != settings.visiblePopupSections.last {
                     Divider()
                 }
             }
 
-            Divider()
+            if !settings.visiblePopupSections.isEmpty {
+                Divider()
+            }
 
             Button {
                 openSettings()

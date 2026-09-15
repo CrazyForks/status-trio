@@ -303,6 +303,40 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(store.popupSectionOrder, [.battery, .network, .bluetooth, .volume])
     }
 
+    func testPopupSectionVisibilityDefaultsToEverythingExceptBluetooth() {
+        let store = SettingsStore(defaults: makeSuite().defaults)
+
+        XCTAssertEqual(
+            store.enabledPopupSections,
+            Set([.battery, .network, .volume])
+        )
+        XCTAssertEqual(
+            store.visiblePopupSections,
+            [.battery, .network, .volume]
+        )
+    }
+
+    func testPopupSectionVisibilityFiltersWithoutChangingStoredOrder() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+
+        let first = SettingsStore(defaults: suite.defaults)
+        first.setPopupSection(.network, enabled: false)
+        first.setPopupSection(.bluetooth, enabled: true)
+
+        XCTAssertEqual(
+            first.popupSectionOrder,
+            [.battery, .network, .bluetooth, .volume]
+        )
+        XCTAssertEqual(
+            first.visiblePopupSections,
+            [.battery, .bluetooth, .volume]
+        )
+
+        let second = SettingsStore(defaults: suite.defaults)
+        XCTAssertEqual(second.enabledPopupSections, Set([.battery, .bluetooth, .volume]))
+    }
+
     func testMovingPopupSectionsPersistsOrder() {
         let suite = makeSuite()
         defer { clear(suite) }
@@ -332,6 +366,21 @@ final class SettingsStoreTests: XCTestCase {
         let store = SettingsStore(defaults: suite.defaults)
 
         XCTAssertEqual(store.popupSectionOrder, [.volume, .network, .battery, .bluetooth])
+    }
+
+    func testStoredPopupSectionVisibilityIgnoresUnknownValues() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+
+        suite.defaults.set(
+            ["network", "unknown", "network"],
+            forKey: SettingsStore.enabledPopupSectionsDefaultsKey
+        )
+
+        let store = SettingsStore(defaults: suite.defaults)
+
+        XCTAssertEqual(store.enabledPopupSections, Set([.network]))
+        XCTAssertEqual(store.visiblePopupSections, [.network])
     }
 
     func testPopupSectionMetadataIncludesBluetooth() {
