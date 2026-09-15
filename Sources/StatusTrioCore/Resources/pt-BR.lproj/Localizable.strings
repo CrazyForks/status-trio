@@ -17,7 +17,7 @@
 "settings.appIconPlacement.dock" = "Dock";
 "settings.appIconPlacement.both" = "Ambos";
 "settings.dockIconBackground" = "Fundo do ícone do Dock";
-"settings.dockIconBackground.description" = "Aplica-se ao ícone dinâmico exibido no Dock.";
+"settings.dockIconBackground.description" = "Aplica-se ao ícone dinâmico exibido no Dock. “Seguir o sistema” lê “Estilo de Ícones e Widgets” em Ajustes do Sistema › Aparência.";
 "settings.dockIconBackground.system" = "Seguir o sistema";
 "settings.dockIconBackground.dark" = "Escuro";
 "settings.dockIconBackground.light" = "Claro";

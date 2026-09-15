@@ -17,7 +17,7 @@
 "settings.appIconPlacement.dock" = "程序坞";
 "settings.appIconPlacement.both" = "两处";
 "settings.dockIconBackground" = "Dock 图标背景";
-"settings.dockIconBackground.description" = "仅影响程序坞中显示的实时图标。";
+"settings.dockIconBackground.description" = "仅影响程序坞中显示的实时图标。「跟随系统」读取「系统设置 › 外观 › 图标与小组件样式」。";
 "settings.dockIconBackground.system" = "跟随系统";
 "settings.dockIconBackground.dark" = "深色";
 "settings.dockIconBackground.light" = "浅色";

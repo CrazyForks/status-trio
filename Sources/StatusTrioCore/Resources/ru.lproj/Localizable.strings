@@ -17,7 +17,7 @@
 "settings.appIconPlacement.dock" = "Dock";
 "settings.appIconPlacement.both" = "Оба";
 "settings.dockIconBackground" = "Фон значка Dock";
-"settings.dockIconBackground.description" = "Применяется к динамическому значку в Dock.";
+"settings.dockIconBackground.description" = "Применяется к динамическому значку в Dock. «Как в системе» читает «Стиль значков и виджетов» в «Системных настройках › Внешний вид».";
 "settings.dockIconBackground.system" = "Как в системе";
 "settings.dockIconBackground.dark" = "Тёмный";
 "settings.dockIconBackground.light" = "Светлый";
