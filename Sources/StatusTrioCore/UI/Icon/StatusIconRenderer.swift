@@ -142,6 +142,32 @@ enum StatusIconRenderer {
         return context.makeImage()
     }
 
+    /// Draws the status glyph into an existing context, using the renderer's
+    /// canvas coordinates. Avoids the intermediate bitmap that `render` creates.
+    static func draw(
+        menuBarStatus: MenuBarStatus,
+        options: BatteryIconOptions = .standard,
+        connectionOptions: ConnectionIconOptions = .standard,
+        foreground: CGColor,
+        in context: CGContext,
+        origin: CGPoint,
+        size: CGFloat
+    ) {
+        context.saveGState()
+        defer { context.restoreGState() }
+
+        context.translateBy(x: origin.x, y: origin.y)
+        draw(
+            menuBarStatus: menuBarStatus,
+            options: options,
+            connectionOptions: connectionOptions,
+            in: context,
+            size: size,
+            foreground: foreground,
+            criticalColor: defaultCriticalColor
+        )
+    }
+
     private static func draw(
         menuBarStatus: MenuBarStatus,
         options: BatteryIconOptions,

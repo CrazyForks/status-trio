@@ -140,7 +140,7 @@ final class BluetoothDeviceController: ObservableObject {
     private let stateMonitor: any BluetoothStateMonitoring
     private let notificationCenter: NotificationCenter
     private let workspaceNotificationCenter: NotificationCenter
-    private var isActive = false
+    private(set) var isActive = false
     private var requestGate = AsyncRequestGate()
     private var periodicRefreshTask: Task<Void, Never>?
     private var applicationObserver: NSObjectProtocol?

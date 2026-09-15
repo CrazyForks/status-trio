@@ -363,7 +363,7 @@ final class WiFiNetworkController: ObservableObject {
     private var scanGate = AsyncRequestGate()
     private var connectionGate = AsyncRequestGate()
     private var pendingNetwork: WiFiNetwork?
-    private var isActive = false
+    private(set) var isActive = false
     private var periodicRefreshTask: Task<Void, Never>?
     private var lastNameAccess: WiFiNameAccess = .notDetermined
 

@@ -14,6 +14,8 @@ private struct StatusBarAccessibilityKey: Equatable {
 @MainActor
 final class StatusBarController: NSObject, NSPopoverDelegate {
     static let iconSnapshotDebounceInterval: TimeInterval = 0.5
+    static let popoverToggleLockoutInterval: TimeInterval = 0.25
+    static let popoverContentReleaseDelay: TimeInterval = 60
 
     enum ClickKind: Equatable {
         case left
@@ -36,16 +38,26 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     private let quitAction: () -> Void
     private var appearanceObservations: [NSKeyValueObservation] = []
     private var renderCache = StatusBarRenderCache()
+    private var isStatusItemVisible: Bool
     private var accessibilityKey: StatusBarAccessibilityKey?
     private var popoverDismissMonitor: Any?
     private var volumeScrollMonitor: Any?
     private let volumeScrollAdjustment = PopupVolumeScrollAdjustment()
     private var volumeScrollSession = PopupVolumeScrollSession()
+    private var dockAnchorWindow: NSWindow?
+    private var popoverToggleGate = PopoverToggleGate(
+        lockout: StatusBarController.popoverToggleLockoutInterval
+    )
+    private var popoverContentRetention = PopoverContentRetention(
+        releaseDelay: StatusBarController.popoverContentReleaseDelay
+    )
+    private var popoverContentReleaseTask: Task<Void, Never>?
 
     init(
         store: SystemStatusStore,
         settings: SettingsStore,
         localization: Localization,
+        isVisible: Bool = true,
         openSettings: @escaping () -> Void,
         quitAction: @escaping () -> Void
     ) {
@@ -54,9 +66,11 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         self.localization = localization
         self.openSettings = openSettings
         self.quitAction = quitAction
+        self.isStatusItemVisible = isVisible
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         super.init()
 
+        statusItem.isVisible = isVisible
         configureButton()
         configurePopover()
         observeAppearanceChanges()
@@ -176,6 +190,21 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         return nil
     }
 
+    func setVisible(_ isVisible: Bool) {
+        guard isStatusItemVisible != isVisible else { return }
+        isStatusItemVisible = isVisible
+
+        if isVisible {
+            statusItem.isVisible = true
+            renderCache = StatusBarRenderCache()
+            renderLatestSnapshot()
+        } else {
+            popover.performClose(nil)
+            store.setPopoverVisible(false)
+            statusItem.isVisible = false
+        }
+    }
+
     private func configureButton() {
         guard let button = statusItem.button else { return }
         button.imagePosition = .imageOnly
@@ -242,24 +271,95 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     }
 
     private func togglePopover() {
+        guard popoverToggleGate.shouldAccept(at: Date()) else { return }
         guard let button = statusItem.button else { return }
         if popover.isShown {
             popover.performClose(nil)
         } else {
-            store.setPopoverVisible(true)
-            installPopoverContentIfNeeded()
-            popover.show(
+            presentPopover(
                 relativeTo: button.bounds,
                 of: button,
                 preferredEdge: .minY
             )
-            // Status-item clicks come from the system menu bar process, so the
-            // modern activate() can be ignored by the user-activation policy.
-            NSApp.activate(ignoringOtherApps: true)
-            popover.contentViewController?.view.window?.makeKey()
-            installPopoverDismissMonitor()
-            installVolumeScrollMonitor()
         }
+    }
+
+    /// Shows the same popover for a Dock icon click, above the clicked icon.
+    func togglePopover(anchoredAtScreenPoint point: NSPoint) {
+        guard popoverToggleGate.shouldAccept(at: Date()) else { return }
+        if popover.isShown {
+            popover.performClose(nil)
+            return
+        }
+
+        let anchor = dockAnchor(at: point)
+        presentPopover(
+            relativeTo: anchor.view.bounds,
+            of: anchor.view,
+            preferredEdge: anchor.preferredEdge
+        )
+    }
+
+    private func presentPopover(
+        relativeTo rect: NSRect,
+        of view: NSView,
+        preferredEdge: NSRectEdge
+    ) {
+        cancelPopoverContentRelease()
+        popoverContentRetention.markOpened()
+        store.setPopoverVisible(true)
+        installPopoverContentIfNeeded()
+        // Activate first: a transient popover shown while the app is still
+        // inactive can be dismissed again straight away.
+        // Status-item clicks come from the system menu bar process, so the
+        // modern activate() can be ignored by the user-activation policy.
+        NSApp.activate(ignoringOtherApps: true)
+        popover.show(relativeTo: rect, of: view, preferredEdge: preferredEdge)
+        popover.contentViewController?.view.window?.makeKey()
+        installPopoverDismissMonitor()
+        installVolumeScrollMonitor()
+    }
+
+    /// The Dock icon has no public frame, but the click happens on the icon, so
+    /// a tiny invisible window at the click point anchors the popover there.
+    private func dockAnchor(at point: NSPoint) -> (view: NSView, preferredEdge: NSRectEdge) {
+        let window: NSWindow
+        if let dockAnchorWindow {
+            window = dockAnchorWindow
+        } else {
+            window = NSWindow(
+                contentRect: NSRect(x: 0, y: 0, width: 1, height: 1),
+                styleMask: .borderless,
+                backing: .buffered,
+                defer: false
+            )
+            window.isOpaque = false
+            window.backgroundColor = .clear
+            window.hasShadow = false
+            window.ignoresMouseEvents = true
+            window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle]
+            window.contentView = NSView(frame: NSRect(x: 0, y: 0, width: 1, height: 1))
+            dockAnchorWindow = window
+        }
+
+        let anchor = DockPopoverAnchor.make(
+            clickPoint: point,
+            tileSize: NSApplication.shared.dockTile.size,
+            placement: dockPlacement(at: point)
+        )
+        window.setFrameOrigin(anchor.origin)
+        window.orderFront(nil)
+        let view = window.contentView ?? window.contentViewController?.view ?? NSView()
+        return (view, anchor.preferredEdge)
+    }
+
+    private func dockPlacement(at point: NSPoint) -> DockPlacement {
+        let screen = NSScreen.screens.first { $0.frame.contains(point) } ?? NSScreen.main
+        guard let screen else { return .bottom }
+        return DockPlacement.resolve(
+            screenFrame: screen.frame,
+            visibleFrame: screen.visibleFrame
+        )
     }
 
     private func installPopoverDismissMonitor() {
@@ -354,8 +454,37 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         removePopoverDismissMonitor()
         removeVolumeScrollMonitor()
         store.setPopoverVisible(false)
+        // A detail panel keeps its own SwiftUI state, so reusing the built content
+        // would reopen on that panel; drop it straight away in that case.
+        let hadOpenDetails = store.hasActivePopoverDetails
         store.closePopoverDetails()
-        popover.contentViewController = nil
+        if hadOpenDetails {
+            cancelPopoverContentRelease()
+            popover.contentViewController = nil
+        } else {
+            schedulePopoverContentRelease()
+        }
+    }
+
+    /// Keeping the built content for a while makes rapid reopen cheap; releasing
+    /// it later keeps idle memory low.
+    private func schedulePopoverContentRelease() {
+        cancelPopoverContentRelease()
+        popoverContentRetention.markClosed(at: Date())
+        let delay = Self.popoverContentReleaseDelay
+        popoverContentReleaseTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(delay))
+            guard !Task.isCancelled, let self else { return }
+            guard popoverContentRetention.shouldRelease(at: Date()), !popover.isShown else { return }
+            popover.contentViewController = nil
+            popoverContentReleaseTask = nil
+        }
+    }
+
+    private func cancelPopoverContentRelease() {
+        popoverContentReleaseTask?.cancel()
+        popoverContentReleaseTask = nil
+        popoverContentRetention.markOpened()
     }
 
     private func render(status: MenuBarStatus) {
@@ -373,7 +502,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         options: BatteryIconOptions,
         connectionOptions: ConnectionIconOptions
     ) {
-        guard let button = statusItem.button else { return }
+        guard isStatusItemVisible, let button = statusItem.button else { return }
 
         let key = StatusBarRenderKey(
             status: status,

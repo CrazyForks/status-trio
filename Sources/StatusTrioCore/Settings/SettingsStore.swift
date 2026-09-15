@@ -32,6 +32,24 @@ final class SettingsStore: ObservableObject {
     static let outputDeviceOrderDefaultsKey = "outputDeviceOrder"
     static let popupSectionOrderDefaultsKey = "popupSectionOrder"
 
+    static let appIconPlacementDefaultsKey = "appIconPlacement"
+    static let dockIconBackgroundPreferenceDefaultsKey = "dockIconBackgroundPreference"
+
+    @Published var appIconPlacement: AppIconPlacement {
+        didSet {
+            defaults.set(appIconPlacement.rawValue, forKey: Self.appIconPlacementDefaultsKey)
+        }
+    }
+
+    @Published var dockIconBackgroundPreference: DockIconBackgroundPreference {
+        didSet {
+            defaults.set(
+                dockIconBackgroundPreference.rawValue,
+                forKey: Self.dockIconBackgroundPreferenceDefaultsKey
+            )
+        }
+    }
+
     @Published var iconSize: Double {
         didSet {
             let clamped = Self.clampedIconSize(iconSize)
@@ -264,6 +282,16 @@ final class SettingsStore: ObservableObject {
             forKey: Self.popupSectionOrderDefaultsKey
         ) ?? []
 
+        let storedAppIconPlacement = defaults.string(forKey: Self.appIconPlacementDefaultsKey)
+        self.appIconPlacement = storedAppIconPlacement
+            .flatMap(AppIconPlacement.init(rawValue:))
+            ?? .menuBar
+        let storedDockIconBackgroundPreference = defaults.string(
+            forKey: Self.dockIconBackgroundPreferenceDefaultsKey
+        )
+        self.dockIconBackgroundPreference = storedDockIconBackgroundPreference
+            .flatMap(DockIconBackgroundPreference.init(rawValue:))
+            ?? .system
         self.iconSize = Self.clampedIconSize(storedIconSize ?? Self.defaultIconSize)
         self.showsBatteryPercentage = defaults.object(forKey: Self.showsBatteryPercentageDefaultsKey) as? Bool ?? true
         self.showsChargingIndicator = defaults.object(forKey: Self.showsChargingIndicatorDefaultsKey) as? Bool ?? true

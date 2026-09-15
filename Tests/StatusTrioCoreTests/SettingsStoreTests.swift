@@ -362,6 +362,95 @@ final class SettingsStoreTests: XCTestCase {
         }
     }
 
+    func testAppIconPlacementDefaultsToMenuBar() {
+        let store = SettingsStore(defaults: makeSuite().defaults)
+
+        XCTAssertEqual(store.appIconPlacement, .menuBar)
+    }
+
+    func testAppIconPlacementPersistsAcrossStoreInstances() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+
+        let first = SettingsStore(defaults: suite.defaults)
+        first.appIconPlacement = .both
+
+        XCTAssertEqual(SettingsStore(defaults: suite.defaults).appIconPlacement, .both)
+    }
+
+    func testUnknownAppIconPlacementFallsBackToMenuBar() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+        suite.defaults.set("neither", forKey: SettingsStore.appIconPlacementDefaultsKey)
+
+        XCTAssertEqual(SettingsStore(defaults: suite.defaults).appIconPlacement, .menuBar)
+    }
+
+    func testAppIconPlacementPublishesChanges() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+
+        let store = SettingsStore(defaults: suite.defaults)
+        var published: [AppIconPlacement] = []
+        let cancellable = store.$appIconPlacement.dropFirst().sink { published.append($0) }
+        defer { cancellable.cancel() }
+
+        store.appIconPlacement = .dock
+        store.appIconPlacement = .both
+
+        XCTAssertEqual(published, [.dock, .both])
+    }
+
+    func testDockIconBackgroundPreferenceDefaultsToSystem() {
+        let store = SettingsStore(defaults: makeSuite().defaults)
+
+        XCTAssertEqual(store.dockIconBackgroundPreference, .system)
+    }
+
+    func testDockIconBackgroundPreferencePersistsAcrossStoreInstances() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+
+        let first = SettingsStore(defaults: suite.defaults)
+        first.dockIconBackgroundPreference = .light
+
+        XCTAssertEqual(
+            SettingsStore(defaults: suite.defaults).dockIconBackgroundPreference,
+            .light
+        )
+    }
+
+    func testUnknownDockIconBackgroundPreferenceFallsBackToSystem() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+        suite.defaults.set(
+            "rainbow",
+            forKey: SettingsStore.dockIconBackgroundPreferenceDefaultsKey
+        )
+
+        XCTAssertEqual(
+            SettingsStore(defaults: suite.defaults).dockIconBackgroundPreference,
+            .system
+        )
+    }
+
+    func testDockIconBackgroundPreferencePublishesChanges() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+
+        let store = SettingsStore(defaults: suite.defaults)
+        var published: [DockIconBackgroundPreference] = []
+        let cancellable = store.$dockIconBackgroundPreference.dropFirst().sink {
+            published.append($0)
+        }
+        defer { cancellable.cancel() }
+
+        store.dockIconBackgroundPreference = .light
+        store.dockIconBackgroundPreference = .system
+
+        XCTAssertEqual(published, [.light, .system])
+    }
+
     private func makeSuite() -> (defaults: UserDefaults, name: String) {
         let name = "StatusTrioCoreTests.SettingsStore.\(UUID().uuidString)"
         guard let defaults = UserDefaults(suiteName: name) else {

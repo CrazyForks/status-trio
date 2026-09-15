@@ -73,6 +73,8 @@ final class LocalizationTests: XCTestCase {
     func testEveryParameterizedKeyUsesMatchingPlaceholders() throws {
         let expectedPlaceholderCounts: [LocalizationKey: Int] = [
             .menuVersion: 1,
+            .menuAbout: 1,
+            .menuHide: 1,
             .settingsIconSizeAccessibilityValue: 1,
             .settingsRefreshIntervalValue: 1,
             .settingsAboutVersion: 1,
@@ -178,6 +180,58 @@ final class LocalizationTests: XCTestCase {
                 10,
                 "\(language.rawValue) project label is too long: \(project)"
             )
+        }
+    }
+
+    func testAppIconPlacementLabelsStayCompact() throws {
+        let optionKeys: [LocalizationKey] = [
+            .settingsAppIconPlacementMenuBar,
+            .settingsAppIconPlacementDock,
+            .settingsAppIconPlacementBoth
+        ]
+
+        for language in AppLanguage.allCases {
+            let bundle = try XCTUnwrap(Localization.resourceBundle(for: language))
+
+            for key in optionKeys {
+                let value = bundle.localizedString(
+                    forKey: key.rawValue,
+                    value: nil,
+                    table: nil
+                )
+                XCTAssertFalse(value.isEmpty, "\(language.rawValue) missing \(key.rawValue)")
+                XCTAssertLessThanOrEqual(
+                    value.count,
+                    24,
+                    "\(language.rawValue) \(key.rawValue) is too long: \(value)"
+                )
+            }
+        }
+    }
+
+    func testDockIconBackgroundLabelsStayCompact() throws {
+        let optionKeys: [LocalizationKey] = [
+            .settingsDockIconBackgroundSystem,
+            .settingsDockIconBackgroundDark,
+            .settingsDockIconBackgroundLight
+        ]
+
+        for language in AppLanguage.allCases {
+            let bundle = try XCTUnwrap(Localization.resourceBundle(for: language))
+
+            for key in optionKeys {
+                let value = bundle.localizedString(
+                    forKey: key.rawValue,
+                    value: nil,
+                    table: nil
+                )
+                XCTAssertFalse(value.isEmpty, "\(language.rawValue) missing \(key.rawValue)")
+                XCTAssertLessThanOrEqual(
+                    value.count,
+                    24,
+                    "\(language.rawValue) \(key.rawValue) is too long: \(value)"
+                )
+            }
         }
     }
 

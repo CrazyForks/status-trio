@@ -21,6 +21,14 @@ struct BasicsSettingsPane: View {
 
             Divider()
 
+            appIconPlacementSection
+
+            Divider()
+
+            dockIconBackgroundSection
+
+            Divider()
+
             PreferenceRow(
                 label: .settingsLanguage,
                 description: .settingsLanguageDescription,
@@ -86,6 +94,50 @@ struct BasicsSettingsPane: View {
                 .foregroundStyle(.secondary)
                 .frame(width: 92, alignment: .trailing)
             }
+        }
+    }
+
+    private var appIconPlacementSection: some View {
+        PreferenceRow(
+            label: .settingsAppIconPlacement,
+            description: .settingsAppIconPlacementDescription
+        ) {
+            Picker(
+                localization.string(.settingsAppIconPlacement),
+                selection: $store.appIconPlacement
+            ) {
+                Text(localization.string(.settingsAppIconPlacementMenuBar))
+                    .tag(AppIconPlacement.menuBar)
+                Text(localization.string(.settingsAppIconPlacementDock))
+                    .tag(AppIconPlacement.dock)
+                Text(localization.string(.settingsAppIconPlacementBoth))
+                    .tag(AppIconPlacement.both)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .frame(maxWidth: .infinity)
+        }
+    }
+
+    private var dockIconBackgroundSection: some View {
+        PreferenceRow(
+            label: .settingsDockIconBackground,
+            description: .settingsDockIconBackgroundDescription
+        ) {
+            Picker(
+                localization.string(.settingsDockIconBackground),
+                selection: $store.dockIconBackgroundPreference
+            ) {
+                Text(localization.string(.settingsDockIconBackgroundSystem))
+                    .tag(DockIconBackgroundPreference.system)
+                Text(localization.string(.settingsDockIconBackgroundDark))
+                    .tag(DockIconBackgroundPreference.dark)
+                Text(localization.string(.settingsDockIconBackgroundLight))
+                    .tag(DockIconBackgroundPreference.light)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .frame(maxWidth: .infinity)
         }
     }
 

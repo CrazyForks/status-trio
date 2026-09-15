@@ -240,6 +240,11 @@ final class SystemStatusStore: ObservableObject {
         bluetoothDevices.deactivate()
     }
 
+    /// Whether a popover detail panel (Wi-Fi or Bluetooth list) is currently open.
+    var hasActivePopoverDetails: Bool {
+        wifiNetworks.isActive || bluetoothDevices.isActive
+    }
+
     func refreshAll() {
         guard !hasStopped else { return }
         batteryMonitor.refresh()
