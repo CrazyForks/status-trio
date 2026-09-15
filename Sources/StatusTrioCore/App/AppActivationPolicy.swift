@@ -1,21 +1,44 @@
 import AppKit
 
 @MainActor
-enum AppActivationPolicy {
-    private static var count = 0
+protocol ApplicationActivationPolicyApplying: AnyObject {
+    func setActivationPolicy(_ activationPolicy: NSApplication.ActivationPolicy) -> Bool
+}
 
-    static func enter() {
-        count += 1
-        NSApp.setActivationPolicy(.regular)
-        NSApp.activate(ignoringOtherApps: true)
+extension NSApplication: ApplicationActivationPolicyApplying {}
+
+@MainActor
+final class AppActivationPolicy {
+    private let application: any ApplicationActivationPolicyApplying
+    private var keepsDockIconVisible = false
+    private var temporaryRegularRequestCount = 0
+
+    init(application: any ApplicationActivationPolicyApplying = NSApplication.shared) {
+        self.application = application
     }
 
-    static func leave() {
-        count = max(0, count - 1)
-        guard count == 0 else { return }
+    @discardableResult
+    func setDockIconVisible(_ isVisible: Bool) -> Bool {
+        keepsDockIconVisible = isVisible
+        return apply()
+    }
 
-        Task { @MainActor in
-            NSApp.setActivationPolicy(.accessory)
-        }
+    func enterTemporaryRegularMode() {
+        temporaryRegularRequestCount += 1
+        _ = apply()
+    }
+
+    func leaveTemporaryRegularMode() {
+        temporaryRegularRequestCount = max(0, temporaryRegularRequestCount - 1)
+        _ = apply()
+    }
+
+    @discardableResult
+    private func apply() -> Bool {
+        let policy: NSApplication.ActivationPolicy = keepsDockIconVisible
+            || temporaryRegularRequestCount > 0
+            ? .regular
+            : .accessory
+        return application.setActivationPolicy(policy)
     }
 }

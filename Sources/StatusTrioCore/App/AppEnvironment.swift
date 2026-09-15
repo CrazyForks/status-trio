@@ -7,19 +7,22 @@ final class AppEnvironment {
     let localization: Localization
     let statusBarController: StatusBarController
     let settingsWindowController: SettingsWindowController
+    let activationPolicy: AppActivationPolicy
 
     init(
         store: SystemStatusStore,
         settings: SettingsStore,
         localization: Localization,
         statusBarController: StatusBarController,
-        settingsWindowController: SettingsWindowController
+        settingsWindowController: SettingsWindowController,
+        activationPolicy: AppActivationPolicy
     ) {
         self.store = store
         self.settings = settings
         self.localization = localization
         self.statusBarController = statusBarController
         self.settingsWindowController = settingsWindowController
+        self.activationPolicy = activationPolicy
     }
 
     static func makeStore(
@@ -48,10 +51,12 @@ final class AppEnvironment {
             refreshInterval: settings.refreshInterval
         )
         let localization = Localization()
+        let activationPolicy = AppActivationPolicy()
         let settingsWindowController = SettingsWindowController(
             store: settings,
             statusStore: store,
-            localization: localization
+            localization: localization,
+            activationPolicy: activationPolicy
         )
         let controller = StatusBarController(
             store: store,
@@ -65,7 +70,8 @@ final class AppEnvironment {
             settings: settings,
             localization: localization,
             statusBarController: controller,
-            settingsWindowController: settingsWindowController
+            settingsWindowController: settingsWindowController,
+            activationPolicy: activationPolicy
         )
     }
 }
