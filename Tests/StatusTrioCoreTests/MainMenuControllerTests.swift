@@ -7,15 +7,8 @@ final class MainMenuControllerTests: XCTestCase {
     func testInstallsLocalizedMenuAndRebuildsAfterLanguageChange() async throws {
         let environment = try makeEnvironment()
         defer { environment.cleanUp() }
-
-        let policy = AppActivationPolicy(application: MainMenuActivationSpy())
-        policy.enterTemporaryRegularMode()
-        let controller = MainMenuController(
-            activationPolicy: policy,
-            localization: environment.localization
-        ) {}
-        controller.start()
-        defer { controller.stop() }
+        let harness = makeStartedController(environment)
+        defer { harness.controller.stop() }
 
         XCTAssertEqual(
             try appMenuTitles(),
@@ -48,18 +41,9 @@ final class MainMenuControllerTests: XCTestCase {
     func testSettingsMenuItemInvokesTheHandler() throws {
         let environment = try makeEnvironment()
         defer { environment.cleanUp() }
-
-        let policy = AppActivationPolicy(application: MainMenuActivationSpy())
-        policy.enterTemporaryRegularMode()
         var openCount = 0
-        let controller = MainMenuController(
-            activationPolicy: policy,
-            localization: environment.localization
-        ) {
-            openCount += 1
-        }
-        controller.start()
-        defer { controller.stop() }
+        let harness = makeStartedController(environment) { openCount += 1 }
+        defer { harness.controller.stop() }
 
         let appMenu = try XCTUnwrap(NSApplication.shared.mainMenu?.items.first?.submenu)
         let settingsItem = try XCTUnwrap(appMenu.items.first { $0.keyEquivalent == "," })
@@ -71,40 +55,57 @@ final class MainMenuControllerTests: XCTestCase {
     func testStopRemovesTheMenu() throws {
         let environment = try makeEnvironment()
         defer { environment.cleanUp() }
+        let harness = makeStartedController(environment)
 
-        let policy = AppActivationPolicy(application: MainMenuActivationSpy())
-        policy.enterTemporaryRegularMode()
-        let controller = MainMenuController(
-            activationPolicy: policy,
-            localization: environment.localization
-        ) {}
-        controller.start()
         XCTAssertNotNil(NSApplication.shared.mainMenu)
 
-        controller.stop()
+        harness.controller.stop()
 
         XCTAssertNil(NSApplication.shared.mainMenu)
     }
 
-    func testInstallsTheMenuOnlyWhileTheAppIsRegular() throws {
+    func testInstallsTheMenuOnlyWhileTheAppIsRegularAndActive() throws {
         let environment = try makeEnvironment()
         defer { environment.cleanUp() }
 
+        let notificationCenter = NotificationCenter()
         let policy = AppActivationPolicy(application: MainMenuActivationSpy())
         let controller = MainMenuController(
             activationPolicy: policy,
-            localization: environment.localization
+            localization: environment.localization,
+            notificationCenter: notificationCenter
         ) {}
         controller.start()
         defer { controller.stop() }
 
-        XCTAssertNil(NSApplication.shared.mainMenu)
+        XCTAssertNil(NSApplication.shared.mainMenu, "inactive accessory app")
+
+        notificationCenter.post(name: NSApplication.didBecomeActiveNotification, object: nil)
+        XCTAssertNil(NSApplication.shared.mainMenu, "active accessory app")
 
         policy.enterTemporaryRegularMode()
-        XCTAssertNotNil(NSApplication.shared.mainMenu)
+        XCTAssertNotNil(NSApplication.shared.mainMenu, "active regular app")
 
-        policy.leaveTemporaryRegularMode()
-        XCTAssertNil(NSApplication.shared.mainMenu)
+        notificationCenter.post(name: NSApplication.didResignActiveNotification, object: nil)
+        XCTAssertNil(NSApplication.shared.mainMenu, "inactive regular app")
+    }
+
+    private func makeStartedController(
+        _ environment: (localization: Localization, cleanUp: () -> Void),
+        openSettings: @escaping () -> Void = {}
+    ) -> (controller: MainMenuController, policy: AppActivationPolicy) {
+        let notificationCenter = NotificationCenter()
+        let policy = AppActivationPolicy(application: MainMenuActivationSpy())
+        policy.enterTemporaryRegularMode()
+        let controller = MainMenuController(
+            activationPolicy: policy,
+            localization: environment.localization,
+            notificationCenter: notificationCenter,
+            openSettings: openSettings
+        )
+        controller.start()
+        notificationCenter.post(name: NSApplication.didBecomeActiveNotification, object: nil)
+        return (controller, policy)
     }
 
     private func appMenuTitles() throws -> [String] {

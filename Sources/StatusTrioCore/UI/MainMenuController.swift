@@ -6,28 +6,42 @@ final class MainMenuController: NSObject {
     private let activationPolicy: AppActivationPolicy
     private let localization: Localization
     private let openSettings: () -> Void
+    private let notificationCenter: NotificationCenter
     private var cancellables: Set<AnyCancellable> = []
+    private var activationObservers: [NSObjectProtocol] = []
+    private var isRegularApp = false
+    private var isAppActive = false
 
     init(
         activationPolicy: AppActivationPolicy,
         localization: Localization,
+        notificationCenter: NotificationCenter = .default,
         openSettings: @escaping () -> Void
     ) {
         self.activationPolicy = activationPolicy
         self.localization = localization
+        self.notificationCenter = notificationCenter
         self.openSettings = openSettings
         super.init()
     }
 
     func start() {
-        // A regular app owns the menu bar; an accessory app must not, otherwise
-        // its menu would replace the frontmost app's while a popover is open.
+        isAppActive = NSApplication.shared.isActive
+
+        // Only a regular *and* active app owns the menu bar. Building it earlier
+        // would load AppKit's menu machinery for nothing; leaving it installed
+        // while another app is frontmost is equally pointless.
         activationPolicy.$isRegularApp
             .removeDuplicates()
             .sink { [weak self] isRegular in
-                self?.setInstalled(isRegular)
+                guard let self else { return }
+                self.isRegularApp = isRegular
+                self.updateInstallation()
             }
             .store(in: &cancellables)
+
+        observe(NSApplication.didBecomeActiveNotification, isActive: true)
+        observe(NSApplication.didResignActiveNotification, isActive: false)
 
         localization.$resolvedLanguage
             .removeDuplicates()
@@ -44,6 +58,8 @@ final class MainMenuController: NSObject {
 
     func stop() {
         cancellables.removeAll()
+        activationObservers.forEach(notificationCenter.removeObserver)
+        activationObservers.removeAll()
         setInstalled(false)
     }
 
@@ -65,5 +81,23 @@ final class MainMenuController: NSObject {
             return
         }
         install()
+    }
+
+    private func updateInstallation() {
+        setInstalled(isRegularApp && isAppActive)
+    }
+
+    private func observe(_ name: Notification.Name, isActive: Bool) {
+        activationObservers.append(notificationCenter.addObserver(
+            forName: name,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                self.isAppActive = isActive
+                self.updateInstallation()
+            }
+        })
     }
 }
