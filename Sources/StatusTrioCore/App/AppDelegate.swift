@@ -31,7 +31,45 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         _ sender: NSApplication,
         hasVisibleWindows flag: Bool
     ) -> Bool {
-        environment?.settingsWindowController.show()
+        guard let environment else { return false }
+
+        switch DockActivationAction.resolve(
+            isReopenEvent: currentEventIsReopen(),
+            hasDockTile: environment.activationPolicy.isRegularApp
+        ) {
+        case .showPopover:
+            environment.statusBarController.togglePopover(
+                anchoredAtScreenPoint: NSEvent.mouseLocation
+            )
+        case .openSettings:
+            environment.settingsWindowController.show()
+        case .none:
+            break
+        }
         return false
+    }
+
+    public func applicationDockMenu(_ sender: NSApplication) -> NSMenu? {
+        guard let environment else { return nil }
+
+        return AppDockMenu.make(
+            localization: environment.localization,
+            target: self,
+            action: #selector(handleDockMenuSettings)
+        )
+    }
+
+    @objc private func handleDockMenuSettings() {
+        environment?.settingsWindowController.show()
+    }
+
+    /// A Dock icon click arrives as a reopen event; a cold launch (including the
+    /// login item) does not, and must not pop the status popover open.
+    private func currentEventIsReopen() -> Bool {
+        guard let event = NSAppleEventManager.shared().currentAppleEvent else {
+            return false
+        }
+        return event.eventClass == AEEventClass(kCoreEventClass)
+            && event.eventID == AEEventID(kAEReopenApplication)
     }
 }

@@ -42,6 +42,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     private var volumeScrollMonitor: Any?
     private let volumeScrollAdjustment = PopupVolumeScrollAdjustment()
     private var volumeScrollSession = PopupVolumeScrollSession()
+    private var dockAnchorWindow: NSWindow?
 
     init(
         store: SystemStatusStore,
@@ -264,20 +265,75 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         if popover.isShown {
             popover.performClose(nil)
         } else {
-            store.setPopoverVisible(true)
-            installPopoverContentIfNeeded()
-            popover.show(
+            presentPopover(
                 relativeTo: button.bounds,
                 of: button,
                 preferredEdge: .minY
             )
-            // Status-item clicks come from the system menu bar process, so the
-            // modern activate() can be ignored by the user-activation policy.
-            NSApp.activate(ignoringOtherApps: true)
-            popover.contentViewController?.view.window?.makeKey()
-            installPopoverDismissMonitor()
-            installVolumeScrollMonitor()
         }
+    }
+
+    /// Shows the same popover for a Dock icon click, above the clicked icon.
+    func togglePopover(anchoredAtScreenPoint point: NSPoint) {
+        if popover.isShown {
+            popover.performClose(nil)
+            return
+        }
+
+        let anchorView = dockAnchorView(at: point)
+        presentPopover(
+            relativeTo: anchorView.bounds,
+            of: anchorView,
+            preferredEdge: .maxY
+        )
+    }
+
+    private func presentPopover(
+        relativeTo rect: NSRect,
+        of view: NSView,
+        preferredEdge: NSRectEdge
+    ) {
+        store.setPopoverVisible(true)
+        installPopoverContentIfNeeded()
+        // Activate first: a transient popover shown while the app is still
+        // inactive can be dismissed again straight away.
+        // Status-item clicks come from the system menu bar process, so the
+        // modern activate() can be ignored by the user-activation policy.
+        NSApp.activate(ignoringOtherApps: true)
+        popover.show(relativeTo: rect, of: view, preferredEdge: preferredEdge)
+        popover.contentViewController?.view.window?.makeKey()
+        installPopoverDismissMonitor()
+        installVolumeScrollMonitor()
+    }
+
+    /// The Dock icon has no public frame, but the click happens on the icon, so
+    /// a tiny invisible window at the click point anchors the popover there.
+    private func dockAnchorView(at point: NSPoint) -> NSView {
+        let window: NSWindow
+        if let dockAnchorWindow {
+            window = dockAnchorWindow
+        } else {
+            window = NSWindow(
+                contentRect: NSRect(x: 0, y: 0, width: 1, height: 1),
+                styleMask: .borderless,
+                backing: .buffered,
+                defer: false
+            )
+            window.isOpaque = false
+            window.backgroundColor = .clear
+            window.hasShadow = false
+            window.ignoresMouseEvents = true
+            window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle]
+            window.contentView = NSView(frame: NSRect(x: 0, y: 0, width: 1, height: 1))
+            dockAnchorWindow = window
+        }
+
+        let tileHeight = NSApplication.shared.dockTile.size.height
+        window.setFrameOrigin(
+            NSPoint(x: point.x, y: point.y + max(0, tileHeight) / 2)
+        )
+        window.orderFront(nil)
+        return window.contentView ?? window.contentViewController?.view ?? NSView()
     }
 
     private func installPopoverDismissMonitor() {
