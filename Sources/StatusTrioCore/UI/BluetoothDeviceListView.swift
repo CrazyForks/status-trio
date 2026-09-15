@@ -44,8 +44,9 @@ struct BluetoothStatusView: View {
                 localization.string(.bluetoothActionRequestAuthorization),
                 action: onRequestAuthorization
             )
-            .buttonStyle(.link)
+            .buttonStyle(.plain)
             .font(.caption)
+            .foregroundStyle(.secondary)
             .lineLimit(1)
         } else {
             Text(summary)
@@ -172,8 +173,9 @@ struct BluetoothDeviceListView: View {
                 localization.string(.bluetoothActionRequestAuthorization),
                 action: onRequestAuthorization
             )
-            .buttonStyle(.link)
+            .buttonStyle(.plain)
             .font(.caption)
+            .foregroundStyle(.secondary)
         case .authorizationDenied:
             Button(localization.string(.bluetoothAuthorizationDenied), action: onOpenBluetoothSettings)
                 .buttonStyle(.link)
