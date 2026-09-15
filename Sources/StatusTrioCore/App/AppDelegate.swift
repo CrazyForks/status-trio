@@ -33,13 +33,15 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
     ) -> Bool {
         guard let environment else { return false }
 
+        let pointer = NSEvent.mouseLocation
         switch DockActivationAction.resolve(
             isReopenEvent: currentEventIsReopen(),
-            hasDockTile: environment.activationPolicy.isRegularApp
+            hasDockTile: environment.activationPolicy.isRegularApp,
+            isPointerInDockArea: isPointerInDockArea(pointer)
         ) {
         case .showPopover:
             environment.statusBarController.togglePopover(
-                anchoredAtScreenPoint: NSEvent.mouseLocation
+                anchoredAtScreenPoint: pointer
             )
         case .openSettings:
             environment.settingsWindowController.show()
@@ -71,5 +73,21 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         return event.eventClass == AEEventClass(kCoreEventClass)
             && event.eventID == AEEventID(kAEReopenApplication)
+    }
+
+    private func isPointerInDockArea(_ point: NSPoint) -> Bool {
+        guard let screen = NSScreen.screens.first(where: { $0.frame.contains(point) })
+            ?? NSScreen.main else {
+            return false
+        }
+        let placement = DockPlacement.resolve(
+            screenFrame: screen.frame,
+            visibleFrame: screen.visibleFrame
+        )
+        return placement.containsPointer(
+            point,
+            screenFrame: screen.frame,
+            visibleFrame: screen.visibleFrame
+        )
     }
 }

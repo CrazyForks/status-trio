@@ -59,3 +59,73 @@ struct DockPopoverAnchorTests {
         #expect(anchor.preferredEdge == .minX)
     }
 }
+
+struct DockAreaPointerTests {
+    private let screen = NSRect(x: 0, y: 0, width: 1440, height: 900)
+
+    @Test func recognisesAPointerInsideAVisibleBottomDock() {
+        let visible = NSRect(x: 0, y: 70, width: 1440, height: 805)
+
+        #expect(
+            DockPlacement.bottom.containsPointer(
+                NSPoint(x: 700, y: 30),
+                screenFrame: screen,
+                visibleFrame: visible
+            )
+        )
+        #expect(
+            DockPlacement.bottom.containsPointer(
+                NSPoint(x: 700, y: 400),
+                screenFrame: screen,
+                visibleFrame: visible
+            ) == false
+        )
+    }
+
+    @Test func recognisesAPointerInsideAVisibleLeftDock() {
+        let visible = NSRect(x: 70, y: 0, width: 1370, height: 875)
+
+        #expect(
+            DockPlacement.left.containsPointer(
+                NSPoint(x: 24, y: 400),
+                screenFrame: screen,
+                visibleFrame: visible
+            )
+        )
+        #expect(
+            DockPlacement.left.containsPointer(
+                NSPoint(x: 600, y: 400),
+                screenFrame: screen,
+                visibleFrame: visible
+            ) == false
+        )
+    }
+
+    @Test func usesAnEdgeToleranceWhenTheDockAutoHides() {
+        // With auto-hide the visible frame fills the screen, so the Dock area has
+        // to be inferred from the screen edge.
+        let visible = screen
+
+        #expect(
+            DockPlacement.bottom.containsPointer(
+                NSPoint(x: 700, y: 40),
+                screenFrame: screen,
+                visibleFrame: visible
+            )
+        )
+        #expect(
+            DockPlacement.bottom.containsPointer(
+                NSPoint(x: 700, y: 400),
+                screenFrame: screen,
+                visibleFrame: visible
+            ) == false
+        )
+        #expect(
+            DockPlacement.right.containsPointer(
+                NSPoint(x: 1430, y: 400),
+                screenFrame: screen,
+                visibleFrame: visible
+            )
+        )
+    }
+}
