@@ -291,11 +291,11 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             return
         }
 
-        let anchorView = dockAnchorView(at: point)
+        let anchor = dockAnchor(at: point)
         presentPopover(
-            relativeTo: anchorView.bounds,
-            of: anchorView,
-            preferredEdge: .maxY
+            relativeTo: anchor.view.bounds,
+            of: anchor.view,
+            preferredEdge: anchor.preferredEdge
         )
     }
 
@@ -321,7 +321,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
 
     /// The Dock icon has no public frame, but the click happens on the icon, so
     /// a tiny invisible window at the click point anchors the popover there.
-    private func dockAnchorView(at point: NSPoint) -> NSView {
+    private func dockAnchor(at point: NSPoint) -> (view: NSView, preferredEdge: NSRectEdge) {
         let window: NSWindow
         if let dockAnchorWindow {
             window = dockAnchorWindow
@@ -341,12 +341,24 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             dockAnchorWindow = window
         }
 
-        let tileHeight = NSApplication.shared.dockTile.size.height
-        window.setFrameOrigin(
-            NSPoint(x: point.x, y: point.y + max(0, tileHeight) / 2)
+        let anchor = DockPopoverAnchor.make(
+            clickPoint: point,
+            tileSize: NSApplication.shared.dockTile.size,
+            placement: dockPlacement(at: point)
         )
+        window.setFrameOrigin(anchor.origin)
         window.orderFront(nil)
-        return window.contentView ?? window.contentViewController?.view ?? NSView()
+        let view = window.contentView ?? window.contentViewController?.view ?? NSView()
+        return (view, anchor.preferredEdge)
+    }
+
+    private func dockPlacement(at point: NSPoint) -> DockPlacement {
+        let screen = NSScreen.screens.first { $0.frame.contains(point) } ?? NSScreen.main
+        guard let screen else { return .bottom }
+        return DockPlacement.resolve(
+            screenFrame: screen.frame,
+            visibleFrame: screen.visibleFrame
+        )
     }
 
     private func installPopoverDismissMonitor() {
