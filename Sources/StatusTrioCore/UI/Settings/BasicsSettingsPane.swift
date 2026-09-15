@@ -58,10 +58,6 @@ struct BasicsSettingsPane: View {
             Divider()
 
             refreshIntervalSection
-
-            Divider()
-
-            popupOrderSection
         }
     }
 
@@ -139,53 +135,6 @@ struct BasicsSettingsPane: View {
             .labelsHidden()
             .frame(maxWidth: .infinity)
         }
-    }
-
-    private var popupOrderSection: some View {
-        PreferenceRow(
-            label: .settingsPopupOrder,
-            description: .settingsPopupOrderDescription
-        ) {
-            List {
-                ForEach(store.popupSectionOrder) { section in
-                    HStack(spacing: 8) {
-                        popupSectionIcon(section)
-                            .foregroundStyle(.secondary)
-                            .frame(width: 18)
-
-                        Text(localization.string(section.titleKey))
-                            .frame(maxWidth: .infinity, alignment: .leading)
-
-                        Image(systemName: "line.3.horizontal")
-                            .font(.caption)
-                            .foregroundStyle(.tertiary)
-                            .accessibilityHidden(true)
-                    }
-                    .padding(.vertical, 2)
-                }
-                .onMove { source, destination in
-                    store.movePopupSections(
-                        fromOffsets: source,
-                        toOffset: destination
-                    )
-                }
-            }
-            .listStyle(.inset)
-            .frame(height: popupOrderListHeight)
-        }
-    }
-
-    @ViewBuilder
-    private func popupSectionIcon(_ section: PopupSection) -> some View {
-        if section == .bluetooth {
-            BluetoothIcon(size: 18)
-        } else {
-            Image(systemName: section.systemImage)
-        }
-    }
-
-    private var popupOrderListHeight: CGFloat {
-        min(max(CGFloat(store.popupSectionOrder.count) * 28 + 8, 44), 168)
     }
 
     private var launchAtLoginSection: some View {

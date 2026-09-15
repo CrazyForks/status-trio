@@ -12,6 +12,7 @@ enum LocalizationKey: String, CaseIterable, Hashable, Sendable {
 
     case settingsTitle = "settings.title"
     case settingsTabBasics = "settings.tab.basics"
+    case settingsTabPanel = "settings.tab.panel"
     case settingsTabMenuBar = "settings.tab.menuBar"
     case settingsTabAudio = "settings.tab.audio"
     case settingsTabBattery = "settings.tab.battery"

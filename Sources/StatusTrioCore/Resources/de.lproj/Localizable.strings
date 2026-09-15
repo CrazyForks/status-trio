@@ -31,6 +31,7 @@
 "settings.iconSize.accessibilityValue" = "%d Punkte";
 "settings.iconSize.description" = "Passt die Darstellungsgröße des Menüleistensymbols auf 16–36 pt an.";
 "settings.tab.basics" = "Allgemein";
+"settings.tab.panel" = "Statusbereich";
 "settings.tab.menuBar" = "Menüleiste";
 "settings.tab.audio" = "Audio";
 "settings.tab.battery" = "Batterie";
@@ -129,8 +130,8 @@
 "settings.refreshInterval" = "Aktualisierungsintervall";
 "settings.refreshInterval.description" = "Wie oft Status Trio auf Änderungen prüft. Häufigere Aktualisierungen erhöhen die CPU-Auslastung.";
 "settings.refreshInterval.value" = "%d Sekunden";
-"settings.popup.order" = "Reihenfolge im Popover";
-"settings.popup.order.description" = "Ziehe Elemente, um ihre Reihenfolge im Popover zu ändern.";
+"settings.popup.order" = "Angezeigte Elemente";
+"settings.popup.order.description" = "Wähle aus, welche Elemente im Statusbereich erscheinen, und ziehe sie, um die Reihenfolge zu ändern.";
 "settings.popup.order.battery" = "Batterie";
 "settings.popup.order.volume" = "Lautstärke";
 

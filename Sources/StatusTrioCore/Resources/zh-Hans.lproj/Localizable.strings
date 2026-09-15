@@ -31,6 +31,7 @@
 "settings.iconSize.accessibilityValue" = "%d 点";
 "settings.iconSize.description" = "调整菜单栏图标的渲染尺寸，可选 16–36 pt。";
 "settings.tab.basics" = "基础";
+"settings.tab.panel" = "状态面板";
 "settings.tab.menuBar" = "菜单栏";
 "settings.tab.audio" = "音频";
 "settings.tab.battery" = "电池";
@@ -129,8 +130,8 @@
 "settings.refreshInterval" = "状态刷新间隔";
 "settings.refreshInterval.description" = "Status Trio 检查状态变化的频率。刷新越快，CPU 占用越高。";
 "settings.refreshInterval.value" = "%d 秒";
-"settings.popup.order" = "弹窗排序";
-"settings.popup.order.description" = "拖动项目以调整它们在弹窗中的顺序。";
+"settings.popup.order" = "显示项目";
+"settings.popup.order.description" = "选择状态面板显示的项目，并拖动调整顺序。";
 "settings.popup.order.battery" = "电池";
 "settings.popup.order.volume" = "音量";
 

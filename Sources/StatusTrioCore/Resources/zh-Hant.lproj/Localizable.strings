@@ -31,6 +31,7 @@
 "settings.iconSize.accessibilityValue" = "%d 點";
 "settings.iconSize.description" = "調整選單列圖示的繪製尺寸，可選 16–36 pt。";
 "settings.tab.basics" = "基礎";
+"settings.tab.panel" = "狀態面板";
 "settings.tab.menuBar" = "選單列";
 "settings.tab.audio" = "音訊";
 "settings.tab.battery" = "電池";
@@ -129,8 +130,8 @@
 "settings.refreshInterval" = "狀態重新整理間隔";
 "settings.refreshInterval.description" = "Status Trio 檢查狀態變化的頻率。重新整理越快，CPU 使用率越高。";
 "settings.refreshInterval.value" = "%d 秒";
-"settings.popup.order" = "彈出式視窗排序";
-"settings.popup.order.description" = "拖移項目以調整它們在彈出式視窗中的順序。";
+"settings.popup.order" = "顯示項目";
+"settings.popup.order.description" = "選擇狀態面板顯示的項目，並拖曳調整順序。";
 "settings.popup.order.battery" = "電池";
 "settings.popup.order.volume" = "音量";
 

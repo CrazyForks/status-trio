@@ -31,6 +31,7 @@
 "settings.iconSize.accessibilityValue" = "%d pontos";
 "settings.iconSize.description" = "Ajusta o tamanho de renderização do ícone na barra de menus entre 16 e 36 pt.";
 "settings.tab.basics" = "Básico";
+"settings.tab.panel" = "Painel de status";
 "settings.tab.menuBar" = "Barra de menus";
 "settings.tab.audio" = "Áudio";
 "settings.tab.battery" = "Bateria";
@@ -129,8 +130,8 @@
 "settings.refreshInterval" = "Intervalo de atualização";
 "settings.refreshInterval.description" = "Com que frequência o Status Trio verifica alterações. Atualizações mais frequentes usam mais CPU.";
 "settings.refreshInterval.value" = "%d segundos";
-"settings.popup.order" = "Ordem do painel";
-"settings.popup.order.description" = "Arraste os itens para alterar a ordem deles no painel.";
+"settings.popup.order" = "Itens exibidos";
+"settings.popup.order.description" = "Escolha quais itens aparecem no painel de status e arraste para alterar a ordem.";
 "settings.popup.order.battery" = "Bateria";
 "settings.popup.order.volume" = "Volume";
 
