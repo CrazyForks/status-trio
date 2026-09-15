@@ -42,12 +42,34 @@ final class BluetoothPermissionTimingTests: XCTestCase {
 
         XCTAssertEqual(stateMonitor.startCount, 1)
     }
+
+    func testBluetoothSettingControlsStateMonitorLifecycle() {
+        let stateMonitor = BluetoothStateMonitorSpy(authorization: .notDetermined)
+        let bluetoothController = BluetoothDeviceController(
+            stateMonitor: stateMonitor,
+            notificationCenter: NotificationCenter(),
+            workspaceNotificationCenter: NotificationCenter()
+        )
+        let store = SystemStatusStore(
+            batteryMonitor: EmptyBatteryMonitorForBluetoothTiming(),
+            wifiMonitor: EmptyWiFiMonitorForBluetoothTiming(),
+            volumeMonitor: EmptyVolumeMonitorForBluetoothTiming(),
+            bluetoothDevices: bluetoothController
+        )
+
+        store.setBluetoothEnabled(true)
+        XCTAssertEqual(stateMonitor.startCount, 1)
+
+        store.setBluetoothEnabled(false)
+        XCTAssertEqual(stateMonitor.stopCount, 1)
+    }
 }
 
 @MainActor
 private final class BluetoothStateMonitorSpy: BluetoothStateMonitoring {
     var onStateChange: ((BluetoothAuthorizationStatus, BluetoothManagerState) -> Void)?
     private(set) var startCount = 0
+    private(set) var stopCount = 0
     let authorization: BluetoothAuthorizationStatus
 
     init(authorization: BluetoothAuthorizationStatus = .notDetermined) {
@@ -58,7 +80,9 @@ private final class BluetoothStateMonitorSpy: BluetoothStateMonitoring {
         startCount += 1
     }
 
-    func stop() {}
+    func stop() {
+        stopCount += 1
+    }
 }
 
 @MainActor

@@ -203,8 +203,16 @@ final class SystemStatusStore: ObservableObject {
     }
 
     func requestBluetoothAuthorization() {
+        setBluetoothEnabled(true)
+    }
+
+    func setBluetoothEnabled(_ enabled: Bool) {
         guard !hasStopped else { return }
-        bluetoothDevices.activate()
+        if enabled {
+            bluetoothDevices.activate()
+        } else {
+            bluetoothDevices.deactivate()
+        }
     }
 
     func refreshForPopoverOpening() {
