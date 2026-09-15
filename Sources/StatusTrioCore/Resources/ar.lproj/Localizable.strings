@@ -69,6 +69,11 @@
 "settings.launchAtLogin.requiresApproval" = "في انتظار الموافقة. اسمح لـ Status Trio في إعدادات النظام › عام › عناصر تسجيل الدخول.";
 "settings.launchAtLogin.openLoginItems" = "فتح عناصر تسجيل الدخول";
 "settings.launchAtLogin.failure" = "تعذّر تحديث عنصر تسجيل الدخول. يمكنك إدارته من إعدادات النظام › عام › عناصر تسجيل الدخول.";
+"settings.appIconPlacement" = "إظهار Status Trio في";
+"settings.appIconPlacement.description" = "يحدد مكان بقاء أيقونة الحالة المباشرة متاحة.";
+"settings.appIconPlacement.menuBar" = "شريط القوائم";
+"settings.appIconPlacement.dock" = "Dock";
+"settings.appIconPlacement.both" = "كلاهما";
 "wifi.title" = "Wi-Fi";
 "network.title" = "الشبكة";
 "wifi.value.bars" = "%d أشرطة";

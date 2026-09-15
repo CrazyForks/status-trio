@@ -11,6 +11,11 @@
 "settings.launchAtLogin.requiresApproval" = "承認待ちです。「システム設定 › 一般 › ログイン項目」で Status Trio を許可してください。";
 "settings.launchAtLogin.openLoginItems" = "ログイン項目を開く";
 "settings.launchAtLogin.failure" = "ログイン項目を更新できませんでした。「システム設定 › 一般 › ログイン項目」で管理できます。";
+"settings.appIconPlacement" = "Status Trio の表示場所";
+"settings.appIconPlacement.description" = "ライブステータスアイコンを表示する場所を選択します。";
+"settings.appIconPlacement.menuBar" = "メニューバー";
+"settings.appIconPlacement.dock" = "Dock";
+"settings.appIconPlacement.both" = "両方";
 "settings.iconSize" = "アイコンの表示サイズ";
 "settings.iconSize.accessibilityValue" = "%d ポイント";
 "settings.iconSize.description" = "メニューバーアイコンの描画サイズを 16〜36 pt で調整します。";

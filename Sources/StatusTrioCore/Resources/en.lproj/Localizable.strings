@@ -11,6 +11,11 @@
 "settings.launchAtLogin.requiresApproval" = "Waiting for approval. Allow Status Trio in System Settings › General › Login Items.";
 "settings.launchAtLogin.openLoginItems" = "Open Login Items";
 "settings.launchAtLogin.failure" = "Couldn’t update the login item. Manage it in System Settings › General › Login Items.";
+"settings.appIconPlacement" = "Show Status Trio In";
+"settings.appIconPlacement.description" = "Choose where the live status icon remains available.";
+"settings.appIconPlacement.menuBar" = "Menu Bar";
+"settings.appIconPlacement.dock" = "Dock";
+"settings.appIconPlacement.both" = "Both";
 "settings.iconSize" = "Icon Size";
 "settings.iconSize.accessibilityValue" = "%d points";
 "settings.iconSize.description" = "Adjusts the menu bar icon render size from 16–36 pt.";

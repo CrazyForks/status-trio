@@ -11,6 +11,11 @@
 "settings.launchAtLogin.requiresApproval" = "Warte auf Freigabe. Erlaube Status Trio in Systemeinstellungen › Allgemein › Anmeldeobjekte.";
 "settings.launchAtLogin.openLoginItems" = "Anmeldeobjekte öffnen";
 "settings.launchAtLogin.failure" = "Das Anmeldeobjekt konnte nicht aktualisiert werden. Verwalte es in Systemeinstellungen › Allgemein › Anmeldeobjekte.";
+"settings.appIconPlacement" = "Status Trio anzeigen in";
+"settings.appIconPlacement.description" = "Legt fest, wo das Live-Statussymbol verfügbar bleibt.";
+"settings.appIconPlacement.menuBar" = "Menüleiste";
+"settings.appIconPlacement.dock" = "Dock";
+"settings.appIconPlacement.both" = "Beide";
 "settings.iconSize" = "Symbolgröße";
 "settings.iconSize.accessibilityValue" = "%d Punkte";
 "settings.iconSize.description" = "Passt die Darstellungsgröße des Menüleistensymbols auf 16–36 pt an.";

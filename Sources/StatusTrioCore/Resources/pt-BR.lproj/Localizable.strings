@@ -11,6 +11,11 @@
 "settings.launchAtLogin.requiresApproval" = "Aguardando aprovação. Permita o Status Trio em Ajustes do Sistema › Geral › Itens de Início.";
 "settings.launchAtLogin.openLoginItems" = "Abrir itens de início";
 "settings.launchAtLogin.failure" = "Não foi possível atualizar o item de início. Gerencie-o em Ajustes do Sistema › Geral › Itens de Início.";
+"settings.appIconPlacement" = "Mostrar Status Trio em";
+"settings.appIconPlacement.description" = "Define onde o ícone de status dinâmico permanece disponível.";
+"settings.appIconPlacement.menuBar" = "Barra de menus";
+"settings.appIconPlacement.dock" = "Dock";
+"settings.appIconPlacement.both" = "Ambos";
 "settings.iconSize" = "Tamanho do ícone";
 "settings.iconSize.accessibilityValue" = "%d pontos";
 "settings.iconSize.description" = "Ajusta o tamanho de renderização do ícone na barra de menus entre 16 e 36 pt.";

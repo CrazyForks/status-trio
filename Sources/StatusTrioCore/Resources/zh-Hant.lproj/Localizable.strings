@@ -11,6 +11,11 @@
 "settings.launchAtLogin.requiresApproval" = "等待授權。請在「系統設定 › 一般 › 登入項目」中允許 Status Trio。";
 "settings.launchAtLogin.openLoginItems" = "打開登入項目設定";
 "settings.launchAtLogin.failure" = "無法更新登入項目，可在「系統設定 › 一般 › 登入項目」中手動管理。";
+"settings.appIconPlacement" = "Status Trio 顯示位置";
+"settings.appIconPlacement.description" = "選擇即時狀態圖示保留在選單列、Dock 或兩處。";
+"settings.appIconPlacement.menuBar" = "選單列";
+"settings.appIconPlacement.dock" = "Dock";
+"settings.appIconPlacement.both" = "兩處";
 "settings.iconSize" = "圖示顯示尺寸";
 "settings.iconSize.accessibilityValue" = "%d 點";
 "settings.iconSize.description" = "調整選單列圖示的繪製尺寸，可選 16–36 pt。";

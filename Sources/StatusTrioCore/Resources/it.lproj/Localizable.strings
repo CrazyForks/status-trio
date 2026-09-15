@@ -11,6 +11,11 @@
 "settings.launchAtLogin.requiresApproval" = "In attesa di approvazione. Consenti Status Trio in Impostazioni di Sistema › Generali › Elementi login.";
 "settings.launchAtLogin.openLoginItems" = "Apri elementi login";
 "settings.launchAtLogin.failure" = "Impossibile aggiornare l’elemento login. Puoi gestirlo in Impostazioni di Sistema › Generali › Elementi login.";
+"settings.appIconPlacement" = "Mostra Status Trio in";
+"settings.appIconPlacement.description" = "Determina dove rimane disponibile l’icona di stato dinamica.";
+"settings.appIconPlacement.menuBar" = "Barra dei menu";
+"settings.appIconPlacement.dock" = "Dock";
+"settings.appIconPlacement.both" = "Entrambi";
 "settings.iconSize" = "Dimensione icona";
 "settings.iconSize.accessibilityValue" = "%d punti";
 "settings.iconSize.description" = "Regola la dimensione di rendering dell’icona nella barra dei menu da 16 a 36 pt.";

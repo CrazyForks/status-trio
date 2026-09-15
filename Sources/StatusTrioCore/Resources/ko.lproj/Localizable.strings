@@ -11,6 +11,11 @@
 "settings.launchAtLogin.requiresApproval" = "승인 대기 중입니다. '시스템 설정 › 일반 › 로그인 항목'에서 Status Trio를 허용하세요.";
 "settings.launchAtLogin.openLoginItems" = "로그인 항목 열기";
 "settings.launchAtLogin.failure" = "로그인 항목을 업데이트하지 못했습니다. '시스템 설정 › 일반 › 로그인 항목'에서 관리할 수 있습니다.";
+"settings.appIconPlacement" = "Status Trio 표시 위치";
+"settings.appIconPlacement.description" = "실시간 상태 아이콘을 표시할 위치를 선택합니다.";
+"settings.appIconPlacement.menuBar" = "메뉴 막대";
+"settings.appIconPlacement.dock" = "Dock";
+"settings.appIconPlacement.both" = "둘 다";
 "settings.iconSize" = "아이콘 표시 크기";
 "settings.iconSize.accessibilityValue" = "%d포인트";
 "settings.iconSize.description" = "메뉴 막대 아이콘의 렌더링 크기를 16–36pt에서 조정합니다.";
