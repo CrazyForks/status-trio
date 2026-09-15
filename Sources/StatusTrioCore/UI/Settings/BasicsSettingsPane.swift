@@ -97,7 +97,7 @@ struct BasicsSettingsPane: View {
             List {
                 ForEach(store.popupSectionOrder) { section in
                     HStack(spacing: 8) {
-                        Image(systemName: section.systemImage)
+                        popupSectionIcon(section)
                             .foregroundStyle(.secondary)
                             .frame(width: 18)
 
@@ -120,6 +120,15 @@ struct BasicsSettingsPane: View {
             }
             .listStyle(.inset)
             .frame(height: popupOrderListHeight)
+        }
+    }
+
+    @ViewBuilder
+    private func popupSectionIcon(_ section: PopupSection) -> some View {
+        if section == .bluetooth {
+            BluetoothIcon(size: 18)
+        } else {
+            Image(systemName: section.systemImage)
         }
     }
 

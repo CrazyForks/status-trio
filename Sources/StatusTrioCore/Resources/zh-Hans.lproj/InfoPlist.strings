@@ -1,1 +1,2 @@
-"NSLocationWhenInUseUsageDescription" = "用于在 Popup 中显示当前连接的 Wi-Fi 网络名称。";
+"NSLocationWhenInUseUsageDescription" = "用于在弹出窗口中显示当前 Wi-Fi 名称，并在打开 Wi-Fi 详情时读取网络名称、扫描结果和连接信息。";
+"NSBluetoothAlwaysUsageDescription" = "仅在打开蓝牙详情时用于显示已配对设备的连接状态。";

@@ -230,6 +230,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
                 openBatterySettings: handleOpenBatterySettings,
                 openWiFiSettings: handleOpenWiFiSettings,
                 openLocationSettings: handleOpenLocationSettings,
+                openBluetoothSettings: handleOpenBluetoothSettings,
                 openSettings: handleOpenSettings,
                 openSoundSettings: handleOpenSoundSettings,
                 quit: quitAction
@@ -353,6 +354,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         removePopoverDismissMonitor()
         removeVolumeScrollMonitor()
         store.setPopoverVisible(false)
+        store.closePopoverDetails()
         popover.contentViewController = nil
     }
 
@@ -447,6 +449,11 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         Self.openSystemSoundSettings()
     }
 
+    private func handleOpenBluetoothSettings() {
+        popover.performClose(nil)
+        Self.openSystemSettings(Self.bluetoothSettingsURLs)
+    }
+
     static let batterySettingsURLs = [
         "x-apple.systempreferences:com.apple.Battery-Settings.extension",
         "x-apple.systempreferences:com.apple.preference.battery"
@@ -456,6 +463,12 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     static let wifiSettingsURLs = [
         "x-apple.systempreferences:com.apple.Network-Settings.extension",
         "x-apple.systempreferences:com.apple.preference.network"
+    ]
+    .compactMap(URL.init(string:))
+
+    static let bluetoothSettingsURLs = [
+        "x-apple.systempreferences:com.apple.BluetoothSettings",
+        "x-apple.systempreferences:com.apple.preference.bluetooth"
     ]
     .compactMap(URL.init(string:))
 

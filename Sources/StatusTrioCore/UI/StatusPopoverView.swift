@@ -242,6 +242,13 @@ enum StatusPresentation {
     }
 }
 
+
+private enum PopoverPanel {
+    case summary
+    case wifi(showDetails: Bool)
+    case bluetooth
+}
+
 struct StatusPopoverView: View {
     @ObservedObject var store: SystemStatusStore
     @ObservedObject var settings: SettingsStore
@@ -250,11 +257,40 @@ struct StatusPopoverView: View {
     let openBatterySettings: () -> Void
     let openWiFiSettings: () -> Void
     let openLocationSettings: () -> Void
+    let openBluetoothSettings: () -> Void
     let openSettings: () -> Void
     let openSoundSettings: () -> Void
     let quit: () -> Void
+    @State private var panel: PopoverPanel = .summary
 
     var body: some View {
+        Group {
+            switch panel {
+            case .summary:
+                summary
+            case .wifi(let showDetails):
+                WiFiNetworkListView(
+                    controller: store.wifiNetworks,
+                    wifi: store.popupSnapshot.wifi,
+                    onBack: { panel = .summary },
+                    onRequestNameAccess: requestWiFiNameAccess,
+                    onOpenWiFiSettings: openWiFiSettings,
+                    onOpenLocationSettings: openLocationSettings,
+                    showsDetailsInitially: showDetails
+                )
+            case .bluetooth:
+                BluetoothDeviceListView(
+                    controller: store.bluetoothDevices,
+                    onBack: { panel = .summary },
+                    onOpenBluetoothSettings: openBluetoothSettings
+                )
+            }
+        }
+        .padding(14)
+        .frame(width: 330)
+    }
+
+    private var summary: some View {
         VStack(alignment: .leading, spacing: 12) {
             ForEach(settings.popupSectionOrder) { section in
                 popupSection(section)
@@ -281,8 +317,6 @@ struct StatusPopoverView: View {
             .buttonStyle(.plain)
             .keyboardShortcut("q")
         }
-        .padding(14)
-        .frame(width: 300)
     }
 
     @ViewBuilder
@@ -296,9 +330,22 @@ struct StatusPopoverView: View {
         case .network:
             WiFiStatusView(
                 wifi: store.popupSnapshot.wifi,
+                onOpenDetails: { showDetails in
+                    store.activateWiFiPanel()
+                    panel = .wifi(showDetails: showDetails)
+                },
                 onRequestNameAccess: requestWiFiNameAccess,
                 onOpenWiFiSettings: openWiFiSettings,
                 onOpenLocationSettings: openLocationSettings
+            )
+        case .bluetooth:
+            BluetoothStatusView(
+                controller: store.bluetoothDevices,
+                onOpenDetails: {
+                    store.activateBluetoothPanel()
+                    panel = .bluetooth
+                },
+                onOpenBluetoothSettings: openBluetoothSettings
             )
         case .volume:
             VolumeControlsView(
