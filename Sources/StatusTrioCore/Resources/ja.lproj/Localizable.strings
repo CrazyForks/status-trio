@@ -1,6 +1,12 @@
 "menu.version" = "Status Trio %@";
 "menu.settings" = "設定…";
 "menu.quit" = "Status Trioを終了";
+"menu.about" = "%@ について";
+"menu.hide" = "%@ を隠す";
+"menu.hideOthers" = "ほかを隠す";
+"menu.showAll" = "すべてを表示";
+"menu.window" = "ウインドウ";
+"menu.closeWindow" = "ウインドウを閉じる";
 "menu.checkForUpdates" = "アップデートを確認…";
 "settings.title" = "設定";
 "settings.language" = "言語";

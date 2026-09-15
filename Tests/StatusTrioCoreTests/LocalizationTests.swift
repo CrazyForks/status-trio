@@ -73,6 +73,8 @@ final class LocalizationTests: XCTestCase {
     func testEveryParameterizedKeyUsesMatchingPlaceholders() throws {
         let expectedPlaceholderCounts: [LocalizationKey: Int] = [
             .menuVersion: 1,
+            .menuAbout: 1,
+            .menuHide: 1,
             .settingsIconSizeAccessibilityValue: 1,
             .settingsRefreshIntervalValue: 1,
             .settingsAboutVersion: 1,

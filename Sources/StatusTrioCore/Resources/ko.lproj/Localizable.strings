@@ -1,6 +1,12 @@
 "menu.version" = "Status Trio %@";
 "menu.settings" = "설정…";
 "menu.quit" = "Status Trio 종료";
+"menu.about" = "%@ 정보";
+"menu.hide" = "%@ 가리기";
+"menu.hideOthers" = "기타 가리기";
+"menu.showAll" = "모두 보기";
+"menu.window" = "윈도우";
+"menu.closeWindow" = "윈도우 닫기";
 "menu.checkForUpdates" = "업데이트 확인…";
 "settings.title" = "설정";
 "settings.language" = "언어";

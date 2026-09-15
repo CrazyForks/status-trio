@@ -9,6 +9,7 @@ final class AppEnvironment {
     let settingsWindowController: SettingsWindowController
     let activationPolicy: AppActivationPolicy
     let appIconController: AppIconController
+    let mainMenuController: MainMenuController
 
     init(
         store: SystemStatusStore,
@@ -17,7 +18,8 @@ final class AppEnvironment {
         statusBarController: StatusBarController,
         settingsWindowController: SettingsWindowController,
         activationPolicy: AppActivationPolicy,
-        appIconController: AppIconController
+        appIconController: AppIconController,
+        mainMenuController: MainMenuController
     ) {
         self.store = store
         self.settings = settings
@@ -26,15 +28,18 @@ final class AppEnvironment {
         self.settingsWindowController = settingsWindowController
         self.activationPolicy = activationPolicy
         self.appIconController = appIconController
+        self.mainMenuController = mainMenuController
     }
 
     func start() {
+        mainMenuController.start()
         appIconController.start()
         store.start()
     }
 
     func stop() {
         appIconController.stop()
+        mainMenuController.stop()
         store.stop()
     }
 
@@ -95,6 +100,10 @@ final class AppEnvironment {
                 )
             }
         )
+        let mainMenuController = MainMenuController(
+            localization: localization,
+            openSettings: { settingsWindowController.show() }
+        )
         return AppEnvironment(
             store: store,
             settings: settings,
@@ -102,7 +111,8 @@ final class AppEnvironment {
             statusBarController: controller,
             settingsWindowController: settingsWindowController,
             activationPolicy: activationPolicy,
-            appIconController: appIconController
+            appIconController: appIconController,
+            mainMenuController: mainMenuController
         )
     }
 }

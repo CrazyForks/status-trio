@@ -1,6 +1,12 @@
 "menu.version" = "Status Trio %@";
 "menu.settings" = "الإعدادات…";
 "menu.quit" = "إنهاء Status Trio";
+"menu.about" = "حول %@";
+"menu.hide" = "إخفاء %@";
+"menu.hideOthers" = "إخفاء الأخرى";
+"menu.showAll" = "إظهار الكل";
+"menu.window" = "نافذة";
+"menu.closeWindow" = "إغلاق النافذة";
 "menu.checkForUpdates" = "التحقق من وجود تحديثات…";
 "settings.title" = "الإعدادات";
 "settings.language" = "اللغة";

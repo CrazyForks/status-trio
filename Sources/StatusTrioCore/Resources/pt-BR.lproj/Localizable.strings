@@ -1,6 +1,12 @@
 "menu.version" = "Status Trio %@";
 "menu.settings" = "Ajustes…";
 "menu.quit" = "Sair do Status Trio";
+"menu.about" = "Sobre o %@";
+"menu.hide" = "Ocultar %@";
+"menu.hideOthers" = "Ocultar Outros";
+"menu.showAll" = "Mostrar Tudo";
+"menu.window" = "Janela";
+"menu.closeWindow" = "Fechar Janela";
 "menu.checkForUpdates" = "Verificar atualizações…";
 "settings.title" = "Ajustes";
 "settings.language" = "Idioma";
