@@ -708,6 +708,23 @@ final class StatusIconRendererTests: XCTestCase {
         }
     }
 
+    func testConnectedLowSignalRendersInactiveTrackWithMutedAlpha() throws {
+        let oneBar = StatusSnapshot(
+            battery: .placeholder,
+            wifi: WiFiStatus(state: .connected, rssi: -85),
+            volume: .placeholder
+        )
+        let outerArcRegion = CGRect(x: 35, y: 43, width: 50, height: 18)
+        let pixels = try renderPixels(oneBar)
+        let outerAlpha = pixels.alphaSum(
+            inSVGRect: outerArcRegion,
+            size: 20,
+            scale: 8
+        )
+        // Outer arc is not active at 1 bar, but must be rendered in muted track color (> 0 alpha)
+        XCTAssertGreaterThan(outerAlpha, 0)
+    }
+
     func testRendererResolvesForegroundForEachDrawingAppearance() throws {
         let snapshot = StatusSnapshot(
             battery: .placeholder,

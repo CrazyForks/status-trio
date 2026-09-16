@@ -426,10 +426,14 @@ enum StatusIconRenderer {
     ) {
         context.setLineWidth(7)
         let bars = StatusMappings.wifiBars(rssi: wifi.rssi)
-        if bars == 0 {
-            let mutedColor = foreground.copy(alpha: 0.30) ?? foreground
-            drawWiFiSignal(level: 3, color: mutedColor, in: context)
-        } else {
+        let mutedColor = foreground.copy(alpha: 0.30) ?? foreground
+
+        // Always draw the complete 3-bar signal track in muted color so the icon geometry
+        // remains balanced even when signal is low, matching battery and volume tracks.
+        drawWiFiSignal(level: 3, color: mutedColor, in: context)
+
+        // Overlay active signal bars in solid foreground
+        if bars > 0 {
             drawWiFiSignal(level: bars, color: foreground, in: context)
         }
     }
