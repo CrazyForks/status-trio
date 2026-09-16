@@ -57,7 +57,7 @@ Do not create a release if that preflight has not passed.
 ## Release Rules
 
 - GitHub Release notes must use a top-level `# Version X.Y.Z （English + 中文， 中文在下方）` heading, followed by English notes and then Chinese notes. Provide the English text through `release_notes` and the Chinese text through `release_notes_zh`; the release workflow combines them.
-- Sparkle appcast items must use the same bilingual order: the version title includes `（English + 中文， 中文在下方）`, followed by English notes and then Chinese notes.
+- Sparkle appcast items are localized, not bilingual: emit `<title xml:lang="en">` plus `<title xml:lang="zh-Hans">` and `<description xml:lang="en">` plus `<description xml:lang="zh-Hans">` for every new item, and give every variant an explicit `xml:lang`. Sparkle renders the variant matching the user's preferred languages and falls back to English. Never stack both languages inside one `<description>`.
 - GitHub Release bodies must append the first-launch commands `xattr -dr com.apple.quarantine "/Applications/Status Trio.app"` and `open "/Applications/Status Trio.app"` after the bilingual notes. Do not include these commands in the Sparkle appcast.
 - Release announcements remain in English.
 - Release through `.github/workflows/release.yml`; do not publish manually unless the workflow is unavailable and the user explicitly asks for a manual fallback.
