@@ -638,7 +638,7 @@ final class StatusIconRendererTests: XCTestCase {
         XCTAssertEqual(pixels.maximumAlphaOnEdges, 0)
     }
 
-    func testConnectedZeroBarsMatchesFullMutedSignalAndDiffersFromHigherBars() throws {
+    func testConnectedZeroBarsUsesMutedSignalWhileNotAssociatedUsesFullForeground() throws {
         let zeroBars = StatusSnapshot(
             battery: .placeholder,
             wifi: WiFiStatus(state: .connected, rssi: nil),
@@ -666,7 +666,7 @@ final class StatusIconRendererTests: XCTestCase {
         )
 
         let zeroPixels = try renderPixels(zeroBars)
-        XCTAssertEqual(zeroPixels.bytes, try renderPixels(notAssociated).bytes)
+        XCTAssertNotEqual(zeroPixels.bytes, try renderPixels(notAssociated).bytes)
         XCTAssertNotEqual(zeroPixels.bytes, try renderPixels(oneBar).bytes)
         XCTAssertNotEqual(zeroPixels.bytes, try renderPixels(twoBars).bytes)
         XCTAssertNotEqual(zeroPixels.bytes, try renderPixels(threeBars).bytes)

@@ -79,6 +79,31 @@ struct Issue13IconParityTests {
         #expect(pixel.blue > 240, "\(state) should keep the light body")
     }
 
+    @Test(
+        "Inactive Wi-Fi status symbols keep the full foreground color",
+        .bug("https://github.com/lingyired/status-trio/issues/13"),
+        arguments: [
+            (WiFiState.notAssociated, UInt8(60)),
+            (.off, UInt8(180)),
+            (.unavailable, UInt8(180)),
+            (.noInternet, UInt8(220))
+        ]
+    )
+    func inactiveWiFiStatusSymbolsKeepFullForeground(
+        _ state: WiFiState,
+        minimumAlpha: UInt8
+    ) throws {
+        let image = StatusIconRenderer.wifiImage(
+            wifi: WiFiStatus(state: state, rssi: nil),
+            size: 16
+        )
+        let pixels = try pixels(from: image)
+
+        // SF Symbol hierarchical rendering supplies its own layer opacity.
+        // These floors catch applying inactiveTrackAlpha to the whole symbol again.
+        #expect(maximumAlpha(in: pixels) > minimumAlpha, "\(state)")
+    }
+
     private func renderedPixels(
         for state: WiFiState,
         wifiScale: Double
@@ -126,5 +151,17 @@ struct Issue13IconParityTests {
 
     private func pixelsDiffer(_ lhs: PixelBuffer, _ rhs: PixelBuffer) -> Bool {
         lhs.bytes != rhs.bytes
+    }
+
+    private func pixels(from image: NSImage) throws -> PixelBuffer {
+        let tiff = try #require(image.tiffRepresentation)
+        let representation = try #require(NSBitmapImageRep(data: tiff))
+        return try PixelBuffer(image: try #require(representation.cgImage))
+    }
+
+    private func maximumAlpha(in pixels: PixelBuffer) -> UInt8 {
+        stride(from: 3, to: pixels.bytes.count, by: 4)
+            .map { pixels.bytes[$0] }
+            .max() ?? 0
     }
 }

@@ -439,7 +439,6 @@ enum StatusIconRenderer {
     ) {
         let basePointSize: CGFloat = 38.0
         let symbolPointSize = basePointSize * CGFloat(options.wifiScale)
-        let mutedColor = foreground.copy(alpha: inactiveTrackAlpha) ?? foreground
 
         switch wifi.state {
         case .connected:
@@ -449,7 +448,7 @@ enum StatusIconRenderer {
                 name: "wifi",
                 variableValue: 0.0,
                 pointSize: symbolPointSize,
-                foreground: mutedColor,
+                foreground: foreground,
                 in: context
             )
         case .off, .unavailable:
@@ -457,7 +456,7 @@ enum StatusIconRenderer {
                 name: "wifi.slash",
                 variableValue: 1.0,
                 pointSize: symbolPointSize,
-                foreground: mutedColor,
+                foreground: foreground,
                 in: context
             )
         case .noInternet:
@@ -465,7 +464,7 @@ enum StatusIconRenderer {
                 name: "wifi.exclamationmark",
                 variableValue: 1.0,
                 pointSize: symbolPointSize,
-                foreground: mutedColor,
+                foreground: foreground,
                 in: context
             )
         case .hotspot where options.showsWiFiIconForHotspot:
