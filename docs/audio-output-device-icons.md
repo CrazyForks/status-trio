@@ -23,11 +23,31 @@ reads the matching symbol from
 | `com.apple.beats-*` | `beats.headphones`, `beats.powerbeatspro`, `beats.studiobuds`, `beats.fit.pro`, `beats.earphones` |
 | `com.apple.homepod`, `com.apple.homepod-mini` | `homepod`, `homepodmini` |
 | `com.apple.apple-tv` | `appletv` |
+| `com.apple.mac.laptop` | `macbook` |
+| `com.apple.macmini`, `com.apple.macstudio`, `com.apple.macpro` | `macmini.gen2`, `macstudio`, `macpro.gen3` |
 
 `AudioOutputDeviceIcon` uses those exact symbol names, so the app draws what the
 system draws for the same device class. Note that the system always uses the
 filled speaker glyph; the app distinguishes the selected device with its accent
 circle instead of a second symbol.
+
+## Built-in output draws the machine
+
+For a built-in output the system draws the machine itself, not a speaker: a
+MacBook row shows the `macbook` symbol. `HostMacKind` reproduces that from the
+device name, which carries the family (`MacBook Pro扬声器`, `Mac mini扬声器`),
+and falls back to `hw.model` when the name does not name the machine. Apple
+Silicon identifiers such as `Mac15,9` no longer encode the family, which is why
+the device name is read first.
+
+A Mac with a headphone jack keeps one built-in output device and switches its
+data source, so plugging headphones in switches the row from the machine symbol
+to the headphones symbol.
+
+## AirPlay
+
+AirPlay outputs use `airplayaudio`, the AirPlay glyph, unless the device name
+identifies an Apple TV (`appletv`) or a HomePod (`homepod`, `homepodmini`).
 
 Several of those symbols are recent additions. `airpods.pro.gen1` ships with
 macOS 26, so every class also carries an older fallback and
