@@ -11,12 +11,15 @@ struct DockIconRenderKey: Equatable, Hashable {
     let volumeSteps: Int
     let options: BatteryIconOptions
     let connectionOptions: ConnectionIconOptions
+    let volumeOptions: VolumeIconOptions
+    let volumeArcProgress: Double?
     let backgroundStyle: DockIconBackgroundStyle
 
     init(
         status: MenuBarStatus,
         options: BatteryIconOptions,
         connectionOptions: ConnectionIconOptions,
+        volumeOptions: VolumeIconOptions = .standard,
         backgroundStyle: DockIconBackgroundStyle
     ) {
         self.batteryPercentage = status.battery.percentage
@@ -38,7 +41,16 @@ struct DockIconRenderKey: Equatable, Hashable {
         ) ?? 0
         self.options = options
         self.connectionOptions = connectionOptions
+        self.volumeOptions = volumeOptions
+        self.volumeArcProgress = volumeOptions.displayStyle == .arc
+            ? status.volume.scalar.flatMap(Self.clampedVolume)
+            : nil
         self.backgroundStyle = backgroundStyle
+    }
+
+    private static func clampedVolume(_ scalar: Double) -> Double? {
+        guard scalar.isFinite else { return nil }
+        return min(1, max(0, scalar))
     }
 }
 

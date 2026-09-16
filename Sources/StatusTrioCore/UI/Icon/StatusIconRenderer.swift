@@ -481,35 +481,77 @@ enum StatusIconRenderer {
         case .temporary where options.showsWiFiIconForTemporaryConnection:
             drawStandardWiFi(wifi, wifiScale: options.wifiScale, in: context, foreground: foreground)
         case .temporary:
-            context.setFillColor(foreground)
-            context.setStrokeColor(foreground)
-            context.setLineWidth(7)
-            context.addPath(StatusIconGeometry.temporaryWedge())
-            context.drawPath(using: .fillStroke)
-
-            context.saveGState()
-            context.setBlendMode(.clear)
-            context.setLineWidth(2.5)
-            context.addPath(StatusIconGeometry.temporaryScreenOutline())
-            context.strokePath()
-            context.addPath(StatusIconGeometry.temporaryScreenStand())
-            context.fillPath()
-            context.restoreGState()
+            drawTemporaryConnectionMark(
+                wifiScale: options.wifiScale,
+                in: context,
+                foreground: foreground
+            )
         case .shared where options.showsWiFiIconForInternetSharing:
             drawStandardWiFi(wifi, wifiScale: options.wifiScale, in: context, foreground: foreground)
         case .shared:
-            context.setFillColor(foreground)
-            context.setStrokeColor(foreground)
-            context.setLineWidth(7)
-            context.addPath(StatusIconGeometry.sharedWedge())
-            context.drawPath(using: .fillStroke)
-
-            context.saveGState()
-            context.setBlendMode(.clear)
-            context.addPath(StatusIconGeometry.sharedArrowCutout())
-            context.fillPath()
-            context.restoreGState()
+            drawSharedConnectionMark(
+                wifiScale: options.wifiScale,
+                in: context,
+                foreground: foreground
+            )
         }
+    }
+
+    private static func drawTemporaryConnectionMark(
+        wifiScale: Double,
+        in context: CGContext,
+        foreground: CGColor
+    ) {
+        context.saveGState()
+        defer { context.restoreGState() }
+        applyWiFiScale(wifiScale, in: context)
+
+        context.setFillColor(foreground)
+        context.setStrokeColor(foreground)
+        context.setLineWidth(7)
+        context.addPath(StatusIconGeometry.temporaryWedge())
+        context.drawPath(using: .fillStroke)
+
+        context.saveGState()
+        context.setBlendMode(.clear)
+        context.setLineWidth(2.5)
+        context.addPath(StatusIconGeometry.temporaryScreenOutline())
+        context.strokePath()
+        context.addPath(StatusIconGeometry.temporaryScreenStand())
+        context.fillPath()
+        context.restoreGState()
+    }
+
+    private static func drawSharedConnectionMark(
+        wifiScale: Double,
+        in context: CGContext,
+        foreground: CGColor
+    ) {
+        context.saveGState()
+        defer { context.restoreGState() }
+        applyWiFiScale(wifiScale, in: context)
+
+        context.setFillColor(foreground)
+        context.setStrokeColor(foreground)
+        context.setLineWidth(7)
+        context.addPath(StatusIconGeometry.sharedWedge())
+        context.drawPath(using: .fillStroke)
+
+        context.saveGState()
+        context.setBlendMode(.clear)
+        context.addPath(StatusIconGeometry.sharedArrowCutout())
+        context.fillPath()
+        context.restoreGState()
+    }
+
+    private static func applyWiFiScale(_ wifiScale: Double, in context: CGContext) {
+        let scale = CGFloat(wifiScale)
+        guard scale.isFinite, scale > 0, scale != 1 else { return }
+
+        let pivot = CGPoint(x: 59.5, y: 64.0)
+        context.translateBy(x: pivot.x, y: pivot.y)
+        context.scaleBy(x: scale, y: scale)
+        context.translateBy(x: -pivot.x, y: -pivot.y)
     }
 
     private static func drawStandardWiFi(
