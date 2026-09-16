@@ -1,9 +1,59 @@
 import AppKit
+import SwiftUI
 import XCTest
 @testable import StatusTrioCore
 
 @MainActor
 final class PopoverScrollTargetsTests: XCTestCase {
+    func testStatusPanelRegistersItsVolumeControlRegion() throws {
+        let name = "StatusTrioCoreTests.PopoverScrollTargets.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: name) ?? .standard
+        defer { defaults.removePersistentDomain(forName: name) }
+
+        let window = makeWindow()
+        let targets = PopoverScrollTargets()
+        let hostingView = NSHostingView(
+            rootView: StatusPopoverView(
+                store: SystemStatusStore(
+                    batteryMonitor: MarkerBatteryMonitor(),
+                    wifiMonitor: MarkerWiFiMonitor(),
+                    volumeMonitor: MarkerVolumeMonitor()
+                ),
+                settings: SettingsStore(defaults: defaults),
+                scrollTargets: targets,
+                requestWiFiNameAccess: {},
+                requestBluetoothAuthorization: {},
+                openBatterySettings: {},
+                openWiFiSettings: {},
+                openLocationSettings: {},
+                openBluetoothSettings: {},
+                openSettings: {},
+                openSoundSettings: {},
+                quit: {}
+            )
+            .environmentObject(
+                Localization(defaults: defaults, preferredLanguages: ["en"])
+            )
+        )
+        hostingView.frame = NSRect(x: 0, y: 0, width: 330, height: 480)
+        window.contentView?.addSubview(hostingView)
+        hostingView.layoutSubtreeIfNeeded()
+
+        let marker = try XCTUnwrap(scrollTargetView(in: hostingView))
+        let center = marker.convert(
+            NSPoint(x: marker.bounds.midX, y: marker.bounds.midY),
+            to: nil
+        )
+        XCTAssertGreaterThan(marker.bounds.height, 0)
+        XCTAssertTrue(targets.containsVolumeControl(at: center, in: window))
+        XCTAssertFalse(
+            targets.containsVolumeControl(
+                at: NSPoint(x: center.x, y: center.y + 200),
+                in: window
+            )
+        )
+    }
+
     func testRegisteredVolumeControlMatchesPointsInsideItsFrame() {
         let window = makeWindow()
         let targets = PopoverScrollTargets()
@@ -78,4 +128,47 @@ final class PopoverScrollTargetsTests: XCTestCase {
         window.contentView?.addSubview(control)
         return control
     }
+
+    private func scrollTargetView(in view: NSView) -> ScrollTargetView? {
+        if let marker = view as? ScrollTargetView {
+            return marker
+        }
+        for subview in view.subviews {
+            if let marker = scrollTargetView(in: subview) {
+                return marker
+            }
+        }
+        return nil
+    }
+}
+
+@MainActor
+private final class MarkerBatteryMonitor: BatteryMonitoring {
+    let updates: AsyncStream<BatteryStatus>
+    init() { (updates, _) = AsyncStream.makeStream() }
+    func start() {}
+    func stop() {}
+    func refresh() {}
+    func recover() {}
+}
+
+@MainActor
+private final class MarkerWiFiMonitor: WiFiMonitoring {
+    let updates: AsyncStream<WiFiStatus>
+    init() { (updates, _) = AsyncStream.makeStream() }
+    func start() {}
+    func stop() {}
+    func refresh() {}
+    func recover() {}
+    func requestNameAccess() {}
+}
+
+@MainActor
+private final class MarkerVolumeMonitor: VolumeMonitoring {
+    let updates: AsyncStream<VolumeStatus>
+    init() { (updates, _) = AsyncStream.makeStream() }
+    func start() {}
+    func stop() {}
+    func refresh() {}
+    func recover() {}
 }
