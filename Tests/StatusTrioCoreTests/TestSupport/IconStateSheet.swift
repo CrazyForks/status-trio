@@ -48,15 +48,7 @@ enum IconStateSheet {
 
     // MARK: - Palette
 
-    private static func color(_ red: CGFloat, _ green: CGFloat, _ blue: CGFloat, _ alpha: CGFloat = 1) -> CGColor {
-        CGColor(red: red, green: green, blue: blue, alpha: alpha)
-    }
-
-    private static var ink: CGColor { color(0.11, 0.11, 0.12) }
-    private static var mutedInk: CGColor { color(0.42, 0.42, 0.45) }
-    private static var hairline: CGColor { color(0.90, 0.90, 0.92) }
-    private static var chipFill: CGColor { color(0.949, 0.949, 0.965) }
-    private static var glyph: CGColor { color(0, 0, 0) }
+    private static var glyph: CGColor { SheetCanvas.color(0, 0, 0) }
 
     // MARK: - Baseline statuses
 
@@ -128,7 +120,7 @@ enum IconStateSheet {
             Section(
                 zh: "电池（顶部）",
                 en: "Battery (top)",
-                tint: color(0.20, 0.78, 0.35),
+                tint: SheetCanvas.color(0.20, 0.78, 0.35),
                 entries: [
                     entry(
                         zh: "充电中",
@@ -188,7 +180,7 @@ enum IconStateSheet {
             Section(
                 zh: "Wi-Fi（中部）",
                 en: "Wi-Fi (middle)",
-                tint: color(0.00, 0.48, 1.00),
+                tint: SheetCanvas.color(0.00, 0.48, 1.00),
                 entries: [
                     entry(
                         zh: "已连接（3 格）",
@@ -257,7 +249,7 @@ enum IconStateSheet {
             Section(
                 zh: "音量（底部）",
                 en: "Volume (bottom)",
-                tint: color(0.20, 0.70, 0.85),
+                tint: SheetCanvas.color(0.20, 0.70, 0.85),
                 entries: [
                     entry(
                         zh: "音量 100%（圆点）",
@@ -313,39 +305,23 @@ enum IconStateSheet {
         }
         let totalHeight = titleHeight + bodyHeight + footerHeight
 
-        let width = Int((totalWidth * scale).rounded())
-        let height = Int((totalHeight * scale).rounded())
-
-        guard let context = CGContext(
-            data: nil,
-            width: width,
-            height: height,
-            bitsPerComponent: 8,
-            bytesPerRow: width * 4,
-            space: CGColorSpaceCreateDeviceRGB(),
-            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-        ) else {
-            throw SheetError.contextUnavailable
-        }
-
-        context.scaleBy(x: scale, y: scale)
-        context.setFillColor(color(1, 1, 1))
+        let context = try SheetCanvas.makeContext(width: totalWidth, height: totalHeight, scale: scale)
+        context.setFillColor(SheetCanvas.pageFill)
         context.fill(CGRect(x: 0, y: 0, width: totalWidth, height: totalHeight))
-        context.setShouldAntialias(true)
 
         func flip(_ topY: CGFloat) -> CGFloat { totalHeight - topY }
 
-        draw(
+        SheetCanvas.draw(
             "Status Trio 图标状态",
-            font: font("PingFangSC-Semibold", 21),
-            color: ink,
+            font: SheetCanvas.font("PingFangSC-Semibold", 21),
+            color: SheetCanvas.ink,
             topLeft: CGPoint(x: margin, y: flip(38)),
             in: context
         )
-        draw(
+        SheetCanvas.draw(
             "Menu bar and Dock icon states · drawn by the app's own renderer",
-            font: font("HelveticaNeue", 12),
-            color: mutedInk,
+            font: SheetCanvas.font("HelveticaNeue", 12),
+            color: SheetCanvas.mutedInk,
             topLeft: CGPoint(x: margin, y: flip(64)),
             in: context
         )
@@ -366,28 +342,15 @@ enum IconStateSheet {
             cursor += sectionRows * (chipSize + rowSpacing) - rowSpacing
         }
 
-        draw(
+        SheetCanvas.draw(
             "图标颜色随菜单栏外观自动切换，这里按浅色外观渲染。 · Colors follow the menu bar appearance; rendered here for light.",
-            font: font("PingFangSC-Regular", 11),
-            color: mutedInk,
+            font: SheetCanvas.font("PingFangSC-Regular", 11),
+            color: SheetCanvas.mutedInk,
             topLeft: CGPoint(x: margin, y: flip(totalHeight - footerHeight + 26)),
             in: context
         )
 
-        guard let image = context.makeImage() else { throw SheetError.imageUnavailable }
-
-        let data = NSMutableData()
-        guard let destination = CGImageDestinationCreateWithData(
-            data,
-            UTType.png.identifier as CFString,
-            1,
-            nil
-        ) else {
-            throw SheetError.encoderUnavailable
-        }
-        CGImageDestinationAddImage(destination, image, nil)
-        guard CGImageDestinationFinalize(destination) else { throw SheetError.encoderUnavailable }
-        return data as Data
+        return try SheetCanvas.pngData(context)
     }
 
     private static func drawSectionHeader(
@@ -398,31 +361,32 @@ enum IconStateSheet {
     ) {
         let flip: (CGFloat) -> CGFloat = { totalHeight - $0 }
         context.setFillColor(section.tint)
-        context.addPath(CGPath(
-            roundedRect: CGRect(x: margin, y: flip(topY + 12), width: 3, height: 16),
-            cornerWidth: 1.5,
-            cornerHeight: 1.5,
-            transform: nil
+        context.addPath(SheetCanvas.roundedRect(
+            CGRect(x: margin, y: flip(topY + 12), width: 3, height: 16),
+            cornerRadius: 1.5
         ))
         context.fillPath()
 
-        draw(
+        let zhFont = SheetCanvas.font("PingFangSC-Semibold", 14)
+        SheetCanvas.draw(
             section.zh,
-            font: font("PingFangSC-Semibold", 14),
-            color: ink,
+            font: zhFont,
+            color: SheetCanvas.ink,
             topLeft: CGPoint(x: margin + 12, y: flip(topY + 12)),
             in: context
         )
-        let zhWidth = width(of: section.zh, font: font("PingFangSC-Semibold", 14))
-        draw(
+        SheetCanvas.draw(
             section.en,
-            font: font("HelveticaNeue-Medium", 12),
-            color: mutedInk,
-            topLeft: CGPoint(x: margin + 12 + zhWidth + 8, y: flip(topY + 14)),
+            font: SheetCanvas.font("HelveticaNeue-Medium", 12),
+            color: SheetCanvas.mutedInk,
+            topLeft: CGPoint(
+                x: margin + 12 + SheetCanvas.textWidth(of: section.zh, font: zhFont) + 8,
+                y: flip(topY + 14)
+            ),
             in: context
         )
 
-        context.setStrokeColor(hairline)
+        context.setStrokeColor(SheetCanvas.hairline)
         context.setLineWidth(1)
         context.move(to: CGPoint(x: margin, y: flip(topY + 34)))
         context.addLine(to: CGPoint(x: totalWidth - margin, y: flip(topY + 34)))
@@ -437,12 +401,10 @@ enum IconStateSheet {
     ) throws {
         let flip: (CGFloat) -> CGFloat = { totalHeight - $0 }
 
-        context.setFillColor(chipFill)
-        context.addPath(CGPath(
-            roundedRect: CGRect(x: topLeft.x, y: flip(topLeft.y + chipSize), width: chipSize, height: chipSize),
-            cornerWidth: 13,
-            cornerHeight: 13,
-            transform: nil
+        context.setFillColor(SheetCanvas.chipFill)
+        context.addPath(SheetCanvas.roundedRect(
+            CGRect(x: topLeft.x, y: flip(topLeft.y + chipSize), width: chipSize, height: chipSize),
+            cornerRadius: 13
         ))
         context.fillPath()
 
@@ -470,64 +432,23 @@ enum IconStateSheet {
         )
 
         let textX = topLeft.x + chipSize + textGap
-        draw(
+        SheetCanvas.draw(
             entry.zh,
-            font: font("PingFangSC-Medium", 13),
-            color: ink,
+            font: SheetCanvas.font("PingFangSC-Medium", 13),
+            color: SheetCanvas.ink,
             topLeft: CGPoint(x: textX, y: flip(topLeft.y + 17)),
             in: context
         )
-        draw(
+        SheetCanvas.draw(
             entry.en,
-            font: font("HelveticaNeue", 11),
-            color: mutedInk,
+            font: SheetCanvas.font("HelveticaNeue", 11),
+            color: SheetCanvas.mutedInk,
             topLeft: CGPoint(x: textX, y: flip(topLeft.y + 38)),
             in: context
         )
     }
 
-    // MARK: - Text helpers
-
-    private static func font(_ name: String, _ size: CGFloat) -> CTFont {
-        CTFontCreateWithName(name as CFString, size, nil)
-    }
-
-    private static func draw(
-        _ text: String,
-        font: CTFont,
-        color: CGColor,
-        topLeft: CGPoint,
-        in context: CGContext
-    ) {
-        let attributes: [NSAttributedString.Key: Any] = [
-            .font: font,
-            .foregroundColor: color
-        ]
-        let line = CTLineCreateWithAttributedString(
-            NSAttributedString(string: text, attributes: attributes)
-        )
-        context.saveGState()
-        context.textPosition = CGPoint(x: topLeft.x, y: topLeft.y - CTFontGetAscent(font))
-        CTLineDraw(line, context)
-        context.restoreGState()
-    }
-
-    private static func width(of text: String, font: CTFont) -> CGFloat {
-        let attributes: [NSAttributedString.Key: Any] = [.font: font]
-        let line = CTLineCreateWithAttributedString(
-            NSAttributedString(string: text, attributes: attributes)
-        )
-        var ascent: CGFloat = 0
-        var descent: CGFloat = 0
-        var leading: CGFloat = 0
-        let width = CTLineGetTypographicBounds(line, &ascent, &descent, &leading)
-        return CGFloat(width)
-    }
-
     enum SheetError: Error {
-        case contextUnavailable
-        case imageUnavailable
-        case encoderUnavailable
         case iconUnavailable
     }
 }

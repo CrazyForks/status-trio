@@ -62,6 +62,12 @@ The same live icon can live in the Dock instead of the menu bar, or in both plac
   <sub>Bluetooth panel preview</sub>
 </p>
 
+The Dock icon can follow the system icon style or be pinned to a fixed background:
+
+<p align="center">
+  <img src="screenshots/status-trio-dock-icons.png" width="880" alt="Status Trio Dock icon in dark, light, and clear backgrounds, each captioned below the tile">
+</p>
+
 ## Icon states
 
 Every state the combined icon can show, drawn by the app's own renderer — battery indicators on top, Wi-Fi in the middle, volume dots or the arc at the bottom:
