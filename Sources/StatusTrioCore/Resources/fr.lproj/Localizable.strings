@@ -220,3 +220,10 @@
 "settings.audio.displayRules" = "Règles d'affichage";
 "settings.audio.activeDeviceFootnote" = "Le périphérique de sortie audio actif est mis en évidence avec la couleur d'accentuation.";
 "settings.audio.inUse" = "En cours d'utilisation";
+"settings.wifi.symbolScale" = "Taille de l'icône Wi-Fi";
+"settings.wifi.symbolScaleDescription" = "Ajuste l'échelle de l'icône Wi-Fi dans l'anneau de la barre des menus de 100 % à 180 %.";
+"settings.audio.indicatorStyleTitle" = "Style de l'indicateur de volume";
+"settings.audio.indicatorStyle" = "Style d'affichage";
+"settings.audio.indicatorStyleDescription" = "Choisissez d'afficher le volume sous forme de quatre points ou d'un arc continu.";
+"settings.audio.indicatorStyle.dots" = "Points";
+"settings.audio.indicatorStyle.arc" = "Arc";

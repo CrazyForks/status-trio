@@ -32,6 +32,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     private var iconSizeCancellable: AnyCancellable?
     private var batteryOptionsCancellable: AnyCancellable?
     private var connectionIconOptionsCancellable: AnyCancellable?
+    private var volumeOptionsCancellable: AnyCancellable?
     private var screenParametersCancellable: AnyCancellable?
     private var refreshIntervalCancellable: AnyCancellable?
     private let openSettings: () -> Void
@@ -95,7 +96,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
                     status: MenuBarStatus(snapshot: self.store.snapshot),
                     iconSize: iconSize,
                     options: self.settings.batteryIconOptions,
-                    connectionOptions: self.settings.connectionIconOptions
+                    connectionOptions: self.settings.connectionIconOptions,
+                    volumeOptions: self.settings.volumeIconOptions
                 )
             }
 
@@ -125,7 +127,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
                 status: MenuBarStatus(snapshot: self.store.snapshot),
                 iconSize: self.settings.iconSize,
                 options: options,
-                connectionOptions: self.settings.connectionIconOptions
+                connectionOptions: self.settings.connectionIconOptions,
+                volumeOptions: self.settings.volumeIconOptions
             )
         }
 
@@ -135,26 +138,29 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             settings.$showsWiFiIconForTemporaryConnection,
             settings.$showsWiFiIconForInternetSharing
         )
-        .sink { [weak self] values in
+        .combineLatest(settings.$wifiSymbolScale)
+        .sink { [weak self] _ in
             guard let self else { return }
-            let (
-                showsForEthernet,
-                showsForHotspot,
-                showsForTemporaryConnection,
-                showsForInternetSharing
-            ) = values
             self.render(
                 status: MenuBarStatus(snapshot: self.store.snapshot),
                 iconSize: self.settings.iconSize,
                 options: self.settings.batteryIconOptions,
-                connectionOptions: ConnectionIconOptions(
-                    showsWiFiIconForEthernet: showsForEthernet,
-                    showsWiFiIconForHotspot: showsForHotspot,
-                    showsWiFiIconForTemporaryConnection: showsForTemporaryConnection,
-                    showsWiFiIconForInternetSharing: showsForInternetSharing
-                )
+                connectionOptions: self.settings.connectionIconOptions,
+                volumeOptions: self.settings.volumeIconOptions
             )
         }
+
+        volumeOptionsCancellable = settings.$volumeDisplayStyle
+            .sink { [weak self] _ in
+                guard let self else { return }
+                self.render(
+                    status: MenuBarStatus(snapshot: self.store.snapshot),
+                    iconSize: self.settings.iconSize,
+                    options: self.settings.batteryIconOptions,
+                    connectionOptions: self.settings.connectionIconOptions,
+                    volumeOptions: self.settings.volumeIconOptions
+                )
+            }
 
         localizationCancellable = localization.$resolvedLanguage
             .removeDuplicates()
@@ -493,7 +499,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             status: status,
             iconSize: settings.iconSize,
             options: settings.batteryIconOptions,
-            connectionOptions: settings.connectionIconOptions
+            connectionOptions: settings.connectionIconOptions,
+            volumeOptions: settings.volumeIconOptions
         )
     }
 
@@ -501,7 +508,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         status: MenuBarStatus,
         iconSize: Double,
         options: BatteryIconOptions,
-        connectionOptions: ConnectionIconOptions
+        connectionOptions: ConnectionIconOptions,
+        volumeOptions: VolumeIconOptions
     ) {
         guard isStatusItemVisible, let button = statusItem.button else { return }
 
@@ -510,6 +518,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             iconSize: iconSize,
             options: options,
             connectionOptions: connectionOptions,
+            volumeOptions: volumeOptions,
             appearanceName: button.effectiveAppearance.name.rawValue
         )
         guard renderCache.shouldRender(key) else { return }
@@ -518,7 +527,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             menuBarStatus: status,
             size: iconSize,
             options: options,
-            connectionOptions: connectionOptions
+            connectionOptions: connectionOptions,
+            volumeOptions: volumeOptions
         )
 
         let nextAccessibilityKey = StatusBarAccessibilityKey(

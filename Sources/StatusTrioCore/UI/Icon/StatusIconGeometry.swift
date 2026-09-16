@@ -306,6 +306,37 @@ enum StatusIconGeometry {
 
     static let volumeDotRadius: CGFloat = 5.5
 
+    static let volumeArcStartAngle: CGFloat = 121.82 * .pi / 180
+    static let volumeArcEndAngle: CGFloat = 59.12 * .pi / 180
+
+    static func volumeArcTrack() -> CGPath {
+        let path = CGMutablePath()
+        path.addArc(
+            center: batteryCenter,
+            radius: batteryRadius,
+            startAngle: volumeArcStartAngle,
+            endAngle: volumeArcEndAngle,
+            clockwise: true
+        )
+        return path
+    }
+
+    static func volumeArcFill(progress: Double) -> CGPath {
+        let clamped = min(1, max(0, progress))
+        guard clamped > 0 else { return CGMutablePath() }
+        let sweep = volumeArcStartAngle - volumeArcEndAngle
+        let end = volumeArcStartAngle - sweep * CGFloat(clamped)
+        let path = CGMutablePath()
+        path.addArc(
+            center: batteryCenter,
+            radius: batteryRadius,
+            startAngle: volumeArcStartAngle,
+            endAngle: end,
+            clockwise: true
+        )
+        return path
+    }
+
     private static func batteryArc(
         progress: Double,
         hasTopGap: Bool,

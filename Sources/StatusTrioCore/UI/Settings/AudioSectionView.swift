@@ -7,11 +7,36 @@ struct AudioSectionView: View {
 
     var body: some View {
         SettingsPage {
+            indicatorStyleGroup
             displayRulesGroup
             deviceOrderGroup
         }
         .onAppear {
             statusStore.refreshAll()
+        }
+    }
+
+    private var indicatorStyleGroup: some View {
+        SettingsGroup(localization.string(.settingsAudioIndicatorStyleTitle)) {
+            SettingsRow(
+                "waveform",
+                tint: .indigo,
+                title: localization.string(.settingsAudioIndicatorStyle),
+                subtitle: localization.string(.settingsAudioIndicatorStyleDescription)
+            ) {
+                Picker(
+                    localization.string(.settingsAudioIndicatorStyle),
+                    selection: $store.volumeDisplayStyle
+                ) {
+                    Text(localization.string(.settingsAudioIndicatorStyleDots))
+                        .tag(VolumeDisplayStyle.dots)
+                    Text(localization.string(.settingsAudioIndicatorStyleArc))
+                        .tag(VolumeDisplayStyle.arc)
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .frame(width: 150)
+            }
         }
     }
 
