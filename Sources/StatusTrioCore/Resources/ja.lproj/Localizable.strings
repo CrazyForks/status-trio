@@ -63,8 +63,10 @@
 "settings.about.copyright" = "© lingyired";
 "settings.battery.title" = "バッテリー表示";
 "settings.battery.showPercentage" = "バッテリー残量を表示";
-"settings.battery.showChargingIndicator" = "充電中または電源接続時に稲妻を表示";
-"settings.battery.chargingDescription" = "有効にすると、充電中または電源接続時に残量が稲妻に変わります。無効の場合は残量を表示します。";
+"settings.battery.showChargingIndicator" = "充電中または電源接続時にアイコンを表示";
+"settings.battery.chargingDescription" = "有効にすると、充電中または電源接続時に残量が稲妻またはプラグに変わります。無効の場合は残量を表示します。";
+"settings.battery.plugWhenConnected" = "電源接続中で充電していないときにプラグを表示";
+"settings.battery.plugWhenConnectedDescription" = "充電中は稲妻のまま、電源に接続されていて充電していないときはプラグに切り替えます。";
 "settings.battery.symbolScale" = "残量/稲妻のサイズ";
 "settings.battery.symbolScaleAccessibility" = "バッテリー残量と稲妻のサイズ";
 "settings.battery.symbolScaleDescription" = "残量と稲妻は同じサイズを使用します。";

@@ -7,6 +7,14 @@ enum BatteryColorRole: Equatable, Sendable {
     case charging
 }
 
+/// The glyph that fills the battery arc's top gap.
+enum BatteryTopIndicator: Equatable, Sendable {
+    /// Charging: the lightning bolt.
+    case bolt
+    /// Connected to power without charging: the plug.
+    case plug
+}
+
 enum WiFiSummaryAction: Equatable, Sendable {
     case openDetails
     case requestNameAccess
@@ -61,6 +69,19 @@ enum StatusMappings {
         if battery.isLowPowerMode { return .lowPower }
         if battery.isCharging || battery.isConnectedToPower { return .charging }
         return .foreground
+    }
+
+    /// A charging battery keeps the bolt. A connected power source that is not
+    /// charging — including a battery that is already full — shows the plug
+    /// when the option is enabled, and falls back to the bolt when it is not.
+    static func batteryTopIndicator(
+        _ battery: BatteryStatus,
+        options: BatteryIconOptions
+    ) -> BatteryTopIndicator? {
+        guard battery.isPresent, options.showsChargingIndicator else { return nil }
+        if battery.isCharging { return .bolt }
+        guard battery.isConnectedToPower else { return nil }
+        return options.showsPlugForConnectedPower ? .plug : .bolt
     }
 
     static func batteryProgress(_ battery: BatteryStatus) -> Double {

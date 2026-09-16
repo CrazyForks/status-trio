@@ -249,11 +249,9 @@ enum StatusIconRenderer {
         foreground: CGColor,
         criticalColor: CGColor
     ) {
-        let showsChargingBolt = battery.isPresent
-            && (battery.isCharging || battery.isConnectedToPower)
-            && options.showsChargingIndicator
-        let hasTopGap = showsChargingBolt || options.showsPercentage
-        let topGapWidth = showsChargingBolt
+        let topIndicator = StatusMappings.batteryTopIndicator(battery, options: options)
+        let hasTopGap = topIndicator != nil || options.showsPercentage
+        let topGapWidth = topIndicator != nil
             ? StatusIconGeometry.batteryChargingBoltTopGapWidth
             : StatusIconGeometry.batteryValueTopGapWidth
 
@@ -293,13 +291,23 @@ enum StatusIconRenderer {
         )
         defer { context.restoreGState() }
 
-        if showsChargingBolt {
+        let indicatorScale = batteryChargingBoltScale(textScale: options.textScale)
+
+        switch topIndicator {
+        case .bolt?:
             context.setFillColor(foreground)
             context.addPath(StatusIconGeometry.batteryChargingBolt(
-                scale: batteryChargingBoltScale(textScale: options.textScale)
+                scale: indicatorScale
             ))
             context.fillPath()
-        } else if options.showsPercentage {
+        case .plug?:
+            drawBatteryPlug(
+                boltScale: indicatorScale,
+                foreground: foreground,
+                in: context
+            )
+        case nil:
+            guard options.showsPercentage else { return }
             drawBatteryPercentage(
                 battery.percentage,
                 color: foreground,
@@ -307,6 +315,26 @@ enum StatusIconRenderer {
                 in: context
             )
         }
+    }
+
+    /// Draws the plug at the bolt's optical size and center, so the arc's top
+    /// gap reads the same whichever indicator is showing.
+    private static func drawBatteryPlug(
+        boltScale: CGFloat,
+        foreground: CGColor,
+        in context: CGContext
+    ) {
+        let boltHeight = StatusIconGeometry.batteryChargingBolt().boundingBoxOfPath.height
+        let targetHeight = boltHeight * boltScale
+        guard targetHeight.isFinite, targetHeight > 0 else { return }
+
+        drawOfficialSymbol(
+            name: StatusIconGeometry.batteryPlugSymbolName,
+            pointSize: batteryPlugPointSize(targetHeight: targetHeight),
+            center: StatusIconGeometry.batteryTopIndicatorCenter(boltScale: boltScale),
+            foreground: foreground,
+            in: context
+        )
     }
 
     private static func color(
@@ -373,6 +401,18 @@ enum StatusIconRenderer {
     }
 
     private static func batteryChargingBoltScale(textScale: Double) -> CGFloat {
+        let boltHeight = StatusIconGeometry.batteryChargingBolt().boundingBoxOfPath.height
+        let targetHeight = batteryTopIndicatorHeight(textScale: textScale)
+        guard boltHeight.isFinite, boltHeight > 0, targetHeight > 0 else {
+            return CGFloat(textScale / BatteryIconOptions.defaultTextScale)
+                * StatusIconGeometry.batteryChargingBoltCalibration
+        }
+        return targetHeight / boltHeight
+    }
+
+    /// Height shared by every top-gap glyph. The bolt is calibrated to match the
+    /// percentage numerals, and the plug matches the bolt.
+    private static func batteryTopIndicatorHeight(textScale: Double) -> CGFloat {
         let fontSize = batteryValueFontSize(scale: textScale)
         let line = CTLineCreateWithAttributedString(
             NSAttributedString(
@@ -381,17 +421,33 @@ enum StatusIconRenderer {
             )
         )
         let glyphHeight = CTLineGetBoundsWithOptions(line, [.useGlyphPathBounds]).height
-        let boltHeight = StatusIconGeometry.batteryChargingBolt().boundingBoxOfPath.height
-        guard glyphHeight.isFinite,
-              glyphHeight > 0,
-              boltHeight.isFinite,
-              boltHeight > 0
-        else {
-            return CGFloat(textScale / BatteryIconOptions.defaultTextScale)
+        guard glyphHeight.isFinite, glyphHeight > 0 else {
+            return StatusIconGeometry.batteryChargingBolt().boundingBoxOfPath.height
+                * CGFloat(textScale / BatteryIconOptions.defaultTextScale)
                 * StatusIconGeometry.batteryChargingBoltCalibration
         }
-        return CGFloat(glyphHeight) / boltHeight
-            * StatusIconGeometry.batteryChargingBoltCalibration
+        return CGFloat(glyphHeight) * StatusIconGeometry.batteryChargingBoltCalibration
+    }
+
+    /// Glyph height per point of symbol size, measured once. SF Symbols report
+    /// sizes rounded to whole points, so this reference size stays large enough
+    /// for the rounding to be negligible.
+    private static let batteryPlugHeightPerPoint: CGFloat = {
+        let referencePointSize: CGFloat = 200
+        guard let height = configuredSymbol(
+            name: StatusIconGeometry.batteryPlugSymbolName,
+            pointSize: referencePointSize,
+            foreground: .labelColor
+        )?.size.height, height.isFinite, height > 0 else {
+            return 1.34
+        }
+        return height / referencePointSize
+    }()
+
+    private static func batteryPlugPointSize(targetHeight: CGFloat) -> CGFloat {
+        let fallbackPointSize: CGFloat = 38
+        let pointSize = targetHeight / batteryPlugHeightPerPoint
+        return pointSize.isFinite && pointSize > 0 ? pointSize : fallbackPointSize
     }
 
     private static var defaultCriticalColor: CGColor {
@@ -600,15 +656,12 @@ enum StatusIconRenderer {
         foreground: CGColor,
         in context: CGContext
     ) {
-        let nsForeground = NSColor(cgColor: foreground) ?? .labelColor
-        let config = NSImage.SymbolConfiguration(pointSize: pointSize, weight: .semibold)
-            .applying(.init(hierarchicalColor: nsForeground))
-
-        guard let symbol = NSImage(
-            systemSymbolName: name,
+        guard let symbol = configuredSymbol(
+            name: name,
             variableValue: variableValue,
-            accessibilityDescription: nil
-        )?.withSymbolConfiguration(config) else { return }
+            pointSize: pointSize,
+            foreground: NSColor(cgColor: foreground) ?? .labelColor
+        ) else { return }
 
         context.saveGState()
         defer { context.restoreGState() }
@@ -627,6 +680,22 @@ enum StatusIconRenderer {
             height: symbol.size.height
         )
         symbol.draw(in: targetRect)
+    }
+
+    private static func configuredSymbol(
+        name: String,
+        variableValue: Double = 1.0,
+        pointSize: CGFloat,
+        foreground: NSColor
+    ) -> NSImage? {
+        let config = NSImage.SymbolConfiguration(pointSize: pointSize, weight: .semibold)
+            .applying(.init(hierarchicalColor: foreground))
+
+        return NSImage(
+            systemSymbolName: name,
+            variableValue: variableValue,
+            accessibilityDescription: nil
+        )?.withSymbolConfiguration(config)
     }
 
     private static func drawVolume(

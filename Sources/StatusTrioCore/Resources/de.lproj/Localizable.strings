@@ -63,8 +63,10 @@
 "settings.about.copyright" = "© lingyired";
 "settings.battery.title" = "Batterieanzeige";
 "settings.battery.showPercentage" = "Batterieprozentsatz anzeigen";
-"settings.battery.showChargingIndicator" = "Blitz beim Laden oder Netzbetrieb anzeigen";
-"settings.battery.chargingDescription" = "Wenn aktiviert, wird der Prozentsatz beim Laden oder Netzbetrieb durch einen Blitz ersetzt.";
+"settings.battery.showChargingIndicator" = "Symbol beim Laden oder Netzbetrieb anzeigen";
+"settings.battery.chargingDescription" = "Wenn aktiviert, wird der Prozentsatz beim Laden oder Netzbetrieb durch ein Blitz- oder Steckersymbol ersetzt.";
+"settings.battery.plugWhenConnected" = "Steckersymbol bei Netzbetrieb ohne Laden anzeigen";
+"settings.battery.plugWhenConnectedDescription" = "Beim Laden bleibt der Blitz; bei Netzbetrieb ohne Laden erscheint stattdessen ein Stecker.";
 "settings.battery.symbolScale" = "Größe von Prozentsatz/Blitz";
 "settings.battery.symbolScaleAccessibility" = "Größe von Batterieprozentsatz und Blitz";
 "settings.battery.symbolScaleDescription" = "Prozentsatz und Blitz verwenden dieselbe Größe.";

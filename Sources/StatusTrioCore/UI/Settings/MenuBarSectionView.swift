@@ -191,6 +191,18 @@ struct MenuBarSectionView: View {
                 isOn: $store.showsChargingIndicator
             )
 
+            if store.showsChargingIndicator {
+                SettingsDivider()
+
+                SettingsToggleRow(
+                    symbol: "powerplug.fill",
+                    tint: .teal,
+                    title: localization.string(.settingsBatteryPlugWhenConnected),
+                    subtitle: localization.string(.settingsBatteryPlugWhenConnectedDescription),
+                    isOn: $store.showsPlugForConnectedPower
+                )
+            }
+
             // Symbol Scale (Inline compact slider)
             if store.isBatterySymbolSizeEnabled {
                 SettingsDivider()

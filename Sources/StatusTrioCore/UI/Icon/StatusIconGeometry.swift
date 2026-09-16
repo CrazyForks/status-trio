@@ -15,6 +15,21 @@ enum StatusIconGeometry {
     static let batteryValueBaseFontSize: CGFloat = 20
     static let batteryChargingBoltCalibration: CGFloat = 220.0 / 180.0
 
+    /// SF Symbol drawn in the top gap when the battery is connected to power
+    /// without charging.
+    static let batteryPlugSymbolName = "powerplug.portrait.fill"
+
+    /// The bolt scales away from its tip, so any other glyph in the top gap
+    /// shares the scaled bolt's center to stay optically aligned with it.
+    static func batteryTopIndicatorCenter(boltScale: CGFloat) -> CGPoint {
+        let bolt = batteryChargingBolt().boundingBoxOfPath
+        let pivot = batteryChargingBoltPivot
+        return CGPoint(
+            x: pivot.x + (bolt.midX - pivot.x) * boltScale,
+            y: pivot.y + (bolt.midY - pivot.y) * boltScale
+        )
+    }
+
     static func batteryValueBaseline(fontSize: CGFloat) -> CGPoint {
         let referenceFontSize: CGFloat = 20
         let referenceBaseline: CGFloat = 17
@@ -97,7 +112,7 @@ enum StatusIconGeometry {
         path.closeSubpath()
 
         guard scale.isFinite, scale > 0, scale != 1 else { return path }
-        let pivot = CGPoint(x: 59.5, y: 2.1)
+        let pivot = batteryChargingBoltPivot
         var transform = CGAffineTransform(
             a: scale,
             b: 0,
@@ -108,6 +123,8 @@ enum StatusIconGeometry {
         )
         return path.copy(using: &transform) ?? path
     }
+
+    static let batteryChargingBoltPivot = CGPoint(x: 59.5, y: 2.1)
 
     static func wifiArcs(level: Int) -> [CGPath] {
         let bars = min(3, max(0, level))

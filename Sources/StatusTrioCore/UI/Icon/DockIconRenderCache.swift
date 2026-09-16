@@ -3,7 +3,7 @@
 /// inside the same dot count) does not trigger another render.
 struct DockIconRenderKey: Equatable, Hashable {
     let batteryPercentage: Int
-    let showsChargingBolt: Bool
+    let topIndicator: BatteryTopIndicator?
     let batteryColorRole: BatteryColorRole
     let connection: NetworkConnection
     let wifiState: WiFiState
@@ -23,9 +23,10 @@ struct DockIconRenderKey: Equatable, Hashable {
         backgroundStyle: DockIconBackgroundStyle
     ) {
         self.batteryPercentage = status.battery.percentage
-        self.showsChargingBolt = status.battery.isPresent
-            && (status.battery.isCharging || status.battery.isConnectedToPower)
-            && options.showsChargingIndicator
+        self.topIndicator = StatusMappings.batteryTopIndicator(
+            status.battery,
+            options: options
+        )
         self.batteryColorRole = options.usesStatusColors
             ? StatusMappings.batteryColorRole(
                 status.battery,

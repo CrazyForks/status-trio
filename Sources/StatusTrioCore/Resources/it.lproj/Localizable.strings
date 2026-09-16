@@ -63,8 +63,10 @@
 "settings.about.copyright" = "© lingyired";
 "settings.battery.title" = "Visualizzazione batteria";
 "settings.battery.showPercentage" = "Mostra percentuale batteria";
-"settings.battery.showChargingIndicator" = "Mostra fulmine durante la carica o con alimentazione collegata";
-"settings.battery.chargingDescription" = "Se attivato, la percentuale diventa un fulmine durante la carica o con alimentazione collegata.";
+"settings.battery.showChargingIndicator" = "Mostra un indicatore durante la carica o con alimentazione collegata";
+"settings.battery.chargingDescription" = "Se attivato, la percentuale diventa un fulmine o una spina durante la carica o con alimentazione collegata.";
+"settings.battery.plugWhenConnected" = "Usa l’icona della spina con alimentazione collegata senza carica";
+"settings.battery.plugWhenConnectedDescription" = "Durante la carica resta il fulmine; con alimentazione collegata ma senza carica viene mostrata una spina.";
 "settings.battery.symbolScale" = "Dimensione percentuale/fulmine";
 "settings.battery.symbolScaleAccessibility" = "Dimensione percentuale batteria e fulmine";
 "settings.battery.symbolScaleDescription" = "Percentuale e fulmine usano la stessa dimensione.";

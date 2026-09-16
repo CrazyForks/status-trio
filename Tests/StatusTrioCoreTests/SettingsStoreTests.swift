@@ -13,6 +13,25 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(store.iconSize, 28, accuracy: 0.001)
     }
 
+    func testConnectedPowerPlugDefaultsOnAndFeedsTheIconOptions() {
+        let store = SettingsStore(defaults: makeSuite().defaults)
+
+        XCTAssertTrue(store.showsPlugForConnectedPower)
+        XCTAssertTrue(store.batteryIconOptions.showsPlugForConnectedPower)
+    }
+
+    func testConnectedPowerPlugChoicePersists() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+
+        let first = SettingsStore(defaults: suite.defaults)
+        first.showsPlugForConnectedPower = false
+
+        let second = SettingsStore(defaults: suite.defaults)
+        XCTAssertFalse(second.showsPlugForConnectedPower)
+        XCTAssertFalse(second.batteryIconOptions.showsPlugForConnectedPower)
+    }
+
     func testRefreshIntervalDefaultsAndRange() {
         let store = SettingsStore(defaults: makeSuite().defaults)
 

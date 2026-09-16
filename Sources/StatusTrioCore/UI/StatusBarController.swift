@@ -107,6 +107,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             settings.$usesBatteryStatusColors,
             settings.$batteryCriticalThreshold
         )
+        .combineLatest(settings.$showsPlugForConnectedPower)
         .combineLatest(settings.$batterySymbolScale)
         .sink { [weak self] batteryValues, symbolScale in
             guard let self else { return }
@@ -115,12 +116,14 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
                 showsChargingIndicator,
                 usesStatusColors,
                 criticalThreshold
-            ) = batteryValues
+            ) = batteryValues.0
+            let showsPlugForConnectedPower = batteryValues.1
             let options = BatteryIconOptions(
                 showsPercentage: showsPercentage,
                 showsChargingIndicator: showsChargingIndicator,
                 usesStatusColors: usesStatusColors,
                 criticalThreshold: Int(criticalThreshold.rounded()),
+                showsPlugForConnectedPower: showsPlugForConnectedPower,
                 textScale: symbolScale * BatteryIconOptions.defaultTextScale
             )
             self.render(

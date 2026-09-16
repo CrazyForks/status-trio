@@ -63,8 +63,10 @@
 "settings.about.copyright" = "© lingyired";
 "settings.battery.title" = "Affichage de la batterie";
 "settings.battery.showPercentage" = "Afficher le pourcentage de batterie";
-"settings.battery.showChargingIndicator" = "Afficher l’éclair pendant la charge ou sur secteur";
-"settings.battery.chargingDescription" = "Lorsque cette option est activée, le pourcentage devient un éclair pendant la charge ou sur secteur.";
+"settings.battery.showChargingIndicator" = "Afficher un indicateur pendant la charge ou sur secteur";
+"settings.battery.chargingDescription" = "Lorsque cette option est activée, le pourcentage devient un éclair ou une prise pendant la charge ou sur secteur.";
+"settings.battery.plugWhenConnected" = "Utiliser une prise sur secteur sans charge";
+"settings.battery.plugWhenConnectedDescription" = "La charge conserve l’éclair ; une source secteur qui ne charge pas affiche une prise à la place.";
 "settings.battery.symbolScale" = "Taille du pourcentage/de l’éclair";
 "settings.battery.symbolScaleAccessibility" = "Taille du pourcentage et de l’éclair";
 "settings.battery.symbolScaleDescription" = "Le pourcentage et l’éclair utilisent la même taille.";
