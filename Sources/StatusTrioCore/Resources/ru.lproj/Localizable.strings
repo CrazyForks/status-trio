@@ -231,19 +231,19 @@
 "settings.audio.indicatorStyle.arc" = "Дуга";
 
 // On-demand battery details.
-"battery.details.title" = "Battery Details";
-"battery.details.power" = "Battery power (estimate)";
-"battery.details.charging" = "Charging (estimate)";
-"battery.details.discharging" = "Discharging (estimate)";
-"battery.details.voltage" = "Voltage";
-"battery.details.current" = "Current";
-"battery.details.sampled" = "Sampled at";
-"battery.details.adapter" = "Adapter rating";
-"battery.details.remaining" = "Time remaining";
-"battery.details.cycles" = "Cycle count";
-"battery.details.lowPower" = "Low Power Mode";
-"battery.details.on" = "On";
-"battery.details.off" = "Off";
-"battery.details.unavailable" = "Unavailable";
-"battery.details.loading" = "Updating…";
-"battery.details.explanation" = "Battery power is a best-effort net estimate, not total Mac consumption. Adapter rating is not live charging power. Values may be unavailable after a power change.";
+"battery.details.title" = "Сведения об аккумуляторе";
+"battery.details.power" = "Мощность аккумулятора (оценка)";
+"battery.details.charging" = "Зарядка (оценка)";
+"battery.details.discharging" = "Разрядка (оценка)";
+"battery.details.voltage" = "Напряжение";
+"battery.details.current" = "Сила тока";
+"battery.details.sampled" = "Время измерения";
+"battery.details.adapter" = "Номинальная мощность адаптера";
+"battery.details.remaining" = "Оставшееся время";
+"battery.details.cycles" = "Число циклов";
+"battery.details.lowPower" = "Режим энергосбережения";
+"battery.details.on" = "Вкл.";
+"battery.details.off" = "Выкл.";
+"battery.details.unavailable" = "Недоступно";
+"battery.details.loading" = "Обновление…";
+"battery.details.explanation" = "Мощность аккумулятора — приблизительная оценка мощности его заряда или разряда, а не общего энергопотребления Mac. Номинальная мощность адаптера не равна текущей мощности зарядки. После смены источника питания значения могут быть недоступны.";

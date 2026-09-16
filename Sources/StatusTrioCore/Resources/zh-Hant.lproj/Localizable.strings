@@ -231,19 +231,19 @@
 "settings.audio.indicatorStyle.arc" = "圓弧條";
 
 // On-demand battery details.
-"battery.details.title" = "Battery Details";
-"battery.details.power" = "Battery power (estimate)";
-"battery.details.charging" = "Charging (estimate)";
-"battery.details.discharging" = "Discharging (estimate)";
-"battery.details.voltage" = "Voltage";
-"battery.details.current" = "Current";
-"battery.details.sampled" = "Sampled at";
-"battery.details.adapter" = "Adapter rating";
-"battery.details.remaining" = "Time remaining";
-"battery.details.cycles" = "Cycle count";
-"battery.details.lowPower" = "Low Power Mode";
-"battery.details.on" = "On";
-"battery.details.off" = "Off";
-"battery.details.unavailable" = "Unavailable";
-"battery.details.loading" = "Updating…";
-"battery.details.explanation" = "Battery power is a best-effort net estimate, not total Mac consumption. Adapter rating is not live charging power. Values may be unavailable after a power change.";
+"battery.details.title" = "電池詳細資訊";
+"battery.details.power" = "電池功率（估算）";
+"battery.details.charging" = "充電（估算）";
+"battery.details.discharging" = "放電（估算）";
+"battery.details.voltage" = "電壓";
+"battery.details.current" = "電流";
+"battery.details.sampled" = "取樣時間";
+"battery.details.adapter" = "電源轉接器額定功率";
+"battery.details.remaining" = "剩餘時間";
+"battery.details.cycles" = "循環使用次數";
+"battery.details.lowPower" = "低耗電模式";
+"battery.details.on" = "開啟";
+"battery.details.off" = "關閉";
+"battery.details.unavailable" = "暫時無法取得";
+"battery.details.loading" = "更新中…";
+"battery.details.explanation" = "電池功率為淨功率的估算值，並非整部 Mac 的耗電量。電源轉接器的額定功率並非目前的充電功率。切換電源後可能暫時無法取得數值。";

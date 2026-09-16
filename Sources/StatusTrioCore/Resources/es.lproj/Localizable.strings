@@ -231,19 +231,19 @@
 "settings.audio.indicatorStyle.arc" = "Arco";
 
 // On-demand battery details.
-"battery.details.title" = "Battery Details";
-"battery.details.power" = "Battery power (estimate)";
-"battery.details.charging" = "Charging (estimate)";
-"battery.details.discharging" = "Discharging (estimate)";
-"battery.details.voltage" = "Voltage";
-"battery.details.current" = "Current";
-"battery.details.sampled" = "Sampled at";
-"battery.details.adapter" = "Adapter rating";
-"battery.details.remaining" = "Time remaining";
-"battery.details.cycles" = "Cycle count";
-"battery.details.lowPower" = "Low Power Mode";
-"battery.details.on" = "On";
-"battery.details.off" = "Off";
-"battery.details.unavailable" = "Unavailable";
-"battery.details.loading" = "Updating…";
-"battery.details.explanation" = "Battery power is a best-effort net estimate, not total Mac consumption. Adapter rating is not live charging power. Values may be unavailable after a power change.";
+"battery.details.title" = "Detalles de la batería";
+"battery.details.power" = "Potencia de la batería (estimada)";
+"battery.details.charging" = "Carga (estimada)";
+"battery.details.discharging" = "Descarga (estimada)";
+"battery.details.voltage" = "Voltaje";
+"battery.details.current" = "Corriente";
+"battery.details.sampled" = "Hora de la medición";
+"battery.details.adapter" = "Potencia nominal del adaptador";
+"battery.details.remaining" = "Tiempo restante";
+"battery.details.cycles" = "Ciclos de carga";
+"battery.details.lowPower" = "Modo de bajo consumo";
+"battery.details.on" = "Activado";
+"battery.details.off" = "Desactivado";
+"battery.details.unavailable" = "No disponible";
+"battery.details.loading" = "Actualizando…";
+"battery.details.explanation" = "La potencia de la batería es una estimación aproximada de la potencia neta, no del consumo total del Mac. La potencia nominal del adaptador no es la potencia de carga actual. Los valores pueden no estar disponibles tras cambiar la fuente de alimentación.";

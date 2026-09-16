@@ -231,19 +231,19 @@
 "settings.audio.indicatorStyle.arc" = "円弧バー";
 
 // On-demand battery details.
-"battery.details.title" = "Battery Details";
-"battery.details.power" = "Battery power (estimate)";
-"battery.details.charging" = "Charging (estimate)";
-"battery.details.discharging" = "Discharging (estimate)";
-"battery.details.voltage" = "Voltage";
-"battery.details.current" = "Current";
-"battery.details.sampled" = "Sampled at";
-"battery.details.adapter" = "Adapter rating";
-"battery.details.remaining" = "Time remaining";
-"battery.details.cycles" = "Cycle count";
-"battery.details.lowPower" = "Low Power Mode";
-"battery.details.on" = "On";
-"battery.details.off" = "Off";
-"battery.details.unavailable" = "Unavailable";
-"battery.details.loading" = "Updating…";
-"battery.details.explanation" = "Battery power is a best-effort net estimate, not total Mac consumption. Adapter rating is not live charging power. Values may be unavailable after a power change.";
+"battery.details.title" = "バッテリーの詳細";
+"battery.details.power" = "バッテリー電力（推定）";
+"battery.details.charging" = "充電（推定）";
+"battery.details.discharging" = "放電（推定）";
+"battery.details.voltage" = "電圧";
+"battery.details.current" = "電流";
+"battery.details.sampled" = "測定時刻";
+"battery.details.adapter" = "アダプタの定格出力";
+"battery.details.remaining" = "残り時間";
+"battery.details.cycles" = "充放電回数";
+"battery.details.lowPower" = "低電力モード";
+"battery.details.on" = "オン";
+"battery.details.off" = "オフ";
+"battery.details.unavailable" = "取得できません";
+"battery.details.loading" = "更新中…";
+"battery.details.explanation" = "バッテリー電力は正味の充放電電力の推定値であり、Mac全体の消費電力ではありません。アダプタの定格出力は現在の充電電力ではありません。電源の切り替え後は値を取得できない場合があります。";
