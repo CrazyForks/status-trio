@@ -8,6 +8,23 @@
 - When reviewing or testing changes from `main`, report bugs, risks, and questions to the user. Do not patch main code yourself.
 - Never merge the Preview branch into `main` or publish it as a production release.
 
+### Syncing main and running the preview build
+
+The Preview branch exists to exercise `main` with Preview tooling (preview mode, virtual outputs,
+isolated identity). Sync `main` in and build the preview-labelled app with:
+
+```bash
+cd /Users/lingsmbp/Documents/aiwork/duo-menubar-preview
+git fetch origin && git merge origin/main
+BUNDLE_ID=com.lingsmbp.StatusTrio.preview APP_NAME="Status Trio Preview" ./scripts/build-app.sh release
+```
+
+The third command builds `dist/StatusTrio.app` and opens it. The distinct bundle identifier and name
+let the preview app run next to the production app; its settings live in the
+`com.lingsmbp.StatusTrio.preview` suite and its single-instance lock lives in
+`~/Library/Application Support/StatusTrioPreview/`, and Sparkle is disabled by `PreviewAppIdentity`.
+Pass `no-open` as the second argument to build without launching.
+
 ## Highest Priority: Match the CI Toolchain
 
 The release workflow is the acceptance environment:
