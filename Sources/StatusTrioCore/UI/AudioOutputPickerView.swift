@@ -6,7 +6,7 @@ struct AudioOutputPickerView: View {
     let devices: [AudioOutputDevice]
     let onSelect: (AudioOutputDevice) -> Void
     let onOpenSoundSettings: () -> Void
-    @State private var isExpanded = false
+    @Binding var isExpanded: Bool
 
     var body: some View {
         if settings.alwaysShowsAllOutputDevices {

@@ -17,8 +17,7 @@ struct OutputDeviceRow: View {
                     AudioOutputDeviceIconView(device: device)
                         .foregroundStyle(device.isCurrent ? Color.accentColor : Color.secondary)
                 }
-                .frame(width: 28, height: 28)
-                // Center the badge in the popup's shared 24pt icon column.
+                // Stay inside the icon column when the disclosure clips its content.
                 .frame(width: 24, height: 24)
 
                 Text(displayName)

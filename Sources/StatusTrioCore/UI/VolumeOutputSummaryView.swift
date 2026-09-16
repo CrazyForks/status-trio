@@ -5,10 +5,29 @@ struct VolumeOutputSummaryView: View {
     @EnvironmentObject private var localization: Localization
     let volume: VolumeStatus
 
+    // Volume readings are live; device metadata may be cached between device events.
+    var displayDeviceName: String? {
+        volume.deviceName ?? currentDevice?.name
+    }
+
+    var iconDevice: AudioOutputDevice? {
+        guard let currentDevice else { return nil }
+        if let liveName = volume.deviceName, let cachedName = currentDevice.name,
+           liveName != cachedName {
+            return nil
+        }
+        return currentDevice
+    }
+
+    private var currentDevice: AudioOutputDevice? {
+        volume.outputDevices.first(where: \.isCurrent)
+    }
+
     var body: some View {
+        let name = displayDeviceName ?? localization.string(.volumeNoDefaultDevice)
         HStack(alignment: .top, spacing: 10) {
             Group {
-                if let device = volume.outputDevices.first(where: \.isCurrent) {
+                if let device = iconDevice {
                     AudioOutputDeviceIconView(device: device, glyphSize: 17)
                 } else {
                     Image(systemName: "speaker.wave.2.fill")
@@ -19,11 +38,11 @@ struct VolumeOutputSummaryView: View {
             .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(StatusPresentation.volumeSubtitle(volume, localization: localization))
+                Text(name)
                     .font(.headline)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
-                    .help(StatusPresentation.volumeSubtitle(volume, localization: localization))
+                    .help(name)
 
                 Text(volume.isMuted
                      ? localization.string(.volumeMuted)

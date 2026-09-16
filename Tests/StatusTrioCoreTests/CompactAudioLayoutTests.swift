@@ -7,21 +7,38 @@ import XCTest
 final class CompactAudioLayoutTests: XCTestCase {
     func testAlwaysShowAllPreferenceKeepsDevicesVisible() throws {
         let collapsed = try render(alwaysShowAll: false, language: .english, dark: false)
-        let expanded = try render(alwaysShowAll: true, language: .english, dark: false)
-        XCTAssertGreaterThan(expanded.height, collapsed.height + 60)
-        XCTAssertEqual(collapsed.width, 330, accuracy: 0.5)
-        XCTAssertEqual(expanded.width, 330, accuracy: 0.5)
+        let all = try render(alwaysShowAll: true, language: .english, dark: false)
+        let disclosed = try render(alwaysShowAll: false, language: .english, dark: false, expandsPicker: true)
+        XCTAssertGreaterThan(all.height, collapsed.height + 60)
+        XCTAssertGreaterThan(disclosed.height, collapsed.height + 60)
     }
 
-    func testLongDeviceNamesAndLocalizedControlsFitPopoverWidth() throws {
+    func testLongDeviceNamesAndLocalizedExpandedControlsFitPopover() throws {
         for language in [AppLanguage.english, .simplifiedChinese, .german, .arabic] {
-            let size = try render(alwaysShowAll: false, language: language, dark: true)
-            XCTAssertEqual(size.width, 330, accuracy: 0.5)
-            XCTAssertLessThan(size.height, 230)
+            let collapsed = try render(alwaysShowAll: false, language: language, dark: true)
+            let expanded = try render(alwaysShowAll: false, language: language, dark: true, expandsPicker: true)
+            XCTAssertLessThan(collapsed.height, 230)
+            XCTAssertLessThan(expanded.height, 450)
+            XCTAssertGreaterThan(expanded.height, collapsed.height + 60)
         }
     }
 
-    private func render(alwaysShowAll: Bool, language: AppLanguage, dark: Bool) throws -> NSSize {
+    func testSummaryNameFallbackAndCachedIconConsistency() {
+        let named = AudioOutputDevice(id: 1, name: "Studio AirPods Pro", isCurrent: true)
+        let unnamed = AudioOutputDevice(id: 1, name: nil, isCurrent: true)
+        func summary(_ liveName: String?, _ devices: [AudioOutputDevice]) -> VolumeOutputSummaryView {
+            VolumeOutputSummaryView(volume: VolumeStatus(scalar: 0.2, isMuted: false, deviceName: liveName, outputDevices: devices))
+        }
+        XCTAssertEqual(summary(nil, [named]).displayDeviceName, named.name)
+        XCTAssertEqual(summary("Live output", []).displayDeviceName, "Live output")
+        XCTAssertEqual(summary("Live output", [unnamed]).displayDeviceName, "Live output")
+        XCTAssertEqual(summary(named.name, [named]).iconDevice, named)
+        XCTAssertEqual(summary("New live output", [named]).displayDeviceName, "New live output")
+        XCTAssertNil(summary("New live output", [named]).iconDevice, "Do not label a new output with the cached previous device's icon")
+        XCTAssertNil(summary(nil, []).displayDeviceName)
+    }
+
+    private func render(alwaysShowAll: Bool, language: AppLanguage, dark: Bool, expandsPicker: Bool = false) throws -> NSSize {
         let suite = "StatusTrioCoreTests.CompactAudio.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
@@ -38,7 +55,8 @@ final class CompactAudioLayoutTests: XCTestCase {
                 settings: settings,
                 volume: VolumeStatus(scalar: 0.19, isMuted: false, deviceName: devices[0].name, outputDevices: devices),
                 isEnabled: true,
-                onVolumeChange: { _ in }, onToggleMute: {}, onSelectOutputDevice: { _ in }, onOpenSoundSettings: {}
+                onVolumeChange: { _ in }, onToggleMute: {}, onSelectOutputDevice: { _ in }, onOpenSoundSettings: {},
+                isOutputExpanded: expandsPicker
             )
             Divider()
             PopoverFooterView(openSettings: {}, quit: {})
@@ -55,13 +73,23 @@ final class CompactAudioLayoutTests: XCTestCase {
         let size = hosting.fittingSize
         hosting.frame = NSRect(origin: .zero, size: size)
         hosting.layoutSubtreeIfNeeded()
+        // Check the actual native control/focus rectangles, not the forced root width.
+        let controls = hosting.subviews.filter { !$0.isHidden && !$0.frame.isEmpty }
+        XCTAssertFalse(controls.isEmpty)
+        for control in controls {
+            XCTAssertGreaterThanOrEqual(control.frame.minX, -0.5)
+            XCTAssertLessThanOrEqual(control.frame.maxX, hosting.bounds.maxX + 0.5)
+            XCTAssertGreaterThanOrEqual(control.frame.minY, -0.5)
+            XCTAssertLessThanOrEqual(control.frame.maxY, hosting.bounds.maxY + 0.5)
+        }
         if let directory = ProcessInfo.processInfo.environment["STATUS_TRIO_LAYOUT_SNAPSHOTS"] {
             let bitmap = try XCTUnwrap(hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds))
             hosting.cacheDisplay(in: hosting.bounds, to: bitmap)
             let png = try XCTUnwrap(bitmap.representation(using: .png, properties: [:]))
             let url = URL(fileURLWithPath: directory, isDirectory: true)
             try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
-            try png.write(to: url.appendingPathComponent("audio-\(language.rawValue)-\(dark ? "dark" : "light")-\(alwaysShowAll ? "all" : "collapsed").png"))
+            let state = alwaysShowAll ? "all" : (expandsPicker ? "expanded" : "collapsed")
+            try png.write(to: url.appendingPathComponent("audio-\(language.rawValue)-\(dark ? "dark" : "light")-\(state).png"))
         }
         return size
     }
