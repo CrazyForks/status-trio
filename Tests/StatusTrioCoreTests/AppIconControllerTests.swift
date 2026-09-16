@@ -124,6 +124,43 @@ struct AppIconControllerTests {
         #expect(harness.log.backgroundStyles == [.dark])
     }
 
+    @Test func changingWiFiSymbolScaleRendersWithUpdatedScale() throws {
+        let harness = try AppIconControllerHarness(initialPlacement: .dock)
+        defer { harness.cleanUp() }
+        harness.controller.start()
+        harness.log.reset()
+
+        harness.settings.wifiSymbolScale = 1.5
+
+        #expect(harness.log.renderCount == 1)
+        #expect(harness.log.connectionOptions.last?.wifiScale == 1.5)
+    }
+
+    @Test func connectionOptionChangeKeepsConfiguredWiFiSymbolScale() throws {
+        let harness = try AppIconControllerHarness(initialPlacement: .dock)
+        defer { harness.cleanUp() }
+        harness.controller.start()
+        harness.settings.wifiSymbolScale = 1.5
+        harness.log.reset()
+
+        harness.settings.showsWiFiIconForHotspot = true
+
+        #expect(harness.log.renderCount == 1)
+        #expect(harness.log.connectionOptions.last?.wifiScale == 1.5)
+    }
+
+    @Test func changingVolumeDisplayStyleRendersWithUpdatedOptions() throws {
+        let harness = try AppIconControllerHarness(initialPlacement: .dock)
+        defer { harness.cleanUp() }
+        harness.controller.start()
+        harness.log.reset()
+
+        harness.settings.volumeDisplayStyle = .arc
+
+        #expect(harness.log.renderCount == 1)
+        #expect(harness.log.volumeOptions.last == VolumeIconOptions(displayStyle: .arc))
+    }
+
     @Test func reRendersWhenTheSystemIconStyleChanges() throws {
         let notificationCenter = NotificationCenter()
         var theme = SystemIconAppearanceTheme.default
@@ -281,9 +318,11 @@ private final class AppIconControllerHarness {
             setMenuBarVisible: { isVisible in
                 log.events.append(isVisible ? "menu:true" : "menu:false")
             },
-            renderDockIcon: { _, _, _, backgroundStyle in
+            renderDockIcon: { _, _, connectionOptions, volumeOptions, backgroundStyle in
                 log.renderCount += 1
                 log.backgroundStyles.append(backgroundStyle)
+                log.connectionOptions.append(connectionOptions)
+                log.volumeOptions.append(volumeOptions)
                 return NSImage(size: NSSize(width: 512, height: 512))
             },
             theme: systemTheme,
@@ -319,11 +358,15 @@ private final class AppIconEventLog {
     var events: [String] = []
     var renderCount = 0
     var backgroundStyles: [DockIconBackgroundStyle] = []
+    var connectionOptions: [ConnectionIconOptions] = []
+    var volumeOptions: [VolumeIconOptions] = []
 
     func reset() {
         events.removeAll()
         renderCount = 0
         backgroundStyles.removeAll()
+        connectionOptions.removeAll()
+        volumeOptions.removeAll()
     }
 }
 
