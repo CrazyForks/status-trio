@@ -50,13 +50,19 @@ struct AboutSectionView: View {
 
                     SettingsDivider(inset: 0)
 
-                    HStack(spacing: 8) {
+                    WrappingHStack(spacing: 8, rowSpacing: 8) {
                         Link(destination: AppMetadata.repositoryURL) {
                             HStack(spacing: 4) {
                                 Image(systemName: "star.fill")
                                     .foregroundStyle(.yellow)
                                 Text(localization.string(.settingsAboutStarOnGitHub))
                             }
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+
+                        Link(destination: AppMetadata.projectHomepageURL) {
+                            Label(localization.string(.settingsAboutProject), systemImage: "globe")
                         }
                         .buttonStyle(.bordered)
                         .controlSize(.small)
@@ -72,8 +78,6 @@ struct AboutSectionView: View {
                         }
                         .buttonStyle(.bordered)
                         .controlSize(.small)
-
-                        Spacer()
 
                         if updaterManager.canCheckForUpdates {
                             Button(localization.string(.settingsUpdatesCheck)) {
