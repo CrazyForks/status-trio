@@ -7,6 +7,11 @@ struct BatteryPowerSample: Equatable, Sendable {
     let amps: Double
     let updatedAt: Date
     var watts: Double { volts * amps }
+
+    func isFresh(at now: Date, notBefore: Date? = nil) -> Bool {
+        let age = now.timeIntervalSince(updatedAt)
+        return (-5...90).contains(age) && (notBefore.map { updatedAt >= $0 } ?? true)
+    }
 }
 
 struct BatteryDetails: Equatable, Sendable {
@@ -84,9 +89,9 @@ struct BatteryDetailsReader: Sendable {
               milliamps > 0 ? (connected && charging) : !charging
         else { return result }
         let updatedAt = Date(timeIntervalSince1970: timestamp)
-        let age = now.timeIntervalSince(updatedAt)
-        guard (-5...90).contains(age), notBefore.map({ updatedAt >= $0 }) ?? true else { return result }
-        result.power = BatteryPowerSample(volts: millivolts / 1_000, amps: milliamps / 1_000, updatedAt: updatedAt)
+        let sample = BatteryPowerSample(volts: millivolts / 1_000, amps: milliamps / 1_000, updatedAt: updatedAt)
+        guard sample.isFresh(at: now, notBefore: notBefore) else { return result }
+        result.power = sample
         return result
     }
 }

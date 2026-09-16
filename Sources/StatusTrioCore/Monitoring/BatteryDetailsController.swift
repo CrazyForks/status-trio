@@ -2,7 +2,7 @@ import Combine
 import Foundation
 
 /// The existing battery icon monitor remains event-driven. Only the expanded
-/// details view owns this collector; closing it ends all periodic work.
+/// details view activates this store-owned collector; closing ends periodic work.
 @MainActor
 final class BatteryDetailsController: ObservableObject {
     typealias Reader = @Sendable (BatteryPowerState, Date?) -> BatteryDetails
@@ -55,7 +55,7 @@ final class BatteryDetailsController: ObservableObject {
     func refresh(now: Date = Date()) {
         guard active, let state else { return }
         // Expire even when the previous system read is still blocked.
-        if let sample = details?.power, now.timeIntervalSince(sample.updatedAt) > 90 {
+        if let sample = details?.power, !sample.isFresh(at: now) {
             details?.power = nil
         }
         guard !inFlight else {
@@ -74,7 +74,12 @@ final class BatteryDetailsController: ObservableObject {
                 guard let self else { return }
                 self.inFlight = false
                 if self.active && self.generation == generation {
-                    self.details = result
+                    var current = result
+                    // System IPC and delivery to the main actor can both be delayed.
+                    if let sample = current.power, !sample.isFresh(at: Date(), notBefore: self.notBefore) {
+                        current.power = nil
+                    }
+                    self.details = current
                 }
                 if self.needsRefresh { self.refresh() }
             }
