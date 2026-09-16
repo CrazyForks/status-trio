@@ -229,3 +229,21 @@
 "settings.audio.indicatorStyleDescription" = "상태 링 하단에 네 개의 점 또는 연속된 호 모양 막대 중 표시 방식을 선택합니다.";
 "settings.audio.indicatorStyle.dots" = "네 개의 점";
 "settings.audio.indicatorStyle.arc" = "호 막대";
+
+// On-demand battery details.
+"battery.details.title" = "Battery Details";
+"battery.details.power" = "Battery power (estimate)";
+"battery.details.charging" = "Charging (estimate)";
+"battery.details.discharging" = "Discharging (estimate)";
+"battery.details.voltage" = "Voltage";
+"battery.details.current" = "Current";
+"battery.details.sampled" = "Sampled at";
+"battery.details.adapter" = "Adapter rating";
+"battery.details.remaining" = "Time remaining";
+"battery.details.cycles" = "Cycle count";
+"battery.details.lowPower" = "Low Power Mode";
+"battery.details.on" = "On";
+"battery.details.off" = "Off";
+"battery.details.unavailable" = "Unavailable";
+"battery.details.loading" = "Updating…";
+"battery.details.explanation" = "Battery power is a best-effort net estimate, not total Mac consumption. Adapter rating is not live charging power. Values may be unavailable after a power change.";

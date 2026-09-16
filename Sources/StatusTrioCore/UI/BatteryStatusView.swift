@@ -5,7 +5,26 @@ struct BatteryStatusView: View {
     let battery: BatteryStatus
     let onOpenBatterySettings: () -> Void
 
+    @State private var isExpanded = false
+    @StateObject private var detailsController = BatteryDetailsController()
+
     var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            summary
+            if battery.isPresent {
+                DisclosureGroup(isExpanded: $isExpanded) {
+                    // Conditional creation guarantees no collection while collapsed.
+                    if isExpanded { BatteryDetailsView(controller: detailsController, battery: battery).padding(.top, 6) }
+                } label: {
+                    Text(localization.string(.batteryDetailsTitle))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
+    private var summary: some View {
         HStack(spacing: 12) {
             Image(systemName: batterySymbolName)
                 .font(.system(size: 20, weight: .regular))

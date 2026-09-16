@@ -229,3 +229,21 @@
 "settings.audio.indicatorStyleDescription" = "选择在状态环底部显示为四个离散点还是连续圆弧条。";
 "settings.audio.indicatorStyle.dots" = "四个点";
 "settings.audio.indicatorStyle.arc" = "圆弧条";
+
+// On-demand battery details.
+"battery.details.title" = "电池详情";
+"battery.details.power" = "电池功率（估算）";
+"battery.details.charging" = "充电（估算）";
+"battery.details.discharging" = "放电（估算）";
+"battery.details.voltage" = "电压";
+"battery.details.current" = "电流";
+"battery.details.sampled" = "采样时间";
+"battery.details.adapter" = "适配器额定功率";
+"battery.details.remaining" = "剩余时间";
+"battery.details.cycles" = "循环次数";
+"battery.details.lowPower" = "低电量模式";
+"battery.details.on" = "开启";
+"battery.details.off" = "关闭";
+"battery.details.unavailable" = "暂不可用";
+"battery.details.loading" = "更新中…";
+"battery.details.explanation" = "电池功率为尽力估算的净功率，并非整机功耗。适配器额定功率并非实时充电功率。切换电源后数据可能暂不可用。";
