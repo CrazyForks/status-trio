@@ -45,12 +45,29 @@ Status Trio 是一个原生 macOS 状态应用，将 Wi-Fi、电池和音量整�
 同一个实时图标也可以放在程序坞，而不是菜单栏，或两处同时显示：
 
 <p align="center">
-  <img src="screenshots/status-trio-dock-light-1440x810.jpg" width="430" alt="程序坞中的 Status Trio 实时图标（浅色外观）">
-  <img src="screenshots/status-trio-dock-dark-1440x810.jpg" width="430" alt="程序坞中的 Status Trio 实时图标（深色外观）">
+  <img src="screenshots/status-trio-dock-dark-1440x810.jpg" width="880" alt="程序坞中的 Status Trio 实时图标（暗色外观）">
+  <br>
+  <sub>程序坞图标（暗色外观）</sub>
 </p>
 
 <p align="center">
-  <img src="screenshots/status-trio-dock-light-bt-1440x810.jpg" width="880" alt="程序坞中的 Status Trio 与蓝牙区块（浅色外观）">
+  <img src="screenshots/status-trio-dock-light-1440x810.jpg" width="880" alt="程序坞中的 Status Trio 实时图标（亮色外观）">
+  <br>
+  <sub>程序坞图标（亮色外观）</sub>
+</p>
+
+<p align="center">
+  <img src="screenshots/status-trio-dock-light-bt-1440x810.jpg" width="880" alt="程序坞中的 Status Trio 与蓝牙区块（亮色外观）">
+  <br>
+  <sub>蓝牙区块预览</sub>
+</p>
+
+## 图标状态
+
+三合一图标支持的全部状态，均由应用自身的渲染器绘制 —— 顶部是电池指示，中部是 Wi-Fi 状态，底部是音量圆点或圆弧：
+
+<p align="center">
+  <img src="screenshots/status-trio-icon-states.png" width="880" alt="Status Trio 图标状态：顶部依次为充电中、已连接电源未充电、已充满、电量数字、低电量、低电量模式、只显示圆环；中部依次为 Wi-Fi 各档信号、未关联、关闭、无互联网、个人热点、临时连接、互联网共享、有线连接；底部为音量圆点与圆弧样式">
 </p>
 
 ## 系统要求

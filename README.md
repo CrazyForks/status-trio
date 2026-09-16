@@ -45,12 +45,29 @@ Status Trio is a native macOS status app that combines Wi-Fi, battery, and volum
 The same live icon can live in the Dock instead of the menu bar, or in both places at once:
 
 <p align="center">
-  <img src="screenshots/status-trio-dock-light-1440x810.jpg" width="430" alt="Status Trio live icon in the Dock with light appearance">
-  <img src="screenshots/status-trio-dock-dark-1440x810.jpg" width="430" alt="Status Trio live icon in the Dock with dark appearance">
+  <img src="screenshots/status-trio-dock-dark-1440x810.jpg" width="880" alt="Status Trio live icon in the Dock with dark appearance">
+  <br>
+  <sub>Dock icon in dark appearance</sub>
+</p>
+
+<p align="center">
+  <img src="screenshots/status-trio-dock-light-1440x810.jpg" width="880" alt="Status Trio live icon in the Dock with light appearance">
+  <br>
+  <sub>Dock icon in light appearance</sub>
 </p>
 
 <p align="center">
   <img src="screenshots/status-trio-dock-light-bt-1440x810.jpg" width="880" alt="Status Trio in the Dock with the Bluetooth panel shown, light appearance">
+  <br>
+  <sub>Bluetooth panel preview</sub>
+</p>
+
+## Icon states
+
+Every state the combined icon can show, drawn by the app's own renderer — battery indicators on top, Wi-Fi in the middle, volume dots or the arc at the bottom:
+
+<p align="center">
+  <img src="screenshots/status-trio-icon-states.png" width="880" alt="Status Trio icon states: charging, plugged in, percentage, low battery, and Low Power Mode at the top; Wi-Fi signal, hotspot, temporary, shared, and wired states in the middle; volume dots and arc styles at the bottom">
 </p>
 
 ## Requirements
