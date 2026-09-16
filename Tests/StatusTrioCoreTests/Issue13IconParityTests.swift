@@ -50,6 +50,35 @@ struct Issue13IconParityTests {
         #expect(pixelsDiffer(dots, arc))
     }
 
+    @Test(
+        "Light Dock icons preserve the white body in custom connection cutouts",
+        .bug("https://github.com/lingyired/status-trio/issues/13"),
+        arguments: [
+            (WiFiState.temporary, CGPoint(x: 59.5, y: 53.5)),
+            (WiFiState.shared, CGPoint(x: 59.5, y: 65.0))
+        ]
+    )
+    func dockLightStylePreservesCustomConnectionCutouts(
+        _ state: WiFiState,
+        cutoutPoint: CGPoint
+    ) throws {
+        let pixels = try dockPixels(
+            for: MenuBarStatus(snapshot: StatusSnapshot(
+                battery: .placeholder,
+                wifi: WiFiStatus(state: state, rssi: -50),
+                volume: .placeholder
+            )),
+            backgroundStyle: .light
+        )
+        let pixelPoint = dockPixelPoint(forSVGPoint: cutoutPoint)
+        let pixel = pixels.rgba(x: pixelPoint.x, y: pixelPoint.y)
+
+        #expect(pixel.alpha > 240, "\(state) should keep the light body")
+        #expect(pixel.red > 240, "\(state) should keep the light body")
+        #expect(pixel.green > 240, "\(state) should keep the light body")
+        #expect(pixel.blue > 240, "\(state) should keep the light body")
+    }
+
     private func renderedPixels(
         for state: WiFiState,
         wifiScale: Double
@@ -71,16 +100,28 @@ struct Issue13IconParityTests {
 
     private func dockPixels(
         for status: MenuBarStatus,
-        volumeOptions: VolumeIconOptions
+        volumeOptions: VolumeIconOptions = .standard,
+        backgroundStyle: DockIconBackgroundStyle = .dark
     ) throws -> PixelBuffer {
         let image = try #require(DockIconRenderer.image(
             status: status,
-            volumeOptions: volumeOptions
+            volumeOptions: volumeOptions,
+            backgroundStyle: backgroundStyle
         ))
         let representation = try #require(
             image.representations.first as? NSBitmapImageRep
         )
         return try PixelBuffer(image: try #require(representation.cgImage))
+    }
+
+    private func dockPixelPoint(forSVGPoint point: CGPoint) -> (x: Int, y: Int) {
+        let pixelScale = CGFloat(DockIconRenderer.pixelSize) / 1024
+        let glyphOrigin = CGPoint(x: 194.8, y: 171.84)
+        let glyphScale = 672 * pixelScale / StatusIconGeometry.canvas.width
+        return (
+            x: Int((glyphOrigin.x * pixelScale + point.x * glyphScale).rounded()),
+            y: Int((glyphOrigin.y * pixelScale + point.y * glyphScale).rounded())
+        )
     }
 
     private func pixelsDiffer(_ lhs: PixelBuffer, _ rhs: PixelBuffer) -> Bool {

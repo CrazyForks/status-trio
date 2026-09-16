@@ -504,6 +504,8 @@ enum StatusIconRenderer {
     ) {
         context.saveGState()
         defer { context.restoreGState() }
+        context.beginTransparencyLayer(auxiliaryInfo: nil)
+        defer { context.endTransparencyLayer() }
         applyWiFiScale(wifiScale, in: context)
 
         context.setFillColor(foreground)
@@ -529,6 +531,8 @@ enum StatusIconRenderer {
     ) {
         context.saveGState()
         defer { context.restoreGState() }
+        context.beginTransparencyLayer(auxiliaryInfo: nil)
+        defer { context.endTransparencyLayer() }
         applyWiFiScale(wifiScale, in: context)
 
         context.setFillColor(foreground)
