@@ -52,7 +52,7 @@ struct SettingsView: View {
             case .battery: return localization.string(.settingsTabBattery)
             case .network: return localization.string(.settingsTabNetwork)
             case .audio:   return localization.string(.settingsTabAudio)
-            case .popover: return localization.string(.settingsPopupOrder)
+            case .popover: return localization.string(.settingsTabPanel)
             case .general: return localization.string(.settingsPageGeneral)
             case .about:   return localization.string(.settingsTabAbout)
             }
@@ -145,7 +145,7 @@ struct SettingsView: View {
         case .popover:
             PopoverSectionView(store: store, statusStore: statusStore)
         case .general:
-            GeneralSectionView(localization: localization)
+            GeneralSectionView(store: store, localization: localization)
         case .about:
             AboutSectionView()
         }

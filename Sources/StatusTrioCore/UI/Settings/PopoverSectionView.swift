@@ -8,48 +8,7 @@ struct PopoverSectionView: View {
 
     var body: some View {
         SettingsPage {
-            refreshIntervalGroup
             popupOrderGroup
-        }
-    }
-
-    private var refreshIntervalGroup: some View {
-        SettingsGroup(localization.string(.settingsRefreshInterval)) {
-            SettingsRow(
-                "arrow.clockwise",
-                tint: .orange,
-                title: localization.string(.settingsRefreshInterval),
-                subtitle: localization.string(.settingsRefreshIntervalDescription)
-            ) {
-                HStack(spacing: 8) {
-                    Slider(
-                        value: Binding(
-                            get: { store.refreshIntervalSeconds },
-                            set: { store.refreshIntervalSeconds = ($0 / 5).rounded() * 5 }
-                        ),
-                        in: SettingsStore.refreshIntervalRange
-                    )
-                    .frame(width: 130)
-                    .controlSize(.small)
-                    .accessibilityLabel(localization.string(.settingsRefreshInterval))
-                    .accessibilityValue(
-                        localization.format(
-                            .settingsRefreshIntervalValue,
-                            Int(store.refreshIntervalSeconds)
-                        )
-                    )
-
-                    Text(
-                        localization.format(
-                            .settingsRefreshIntervalValue,
-                            Int(store.refreshIntervalSeconds)
-                        )
-                    )
-                    .font(.system(size: 12, design: .monospaced))
-                    .foregroundStyle(.secondary)
-                    .frame(width: 50, alignment: .trailing)
-                }
-            }
         }
     }
 
@@ -58,11 +17,7 @@ struct PopoverSectionView: View {
             localization.string(.settingsPopupOrder),
             footnote: localization.string(.settingsPopupOrderDescription)
         ) {
-            SettingsCustomRow(
-                "list.number",
-                tint: .indigo,
-                title: localization.string(.settingsPopupOrder)
-            ) {
+            SettingsCustomRow {
                 List {
                     ForEach(store.popupSectionOrder) { section in
                         HStack(spacing: 8) {
