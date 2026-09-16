@@ -220,3 +220,10 @@
 "settings.audio.displayRules" = "顯示規則";
 "settings.audio.activeDeviceFootnote" = "目前活躍的音訊輸出裝置將優先以主題色強調顯示。";
 "settings.audio.inUse" = "使用中";
+"settings.wifi.symbolScale" = "Wi-Fi 圖示大小";
+"settings.wifi.symbolScaleDescription" = "調整選單列狀態環內的 Wi-Fi 圖示縮放比例（100% - 180%）。";
+"settings.audio.indicatorStyleTitle" = "音量指示樣式";
+"settings.audio.indicatorStyle" = "顯示樣式";
+"settings.audio.indicatorStyleDescription" = "選擇在狀態環底部顯示為四個離散點或連續圓弧條。";
+"settings.audio.indicatorStyle.dots" = "四個點";
+"settings.audio.indicatorStyle.arc" = "圓弧條";

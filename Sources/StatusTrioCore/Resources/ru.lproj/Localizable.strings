@@ -220,3 +220,10 @@
 "settings.audio.displayRules" = "Правила отображения";
 "settings.audio.activeDeviceFootnote" = "Активное устройство вывода звука выделяется цветом темы.";
 "settings.audio.inUse" = "Используется";
+"settings.wifi.symbolScale" = "Размер значка Wi-Fi";
+"settings.wifi.symbolScaleDescription" = "Масштаб значка Wi-Fi внутри кольца строки меню от 100% до 180%.";
+"settings.audio.indicatorStyleTitle" = "Стиль индикатора громкости";
+"settings.audio.indicatorStyle" = "Стиль отображения";
+"settings.audio.indicatorStyleDescription" = "Выберите отображение громкости четырьмя точками или сплошной дугой.";
+"settings.audio.indicatorStyle.dots" = "Точки";
+"settings.audio.indicatorStyle.arc" = "Дуга";

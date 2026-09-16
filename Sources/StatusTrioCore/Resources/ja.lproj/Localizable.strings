@@ -220,3 +220,10 @@
 "settings.audio.displayRules" = "表示ルール";
 "settings.audio.activeDeviceFootnote" = "現在アクティブな音声出力デバイスはアクセントカラーでハイライトされます。";
 "settings.audio.inUse" = "使用中";
+"settings.wifi.symbolScale" = "Wi-Fiアイコンサイズ";
+"settings.wifi.symbolScaleDescription" = "メニューバーリング内のWi-Fiアイコンのスケールを調整します（100%〜180%）。";
+"settings.audio.indicatorStyleTitle" = "音量インジケータスタイル";
+"settings.audio.indicatorStyle" = "表示スタイル";
+"settings.audio.indicatorStyleDescription" = "ステータスリング下部に4つのドットまたは連続する円弧バーのいずれで表示するかを選択します。";
+"settings.audio.indicatorStyle.dots" = "4つのドット";
+"settings.audio.indicatorStyle.arc" = "円弧バー";

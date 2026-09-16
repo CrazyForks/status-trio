@@ -80,11 +80,14 @@ struct MenuBarSectionView: View {
                         size: store.iconSize,
                         options: store.batteryIconOptions,
                         connectionOptions: store.connectionIconOptions,
+                        volumeOptions: store.volumeIconOptions,
                         appearance: NSAppearance(named: isDarkPreview ? .darkAqua : .aqua)
                     ))
                     .accessibilityHidden(true)
                     .animation(.easeInOut(duration: 0.15), value: store.iconSize)
                     .animation(.easeInOut(duration: 0.15), value: store.batteryIconOptions)
+                    .animation(.easeInOut(duration: 0.15), value: store.connectionIconOptions)
+                    .animation(.easeInOut(duration: 0.15), value: store.volumeIconOptions)
 
                     // Clock & Control Center
                     HStack(spacing: 6) {
@@ -274,6 +277,34 @@ struct MenuBarSectionView: View {
             localization.string(.settingsMenuBarConnectionIcons),
             footnote: localization.string(.settingsMenuBarConnectionIconsDescription)
         ) {
+            SettingsRow(
+                "wifi",
+                tint: .blue,
+                title: localization.string(.settingsWiFiSymbolScale),
+                subtitle: localization.string(.settingsWiFiSymbolScaleDescription)
+            ) {
+                HStack(spacing: 8) {
+                    Slider(
+                        value: Binding(
+                            get: { store.wifiSymbolScale },
+                            set: { store.wifiSymbolScale = (round($0 * 20) / 20) }
+                        ),
+                        in: SettingsStore.wifiSymbolScaleRange
+                    )
+                    .frame(width: 130)
+                    .controlSize(.small)
+                    .accessibilityLabel(localization.string(.settingsWiFiSymbolScale))
+                    .accessibilityValue("\(Int(round(store.wifiSymbolScale * 100)))%")
+
+                    Text("\(Int(round(store.wifiSymbolScale * 100)))%")
+                        .font(.system(size: 12, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 44, alignment: .trailing)
+                }
+            }
+
+            SettingsDivider()
+
             HStack(alignment: .center, spacing: 12) {
                 SettingsIcon(symbol: "cable.connector", tint: .teal)
 

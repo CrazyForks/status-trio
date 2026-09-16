@@ -220,3 +220,10 @@
 "settings.audio.displayRules" = "Display Rules";
 "settings.audio.activeDeviceFootnote" = "The active audio output device is highlighted with the accent color.";
 "settings.audio.inUse" = "In Use";
+"settings.wifi.symbolScale" = "Wi-Fi Icon Size";
+"settings.wifi.symbolScaleDescription" = "Scales the Wi-Fi icon inside the menu bar ring from 100% to 180%.";
+"settings.audio.indicatorStyleTitle" = "Volume Indicator Style";
+"settings.audio.indicatorStyle" = "Display Style";
+"settings.audio.indicatorStyleDescription" = "Choose whether volume displays as four discrete dots or a continuous bottom arc.";
+"settings.audio.indicatorStyle.dots" = "Dots";
+"settings.audio.indicatorStyle.arc" = "Arc";
