@@ -116,6 +116,191 @@ final class SystemStatusStoreTests: XCTestCase {
         store.stop()
     }
 
+    func testPopoverOpeningBlanksWiFiNameUntilTheFreshNameArrives() async {
+        let wifi = FakeWiFiMonitor()
+        let store = makeStore(
+            battery: FakeBatteryMonitor(),
+            wifi: wifi,
+            volume: FakeVolumeMonitor()
+        )
+        let connected = expectation(description: "connected snapshot applied")
+        let named = expectation(description: "name applied to the popup snapshot")
+        var cancellables = Set<AnyCancellable>()
+        store.$snapshot
+            .sink { snapshot in
+                if snapshot.wifi.state == .connected, snapshot.wifi.ssid == nil {
+                    connected.fulfill()
+                }
+            }
+            .store(in: &cancellables)
+        store.$popupSnapshot
+            .sink { snapshot in
+                if snapshot.wifi.ssid == "Home" {
+                    named.fulfill()
+                }
+            }
+            .store(in: &cancellables)
+
+        store.start()
+        wifi.send(WiFiStatus(state: .connected, rssi: -52, nameAccess: .authorized))
+        await fulfillment(of: [connected], timeout: 1)
+
+        store.setPopoverVisible(true)
+        XCTAssertTrue(store.isResolvingWiFiName)
+        XCTAssertNil(store.popupSnapshot.wifi.ssid)
+
+        wifi.send(WiFiStatus(state: .connected, rssi: -52, ssid: "Home", nameAccess: .authorized))
+        await fulfillment(of: [named], timeout: 1)
+
+        XCTAssertFalse(store.isResolvingWiFiName)
+        XCTAssertEqual(store.popupSnapshot.wifi.ssid, "Home")
+        cancellables.removeAll()
+        store.stop()
+    }
+
+    func testPopoverOpeningKeepsStateTextWhenNoNameIsExpected() async {
+        let cases: [(state: WiFiState, access: WiFiNameAccess, ssid: String?)] = [
+            (.off, .authorized, nil),
+            (.notAssociated, .authorized, nil),
+            (.unavailable, .authorized, nil),
+            (.connected, .notDetermined, nil),
+            (.connected, .denied, nil),
+            (.connected, .authorized, "Home")
+        ]
+
+        for testCase in cases {
+            let wifi = FakeWiFiMonitor()
+            let store = makeStore(
+                battery: FakeBatteryMonitor(),
+                wifi: wifi,
+                volume: FakeVolumeMonitor()
+            )
+            let expected = WiFiStatus(
+                state: testCase.state,
+                rssi: -52,
+                ssid: testCase.ssid,
+                nameAccess: testCase.access
+            )
+            let applied = expectation(description: "snapshot applied")
+            var cancellables = Set<AnyCancellable>()
+            store.$snapshot
+                .sink { snapshot in
+                    if snapshot.wifi == expected {
+                        applied.fulfill()
+                    }
+                }
+                .store(in: &cancellables)
+
+            store.start()
+            wifi.send(expected)
+            await fulfillment(of: [applied], timeout: 1)
+
+            store.setPopoverVisible(true)
+            XCTAssertFalse(
+                store.isResolvingWiFiName,
+                "\(testCase.state) \(testCase.access) \(testCase.ssid ?? "nil")"
+            )
+
+            cancellables.removeAll()
+            store.stop()
+        }
+    }
+
+    func testPopoverStopsWaitingForANameWhenItCloses() async {
+        let wifi = FakeWiFiMonitor()
+        let store = makeStore(
+            battery: FakeBatteryMonitor(),
+            wifi: wifi,
+            volume: FakeVolumeMonitor()
+        )
+        let connected = expectation(description: "connected snapshot applied")
+        var cancellables = Set<AnyCancellable>()
+        store.$snapshot
+            .sink { snapshot in
+                if snapshot.wifi.state == .connected {
+                    connected.fulfill()
+                }
+            }
+            .store(in: &cancellables)
+
+        store.start()
+        wifi.send(WiFiStatus(state: .connected, rssi: -52, nameAccess: .authorized))
+        await fulfillment(of: [connected], timeout: 1)
+
+        store.setPopoverVisible(true)
+        XCTAssertTrue(store.isResolvingWiFiName)
+
+        store.setPopoverVisible(false)
+        XCTAssertFalse(store.isResolvingWiFiName)
+        cancellables.removeAll()
+        store.stop()
+    }
+
+    func testWiFiNameResolutionFallsBackToStateTextAfterTimeout() async {
+        let sleeper = ManualSleeper()
+        let wifi = FakeWiFiMonitor()
+        let store = SystemStatusStore(
+            batteryMonitor: FakeBatteryMonitor(),
+            wifiMonitor: wifi,
+            volumeMonitor: FakeVolumeMonitor(),
+            refreshInterval: .seconds(60),
+            nameResolutionTimeout: .seconds(3),
+            popupDebounceSleep: { duration in await sleeper.sleep(duration) }
+        )
+        let connected = expectation(description: "connected snapshot applied")
+        let cleared = expectation(description: "name resolution cleared")
+        var cancellables = Set<AnyCancellable>()
+        store.$snapshot
+            .sink { snapshot in
+                if snapshot.wifi.state == .connected {
+                    connected.fulfill()
+                }
+            }
+            .store(in: &cancellables)
+        store.$isResolvingWiFiName
+            .dropFirst()
+            .sink { isResolving in
+                if !isResolving {
+                    cleared.fulfill()
+                }
+            }
+            .store(in: &cancellables)
+
+        store.start()
+        wifi.send(WiFiStatus(state: .connected, rssi: -52, nameAccess: .authorized))
+        await fulfillment(of: [connected], timeout: 1)
+
+        store.setPopoverVisible(true)
+        XCTAssertTrue(store.isResolvingWiFiName)
+        await sleeper.waitForCallCount(1)
+        XCTAssertEqual(sleeper.durations.last, .seconds(3))
+
+        sleeper.releaseAll()
+        await fulfillment(of: [cleared], timeout: 1)
+
+        XCTAssertFalse(store.isResolvingWiFiName)
+        cancellables.removeAll()
+        store.stop()
+    }
+
+    func testWiFiStatusIsAwaitingNameOnlyWhileAuthorizedAndAssociated() {
+        XCTAssertTrue(WiFiStatus(state: .connected, rssi: -52, nameAccess: .authorized).isAwaitingName)
+        XCTAssertTrue(WiFiStatus(state: .hotspot, rssi: -52, nameAccess: .authorized).isAwaitingName)
+        XCTAssertTrue(WiFiStatus(state: .shared, rssi: -52, nameAccess: .authorized).isAwaitingName)
+        XCTAssertFalse(
+            WiFiStatus(state: .connected, rssi: -52, ssid: "Home", nameAccess: .authorized).isAwaitingName
+        )
+        XCTAssertTrue(
+            WiFiStatus(state: .connected, rssi: -52, ssid: "", nameAccess: .authorized).isAwaitingName
+        )
+        XCTAssertFalse(WiFiStatus(state: .connected, rssi: -52, nameAccess: .notDetermined).isAwaitingName)
+        XCTAssertFalse(WiFiStatus(state: .connected, rssi: -52, nameAccess: .denied).isAwaitingName)
+        XCTAssertFalse(WiFiStatus(state: .connected, rssi: -52, nameAccess: .restricted).isAwaitingName)
+        XCTAssertFalse(WiFiStatus(state: .off, rssi: nil, nameAccess: .authorized).isAwaitingName)
+        XCTAssertFalse(WiFiStatus(state: .notAssociated, rssi: nil, nameAccess: .authorized).isAwaitingName)
+        XCTAssertFalse(WiFiStatus(state: .unavailable, rssi: nil, nameAccess: .authorized).isAwaitingName)
+    }
+
     func testPopoverVisibilityUpdatesDetailsAndRefreshes() {
         let battery = FakeBatteryMonitor()
         let wifi = FakeWiFiMonitor()

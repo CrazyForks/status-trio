@@ -4,6 +4,7 @@ import SwiftUI
 struct WiFiStatusView: View {
     @EnvironmentObject private var localization: Localization
     let wifi: WiFiStatus
+    var isResolvingName: Bool = false
     let onOpenDetails: (Bool) -> Void
     let onRequestNameAccess: () -> Void
     let onOpenWiFiSettings: () -> Void
@@ -59,6 +60,12 @@ struct WiFiStatusView: View {
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
                 .truncationMode(.tail)
+        } else if isResolvingName {
+            // The fresh name is still being read: keep the line empty instead of
+            // flashing the generic state, and keep its height so the row does not jump.
+            Text(verbatim: " ")
+                .font(.caption)
+                .accessibilityHidden(true)
         } else if wifi.state.isNetworkAssociated && wifi.nameAccess == .notDetermined {
             Button(localization.string(.wifiActionRequestNameAccess), action: onRequestNameAccess)
                 .buttonStyle(.plain)
