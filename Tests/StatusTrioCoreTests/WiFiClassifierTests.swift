@@ -850,6 +850,81 @@ final class WiFiClassifierTests: XCTestCase {
         monitor.stop()
     }
 
+    func testInvalidationBeforeDebounceCoalescesTheObsoleteReadFollowUp() async {
+        let reader = DeferredWiFiStatusReader()
+        let sleeper = ManualEventSleeper()
+        let monitor = makeMonitor(
+            statusReader: reader,
+            refreshDebounceSleep: { duration in await sleeper.sleep(duration) }
+        )
+        monitor.start()
+        monitor.clientConnectionInvalidated()
+        await sleeper.waitForCallCount(1)
+
+        reader.complete(makeReading(rssi: -40))
+        XCTAssertEqual(reader.includeSSIDRequests.count, 1, "The scheduled refresh owns the follow-up")
+
+        let refreshed = expectation(description: "scheduled read starts")
+        reader.onRead = { refreshed.fulfill() }
+        sleeper.releaseAll()
+        await fulfillment(of: [refreshed], timeout: 1)
+        reader.onRead = nil
+        reader.complete(makeReading(rssi: -65))
+        XCTAssertEqual(reader.includeSSIDRequests.count, 2)
+
+        var iterator = monitor.updates.makeAsyncIterator()
+        monitor.stop()
+        let status = await iterator.next()
+        let end = await iterator.next()
+        XCTAssertEqual(status?.rssi, -65)
+        XCTAssertNil(end, "The invalidated result must not be published")
+    }
+
+    func testInvalidationAfterDebounceKeepsOnePendingRefresh() async {
+        let reader = DeferredWiFiStatusReader()
+        let sleeper = ManualEventSleeper()
+        let monitor = makeMonitor(
+            statusReader: reader,
+            refreshDebounceSleep: { duration in await sleeper.sleep(duration) }
+        )
+        monitor.start()
+        monitor.clientConnectionInvalidated()
+        await sleeper.waitForCallCount(1)
+        sleeper.releaseAll()
+        await sleeper.waitForCompletionCount(1)
+        // Drain the scheduled main-actor refresh while the system read stays blocked.
+        for _ in 0..<20 { await Task.yield() }
+        XCTAssertEqual(reader.includeSSIDRequests.count, 1)
+
+        reader.complete(makeReading(rssi: -40))
+        XCTAssertEqual(reader.includeSSIDRequests.count, 2)
+        reader.complete(makeReading(rssi: -65))
+        XCTAssertEqual(reader.includeSSIDRequests.count, 2)
+        monitor.stop()
+    }
+
+    func testStopCancelsScheduledRecoveryWithoutStartingAnotherRead() async {
+        let reader = DeferredWiFiStatusReader()
+        let sleeper = ManualEventSleeper()
+        let monitor = makeMonitor(
+            statusReader: reader,
+            refreshDebounceSleep: { duration in await sleeper.sleep(duration) }
+        )
+        monitor.start()
+        monitor.refresh()
+        monitor.clientConnectionInvalidated()
+        await sleeper.waitForCallCount(1)
+        monitor.stop()
+        reader.complete(makeReading())
+        sleeper.releaseAll()
+        await sleeper.waitForCompletionCount(1)
+        for _ in 0..<20 { await Task.yield() }
+        XCTAssertEqual(reader.includeSSIDRequests.count, 1)
+        var iterator = monitor.updates.makeAsyncIterator()
+        let end = await iterator.next()
+        XCTAssertNil(end)
+    }
+
     func testClosingDetailsDiscardsInFlightSSIDRead() async {
         let reader = DeferredWiFiStatusReader()
         let monitor = makeMonitor(
@@ -1009,6 +1084,7 @@ final class WiFiClassifierTests: XCTestCase {
 private final class DeferredWiFiStatusReader: WiFiStatusReadingProviding {
     private(set) var includeSSIDRequests: [Bool] = []
     private var completions: [@MainActor @Sendable (WiFiStatusReading) -> Void] = []
+    var onRead: (() -> Void)?
 
     func read(
         includeSSID: Bool,
@@ -1016,6 +1092,7 @@ private final class DeferredWiFiStatusReader: WiFiStatusReadingProviding {
     ) {
         includeSSIDRequests.append(includeSSID)
         completions.append(completion)
+        onRead?()
     }
 
     func complete(_ reading: WiFiSystemReading?) {
