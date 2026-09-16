@@ -1,17 +1,23 @@
 import AppKit
 import SwiftUI
 
-struct StatusPanelSettingsPane: View {
+struct PopoverSectionView: View {
     @ObservedObject var store: SettingsStore
     @ObservedObject var statusStore: SystemStatusStore
     @EnvironmentObject private var localization: Localization
 
     var body: some View {
-        PreferencesPane {
-            PreferenceRow(
-                label: .settingsPopupOrder,
-                description: .settingsPopupOrderDescription
-            ) {
+        SettingsPage {
+            popupOrderGroup
+        }
+    }
+
+    private var popupOrderGroup: some View {
+        SettingsGroup(
+            localization.string(.settingsPopupOrder),
+            footnote: localization.string(.settingsPopupOrderDescription)
+        ) {
+            SettingsCustomRow {
                 List {
                     ForEach(store.popupSectionOrder) { section in
                         HStack(spacing: 8) {
@@ -25,6 +31,7 @@ struct StatusPanelSettingsPane: View {
                                 .frame(width: 18)
 
                             Text(localization.string(section.titleKey))
+                                .font(.system(size: 13))
                                 .frame(maxWidth: .infinity, alignment: .leading)
 
                             Image(systemName: "line.3.horizontal")
@@ -32,17 +39,14 @@ struct StatusPanelSettingsPane: View {
                                 .foregroundStyle(.tertiary)
                                 .accessibilityHidden(true)
                         }
-                        .padding(.vertical, 2)
+                        .padding(.vertical, 3)
                     }
                     .onMove { source, destination in
-                        store.movePopupSections(
-                            fromOffsets: source,
-                            toOffset: destination
-                        )
+                        store.movePopupSections(fromOffsets: source, toOffset: destination)
                     }
                 }
                 .listStyle(.inset)
-                .frame(height: popupListHeight)
+                .frame(height: popupOrderListHeight)
             }
         }
     }
@@ -66,13 +70,14 @@ struct StatusPanelSettingsPane: View {
     @ViewBuilder
     private func popupSectionIcon(_ section: PopupSection) -> some View {
         if section == .bluetooth {
-            BluetoothIcon(size: 18)
+            BluetoothIcon(size: 16)
         } else {
             Image(systemName: section.systemImage)
+                .font(.system(size: 13))
         }
     }
 
-    private var popupListHeight: CGFloat {
-        min(max(CGFloat(store.popupSectionOrder.count) * 28 + 8, 44), 168)
+    private var popupOrderListHeight: CGFloat {
+        min(max(CGFloat(store.popupSectionOrder.count) * 32 + 12, 48), 180)
     }
 }

@@ -26,7 +26,7 @@ final class AppMetadataTests: XCTestCase {
     func testProjectHomepageURL() {
         XCTAssertEqual(
             AppMetadata.projectHomepageURL.absoluteString,
-            "http://statustrio.lingai.net/"
+            "https://statustrio.lingai.net/"
         )
     }
 

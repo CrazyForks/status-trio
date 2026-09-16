@@ -71,6 +71,7 @@ enum DockIconRenderer {
         status: MenuBarStatus,
         options: BatteryIconOptions = .standard,
         connectionOptions: ConnectionIconOptions = .standard,
+        volumeOptions: VolumeIconOptions = .standard,
         backgroundStyle: DockIconBackgroundStyle = .dark
     ) -> NSImage? {
         let palette = palette(for: backgroundStyle)
@@ -106,6 +107,7 @@ enum DockIconRenderer {
             menuBarStatus: status,
             options: options,
             connectionOptions: connectionOptions,
+            volumeOptions: volumeOptions,
             foreground: palette.foreground,
             in: context,
             origin: CGPoint(

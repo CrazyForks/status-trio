@@ -8,7 +8,7 @@
   <img src="Support/AppIcon.svg" width="112" alt="Status Trio app icon">
 </p>
 
-<p align="center"><strong>Three system signals. One native macOS menu bar icon.</strong></p>
+<p align="center"><strong>Three system signals. One native macOS status icon — in your menu bar or the Dock.</strong></p>
 
 <p align="center">
   <a href="README.zh-CN.md">简体中文</a>
@@ -22,22 +22,36 @@
   <img src="screenshots/popup.png" width="360" alt="Status Trio popover showing battery, Wi-Fi, and volume controls in the macOS menu bar">
 </p>
 
-Status Trio is a native macOS menubar app that combines Wi-Fi, battery, and volume into one compact, configurable menu bar icon. It is inspired by the iPhone Duo's combined status bar icon for Wi-Fi, Battery, and Cellular Data, adapted for Mac with Volume instead of Cellular Data.
+Status Trio is a native macOS status app that combines Wi-Fi, battery, and volume into one compact, configurable icon, shown in the menu bar, in the Dock, or in both. It is inspired by the iPhone Duo's combined status bar icon for Wi-Fi, Battery, and Cellular Data, adapted for Mac with Volume instead of Cellular Data.
 
 > Status Trio is an independent project and is not affiliated with Apple.
 
 ## Highlights
 
-- **One combined status icon** — keeps battery, Wi-Fi, and volume in a single menu bar item.
+- **One combined status icon** — keeps battery, Wi-Fi, and volume in a single icon.
+- **Menu bar or Dock** — choose where the live icon lives: the menu bar, the Dock, or both, with a Dock icon that follows the macOS icon style.
 - **Configurable rendering** — choose an icon size from 16–36 pt, with 28 pt as the default.
 - **Connection icon choices** — optionally use the standard Wi-Fi signal icon for Ethernet, Personal Hotspot, temporary connections, or Internet Sharing.
-- **Detailed battery status** — percentage, charging bolt, estimated time to full, Low Power Mode, and a Battery Settings shortcut.
+- **Detailed battery status** — percentage, a charging bolt or a plug while connected without charging, estimated time to full, Low Power Mode, and a Battery Settings shortcut.
 - **Wi-Fi awareness** — signal strength, current network name, and common connection states.
 - **Volume at a glance** — output level and mute state, with controls available from the popover.
-- **macOS-native controls** — left-click for a status popover and right-click for the standard menu.
+- **macOS-native controls** — left-click for a status popover and right-click for the standard menu, from either the menu bar icon or the Dock icon.
 - **Efficient updates** — event-driven monitoring with a low-frequency polling fallback.
 - **Twelve languages** — follow the system language or choose one manually; changes apply immediately.
 - **Launch at login** — optional startup with guidance when macOS requires approval.
+
+## Dock icon
+
+The same live icon can live in the Dock instead of the menu bar, or in both places at once:
+
+<p align="center">
+  <img src="screenshots/status-trio-dock-light-1440x810.jpg" width="430" alt="Status Trio live icon in the Dock with light appearance">
+  <img src="screenshots/status-trio-dock-dark-1440x810.jpg" width="430" alt="Status Trio live icon in the Dock with dark appearance">
+</p>
+
+<p align="center">
+  <img src="screenshots/status-trio-dock-light-bt-1440x810.jpg" width="880" alt="Status Trio in the Dock with the Bluetooth panel shown, light appearance">
+</p>
 
 ## Requirements
 
@@ -91,9 +105,9 @@ Do not disable Gatekeeper globally. Subsequent Sparkle updates are authenticated
 
 ## Usage
 
-- **Left-click** the menu bar icon to open the status popover.
-- **Right-click** it for the native menu, including version and quit actions.
-- Open **Settings** to change the icon size, connection icon style, battery display options, language, update checks, and launch-at-login behavior.
+- **Left-click** the menu bar icon or the Dock icon to open the status popover.
+- **Right-click** either icon for the native menu, including version and quit actions.
+- Open **Settings** to choose where the icon is shown (menu bar, Dock, or both), and to change the icon size, connection icon style, battery display options, language, update checks, and launch-at-login behavior.
 - Enable the current Wi-Fi network name when prompted; macOS requests location access for this optional detail.
 
 ## Languages
@@ -139,7 +153,7 @@ The single-instance lock is scoped by bundle identifier, so differently identifi
 - Swift 6
 - SwiftUI + AppKit
 - macOS 15+
-- `LSUIElement` menu bar app
+- `LSUIElement` menu bar accessory that switches to a regular activation policy while the Dock icon is shown
 - Sparkle for update checks
 
 ## Documentation

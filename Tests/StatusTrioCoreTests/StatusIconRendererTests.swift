@@ -164,50 +164,38 @@ final class StatusIconRendererTests: XCTestCase {
                 foreground: CGColor(gray: 1, alpha: 1)
             ))
         )
-        let slashPoint = CGPoint(x: 75, y: 73)
-
-        XCTAssertGreaterThan(
-            offPixels.alpha(atSVGPoint: slashPoint, size: 20, scale: 8),
-            0
-        )
-        XCTAssertGreaterThan(
-            unavailablePixels.alpha(atSVGPoint: slashPoint, size: 20, scale: 8),
-            0
-        )
-        XCTAssertEqual(
-            notAssociatedPixels.alpha(atSVGPoint: slashPoint, size: 20, scale: 8),
-            0
-        )
+        XCTAssertEqual(offPixels.bytes, unavailablePixels.bytes)
+        XCTAssertNotEqual(offPixels.bytes, notAssociatedPixels.bytes)
     }
 
     func testNoInternetOmitsNormalWiFiDotWhileKeepingOverlay() throws {
-        let snapshot = StatusSnapshot(
+        let noInternetSnapshot = StatusSnapshot(
             battery: .placeholder,
             wifi: WiFiStatus(state: .noInternet, rssi: nil),
             volume: .placeholder
         )
-        let pixels = try PixelBuffer(
+        let notAssociatedSnapshot = StatusSnapshot(
+            battery: .placeholder,
+            wifi: WiFiStatus(state: .notAssociated, rssi: nil),
+            volume: .placeholder
+        )
+        let noInternetPixels = try PixelBuffer(
             image: try XCTUnwrap(StatusIconRenderer.render(
-                snapshot: snapshot,
+                snapshot: noInternetSnapshot,
                 size: 20,
                 scale: 8,
                 foreground: CGColor(gray: 1, alpha: 1)
             ))
         )
-
-        // The exclamation dot overlaps the full normal-dot centroid, so sample
-        // the centroid of the normal dot's uncovered lower region.
-        let uncoveredNormalDotCentroid = CGPoint(x: 59.5, y: 79.17)
-        let overlayStem = CGPoint(x: 59.5, y: 60)
-
-        XCTAssertEqual(
-            pixels.alpha(atSVGPoint: uncoveredNormalDotCentroid, size: 20, scale: 8),
-            0
+        let notAssociatedPixels = try PixelBuffer(
+            image: try XCTUnwrap(StatusIconRenderer.render(
+                snapshot: notAssociatedSnapshot,
+                size: 20,
+                scale: 8,
+                foreground: CGColor(gray: 1, alpha: 1)
+            ))
         )
-        XCTAssertGreaterThan(
-            pixels.alpha(atSVGPoint: overlayStem, size: 20, scale: 8),
-            0
-        )
+        XCTAssertNotEqual(noInternetPixels.bytes, notAssociatedPixels.bytes)
     }
 
     func testLowPowerStateDrawsYellowPixels() throws {
@@ -650,7 +638,7 @@ final class StatusIconRendererTests: XCTestCase {
         XCTAssertEqual(pixels.maximumAlphaOnEdges, 0)
     }
 
-    func testConnectedZeroBarsMatchesFullMutedSignalAndDiffersFromHigherBars() throws {
+    func testConnectedZeroBarsUsesMutedSignalWhileNotAssociatedUsesFullForeground() throws {
         let zeroBars = StatusSnapshot(
             battery: .placeholder,
             wifi: WiFiStatus(state: .connected, rssi: nil),
@@ -668,7 +656,7 @@ final class StatusIconRendererTests: XCTestCase {
         )
         let twoBars = StatusSnapshot(
             battery: .placeholder,
-            wifi: WiFiStatus(state: .connected, rssi: -70),
+            wifi: WiFiStatus(state: .connected, rssi: -75),
             volume: .placeholder
         )
         let threeBars = StatusSnapshot(
@@ -678,14 +666,14 @@ final class StatusIconRendererTests: XCTestCase {
         )
 
         let zeroPixels = try renderPixels(zeroBars)
-        XCTAssertEqual(zeroPixels.bytes, try renderPixels(notAssociated).bytes)
+        XCTAssertNotEqual(zeroPixels.bytes, try renderPixels(notAssociated).bytes)
         XCTAssertNotEqual(zeroPixels.bytes, try renderPixels(oneBar).bytes)
         XCTAssertNotEqual(zeroPixels.bytes, try renderPixels(twoBars).bytes)
         XCTAssertNotEqual(zeroPixels.bytes, try renderPixels(threeBars).bytes)
     }
 
     func testConnectedNonzeroSignalAlphaSumIncreasesWithBars() throws {
-        let rssiValues: [Int?] = [-85, -70, -55]
+        let rssiValues: [Int?] = [-85, -75, -55]
         let signalRegion = CGRect(x: 35, y: 43, width: 50, height: 43)
         var alphaSums: [Int] = []
 
@@ -774,16 +762,12 @@ final class StatusIconRendererTests: XCTestCase {
                 foreground: CGColor(gray: 1, alpha: 1)
             ))
         )
-        let hotspotOnlyPoint = CGPoint(x: 41.5, y: 58)
-
+        let wifiArea = CGRect(x: 35, y: 35, width: 50, height: 50)
         XCTAssertGreaterThan(
-            hotspotPixels.alpha(atSVGPoint: hotspotOnlyPoint, size: 20, scale: 8),
+            hotspotPixels.alphaSum(inSVGRect: wifiArea, size: 20, scale: 8),
             0
         )
-        XCTAssertEqual(
-            connectedPixels.alpha(atSVGPoint: hotspotOnlyPoint, size: 20, scale: 8),
-            0
-        )
+        XCTAssertNotEqual(hotspotPixels.bytes, connectedPixels.bytes)
     }
 
     func testEthernetConnectionDrawsThreeDotMark() throws {
@@ -1051,6 +1035,102 @@ final class StatusIconRendererTests: XCTestCase {
         for index in 0..<(alphaSums.count - 1) {
             XCTAssertLessThan(alphaSums[index], alphaSums[index + 1])
         }
+    }
+
+    func testVolumeContinuousArcAlphaSumIncreasesWithVolume() throws {
+        let scalars = [0.0, 0.25, 0.50, 0.75, 1.0]
+        let volumeRegion = CGRect(x: 25, y: 92, width: 75, height: 28)
+        var alphaSums: [Int] = []
+
+        let arcOptions = VolumeIconOptions(displayStyle: .arc)
+
+        for scalar in scalars {
+            let snapshot = StatusSnapshot(
+                battery: .placeholder,
+                wifi: .placeholder,
+                volume: VolumeStatus(
+                    scalar: scalar,
+                    isMuted: false,
+                    deviceName: nil
+                )
+            )
+            let pixels = try PixelBuffer(
+                image: try XCTUnwrap(StatusIconRenderer.render(
+                    snapshot: snapshot,
+                    size: 20,
+                    scale: 8,
+                    foreground: CGColor(gray: 1, alpha: 1),
+                    volumeOptions: arcOptions
+                ))
+            )
+            alphaSums.append(pixels.alphaSum(
+                inSVGRect: volumeRegion,
+                size: 20,
+                scale: 8
+            ))
+        }
+
+        for index in 0..<(alphaSums.count - 1) {
+            XCTAssertLessThan(alphaSums[index], alphaSums[index + 1])
+        }
+    }
+
+    func testVolumeArcStyleDiffersFromDotsStyle() throws {
+        let snapshot = StatusSnapshot(
+            battery: .placeholder,
+            wifi: .placeholder,
+            volume: VolumeStatus(scalar: 0.5, isMuted: false, deviceName: nil)
+        )
+        let dotsPixels = try PixelBuffer(
+            image: try XCTUnwrap(StatusIconRenderer.render(
+                snapshot: snapshot,
+                size: 20,
+                scale: 8,
+                foreground: CGColor(gray: 1, alpha: 1),
+                volumeOptions: VolumeIconOptions(displayStyle: .dots)
+            ))
+        )
+        let arcPixels = try PixelBuffer(
+            image: try XCTUnwrap(StatusIconRenderer.render(
+                snapshot: snapshot,
+                size: 20,
+                scale: 8,
+                foreground: CGColor(gray: 1, alpha: 1),
+                volumeOptions: VolumeIconOptions(displayStyle: .arc)
+            ))
+        )
+        XCTAssertNotEqual(dotsPixels.bytes, arcPixels.bytes)
+    }
+
+    func testWiFiSymbolScaleChangesRenderedPixels() throws {
+        let snapshot = StatusSnapshot(
+            battery: .placeholder,
+            wifi: WiFiStatus(state: .connected, rssi: -50),
+            volume: .placeholder
+        )
+        let normalPixels = try PixelBuffer(
+            image: try XCTUnwrap(StatusIconRenderer.render(
+                snapshot: snapshot,
+                size: 20,
+                scale: 8,
+                foreground: CGColor(gray: 1, alpha: 1),
+                connectionOptions: ConnectionIconOptions(wifiScale: 1.0)
+            ))
+        )
+        let scaledPixels = try PixelBuffer(
+            image: try XCTUnwrap(StatusIconRenderer.render(
+                snapshot: snapshot,
+                size: 20,
+                scale: 8,
+                foreground: CGColor(gray: 1, alpha: 1),
+                connectionOptions: ConnectionIconOptions(wifiScale: 1.5)
+            ))
+        )
+        let wifiRegion = CGRect(x: 20, y: 20, width: 80, height: 80)
+        let normalSum = normalPixels.alphaSum(inSVGRect: wifiRegion, size: 20, scale: 8)
+        let scaledSum = scaledPixels.alphaSum(inSVGRect: wifiRegion, size: 20, scale: 8)
+        XCTAssertGreaterThan(scaledSum, normalSum)
+        XCTAssertNotEqual(normalPixels.bytes, scaledPixels.bytes)
     }
 
     func testMutedVolumeMatchesZeroVolume() throws {

@@ -13,6 +13,25 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(store.iconSize, 28, accuracy: 0.001)
     }
 
+    func testConnectedPowerPercentageDefaultsOffAndFeedsTheIconOptions() {
+        let store = SettingsStore(defaults: makeSuite().defaults)
+
+        XCTAssertFalse(store.showsPercentageWhenConnected)
+        XCTAssertFalse(store.batteryIconOptions.showsPercentageWhenConnected)
+    }
+
+    func testConnectedPowerPercentageChoicePersists() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+
+        let first = SettingsStore(defaults: suite.defaults)
+        first.showsPercentageWhenConnected = true
+
+        let second = SettingsStore(defaults: suite.defaults)
+        XCTAssertTrue(second.showsPercentageWhenConnected)
+        XCTAssertTrue(second.batteryIconOptions.showsPercentageWhenConnected)
+    }
+
     func testRefreshIntervalDefaultsAndRange() {
         let store = SettingsStore(defaults: makeSuite().defaults)
 
@@ -94,6 +113,46 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertTrue(second.showsWiFiIconForHotspot)
         XCTAssertTrue(second.showsWiFiIconForTemporaryConnection)
         XCTAssertTrue(second.showsWiFiIconForInternetSharing)
+    }
+
+    func testWiFiSymbolScaleDefaultsAndClamping() {
+        let store = SettingsStore(defaults: makeSuite().defaults)
+
+        XCTAssertEqual(SettingsStore.wifiSymbolScaleRange, 1.0...1.8)
+        XCTAssertEqual(store.wifiSymbolScale, 1.0, accuracy: 0.001)
+
+        store.wifiSymbolScale = 2.5
+        XCTAssertEqual(store.wifiSymbolScale, 1.8, accuracy: 0.001)
+
+        store.wifiSymbolScale = 0.5
+        XCTAssertEqual(store.wifiSymbolScale, 1.0, accuracy: 0.001)
+    }
+
+    func testWiFiSymbolScalePersistsAcrossStoreInstances() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+
+        let first = SettingsStore(defaults: suite.defaults)
+        first.wifiSymbolScale = 1.45
+
+        let second = SettingsStore(defaults: suite.defaults)
+        XCTAssertEqual(second.wifiSymbolScale, 1.45, accuracy: 0.001)
+        XCTAssertEqual(second.connectionIconOptions.wifiScale, 1.45, accuracy: 0.001)
+    }
+
+    func testVolumeDisplayStyleDefaultsAndPersists() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+
+        let first = SettingsStore(defaults: suite.defaults)
+        XCTAssertEqual(first.volumeDisplayStyle, .dots)
+        XCTAssertEqual(first.volumeIconOptions.displayStyle, .dots)
+
+        first.volumeDisplayStyle = .arc
+
+        let second = SettingsStore(defaults: suite.defaults)
+        XCTAssertEqual(second.volumeDisplayStyle, .arc)
+        XCTAssertEqual(second.volumeIconOptions.displayStyle, .arc)
     }
 
     func testBatteryCriticalThresholdIsClamped() {
@@ -394,12 +453,6 @@ final class SettingsStoreTests: XCTestCase {
         )
     }
 
-    func testStatusPanelTabIsAvailableAfterBasics() {
-        XCTAssertEqual(Array(SettingsTab.allCases.prefix(2)), [.basics, .panel])
-        XCTAssertEqual(SettingsTab.panel.titleKey, .settingsTabPanel)
-        XCTAssertEqual(SettingsTab.panel.systemImage, "rectangle.on.rectangle")
-        XCTAssertEqual(SettingsTab.panel.tint, .purple)
-    }
 
     func testEveryConfigurableSizeRendersAtThatSize() throws {
 

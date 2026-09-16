@@ -18,6 +18,7 @@ final class AppIconController {
         _ status: MenuBarStatus,
         _ options: BatteryIconOptions,
         _ connectionOptions: ConnectionIconOptions,
+        _ volumeOptions: VolumeIconOptions,
         _ backgroundStyle: DockIconBackgroundStyle
     ) -> NSImage?
 
@@ -39,6 +40,7 @@ final class AppIconController {
     private var currentPlacement: AppIconPlacement
     private var currentBatteryOptions: BatteryIconOptions
     private var currentConnectionOptions: ConnectionIconOptions
+    private var currentVolumeOptions: VolumeIconOptions
     private var currentBackgroundPreference: DockIconBackgroundPreference
     private var isDockTileVisible: Bool
     private var isStarted = false
@@ -74,6 +76,7 @@ final class AppIconController {
         self.currentPlacement = settings.appIconPlacement
         self.currentBatteryOptions = settings.batteryIconOptions
         self.currentConnectionOptions = settings.connectionIconOptions
+        self.currentVolumeOptions = settings.volumeIconOptions
         self.currentBackgroundPreference = settings.dockIconBackgroundPreference
         self.isDockTileVisible = activationPolicy.isRegularApp
     }
@@ -87,6 +90,7 @@ final class AppIconController {
         currentPlacement = settings.appIconPlacement
         currentBatteryOptions = settings.batteryIconOptions
         currentConnectionOptions = settings.connectionIconOptions
+        currentVolumeOptions = settings.volumeIconOptions
         currentBackgroundPreference = settings.dockIconBackgroundPreference
         apply(currentPlacement)
         activationPolicy.$isRegularApp
@@ -108,6 +112,7 @@ final class AppIconController {
         subscribeToSnapshot()
         subscribeToBatteryOptions()
         subscribeToConnectionOptions()
+        subscribeToVolumeDisplayStyle()
         subscribeToBackgroundStyle()
     }
 
@@ -168,6 +173,7 @@ final class AppIconController {
             settings.$usesBatteryStatusColors,
             settings.$batteryCriticalThreshold
         )
+        .combineLatest(settings.$showsPercentageWhenConnected)
         .combineLatest(settings.$batterySymbolScale)
         .dropFirst()
         .sink { [weak self] batteryValues, symbolScale in
@@ -177,12 +183,14 @@ final class AppIconController {
                 showsChargingIndicator,
                 usesStatusColors,
                 criticalThreshold
-            ) = batteryValues
+            ) = batteryValues.0
+            let showsPercentageWhenConnected = batteryValues.1
             currentBatteryOptions = BatteryIconOptions(
                 showsPercentage: showsPercentage,
                 showsChargingIndicator: showsChargingIndicator,
                 usesStatusColors: usesStatusColors,
                 criticalThreshold: Int(criticalThreshold.rounded()),
+                showsPercentageWhenConnected: showsPercentageWhenConnected,
                 textScale: symbolScale * BatteryIconOptions.defaultTextScale
             )
             renderLatestDockIcon()
@@ -197,8 +205,9 @@ final class AppIconController {
             settings.$showsWiFiIconForTemporaryConnection,
             settings.$showsWiFiIconForInternetSharing
         )
+        .combineLatest(settings.$wifiSymbolScale)
         .dropFirst()
-        .sink { [weak self] values in
+        .sink { [weak self] values, wifiScale in
             guard let self else { return }
             let (
                 showsForEthernet,
@@ -210,7 +219,8 @@ final class AppIconController {
                 showsWiFiIconForEthernet: showsForEthernet,
                 showsWiFiIconForHotspot: showsForHotspot,
                 showsWiFiIconForTemporaryConnection: showsForTemporaryConnection,
-                showsWiFiIconForInternetSharing: showsForInternetSharing
+                showsWiFiIconForInternetSharing: showsForInternetSharing,
+                wifiScale: wifiScale
             )
             renderLatestDockIcon()
         }
@@ -224,6 +234,18 @@ final class AppIconController {
             .sink { [weak self] preference in
                 guard let self else { return }
                 currentBackgroundPreference = preference
+                renderLatestDockIcon()
+            }
+            .store(in: &cancellables)
+    }
+
+    private func subscribeToVolumeDisplayStyle() {
+        settings.$volumeDisplayStyle
+            .removeDuplicates()
+            .dropFirst()
+            .sink { [weak self] displayStyle in
+                guard let self else { return }
+                currentVolumeOptions = VolumeIconOptions(displayStyle: displayStyle)
                 renderLatestDockIcon()
             }
             .store(in: &cancellables)
@@ -262,6 +284,7 @@ final class AppIconController {
             status: status,
             options: currentBatteryOptions,
             connectionOptions: currentConnectionOptions,
+            volumeOptions: currentVolumeOptions,
             backgroundStyle: backgroundStyle
         )
         guard renderCache.shouldRender(key) else { return }
@@ -276,6 +299,7 @@ final class AppIconController {
             status,
             currentBatteryOptions,
             currentConnectionOptions,
+            currentVolumeOptions,
             backgroundStyle
         ) else {
             if !hasRenderedDockIcon {

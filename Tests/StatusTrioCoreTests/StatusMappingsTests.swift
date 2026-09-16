@@ -3,13 +3,13 @@ import XCTest
 
 final class StatusMappingsTests: XCTestCase {
     func testWiFiSignalBoundaries() {
-        XCTAssertEqual(StatusMappings.wifiBars(rssi: -54), 3)
-        XCTAssertEqual(StatusMappings.wifiBars(rssi: -55), 3)
-        XCTAssertEqual(StatusMappings.wifiBars(rssi: -56), 2)
-        XCTAssertEqual(StatusMappings.wifiBars(rssi: -70), 2)
-        XCTAssertEqual(StatusMappings.wifiBars(rssi: -71), 1)
-        XCTAssertEqual(StatusMappings.wifiBars(rssi: -85), 1)
-        XCTAssertEqual(StatusMappings.wifiBars(rssi: -86), 0)
+        XCTAssertEqual(StatusMappings.wifiBars(rssi: -59), 3)
+        XCTAssertEqual(StatusMappings.wifiBars(rssi: -60), 3)
+        XCTAssertEqual(StatusMappings.wifiBars(rssi: -61), 2)
+        XCTAssertEqual(StatusMappings.wifiBars(rssi: -78), 2)
+        XCTAssertEqual(StatusMappings.wifiBars(rssi: -79), 1)
+        XCTAssertEqual(StatusMappings.wifiBars(rssi: -88), 1)
+        XCTAssertEqual(StatusMappings.wifiBars(rssi: -89), 0)
         XCTAssertEqual(StatusMappings.wifiBars(rssi: nil), 0)
     }
 
@@ -154,6 +154,131 @@ final class StatusMappingsTests: XCTestCase {
         XCTAssertEqual(
             StatusMappings.batteryColorRole(battery, criticalThreshold: 20),
             .critical
+        )
+    }
+
+    func testBatteryGapContentDecisionTable() {
+        XCTAssertEqual(
+            StatusMappings.batteryGapContent(chargingBattery(), options: .standard),
+            .bolt
+        )
+        XCTAssertEqual(
+            StatusMappings.batteryGapContent(connectedBattery(), options: .standard),
+            .plug
+        )
+        XCTAssertEqual(
+            StatusMappings.batteryGapContent(chargedOnPower(), options: .standard),
+            .plug
+        )
+        XCTAssertEqual(
+            StatusMappings.batteryGapContent(makeBattery(rawPercentage: 80), options: .standard),
+            .percentage
+        )
+        XCTAssertEqual(
+            StatusMappings.batteryGapContent(absentBattery(), options: .standard),
+            .percentage
+        )
+    }
+
+    func testBatteryGapContentUsesThePercentageForConnectedPowerWhenEnabled() {
+        XCTAssertEqual(
+            StatusMappings.batteryGapContent(
+                connectedBattery(),
+                options: batteryOptions(showsPercentageWhenConnected: true)
+            ),
+            .percentage
+        )
+    }
+
+    func testBatteryGapContentKeepsTheBoltWhileCharging() {
+        XCTAssertEqual(
+            StatusMappings.batteryGapContent(
+                chargingBattery(),
+                options: batteryOptions(showsPercentageWhenConnected: true)
+            ),
+            .bolt
+        )
+    }
+
+    func testBatteryGapContentFallsBackWhenNothingCanBeDrawn() {
+        XCTAssertEqual(
+            StatusMappings.batteryGapContent(
+                connectedBattery(),
+                options: batteryOptions(showsIndicator: false, showsPercentage: false)
+            ),
+            .empty
+        )
+        XCTAssertEqual(
+            StatusMappings.batteryGapContent(
+                connectedBattery(),
+                options: batteryOptions(showsIndicator: false)
+            ),
+            .percentage
+        )
+        XCTAssertEqual(
+            StatusMappings.batteryGapContent(
+                connectedBattery(),
+                options: batteryOptions(
+                    showsPercentage: false,
+                    showsPercentageWhenConnected: true
+                )
+            ),
+            .plug
+        )
+    }
+
+    private func chargingBattery() -> BatteryStatus {
+        BatteryStatus(
+            rawPercentage: 80,
+            isPresent: true,
+            isCharging: true,
+            isLowPowerMode: false,
+            isConnectedToPower: true
+        )
+    }
+
+    private func connectedBattery() -> BatteryStatus {
+        BatteryStatus(
+            rawPercentage: 80,
+            isPresent: true,
+            isCharging: false,
+            isLowPowerMode: false,
+            isConnectedToPower: true
+        )
+    }
+
+    private func absentBattery() -> BatteryStatus {
+        BatteryStatus(
+            rawPercentage: nil,
+            isPresent: false,
+            isCharging: false,
+            isLowPowerMode: false,
+            isConnectedToPower: false
+        )
+    }
+
+    private func batteryOptions(
+        showsIndicator: Bool = true,
+        showsPercentage: Bool = true,
+        showsPercentageWhenConnected: Bool = false
+    ) -> BatteryIconOptions {
+        BatteryIconOptions(
+            showsPercentage: showsPercentage,
+            showsChargingIndicator: showsIndicator,
+            usesStatusColors: true,
+            criticalThreshold: 20,
+            showsPercentageWhenConnected: showsPercentageWhenConnected
+        )
+    }
+
+    private func chargedOnPower() -> BatteryStatus {
+        BatteryStatus(
+            rawPercentage: 100,
+            isPresent: true,
+            isCharging: false,
+            isCharged: true,
+            isLowPowerMode: false,
+            isConnectedToPower: true
         )
     }
 

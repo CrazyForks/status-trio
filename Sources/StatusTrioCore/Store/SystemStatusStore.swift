@@ -9,6 +9,8 @@ final class SystemStatusStore: ObservableObject {
 
     @Published private(set) var snapshot: StatusSnapshot
     @Published private(set) var popupSnapshot: StatusSnapshot
+    /// True while the popover is waiting for a Wi-Fi name it has not read yet.
+    @Published private(set) var isResolvingWiFiName = false
     @Published private(set) var isPreviewEnabled = false
     @Published private(set) var isPreviewBatteryAnimationRunning = false
     @Published private(set) var previewStatus = PreviewStatusConfiguration.standard
@@ -22,6 +24,7 @@ final class SystemStatusStore: ObservableObject {
     private let volumeMonitor: any VolumeMonitoring
     private let volumeController: (any VolumeControlling)?
     private var refreshInterval: Duration
+    private let nameResolutionTimeout: Duration
     private let sleep: @Sendable (Duration) async throws -> Void
     private let popupDebounceSleep: @Sendable (Duration) async throws -> Void
     private let previewAnimationSleep: @Sendable (Duration) async throws -> Void
@@ -29,6 +32,7 @@ final class SystemStatusStore: ObservableObject {
     private var monitorTasks: [Task<Void, Never>] = []
     private var refreshTask: Task<Void, Never>?
     private var popupPublishTask: Task<Void, Never>?
+    private var wifiNameResolutionTask: Task<Void, Never>?
     private var previewAnimationTask: Task<Void, Never>?
     nonisolated(unsafe) private var wakeObserver: NSObjectProtocol?
     private var liveSnapshot: StatusSnapshot
@@ -36,6 +40,7 @@ final class SystemStatusStore: ObservableObject {
     private var hasStarted = false
     private var hasStopped = false
     private var isPopoverVisible = false
+    private var isSettingsVisible = false
     private var isBluetoothEnabled = false
     private var isBluetoothDetailsOpen = false
 
@@ -45,6 +50,7 @@ final class SystemStatusStore: ObservableObject {
         connectionMonitor: (any NetworkConnectionMonitoring)? = nil,
         volumeMonitor: any VolumeMonitoring,
         refreshInterval: Duration = .seconds(5),
+        nameResolutionTimeout: Duration = .milliseconds(1500),
         sleep: @escaping @Sendable (Duration) async throws -> Void = {
             try await Task.sleep(for: $0)
         },
@@ -65,6 +71,7 @@ final class SystemStatusStore: ObservableObject {
         self.volumeMonitor = volumeMonitor
         self.volumeController = volumeMonitor as? any VolumeControlling
         self.refreshInterval = refreshInterval
+        self.nameResolutionTimeout = nameResolutionTimeout
         self.sleep = sleep
         self.popupDebounceSleep = popupDebounceSleep
         self.previewAnimationSleep = previewAnimationSleep
@@ -177,6 +184,7 @@ final class SystemStatusStore: ObservableObject {
         refreshTask = nil
         popupPublishTask?.cancel()
         popupPublishTask = nil
+        clearWiFiNameResolution()
         stopPreviewBatteryAnimation()
         wifiNetworks.deactivate()
         bluetoothDevices.deactivate()
@@ -366,16 +374,29 @@ final class SystemStatusStore: ObservableObject {
     func setPopoverVisible(_ visible: Bool) {
         guard !hasStopped else { return }
         isPopoverVisible = visible
-        wifiMonitor.setDetailsVisible(visible)
-        volumeMonitor.setDetailsVisible(visible)
+        updateDetailsVisibility()
 
-        guard visible else { return }
+        guard visible else {
+            clearWiFiNameResolution()
+            return
+        }
         popupPublishTask?.cancel()
         popupPublishTask = nil
         popupSnapshot = snapshot
+        startWiFiNameResolutionIfNeeded()
         bluetoothDevices.prepareForPresentation()
         refreshAll()
         wifiNetworks.refresh(nameAccess: popupSnapshot.wifi.nameAccess)
+    }
+
+    func setSettingsVisible(_ visible: Bool) {
+        guard !hasStopped, isSettingsVisible != visible else { return }
+        isSettingsVisible = visible
+        updateDetailsVisibility()
+
+        if visible {
+            refreshAll()
+        }
     }
 
     func activateWiFiPanel() {
@@ -405,6 +426,12 @@ final class SystemStatusStore: ObservableObject {
         wifiMonitor.recover()
         connectionMonitor?.recover()
         volumeMonitor.recover()
+    }
+
+    private func updateDetailsVisibility() {
+        let detailsVisible = isPopoverVisible || isSettingsVisible
+        wifiMonitor.setDetailsVisible(isPopoverVisible)
+        volumeMonitor.setDetailsVisible(detailsVisible)
     }
 
     private func updatePreviewConfiguration(_ next: PreviewStatusConfiguration) {
@@ -500,6 +527,14 @@ final class SystemStatusStore: ObservableObject {
 
     private func schedulePopupSnapshot(_ next: StatusSnapshot) {
         guard isPopoverVisible else { return }
+        if isResolvingWiFiName, !next.wifi.isAwaitingName {
+            // The name the popover is waiting for just arrived: show it right away
+            // instead of leaving the row blank for the full debounce interval.
+            popupPublishTask?.cancel()
+            popupPublishTask = nil
+            applyPopupSnapshot(next)
+            return
+        }
         popupPublishTask?.cancel()
         popupPublishTask = Task { @MainActor [weak self] in
             guard let self else { return }
@@ -511,8 +546,44 @@ final class SystemStatusStore: ObservableObject {
             guard !Task.isCancelled,
                   !self.isPreviewEnabled,
                   next == self.liveSnapshot else { return }
-            self.popupSnapshot = next
+            self.applyPopupSnapshot(next)
         }
+    }
+
+    private func applyPopupSnapshot(_ next: StatusSnapshot) {
+        popupSnapshot = next
+        if isResolvingWiFiName, !next.wifi.isAwaitingName {
+            clearWiFiNameResolution()
+        }
+    }
+
+    /// Leaves the Wi-Fi row blank right after the popover opens until the name arrives.
+    private func startWiFiNameResolutionIfNeeded() {
+        guard isPopoverVisible, popupSnapshot.wifi.isAwaitingName else {
+            clearWiFiNameResolution()
+            return
+        }
+        guard !isResolvingWiFiName else { return }
+
+        isResolvingWiFiName = true
+        let timeout = nameResolutionTimeout
+        let sleep = popupDebounceSleep
+        wifiNameResolutionTask = Task { @MainActor [weak self] in
+            do {
+                try await sleep(timeout)
+            } catch {
+                return
+            }
+            guard !Task.isCancelled, let self else { return }
+            // The read never delivered a name: fall back to the plain state text.
+            self.isResolvingWiFiName = false
+        }
+    }
+
+    private func clearWiFiNameResolution() {
+        wifiNameResolutionTask?.cancel()
+        wifiNameResolutionTask = nil
+        isResolvingWiFiName = false
     }
 }
 

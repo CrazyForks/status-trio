@@ -15,6 +15,26 @@ enum StatusIconGeometry {
     static let batteryValueBaseFontSize: CGFloat = 20
     static let batteryChargingBoltCalibration: CGFloat = 220.0 / 180.0
 
+    /// SF Symbol drawn in the top gap when the battery is connected to power
+    /// without charging.
+    static let batteryPlugSymbolName = "powerplug.portrait.fill"
+
+    /// Optical size of the plug relative to the bolt. The plug's strokes are
+    /// thinner than the bolt's solid body, so it is drawn slightly taller to
+    /// carry the same visual weight in the gap.
+    static let batteryPlugHeightScale: CGFloat = 1.2
+
+    /// The bolt scales away from its tip, so any other glyph in the top gap
+    /// shares the scaled bolt's center to stay optically aligned with it.
+    static func batteryTopIndicatorCenter(boltScale: CGFloat) -> CGPoint {
+        let bolt = batteryChargingBolt().boundingBoxOfPath
+        let pivot = batteryChargingBoltPivot
+        return CGPoint(
+            x: pivot.x + (bolt.midX - pivot.x) * boltScale,
+            y: pivot.y + (bolt.midY - pivot.y) * boltScale
+        )
+    }
+
     static func batteryValueBaseline(fontSize: CGFloat) -> CGPoint {
         let referenceFontSize: CGFloat = 20
         let referenceBaseline: CGFloat = 17
@@ -97,7 +117,7 @@ enum StatusIconGeometry {
         path.closeSubpath()
 
         guard scale.isFinite, scale > 0, scale != 1 else { return path }
-        let pivot = CGPoint(x: 59.5, y: 2.1)
+        let pivot = batteryChargingBoltPivot
         var transform = CGAffineTransform(
             a: scale,
             b: 0,
@@ -108,6 +128,8 @@ enum StatusIconGeometry {
         )
         return path.copy(using: &transform) ?? path
     }
+
+    static let batteryChargingBoltPivot = CGPoint(x: 59.5, y: 2.1)
 
     static func wifiArcs(level: Int) -> [CGPath] {
         let bars = min(3, max(0, level))
@@ -305,6 +327,37 @@ enum StatusIconGeometry {
     }
 
     static let volumeDotRadius: CGFloat = 5.5
+
+    static let volumeArcStartAngle: CGFloat = 121.82 * .pi / 180
+    static let volumeArcEndAngle: CGFloat = 59.12 * .pi / 180
+
+    static func volumeArcTrack() -> CGPath {
+        let path = CGMutablePath()
+        path.addArc(
+            center: batteryCenter,
+            radius: batteryRadius,
+            startAngle: volumeArcStartAngle,
+            endAngle: volumeArcEndAngle,
+            clockwise: true
+        )
+        return path
+    }
+
+    static func volumeArcFill(progress: Double) -> CGPath {
+        let clamped = min(1, max(0, progress))
+        guard clamped > 0 else { return CGMutablePath() }
+        let sweep = volumeArcStartAngle - volumeArcEndAngle
+        let end = volumeArcStartAngle - sweep * CGFloat(clamped)
+        let path = CGMutablePath()
+        path.addArc(
+            center: batteryCenter,
+            radius: batteryRadius,
+            startAngle: volumeArcStartAngle,
+            endAngle: end,
+            clockwise: true
+        )
+        return path
+    }
 
     private static func batteryArc(
         progress: Double,

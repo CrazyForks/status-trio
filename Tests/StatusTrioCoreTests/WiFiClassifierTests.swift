@@ -810,6 +810,215 @@ final class WiFiClassifierTests: XCTestCase {
         XCTAssertNil(finalStatus)
     }
 
+    func testSlowSystemReadLeavesMainActorFreeToUnblockIt() async {
+        let started = expectation(description: "background read started")
+        let completed = expectation(description: "result returned on main actor")
+        let release = DispatchSemaphore(value: 0)
+        let reader = CoreWLANStatusReader { _ in
+            XCTAssertFalse(Thread.isMainThread)
+            started.fulfill()
+            // Model synchronous IPC that cannot finish until another task runs.
+            // A main-actor implementation times out instead of hanging the suite.
+            XCTAssertEqual(release.wait(timeout: .now() + 2), .success)
+            return WiFiStatusReading(interface: nil, sharingActive: false)
+        }
+        reader.read(includeSSID: false) { _ in
+            XCTAssertTrue(Thread.isMainThread)
+            completed.fulfill()
+        }
+        await fulfillment(of: [started], timeout: 1)
+        release.signal()
+        await fulfillment(of: [completed], timeout: 1)
+    }
+
+    func testSlowReadsCoalesceRepeatedRefreshesIntoOneFollowUp() async {
+        let reader = DeferredWiFiStatusReader()
+        let monitor = makeMonitor(statusReader: reader)
+        var iterator = monitor.updates.makeAsyncIterator()
+        monitor.start()
+        for _ in 0..<100 { monitor.refresh() }
+        XCTAssertEqual(reader.includeSSIDRequests.count, 1)
+
+        reader.complete(makeReading(rssi: -52))
+        XCTAssertEqual(reader.includeSSIDRequests.count, 2)
+        let first = await iterator.next()
+        XCTAssertEqual(first?.rssi, -52)
+        reader.complete(makeReading(rssi: -70))
+        let second = await iterator.next()
+        XCTAssertEqual(second?.rssi, -70)
+        XCTAssertEqual(reader.includeSSIDRequests.count, 2)
+        monitor.stop()
+    }
+
+    func testInvalidationBeforeDebounceCoalescesTheObsoleteReadFollowUp() async {
+        let reader = DeferredWiFiStatusReader()
+        let sleeper = ManualEventSleeper()
+        let monitor = makeMonitor(
+            statusReader: reader,
+            refreshDebounceSleep: { duration in await sleeper.sleep(duration) }
+        )
+        monitor.start()
+        monitor.clientConnectionInvalidated()
+        await sleeper.waitForCallCount(1)
+
+        reader.complete(makeReading(rssi: -40))
+        XCTAssertEqual(reader.includeSSIDRequests.count, 1, "The scheduled refresh owns the follow-up")
+
+        let refreshed = expectation(description: "scheduled read starts")
+        reader.onRead = { refreshed.fulfill() }
+        sleeper.releaseAll()
+        await fulfillment(of: [refreshed], timeout: 1)
+        reader.onRead = nil
+        reader.complete(makeReading(rssi: -65))
+        XCTAssertEqual(reader.includeSSIDRequests.count, 2)
+
+        var iterator = monitor.updates.makeAsyncIterator()
+        monitor.stop()
+        let status = await iterator.next()
+        let end = await iterator.next()
+        XCTAssertEqual(status?.rssi, -65)
+        XCTAssertNil(end, "The invalidated result must not be published")
+    }
+
+    func testInvalidationAfterDebounceKeepsOnePendingRefresh() async {
+        let reader = DeferredWiFiStatusReader()
+        let sleeper = ManualEventSleeper()
+        let monitor = makeMonitor(
+            statusReader: reader,
+            refreshDebounceSleep: { duration in await sleeper.sleep(duration) }
+        )
+        monitor.start()
+        monitor.clientConnectionInvalidated()
+        await sleeper.waitForCallCount(1)
+        sleeper.releaseAll()
+        await sleeper.waitForCompletionCount(1)
+        // Drain the scheduled main-actor refresh while the system read stays blocked.
+        for _ in 0..<20 { await Task.yield() }
+        XCTAssertEqual(reader.includeSSIDRequests.count, 1)
+
+        reader.complete(makeReading(rssi: -40))
+        XCTAssertEqual(reader.includeSSIDRequests.count, 2)
+        reader.complete(makeReading(rssi: -65))
+        XCTAssertEqual(reader.includeSSIDRequests.count, 2)
+        monitor.stop()
+    }
+
+    func testStopCancelsScheduledRecoveryWithoutStartingAnotherRead() async {
+        let reader = DeferredWiFiStatusReader()
+        let sleeper = ManualEventSleeper()
+        let monitor = makeMonitor(
+            statusReader: reader,
+            refreshDebounceSleep: { duration in await sleeper.sleep(duration) }
+        )
+        monitor.start()
+        monitor.refresh()
+        monitor.clientConnectionInvalidated()
+        await sleeper.waitForCallCount(1)
+        monitor.stop()
+        reader.complete(makeReading())
+        sleeper.releaseAll()
+        await sleeper.waitForCompletionCount(1)
+        for _ in 0..<20 { await Task.yield() }
+        XCTAssertEqual(reader.includeSSIDRequests.count, 1)
+        var iterator = monitor.updates.makeAsyncIterator()
+        let end = await iterator.next()
+        XCTAssertNil(end)
+    }
+
+    func testClosingDetailsDiscardsInFlightSSIDRead() async {
+        let reader = DeferredWiFiStatusReader()
+        let monitor = makeMonitor(
+            statusReader: reader,
+            nameAuthorizer: FakeWiFiNameAuthorizer(access: .authorized)
+        )
+        var iterator = monitor.updates.makeAsyncIterator()
+        monitor.start()
+        monitor.setDetailsVisible(false)
+        reader.complete(makeReading(ssid: "Old network"))
+        XCTAssertEqual(reader.includeSSIDRequests, [true, false])
+        monitor.stop()
+        let obsolete = await iterator.next()
+        XCTAssertNil(obsolete)
+        reader.complete(makeReading())
+        XCTAssertEqual(reader.includeSSIDRequests.count, 2)
+    }
+
+    func testPermissionChangeDiscardsInFlightRead() async {
+        let reader = DeferredWiFiStatusReader()
+        let authorizer = FakeWiFiNameAuthorizer(access: .authorized)
+        let monitor = makeMonitor(statusReader: reader, nameAuthorizer: authorizer)
+        var iterator = monitor.updates.makeAsyncIterator()
+        monitor.start()
+        authorizer.setAccess(.denied)
+        reader.complete(makeReading(ssid: "Old network"))
+        XCTAssertEqual(reader.includeSSIDRequests.count, 2)
+        monitor.stop()
+        let obsolete = await iterator.next()
+        XCTAssertNil(obsolete)
+    }
+
+    func testRecoveryDiscardsReadFromBeforeWake() async {
+        let reader = DeferredWiFiStatusReader()
+        let monitor = makeMonitor(statusReader: reader)
+        var iterator = monitor.updates.makeAsyncIterator()
+        monitor.start()
+        monitor.recover()
+        reader.complete(makeReading())
+        XCTAssertEqual(reader.includeSSIDRequests.count, 2)
+        monitor.stop()
+        let obsolete = await iterator.next()
+        XCTAssertNil(obsolete)
+    }
+
+    func testStopDiscardsSlowReadAndPendingRefresh() async {
+        let reader = DeferredWiFiStatusReader()
+        let monitor = makeMonitor(statusReader: reader)
+        var iterator = monitor.updates.makeAsyncIterator()
+        monitor.start()
+        monitor.refresh()
+        monitor.stop()
+        reader.complete(makeReading())
+        XCTAssertEqual(reader.includeSSIDRequests.count, 1)
+        let obsolete = await iterator.next()
+        XCTAssertNil(obsolete)
+    }
+
+    func testFailedReadCannotRestoreCachedSSIDAfterAccessOrVisibilityChanges() async {
+        for revokePermission in [false, true] {
+            let reader = DeferredWiFiStatusReader()
+            let authorizer = FakeWiFiNameAuthorizer(access: .authorized)
+            let monitor = makeMonitor(statusReader: reader, nameAuthorizer: authorizer)
+            var iterator = monitor.updates.makeAsyncIterator()
+            monitor.start()
+            reader.complete(makeReading(ssid: "Old network"))
+            let initial = await iterator.next()
+            XCTAssertEqual(initial?.ssid, "Old network")
+
+            if revokePermission {
+                authorizer.setAccess(.denied)
+            } else {
+                monitor.setDetailsVisible(false)
+            }
+            reader.complete(nil)
+            let cached = await iterator.next()
+            XCTAssertEqual(cached?.state, .connected)
+            XCTAssertNil(cached?.ssid)
+            XCTAssertEqual(cached?.nameAccess, revokePermission ? .denied : .authorized)
+            monitor.stop()
+        }
+    }
+
+    func testSlowReadDoesNotRetainMonitor() {
+        let reader = DeferredWiFiStatusReader()
+        var monitor: WiFiMonitor? = makeMonitor(statusReader: reader)
+        weak var weakMonitor = monitor
+        monitor?.start()
+        monitor = nil
+        XCTAssertNil(weakMonitor)
+        reader.complete(makeReading())
+        XCTAssertEqual(reader.includeSSIDRequests.count, 1)
+    }
+
     private func makeInput(
         powerOn: Bool = true,
         serviceActive: Bool = true,
@@ -845,7 +1054,8 @@ final class WiFiClassifierTests: XCTestCase {
     }
 
     private func makeMonitor(
-        reader: FakeWiFiSystemReader,
+        reader: FakeWiFiSystemReader = FakeWiFiSystemReader(result: nil),
+        statusReader: (any WiFiStatusReadingProviding)? = nil,
         sharingDetector: FakeInternetSharingDetector = FakeInternetSharingDetector(result: false),
         nameAuthorizer: FakeWiFiNameAuthorizer = FakeWiFiNameAuthorizer(),
         eventMonitor: FakeWiFiEventMonitor = FakeWiFiEventMonitor(),
@@ -858,8 +1068,7 @@ final class WiFiClassifierTests: XCTestCase {
         }
     ) -> WiFiMonitor {
         WiFiMonitor(
-            systemReader: reader,
-            sharingDetector: sharingDetector,
+            statusReader: statusReader ?? InlineWiFiStatusReader(reader: reader, sharingDetector: sharingDetector),
             nameAuthorizer: nameAuthorizer,
             eventMonitor: eventMonitor,
             pathMonitor: pathMonitor,
@@ -868,6 +1077,47 @@ final class WiFiClassifierTests: XCTestCase {
             now: { clock.now },
             refreshDebounceSleep: refreshDebounceSleep
         )
+    }
+}
+
+@MainActor
+private final class DeferredWiFiStatusReader: WiFiStatusReadingProviding {
+    private(set) var includeSSIDRequests: [Bool] = []
+    private var completions: [@MainActor @Sendable (WiFiStatusReading) -> Void] = []
+    var onRead: (() -> Void)?
+
+    func read(
+        includeSSID: Bool,
+        completion: @escaping @MainActor @Sendable (WiFiStatusReading) -> Void
+    ) {
+        includeSSIDRequests.append(includeSSID)
+        completions.append(completion)
+        onRead?()
+    }
+
+    func complete(_ reading: WiFiSystemReading?) {
+        completions.removeFirst()(WiFiStatusReading(interface: reading, sharingActive: false))
+    }
+}
+
+@MainActor
+private final class InlineWiFiStatusReader: WiFiStatusReadingProviding {
+    let reader: FakeWiFiSystemReader
+    let sharingDetector: FakeInternetSharingDetector
+
+    init(reader: FakeWiFiSystemReader, sharingDetector: FakeInternetSharingDetector) {
+        self.reader = reader
+        self.sharingDetector = sharingDetector
+    }
+
+    func read(
+        includeSSID: Bool,
+        completion: @escaping @MainActor @Sendable (WiFiStatusReading) -> Void
+    ) {
+        let reading = reader.read(includeSSID: includeSSID)
+        let sharing = reading.map { $0.powerOn && $0.serviceActive } == true
+            && sharingDetector.isActive() == true
+        completion(WiFiStatusReading(interface: reading, sharingActive: sharing))
     }
 }
 

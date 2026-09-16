@@ -34,7 +34,7 @@ final class SettingsWindowControllerTests: XCTestCase {
 
         controller.show()
         XCTAssertTrue(controller.window === window)
-        XCTAssertEqual(SettingsTab.allCases.last, .preview)
+        XCTAssertEqual(SettingsView.Section.allCases.last, .preview)
         XCTAssertEqual(activationApplication.policies, [.regular])
     }
 
@@ -82,6 +82,32 @@ final class SettingsWindowControllerTests: XCTestCase {
         try XCTUnwrap(controller.window).close()
 
         XCTAssertEqual(activationApplication.policies, [.regular, .regular, .regular])
+    }
+
+    func testSettingsWindowTogglesVolumeDetailsVisibility() throws {
+        let suiteName = "StatusTrioCoreTests.SettingsVolumeDetails.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let volume = SettingsWindowFakeVolumeMonitor()
+        let statusStore = SystemStatusStore(
+            batteryMonitor: NoopBatteryMonitor(),
+            wifiMonitor: SettingsWindowFakeWiFiMonitor(),
+            volumeMonitor: volume
+        )
+        let activationApplication = SettingsActivationPolicyApplicationSpy()
+        let controller = SettingsWindowController(
+            store: SettingsStore(defaults: defaults),
+            statusStore: statusStore,
+            localization: Localization(defaults: defaults, preferredLanguages: ["en"]),
+            activationPolicy: AppActivationPolicy(application: activationApplication)
+        )
+
+        controller.show()
+        XCTAssertEqual(volume.detailsVisibility, [true])
+
+        try XCTUnwrap(controller.window).close()
+        XCTAssertEqual(volume.detailsVisibility, [true, false])
     }
 
     private func makeStatusStore() -> SystemStatusStore {
@@ -134,6 +160,7 @@ private final class SettingsWindowFakeWiFiMonitor: WiFiMonitoring {
 @MainActor
 private final class SettingsWindowFakeVolumeMonitor: VolumeMonitoring {
     let updates: AsyncStream<VolumeStatus>
+    private(set) var detailsVisibility: [Bool] = []
     private let continuation: AsyncStream<VolumeStatus>.Continuation
 
     init() { (updates, continuation) = AsyncStream.makeStream() }
@@ -141,4 +168,7 @@ private final class SettingsWindowFakeVolumeMonitor: VolumeMonitoring {
     func stop() { continuation.finish() }
     func refresh() {}
     func recover() {}
+    func setDetailsVisible(_ visible: Bool) {
+        detailsVisibility.append(visible)
+    }
 }

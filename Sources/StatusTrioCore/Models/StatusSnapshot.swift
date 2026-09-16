@@ -90,6 +90,17 @@ struct WiFiStatus: Equatable, Sendable {
     static let placeholder = WiFiStatus(state: .unavailable, rssi: nil)
 }
 
+extension WiFiStatus {
+    /// True while a network name is expected but not known yet: the popover shows
+    /// no subtitle until the fresh read delivers the name, instead of flashing the
+    /// generic state text first.
+    var isAwaitingName: Bool {
+        state.isNetworkAssociated
+            && nameAccess == .authorized
+            && (ssid ?? "").isEmpty
+    }
+}
+
 struct VolumeStatus: Equatable, Sendable {
     let scalar: Double?
     let isMuted: Bool

@@ -11,17 +11,22 @@ enum StatusIconRenderer {
         height: 56
     )
 
+    /// Unified optical alpha for all inactive tracks (battery groove, Wi-Fi muted signal, volume hidden dots).
+    private static let inactiveTrackAlpha: CGFloat = 0.22
+
     static func image(
         snapshot: StatusSnapshot,
         size: CGFloat,
         options: BatteryIconOptions = .standard,
-        connectionOptions: ConnectionIconOptions = .standard
+        connectionOptions: ConnectionIconOptions = .standard,
+        volumeOptions: VolumeIconOptions = .standard
     ) -> NSImage {
         image(
             menuBarStatus: MenuBarStatus(snapshot: snapshot),
             size: size,
             options: options,
-            connectionOptions: connectionOptions
+            connectionOptions: connectionOptions,
+            volumeOptions: volumeOptions
         )
     }
 
@@ -30,6 +35,7 @@ enum StatusIconRenderer {
         size: CGFloat,
         options: BatteryIconOptions = .standard,
         connectionOptions: ConnectionIconOptions = .standard,
+        volumeOptions: VolumeIconOptions = .standard,
         appearance: NSAppearance? = nil
     ) -> NSImage {
         // Resolve colors while AppKit draws into each menu bar. A pre-rendered
@@ -57,6 +63,7 @@ enum StatusIconRenderer {
                 menuBarStatus: menuBarStatus,
                 options: options,
                 connectionOptions: connectionOptions,
+                volumeOptions: volumeOptions,
                 in: context,
                 size: size,
                 foreground: foreground,
@@ -66,7 +73,11 @@ enum StatusIconRenderer {
         }
     }
 
-    static func wifiImage(wifi: WiFiStatus, size: CGFloat) -> NSImage {
+    static func wifiImage(
+        wifi: WiFiStatus,
+        size: CGFloat,
+        options: ConnectionIconOptions = .standard
+    ) -> NSImage {
         let image = NSImage(size: NSSize(width: size, height: size))
         image.lockFocus()
         defer { image.unlockFocus() }
@@ -76,16 +87,16 @@ enum StatusIconRenderer {
         context.saveGState()
         defer { context.restoreGState() }
 
-        let scale = size / wifiCanvasBounds.width
+        let scale = size / 56.0
         context.translateBy(x: 0, y: size)
         context.scaleBy(x: scale, y: -scale)
-        context.translateBy(x: -wifiCanvasBounds.minX, y: -wifiCanvasBounds.minY)
+        context.translateBy(x: -(59.5 - 28.0), y: -(64.0 - 28.0))
         context.setLineCap(.round)
         context.setLineJoin(.round)
 
         drawWiFi(
             wifi,
-            options: .standard,
+            options: options,
             in: context,
             foreground: CGColor(gray: 1, alpha: 1)
         )
@@ -99,7 +110,8 @@ enum StatusIconRenderer {
         scale: CGFloat,
         foreground: CGColor,
         options: BatteryIconOptions = .standard,
-        connectionOptions: ConnectionIconOptions = .standard
+        connectionOptions: ConnectionIconOptions = .standard,
+        volumeOptions: VolumeIconOptions = .standard
     ) -> CGImage? {
         render(
             menuBarStatus: MenuBarStatus(snapshot: snapshot),
@@ -107,7 +119,8 @@ enum StatusIconRenderer {
             scale: scale,
             foreground: foreground,
             options: options,
-            connectionOptions: connectionOptions
+            connectionOptions: connectionOptions,
+            volumeOptions: volumeOptions
         )
     }
 
@@ -117,7 +130,8 @@ enum StatusIconRenderer {
         scale: CGFloat,
         foreground: CGColor,
         options: BatteryIconOptions = .standard,
-        connectionOptions: ConnectionIconOptions = .standard
+        connectionOptions: ConnectionIconOptions = .standard,
+        volumeOptions: VolumeIconOptions = .standard
     ) -> CGImage? {
         guard size.isFinite, scale.isFinite, size > 0, scale > 0 else { return nil }
 
@@ -147,6 +161,7 @@ enum StatusIconRenderer {
             menuBarStatus: menuBarStatus,
             options: options,
             connectionOptions: connectionOptions,
+            volumeOptions: volumeOptions,
             in: context,
             size: size,
             foreground: foreground,
@@ -161,6 +176,7 @@ enum StatusIconRenderer {
         menuBarStatus: MenuBarStatus,
         options: BatteryIconOptions = .standard,
         connectionOptions: ConnectionIconOptions = .standard,
+        volumeOptions: VolumeIconOptions = .standard,
         foreground: CGColor,
         in context: CGContext,
         origin: CGPoint,
@@ -174,6 +190,7 @@ enum StatusIconRenderer {
             menuBarStatus: menuBarStatus,
             options: options,
             connectionOptions: connectionOptions,
+            volumeOptions: volumeOptions,
             in: context,
             size: size,
             foreground: foreground,
@@ -185,6 +202,7 @@ enum StatusIconRenderer {
         menuBarStatus: MenuBarStatus,
         options: BatteryIconOptions,
         connectionOptions: ConnectionIconOptions,
+        volumeOptions: VolumeIconOptions,
         in context: CGContext,
         size: CGFloat,
         foreground: CGColor,
@@ -209,7 +227,7 @@ enum StatusIconRenderer {
         )
         if menuBarStatus.connection == .ethernet {
             if connectionOptions.showsWiFiIconForEthernet {
-                drawStandardWiFi(menuBarStatus.wifi, in: context, foreground: foreground)
+                drawStandardWiFi(menuBarStatus.wifi, wifiScale: connectionOptions.wifiScale, in: context, foreground: foreground)
             } else {
                 drawEthernet(in: context, foreground: foreground)
             }
@@ -221,7 +239,7 @@ enum StatusIconRenderer {
                 foreground: foreground
             )
         }
-        drawVolume(menuBarStatus.volume, in: context, foreground: foreground)
+        drawVolume(menuBarStatus.volume, options: volumeOptions, in: context, foreground: foreground)
     }
 
     private static func drawBattery(
@@ -231,16 +249,15 @@ enum StatusIconRenderer {
         foreground: CGColor,
         criticalColor: CGColor
     ) {
-        let showsChargingBolt = battery.isPresent
-            && (battery.isCharging || battery.isConnectedToPower)
-            && options.showsChargingIndicator
-        let hasTopGap = showsChargingBolt || options.showsPercentage
-        let topGapWidth = showsChargingBolt
-            ? StatusIconGeometry.batteryChargingBoltTopGapWidth
-            : StatusIconGeometry.batteryValueTopGapWidth
+        let gapContent = StatusMappings.batteryGapContent(battery, options: options)
+        let hasTopGap = gapContent != .empty
+        let topGapWidth = switch gapContent {
+        case .bolt, .plug: StatusIconGeometry.batteryChargingBoltTopGapWidth
+        case .percentage, .empty: StatusIconGeometry.batteryValueTopGapWidth
+        }
 
         context.setLineWidth(8)
-        context.setStrokeColor(foreground.copy(alpha: 0.22) ?? foreground)
+        context.setStrokeColor(foreground.copy(alpha: inactiveTrackAlpha) ?? foreground)
         context.addPath(StatusIconGeometry.batteryTrack(
             hasTopGap: hasTopGap,
             topGapWidth: topGapWidth
@@ -275,20 +292,51 @@ enum StatusIconRenderer {
         )
         defer { context.restoreGState() }
 
-        if showsChargingBolt {
+        let indicatorScale = batteryChargingBoltScale(textScale: options.textScale)
+
+        switch gapContent {
+        case .bolt:
             context.setFillColor(foreground)
             context.addPath(StatusIconGeometry.batteryChargingBolt(
-                scale: batteryChargingBoltScale(textScale: options.textScale)
+                scale: indicatorScale
             ))
             context.fillPath()
-        } else if options.showsPercentage {
+        case .plug:
+            drawBatteryPlug(
+                boltScale: indicatorScale,
+                foreground: foreground,
+                in: context
+            )
+        case .percentage:
             drawBatteryPercentage(
                 battery.percentage,
                 color: foreground,
                 fontSize: batteryValueFontSize(scale: options.textScale),
                 in: context
             )
+        case .empty:
+            break
         }
+    }
+
+    /// Draws the plug at the bolt's optical size and center, so the arc's top
+    /// gap reads the same whichever indicator is showing.
+    private static func drawBatteryPlug(
+        boltScale: CGFloat,
+        foreground: CGColor,
+        in context: CGContext
+    ) {
+        let boltHeight = StatusIconGeometry.batteryChargingBolt().boundingBoxOfPath.height
+        let targetHeight = boltHeight * boltScale * StatusIconGeometry.batteryPlugHeightScale
+        guard targetHeight.isFinite, targetHeight > 0 else { return }
+
+        drawOfficialSymbol(
+            name: StatusIconGeometry.batteryPlugSymbolName,
+            pointSize: batteryPlugPointSize(targetHeight: targetHeight),
+            center: StatusIconGeometry.batteryTopIndicatorCenter(boltScale: boltScale),
+            foreground: foreground,
+            in: context
+        )
     }
 
     private static func color(
@@ -355,6 +403,18 @@ enum StatusIconRenderer {
     }
 
     private static func batteryChargingBoltScale(textScale: Double) -> CGFloat {
+        let boltHeight = StatusIconGeometry.batteryChargingBolt().boundingBoxOfPath.height
+        let targetHeight = batteryTopIndicatorHeight(textScale: textScale)
+        guard boltHeight.isFinite, boltHeight > 0, targetHeight > 0 else {
+            return CGFloat(textScale / BatteryIconOptions.defaultTextScale)
+                * StatusIconGeometry.batteryChargingBoltCalibration
+        }
+        return targetHeight / boltHeight
+    }
+
+    /// Height shared by every top-gap glyph. The bolt is calibrated to match the
+    /// percentage numerals, and the plug matches the bolt.
+    private static func batteryTopIndicatorHeight(textScale: Double) -> CGFloat {
         let fontSize = batteryValueFontSize(scale: textScale)
         let line = CTLineCreateWithAttributedString(
             NSAttributedString(
@@ -363,17 +423,33 @@ enum StatusIconRenderer {
             )
         )
         let glyphHeight = CTLineGetBoundsWithOptions(line, [.useGlyphPathBounds]).height
-        let boltHeight = StatusIconGeometry.batteryChargingBolt().boundingBoxOfPath.height
-        guard glyphHeight.isFinite,
-              glyphHeight > 0,
-              boltHeight.isFinite,
-              boltHeight > 0
-        else {
-            return CGFloat(textScale / BatteryIconOptions.defaultTextScale)
+        guard glyphHeight.isFinite, glyphHeight > 0 else {
+            return StatusIconGeometry.batteryChargingBolt().boundingBoxOfPath.height
+                * CGFloat(textScale / BatteryIconOptions.defaultTextScale)
                 * StatusIconGeometry.batteryChargingBoltCalibration
         }
-        return CGFloat(glyphHeight) / boltHeight
-            * StatusIconGeometry.batteryChargingBoltCalibration
+        return CGFloat(glyphHeight) * StatusIconGeometry.batteryChargingBoltCalibration
+    }
+
+    /// Glyph height per point of symbol size, measured once. SF Symbols report
+    /// sizes rounded to whole points, so this reference size stays large enough
+    /// for the rounding to be negligible.
+    private static let batteryPlugHeightPerPoint: CGFloat = {
+        let referencePointSize: CGFloat = 200
+        guard let height = configuredSymbol(
+            name: StatusIconGeometry.batteryPlugSymbolName,
+            pointSize: referencePointSize,
+            foreground: .labelColor
+        )?.size.height, height.isFinite, height > 0 else {
+            return 1.34
+        }
+        return height / referencePointSize
+    }()
+
+    private static func batteryPlugPointSize(targetHeight: CGFloat) -> CGFloat {
+        let fallbackPointSize: CGFloat = 38
+        let pointSize = targetHeight / batteryPlugHeightPerPoint
+        return pointSize.isFinite && pointSize > 0 ? pointSize : fallbackPointSize
     }
 
     private static var defaultCriticalColor: CGColor {
@@ -419,133 +495,246 @@ enum StatusIconRenderer {
         in context: CGContext,
         foreground: CGColor
     ) {
-        let mutedColor = foreground.copy(alpha: 0.30) ?? foreground
-
-        context.setLineWidth(7)
+        let basePointSize: CGFloat = 38.0
+        let symbolPointSize = basePointSize * CGFloat(options.wifiScale)
 
         switch wifi.state {
         case .connected:
-            drawStandardWiFi(wifi, in: context, foreground: foreground)
-        case .notAssociated, .off, .unavailable:
-            drawWiFiSignal(level: 3, color: mutedColor, in: context)
-
-            if wifi.state == .off || wifi.state == .unavailable {
-                context.setStrokeColor(mutedColor)
-                context.setLineWidth(6)
-                context.addPath(StatusIconGeometry.wifiOffSlash())
-                context.strokePath()
-            }
+            drawStandardWiFi(wifi, wifiScale: options.wifiScale, in: context, foreground: foreground)
+        case .notAssociated:
+            drawOfficialSymbol(
+                name: "wifi",
+                variableValue: 0.0,
+                pointSize: symbolPointSize,
+                foreground: foreground,
+                in: context
+            )
+        case .off, .unavailable:
+            drawOfficialSymbol(
+                name: "wifi.slash",
+                variableValue: 1.0,
+                pointSize: symbolPointSize,
+                foreground: foreground,
+                in: context
+            )
         case .noInternet:
-            drawWiFiSignal(level: 3, color: mutedColor, includeDot: false, in: context)
-
-            let overlay = StatusIconGeometry.noInternetOverlay()
-            context.setStrokeColor(mutedColor)
-            context.setLineWidth(5)
-            context.addPath(overlay.stem)
-            context.strokePath()
-
-            context.setFillColor(mutedColor)
-            context.addPath(overlay.dot)
-            context.fillPath()
+            drawOfficialSymbol(
+                name: "wifi.exclamationmark",
+                variableValue: 1.0,
+                pointSize: symbolPointSize,
+                foreground: foreground,
+                in: context
+            )
         case .hotspot where options.showsWiFiIconForHotspot:
-            drawStandardWiFi(wifi, in: context, foreground: foreground)
+            drawStandardWiFi(wifi, wifiScale: options.wifiScale, in: context, foreground: foreground)
         case .hotspot:
-            context.setStrokeColor(foreground)
-            context.setLineWidth(5)
-            for path in StatusIconGeometry.hotspotOverlay() {
-                context.addPath(path)
-                context.strokePath()
-            }
+            drawOfficialSymbol(
+                name: "personalhotspot",
+                variableValue: 1.0,
+                pointSize: symbolPointSize,
+                foreground: foreground,
+                in: context
+            )
         case .temporary where options.showsWiFiIconForTemporaryConnection:
-            drawStandardWiFi(wifi, in: context, foreground: foreground)
+            drawStandardWiFi(wifi, wifiScale: options.wifiScale, in: context, foreground: foreground)
         case .temporary:
-            context.setFillColor(foreground)
-            context.setStrokeColor(foreground)
-            context.setLineWidth(7)
-            context.addPath(StatusIconGeometry.temporaryWedge())
-            context.drawPath(using: .fillStroke)
-
-            context.saveGState()
-            context.setBlendMode(.clear)
-            context.setLineWidth(2.5)
-            context.addPath(StatusIconGeometry.temporaryScreenOutline())
-            context.strokePath()
-            context.addPath(StatusIconGeometry.temporaryScreenStand())
-            context.fillPath()
-            context.restoreGState()
+            drawTemporaryConnectionMark(
+                wifiScale: options.wifiScale,
+                in: context,
+                foreground: foreground
+            )
         case .shared where options.showsWiFiIconForInternetSharing:
-            drawStandardWiFi(wifi, in: context, foreground: foreground)
+            drawStandardWiFi(wifi, wifiScale: options.wifiScale, in: context, foreground: foreground)
         case .shared:
-            context.setFillColor(foreground)
-            context.setStrokeColor(foreground)
-            context.setLineWidth(7)
-            context.addPath(StatusIconGeometry.sharedWedge())
-            context.drawPath(using: .fillStroke)
-
-            context.saveGState()
-            context.setBlendMode(.clear)
-            context.addPath(StatusIconGeometry.sharedArrowCutout())
-            context.fillPath()
-            context.restoreGState()
+            drawSharedConnectionMark(
+                wifiScale: options.wifiScale,
+                in: context,
+                foreground: foreground
+            )
         }
+    }
+
+    private static func drawTemporaryConnectionMark(
+        wifiScale: Double,
+        in context: CGContext,
+        foreground: CGColor
+    ) {
+        context.saveGState()
+        defer { context.restoreGState() }
+        context.beginTransparencyLayer(auxiliaryInfo: nil)
+        defer { context.endTransparencyLayer() }
+        applyWiFiScale(wifiScale, in: context)
+
+        context.setFillColor(foreground)
+        context.setStrokeColor(foreground)
+        context.setLineWidth(7)
+        context.addPath(StatusIconGeometry.temporaryWedge())
+        context.drawPath(using: .fillStroke)
+
+        context.saveGState()
+        context.setBlendMode(.clear)
+        context.setLineWidth(2.5)
+        context.addPath(StatusIconGeometry.temporaryScreenOutline())
+        context.strokePath()
+        context.addPath(StatusIconGeometry.temporaryScreenStand())
+        context.fillPath()
+        context.restoreGState()
+    }
+
+    private static func drawSharedConnectionMark(
+        wifiScale: Double,
+        in context: CGContext,
+        foreground: CGColor
+    ) {
+        context.saveGState()
+        defer { context.restoreGState() }
+        context.beginTransparencyLayer(auxiliaryInfo: nil)
+        defer { context.endTransparencyLayer() }
+        applyWiFiScale(wifiScale, in: context)
+
+        context.setFillColor(foreground)
+        context.setStrokeColor(foreground)
+        context.setLineWidth(7)
+        context.addPath(StatusIconGeometry.sharedWedge())
+        context.drawPath(using: .fillStroke)
+
+        context.saveGState()
+        context.setBlendMode(.clear)
+        context.addPath(StatusIconGeometry.sharedArrowCutout())
+        context.fillPath()
+        context.restoreGState()
+    }
+
+    private static func applyWiFiScale(_ wifiScale: Double, in context: CGContext) {
+        let scale = CGFloat(wifiScale)
+        guard scale.isFinite, scale > 0, scale != 1 else { return }
+
+        let pivot = CGPoint(x: 59.5, y: 64.0)
+        context.translateBy(x: pivot.x, y: pivot.y)
+        context.scaleBy(x: scale, y: scale)
+        context.translateBy(x: -pivot.x, y: -pivot.y)
     }
 
     private static func drawStandardWiFi(
         _ wifi: WiFiStatus,
+        wifiScale: Double = 1.0,
         in context: CGContext,
         foreground: CGColor
     ) {
-        context.setLineWidth(7)
+        let basePointSize: CGFloat = 38.0
+        let symbolPointSize = basePointSize * CGFloat(wifiScale)
         let bars = StatusMappings.wifiBars(rssi: wifi.rssi)
-        let mutedColor = foreground.copy(alpha: 0.30) ?? foreground
-
-        // Always draw the complete 3-bar signal track in muted color so the icon geometry
-        // remains balanced even when signal is low, matching battery and volume tracks.
-        drawWiFiSignal(level: 3, color: mutedColor, in: context)
-
-        // Overlay active signal bars in solid foreground
-        if bars > 0 {
-            drawWiFiSignal(level: bars, color: foreground, in: context)
+        if bars == 0 {
+            let mutedColor = foreground.copy(alpha: inactiveTrackAlpha) ?? foreground
+            drawOfficialSymbol(
+                name: "wifi",
+                variableValue: 0.0,
+                pointSize: symbolPointSize,
+                foreground: mutedColor,
+                in: context
+            )
+        } else {
+            let variableValue: Double = switch bars {
+            case 3: 1.0
+            case 2: 0.66
+            case 1: 0.33
+            default: 0.0
+            }
+            drawOfficialSymbol(
+                name: "wifi",
+                variableValue: variableValue,
+                pointSize: symbolPointSize,
+                foreground: foreground,
+                in: context
+            )
         }
     }
 
-    private static func drawWiFiSignal(
-        level: Int,
-        color: CGColor,
-        includeDot: Bool = true,
+    private static func drawOfficialSymbol(
+        name: String,
+        variableValue: Double = 1.0,
+        pointSize: CGFloat,
+        center: CGPoint = CGPoint(x: 59.5, y: 64.0),
+        foreground: CGColor,
         in context: CGContext
     ) {
-        context.setStrokeColor(color)
-        for path in StatusIconGeometry.wifiArcs(level: level) {
-            context.addPath(path)
-            context.strokePath()
-        }
+        guard let symbol = configuredSymbol(
+            name: name,
+            variableValue: variableValue,
+            pointSize: pointSize,
+            foreground: NSColor(cgColor: foreground) ?? .labelColor
+        ) else { return }
 
-        guard includeDot else { return }
-        context.setFillColor(color)
-        context.addPath(StatusIconGeometry.wifiDot())
-        context.fillPath()
+        context.saveGState()
+        defer { context.restoreGState() }
+
+        let gc = NSGraphicsContext(cgContext: context, flipped: false)
+        NSGraphicsContext.saveGraphicsState()
+        defer { NSGraphicsContext.restoreGraphicsState() }
+        NSGraphicsContext.current = gc
+
+        context.scaleBy(x: 1, y: -1)
+
+        let targetRect = CGRect(
+            x: center.x - symbol.size.width / 2,
+            y: -(center.y + symbol.size.height / 2),
+            width: symbol.size.width,
+            height: symbol.size.height
+        )
+        symbol.draw(in: targetRect)
+    }
+
+    private static func configuredSymbol(
+        name: String,
+        variableValue: Double = 1.0,
+        pointSize: CGFloat,
+        foreground: NSColor
+    ) -> NSImage? {
+        let config = NSImage.SymbolConfiguration(pointSize: pointSize, weight: .semibold)
+            .applying(.init(hierarchicalColor: foreground))
+
+        return NSImage(
+            systemSymbolName: name,
+            variableValue: variableValue,
+            accessibilityDescription: nil
+        )?.withSymbolConfiguration(config)
     }
 
     private static func drawVolume(
         _ volume: MenuBarVolumeStatus,
+        options: VolumeIconOptions,
         in context: CGContext,
         foreground: CGColor
     ) {
-        let level = StatusMappings.volumeSteps(scalar: volume.scalar, isMuted: volume.isMuted) ?? 0
-        let hiddenColor = foreground.copy(alpha: 0.22) ?? foreground
+        let hiddenColor = foreground.copy(alpha: inactiveTrackAlpha) ?? foreground
 
-        for (index, point) in StatusIconGeometry.volumeDots().enumerated() {
-            context.setFillColor(index < level ? foreground : hiddenColor)
-            let radius = StatusIconGeometry.volumeDotRadius
-            context.fillEllipse(
-                in: CGRect(
-                    x: point.x - radius,
-                    y: point.y - radius,
-                    width: radius * 2,
-                    height: radius * 2
+        switch options.displayStyle {
+        case .dots:
+            let level = StatusMappings.volumeSteps(scalar: volume.scalar, isMuted: volume.isMuted) ?? 0
+            for (index, point) in StatusIconGeometry.volumeDots().enumerated() {
+                context.setFillColor(index < level ? foreground : hiddenColor)
+                let radius = StatusIconGeometry.volumeDotRadius
+                context.fillEllipse(
+                    in: CGRect(
+                        x: point.x - radius,
+                        y: point.y - radius,
+                        width: radius * 2,
+                        height: radius * 2
+                    )
                 )
-            )
+            }
+        case .arc:
+            // Continuous arc bounded between Dot 0 (left, ~122°) and Dot 3 (right, ~59°)
+            context.setLineWidth(7)
+            context.setLineCap(.round)
+            context.setStrokeColor(hiddenColor)
+            context.addPath(StatusIconGeometry.volumeArcTrack())
+            context.strokePath()
+
+            guard !volume.isMuted, let scalar = volume.scalar, scalar > 0 else { return }
+            context.setStrokeColor(foreground)
+            context.addPath(StatusIconGeometry.volumeArcFill(progress: scalar))
+            context.strokePath()
         }
     }
 }

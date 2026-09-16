@@ -7,6 +7,18 @@ enum BatteryColorRole: Equatable, Sendable {
     case charging
 }
 
+/// What fills the battery arc's top gap.
+enum BatteryGapContent: Equatable, Sendable {
+    /// Charging: the lightning bolt.
+    case bolt
+    /// Connected to power without charging: the plug.
+    case plug
+    /// The percentage numerals.
+    case percentage
+    /// Nothing: the arc closes into a full circle.
+    case empty
+}
+
 enum WiFiSummaryAction: Equatable, Sendable {
     case openDetails
     case requestNameAccess
@@ -18,11 +30,11 @@ enum StatusMappings {
         guard let rssi else { return 0 }
         switch rssi {
         // Parentheses are required for this negative partial range in Swift 6.
-        case (-55)...:
+        case (-60)...:
             return 3
-        case -70 ... -56:
+        case -78 ... -61:
             return 2
-        case -85 ... -71:
+        case -88 ... -79:
             return 1
         default:
             return 0
@@ -61,6 +73,26 @@ enum StatusMappings {
         if battery.isLowPowerMode { return .lowPower }
         if battery.isCharging || battery.isConnectedToPower { return .charging }
         return .foreground
+    }
+
+    /// A charging battery keeps the bolt. A connected power source that is not
+    /// charging — including a battery that is already full — shows the plug,
+    /// or the percentage when the user asked for the number in that state and
+    /// the percentage is available at all.
+    static func batteryGapContent(
+        _ battery: BatteryStatus,
+        options: BatteryIconOptions
+    ) -> BatteryGapContent {
+        if battery.isPresent, options.showsChargingIndicator {
+            if battery.isCharging { return .bolt }
+            let showsPercentageForPower = options.showsPercentageWhenConnected
+                && options.showsPercentage
+            if battery.isConnectedToPower, !showsPercentageForPower {
+                return .plug
+            }
+        }
+
+        return options.showsPercentage ? .percentage : .empty
     }
 
     static func batteryProgress(_ battery: BatteryStatus) -> Double {

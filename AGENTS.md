@@ -56,10 +56,16 @@ Do not create a release if that preflight has not passed.
 - Whichever route is taken, the verification rules above still apply: `swift test` and `swift build -c release`, plus a non-publishing release workflow run when the change touches actor isolation, `@MainActor`, `deinit`, SwiftUI bindings, generics, or `Bundle.module` resources.
 - The release workflow only runs on tags and manual dispatches, so a pull request does not add CI coverage on its own.
 
+## Menu Bar and Dock Icon Parity
+
+- Every change to a menu bar icon's rendering or icon-related settings must be mirrored in the Dock icon in the same change. Do not leave the Dock on a default or stale representation.
+- When adding or changing an icon option, update both paths end-to-end as applicable: `SettingsStore` option derivation, `StatusBarController` subscriptions, `AppIconController` subscriptions/state, `DockIconRenderKey` cache inputs, `DockIconRenderer` rendering, and tests covering both menu bar and Dock output.
+- If a setting is intentionally menu-bar-only, the issue or specification must say so explicitly, and the limitation must be documented and covered by a test.
+
 ## Release Rules
 
 - GitHub Release notes must use a top-level `# Version X.Y.Z （English + 中文， 中文在下方）` heading, followed by English notes and then Chinese notes. Provide the English text through `release_notes` and the Chinese text through `release_notes_zh`; the release workflow combines them.
-- Sparkle appcast items must use the same bilingual order: the version title includes `（English + 中文， 中文在下方）`, followed by English notes and then Chinese notes.
+- Sparkle appcast items are localized, not bilingual: emit `<title xml:lang="en">` plus `<title xml:lang="zh-Hans">` and `<description xml:lang="en">` plus `<description xml:lang="zh-Hans">` for every new item, and give every variant an explicit `xml:lang`. Sparkle renders the variant matching the user's preferred languages and falls back to English. Never stack both languages inside one `<description>`.
 - GitHub Release bodies must append the first-launch commands `xattr -dr com.apple.quarantine "/Applications/Status Trio.app"` and `open "/Applications/Status Trio.app"` after the bilingual notes. Do not include these commands in the Sparkle appcast.
 - Release announcements remain in English.
 - Release through `.github/workflows/release.yml`; do not publish manually unless the workflow is unavailable and the user explicitly asks for a manual fallback.

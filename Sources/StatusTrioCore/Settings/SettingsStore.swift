@@ -13,6 +13,7 @@ final class SettingsStore: ObservableObject {
     static let defaultBatterySymbolScale: Double = 1
     static let showsBatteryPercentageDefaultsKey = "showsBatteryPercentage"
     static let showsChargingIndicatorDefaultsKey = "showsChargingIndicator"
+    static let showsPercentageWhenConnectedDefaultsKey = "showsPercentageWhenConnected"
     static let usesBatteryStatusColorsDefaultsKey = "usesBatteryStatusColors"
     static let batteryCriticalThresholdDefaultsKey = "batteryCriticalThreshold"
     static let batterySymbolScaleDefaultsKey = "batterySymbolScale"
@@ -20,6 +21,11 @@ final class SettingsStore: ObservableObject {
     static let showsWiFiIconForHotspotDefaultsKey = "showsWiFiIconForHotspot"
     static let showsWiFiIconForTemporaryConnectionDefaultsKey = "showsWiFiIconForTemporaryConnection"
     static let showsWiFiIconForInternetSharingDefaultsKey = "showsWiFiIconForInternetSharing"
+    static let wifiSymbolScaleRange: ClosedRange<Double> = 1.0...1.8
+    static let defaultWifiSymbolScale: Double = 1.0
+    static let wifiSymbolScaleDefaultsKey = "wifiSymbolScale"
+    static let defaultVolumeDisplayStyle: VolumeDisplayStyle = .dots
+    static let volumeDisplayStyleDefaultsKey = "volumeDisplayStyle"
 
     static let refreshIntervalRange: ClosedRange<Double> = 5...60
     static let defaultRefreshIntervalSeconds: Double = 5
@@ -73,6 +79,15 @@ final class SettingsStore: ObservableObject {
     @Published var showsChargingIndicator: Bool {
         didSet {
             defaults.set(showsChargingIndicator, forKey: Self.showsChargingIndicatorDefaultsKey)
+        }
+    }
+
+    @Published var showsPercentageWhenConnected: Bool {
+        didSet {
+            defaults.set(
+                showsPercentageWhenConnected,
+                forKey: Self.showsPercentageWhenConnectedDefaultsKey
+            )
         }
     }
 
@@ -137,6 +152,23 @@ final class SettingsStore: ObservableObject {
                 showsWiFiIconForInternetSharing,
                 forKey: Self.showsWiFiIconForInternetSharingDefaultsKey
             )
+        }
+    }
+
+    @Published var wifiSymbolScale: Double {
+        didSet {
+            let clamped = Self.clampedWifiSymbolScale(wifiSymbolScale)
+            guard clamped == wifiSymbolScale else {
+                wifiSymbolScale = clamped
+                return
+            }
+            defaults.set(clamped, forKey: Self.wifiSymbolScaleDefaultsKey)
+        }
+    }
+
+    @Published var volumeDisplayStyle: VolumeDisplayStyle {
+        didSet {
+            defaults.set(volumeDisplayStyle.rawValue, forKey: Self.volumeDisplayStyleDefaultsKey)
         }
     }
 
@@ -278,6 +310,7 @@ final class SettingsStore: ObservableObject {
             showsChargingIndicator: showsChargingIndicator,
             usesStatusColors: usesBatteryStatusColors,
             criticalThreshold: Int(batteryCriticalThreshold.rounded()),
+            showsPercentageWhenConnected: showsPercentageWhenConnected,
             textScale: batterySymbolScale * BatteryIconOptions.defaultTextScale
         )
     }
@@ -287,8 +320,13 @@ final class SettingsStore: ObservableObject {
             showsWiFiIconForEthernet: showsWiFiIconForEthernet,
             showsWiFiIconForHotspot: showsWiFiIconForHotspot,
             showsWiFiIconForTemporaryConnection: showsWiFiIconForTemporaryConnection,
-            showsWiFiIconForInternetSharing: showsWiFiIconForInternetSharing
+            showsWiFiIconForInternetSharing: showsWiFiIconForInternetSharing,
+            wifiScale: wifiSymbolScale
         )
+    }
+
+    var volumeIconOptions: VolumeIconOptions {
+        VolumeIconOptions(displayStyle: volumeDisplayStyle)
     }
 
     private let defaults: UserDefaults
@@ -300,6 +338,8 @@ final class SettingsStore: ObservableObject {
         let storedBatterySymbolScale = (defaults.object(forKey: Self.batterySymbolScaleDefaultsKey) as? NSNumber)?.doubleValue
         let storedOutputDeviceLimit = (defaults.object(forKey: Self.maxVisibleOutputDevicesDefaultsKey) as? NSNumber)?.intValue
         let storedRefreshInterval = (defaults.object(forKey: Self.refreshIntervalDefaultsKey) as? NSNumber)?.doubleValue
+        let storedWifiSymbolScale = (defaults.object(forKey: Self.wifiSymbolScaleDefaultsKey) as? NSNumber)?.doubleValue
+        let storedVolumeDisplayStyle = defaults.string(forKey: Self.volumeDisplayStyleDefaultsKey)
         let storedOutputDeviceOrder = defaults.stringArray(forKey: Self.outputDeviceOrderDefaultsKey) ?? []
         let storedPopupSectionOrder = defaults.stringArray(
             forKey: Self.popupSectionOrderDefaultsKey
@@ -321,6 +361,9 @@ final class SettingsStore: ObservableObject {
         self.iconSize = Self.clampedIconSize(storedIconSize ?? Self.defaultIconSize)
         self.showsBatteryPercentage = defaults.object(forKey: Self.showsBatteryPercentageDefaultsKey) as? Bool ?? true
         self.showsChargingIndicator = defaults.object(forKey: Self.showsChargingIndicatorDefaultsKey) as? Bool ?? true
+        self.showsPercentageWhenConnected = defaults.object(
+            forKey: Self.showsPercentageWhenConnectedDefaultsKey
+        ) as? Bool ?? false
         self.usesBatteryStatusColors = defaults.object(forKey: Self.usesBatteryStatusColorsDefaultsKey) as? Bool ?? true
         self.batterySymbolScale = Self.clampedBatterySymbolScale(
             storedBatterySymbolScale ?? Self.defaultBatterySymbolScale
@@ -340,6 +383,12 @@ final class SettingsStore: ObservableObject {
         self.showsWiFiIconForInternetSharing = defaults.object(
             forKey: Self.showsWiFiIconForInternetSharingDefaultsKey
         ) as? Bool ?? false
+        self.wifiSymbolScale = Self.clampedWifiSymbolScale(
+            storedWifiSymbolScale ?? Self.defaultWifiSymbolScale
+        )
+        self.volumeDisplayStyle = storedVolumeDisplayStyle
+            .flatMap(VolumeDisplayStyle.init(rawValue:))
+            ?? Self.defaultVolumeDisplayStyle
         self.refreshIntervalSeconds = Self.clampedRefreshInterval(
             storedRefreshInterval ?? Self.defaultRefreshIntervalSeconds
         )
@@ -368,6 +417,14 @@ final class SettingsStore: ObservableObject {
         return min(
             batterySymbolScaleRange.upperBound,
             max(batterySymbolScaleRange.lowerBound, value)
+        )
+    }
+
+    static func clampedWifiSymbolScale(_ value: Double) -> Double {
+        guard value.isFinite else { return defaultWifiSymbolScale }
+        return min(
+            wifiSymbolScaleRange.upperBound,
+            max(wifiSymbolScaleRange.lowerBound, value)
         )
     }
 

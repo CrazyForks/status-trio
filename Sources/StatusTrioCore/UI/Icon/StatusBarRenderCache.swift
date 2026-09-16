@@ -3,7 +3,24 @@ struct StatusBarRenderKey: Equatable {
     let iconSize: Double
     let options: BatteryIconOptions
     let connectionOptions: ConnectionIconOptions
+    let volumeOptions: VolumeIconOptions
     let appearanceName: String
+
+    init(
+        status: MenuBarStatus,
+        iconSize: Double,
+        options: BatteryIconOptions,
+        connectionOptions: ConnectionIconOptions,
+        volumeOptions: VolumeIconOptions = .standard,
+        appearanceName: String
+    ) {
+        self.status = status
+        self.iconSize = iconSize
+        self.options = options
+        self.connectionOptions = connectionOptions
+        self.volumeOptions = volumeOptions
+        self.appearanceName = appearanceName
+    }
 }
 
 struct StatusBarRenderCache {

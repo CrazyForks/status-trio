@@ -298,8 +298,7 @@ final class WiFiMonitor: NSObject, WiFiMonitoring, CWEventDelegate {
     ]
 
     private let continuation: AsyncStream<WiFiStatus>.Continuation
-    private let systemReader: any WiFiSystemReadingProviding
-    private let sharingDetector: any InternetSharingDetecting
+    private let statusReader: any WiFiStatusReadingProviding
     private let nameAuthorizer: any WiFiNameAuthorizing
     nonisolated(unsafe) private let eventMonitor: any WiFiEventMonitoring
     nonisolated(unsafe) private let pathMonitor: any WiFiPathMonitoring
@@ -310,6 +309,9 @@ final class WiFiMonitor: NSObject, WiFiMonitoring, CWEventDelegate {
     private let refreshDebounceSleep: @Sendable (Duration) async throws -> Void
     private var scheduledRefreshTask: Task<Void, Never>?
     private var detailsVisible = true
+    private var readInFlight = false
+    private var refreshPending = false
+    private var readGeneration: UInt64 = 0
 
     private var latestPath: WiFiPathSnapshot?
     private var latestPathSequence: UInt64?
@@ -320,8 +322,7 @@ final class WiFiMonitor: NSObject, WiFiMonitoring, CWEventDelegate {
     private var lifecycle = Lifecycle.idle
 
     init(
-        systemReader: any WiFiSystemReadingProviding = CoreWLANWiFiSystemReader(),
-        sharingDetector: any InternetSharingDetecting = SystemInternetSharingDetector(),
+        statusReader: any WiFiStatusReadingProviding = CoreWLANStatusReader(),
         nameAuthorizer: any WiFiNameAuthorizing = CoreLocationWiFiNameAuthorizer(),
         eventMonitor: any WiFiEventMonitoring = CoreWLANWiFiEventMonitor(),
         pathMonitor: any WiFiPathMonitoring = NetworkWiFiPathMonitor(),
@@ -333,8 +334,7 @@ final class WiFiMonitor: NSObject, WiFiMonitoring, CWEventDelegate {
             try await Task.sleep(for: $0)
         }
     ) {
-        self.systemReader = systemReader
-        self.sharingDetector = sharingDetector
+        self.statusReader = statusReader
         self.nameAuthorizer = nameAuthorizer
         self.eventMonitor = eventMonitor
         self.pathMonitor = pathMonitor
@@ -346,6 +346,7 @@ final class WiFiMonitor: NSObject, WiFiMonitoring, CWEventDelegate {
         (updates, continuation) = MonitorStream.make(of: WiFiStatus.self)
         super.init()
         nameAuthorizer.onAccessChange = { [weak self] in
+            self?.readGeneration &+= 1
             self?.refresh()
         }
     }
@@ -371,6 +372,7 @@ final class WiFiMonitor: NSObject, WiFiMonitoring, CWEventDelegate {
     func recover() {
         guard lifecycle == .running else { return }
 
+        readGeneration &+= 1
         lastRecoveryAttempt = now()
         eventMonitor.restart(delegate: self, events: Self.monitoredEvents)
         pathMonitor.cancel()
@@ -386,6 +388,7 @@ final class WiFiMonitor: NSObject, WiFiMonitoring, CWEventDelegate {
         guard lifecycle != .stopped else { return }
         let changed = detailsVisible != visible
         detailsVisible = visible
+        if changed { readGeneration &+= 1 }
         if changed, !visible, lifecycle == .running {
             refresh()
         }
@@ -416,21 +419,37 @@ final class WiFiMonitor: NSObject, WiFiMonitoring, CWEventDelegate {
 
     func refresh() {
         guard lifecycle != .stopped else { return }
+        // Coalesce event bursts and polling while a slow system service replies.
+        // At most one read and one follow-up are retained, regardless of latency.
+        guard !readInFlight else {
+            refreshPending = true
+            return
+        }
+        readInFlight = true
+        let generation = readGeneration
+        statusReader.read(includeSSID: detailsVisible) { [weak self] result in
+            guard let self, self.lifecycle != .stopped else { return }
+            self.readInFlight = false
+            let needsRefresh = self.refreshPending || generation != self.readGeneration
+            self.refreshPending = false
+            // Visibility, permission and wake/recovery changes invalidate old reads.
+            if generation == self.readGeneration {
+                self.receive(result)
+            }
+            // A debounced event already owns the follow-up. Starting it now would
+            // let that timer enqueue another read while this follow-up is in flight.
+            if needsRefresh, self.scheduledRefreshTask == nil { self.refresh() }
+        }
+    }
 
-        guard let reading = systemReader.read(includeSSID: detailsVisible) else {
+    private func receive(_ result: WiFiStatusReading) {
+        guard let reading = result.interface else {
             publish(.unavailable, rssi: nil, ssid: nil, nameAccess: nameAuthorizer.access)
             return
         }
 
         lastRecoveryAttempt = nil
         isPersistentReadFailure = false
-
-        let sharingActive: Bool
-        if reading.powerOn && reading.serviceActive {
-            sharingActive = sharingDetector.isActive() == true
-        } else {
-            sharingActive = false
-        }
 
         let input = WiFiClassificationInput(
             powerOn: reading.powerOn,
@@ -439,13 +458,13 @@ final class WiFiMonitor: NSObject, WiFiMonitoring, CWEventDelegate {
             pathSatisfied: latestPath?.satisfied,
             pathUsesWiFi: latestPath?.usesWiFi ?? false,
             pathExpensive: latestPath?.expensive ?? false,
-            sharingActive: sharingActive
+            sharingActive: result.sharingActive
         )
         let nameAccess = nameAuthorizer.access
         publish(
             WiFiClassifier.classify(input),
             rssi: normalizedRSSI(reading.rssi),
-            ssid: nameAccess == .authorized ? normalizedSSID(reading.ssid) : nil,
+            ssid: detailsVisible && nameAccess == .authorized ? normalizedSSID(reading.ssid) : nil,
             nameAccess: nameAccess
         )
     }
@@ -560,7 +579,12 @@ final class WiFiMonitor: NSObject, WiFiMonitoring, CWEventDelegate {
                 let lastValidDate,
                 currentDate.timeIntervalSince(lastValidDate) <= staleInterval
             {
-                continuation.yield(lastValidStatus)
+                continuation.yield(WiFiStatus(
+                    state: lastValidStatus.state,
+                    rssi: lastValidStatus.rssi,
+                    ssid: detailsVisible && nameAccess == .authorized ? lastValidStatus.ssid : nil,
+                    nameAccess: nameAccess
+                ))
                 return
             }
 
