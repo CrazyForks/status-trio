@@ -24,6 +24,7 @@
 "settings.appIconPlacement.menuBar" = "選單列";
 "settings.appIconPlacement.dock" = "Dock";
 "settings.appIconPlacement.both" = "兩處";
+"settings.appIcon.dockGroup" = "Dock 圖示";
 "settings.dockIconBackground" = "Dock 圖示背景";
 "settings.dockIconBackground.description" = "僅影響 Dock 中顯示的即時圖示。「跟隨系統」會讀取「系統設定 › 外觀 › 圖示與小工具樣式」（macOS 15 及以上）。";
 "settings.dockIconBackground.system" = "跟隨系統";
@@ -31,20 +32,21 @@
 "settings.dockIconBackground.light" = "淺色";
 "settings.iconSize" = "圖示顯示尺寸";
 "settings.iconSize.accessibilityValue" = "%d 點";
-"settings.iconSize.description" = "調整選單列圖示的繪製尺寸，可選 16–36 pt。";
+"settings.iconSize.description" = "調整選單列圖示的繪製尺寸，可選 16–36 pt。Dock 圖示使用固定設計尺寸。";
+"settings.tab.appIcon" = "應用程式圖示";
+"settings.tab.battery" = "電池";
+"settings.tab.network" = "網路";
+"settings.tab.audio" = "音訊";
 "settings.tab.basics" = "基礎";
 "settings.tab.panel" = "狀態面板";
-"settings.tab.menuBar" = "選單列";
-"settings.tab.audio" = "音訊";
-"settings.tab.battery" = "電池";
 "settings.tab.about" = "關於";
 "settings.menuBar.title" = "選單列圖示";
-"settings.menuBar.connectionIcons" = "連線圖示樣式";
-"settings.menuBar.connectionIcons.description" = "啟用後，對應狀態會改用一般 Wi‑Fi 訊號圖示，不再顯示專用標記。";
-"settings.menuBar.wifiIconForEthernet" = "有線連線使用 Wi‑Fi 圖示";
-"settings.menuBar.wifiIconForHotspot" = "個人熱點使用 Wi‑Fi 圖示";
-"settings.menuBar.wifiIconForTemporaryConnection" = "臨時連線使用 Wi‑Fi 圖示";
-"settings.menuBar.wifiIconForInternetSharing" = "網際網路共享使用 Wi‑Fi 圖示";
+"settings.network.connectionIcons" = "連線圖示樣式";
+"settings.network.connectionIcons.description" = "啟用後，對應狀態會改用一般 Wi‑Fi 訊號圖示，不再顯示專用標記。";
+"settings.network.wifiIconForEthernet" = "有線連線使用 Wi‑Fi 圖示";
+"settings.network.wifiIconForHotspot" = "個人熱點使用 Wi‑Fi 圖示";
+"settings.network.wifiIconForTemporaryConnection" = "臨時連線使用 Wi‑Fi 圖示";
+"settings.network.wifiIconForInternetSharing" = "網際網路共享使用 Wi‑Fi 圖示";
 "settings.audio.maximumVisible" = "最多顯示輸出裝置";
 "settings.audio.maximumVisibleDescription" = "超過此數量時顯示「展開」按鈕。";
 "settings.audio.showAll" = "一律全部展開";
@@ -215,7 +217,7 @@
 "bluetooth.authorizationDenied" = "Bluetooth permission is denied. Open Bluetooth Settings.";
 "bluetooth.authorizationRestricted" = "Bluetooth permission is restricted.";
 
-"settings.preview.hint" = "選單列即時預覽 · 調整下方各項參數即刻在上方呈現";
+"settings.preview.hint" = "即時預覽 · 調整下方各項參數即刻在上方呈現";
 "settings.preview.dark" = "深色底色";
 "settings.preview.light" = "淺色底色";
 "settings.preview.toggleHelp" = "切換選單列深色/淺色底色預覽";
@@ -223,7 +225,7 @@
 "settings.audio.activeDeviceFootnote" = "目前活躍的音訊輸出裝置將優先以主題色強調顯示。";
 "settings.audio.inUse" = "使用中";
 "settings.wifi.symbolScale" = "Wi-Fi 圖示大小";
-"settings.wifi.symbolScaleDescription" = "調整選單列狀態環內的 Wi-Fi 圖示縮放比例（100% - 180%）。";
+"settings.wifi.symbolScaleDescription" = "調整狀態環內的 Wi-Fi 圖示縮放比例（100% - 180%）。";
 "settings.audio.indicatorStyleTitle" = "音量指示樣式";
 "settings.audio.indicatorStyle" = "顯示樣式";
 "settings.audio.indicatorStyleDescription" = "選擇在狀態環底部顯示為四個離散點或連續圓弧條。";

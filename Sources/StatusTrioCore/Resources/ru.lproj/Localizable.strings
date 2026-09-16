@@ -24,6 +24,7 @@
 "settings.appIconPlacement.menuBar" = "Строка меню";
 "settings.appIconPlacement.dock" = "Dock";
 "settings.appIconPlacement.both" = "Оба";
+"settings.appIcon.dockGroup" = "Значок в Dock";
 "settings.dockIconBackground" = "Фон значка Dock";
 "settings.dockIconBackground.description" = "Применяется к динамическому значку в Dock. «Как в системе» читает «Стиль значков и виджетов» в «Системных настройках › Внешний вид» (macOS 15 или новее).";
 "settings.dockIconBackground.system" = "Как в системе";
@@ -31,20 +32,21 @@
 "settings.dockIconBackground.light" = "Светлый";
 "settings.iconSize" = "Размер значка";
 "settings.iconSize.accessibilityValue" = "%d пунктов";
-"settings.iconSize.description" = "Настраивает размер отрисовки значка в строке меню от 16 до 36 pt.";
+"settings.iconSize.description" = "Настраивает размер отрисовки значка в строке меню от 16 до 36 pt. Значок в Dock сохраняет фиксированный размер.";
+"settings.tab.appIcon" = "Значок приложения";
+"settings.tab.battery" = "Батарея";
+"settings.tab.network" = "Сеть";
+"settings.tab.audio" = "Аудио";
 "settings.tab.basics" = "Основные";
 "settings.tab.panel" = "Панель состояния";
-"settings.tab.menuBar" = "Строка меню";
-"settings.tab.audio" = "Аудио";
-"settings.tab.battery" = "Батарея";
 "settings.tab.about" = "О программе";
 "settings.menuBar.title" = "Значок в строке меню";
-"settings.menuBar.connectionIcons" = "Стиль значков подключения";
-"settings.menuBar.connectionIcons.description" = "Если включено, выбранное состояние отображается стандартным значком сигнала Wi-Fi вместо специального обозначения.";
-"settings.menuBar.wifiIconForEthernet" = "Использовать значок Wi-Fi для Ethernet";
-"settings.menuBar.wifiIconForHotspot" = "Использовать значок Wi-Fi для точки доступа";
-"settings.menuBar.wifiIconForTemporaryConnection" = "Использовать значок Wi-Fi для временного подключения";
-"settings.menuBar.wifiIconForInternetSharing" = "Использовать значок Wi-Fi для общего доступа к интернету";
+"settings.network.connectionIcons" = "Стиль значков подключения";
+"settings.network.connectionIcons.description" = "Если включено, выбранное состояние отображается стандартным значком сигнала Wi-Fi вместо специального обозначения.";
+"settings.network.wifiIconForEthernet" = "Использовать значок Wi-Fi для Ethernet";
+"settings.network.wifiIconForHotspot" = "Использовать значок Wi-Fi для точки доступа";
+"settings.network.wifiIconForTemporaryConnection" = "Использовать значок Wi-Fi для временного подключения";
+"settings.network.wifiIconForInternetSharing" = "Использовать значок Wi-Fi для общего доступа к интернету";
 "settings.audio.maximumVisible" = "Максимум видимых устройств вывода";
 "settings.audio.maximumVisibleDescription" = "Сколько устройств вывода показывать до кнопки «Развернуть».";
 "settings.audio.showAll" = "Всегда показывать все устройства вывода";
@@ -215,7 +217,7 @@
 "bluetooth.authorizationDenied" = "Bluetooth permission is denied. Open Bluetooth Settings.";
 "bluetooth.authorizationRestricted" = "Bluetooth permission is restricted.";
 
-"settings.preview.hint" = "Интерактивный просмотр строки меню · Изменяйте параметры ниже, чтобы сразу видеть результат";
+"settings.preview.hint" = "Интерактивный просмотр · Изменяйте параметры ниже, чтобы сразу видеть результат";
 "settings.preview.dark" = "Темный фон";
 "settings.preview.light" = "Светлый фон";
 "settings.preview.toggleHelp" = "Переключить темный/светлый фон строки меню";
@@ -223,7 +225,7 @@
 "settings.audio.activeDeviceFootnote" = "Активное устройство вывода звука выделяется цветом темы.";
 "settings.audio.inUse" = "Используется";
 "settings.wifi.symbolScale" = "Размер значка Wi-Fi";
-"settings.wifi.symbolScaleDescription" = "Масштаб значка Wi-Fi внутри кольца строки меню от 100% до 180%.";
+"settings.wifi.symbolScaleDescription" = "Масштаб значка Wi-Fi внутри кольца состояния от 100% до 180%.";
 "settings.audio.indicatorStyleTitle" = "Стиль индикатора громкости";
 "settings.audio.indicatorStyle" = "Стиль отображения";
 "settings.audio.indicatorStyleDescription" = "Выберите отображение громкости четырьмя точками или сплошной дугой.";

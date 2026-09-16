@@ -1,7 +1,6 @@
 import SwiftUI
 
 struct GeneralSectionView: View {
-    @ObservedObject var store: SettingsStore
     @ObservedObject var localization: Localization
     @ObservedObject private var launchAtLogin: LaunchAtLoginManager = .shared
     @ObservedObject private var updaterManager: UpdaterManager = .shared
@@ -9,7 +8,6 @@ struct GeneralSectionView: View {
     var body: some View {
         SettingsPage {
             systemGroup
-            placementGroup
             if updaterManager.canCheckForUpdates {
                 updatesGroup
             }
@@ -87,58 +85,6 @@ struct GeneralSectionView: View {
                     .padding(.horizontal, SettingsMetrics.rowPaddingH)
                     .padding(.bottom, 6)
                 }
-            }
-        }
-    }
-
-    private var placementGroup: some View {
-        SettingsGroup(localization.string(.settingsAppIconPlacement)) {
-            SettingsRow(
-                title: localization.string(.settingsAppIconPlacement),
-                subtitle: localization.string(.settingsAppIconPlacementDescription),
-                leading: { SettingsIcon(symbol: "macwindow.on.rectangle", tint: .indigo) },
-                trailing: {
-                    Picker(
-                        localization.string(.settingsAppIconPlacement),
-                        selection: $store.appIconPlacement
-                    ) {
-                        Text(localization.string(.settingsAppIconPlacementMenuBar))
-                            .tag(AppIconPlacement.menuBar)
-                        Text(localization.string(.settingsAppIconPlacementDock))
-                            .tag(AppIconPlacement.dock)
-                        Text(localization.string(.settingsAppIconPlacementBoth))
-                            .tag(AppIconPlacement.both)
-                    }
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
-                    .fixedSize()
-                }
-            )
-
-            if store.appIconPlacement != .menuBar {
-                SettingsDivider()
-
-                SettingsRow(
-                    title: localization.string(.settingsDockIconBackground),
-                    subtitle: localization.string(.settingsDockIconBackgroundDescription),
-                    leading: { SettingsIcon(symbol: "dock.rectangle", tint: .purple) },
-                    trailing: {
-                        Picker(
-                            localization.string(.settingsDockIconBackground),
-                            selection: $store.dockIconBackgroundPreference
-                        ) {
-                            Text(localization.string(.settingsDockIconBackgroundSystem))
-                                .tag(DockIconBackgroundPreference.system)
-                            Text(localization.string(.settingsDockIconBackgroundDark))
-                                .tag(DockIconBackgroundPreference.dark)
-                            Text(localization.string(.settingsDockIconBackgroundLight))
-                                .tag(DockIconBackgroundPreference.light)
-                        }
-                        .pickerStyle(.segmented)
-                        .labelsHidden()
-                        .fixedSize()
-                    }
-                )
             }
         }
     }

@@ -3,10 +3,17 @@ import SwiftUI
 struct AudioSectionView: View {
     @ObservedObject var store: SettingsStore
     @ObservedObject var statusStore: SystemStatusStore
+    @Binding var previewIsDark: Bool
     @EnvironmentObject private var localization: Localization
 
     var body: some View {
         SettingsPage {
+            StatusIconPreviewCard(
+                store: store,
+                statusStore: statusStore,
+                isDarkBackground: $previewIsDark
+            )
+
             indicatorStyleGroup
             displayRulesGroup
             deviceOrderGroup

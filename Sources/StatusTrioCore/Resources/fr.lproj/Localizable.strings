@@ -24,6 +24,7 @@
 "settings.appIconPlacement.menuBar" = "Barre des menus";
 "settings.appIconPlacement.dock" = "Dock";
 "settings.appIconPlacement.both" = "Les deux";
+"settings.appIcon.dockGroup" = "Icône du Dock";
 "settings.dockIconBackground" = "Fond de l’icône du Dock";
 "settings.dockIconBackground.description" = "S’applique à l’icône dynamique du Dock. « Suivre le système » lit « Style des icônes et widgets » dans Réglages du système › Apparence (macOS 15 ou ultérieur).";
 "settings.dockIconBackground.system" = "Suivre le système";
@@ -31,20 +32,21 @@
 "settings.dockIconBackground.light" = "Clair";
 "settings.iconSize" = "Taille de l’icône";
 "settings.iconSize.accessibilityValue" = "%d points";
-"settings.iconSize.description" = "Ajuste la taille de rendu de l’icône dans la barre des menus de 16 à 36 pt.";
+"settings.iconSize.description" = "Ajuste la taille de rendu de l’icône dans la barre des menus de 16 à 36 pt. L’icône du Dock conserve sa taille de design fixe.";
+"settings.tab.appIcon" = "Icône de l’app";
+"settings.tab.battery" = "Batterie";
+"settings.tab.network" = "Réseau";
+"settings.tab.audio" = "Audio";
 "settings.tab.basics" = "Général";
 "settings.tab.panel" = "Panneau d’état";
-"settings.tab.menuBar" = "Barre des menus";
-"settings.tab.audio" = "Audio";
-"settings.tab.battery" = "Batterie";
 "settings.tab.about" = "À propos";
 "settings.menuBar.title" = "Icône de la barre des menus";
-"settings.menuBar.connectionIcons" = "Style des icônes de connexion";
-"settings.menuBar.connectionIcons.description" = "Lorsque cette option est activée, l’état sélectionné utilise l’icône de signal Wi-Fi standard au lieu de son symbole spécifique.";
-"settings.menuBar.wifiIconForEthernet" = "Utiliser l’icône Wi-Fi pour Ethernet";
-"settings.menuBar.wifiIconForHotspot" = "Utiliser l’icône Wi-Fi pour le partage de connexion";
-"settings.menuBar.wifiIconForTemporaryConnection" = "Utiliser l’icône Wi-Fi pour une connexion temporaire";
-"settings.menuBar.wifiIconForInternetSharing" = "Utiliser l’icône Wi-Fi pour le partage Internet";
+"settings.network.connectionIcons" = "Style des icônes de connexion";
+"settings.network.connectionIcons.description" = "Lorsque cette option est activée, l’état sélectionné utilise l’icône de signal Wi-Fi standard au lieu de son symbole spécifique.";
+"settings.network.wifiIconForEthernet" = "Utiliser l’icône Wi-Fi pour Ethernet";
+"settings.network.wifiIconForHotspot" = "Utiliser l’icône Wi-Fi pour le partage de connexion";
+"settings.network.wifiIconForTemporaryConnection" = "Utiliser l’icône Wi-Fi pour une connexion temporaire";
+"settings.network.wifiIconForInternetSharing" = "Utiliser l’icône Wi-Fi pour le partage Internet";
 "settings.audio.maximumVisible" = "Nombre maximal d’appareils visibles";
 "settings.audio.maximumVisibleDescription" = "Nombre d’appareils affichés avant le bouton Développer.";
 "settings.audio.showAll" = "Toujours afficher tous les appareils";
@@ -215,7 +217,7 @@
 "bluetooth.authorizationDenied" = "Bluetooth permission is denied. Open Bluetooth Settings.";
 "bluetooth.authorizationRestricted" = "Bluetooth permission is restricted.";
 
-"settings.preview.hint" = "Aperçu en direct de la barre des menus · Ajustez les paramètres ci-dessous pour voir les changements immédiatement";
+"settings.preview.hint" = "Aperçu en direct · Ajustez les paramètres ci-dessous pour voir les changements immédiatement";
 "settings.preview.dark" = "Fond sombre";
 "settings.preview.light" = "Fond clair";
 "settings.preview.toggleHelp" = "Basculer l'aperçu de la barre des menus en sombre/clair";
@@ -223,7 +225,7 @@
 "settings.audio.activeDeviceFootnote" = "Le périphérique de sortie audio actif est mis en évidence avec la couleur d'accentuation.";
 "settings.audio.inUse" = "En cours d'utilisation";
 "settings.wifi.symbolScale" = "Taille de l'icône Wi-Fi";
-"settings.wifi.symbolScaleDescription" = "Ajuste l'échelle de l'icône Wi-Fi dans l'anneau de la barre des menus de 100 % à 180 %.";
+"settings.wifi.symbolScaleDescription" = "Ajuste l’échelle de l’icône Wi-Fi dans l’anneau de statut de 100 % à 180 %.";
 "settings.audio.indicatorStyleTitle" = "Style de l'indicateur de volume";
 "settings.audio.indicatorStyle" = "Style d'affichage";
 "settings.audio.indicatorStyleDescription" = "Choisissez d'afficher le volume sous forme de quatre points ou d'un arc continu.";

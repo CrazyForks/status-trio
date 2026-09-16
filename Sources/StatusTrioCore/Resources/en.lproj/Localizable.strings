@@ -24,6 +24,7 @@
 "settings.appIconPlacement.menuBar" = "Menu Bar";
 "settings.appIconPlacement.dock" = "Dock";
 "settings.appIconPlacement.both" = "Both";
+"settings.appIcon.dockGroup" = "Dock Icon";
 "settings.dockIconBackground" = "Dock Icon Background";
 "settings.dockIconBackground.description" = "Applies to the live icon shown in the Dock. “Follow System” reads Icon & Widget Style in System Settings › Appearance (macOS 15 or later).";
 "settings.dockIconBackground.system" = "Follow System";
@@ -31,20 +32,21 @@
 "settings.dockIconBackground.light" = "Light";
 "settings.iconSize" = "Icon Size";
 "settings.iconSize.accessibilityValue" = "%d points";
-"settings.iconSize.description" = "Adjusts the menu bar icon render size from 16–36 pt.";
+"settings.iconSize.description" = "Adjusts the menu bar icon render size from 16–36 pt. The Dock icon keeps its fixed design size.";
+"settings.tab.appIcon" = "App Icon";
+"settings.tab.battery" = "Battery";
+"settings.tab.network" = "Network";
+"settings.tab.audio" = "Audio";
 "settings.tab.basics" = "Basics";
 "settings.tab.panel" = "Status Panel";
-"settings.tab.menuBar" = "Menu Bar";
-"settings.tab.audio" = "Audio";
-"settings.tab.battery" = "Battery";
 "settings.tab.about" = "About";
 "settings.menuBar.title" = "Menu Bar Icon";
-"settings.menuBar.connectionIcons" = "Connection Icon Style";
-"settings.menuBar.connectionIcons.description" = "When enabled, the selected state uses the standard Wi-Fi signal icon instead of its special mark.";
-"settings.menuBar.wifiIconForEthernet" = "Use Wi-Fi icon for Ethernet";
-"settings.menuBar.wifiIconForHotspot" = "Use Wi-Fi icon for Personal Hotspot";
-"settings.menuBar.wifiIconForTemporaryConnection" = "Use Wi-Fi icon for Temporary Connection";
-"settings.menuBar.wifiIconForInternetSharing" = "Use Wi-Fi icon for Internet Sharing";
+"settings.network.connectionIcons" = "Connection Icon Style";
+"settings.network.connectionIcons.description" = "When enabled, the selected state uses the standard Wi-Fi signal icon instead of its special mark.";
+"settings.network.wifiIconForEthernet" = "Use Wi-Fi icon for Ethernet";
+"settings.network.wifiIconForHotspot" = "Use Wi-Fi icon for Personal Hotspot";
+"settings.network.wifiIconForTemporaryConnection" = "Use Wi-Fi icon for Temporary Connection";
+"settings.network.wifiIconForInternetSharing" = "Use Wi-Fi icon for Internet Sharing";
 "settings.audio.maximumVisible" = "Maximum Visible Output Devices";
 "settings.audio.maximumVisibleDescription" = "How many output devices appear before the Expand control.";
 "settings.audio.showAll" = "Always Show All Output Devices";
@@ -215,7 +217,7 @@
 "bluetooth.authorizationDenied" = "Bluetooth permission is denied. Open Bluetooth Settings.";
 "bluetooth.authorizationRestricted" = "Bluetooth permission is restricted.";
 
-"settings.preview.hint" = "Live Menu Bar Preview · Adjust settings below to see changes immediately";
+"settings.preview.hint" = "Live Preview · Adjust settings below to see changes immediately";
 "settings.preview.dark" = "Dark Background";
 "settings.preview.light" = "Light Background";
 "settings.preview.toggleHelp" = "Toggle menu bar dark/light preview";
@@ -223,7 +225,7 @@
 "settings.audio.activeDeviceFootnote" = "The active audio output device is highlighted with the accent color.";
 "settings.audio.inUse" = "In Use";
 "settings.wifi.symbolScale" = "Wi-Fi Icon Size";
-"settings.wifi.symbolScaleDescription" = "Scales the Wi-Fi icon inside the menu bar ring from 100% to 180%.";
+"settings.wifi.symbolScaleDescription" = "Scales the Wi-Fi icon inside the status ring from 100% to 180%.";
 "settings.audio.indicatorStyleTitle" = "Volume Indicator Style";
 "settings.audio.indicatorStyle" = "Display Style";
 "settings.audio.indicatorStyleDescription" = "Choose whether volume displays as four discrete dots or a continuous bottom arc.";
