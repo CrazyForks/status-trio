@@ -1,82 +1,93 @@
+import AppKit
 import CoreAudio
 import Testing
 @testable import StatusTrioCore
 
 struct AudioOutputDeviceIconTests {
-    @Test("AirPods models use the matching AirPods symbol")
-    func airPodsModelsUseMatchingSymbol() {
-        #expect(
-            symbol(name: "Wong-Harry的AirPods Pro", transport: .bluetooth)
-                == "airpodspro"
-        )
-        #expect(symbol(name: "AirPods Max", transport: .bluetooth) == "airpodsmax")
-        #expect(symbol(name: "AirPods", transport: .bluetooth) == "airpods")
-        #expect(symbol(name: "airpods pro 3", transport: .bluetooth) == "airpodspro")
+    @Test("AirPods models use the symbol the system declares for their type")
+    func airPodsModelsUseSystemSymbol() {
+        #expect(candidates(name: "Wong-Harry的AirPods Pro", transport: .bluetooth).first == "airpods.pro.gen1")
+        #expect(candidates(name: "airpods pro 3", transport: .bluetooth).first == "airpods.pro.gen1")
+        #expect(candidates(name: "AirPods Max", transport: .bluetooth).first == "airpodsmax")
+        #expect(candidates(name: "AirPods", transport: .bluetooth).first == "airpods")
+        #expect(candidates(name: "AirPods (3rd generation)", transport: .bluetooth).first == "airpods.gen3")
+        #expect(candidates(name: "AirPods 第三代", transport: .bluetooth).first == "airpods.gen3")
     }
 
-    @Test("AirPods keep their symbol regardless of the reported transport")
-    func airPodsSymbolIgnoresTransport() {
-        #expect(symbol(name: "AirPods Pro", transport: nil) == "airpodspro")
-        #expect(symbol(name: "AirPods Pro", transport: .other) == "airpodspro")
+    @Test("Beats models use the symbol the system declares for their type")
+    func beatsModelsUseSystemSymbol() {
+        #expect(candidates(name: "Powerbeats Pro", transport: .bluetooth).first == "beats.powerbeatspro")
+        #expect(candidates(name: "Beats Studio Buds", transport: .bluetooth).first == "beats.studiobuds")
+        #expect(candidates(name: "Beats Fit Pro", transport: .bluetooth).first == "beats.fit.pro")
+        #expect(candidates(name: "BeatsX", transport: .bluetooth).first == "beats.earphones")
+        #expect(candidates(name: "Beats Studio3", transport: .bluetooth).first == "beats.headphones")
+    }
+
+    @Test("HomePod and Apple TV use the symbol the system declares")
+    func homePodAndAppleTVUseSystemSymbol() {
+        #expect(candidates(name: "HomePod mini", transport: .airPlay).first == "homepodmini")
+        #expect(candidates(name: "客厅 HomePod", transport: .airPlay).first == "homepod")
+        #expect(candidates(name: "客厅 Apple TV", transport: .airPlay).first == "appletv")
+    }
+
+    @Test("Speaker devices use the system speaker symbol")
+    func speakerDevicesUseSystemSymbol() {
+        #expect(candidates(name: "MacBook Pro扬声器", transport: .builtIn, dataSource: .internalSpeaker).first == "hifispeaker.fill")
+        #expect(candidates(name: "MacBook Pro Speakers", transport: .builtIn, dataSource: .externalSpeaker).first == "hifispeaker.fill")
+        #expect(candidates(name: "JBL Flip 6 Speaker", transport: .bluetooth).first == "hifispeaker.fill")
+        #expect(candidates(name: "客厅音箱", transport: .bluetooth).first == "hifispeaker.fill")
+        #expect(candidates(name: "FiiO K5 Pro", transport: .usb).first == "hifispeaker.fill")
+        #expect(candidates(name: "Background Music", transport: .virtual).first == "hifispeaker.fill")
+        #expect(candidates(name: nil, transport: nil).first == "hifispeaker.fill")
     }
 
     @Test("Built-in output follows its live data source")
     func builtInOutputFollowsDataSource() {
-        #expect(
-            symbol(name: "MacBook Pro扬声器", transport: .builtIn, dataSource: .internalSpeaker)
-                == "hifispeaker"
-        )
-        #expect(
-            symbol(name: "MacBook Pro扬声器", transport: .builtIn, dataSource: .headphones)
-                == "headphones"
-        )
-        #expect(
-            symbol(name: "MacBook Pro Speakers", transport: .builtIn, dataSource: .externalSpeaker)
-                == "hifispeaker"
-        )
+        #expect(candidates(name: "MacBook Pro扬声器", transport: .builtIn, dataSource: .headphones).first == "headphones")
+        #expect(candidates(name: "External Headphones", transport: .builtIn, dataSource: .other).first == "headphones")
     }
 
-    @Test("Display transports use the display symbol")
+    @Test("Displays use the display symbol")
     func displayTransportsUseDisplaySymbol() {
-        #expect(symbol(name: "XV272U", transport: .hdmi) == "display")
-        #expect(symbol(name: "DELL U2720Q", transport: .displayPort) == "display")
-        #expect(symbol(name: "客厅电视", transport: .hdmi) == "tv")
-        #expect(symbol(name: "Living Room TV", transport: .usb) == "tv")
+        #expect(candidates(name: "XV272U", transport: .hdmi).first == "display")
+        #expect(candidates(name: "DELL U2720Q", transport: .displayPort).first == "display")
+        #expect(candidates(name: "Studio Display", transport: .other).first == "display")
+        // No public device type describes a television, so the system shows the
+        // display icon for anything that is not an Apple TV.
+        #expect(candidates(name: "客厅电视", transport: .hdmi).first == "display")
+        #expect(candidates(name: "Living Room TV", transport: .hdmi).first == "display")
     }
 
     @Test("Bluetooth audio defaults to headphones but honors speaker names")
     func bluetoothAudioClassification() {
-        #expect(symbol(name: "EDIFIER LolliPods 2022版", transport: .bluetooth) == "headphones")
-        #expect(symbol(name: "Jabra Evolve2", transport: .bluetoothLowEnergy) == "headphones")
-        #expect(symbol(name: "JBL Flip 6 Speaker", transport: .bluetooth) == "hifispeaker")
-        #expect(symbol(name: "客厅音箱", transport: .bluetooth) == "hifispeaker")
+        #expect(candidates(name: "EDIFIER LolliPods 2022版", transport: .bluetooth).first == "headphones")
+        #expect(candidates(name: "Jabra Evolve2", transport: .bluetoothLowEnergy).first == "headphones")
+        #expect(candidates(name: "罗技 USB 耳机", transport: .usb).first == "headphones")
     }
 
-    @Test("Wired and USB audio hardware follows its name")
-    func wiredHardwareClassification() {
-        #expect(symbol(name: "External Headphones", transport: .builtIn, dataSource: .other) == "headphones")
-        #expect(symbol(name: "罗技 USB 耳机", transport: .usb) == "headphones")
-        #expect(symbol(name: "FiiO K5 Pro", transport: .usb) == "hifispeaker")
-        #expect(symbol(name: "Aggregate Device", transport: .aggregate) == "hifispeaker")
+    @Test("Every device class resolves to a symbol the running system ships")
+    func everyKindResolvesToAnAvailableSymbol() {
+        for kind in AudioOutputDeviceKind.allCases {
+            let candidates = AudioOutputDeviceIcon.symbolCandidates(for: kind)
+            let resolved = AudioOutputDeviceIcon.symbolName(for: kind)
+
+            #expect(!candidates.isEmpty, "\(kind)")
+            #expect(candidates.contains(resolved), "\(kind) resolved \(resolved)")
+            #expect(
+                NSImage(systemSymbolName: resolved, accessibilityDescription: nil) != nil,
+                "\(kind) produced the unavailable symbol \(resolved)"
+            )
+        }
     }
 
-    @Test("AirPlay and HomePod use their own symbols")
-    func airPlayAndHomePodSymbols() {
-        #expect(symbol(name: "客厅", transport: .airPlay) == "airplayaudio")
-        #expect(symbol(name: "客厅 HomePod", transport: .airPlay) == "homepod")
-    }
-
-    @Test("Current devices use the filled symbol when one exists")
-    func currentDevicesUseFilledSymbol() {
-        #expect(symbol(name: "MacBook Pro扬声器", transport: .builtIn, isCurrent: true) == "hifispeaker.fill")
-        #expect(symbol(name: "HomePod", transport: .airPlay, isCurrent: true) == "homepod.fill")
-        #expect(symbol(name: "AirPods Pro", transport: .bluetooth, isCurrent: true) == "airpodspro")
-    }
-
-    @Test("Devices without a known type keep the speaker symbol")
-    func unknownDevicesKeepSpeakerSymbol() {
-        #expect(symbol(name: "Background Music", transport: .virtual) == "hifispeaker")
-        #expect(symbol(name: nil, transport: nil) == "hifispeaker")
+    @Test("Older releases fall back to a symbol that always exists")
+    func olderReleasesFallBackToAvailableSymbols() {
+        // `airpods.pro.gen1` only exists on newer macOS releases, so each class
+        // keeps an older symbol last in the list.
+        #expect(AudioOutputDeviceIcon.symbolCandidates(for: .airPodsPro).last == "headphones")
+        #expect(AudioOutputDeviceIcon.symbolCandidates(for: .airPodsGen3).last == "headphones")
+        #expect(AudioOutputDeviceIcon.symbolCandidates(for: .speaker).last == "hifispeaker")
+        #expect(AudioOutputDeviceIcon.symbolCandidates(for: .appleTV).last == "display")
     }
 
     @Test("CoreAudio transport values map to their families")
@@ -109,19 +120,20 @@ struct AudioOutputDeviceIconTests {
         #expect(AudioOutputDataSource(coreAudioValue: 0) == .other)
     }
 
-    private func symbol(
+    private func candidates(
         name: String?,
         transport: AudioOutputTransport?,
-        dataSource: AudioOutputDataSource? = nil,
-        isCurrent: Bool = false
-    ) -> String {
-        AudioOutputDeviceIcon.symbolName(
-            for: AudioOutputDevice(
-                id: 1,
-                name: name,
-                isCurrent: isCurrent,
-                transport: transport,
-                dataSource: dataSource
+        dataSource: AudioOutputDataSource? = nil
+    ) -> [String] {
+        AudioOutputDeviceIcon.symbolCandidates(
+            for: AudioOutputDeviceIcon.kind(
+                for: AudioOutputDevice(
+                    id: 1,
+                    name: name,
+                    isCurrent: false,
+                    transport: transport,
+                    dataSource: dataSource
+                )
             )
         )
     }

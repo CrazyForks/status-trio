@@ -4,34 +4,62 @@ The volume output list shows one icon per device. Issue
 [#12](https://github.com/lingyired/status-trio/issues/12) reported that every
 device rendered as a speaker, including connected AirPods.
 
-## Which APIs exist
+## Where the system keeps its icon table
 
-There is no public API that returns the exact icon the system volume menu draws.
-The public CoreAudio properties that describe an output device are:
+The system UI does not hard-code device glyphs. It resolves a device type, then
+reads the matching symbol from
+`/System/Library/CoreServices/CoreTypes.bundle/Contents/Info.plist`, whose
+`UTTypeSymbolName` keys are the SF Symbols the system draws:
+
+| Device type | Symbol |
+| --- | --- |
+| `public.speaker` | `hifispeaker.fill` |
+| `public.display` | `display` |
+| `com.apple.accessory.headphones` | `headphones` |
+| `com.apple.airpods` | `airpods` |
+| `com.apple.airpods-gen3` | `airpods.gen3` |
+| `com.apple.airpods-pro` | `airpods.pro.gen1` |
+| `com.apple.airpods-max` | `airpodsmax` |
+| `com.apple.beats-*` | `beats.headphones`, `beats.powerbeatspro`, `beats.studiobuds`, `beats.fit.pro`, `beats.earphones` |
+| `com.apple.homepod`, `com.apple.homepod-mini` | `homepod`, `homepodmini` |
+| `com.apple.apple-tv` | `appletv` |
+
+`AudioOutputDeviceIcon` uses those exact symbol names, so the app draws what the
+system draws for the same device class. Note that the system always uses the
+filled speaker glyph; the app distinguishes the selected device with its accent
+circle instead of a second symbol.
+
+Several of those symbols are recent additions. `airpods.pro.gen1` ships with
+macOS 26, so every class also carries an older fallback and
+`AudioOutputDeviceIcon.symbolName(for:)` returns the first symbol the running
+system actually provides. That keeps macOS 15 correct instead of blank.
+
+## How a device is classified
+
+Two public CoreAudio properties describe an output device:
 
 | Property | Scope | What it reports |
 | --- | --- | --- |
-| `kAudioDevicePropertyTransportType` | global | Hardware family of the device: `bltn`, `blue`, `blea`, `usb `, `hdmi`, `dprt`, `thun`, `airp`, `grup`, `virt`, and others |
-| `kAudioDevicePropertyDataSource` | output | The live output source on built-in hardware: `ispk` internal speakers, `hdpn` headphones, `espk` external speakers |
+| `kAudioDevicePropertyTransportType` | global | Hardware family: `bltn` built-in, `blue`/`blea` Bluetooth, `usb `, `hdmi`, `dprt` display, `thun`, `airp`, `grup`, `virt` |
+| `kAudioDevicePropertyDataSource` | output | Live source on built-in hardware: `ispk` internal speakers, `hdpn` headphones, `espk` external speakers |
 
-`kAudioDevicePropertyDataSource` is what lets a built-in output device show the
+`kAudioDevicePropertyDataSource` is what lets a built-in output show the
 headphones icon while something is plugged into the headphone jack, matching the
 system menu.
 
 ## What stays name based
 
-The system volume menu tells AirPods Pro, AirPods Max, AirPods, and other Apple
-accessories apart with a private Bluetooth product-ID table. `ControlCenter`
-contains strings such as:
+The system picks the Apple accessory type from a private Bluetooth product-ID
+table. `ControlCenter` contains strings such as:
 
 ```
 Unable to find device class for productID: %{public}x, fallback to default headphones symbol
 ```
 
 Third-party apps cannot read that product ID through a public API, so the
-AirPods, HomePod, and display/TV names remain name based fallbacks. Bluetooth
-audio devices that are not recognized by name default to the headphones symbol,
-because Bluetooth audio is overwhelmingly headphones and earbuds.
+AirPods, Beats, HomePod, and Apple TV model names remain name based. Bluetooth
+audio that is not recognized by name defaults to the headphones symbol, because
+Bluetooth audio is overwhelmingly headphones and earbuds.
 
 ## Where the mapping lives
 

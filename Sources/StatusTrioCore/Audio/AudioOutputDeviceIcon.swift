@@ -1,3 +1,4 @@
+import AppKit
 import CoreAudio
 
 /// The device family reported by `kAudioDevicePropertyTransportType`.
@@ -71,41 +72,91 @@ enum AudioOutputDataSource: Equatable, Sendable {
 }
 
 /// The output device classes the system volume menu distinguishes.
-enum AudioOutputDeviceKind: Equatable, Sendable {
+///
+/// The cases mirror the device types declared in
+/// `/System/Library/CoreServices/CoreTypes.bundle`, the table the system UI
+/// resolves its own device icons from. `public.speaker` declares
+/// `hifispeaker.fill`, `public.display` declares `display`, and
+/// `com.apple.airpods-pro` declares `airpods.pro.gen1`.
+enum AudioOutputDeviceKind: CaseIterable, Equatable, Sendable {
     case airPodsPro
-    case airPodsMax
+    case airPodsGen3
     case airPods
-    case headphones
+    case airPodsMax
+    case beatsPowerbeatsPro
+    case beatsPowerbeats
+    case beatsStudioBuds
+    case beatsFitPro
+    case beatsEarphones
+    case beatsHeadphones
+    case homePodMini
     case homePod
-    case builtInSpeaker
-    case externalSpeaker
+    case headphones
+    case speaker
     case display
-    case television
-    case airPlay
+    case appleTV
 }
 
-/// Picks the SF Symbol that matches an output device, the same way the system
-/// volume menu picks its own icons.
+/// Picks the SF Symbol that matches an output device, using the symbol names
+/// the system volume menu resolves for the same device class.
 enum AudioOutputDeviceIcon {
     static func symbolName(for device: AudioOutputDevice) -> String {
-        symbolName(for: kind(for: device), isCurrent: device.isCurrent)
+        symbolName(for: kind(for: device))
+    }
+
+    static func symbolName(for kind: AudioOutputDeviceKind) -> String {
+        let candidates = symbolCandidates(for: kind)
+        return candidates.first {
+            NSImage(systemSymbolName: $0, accessibilityDescription: nil) != nil
+        } ?? candidates.last ?? "hifispeaker.fill"
+    }
+
+    /// The SF Symbol names for a device class, most faithful to the system
+    /// first. The last entry exists on the oldest supported macOS release, so a
+    /// symbol the running system does not ship never renders as a blank icon.
+    static func symbolCandidates(for kind: AudioOutputDeviceKind) -> [String] {
+        switch kind {
+        case .airPodsPro:
+            ["airpods.pro.gen1", "airpodspro", "headphones"]
+        case .airPodsGen3:
+            ["airpods.gen3", "airpods", "headphones"]
+        case .airPods:
+            ["airpods", "headphones"]
+        case .airPodsMax:
+            ["airpodsmax", "headphones"]
+        case .beatsPowerbeatsPro:
+            ["beats.powerbeatspro", "beats.powerbeats.pro", "beats.headphones", "headphones"]
+        case .beatsPowerbeats:
+            ["beats.powerbeats", "beats.headphones", "headphones"]
+        case .beatsStudioBuds:
+            ["beats.studiobuds", "beats.headphones", "headphones"]
+        case .beatsFitPro:
+            ["beats.fit.pro", "beats.fitpro", "beats.headphones", "headphones"]
+        case .beatsEarphones:
+            ["beats.earphones", "beats.headphones", "headphones"]
+        case .beatsHeadphones:
+            ["beats.headphones", "headphones"]
+        case .homePodMini:
+            ["homepodmini", "homepod", "hifispeaker.fill"]
+        case .homePod:
+            ["homepod", "hifispeaker.fill"]
+        case .headphones:
+            ["headphones"]
+        case .speaker:
+            ["hifispeaker.fill", "hifispeaker"]
+        case .display:
+            ["display"]
+        case .appleTV:
+            ["appletv", "display"]
+        }
     }
 
     static func kind(for device: AudioOutputDevice) -> AudioOutputDeviceKind {
         let name = (device.name ?? "").lowercased()
 
         // Model families that no public CoreAudio property identifies.
-        if name.contains("airpods max") {
-            return .airPodsMax
-        }
-        if name.contains("airpods pro") {
-            return .airPodsPro
-        }
-        if name.contains("airpods") {
-            return .airPods
-        }
-        if name.contains("homepod") {
-            return .homePod
+        if let family = appleOrBeatsFamily(in: name) {
+            return family
         }
 
         if isHeadphoneName(name) {
@@ -114,45 +165,73 @@ enum AudioOutputDeviceIcon {
 
         // A built-in device reports whether its jack or its speakers are live.
         if device.transport == .builtIn {
-            return device.dataSource == .headphones ? .headphones : .builtInSpeaker
+            return device.dataSource == .headphones ? .headphones : .speaker
         }
 
-        if isTelevisionName(name) {
-            return .television
-        }
-        if isDisplayName(name) {
+        if isDisplayName(name) || isTelevisionName(name) {
             return .display
         }
         if isSpeakerName(name) {
-            return .externalSpeaker
+            return .speaker
         }
 
         switch device.transport {
         case .hdmi, .displayPort:
             return .display
-        case .airPlay:
-            return .airPlay
         case .bluetooth, .bluetoothLowEnergy:
             // Bluetooth audio is overwhelmingly headphones or earbuds; speakers
             // are caught by their name above.
             return .headphones
         default:
-            return .externalSpeaker
+            return .speaker
         }
     }
 
-    static func symbolName(for kind: AudioOutputDeviceKind, isCurrent: Bool) -> String {
-        switch kind {
-        case .airPodsPro: "airpodspro"
-        case .airPodsMax: "airpodsmax"
-        case .airPods: "airpods"
-        case .headphones: "headphones"
-        case .homePod: isCurrent ? "homepod.fill" : "homepod"
-        case .builtInSpeaker, .externalSpeaker: isCurrent ? "hifispeaker.fill" : "hifispeaker"
-        case .display: "display"
-        case .television: "tv"
-        case .airPlay: "airplayaudio"
+    private static func appleOrBeatsFamily(in name: String) -> AudioOutputDeviceKind? {
+        if name.contains("airpods max") {
+            return .airPodsMax
         }
+        if name.contains("airpods pro") {
+            return .airPodsPro
+        }
+        if name.contains("airpods") {
+            return isThirdGenerationAirPods(name) ? .airPodsGen3 : .airPods
+        }
+        if name.contains("homepod mini") || name.contains("homepodmini") {
+            return .homePodMini
+        }
+        if name.contains("homepod") {
+            return .homePod
+        }
+        if name.contains("apple tv") || name.contains("appletv") {
+            return .appleTV
+        }
+        if name.contains("beats") {
+            if name.contains("powerbeats pro") {
+                return .beatsPowerbeatsPro
+            }
+            if name.contains("powerbeats") {
+                return .beatsPowerbeats
+            }
+            if name.contains("studio buds") || name.contains("studiobuds") {
+                return .beatsStudioBuds
+            }
+            if name.contains("fit pro") {
+                return .beatsFitPro
+            }
+            if name.contains("beatsx") || name.contains("beats flex") || name.contains("beats fit") {
+                return .beatsEarphones
+            }
+            return .beatsHeadphones
+        }
+        return nil
+    }
+
+    private static func isThirdGenerationAirPods(_ name: String) -> Bool {
+        for keyword in ["3rd generation", "third generation", "gen3", "gen 3", "第三代", "3代"] where name.contains(keyword) {
+            return true
+        }
+        return false
     }
 
     private static func isHeadphoneName(_ name: String) -> Bool {
