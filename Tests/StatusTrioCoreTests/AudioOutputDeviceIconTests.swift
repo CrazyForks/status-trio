@@ -162,6 +162,42 @@ struct AudioOutputDeviceIconTests {
         #expect(AudioOutputDataSource(coreAudioValue: 0) == .other)
     }
 
+    @Test("A device icon shipped by the driver wins over the symbol")
+    func driverIconWinsOverSymbol() throws {
+        let iconURL = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("status-trio-device-icon-\(UUID().uuidString).icns")
+        defer { try? FileManager.default.removeItem(at: iconURL) }
+        try Data([0x69, 0x63, 0x6E, 0x73]).write(to: iconURL)
+
+        let withIcon = AudioOutputDevice(
+            id: 1,
+            name: "Background Music",
+            isCurrent: false,
+            transport: .virtual,
+            iconURL: iconURL
+        )
+        #expect(AudioOutputDeviceIcon.source(for: withIcon) == .image(iconURL))
+
+        // A device whose driver ships no image keeps the class symbol.
+        let withoutIcon = AudioOutputDevice(
+            id: 2,
+            name: "Background Music",
+            isCurrent: false,
+            transport: .virtual
+        )
+        #expect(AudioOutputDeviceIcon.source(for: withoutIcon) == .symbol("hifispeaker.fill"))
+
+        // A stale icon path falls back too.
+        let missingIcon = AudioOutputDevice(
+            id: 3,
+            name: "Background Music",
+            isCurrent: false,
+            transport: .virtual,
+            iconURL: iconURL.appendingPathComponent("missing.icns")
+        )
+        #expect(AudioOutputDeviceIcon.source(for: missingIcon) == .symbol("hifispeaker.fill"))
+    }
+
     private func candidates(
         name: String?,
         transport: AudioOutputTransport?,

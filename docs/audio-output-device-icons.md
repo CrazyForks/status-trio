@@ -49,6 +49,19 @@ to the headphones symbol.
 AirPlay outputs use `airplayaudio`, the AirPlay glyph, unless the device name
 identifies an Apple TV (`appletv`) or a HomePod (`homepod`, `homepodmini`).
 
+## Driver supplied icons
+
+`kAudioDevicePropertyIcon` is an optional public property that returns a
+`CFURLRef` to an image file the driver ships. HAL plugin devices use it, for
+example `Background Music` points at
+`/Library/Audio/Plug-Ins/HAL/Background Music Device.driver/Contents/Resources/DeviceIcon.icns`.
+Built-in hardware and most USB devices do not provide it and return
+`kAudioHardwareUnknownPropertyError` instead.
+
+`AudioOutputDeviceIcon.source(for:)` therefore returns the driver image when the
+file exists and the class symbol otherwise. `AudioOutputDeviceIconView` draws
+that image as a template so it takes the same tint as the symbol it replaces.
+
 Several of those symbols are recent additions. `airpods.pro.gen1` ships with
 macOS 26, so every class also carries an older fallback and
 `AudioOutputDeviceIcon.symbolName(for:)` returns the first symbol the running

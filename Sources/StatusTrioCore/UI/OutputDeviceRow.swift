@@ -14,8 +14,7 @@ struct OutputDeviceRow: View {
                     Circle()
                         .fill(device.isCurrent ? Color.accentColor : Color.secondary.opacity(0.14))
 
-                    Image(systemName: AudioOutputDeviceIcon.symbolName(for: device))
-                        .font(.system(size: 13, weight: .semibold))
+                    AudioOutputDeviceIconView(device: device)
                         .foregroundStyle(device.isCurrent ? Color.white : Color.secondary)
                 }
                 .frame(width: 28, height: 28)

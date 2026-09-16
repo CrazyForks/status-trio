@@ -28,7 +28,8 @@ final class CoreAudioOutputController: AudioOutputControlling {
                     isCurrent: deviceID == currentDeviceID,
                     volume: volume(for: deviceID),
                     transport: transport(for: deviceID),
-                    dataSource: dataSource(for: deviceID)
+                    dataSource: dataSource(for: deviceID),
+                    iconURL: iconURL(for: deviceID)
                 )
             }
             .sorted { lhs, rhs in
@@ -231,6 +232,27 @@ final class CoreAudioOutputController: AudioOutputControlling {
             element: kAudioObjectPropertyElementMain
         )
         .map { AudioOutputDataSource(coreAudioValue: $0) }
+    }
+
+    /// `kAudioDevicePropertyIcon` is an optional CFURLRef to an image file the
+    /// driver ships for the device, for example the icon of a HAL plugin.
+    private func iconURL(for deviceID: AudioDeviceID) -> URL? {
+        var address = propertyAddress(selector: kAudioDevicePropertyIcon)
+        guard AudioObjectHasProperty(deviceID, &address) else { return nil }
+
+        var icon: Unmanaged<CFURL>?
+        var dataSize = UInt32(MemoryLayout<Unmanaged<CFURL>?>.size)
+        let status = AudioObjectGetPropertyData(
+            deviceID,
+            &address,
+            0,
+            nil,
+            &dataSize,
+            &icon
+        )
+
+        guard status == noErr, let icon else { return nil }
+        return icon.takeRetainedValue() as URL
     }
 
     private func stringProperty(

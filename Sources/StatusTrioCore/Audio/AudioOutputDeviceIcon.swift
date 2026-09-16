@@ -1,6 +1,7 @@
 import AppKit
 import CoreAudio
 import Darwin
+import Foundation
 
 /// The device family reported by `kAudioDevicePropertyTransportType`.
 ///
@@ -177,11 +178,35 @@ enum AudioOutputDeviceKind: CaseIterable, Equatable, Sendable {
     case airPlay
 }
 
+/// What to draw for an output device: the image the driver ships, or an
+/// SF Symbol.
+enum AudioOutputDeviceIconSource: Equatable, Sendable {
+    case image(URL)
+    case symbol(String)
+}
+
 /// Picks the SF Symbol that matches an output device, using the symbol names
 /// the system volume menu resolves for the same device class.
 enum AudioOutputDeviceIcon {
     static func symbolName(for device: AudioOutputDevice) -> String {
         symbolName(for: kind(for: device), host: HostMacKind(deviceName: device.name))
+    }
+
+    /// Prefers the icon the driver ships for the device, which is what the
+    /// system shows for HAL plugins such as Background Music, and falls back to
+    /// the SF Symbol for the device class.
+    static func source(
+        for device: AudioOutputDevice,
+        host: HostMacKind = .current
+    ) -> AudioOutputDeviceIconSource {
+        if let iconURL = device.iconURL,
+           FileManager.default.fileExists(atPath: iconURL.path) {
+            return .image(iconURL)
+        }
+        let deviceKind = kind(for: device)
+        return .symbol(
+            symbolName(for: deviceKind, host: HostMacKind(deviceName: device.name, host: host))
+        )
     }
 
     static func symbolName(for kind: AudioOutputDeviceKind, host: HostMacKind = .current) -> String {
