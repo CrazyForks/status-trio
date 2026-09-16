@@ -145,8 +145,9 @@ struct WiFiNetworkListView: View {
                 .foregroundStyle(.secondary)
         case .permissionDenied:
             Button(localization.string(.wifiPermissionDenied), action: onOpenLocationSettings)
-                .buttonStyle(.link)
+                .buttonStyle(.plain)
                 .font(.caption)
+                .foregroundStyle(.secondary)
         case .failed:
             Text(localization.string(.wifiScanFailed))
                 .font(.caption)

@@ -68,8 +68,9 @@ struct WiFiStatusView: View {
         } else if wifi.state.isNetworkAssociated
                     && (wifi.nameAccess == .denied || wifi.nameAccess == .restricted) {
             Button(localization.string(.wifiActionOpenLocationSettings), action: onOpenLocationSettings)
-                .buttonStyle(.link)
+                .buttonStyle(.plain)
                 .font(.caption)
+                .foregroundStyle(.secondary)
                 .lineLimit(1)
         } else {
             Text(StatusPresentation.wifiSubtitle(wifi, localization: localization))
