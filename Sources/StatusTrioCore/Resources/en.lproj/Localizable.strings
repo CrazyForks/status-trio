@@ -140,6 +140,17 @@
 "settings.popup.order.description" = "Choose which items appear in the status panel and drag to change their order.";
 "settings.popup.order.battery" = "Battery";
 "settings.popup.order.volume" = "Volume";
+"settings.popup.volumeScroll.group" = "Panel Scrolling";
+"settings.popup.volumeScroll" = "Adjust Volume by Scrolling";
+"settings.popup.volumeScroll.description" = "Scroll inside the status panel to change the output volume.";
+"settings.popup.volumeScroll.scope" = "Adjustment Area";
+"settings.popup.volumeScroll.scope.description" = "Choose where the scroll gesture changes the volume.";
+"settings.popup.volumeScroll.scope.panel" = "Whole Panel";
+"settings.popup.volumeScroll.scope.volumeControl" = "Volume Control Only";
+"settings.popup.volumeScroll.direction" = "Scroll Direction";
+"settings.popup.volumeScroll.direction.description" = "Choose the direction that turns the volume up.";
+"settings.popup.volumeScroll.direction.up" = "Scroll Up";
+"settings.popup.volumeScroll.direction.down" = "Scroll Down";
 
 "common.back" = "Back";
 "common.cancel" = "Cancel";

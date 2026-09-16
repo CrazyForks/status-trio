@@ -140,6 +140,17 @@
 "settings.popup.order.description" = "ステータスパネルに表示する項目を選択し、ドラッグして順序を変更します。";
 "settings.popup.order.battery" = "バッテリー";
 "settings.popup.order.volume" = "音量";
+"settings.popup.volumeScroll.group" = "パネルのスクロール";
+"settings.popup.volumeScroll" = "スクロールで音量を調整";
+"settings.popup.volumeScroll.description" = "ステータスパネル内をスクロールすると出力音量を変更できます。";
+"settings.popup.volumeScroll.scope" = "適用範囲";
+"settings.popup.volumeScroll.scope.description" = "スクロールで音量を変更する範囲を選びます。";
+"settings.popup.volumeScroll.scope.panel" = "パネル全体";
+"settings.popup.volumeScroll.scope.volumeControl" = "音量コントロールのみ";
+"settings.popup.volumeScroll.direction" = "スクロール方向";
+"settings.popup.volumeScroll.direction.description" = "音量を上げるスクロール方向を選びます。";
+"settings.popup.volumeScroll.direction.up" = "上スクロール";
+"settings.popup.volumeScroll.direction.down" = "下スクロール";
 
 "common.back" = "Back";
 "common.cancel" = "Cancel";

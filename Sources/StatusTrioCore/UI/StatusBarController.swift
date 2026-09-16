@@ -45,6 +45,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     private var volumeScrollMonitor: Any?
     private let volumeScrollAdjustment = PopupVolumeScrollAdjustment()
     private var volumeScrollSession = PopupVolumeScrollSession()
+    private let popoverScrollTargets = PopoverScrollTargets()
     private var dockAnchorWindow: NSWindow?
     private var popoverToggleGate = PopoverToggleGate(
         lockout: StatusBarController.popoverToggleLockoutInterval
@@ -264,6 +265,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             StatusPopoverView(
                 store: store,
                 settings: settings,
+                scrollTargets: popoverScrollTargets,
                 requestWiFiNameAccess: handleRequestWiFiNameAccess,
                 requestBluetoothAuthorization: handleRequestBluetoothAuthorization,
                 openBatterySettings: handleOpenBatterySettings,
@@ -411,8 +413,10 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
 
     private func shouldConsumeVolumeScrollWheel(_ event: NSEvent) -> Bool {
         guard event.window === popover.contentViewController?.view.window,
+              settings.popupScrollAdjustsVolume,
               store.isVolumeControlAvailable,
-              !isPointerOverScrollView(event) else {
+              !isPointerOverScrollView(event),
+              isPointerInsideVolumeScrollArea(event) else {
             return false
         }
         guard event.momentumPhase.isEmpty else { return true }
@@ -425,7 +429,9 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         }
         let delta = volumeScrollAdjustment.volumeDelta(
             deltaY: Double(event.scrollingDeltaY),
-            isPrecise: event.hasPreciseScrollingDeltas
+            isPrecise: event.hasPreciseScrollingDeltas,
+            isDirectionInverted: event.isDirectionInvertedFromDevice,
+            direction: settings.popupVolumeScrollDirection
         )
         guard let delta else { return true }
 
@@ -441,6 +447,16 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         }
         store.setVolume(nextScalar)
         return true
+    }
+
+    /// Scroll targeting only narrows the gesture area; the whole panel stays
+    /// valid when the preference is left at its default.
+    private func isPointerInsideVolumeScrollArea(_ event: NSEvent) -> Bool {
+        guard settings.popupVolumeScrollScope == .volumeControl else { return true }
+        return popoverScrollTargets.containsVolumeControl(
+            at: event.locationInWindow,
+            in: event.window
+        )
     }
 
     private func isPointerOverScrollView(_ event: NSEvent) -> Bool {

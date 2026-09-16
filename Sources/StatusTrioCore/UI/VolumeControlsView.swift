@@ -3,6 +3,7 @@ import SwiftUI
 struct VolumeControlsView: View {
     @EnvironmentObject private var localization: Localization
     @ObservedObject var settings: SettingsStore
+    let scrollTargets: PopoverScrollTargets
     let volume: VolumeStatus
     let isEnabled: Bool
     let onVolumeChange: (Double) -> Void
@@ -67,6 +68,9 @@ struct VolumeControlsView: View {
                     .foregroundStyle(.secondary)
                     .accessibilityHidden(true)
             }
+            // Only the control row is a scroll target; the output device list
+            // below stays a normal list.
+            .background(VolumeControlScrollTarget(targets: scrollTargets))
 
             Divider()
 

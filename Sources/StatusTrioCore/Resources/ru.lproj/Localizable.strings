@@ -140,6 +140,17 @@
 "settings.popup.order.description" = "Выберите элементы, отображаемые на панели состояния, и перетаскивайте их, чтобы изменить порядок.";
 "settings.popup.order.battery" = "Аккумулятор";
 "settings.popup.order.volume" = "Громкость";
+"settings.popup.volumeScroll.group" = "Прокрутка панели";
+"settings.popup.volumeScroll" = "Регулировать громкость прокруткой";
+"settings.popup.volumeScroll.description" = "Прокручивайте внутри панели состояния, чтобы изменить громкость вывода.";
+"settings.popup.volumeScroll.scope" = "Область";
+"settings.popup.volumeScroll.scope.description" = "Выберите, где прокрутка изменяет громкость.";
+"settings.popup.volumeScroll.scope.panel" = "Вся панель";
+"settings.popup.volumeScroll.scope.volumeControl" = "Только регулятор громкости";
+"settings.popup.volumeScroll.direction" = "Направление прокрутки";
+"settings.popup.volumeScroll.direction.description" = "Выберите направление, увеличивающее громкость.";
+"settings.popup.volumeScroll.direction.up" = "Вверх";
+"settings.popup.volumeScroll.direction.down" = "Вниз";
 
 "common.back" = "Back";
 "common.cancel" = "Cancel";

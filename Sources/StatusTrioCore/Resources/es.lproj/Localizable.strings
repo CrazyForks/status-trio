@@ -140,6 +140,17 @@
 "settings.popup.order.description" = "Elige qué elementos aparecen en el panel de estado y arrástralos para cambiar su orden.";
 "settings.popup.order.battery" = "Batería";
 "settings.popup.order.volume" = "Volumen";
+"settings.popup.volumeScroll.group" = "Desplazamiento del panel";
+"settings.popup.volumeScroll" = "Ajustar el volumen desplazándose";
+"settings.popup.volumeScroll.description" = "Desplázate dentro del panel de estado para cambiar el volumen de salida.";
+"settings.popup.volumeScroll.scope" = "Área";
+"settings.popup.volumeScroll.scope.description" = "Elige dónde cambia el volumen el gesto de desplazamiento.";
+"settings.popup.volumeScroll.scope.panel" = "Todo el panel";
+"settings.popup.volumeScroll.scope.volumeControl" = "Solo el control de volumen";
+"settings.popup.volumeScroll.direction" = "Dirección del desplazamiento";
+"settings.popup.volumeScroll.direction.description" = "Elige la dirección que sube el volumen.";
+"settings.popup.volumeScroll.direction.up" = "Hacia arriba";
+"settings.popup.volumeScroll.direction.down" = "Hacia abajo";
 
 "common.back" = "Back";
 "common.cancel" = "Cancel";

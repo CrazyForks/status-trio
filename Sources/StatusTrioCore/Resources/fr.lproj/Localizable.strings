@@ -140,6 +140,17 @@
 "settings.popup.order.description" = "Choisissez les éléments affichés dans le panneau d’état, puis faites-les glisser pour modifier leur ordre.";
 "settings.popup.order.battery" = "Batterie";
 "settings.popup.order.volume" = "Volume";
+"settings.popup.volumeScroll.group" = "Défilement du panneau";
+"settings.popup.volumeScroll" = "Régler le volume en défilant";
+"settings.popup.volumeScroll.description" = "Faites défiler dans le panneau d’état pour changer le volume de sortie.";
+"settings.popup.volumeScroll.scope" = "Zone";
+"settings.popup.volumeScroll.scope.description" = "Choisissez la zone où le défilement modifie le volume.";
+"settings.popup.volumeScroll.scope.panel" = "Tout le panneau";
+"settings.popup.volumeScroll.scope.volumeControl" = "Réglage du volume uniquement";
+"settings.popup.volumeScroll.direction" = "Sens du défilement";
+"settings.popup.volumeScroll.direction.description" = "Choisissez le sens qui augmente le volume.";
+"settings.popup.volumeScroll.direction.up" = "Vers le haut";
+"settings.popup.volumeScroll.direction.down" = "Vers le bas";
 
 "common.back" = "Back";
 "common.cancel" = "Cancel";

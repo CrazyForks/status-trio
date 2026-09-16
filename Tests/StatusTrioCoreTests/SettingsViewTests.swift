@@ -49,6 +49,10 @@ final class SettingsViewTests: XCTestCase {
                 store: store,
                 statusStore: statusStore,
                 previewIsDark: isDark
+            ))),
+            ("popover", AnyView(PopoverSectionView(
+                store: store,
+                statusStore: statusStore
             )))
         ]
 

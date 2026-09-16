@@ -140,6 +140,17 @@
 "settings.popup.order.description" = "اختر العناصر التي تظهر في لوحة الحالة واسحب لتغيير ترتيبها.";
 "settings.popup.order.battery" = "البطارية";
 "settings.popup.order.volume" = "مستوى الصوت";
+"settings.popup.volumeScroll.group" = "تمرير اللوحة";
+"settings.popup.volumeScroll" = "ضبط مستوى الصوت بالتمرير";
+"settings.popup.volumeScroll.description" = "مرّر داخل لوحة الحالة لتغيير مستوى صوت الإخراج.";
+"settings.popup.volumeScroll.scope" = "النطاق";
+"settings.popup.volumeScroll.scope.description" = "اختر المكان الذي يؤدي فيه التمرير إلى تغيير مستوى الصوت.";
+"settings.popup.volumeScroll.scope.panel" = "اللوحة بالكامل";
+"settings.popup.volumeScroll.scope.volumeControl" = "أداة مستوى الصوت فقط";
+"settings.popup.volumeScroll.direction" = "اتجاه التمرير";
+"settings.popup.volumeScroll.direction.description" = "اختر الاتجاه الذي يرفع مستوى الصوت.";
+"settings.popup.volumeScroll.direction.up" = "للأعلى";
+"settings.popup.volumeScroll.direction.down" = "للأسفل";
 
 "common.back" = "Back";
 "common.cancel" = "Cancel";

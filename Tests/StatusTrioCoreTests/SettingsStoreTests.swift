@@ -362,6 +362,56 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(store.popupSectionOrder, [.battery, .network, .bluetooth, .volume])
     }
 
+    func testPopupVolumeScrollDefaultsToEverywhereAndScrollUp() {
+        let store = SettingsStore(defaults: makeSuite().defaults)
+
+        XCTAssertTrue(store.popupScrollAdjustsVolume)
+        XCTAssertEqual(store.popupVolumeScrollScope, .panel)
+        XCTAssertEqual(store.popupVolumeScrollDirection, .up)
+    }
+
+    func testPopupVolumeScrollChoicesPersistAcrossStoreInstances() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+
+        let first = SettingsStore(defaults: suite.defaults)
+        first.popupScrollAdjustsVolume = false
+        first.popupVolumeScrollScope = .volumeControl
+        first.popupVolumeScrollDirection = .down
+
+        let second = SettingsStore(defaults: suite.defaults)
+        XCTAssertFalse(second.popupScrollAdjustsVolume)
+        XCTAssertEqual(second.popupVolumeScrollScope, .volumeControl)
+        XCTAssertEqual(second.popupVolumeScrollDirection, .down)
+    }
+
+    func testUnknownStoredPopupVolumeScrollValuesFallBackToDefaults() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+        suite.defaults.set(
+            "nowhere",
+            forKey: SettingsStore.popupVolumeScrollScopeDefaultsKey
+        )
+        suite.defaults.set(
+            "sideways",
+            forKey: SettingsStore.popupVolumeScrollDirectionDefaultsKey
+        )
+
+        let store = SettingsStore(defaults: suite.defaults)
+
+        XCTAssertEqual(store.popupVolumeScrollScope, .panel)
+        XCTAssertEqual(store.popupVolumeScrollDirection, .up)
+    }
+
+    func testPopupVolumeScrollOptionsExposeStableChoices() {
+        XCTAssertEqual(PopupVolumeScrollScope.allCases, [.panel, .volumeControl])
+        XCTAssertEqual(PopupVolumeScrollDirection.allCases, [.up, .down])
+        XCTAssertEqual(PopupVolumeScrollScope.panel.id, .panel)
+        XCTAssertEqual(PopupVolumeScrollDirection.up.id, .up)
+        XCTAssertTrue(PopupVolumeScrollDirection.up.increasesWithScrollUp)
+        XCTAssertFalse(PopupVolumeScrollDirection.down.increasesWithScrollUp)
+    }
+
     func testPopupSectionVisibilityDefaultsToEverythingExceptBluetooth() {
         let store = SettingsStore(defaults: makeSuite().defaults)
 

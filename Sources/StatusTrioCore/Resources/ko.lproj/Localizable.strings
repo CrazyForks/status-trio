@@ -140,6 +140,17 @@
 "settings.popup.order.description" = "상태 패널에 표시할 항목을 선택하고 드래그하여 순서를 변경하십시오.";
 "settings.popup.order.battery" = "배터리";
 "settings.popup.order.volume" = "볼륨";
+"settings.popup.volumeScroll.group" = "패널 스크롤";
+"settings.popup.volumeScroll" = "스크롤로 볼륨 조절";
+"settings.popup.volumeScroll.description" = "상태 패널 안에서 스크롤하면 출력 볼륨이 바뀝니다.";
+"settings.popup.volumeScroll.scope" = "적용 범위";
+"settings.popup.volumeScroll.scope.description" = "스크롤로 볼륨을 바꿀 위치를 선택합니다.";
+"settings.popup.volumeScroll.scope.panel" = "패널 전체";
+"settings.popup.volumeScroll.scope.volumeControl" = "볼륨 컨트롤만";
+"settings.popup.volumeScroll.direction" = "스크롤 방향";
+"settings.popup.volumeScroll.direction.description" = "볼륨을 높이는 스크롤 방향을 선택합니다.";
+"settings.popup.volumeScroll.direction.up" = "위로 스크롤";
+"settings.popup.volumeScroll.direction.down" = "아래로 스크롤";
 
 "common.back" = "Back";
 "common.cancel" = "Cancel";

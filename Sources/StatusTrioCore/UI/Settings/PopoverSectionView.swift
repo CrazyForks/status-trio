@@ -9,6 +9,7 @@ struct PopoverSectionView: View {
     var body: some View {
         SettingsPage {
             popupOrderGroup
+            volumeScrollGroup
         }
     }
 
@@ -65,6 +66,62 @@ struct PopoverSectionView: View {
                 statusStore.setBluetoothEnabled(enabled)
             }
         )
+    }
+
+    private var volumeScrollGroup: some View {
+        SettingsGroup(localization.string(.settingsPopupVolumeScrollGroup)) {
+            SettingsToggleRow(
+                symbol: "speaker.wave.2.fill",
+                tint: .cyan,
+                title: localization.string(.settingsPopupVolumeScroll),
+                subtitle: localization.string(.settingsPopupVolumeScrollDescription),
+                isOn: $store.popupScrollAdjustsVolume
+            )
+
+            if store.popupScrollAdjustsVolume {
+                SettingsDivider()
+
+                SettingsMenuRow(
+                    symbol: "aspectratio",
+                    tint: .teal,
+                    title: localization.string(.settingsPopupVolumeScrollScope),
+                    subtitle: localization.string(.settingsPopupVolumeScrollScopeDescription),
+                    selection: $store.popupVolumeScrollScope,
+                    options: PopupVolumeScrollScope.allCases,
+                    label: scrollScopeLabel
+                )
+
+                SettingsDivider()
+
+                SettingsMenuRow(
+                    symbol: "arrow.up.arrow.down",
+                    tint: .indigo,
+                    title: localization.string(.settingsPopupVolumeScrollDirection),
+                    subtitle: localization.string(.settingsPopupVolumeScrollDirectionDescription),
+                    selection: $store.popupVolumeScrollDirection,
+                    options: PopupVolumeScrollDirection.allCases,
+                    label: scrollDirectionLabel
+                )
+            }
+        }
+    }
+
+    private func scrollScopeLabel(_ scope: PopupVolumeScrollScope) -> String {
+        switch scope {
+        case .panel:
+            localization.string(.settingsPopupVolumeScrollScopePanel)
+        case .volumeControl:
+            localization.string(.settingsPopupVolumeScrollScopeVolumeControl)
+        }
+    }
+
+    private func scrollDirectionLabel(_ direction: PopupVolumeScrollDirection) -> String {
+        switch direction {
+        case .up:
+            localization.string(.settingsPopupVolumeScrollDirectionUp)
+        case .down:
+            localization.string(.settingsPopupVolumeScrollDirectionDown)
+        }
     }
 
     @ViewBuilder
