@@ -121,7 +121,6 @@ enum LocalizationKey: String, CaseIterable, Hashable, Sendable {
     case ethernetAccessibilityConnected = "ethernet.accessibility.connected"
 
     case wifiTitle = "wifi.title"
-    case networkTitle = "network.title"
     case wifiValueBars = "wifi.value.bars"
     case wifiValueNotAssociated = "wifi.value.notAssociated"
     case wifiValueOff = "wifi.value.off"

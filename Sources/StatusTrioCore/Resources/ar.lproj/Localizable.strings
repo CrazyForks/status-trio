@@ -94,7 +94,6 @@
 "settings.dockIconBackground.dark" = "داكن";
 "settings.dockIconBackground.light" = "فاتح";
 "wifi.title" = "Wi-Fi";
-"network.title" = "الشبكة";
 "wifi.value.bars" = "%d أشرطة";
 "wifi.value.notAssociated" = "غير مرتبط";
 "wifi.value.off" = "مغلق";

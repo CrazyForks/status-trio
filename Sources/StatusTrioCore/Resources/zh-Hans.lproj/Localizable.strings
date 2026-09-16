@@ -94,7 +94,6 @@
 "common.parenthetical" = "%@（%@）";
 "common.labelValue" = "%@ %@";
 "wifi.title" = "Wi-Fi";
-"network.title" = "网络";
 "wifi.value.bars" = "%d 格";
 "wifi.value.notAssociated" = "未关联";
 "wifi.value.off" = "关闭";

@@ -94,7 +94,6 @@
 "common.parenthetical" = "%@(%@)";
 "common.labelValue" = "%@ %@";
 "wifi.title" = "Wi-Fi";
-"network.title" = "네트워크";
 "wifi.value.bars" = "%d칸";
 "wifi.value.notAssociated" = "연결되지 않음";
 "wifi.value.off" = "꺼짐";

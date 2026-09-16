@@ -25,7 +25,7 @@ struct WiFiStatusView: View {
                 HStack(spacing: 10) {
                     WiFiStatusIcon(wifi: wifi)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(localization.string(.networkTitle))
+                        Text(localization.string(.wifiTitle))
                             .font(.headline)
                         subtitle
                     }
@@ -92,6 +92,6 @@ struct WiFiStatusView: View {
         if let ssid = wifi.ssid, !ssid.isEmpty {
             return localization.format(.wifiAccessibilityWithSSID, ssid, StatusPresentation.wifiValue(wifi, localization: localization))
         }
-        return localization.format(.commonLabelValue, localization.string(.networkTitle), StatusPresentation.wifiValue(wifi, localization: localization))
+        return localization.format(.commonLabelValue, localization.string(.wifiTitle), StatusPresentation.wifiValue(wifi, localization: localization))
     }
 }
