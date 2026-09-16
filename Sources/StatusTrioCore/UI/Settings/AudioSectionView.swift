@@ -99,7 +99,7 @@ struct AudioSectionView: View {
                     List {
                         ForEach(orderedDevices) { device in
                             HStack(spacing: 10) {
-                                Image(systemName: device.isCurrent ? "hifispeaker.fill" : "hifispeaker")
+                                Image(systemName: AudioOutputDeviceIcon.symbolName(for: device))
                                     .foregroundStyle(device.isCurrent ? Color.accentColor : Color.secondary)
                                     .frame(width: 18)
 
