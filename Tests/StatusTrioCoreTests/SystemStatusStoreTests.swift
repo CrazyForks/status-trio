@@ -140,6 +140,29 @@ final class SystemStatusStoreTests: XCTestCase {
         store.stop()
     }
 
+    func testSettingsVisibilityKeepsVolumeDetailsAvailableOutsidePopover() {
+        let volume = FakeVolumeMonitor()
+        let store = makeStore(
+            battery: FakeBatteryMonitor(),
+            wifi: FakeWiFiMonitor(),
+            volume: volume
+        )
+
+        store.start()
+        XCTAssertEqual(volume.detailsVisibility, [false])
+
+        store.setSettingsVisible(true)
+        XCTAssertEqual(volume.detailsVisibility, [false, true])
+
+        store.setPopoverVisible(true)
+        store.setPopoverVisible(false)
+        XCTAssertEqual(volume.detailsVisibility, [false, true, true, true])
+
+        store.setSettingsVisible(false)
+        XCTAssertEqual(volume.detailsVisibility, [false, true, true, true, false])
+        store.stop()
+    }
+
     func testSetVolumeUpdatesVisibleVolumeImmediately() async {
         let volume = FakeVolumeMonitor()
         let sleeper = ManualSleeper()

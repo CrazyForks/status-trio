@@ -38,6 +38,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     func show() {
         let window = window ?? makeWindow()
         self.window = window
+        statusStore.setSettingsVisible(true)
         applyLocalization()
         enterActivationPolicyIfNeeded()
         window.makeKeyAndOrderFront(nil)
@@ -46,6 +47,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     }
 
     func windowWillClose(_ notification: Notification) {
+        statusStore.setSettingsVisible(false)
         leaveActivationPolicyIfNeeded()
         window = nil
     }

@@ -29,6 +29,7 @@ final class SystemStatusStore: ObservableObject {
     private var hasStarted = false
     private var hasStopped = false
     private var isPopoverVisible = false
+    private var isSettingsVisible = false
     private var isBluetoothEnabled = false
     private var isBluetoothDetailsOpen = false
 
@@ -244,8 +245,7 @@ final class SystemStatusStore: ObservableObject {
     func setPopoverVisible(_ visible: Bool) {
         guard !hasStopped else { return }
         isPopoverVisible = visible
-        wifiMonitor.setDetailsVisible(visible)
-        volumeMonitor.setDetailsVisible(visible)
+        updateDetailsVisibility()
 
         guard visible else { return }
         popupPublishTask?.cancel()
@@ -254,6 +254,16 @@ final class SystemStatusStore: ObservableObject {
         bluetoothDevices.prepareForPresentation()
         refreshAll()
         wifiNetworks.refresh(nameAccess: popupSnapshot.wifi.nameAccess)
+    }
+
+    func setSettingsVisible(_ visible: Bool) {
+        guard !hasStopped, isSettingsVisible != visible else { return }
+        isSettingsVisible = visible
+        updateDetailsVisibility()
+
+        if visible {
+            refreshAll()
+        }
     }
 
     func activateWiFiPanel() {
@@ -283,6 +293,12 @@ final class SystemStatusStore: ObservableObject {
         wifiMonitor.recover()
         connectionMonitor?.recover()
         volumeMonitor.recover()
+    }
+
+    private func updateDetailsVisibility() {
+        let detailsVisible = isPopoverVisible || isSettingsVisible
+        wifiMonitor.setDetailsVisible(isPopoverVisible)
+        volumeMonitor.setDetailsVisible(detailsVisible)
     }
 
     private func applyBattery(_ value: BatteryStatus) {

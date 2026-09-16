@@ -83,6 +83,32 @@ final class SettingsWindowControllerTests: XCTestCase {
         XCTAssertEqual(activationApplication.policies, [.regular, .regular, .regular])
     }
 
+    func testSettingsWindowTogglesVolumeDetailsVisibility() throws {
+        let suiteName = "StatusTrioCoreTests.SettingsVolumeDetails.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let volume = NoopVolumeMonitor()
+        let statusStore = SystemStatusStore(
+            batteryMonitor: NoopBatteryMonitor(),
+            wifiMonitor: NoopWiFiMonitor(),
+            volumeMonitor: volume
+        )
+        let activationApplication = SettingsActivationPolicyApplicationSpy()
+        let controller = SettingsWindowController(
+            store: SettingsStore(defaults: defaults),
+            statusStore: statusStore,
+            localization: Localization(defaults: defaults, preferredLanguages: ["en"]),
+            activationPolicy: AppActivationPolicy(application: activationApplication)
+        )
+
+        controller.show()
+        XCTAssertEqual(volume.detailsVisibility, [true])
+
+        try XCTUnwrap(controller.window).close()
+        XCTAssertEqual(volume.detailsVisibility, [true, false])
+    }
+
     private func makeStatusStore() -> SystemStatusStore {
         SystemStatusStore(
             batteryMonitor: NoopBatteryMonitor(),
@@ -137,6 +163,7 @@ private final class NoopWiFiMonitor: WiFiMonitoring {
 @MainActor
 private final class NoopVolumeMonitor: VolumeMonitoring {
     let updates: AsyncStream<VolumeStatus>
+    private(set) var detailsVisibility: [Bool] = []
 
     init() {
         (updates, _) = AsyncStream.makeStream()
@@ -146,4 +173,7 @@ private final class NoopVolumeMonitor: VolumeMonitoring {
     func stop() {}
     func refresh() {}
     func recover() {}
+    func setDetailsVisible(_ visible: Bool) {
+        detailsVisibility.append(visible)
+    }
 }
