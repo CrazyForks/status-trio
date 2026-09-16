@@ -56,7 +56,7 @@ final class CompactAudioLayoutTests: XCTestCase {
                 volume: VolumeStatus(scalar: 0.19, isMuted: false, deviceName: devices[0].name, outputDevices: devices),
                 isEnabled: true,
                 onVolumeChange: { _ in }, onToggleMute: {}, onSelectOutputDevice: { _ in }, onOpenSoundSettings: {},
-                isOutputExpanded: expandsPicker
+                initiallyExpandsOutput: expandsPicker
             )
             Divider()
             PopoverFooterView(openSettings: {}, quit: {})
