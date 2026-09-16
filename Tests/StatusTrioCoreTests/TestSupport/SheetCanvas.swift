@@ -27,6 +27,48 @@ enum SheetCanvas {
     static var chipFill: CGColor { color(0.949, 0.949, 0.965) }
     static var pageFill: CGColor { color(1, 1, 1) }
 
+    /// Colors for one appearance, mirroring how the app resolves its own
+    /// foreground and track colors.
+    struct Palette {
+        let page: CGColor
+        let ink: CGColor
+        let mutedInk: CGColor
+        let hairline: CGColor
+        let chip: CGColor
+        let glyph: CGColor
+        let batteryTint: CGColor
+        let networkTint: CGColor
+        let volumeTint: CGColor
+
+        static var light: Palette {
+            Palette(
+                page: color(1, 1, 1),
+                ink: color(0.11, 0.11, 0.12),
+                mutedInk: color(0.42, 0.42, 0.45),
+                hairline: color(0.90, 0.90, 0.92),
+                chip: color(0.949, 0.949, 0.965),
+                glyph: color(0, 0, 0),
+                batteryTint: color(0.20, 0.78, 0.35),
+                networkTint: color(0.00, 0.48, 1.00),
+                volumeTint: color(0.20, 0.70, 0.85)
+            )
+        }
+
+        static var dark: Palette {
+            Palette(
+                page: color(0.11, 0.11, 0.12),
+                ink: color(0.949, 0.949, 0.965),
+                mutedInk: color(0.60, 0.60, 0.62),
+                hairline: color(0.24, 0.24, 0.25),
+                chip: color(0.17, 0.17, 0.18),
+                glyph: color(1, 1, 1),
+                batteryTint: color(0.19, 0.82, 0.35),
+                networkTint: color(0.04, 0.52, 1.00),
+                volumeTint: color(0.39, 0.82, 1.00)
+            )
+        }
+    }
+
     static func font(_ name: String, _ size: CGFloat) -> CTFont {
         CTFontCreateWithName(name as CFString, size, nil)
     }

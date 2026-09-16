@@ -19,10 +19,25 @@ enum IconStateSheet {
         let volumeOptions: VolumeIconOptions
     }
 
+    /// Which part of the combined icon a section documents.
+    enum Zone {
+        case battery
+        case network
+        case volume
+
+        func tint(in palette: SheetCanvas.Palette) -> CGColor {
+            switch self {
+            case .battery: palette.batteryTint
+            case .network: palette.networkTint
+            case .volume: palette.volumeTint
+            }
+        }
+    }
+
     struct Section {
         let zh: String
         let en: String
-        let tint: CGColor
+        let zone: Zone
         let entries: [Entry]
     }
 
@@ -47,8 +62,6 @@ enum IconStateSheet {
     }
 
     // MARK: - Palette
-
-    private static var glyph: CGColor { SheetCanvas.color(0, 0, 0) }
 
     // MARK: - Baseline statuses
 
@@ -120,7 +133,7 @@ enum IconStateSheet {
             Section(
                 zh: "电池（顶部）",
                 en: "Battery (top)",
-                tint: SheetCanvas.color(0.20, 0.78, 0.35),
+                zone: .battery,
                 entries: [
                     entry(
                         zh: "充电中",
@@ -180,7 +193,7 @@ enum IconStateSheet {
             Section(
                 zh: "Wi-Fi（中部）",
                 en: "Wi-Fi (middle)",
-                tint: SheetCanvas.color(0.00, 0.48, 1.00),
+                zone: .network,
                 entries: [
                     entry(
                         zh: "已连接（3 格）",
@@ -249,7 +262,7 @@ enum IconStateSheet {
             Section(
                 zh: "音量（底部）",
                 en: "Volume (bottom)",
-                tint: SheetCanvas.color(0.20, 0.70, 0.85),
+                zone: .volume,
                 entries: [
                     entry(
                         zh: "音量 100%（圆点）",
@@ -296,7 +309,31 @@ enum IconStateSheet {
 
     // MARK: - Rendering
 
-    static func pngData(scale: CGFloat = 2) throws -> Data {
+    /// The sheet is drawn once per appearance because the renderer resolves its
+    /// foreground and status colors from the menu bar appearance.
+    enum Appearance {
+        case light
+        case dark
+
+        var palette: SheetCanvas.Palette {
+            switch self {
+            case .light: .light
+            case .dark: .dark
+            }
+        }
+
+        var caption: String {
+            switch self {
+            case .light:
+                "图标颜色随菜单栏外观自动切换，这里按浅色外观渲染。 · Colors follow the menu bar appearance; rendered here for light."
+            case .dark:
+                "图标颜色随菜单栏外观自动切换，这里按深色外观渲染。 · Colors follow the menu bar appearance; rendered here for dark."
+            }
+        }
+    }
+
+    static func pngData(appearance: Appearance = .light, scale: CGFloat = 2) throws -> Data {
+        let palette = appearance.palette
         let content = sections
         let rows = content.map { (CGFloat($0.entries.count) / CGFloat(cardsPerRow)).rounded(.up) }
         let bodyHeight = zip(content, rows).reduce(CGFloat.zero) { partial, pair in
@@ -306,7 +343,7 @@ enum IconStateSheet {
         let totalHeight = titleHeight + bodyHeight + footerHeight
 
         let context = try SheetCanvas.makeContext(width: totalWidth, height: totalHeight, scale: scale)
-        context.setFillColor(SheetCanvas.pageFill)
+        context.setFillColor(palette.page)
         context.fill(CGRect(x: 0, y: 0, width: totalWidth, height: totalHeight))
 
         func flip(_ topY: CGFloat) -> CGFloat { totalHeight - topY }
@@ -314,21 +351,27 @@ enum IconStateSheet {
         SheetCanvas.draw(
             "Status Trio 图标状态",
             font: SheetCanvas.font("PingFangSC-Semibold", 21),
-            color: SheetCanvas.ink,
+            color: palette.ink,
             topLeft: CGPoint(x: margin, y: flip(38)),
             in: context
         )
         SheetCanvas.draw(
             "Menu bar and Dock icon states · drawn by the app's own renderer",
             font: SheetCanvas.font("HelveticaNeue", 12),
-            color: SheetCanvas.mutedInk,
+            color: palette.mutedInk,
             topLeft: CGPoint(x: margin, y: flip(64)),
             in: context
         )
 
         var cursor = titleHeight
         for (section, sectionRows) in zip(content, rows) {
-            drawSectionHeader(section, topY: cursor, totalHeight: totalHeight, in: context)
+            drawSectionHeader(
+                section,
+                palette: palette,
+                topY: cursor,
+                totalHeight: totalHeight,
+                in: context
+            )
             cursor += sectionHeaderHeight
 
             for (index, entry) in section.entries.enumerated() {
@@ -336,16 +379,22 @@ enum IconStateSheet {
                 let row = index / cardsPerRow
                 let x = margin + CGFloat(column) * (cardWidth + cardSpacing)
                 let topY = cursor + CGFloat(row) * (chipSize + rowSpacing)
-                try drawCard(entry, topLeft: CGPoint(x: x, y: topY), totalHeight: totalHeight, in: context)
+                try drawCard(
+                    entry,
+                    palette: palette,
+                    topLeft: CGPoint(x: x, y: topY),
+                    totalHeight: totalHeight,
+                    in: context
+                )
             }
 
             cursor += sectionRows * (chipSize + rowSpacing) - rowSpacing
         }
 
         SheetCanvas.draw(
-            "图标颜色随菜单栏外观自动切换，这里按浅色外观渲染。 · Colors follow the menu bar appearance; rendered here for light.",
+            appearance.caption,
             font: SheetCanvas.font("PingFangSC-Regular", 11),
-            color: SheetCanvas.mutedInk,
+            color: palette.mutedInk,
             topLeft: CGPoint(x: margin, y: flip(totalHeight - footerHeight + 26)),
             in: context
         )
@@ -355,12 +404,13 @@ enum IconStateSheet {
 
     private static func drawSectionHeader(
         _ section: Section,
+        palette: SheetCanvas.Palette,
         topY: CGFloat,
         totalHeight: CGFloat,
         in context: CGContext
     ) {
         let flip: (CGFloat) -> CGFloat = { totalHeight - $0 }
-        context.setFillColor(section.tint)
+        context.setFillColor(section.zone.tint(in: palette))
         context.addPath(SheetCanvas.roundedRect(
             CGRect(x: margin, y: flip(topY + 12), width: 3, height: 16),
             cornerRadius: 1.5
@@ -371,14 +421,14 @@ enum IconStateSheet {
         SheetCanvas.draw(
             section.zh,
             font: zhFont,
-            color: SheetCanvas.ink,
+            color: palette.ink,
             topLeft: CGPoint(x: margin + 12, y: flip(topY + 12)),
             in: context
         )
         SheetCanvas.draw(
             section.en,
             font: SheetCanvas.font("HelveticaNeue-Medium", 12),
-            color: SheetCanvas.mutedInk,
+            color: palette.mutedInk,
             topLeft: CGPoint(
                 x: margin + 12 + SheetCanvas.textWidth(of: section.zh, font: zhFont) + 8,
                 y: flip(topY + 14)
@@ -386,7 +436,7 @@ enum IconStateSheet {
             in: context
         )
 
-        context.setStrokeColor(SheetCanvas.hairline)
+        context.setStrokeColor(palette.hairline)
         context.setLineWidth(1)
         context.move(to: CGPoint(x: margin, y: flip(topY + 34)))
         context.addLine(to: CGPoint(x: totalWidth - margin, y: flip(topY + 34)))
@@ -395,13 +445,14 @@ enum IconStateSheet {
 
     private static func drawCard(
         _ entry: Entry,
+        palette: SheetCanvas.Palette,
         topLeft: CGPoint,
         totalHeight: CGFloat,
         in context: CGContext
     ) throws {
         let flip: (CGFloat) -> CGFloat = { totalHeight - $0 }
 
-        context.setFillColor(SheetCanvas.chipFill)
+        context.setFillColor(palette.chip)
         context.addPath(SheetCanvas.roundedRect(
             CGRect(x: topLeft.x, y: flip(topLeft.y + chipSize), width: chipSize, height: chipSize),
             cornerRadius: 13
@@ -412,7 +463,7 @@ enum IconStateSheet {
             menuBarStatus: entry.status,
             size: iconSize,
             scale: 2,
-            foreground: glyph,
+            foreground: palette.glyph,
             options: entry.batteryOptions,
             connectionOptions: entry.connectionOptions,
             volumeOptions: entry.volumeOptions
@@ -435,14 +486,14 @@ enum IconStateSheet {
         SheetCanvas.draw(
             entry.zh,
             font: SheetCanvas.font("PingFangSC-Medium", 13),
-            color: SheetCanvas.ink,
+            color: palette.ink,
             topLeft: CGPoint(x: textX, y: flip(topLeft.y + 17)),
             in: context
         )
         SheetCanvas.draw(
             entry.en,
             font: SheetCanvas.font("HelveticaNeue", 11),
-            color: SheetCanvas.mutedInk,
+            color: palette.mutedInk,
             topLeft: CGPoint(x: textX, y: flip(topLeft.y + 38)),
             in: context
         )

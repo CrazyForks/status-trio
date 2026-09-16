@@ -76,6 +76,12 @@ Every state the combined icon can show, drawn by the app's own renderer — batt
   <img src="screenshots/status-trio-icon-states.png" width="880" alt="Status Trio icon states: charging, plugged in, percentage, low battery, and Low Power Mode at the top; Wi-Fi signal, hotspot, temporary, shared, and wired states in the middle; volume dots and arc styles at the bottom">
 </p>
 
+The same states rendered for a dark menu bar:
+
+<p align="center">
+  <img src="screenshots/status-trio-icon-states-dark.png" width="880" alt="The same Status Trio icon states in dark appearance: white glyphs on dark chips, with the charging green, low battery red, and Low Power Mode yellow accents">
+</p>
+
 ## Requirements
 
 - macOS 15 or later

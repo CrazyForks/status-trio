@@ -8,24 +8,38 @@ import XCTest
 ///
 /// ```bash
 /// STATUS_TRIO_ICON_SHEET=/tmp/status-trio-icon-states.png \
+/// STATUS_TRIO_ICON_SHEET_DARK=/tmp/status-trio-icon-states-dark.png \
 ///   swift test --filter IconStateSheetTests
 /// ```
 final class IconStateSheetTests: XCTestCase {
     func testWritesIconStateSheet() throws {
-        guard let outputPath = ProcessInfo.processInfo.environment["STATUS_TRIO_ICON_SHEET"] else {
-            throw XCTSkip("Set STATUS_TRIO_ICON_SHEET to write the icon state sheet.")
+        let environment = ProcessInfo.processInfo.environment
+        let targets = [
+            (environment["STATUS_TRIO_ICON_SHEET"], IconStateSheet.Appearance.light),
+            (environment["STATUS_TRIO_ICON_SHEET_DARK"], IconStateSheet.Appearance.dark)
+        ]
+
+        let requested = targets.compactMap { path, appearance in
+            path.map { ($0, appearance) }
         }
 
-        let data = try IconStateSheet.pngData()
-        XCTAssertGreaterThan(data.count, 10_000)
-        try data.write(to: URL(fileURLWithPath: outputPath))
-        print("Wrote \(data.count) bytes to \(outputPath)")
+        guard !requested.isEmpty else {
+            throw XCTSkip("Set STATUS_TRIO_ICON_SHEET or STATUS_TRIO_ICON_SHEET_DARK.")
+        }
+
+        for (outputPath, appearance) in requested {
+            let data = try IconStateSheet.pngData(appearance: appearance)
+            XCTAssertGreaterThan(data.count, 10_000)
+            try data.write(to: URL(fileURLWithPath: outputPath))
+            print("Wrote \(data.count) bytes to \(outputPath)")
+        }
     }
 
     func testSheetCoversEachZone() {
         let sections = IconStateSheet.sections
         XCTAssertEqual(sections.count, 3)
         XCTAssertEqual(sections.map(\.zh), ["电池（顶部）", "Wi-Fi（中部）", "音量（底部）"])
+        XCTAssertEqual(sections.map(\.zone).count, 3)
         for section in sections {
             XCTAssertGreaterThanOrEqual(section.entries.count, 6, section.zh)
             for entry in section.entries {

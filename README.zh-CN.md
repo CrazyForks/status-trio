@@ -76,6 +76,12 @@ Status Trio 是一个原生 macOS 状态应用，将 Wi-Fi、电池和音量整�
   <img src="screenshots/status-trio-icon-states.png" width="880" alt="Status Trio 图标状态：顶部依次为充电中、已连接电源未充电、已充满、电量数字、低电量、低电量模式、只显示圆环；中部依次为 Wi-Fi 各档信号、未关联、关闭、无互联网、个人热点、临时连接、互联网共享、有线连接；底部为音量圆点与圆弧样式">
 </p>
 
+同一批状态在深色菜单栏下的渲染：
+
+<p align="center">
+  <img src="screenshots/status-trio-icon-states-dark.png" width="880" alt="Status Trio 图标状态（深色外观）：白色图标配深色底块，保留充电绿色、低电量红色和低电量模式黄色强调">
+</p>
+
 ## 系统要求
 
 - macOS 15 或更高版本
