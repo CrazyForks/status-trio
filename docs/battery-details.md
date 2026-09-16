@@ -4,7 +4,10 @@ Expand **Battery Details** in the popover to view additional battery information
 Collection runs on a serial utility queue only while the details are visible,
 refreshing every 15 seconds with 3 seconds of scheduling tolerance. Repeated
 requests coalesce into one follow-up read. Closing the details discards outstanding
-results and cancels the view's refresh loop; it adds no permanent polling timer.
+results and cancels the collector's refresh loop; it adds no permanent polling timer.
+The store explicitly deactivates collection when the popover closes, even while
+its hosting view is retained. Expired power is also removed on refresh requests
+while an earlier read is blocked.
 The existing battery icon monitoring is unchanged.
 
 ## Meaning and sources

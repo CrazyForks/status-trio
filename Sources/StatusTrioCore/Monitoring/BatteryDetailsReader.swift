@@ -31,7 +31,6 @@ struct BatteryPowerState: Hashable, Sendable {
 
 struct BatteryDetailsReader: Sendable {
     func read(state: BatteryPowerState, notBefore: Date?) -> BatteryDetails {
-        let now = Date()
         let adapter = IOPSCopyExternalPowerAdapterDetails()?.takeRetainedValue() as? [String: Any]
         let service = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching("AppleSmartBattery"))
         var registry: [String: Any] = [:]
@@ -47,7 +46,7 @@ struct BatteryDetailsReader: Sendable {
             adapterWatts: adapter?[kIOPSPowerAdapterWattsKey] as? Int,
             remainingSeconds: IOPSGetTimeRemainingEstimate(),
             state: state,
-            now: now,
+            now: Date(),
             notBefore: notBefore
         )
     }

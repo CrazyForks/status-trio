@@ -123,6 +123,24 @@ final class BatteryDetailsControllerTests: XCTestCase {
         controller.deactivate()
     }
 
+    func testExpiredPowerIsRemovedEvenWhileNextReadIsBlocked() async {
+        let reader = BlockingBatteryDetailsReader()
+        let sampled = Date()
+        let controller = BatteryDetailsController { _, _ in
+            _ = reader.read()
+            return BatteryDetails(power: BatteryPowerSample(volts: 12, amps: -1, updatedAt: sampled))
+        }
+        controller.activate(state: state)
+        reader.gate.signal()
+        await waitUntil { controller.details?.power != nil }
+        controller.refresh()
+        await waitUntil { reader.count == 2 }
+        controller.refresh(now: sampled.addingTimeInterval(91))
+        XCTAssertNil(controller.details?.power)
+        controller.deactivate()
+        reader.gate.signal()
+    }
+
     func testClosingDiscardsLateResultsAndDoesNotStartPendingRead() async {
         let reader = BlockingBatteryDetailsReader()
         let controller = BatteryDetailsController { _, _ in reader.read() }

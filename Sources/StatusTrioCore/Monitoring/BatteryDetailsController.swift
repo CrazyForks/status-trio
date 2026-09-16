@@ -15,10 +15,13 @@ final class BatteryDetailsController: ObservableObject {
     private var generation = 0
     private var inFlight = false
     private var needsRefresh = false
+    private var refreshTask: Task<Void, Never>?
 
     init(reader: @escaping Reader = { BatteryDetailsReader().read(state: $0, notBefore: $1) }) {
         self.reader = reader
     }
+
+    deinit { refreshTask?.cancel() }
 
     func activate(state: BatteryPowerState, now: Date = Date()) {
         if let previous = self.state, previous != state {
@@ -29,17 +32,32 @@ final class BatteryDetailsController: ObservableObject {
         generation += 1
         details = nil
         refresh()
+        refreshTask?.cancel()
+        refreshTask = Task { @MainActor [weak self] in
+            while !Task.isCancelled {
+                do { try await Task.sleep(for: .seconds(15), tolerance: .seconds(3)) }
+                catch { return }
+                guard !Task.isCancelled else { return }
+                self?.refresh()
+            }
+        }
     }
 
     func deactivate() {
         active = false
+        refreshTask?.cancel()
+        refreshTask = nil
         generation += 1
         needsRefresh = false
         details = nil
     }
 
-    func refresh() {
+    func refresh(now: Date = Date()) {
         guard active, let state else { return }
+        // Expire even when the previous system read is still blocked.
+        if let sample = details?.power, now.timeIntervalSince(sample.updatedAt) > 90 {
+            details?.power = nil
+        }
         guard !inFlight else {
             needsRefresh = true
             return

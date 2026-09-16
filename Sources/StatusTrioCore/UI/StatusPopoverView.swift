@@ -337,6 +337,8 @@ struct StatusPopoverView: View {
         case .battery:
             BatteryStatusView(
                 battery: store.popupSnapshot.battery,
+                detailsController: store.batteryDetails,
+                isPresented: store.isPopoverVisible,
                 onOpenBatterySettings: openBatterySettings
             )
         case .network:

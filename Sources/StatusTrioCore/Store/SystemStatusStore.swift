@@ -9,6 +9,7 @@ final class SystemStatusStore: ObservableObject {
     @Published private(set) var snapshot: StatusSnapshot
     @Published private(set) var popupSnapshot: StatusSnapshot
     @Published private(set) var liveVolume: VolumeStatus
+    let batteryDetails: BatteryDetailsController
     let wifiNetworks: WiFiNetworkController
     let bluetoothDevices: BluetoothDeviceController
 
@@ -28,7 +29,7 @@ final class SystemStatusStore: ObservableObject {
     private var lastPublishedSnapshot: StatusSnapshot?
     private var hasStarted = false
     private var hasStopped = false
-    private var isPopoverVisible = false
+    @Published private(set) var isPopoverVisible = false
     private var isSettingsVisible = false
     private var isBluetoothEnabled = false
     private var isBluetoothDetailsOpen = false
@@ -46,6 +47,7 @@ final class SystemStatusStore: ObservableObject {
             try await Task.sleep(for: $0)
         },
         wakeNotificationCenter: NotificationCenter = NSWorkspace.shared.notificationCenter,
+        batteryDetails: BatteryDetailsController = BatteryDetailsController(),
         wifiNetworks: WiFiNetworkController = WiFiNetworkController(),
         bluetoothDevices: BluetoothDeviceController = BluetoothDeviceController(),
         initialSnapshot: StatusSnapshot = .placeholder
@@ -59,6 +61,7 @@ final class SystemStatusStore: ObservableObject {
         self.sleep = sleep
         self.popupDebounceSleep = popupDebounceSleep
         self.wakeNotificationCenter = wakeNotificationCenter
+        self.batteryDetails = batteryDetails
         self.wifiNetworks = wifiNetworks
         self.bluetoothDevices = bluetoothDevices
         self.snapshot = initialSnapshot
@@ -155,6 +158,7 @@ final class SystemStatusStore: ObservableObject {
             self.wakeObserver = nil
         }
 
+        batteryDetails.deactivate()
         batteryMonitor.stop()
         wifiMonitor.stop()
         connectionMonitor?.stop()
@@ -245,6 +249,7 @@ final class SystemStatusStore: ObservableObject {
     func setPopoverVisible(_ visible: Bool) {
         guard !hasStopped else { return }
         isPopoverVisible = visible
+        if !visible { batteryDetails.deactivate() }
         updateDetailsVisibility()
 
         guard visible else { return }
