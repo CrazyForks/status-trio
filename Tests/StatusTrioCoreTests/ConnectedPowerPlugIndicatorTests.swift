@@ -89,6 +89,35 @@ final class ConnectedPowerPlugIndicatorTests: XCTestCase {
         XCTAssertNotEqual(bolt.bytes, plug.bytes)
     }
 
+    func testPlugGlyphIsNotSmallerThanTheBolt() throws {
+        let bolt = try XCTUnwrap(topGapInk(in: try menuBarPixels(
+            for: connectedBattery(),
+            options: batteryOptions(showsPlug: false)
+        )))
+        let plug = try XCTUnwrap(topGapInk(in: try menuBarPixels(
+            for: connectedBattery(),
+            options: batteryOptions(showsPlug: true)
+        )))
+
+        XCTAssertGreaterThan(
+            plug.height,
+            bolt.height,
+            "the plug reads smaller than the bolt because its strokes are thinner"
+        )
+    }
+
+    func testPlugGlyphStaysInsideTheTopGap() throws {
+        let plug = try XCTUnwrap(topGapInk(in: try menuBarPixels(
+            for: connectedBattery(),
+            options: batteryOptions(showsPlug: true)
+        )))
+
+        XCTAssertGreaterThan(plug.minY, 0, "the plug must not clip at the top of the bitmap")
+        XCTAssertLessThan(plug.maxY, 54, "the plug must stay clear of the Wi-Fi glyph")
+        XCTAssertGreaterThan(plug.minX, 56, "the plug must stay clear of the arc")
+        XCTAssertLessThan(plug.maxX, 104, "the plug must stay clear of the arc")
+    }
+
     func testDockRenderKeyFollowsThePlugOption() {
         let status = MenuBarStatus(snapshot: snapshot(for: connectedBattery()))
         let bolt = DockIconRenderKey(
@@ -159,6 +188,38 @@ final class ConnectedPowerPlugIndicatorTests: XCTestCase {
 
     private func snapshot(for battery: BatteryStatus) -> StatusSnapshot {
         StatusSnapshot(battery: battery, wifi: .placeholder, volume: .placeholder)
+    }
+
+    private struct InkBounds {
+        let minX: Int
+        let maxX: Int
+        let minY: Int
+        let maxY: Int
+
+        var height: Int { maxY - minY + 1 }
+    }
+
+    /// Ink of the top-gap glyph alone: the window sits inside the arc's gap and
+    /// above the Wi-Fi glyph drawn inside the arc.
+    private func topGapInk(in pixels: PixelBuffer) -> InkBounds? {
+        var points: [(x: Int, y: Int)] = []
+        for y in 0..<min(54, pixels.height) {
+            for x in 56..<min(104, pixels.width) where pixels.rgba(x: x, y: y).alpha > 120 {
+                points.append((x, y))
+            }
+        }
+        guard let first = points.first else { return nil }
+
+        return points.dropFirst().reduce(
+            InkBounds(minX: first.x, maxX: first.x, minY: first.y, maxY: first.y)
+        ) { bounds, point in
+            InkBounds(
+                minX: min(bounds.minX, point.x),
+                maxX: max(bounds.maxX, point.x),
+                minY: min(bounds.minY, point.y),
+                maxY: max(bounds.maxY, point.y)
+            )
+        }
     }
 
     private func menuBarPixels(

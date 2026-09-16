@@ -325,7 +325,7 @@ enum StatusIconRenderer {
         in context: CGContext
     ) {
         let boltHeight = StatusIconGeometry.batteryChargingBolt().boundingBoxOfPath.height
-        let targetHeight = boltHeight * boltScale
+        let targetHeight = boltHeight * boltScale * StatusIconGeometry.batteryPlugHeightScale
         guard targetHeight.isFinite, targetHeight > 0 else { return }
 
         drawOfficialSymbol(

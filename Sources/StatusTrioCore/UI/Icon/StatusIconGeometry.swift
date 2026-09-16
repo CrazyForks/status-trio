@@ -19,6 +19,11 @@ enum StatusIconGeometry {
     /// without charging.
     static let batteryPlugSymbolName = "powerplug.portrait.fill"
 
+    /// Optical size of the plug relative to the bolt. The plug's strokes are
+    /// thinner than the bolt's solid body, so it is drawn slightly taller to
+    /// carry the same visual weight in the gap.
+    static let batteryPlugHeightScale: CGFloat = 1.2
+
     /// The bolt scales away from its tip, so any other glyph in the top gap
     /// shares the scaled bolt's center to stay optically aligned with it.
     static func batteryTopIndicatorCenter(boltScale: CGFloat) -> CGPoint {
