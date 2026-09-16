@@ -58,6 +58,7 @@
 "settings.about.author" = "Автор";
 "settings.about.authorRole" = "Автор и сопровождающий";
 "settings.about.website" = "Веб-сайт";
+"settings.about.starOnGitHub" = "Поставить звезду на GitHub";
 "settings.about.copyright" = "© lingyired";
 "settings.battery.title" = "Отображение батареи";
 "settings.battery.showPercentage" = "Показывать процент заряда";

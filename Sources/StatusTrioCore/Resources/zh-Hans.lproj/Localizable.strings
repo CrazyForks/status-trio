@@ -58,6 +58,7 @@
 "settings.about.author" = "作者";
 "settings.about.authorRole" = "作者与维护者";
 "settings.about.website" = "作者主页";
+"settings.about.starOnGitHub" = "在 GitHub 上标星";
 "settings.about.copyright" = "© lingyired";
 "settings.battery.title" = "电池显示";
 "settings.battery.showPercentage" = "显示电量数字";

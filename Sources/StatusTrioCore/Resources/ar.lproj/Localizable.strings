@@ -43,6 +43,7 @@
 "settings.about.author" = "المؤلف";
 "settings.about.authorRole" = "المنشئ والمشرف";
 "settings.about.website" = "الموقع";
+"settings.about.starOnGitHub" = "نجمة على GitHub";
 "settings.about.copyright" = "© lingyired";
 "settings.battery.title" = "عرض البطارية";
 "settings.battery.showPercentage" = "إظهار نسبة البطارية";

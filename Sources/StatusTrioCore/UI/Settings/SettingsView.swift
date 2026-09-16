@@ -74,7 +74,9 @@ struct SettingsView: View {
 
             ForEach(Section.allCases) { section in
                 Button {
-                    selectedSection = section
+                    withAnimation(.easeInOut(duration: 0.16)) {
+                        selectedSection = section
+                    }
                 } label: {
                     HStack(alignment: .center, spacing: 10) {
                         SettingsIcon(symbol: section.symbol, tint: section.tint)

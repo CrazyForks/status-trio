@@ -58,6 +58,7 @@
 "settings.about.author" = "작성자";
 "settings.about.authorRole" = "제작자 및 유지관리자";
 "settings.about.website" = "웹사이트";
+"settings.about.starOnGitHub" = "GitHub에서 별표 주기";
 "settings.about.copyright" = "© lingyired";
 "settings.battery.title" = "배터리 표시";
 "settings.battery.showPercentage" = "배터리 잔량 표시";

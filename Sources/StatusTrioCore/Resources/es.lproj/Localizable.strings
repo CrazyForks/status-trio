@@ -58,6 +58,7 @@
 "settings.about.author" = "Autor";
 "settings.about.authorRole" = "Creador y responsable";
 "settings.about.website" = "Sitio web";
+"settings.about.starOnGitHub" = "Destacar en GitHub";
 "settings.about.copyright" = "© lingyired";
 "settings.battery.title" = "Visualización de la batería";
 "settings.battery.showPercentage" = "Mostrar porcentaje de batería";

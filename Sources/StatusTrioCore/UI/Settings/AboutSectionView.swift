@@ -52,6 +52,16 @@ struct AboutSectionView: View {
 
                     HStack(spacing: 8) {
                         Link(destination: AppMetadata.repositoryURL) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "star.fill")
+                                    .foregroundStyle(.yellow)
+                                Text(localization.string(.settingsAboutStarOnGitHub))
+                            }
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+
+                        Link(destination: AppMetadata.repositoryURL) {
                             Label(localization.string(.settingsAboutRepository), systemImage: "link")
                         }
                         .buttonStyle(.bordered)
@@ -59,12 +69,6 @@ struct AboutSectionView: View {
 
                         Link(destination: AppMetadata.authorURL) {
                             Label(AppMetadata.authorName, systemImage: "person.crop.circle")
-                        }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
-
-                        Link(destination: AppMetadata.projectHomepageURL) {
-                            Label(localization.string(.settingsAboutProject), systemImage: "house")
                         }
                         .buttonStyle(.bordered)
                         .controlSize(.small)

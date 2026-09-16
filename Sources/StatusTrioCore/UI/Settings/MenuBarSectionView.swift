@@ -34,8 +34,22 @@ struct MenuBarSectionView: View {
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
                     .fill(
                         isDarkPreview
-                            ? Color(red: 0.12, green: 0.12, blue: 0.14)
-                            : Color(red: 0.94, green: 0.94, blue: 0.96)
+                            ? LinearGradient(
+                                colors: [
+                                    Color(red: 0.16, green: 0.16, blue: 0.19),
+                                    Color(red: 0.10, green: 0.10, blue: 0.12)
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                            : LinearGradient(
+                                colors: [
+                                    Color(red: 0.96, green: 0.96, blue: 0.98),
+                                    Color(red: 0.89, green: 0.89, blue: 0.92)
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
                     )
                     .overlay(
                         RoundedRectangle(cornerRadius: 10, style: .continuous)

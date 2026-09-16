@@ -58,6 +58,7 @@
 "settings.about.author" = "作者";
 "settings.about.authorRole" = "作者・メンテナー";
 "settings.about.website" = "ウェブサイト";
+"settings.about.starOnGitHub" = "GitHub でスターを付ける";
 "settings.about.copyright" = "© lingyired";
 "settings.battery.title" = "バッテリー表示";
 "settings.battery.showPercentage" = "バッテリー残量を表示";
