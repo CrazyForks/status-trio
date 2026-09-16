@@ -13,6 +13,48 @@ final class StatusMappingsTests: XCTestCase {
         XCTAssertEqual(StatusMappings.wifiBars(rssi: nil), 0)
     }
 
+    func testWiFiSummaryRequiresLocationPermissionBeforeOpeningAssociatedNetworkDetails() {
+        let notDetermined = WiFiStatus(
+            state: .connected,
+            rssi: -50,
+            nameAccess: .notDetermined
+        )
+        XCTAssertEqual(
+            StatusMappings.wifiSummaryAction(for: notDetermined),
+            .requestNameAccess
+        )
+
+        let authorized = WiFiStatus(
+            state: .connected,
+            rssi: -50,
+            nameAccess: .authorized
+        )
+        XCTAssertEqual(
+            StatusMappings.wifiSummaryAction(for: authorized),
+            .openDetails
+        )
+
+        let denied = WiFiStatus(
+            state: .connected,
+            rssi: -50,
+            nameAccess: .denied
+        )
+        XCTAssertEqual(
+            StatusMappings.wifiSummaryAction(for: denied),
+            .openLocationSettings
+        )
+
+        let unavailable = WiFiStatus(
+            state: .unavailable,
+            rssi: nil,
+            nameAccess: .notDetermined
+        )
+        XCTAssertEqual(
+            StatusMappings.wifiSummaryAction(for: unavailable),
+            .openDetails
+        )
+    }
+
     func testVolumeBoundaries() {
         XCTAssertEqual(StatusMappings.volumeSteps(scalar: 0, isMuted: false), 0)
         XCTAssertEqual(StatusMappings.volumeSteps(scalar: -0.1, isMuted: false), 0)

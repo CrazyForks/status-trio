@@ -39,6 +39,9 @@ final class SettingsTabViewController: NSTabViewController {
 
     override func tabView(_ tabView: NSTabView, didSelect tabViewItem: NSTabViewItem?) {
         super.tabView(tabView, didSelect: tabViewItem)
+        // Touching the view now is intended: the tab is about to be shown, so this
+        // is where its SwiftUI content is built for the first time.
+        tabViewItem?.viewController?.view.frame.size.width = Self.contentWidth
         Task { @MainActor [weak self] in
             self?.updateWindowSize()
         }
@@ -85,8 +88,6 @@ final class SettingsTabViewController: NSTabViewController {
                     statusStore: statusStore
                 )
             }
-            viewController.view.frame.size.width = Self.contentWidth
-
             let item = NSTabViewItem(viewController: viewController)
             item.identifier = tab.rawValue
             item.label = localization.string(tab.titleKey)

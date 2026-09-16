@@ -10,7 +10,9 @@ struct SettingsDetailView: View {
     var body: some View {
         switch tab {
         case .basics:
-            BasicsSettingsPane(localization: localization)
+            BasicsSettingsPane(store: store, localization: localization)
+        case .panel:
+            StatusPanelSettingsPane(store: store, statusStore: statusStore)
         case .menuBar:
             MenuBarSettingsPane(store: store)
         case .audio:

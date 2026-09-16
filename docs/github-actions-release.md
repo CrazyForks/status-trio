@@ -12,39 +12,49 @@
 
 ## 触发方式
 
-### 推送版本 tag
-
-先更新 `Support/Info.plist`：
-
-```text
-CFBundleShortVersionString = 1.2.0
-CFBundleVersion            = 2
-```
-
-提交并推送 tag：
-
-```bash
-git add Support/Info.plist
-git commit -m "release: v1.2.0"
-git tag v1.2.0
-git push origin main
-git push origin v1.2.0
-```
-
-tag 必须与 `CFBundleShortVersionString` 一致。构建号必须大于 appcast 中已经发布的最大构建号。
-
-### 手动运行
+### 手动运行正式发布
 
 在 GitHub Actions 页面选择 **Build and Release macOS**：
 
-- `version`：留空时读取 `Support/Info.plist`
-- `build`：留空时使用 workflow run number
+- `version`：例如 `1.2.0`；留空时读取 `Support/Info.plist`
+- `build`：显式的数字构建号，必须大于 appcast 中已发布的最大构建号
 - `publish=false`：只构建 DMG，并上传为 Actions artifact
-- `publish=true`：创建 Release 并更新 Sparkle appcast
+- `publish=true`：创建 Release、创建 tag，并更新 Sparkle appcast
+- `release_notes`：英文说明，每行一个列表项；留空时根据上一个 tag 到当前提交自动生成
+- `release_notes_zh`：中文说明，每行一个列表项；`publish=true` 时必填
+
+正式发布统一使用手动 workflow，因为 `publish=true` 需要同时提供双语说明。workflow 会在 GitHub Release 不存在对应 tag 时自动从 `main` 创建 tag。
 
 ## Release notes 规则
 
-Release notes 必须始终使用英文，包括 GitHub Release 正文、Sparkle `appcast.xml` 描述、手动 workflow 的 `release_notes` 输入以及发布公告。不要使用中文或其他语言。
+GitHub Release 正文必须包含英文和中文，英文在上、中文在下，并使用版本号标题：
+
+```markdown
+# Version 1.2.0 （English + 中文， 中文在下方）
+
+## English
+
+- English change one.
+- English change two.
+
+## 中文
+
+- 中文变更一。
+- 中文变更二。
+```
+
+工作流会根据 `version` 自动生成标题，并把 `release_notes` 和 `release_notes_zh` 合并为上述格式。`publish=true` 时必须提供 `release_notes_zh`；未提供 `release_notes` 时，英文部分会根据上一个 tag 到当前提交自动生成。
+
+Sparkle `appcast.xml` 使用双语说明：条目标题包含版本号和 `（English + 中文， 中文在下方）`，描述按 English、中文两个区块显示。
+
+GitHub Release 正文会在双语说明后自动追加首次启动提示：
+
+```bash
+xattr -dr com.apple.quarantine "/Applications/Status Trio.app"
+open "/Applications/Status Trio.app"
+```
+
+这些首次启动命令只写入 GitHub Release，不写入 Sparkle appcast。
 
 ## 第一次配置
 

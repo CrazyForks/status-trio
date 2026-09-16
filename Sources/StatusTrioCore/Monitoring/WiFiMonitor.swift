@@ -72,6 +72,13 @@ struct WiFiSystemReading: Equatable, Sendable {
 
 protocol WiFiSystemReadingProviding: AnyObject {
     func read() -> WiFiSystemReading?
+    func read(includeSSID: Bool) -> WiFiSystemReading?
+}
+
+extension WiFiSystemReadingProviding {
+    func read(includeSSID: Bool) -> WiFiSystemReading? {
+        read()
+    }
 }
 
 protocol InternetSharingDetecting: AnyObject {
@@ -113,6 +120,10 @@ final class CoreWLANWiFiSystemReader: WiFiSystemReadingProviding {
     }
 
     func read() -> WiFiSystemReading? {
+        read(includeSSID: true)
+    }
+
+    func read(includeSSID: Bool) -> WiFiSystemReading? {
         guard let interface = client.interface() else { return nil }
 
         return WiFiSystemReading(
@@ -120,7 +131,7 @@ final class CoreWLANWiFiSystemReader: WiFiSystemReadingProviding {
             serviceActive: interface.serviceActive(),
             mode: WiFiInterfaceMode(coreWLANMode: interface.interfaceMode()),
             rssi: interface.rssiValue(),
-            ssid: interface.ssid()
+            ssid: includeSSID ? interface.ssid() : nil
         )
     }
 }
@@ -295,6 +306,10 @@ final class WiFiMonitor: NSObject, WiFiMonitoring, CWEventDelegate {
     private let pathQueue = DispatchQueue(label: "StatusTrio.WiFiPath")
     private let staleInterval: TimeInterval
     private let now: () -> Date
+    private let refreshDebounceInterval: Duration
+    private let refreshDebounceSleep: @Sendable (Duration) async throws -> Void
+    private var scheduledRefreshTask: Task<Void, Never>?
+    private var detailsVisible = true
 
     private var latestPath: WiFiPathSnapshot?
     private var latestPathSequence: UInt64?
@@ -312,7 +327,11 @@ final class WiFiMonitor: NSObject, WiFiMonitoring, CWEventDelegate {
         pathMonitor: any WiFiPathMonitoring = NetworkWiFiPathMonitor(),
         staleInterval: TimeInterval = 30,
         initialPath: WiFiPathSnapshot? = nil,
-        now: @escaping () -> Date = Date.init
+        now: @escaping () -> Date = Date.init,
+        refreshDebounceInterval: Duration = .milliseconds(150),
+        refreshDebounceSleep: @escaping @Sendable (Duration) async throws -> Void = {
+            try await Task.sleep(for: $0)
+        }
     ) {
         self.systemReader = systemReader
         self.sharingDetector = sharingDetector
@@ -322,7 +341,9 @@ final class WiFiMonitor: NSObject, WiFiMonitoring, CWEventDelegate {
         self.staleInterval = staleInterval
         self.latestPath = initialPath
         self.now = now
-        (updates, continuation) = AsyncStream.makeStream()
+        self.refreshDebounceInterval = refreshDebounceInterval
+        self.refreshDebounceSleep = refreshDebounceSleep
+        (updates, continuation) = MonitorStream.make(of: WiFiStatus.self)
         super.init()
         nameAuthorizer.onAccessChange = { [weak self] in
             self?.refresh()
@@ -330,6 +351,7 @@ final class WiFiMonitor: NSObject, WiFiMonitoring, CWEventDelegate {
     }
 
     deinit {
+        scheduledRefreshTask?.cancel()
         if lifecycle != .stopped {
             eventMonitor.stop()
             pathMonitor.cancel()
@@ -360,6 +382,15 @@ final class WiFiMonitor: NSObject, WiFiMonitoring, CWEventDelegate {
         nameAuthorizer.requestAccess()
     }
 
+    func setDetailsVisible(_ visible: Bool) {
+        guard lifecycle != .stopped else { return }
+        let changed = detailsVisible != visible
+        detailsVisible = visible
+        if changed, !visible, lifecycle == .running {
+            refresh()
+        }
+    }
+
     private func startPathMonitoring() {
         pathMonitor.start(queue: pathQueue) { [weak self] update in
             Task { @MainActor [weak self] in
@@ -370,7 +401,7 @@ final class WiFiMonitor: NSObject, WiFiMonitoring, CWEventDelegate {
                 }
                 self.latestPathSequence = update.sequence
                 self.latestPath = update.snapshot
-                self.refresh()
+                self.scheduleRefresh()
             }
         }
     }
@@ -378,13 +409,15 @@ final class WiFiMonitor: NSObject, WiFiMonitoring, CWEventDelegate {
     func stop() {
         guard lifecycle != .stopped else { return }
         lifecycle = .stopped
+        scheduledRefreshTask?.cancel()
+        scheduledRefreshTask = nil
         teardown()
     }
 
     func refresh() {
         guard lifecycle != .stopped else { return }
 
-        guard let reading = systemReader.read() else {
+        guard let reading = systemReader.read(includeSSID: detailsVisible) else {
             publish(.unavailable, rssi: nil, ssid: nil, nameAccess: nameAuthorizer.access)
             return
         }
@@ -420,7 +453,7 @@ final class WiFiMonitor: NSObject, WiFiMonitoring, CWEventDelegate {
     nonisolated func clientConnectionInterrupted() {
         Task { @MainActor [weak self] in
             guard let self, self.lifecycle == .running else { return }
-            self.refresh()
+            self.scheduleRefresh()
         }
     }
 
@@ -428,31 +461,31 @@ final class WiFiMonitor: NSObject, WiFiMonitoring, CWEventDelegate {
         Task { @MainActor [weak self] in
             guard let self, self.lifecycle == .running else { return }
             self.recover()
-            self.refresh()
+            self.scheduleRefresh()
         }
     }
 
     nonisolated func powerStateDidChangeForWiFiInterface(withName interfaceName: String) {
         Task { @MainActor [weak self] in
-            self?.refresh()
+            self?.scheduleRefresh()
         }
     }
 
     nonisolated func ssidDidChangeForWiFiInterface(withName interfaceName: String) {
         Task { @MainActor [weak self] in
-            self?.refresh()
+            self?.scheduleRefresh()
         }
     }
 
     nonisolated func bssidDidChangeForWiFiInterface(withName interfaceName: String) {
         Task { @MainActor [weak self] in
-            self?.refresh()
+            self?.scheduleRefresh()
         }
     }
 
     nonisolated func linkDidChangeForWiFiInterface(withName interfaceName: String) {
         Task { @MainActor [weak self] in
-            self?.refresh()
+            self?.scheduleRefresh()
         }
     }
 
@@ -462,13 +495,36 @@ final class WiFiMonitor: NSObject, WiFiMonitoring, CWEventDelegate {
         transmitRate: Double
     ) {
         Task { @MainActor [weak self] in
-            self?.refresh()
+            self?.scheduleRefresh()
         }
     }
 
     nonisolated func modeDidChangeForWiFiInterface(withName interfaceName: String) {
         Task { @MainActor [weak self] in
-            self?.refresh()
+            self?.scheduleRefresh()
+        }
+    }
+
+    private func scheduleRefresh() {
+        guard lifecycle == .running, scheduledRefreshTask == nil else { return }
+
+        let interval = refreshDebounceInterval
+        let sleep = refreshDebounceSleep
+        scheduledRefreshTask = Task { @MainActor [weak self] in
+            do {
+                try await sleep(interval)
+            } catch {
+                self?.scheduledRefreshTask = nil
+                return
+            }
+
+            guard !Task.isCancelled, let self, self.lifecycle == .running else {
+                self?.scheduledRefreshTask = nil
+                return
+            }
+
+            self.scheduledRefreshTask = nil
+            self.refresh()
         }
     }
 

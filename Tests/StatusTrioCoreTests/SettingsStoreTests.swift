@@ -13,6 +13,32 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(store.iconSize, 28, accuracy: 0.001)
     }
 
+    func testRefreshIntervalDefaultsAndRange() {
+        let store = SettingsStore(defaults: makeSuite().defaults)
+
+        XCTAssertEqual(SettingsStore.refreshIntervalRange, 5...60)
+        XCTAssertEqual(store.refreshIntervalSeconds, 5, accuracy: 0.001)
+        XCTAssertEqual(store.refreshInterval, .seconds(5))
+    }
+
+    func testRefreshIntervalClampsRoundsAndPersists() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+
+        let first = SettingsStore(defaults: suite.defaults)
+        first.refreshIntervalSeconds = 7
+        XCTAssertEqual(first.refreshIntervalSeconds, 5, accuracy: 0.001)
+
+        first.refreshIntervalSeconds = 307
+        XCTAssertEqual(first.refreshIntervalSeconds, 60, accuracy: 0.001)
+
+        first.refreshIntervalSeconds = 32
+        XCTAssertEqual(first.refreshIntervalSeconds, 30, accuracy: 0.001)
+
+        let second = SettingsStore(defaults: suite.defaults)
+        XCTAssertEqual(second.refreshIntervalSeconds, 30, accuracy: 0.001)
+    }
+
     func testBatteryDisplayDefaults() {
         let store = SettingsStore(defaults: makeSuite().defaults)
 
@@ -271,7 +297,112 @@ final class SettingsStoreTests: XCTestCase {
         )
     }
 
+    func testPopupSectionOrderDefaultsToBatteryNetworkBluetoothVolume() {
+        let store = SettingsStore(defaults: makeSuite().defaults)
+
+        XCTAssertEqual(store.popupSectionOrder, [.battery, .network, .bluetooth, .volume])
+    }
+
+    func testPopupSectionVisibilityDefaultsToEverythingExceptBluetooth() {
+        let store = SettingsStore(defaults: makeSuite().defaults)
+
+        XCTAssertEqual(
+            store.enabledPopupSections,
+            Set([.battery, .network, .volume])
+        )
+        XCTAssertEqual(
+            store.visiblePopupSections,
+            [.battery, .network, .volume]
+        )
+    }
+
+    func testPopupSectionVisibilityFiltersWithoutChangingStoredOrder() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+
+        let first = SettingsStore(defaults: suite.defaults)
+        first.setPopupSection(.network, enabled: false)
+        first.setPopupSection(.bluetooth, enabled: true)
+
+        XCTAssertEqual(
+            first.popupSectionOrder,
+            [.battery, .network, .bluetooth, .volume]
+        )
+        XCTAssertEqual(
+            first.visiblePopupSections,
+            [.battery, .bluetooth, .volume]
+        )
+
+        let second = SettingsStore(defaults: suite.defaults)
+        XCTAssertEqual(second.enabledPopupSections, Set([.battery, .bluetooth, .volume]))
+    }
+
+    func testMovingPopupSectionsPersistsOrder() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+
+        let store = SettingsStore(defaults: suite.defaults)
+        store.movePopupSections(
+            fromOffsets: IndexSet(integer: 3),
+            toOffset: 0
+        )
+
+        XCTAssertEqual(store.popupSectionOrder, [.volume, .battery, .network, .bluetooth])
+        XCTAssertEqual(
+            SettingsStore(defaults: suite.defaults).popupSectionOrder,
+            [.volume, .battery, .network, .bluetooth]
+        )
+    }
+
+    func testStoredPopupSectionOrderIsSanitizedAndCompleted() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+
+        suite.defaults.set(
+            ["volume", "unknown", "volume", "network"],
+            forKey: SettingsStore.popupSectionOrderDefaultsKey
+        )
+
+        let store = SettingsStore(defaults: suite.defaults)
+
+        XCTAssertEqual(store.popupSectionOrder, [.volume, .network, .battery, .bluetooth])
+    }
+
+    func testStoredPopupSectionVisibilityIgnoresUnknownValues() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+
+        suite.defaults.set(
+            ["network", "unknown", "network"],
+            forKey: SettingsStore.enabledPopupSectionsDefaultsKey
+        )
+
+        let store = SettingsStore(defaults: suite.defaults)
+
+        XCTAssertEqual(store.enabledPopupSections, Set([.network]))
+        XCTAssertEqual(store.visiblePopupSections, [.network])
+    }
+
+    func testPopupSectionMetadataIncludesBluetooth() {
+        XCTAssertEqual(PopupSection.bluetooth.titleKey, .bluetoothTitle)
+        XCTAssertNotNil(BluetoothIcon.templateImage)
+        XCTAssertNotNil(
+            NSImage(
+                systemSymbolName: PopupSection.bluetooth.systemImage,
+                accessibilityDescription: nil
+            )
+        )
+    }
+
+    func testStatusPanelTabIsAvailableAfterBasics() {
+        XCTAssertEqual(Array(SettingsTab.allCases.prefix(2)), [.basics, .panel])
+        XCTAssertEqual(SettingsTab.panel.titleKey, .settingsTabPanel)
+        XCTAssertEqual(SettingsTab.panel.systemImage, "rectangle.on.rectangle")
+        XCTAssertEqual(SettingsTab.panel.tint, .purple)
+    }
+
     func testEveryConfigurableSizeRendersAtThatSize() throws {
+
         for value in stride(
             from: SettingsStore.iconSizeRange.lowerBound,
             through: SettingsStore.iconSizeRange.upperBound,
@@ -285,6 +416,95 @@ final class SettingsStoreTests: XCTestCase {
             XCTAssertEqual(image.size.width, value, accuracy: 0.01, "width at \(value) pt")
             XCTAssertEqual(image.size.height, value, accuracy: 0.01, "height at \(value) pt")
         }
+    }
+
+    func testAppIconPlacementDefaultsToMenuBar() {
+        let store = SettingsStore(defaults: makeSuite().defaults)
+
+        XCTAssertEqual(store.appIconPlacement, .menuBar)
+    }
+
+    func testAppIconPlacementPersistsAcrossStoreInstances() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+
+        let first = SettingsStore(defaults: suite.defaults)
+        first.appIconPlacement = .both
+
+        XCTAssertEqual(SettingsStore(defaults: suite.defaults).appIconPlacement, .both)
+    }
+
+    func testUnknownAppIconPlacementFallsBackToMenuBar() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+        suite.defaults.set("neither", forKey: SettingsStore.appIconPlacementDefaultsKey)
+
+        XCTAssertEqual(SettingsStore(defaults: suite.defaults).appIconPlacement, .menuBar)
+    }
+
+    func testAppIconPlacementPublishesChanges() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+
+        let store = SettingsStore(defaults: suite.defaults)
+        var published: [AppIconPlacement] = []
+        let cancellable = store.$appIconPlacement.dropFirst().sink { published.append($0) }
+        defer { cancellable.cancel() }
+
+        store.appIconPlacement = .dock
+        store.appIconPlacement = .both
+
+        XCTAssertEqual(published, [.dock, .both])
+    }
+
+    func testDockIconBackgroundPreferenceDefaultsToSystem() {
+        let store = SettingsStore(defaults: makeSuite().defaults)
+
+        XCTAssertEqual(store.dockIconBackgroundPreference, .system)
+    }
+
+    func testDockIconBackgroundPreferencePersistsAcrossStoreInstances() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+
+        let first = SettingsStore(defaults: suite.defaults)
+        first.dockIconBackgroundPreference = .light
+
+        XCTAssertEqual(
+            SettingsStore(defaults: suite.defaults).dockIconBackgroundPreference,
+            .light
+        )
+    }
+
+    func testUnknownDockIconBackgroundPreferenceFallsBackToSystem() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+        suite.defaults.set(
+            "rainbow",
+            forKey: SettingsStore.dockIconBackgroundPreferenceDefaultsKey
+        )
+
+        XCTAssertEqual(
+            SettingsStore(defaults: suite.defaults).dockIconBackgroundPreference,
+            .system
+        )
+    }
+
+    func testDockIconBackgroundPreferencePublishesChanges() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+
+        let store = SettingsStore(defaults: suite.defaults)
+        var published: [DockIconBackgroundPreference] = []
+        let cancellable = store.$dockIconBackgroundPreference.dropFirst().sink {
+            published.append($0)
+        }
+        defer { cancellable.cancel() }
+
+        store.dockIconBackgroundPreference = .light
+        store.dockIconBackgroundPreference = .system
+
+        XCTAssertEqual(published, [.light, .system])
     }
 
     private func makeSuite() -> (defaults: UserDefaults, name: String) {

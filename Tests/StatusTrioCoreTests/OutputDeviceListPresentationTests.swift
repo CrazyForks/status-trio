@@ -52,6 +52,21 @@ final class OutputDeviceListPresentationTests: XCTestCase {
         )
     }
 
+    func testModelOrdersAndLimitsDevicesOnce() {
+        let devices = makeDevices(count: 4)
+
+        let model = OutputDeviceListModel.make(
+            devices: devices,
+            order: ["device-4", "device-2"],
+            limit: 2,
+            isExpanded: false
+        )
+
+        XCTAssertEqual(model.orderedDevices.map(\.id), [4, 2, 1, 3])
+        XCTAssertEqual(model.visibleDevices.map(\.id), [4, 2])
+        XCTAssertTrue(model.canToggleExpansion)
+    }
+
     private func makeDevices(count: Int) -> [AudioOutputDevice] {
         (1...count).map { index in
             AudioOutputDevice(

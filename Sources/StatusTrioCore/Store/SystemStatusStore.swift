@@ -13,13 +13,15 @@ final class SystemStatusStore: ObservableObject {
     @Published private(set) var isPreviewBatteryAnimationRunning = false
     @Published private(set) var previewStatus = PreviewStatusConfiguration.standard
     @Published private(set) var liveVolume: VolumeStatus
+    let wifiNetworks: WiFiNetworkController
+    let bluetoothDevices: BluetoothDeviceController
 
     private let batteryMonitor: any BatteryMonitoring
     private let wifiMonitor: any WiFiMonitoring
     private let connectionMonitor: (any NetworkConnectionMonitoring)?
     private let volumeMonitor: any VolumeMonitoring
     private let volumeController: (any VolumeControlling)?
-    private let refreshInterval: Duration
+    private var refreshInterval: Duration
     private let sleep: @Sendable (Duration) async throws -> Void
     private let popupDebounceSleep: @Sendable (Duration) async throws -> Void
     private let previewAnimationSleep: @Sendable (Duration) async throws -> Void
@@ -33,6 +35,9 @@ final class SystemStatusStore: ObservableObject {
     private var lastPublishedSnapshot: StatusSnapshot?
     private var hasStarted = false
     private var hasStopped = false
+    private var isPopoverVisible = false
+    private var isBluetoothEnabled = false
+    private var isBluetoothDetailsOpen = false
 
     init(
         batteryMonitor: any BatteryMonitoring,
@@ -50,6 +55,8 @@ final class SystemStatusStore: ObservableObject {
             try await Task.sleep(for: $0)
         },
         wakeNotificationCenter: NotificationCenter = NSWorkspace.shared.notificationCenter,
+        wifiNetworks: WiFiNetworkController = WiFiNetworkController(),
+        bluetoothDevices: BluetoothDeviceController = BluetoothDeviceController(),
         initialSnapshot: StatusSnapshot = .placeholder
     ) {
         self.batteryMonitor = batteryMonitor
@@ -63,6 +70,8 @@ final class SystemStatusStore: ObservableObject {
         self.previewAnimationSleep = previewAnimationSleep
         self.wakeNotificationCenter = wakeNotificationCenter
         self.liveSnapshot = initialSnapshot
+        self.wifiNetworks = wifiNetworks
+        self.bluetoothDevices = bluetoothDevices
         self.snapshot = initialSnapshot
         self.popupSnapshot = initialSnapshot
         self.liveVolume = initialSnapshot.volume
@@ -81,6 +90,8 @@ final class SystemStatusStore: ObservableObject {
     func start() {
         guard !hasStarted, !hasStopped else { return }
         hasStarted = true
+        wifiMonitor.setDetailsVisible(false)
+        volumeMonitor.setDetailsVisible(false)
 
         wakeObserver = wakeNotificationCenter.addObserver(
             forName: NSWorkspace.didWakeNotification,
@@ -133,18 +144,16 @@ final class SystemStatusStore: ObservableObject {
         }
         monitorTasks = tasks
 
-        let refreshInterval = refreshInterval
-        let sleep = sleep
-        refreshTask = Task { [weak self] in
+        refreshTask = Task { @MainActor [weak self] in
             while !Task.isCancelled {
+                guard let sleep = self?.sleep, let interval = self?.refreshInterval else { return }
                 do {
-                    try await sleep(refreshInterval)
+                    try await sleep(interval)
                 } catch {
                     return
                 }
                 guard !Task.isCancelled else { return }
-                guard let self else { return }
-                self.refreshAll()
+                self?.refreshAll()
             }
         }
     }
@@ -169,6 +178,8 @@ final class SystemStatusStore: ObservableObject {
         popupPublishTask?.cancel()
         popupPublishTask = nil
         stopPreviewBatteryAnimation()
+        wifiNetworks.deactivate()
+        bluetoothDevices.deactivate()
     }
 
     var displayedSnapshot: StatusSnapshot {
@@ -315,12 +326,71 @@ final class SystemStatusStore: ObservableObject {
         wifiMonitor.requestNameAccess()
     }
 
-    func refreshForPopoverOpening() {
+    func requestBluetoothAuthorization() {
+        setBluetoothEnabled(true)
+    }
+
+    func setBluetoothEnabled(_ enabled: Bool) {
         guard !hasStopped else { return }
+        isBluetoothEnabled = enabled
+        if enabled {
+            bluetoothDevices.activate()
+        } else {
+            isBluetoothDetailsOpen = false
+            bluetoothDevices.deactivate()
+        }
+    }
+
+    func openBluetoothDetails() {
+        guard !hasStopped else { return }
+        isBluetoothDetailsOpen = true
+        bluetoothDevices.activate()
+    }
+
+    func closeBluetoothDetails() {
+        isBluetoothDetailsOpen = false
+        if !isBluetoothEnabled {
+            bluetoothDevices.deactivate()
+        }
+    }
+
+    func refreshForPopoverOpening() {
+        setPopoverVisible(true)
+    }
+
+    func setRefreshInterval(_ interval: Duration) {
+        guard interval != refreshInterval else { return }
+        refreshInterval = interval
+    }
+
+    func setPopoverVisible(_ visible: Bool) {
+        guard !hasStopped else { return }
+        isPopoverVisible = visible
+        wifiMonitor.setDetailsVisible(visible)
+        volumeMonitor.setDetailsVisible(visible)
+
+        guard visible else { return }
         popupPublishTask?.cancel()
         popupPublishTask = nil
         popupSnapshot = snapshot
+        bluetoothDevices.prepareForPresentation()
         refreshAll()
+        wifiNetworks.refresh(nameAccess: popupSnapshot.wifi.nameAccess)
+    }
+
+    func activateWiFiPanel() {
+        guard !hasStopped else { return }
+        wifiNetworks.activate(nameAccess: popupSnapshot.wifi.nameAccess)
+    }
+
+    func closePopoverDetails() {
+        wifiNetworks.deactivate()
+        closeBluetoothDetails()
+    }
+
+    /// Whether a popover detail panel (Wi-Fi or Bluetooth list) is currently open.
+    var hasActivePopoverDetails: Bool {
+        wifiNetworks.isActive || isBluetoothDetailsOpen
     }
 
     func refreshAll() {
@@ -357,6 +427,7 @@ final class SystemStatusStore: ObservableObject {
     private func applyWiFi(_ value: WiFiStatus) {
         liveSnapshot = liveSnapshot.replacingWiFi(value)
         publishLiveSnapshot()
+        wifiNetworks.refresh(nameAccess: value.nameAccess)
     }
 
     private func applyConnection(_ value: NetworkConnection) {
@@ -428,6 +499,7 @@ final class SystemStatusStore: ObservableObject {
     }
 
     private func schedulePopupSnapshot(_ next: StatusSnapshot) {
+        guard isPopoverVisible else { return }
         popupPublishTask?.cancel()
         popupPublishTask = Task { @MainActor [weak self] in
             guard let self else { return }

@@ -46,6 +46,37 @@ final class SystemStatusStoreTests: XCTestCase {
         XCTAssertEqual(SystemStatusStore.popupDebounceInterval, .milliseconds(500))
     }
 
+    func testReportsWhetherPopoverDetailsAreOpen() {
+        let wifiNetworks = WiFiNetworkController()
+        let bluetoothDevices = BluetoothDeviceController()
+        let store = SystemStatusStore(
+            batteryMonitor: FakeBatteryMonitor(),
+            wifiMonitor: FakeWiFiMonitor(),
+            volumeMonitor: FakeVolumeMonitor(),
+            wifiNetworks: wifiNetworks,
+            bluetoothDevices: bluetoothDevices
+        )
+        XCTAssertFalse(store.hasActivePopoverDetails)
+
+        wifiNetworks.activate(nameAccess: .authorized)
+        XCTAssertTrue(store.hasActivePopoverDetails)
+
+        store.closePopoverDetails()
+        XCTAssertFalse(store.hasActivePopoverDetails)
+
+        store.openBluetoothDetails()
+        XCTAssertTrue(store.hasActivePopoverDetails)
+
+        store.closeBluetoothDetails()
+        XCTAssertFalse(store.hasActivePopoverDetails)
+
+        store.setBluetoothEnabled(true)
+        XCTAssertFalse(store.hasActivePopoverDetails)
+
+        store.setBluetoothEnabled(false)
+        XCTAssertFalse(store.hasActivePopoverDetails)
+    }
+
     func testPopupSnapshotDebouncesRapidUpdates() async {
         let battery = FakeBatteryMonitor()
         let sleeper = ManualSleeper()
@@ -68,6 +99,7 @@ final class SystemStatusStoreTests: XCTestCase {
             .store(in: &cancellables)
 
         store.start()
+        store.setPopoverVisible(true)
         battery.send(makeBattery(percentage: 42))
         await sleeper.waitForCallCount(1)
         battery.send(makeBattery(percentage: 55))
@@ -81,6 +113,30 @@ final class SystemStatusStoreTests: XCTestCase {
 
         XCTAssertEqual(store.popupSnapshot.battery.percentage, 55)
         cancellables.removeAll()
+        store.stop()
+    }
+
+    func testPopoverVisibilityUpdatesDetailsAndRefreshes() {
+        let battery = FakeBatteryMonitor()
+        let wifi = FakeWiFiMonitor()
+        let volume = FakeVolumeMonitor()
+        let store = makeStore(battery: battery, wifi: wifi, volume: volume)
+
+        store.start()
+        XCTAssertEqual(wifi.detailsVisibility, [false])
+        XCTAssertEqual(volume.detailsVisibility, [false])
+        let initialWiFiRefreshCount = wifi.refreshCount
+        let initialVolumeRefreshCount = volume.refreshCount
+
+        store.setPopoverVisible(true)
+        XCTAssertEqual(wifi.detailsVisibility, [false, true])
+        XCTAssertEqual(volume.detailsVisibility, [false, true])
+        XCTAssertEqual(wifi.refreshCount, initialWiFiRefreshCount + 1)
+        XCTAssertEqual(volume.refreshCount, initialVolumeRefreshCount + 1)
+
+        store.setPopoverVisible(false)
+        XCTAssertEqual(wifi.detailsVisibility, [false, true, false])
+        XCTAssertEqual(volume.detailsVisibility, [false, true, false])
         store.stop()
     }
 
@@ -137,6 +193,7 @@ final class SystemStatusStoreTests: XCTestCase {
             .store(in: &cancellables)
 
         store.start()
+        store.setPopoverVisible(true)
         volume.send(
             VolumeStatus(
                 scalar: 0.42,
@@ -167,9 +224,20 @@ final class SystemStatusStoreTests: XCTestCase {
             refreshInterval: .seconds(60)
         )
 
+        let batteryUpdated = expectation(description: "battery snapshot published")
+        var cancellables = Set<AnyCancellable>()
+        store.$snapshot
+            .dropFirst()
+            .sink { snapshot in
+                if snapshot.battery.percentage == 42 {
+                    batteryUpdated.fulfill()
+                }
+            }
+            .store(in: &cancellables)
+
         store.start()
         battery.send(makeBattery(percentage: 42))
-        await drainMainActorTasks()
+        await fulfillment(of: [batteryUpdated], timeout: 1)
 
         XCTAssertEqual(store.snapshot.battery.percentage, 42)
         XCTAssertEqual(store.popupSnapshot.battery.percentage, 100)
@@ -180,6 +248,7 @@ final class SystemStatusStoreTests: XCTestCase {
         XCTAssertEqual(battery.refreshCount, 1)
         XCTAssertEqual(wifi.refreshCount, 1)
         XCTAssertEqual(volume.refreshCount, 1)
+        cancellables.removeAll()
         store.stop()
     }
 
@@ -195,6 +264,7 @@ final class SystemStatusStoreTests: XCTestCase {
         )
 
         store.start()
+        store.setPopoverVisible(true)
         battery.send(makeBattery(percentage: 42))
         await sleeper.waitForCallCount(1)
         store.stop()
@@ -400,6 +470,29 @@ final class SystemStatusStoreTests: XCTestCase {
         store.stop()
         sleeper.releaseAll()
         await sleeper.waitForCompletionCount(2)
+    }
+
+    func testChangingRefreshIntervalAffectsNextSleepCycle() async {
+        let sleeper = ManualSleeper()
+        let battery = FakeBatteryMonitor()
+        let store = SystemStatusStore(
+            batteryMonitor: battery,
+            wifiMonitor: FakeWiFiMonitor(),
+            volumeMonitor: FakeVolumeMonitor(),
+            refreshInterval: .seconds(60),
+            sleep: { duration in await sleeper.sleep(duration) }
+        )
+
+        store.start()
+        await sleeper.waitForCallCount(1)
+
+        store.setRefreshInterval(.seconds(5))
+        sleeper.releaseNext()
+        await sleeper.waitForCompletionCount(1)
+        await sleeper.waitForCallCount(2)
+
+        XCTAssertEqual(sleeper.durations, [.seconds(60), .seconds(5)])
+        store.stop()
     }
 
     func testStopPreventsFurtherPeriodicRefresh() async {
@@ -697,13 +790,15 @@ final class SystemStatusStoreTests: XCTestCase {
 private final class ManualSleeper {
     private(set) var callCount = 0
     private(set) var completionCount = 0
+    private(set) var durations: [Duration] = []
 
     private var sleepContinuations: [CheckedContinuation<Void, Never>] = []
     private var callWaiters: [(count: Int, continuation: CheckedContinuation<Void, Never>)] = []
     private var completionWaiters: [(count: Int, continuation: CheckedContinuation<Void, Never>)] = []
 
-    func sleep() async {
+    func sleep(_ duration: Duration = .zero) async {
         callCount += 1
+        durations.append(duration)
         resumeCallWaiters()
 
         await withCheckedContinuation { continuation in
@@ -847,6 +942,7 @@ private final class FakeWiFiMonitor: WiFiMonitoring {
     private(set) var recoverCount = 0
     private(set) var finishCount = 0
     private(set) var nameAccessRequestCount = 0
+    private(set) var detailsVisibility: [Bool] = []
     var onRecover: (() -> Void)?
     var onRefresh: (() -> Void)?
     private let continuation: AsyncStream<WiFiStatus>.Continuation
@@ -868,6 +964,10 @@ private final class FakeWiFiMonitor: WiFiMonitoring {
     func requestNameAccess() {
         nameAccessRequestCount += 1
     }
+
+    func setDetailsVisible(_ visible: Bool) {
+        detailsVisibility.append(visible)
+    }
     func send(_ value: WiFiStatus) { continuation.yield(value) }
     func finishUpdates() {
         finishCount += 1
@@ -885,6 +985,7 @@ private final class FakeVolumeMonitor: VolumeMonitoring, VolumeControlling {
     private(set) var setVolumeValues: [Double] = []
     private(set) var toggleMuteCount = 0
     private(set) var selectedOutputDeviceIDs: [AudioDeviceID] = []
+    private(set) var detailsVisibility: [Bool] = []
     var onRecover: (() -> Void)?
     var onRefresh: (() -> Void)?
     private let continuation: AsyncStream<VolumeStatus>.Continuation
@@ -911,6 +1012,10 @@ private final class FakeVolumeMonitor: VolumeMonitoring, VolumeControlling {
     }
     func selectOutputDevice(_ deviceID: AudioDeviceID) {
         selectedOutputDeviceIDs.append(deviceID)
+    }
+
+    func setDetailsVisible(_ visible: Bool) {
+        detailsVisibility.append(visible)
     }
     func send(_ value: VolumeStatus) { continuation.yield(value) }
 }

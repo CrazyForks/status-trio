@@ -125,8 +125,26 @@ if [[ -z "${RELEASE_NOTES_FILE:-}" ]]; then
     printf '%s\n' "- Release v$VERSION." > "$RELEASE_NOTES_FILE"
 fi
 
+if [[ -z "${RELEASE_BODY_FILE:-}" ]]; then
+    RELEASE_BODY_FILE="$RELEASE_NOTES_FILE"
+fi
+
 if [[ ! -f "$RELEASE_NOTES_FILE" ]]; then
     echo "Error: release notes file does not exist: $RELEASE_NOTES_FILE" >&2
+    exit 1
+fi
+
+if [[ ! -f "$RELEASE_BODY_FILE" ]]; then
+    echo "Error: GitHub release body file does not exist: $RELEASE_BODY_FILE" >&2
+    exit 1
+fi
+
+if [[ -z "${APPCAST_RELEASE_NOTES_FILE:-}" ]]; then
+    APPCAST_RELEASE_NOTES_FILE="$RELEASE_BODY_FILE"
+fi
+
+if [[ ! -f "$APPCAST_RELEASE_NOTES_FILE" ]]; then
+    echo "Error: appcast release notes file does not exist: $APPCAST_RELEASE_NOTES_FILE" >&2
     exit 1
 fi
 
@@ -235,7 +253,7 @@ RELEASE_ARGS=(
     "$DMG_PATH.sha256"
     --repo "$RELEASE_REPO"
     --title "$APP_NAME v$VERSION"
-    --notes-file "$RELEASE_NOTES_FILE"
+    --notes-file "$RELEASE_BODY_FILE"
 )
 if ! gh api "repos/$RELEASE_REPO/git/ref/tags/$TAG" >/dev/null 2>&1; then
     RELEASE_ARGS+=(--target "$RELEASE_BRANCH")
@@ -249,7 +267,7 @@ ruby "$ROOT/scripts/update-appcast.rb" \
     "$DMG_URL" \
     "$ED_SIGNATURE" \
     "$DMG_LENGTH" \
-    "$RELEASE_NOTES_FILE" \
+    "$APPCAST_RELEASE_NOTES_FILE" \
     "$APPCAST_PATH"
 
 xmllint --noout "$APPCAST_PATH"

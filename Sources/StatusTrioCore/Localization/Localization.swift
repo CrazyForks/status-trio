@@ -33,14 +33,20 @@ final class Localization: ObservableObject {
 
     private let defaults: UserDefaults
     private var preferredLanguages: [String]
+    private let bundleProvider: (AppLanguage) -> Bundle?
+    private var bundleCache: [AppLanguage: Bundle] = [:]
     nonisolated(unsafe) private var localeObserver: NSObjectProtocol?
 
     init(
         defaults: UserDefaults = .standard,
-        preferredLanguages: [String] = Locale.preferredLanguages
+        preferredLanguages: [String] = Locale.preferredLanguages,
+        bundleProvider: @escaping (AppLanguage) -> Bundle? = {
+            Localization.resourceBundle(for: $0)
+        }
     ) {
         self.defaults = defaults
         self.preferredLanguages = preferredLanguages
+        self.bundleProvider = bundleProvider
 
         let storedPreference = defaults.string(forKey: Self.defaultsKey)
         let preference: LanguagePreference
@@ -149,6 +155,11 @@ final class Localization: ObservableObject {
     }
 
     private func bundle(for language: AppLanguage) -> Bundle? {
-        Self.resourceBundle(for: language)
+        if let cached = bundleCache[language] {
+            return cached
+        }
+        guard let bundle = bundleProvider(language) else { return nil }
+        bundleCache[language] = bundle
+        return bundle
     }
 }

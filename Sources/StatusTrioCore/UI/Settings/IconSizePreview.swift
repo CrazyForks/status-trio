@@ -7,7 +7,7 @@ struct IconSizePreview: View {
 
     var body: some View {
         Image(nsImage: StatusIconRenderer.image(
-            snapshot: .placeholder,
+            menuBarStatus: .placeholder,
             size: size,
             options: options
         ))

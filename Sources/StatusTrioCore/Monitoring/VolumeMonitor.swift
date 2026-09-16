@@ -634,21 +634,35 @@ final class VolumeMonitor: VolumeMonitoring, VolumeControlling {
     private let reader: any VolumeReadingProviding
     private let eventMonitor: any VolumeEventMonitoring
     private let outputController: (any AudioOutputControlling)?
+    private let refreshDebounceInterval: Duration
+    private let refreshDebounceSleep: @Sendable (Duration) async throws -> Void
+    private var scheduledRefreshTask: Task<Void, Never>?
+    private var scheduledRefreshIncludesOutputDevices = false
+    private var cachedOutputDevices: [AudioOutputDevice] = []
+    private var outputDevicesCacheValid = false
+    private var detailsVisible = true
     private var lifecycle = Lifecycle.idle
 
     init(
         reader: any VolumeReadingProviding = CoreAudioVolumeReader(),
         eventMonitor: any VolumeEventMonitoring = CoreAudioVolumeEventMonitor(),
-        outputController: (any AudioOutputControlling)? = nil
+        outputController: (any AudioOutputControlling)? = nil,
+        refreshDebounceInterval: Duration = .milliseconds(150),
+        refreshDebounceSleep: @escaping @Sendable (Duration) async throws -> Void = {
+            try await Task.sleep(for: $0)
+        }
     ) {
         self.reader = reader
         self.eventMonitor = eventMonitor
         self.outputController = outputController
-        (updates, continuation) = AsyncStream.makeStream()
+        self.refreshDebounceInterval = refreshDebounceInterval
+        self.refreshDebounceSleep = refreshDebounceSleep
+        (updates, continuation) = MonitorStream.make(of: VolumeStatus.self)
     }
 
     deinit {
         MainActor.assumeIsolated {
+            scheduledRefreshTask?.cancel()
             if lifecycle != .stopped {
                 eventMonitor.stop()
             }
@@ -662,10 +676,10 @@ final class VolumeMonitor: VolumeMonitoring, VolumeControlling {
 
         eventMonitor.start(
             onDefaultDeviceChange: { [weak self] in
-                self?.refresh()
+                self?.scheduleRefresh(includeOutputDevices: true)
             },
             onVolumeChange: { [weak self] in
-                self?.refresh()
+                self?.scheduleRefresh()
             }
         )
         refresh()
@@ -674,6 +688,9 @@ final class VolumeMonitor: VolumeMonitoring, VolumeControlling {
     func stop() {
         guard lifecycle != .stopped else { return }
         lifecycle = .stopped
+        scheduledRefreshTask?.cancel()
+        scheduledRefreshTask = nil
+        scheduledRefreshIncludesOutputDevices = false
         teardown()
     }
 
@@ -682,40 +699,102 @@ final class VolumeMonitor: VolumeMonitoring, VolumeControlling {
         eventMonitor.recover()
     }
 
-    func refresh() {
+    func setDetailsVisible(_ visible: Bool) {
         guard lifecycle != .stopped else { return }
+        let changed = detailsVisible != visible
+        detailsVisible = visible
+        outputDevicesCacheValid = false
 
-        eventMonitor.reconcile()
-        let status: VolumeStatus
-        if let reading = reader.read() {
-            status = VolumeStatus(
-                scalar: reading.scalar,
-                isMuted: reading.isMuted,
-                deviceName: reading.deviceName,
-                outputDevices: outputController?.outputDevices() ?? []
-            )
-        } else {
-            status = .placeholder
+        if !visible {
+            cachedOutputDevices = []
+            outputDevicesCacheValid = true
         }
-        continuation.yield(status)
+
+        if changed, !visible, lifecycle == .running {
+            performRefresh(includeOutputDevices: false)
+        }
+    }
+
+    func refresh() {
+        performRefresh(includeOutputDevices: detailsVisible)
     }
 
     func setVolume(_ scalar: Double) {
         guard lifecycle != .stopped else { return }
         _ = outputController?.setVolume(scalar)
-        refresh()
+        scheduleRefresh()
     }
 
     func toggleMute() {
         guard lifecycle != .stopped else { return }
         _ = outputController?.toggleMute()
-        refresh()
+        scheduleRefresh()
     }
 
     func selectOutputDevice(_ deviceID: AudioDeviceID) {
         guard lifecycle != .stopped else { return }
         _ = outputController?.selectOutputDevice(deviceID)
-        refresh()
+        scheduleRefresh(includeOutputDevices: true)
+    }
+
+    private func scheduleRefresh(includeOutputDevices: Bool = false) {
+        guard lifecycle == .running else { return }
+        scheduledRefreshIncludesOutputDevices = scheduledRefreshIncludesOutputDevices || includeOutputDevices
+        guard scheduledRefreshTask == nil else { return }
+
+        let interval = refreshDebounceInterval
+        let sleep = refreshDebounceSleep
+        scheduledRefreshTask = Task { @MainActor [weak self] in
+            do {
+                try await sleep(interval)
+            } catch {
+                self?.scheduledRefreshTask = nil
+                self?.scheduledRefreshIncludesOutputDevices = false
+                return
+            }
+
+            guard !Task.isCancelled, let self, self.lifecycle == .running else {
+                self?.scheduledRefreshTask = nil
+                self?.scheduledRefreshIncludesOutputDevices = false
+                return
+            }
+
+            let includeOutputDevices = self.scheduledRefreshIncludesOutputDevices
+            self.scheduledRefreshTask = nil
+            self.scheduledRefreshIncludesOutputDevices = false
+            self.performRefresh(includeOutputDevices: includeOutputDevices)
+        }
+    }
+
+    private func performRefresh(includeOutputDevices: Bool) {
+        guard lifecycle != .stopped else { return }
+
+        eventMonitor.reconcile()
+        let status: VolumeStatus
+        if let reading = reader.read() {
+            let devices: [AudioOutputDevice]
+            if !detailsVisible {
+                cachedOutputDevices = []
+                outputDevicesCacheValid = true
+                devices = []
+            } else if includeOutputDevices || !outputDevicesCacheValid {
+                cachedOutputDevices = outputController?.outputDevices() ?? []
+                outputDevicesCacheValid = true
+                devices = cachedOutputDevices
+            } else {
+                devices = cachedOutputDevices
+            }
+
+            status = VolumeStatus(
+                scalar: reading.scalar,
+                isMuted: reading.isMuted,
+                deviceName: reading.deviceName,
+                outputDevices: devices
+            )
+        } else {
+            status = .placeholder
+        }
+        continuation.yield(status)
     }
 
     private func teardown() {

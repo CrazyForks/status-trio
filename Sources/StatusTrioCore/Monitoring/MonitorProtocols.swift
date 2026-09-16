@@ -17,6 +17,12 @@ protocol WiFiMonitoring: AnyObject {
     func refresh()
     func recover()
     func requestNameAccess()
+    func setDetailsVisible(_ visible: Bool)
+}
+
+@MainActor
+extension WiFiMonitoring {
+    func setDetailsVisible(_ visible: Bool) {}
 }
 
 @MainActor
@@ -34,4 +40,10 @@ protocol VolumeMonitoring: AnyObject {
     func stop()
     func refresh()
     func recover()
+    func setDetailsVisible(_ visible: Bool)
+}
+
+@MainActor
+extension VolumeMonitoring {
+    func setDetailsVisible(_ visible: Bool) {}
 }

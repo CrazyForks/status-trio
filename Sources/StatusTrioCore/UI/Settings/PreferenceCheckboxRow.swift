@@ -21,6 +21,8 @@ struct PreferenceCheckboxRow: View {
             Toggle(isOn: $isOn) {
                 Text(localization.string(label))
                     .font(.system(size: 12))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
             }
             .toggleStyle(.checkbox)
             .controlSize(.small)

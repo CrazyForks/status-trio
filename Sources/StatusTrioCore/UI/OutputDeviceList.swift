@@ -9,6 +9,13 @@ struct OutputDeviceList: View {
     @State private var isExpanded = false
 
     var body: some View {
+        let model = OutputDeviceListModel.make(
+            devices: devices,
+            order: settings.outputDeviceOrder,
+            limit: settings.visibleOutputDeviceLimit,
+            isExpanded: isExpanded
+        )
+
         if devices.isEmpty {
             Label(localization.string(.volumeOutputEmpty), systemImage: "questionmark.circle")
                 .font(.body)
@@ -17,9 +24,9 @@ struct OutputDeviceList: View {
                 .padding(.vertical, 4)
         } else {
             VStack(spacing: 2) {
-                deviceRows
+                deviceRows(model.visibleDevices)
 
-                if canToggleExpansion {
+                if model.canToggleExpansion {
                     Button {
                         withAnimation(.snappy(duration: 0.2)) {
                             isExpanded.toggle()
@@ -50,28 +57,9 @@ struct OutputDeviceList: View {
         }
     }
 
-    private var orderedDevices: [AudioOutputDevice] {
-        settings.orderedOutputDevices(devices)
-    }
-
-    private var visibleDevices: [AudioOutputDevice] {
-        OutputDeviceListPresentation.visibleDevices(
-            from: orderedDevices,
-            limit: settings.visibleOutputDeviceLimit,
-            isExpanded: isExpanded
-        )
-    }
-
-    private var canToggleExpansion: Bool {
-        OutputDeviceListPresentation.canToggleExpansion(
-            for: orderedDevices,
-            limit: settings.visibleOutputDeviceLimit
-        )
-    }
-
-    private var deviceRows: some View {
+    private func deviceRows(_ devices: [AudioOutputDevice]) -> some View {
         LazyVStack(spacing: 2) {
-            ForEach(visibleDevices) { device in
+            ForEach(devices) { device in
                 OutputDeviceRow(device: device, onSelect: onSelect)
             }
         }

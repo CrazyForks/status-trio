@@ -222,6 +222,31 @@ final class WiFiClassifierTests: XCTestCase {
         XCTAssertEqual(sharingDetector.callCount, 1)
     }
 
+    func testSSIDReadsOnlyWhenDetailsAreVisible() async {
+        let reader = FakeWiFiSystemReader(result: makeReading(ssid: "Office"))
+        let authorizer = FakeWiFiNameAuthorizer(access: .authorized)
+        let monitor = makeMonitor(reader: reader, nameAuthorizer: authorizer)
+        monitor.setDetailsVisible(false)
+        monitor.start()
+        var iterator = monitor.updates.makeAsyncIterator()
+
+        let hidden = await iterator.next()
+        XCTAssertNil(hidden?.ssid)
+        XCTAssertEqual(reader.lastIncludeSSID, false)
+
+        monitor.setDetailsVisible(true)
+        monitor.refresh()
+        let visible = await iterator.next()
+        XCTAssertEqual(visible?.ssid, "Office")
+        XCTAssertEqual(reader.lastIncludeSSID, true)
+
+        monitor.setDetailsVisible(false)
+        let hiddenAgain = await iterator.next()
+        XCTAssertNil(hiddenAgain?.ssid)
+        XCTAssertEqual(reader.lastIncludeSSID, false)
+        monitor.stop()
+    }
+
     func testRefreshPublishesNormalizedSSIDWhenAuthorized() async {
         let reader = FakeWiFiSystemReader(
             result: makeReading(mode: .station, rssi: -52, ssid: "  Studio Wi-Fi  ")
@@ -564,6 +589,39 @@ final class WiFiClassifierTests: XCTestCase {
         monitor.stop()
     }
 
+    func testLinkQualityCallbacksCoalesceIntoSingleRefresh() async {
+        let reader = FakeWiFiSystemReader(result: makeReading(rssi: -50))
+        let eventMonitor = FakeWiFiEventMonitor()
+        let sleeper = ManualEventSleeper()
+        let monitor = makeMonitor(
+            reader: reader,
+            eventMonitor: eventMonitor,
+            refreshDebounceSleep: { duration in
+                await sleeper.sleep(duration)
+            }
+        )
+        monitor.start()
+        var iterator = monitor.updates.makeAsyncIterator()
+        _ = await iterator.next()
+
+        for rssi in stride(from: -50, through: -69, by: -1) {
+            monitor.linkQualityDidChangeForWiFiInterface(
+                withName: "en0",
+                rssi: rssi,
+                transmitRate: 0
+            )
+        }
+
+        await sleeper.waitForCallCount(1)
+        XCTAssertEqual(reader.readCount, 1)
+        sleeper.releaseAll()
+        await sleeper.waitForCompletionCount(1)
+        _ = await iterator.next()
+
+        XCTAssertEqual(reader.readCount, 2)
+        monitor.stop()
+    }
+
     func testSSIDAndBSSIDChangesRefresh() async {
         let reader = FakeWiFiSystemReader(result: makeReading())
         let eventMonitor = FakeWiFiEventMonitor()
@@ -794,7 +852,10 @@ final class WiFiClassifierTests: XCTestCase {
         pathMonitor: FakeWiFiPathMonitor = FakeWiFiPathMonitor(),
         staleInterval: TimeInterval = 30,
         initialPath: WiFiPathSnapshot? = nil,
-        clock: ManualWiFiClock = ManualWiFiClock()
+        clock: ManualWiFiClock = ManualWiFiClock(),
+        refreshDebounceSleep: @escaping @Sendable (Duration) async throws -> Void = {
+            try await Task.sleep(for: $0)
+        }
     ) -> WiFiMonitor {
         WiFiMonitor(
             systemReader: reader,
@@ -804,7 +865,8 @@ final class WiFiClassifierTests: XCTestCase {
             pathMonitor: pathMonitor,
             staleInterval: staleInterval,
             initialPath: initialPath,
-            now: { clock.now }
+            now: { clock.now },
+            refreshDebounceSleep: refreshDebounceSleep
         )
     }
 }
@@ -833,14 +895,27 @@ private final class FakeCWEventDelegate: NSObject, CWEventDelegate {}
 private final class FakeWiFiSystemReader: WiFiSystemReadingProviding {
     var result: WiFiSystemReading?
     private(set) var readCount = 0
+    private(set) var lastIncludeSSID: Bool?
 
     init(result: WiFiSystemReading?) {
         self.result = result
     }
 
     func read() -> WiFiSystemReading? {
+        read(includeSSID: true)
+    }
+
+    func read(includeSSID: Bool) -> WiFiSystemReading? {
         readCount += 1
-        return result
+        lastIncludeSSID = includeSSID
+        guard let result else { return nil }
+        return WiFiSystemReading(
+            powerOn: result.powerOn,
+            serviceActive: result.serviceActive,
+            mode: result.mode,
+            rssi: result.rssi,
+            ssid: includeSSID ? result.ssid : nil
+        )
     }
 }
 

@@ -119,7 +119,7 @@ final class BatteryMonitor: BatteryMonitoring {
         self.reader = reader
         self.lowPowerModeProvider = lowPowerModeProvider
         self.iopsRunLoopSourceFactory = iopsRunLoopSourceFactory
-        (updates, continuation) = AsyncStream.makeStream()
+        (updates, continuation) = MonitorStream.make(of: BatteryStatus.self)
     }
 
     deinit {

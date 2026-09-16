@@ -37,22 +37,43 @@ if appcast.match?(%r{<sparkle:version>\s*#{Regexp.escape(build)}\s*</sparkle:ver
   raise "Build #{build} already exists in #{appcast_path}."
 end
 
-release_notes = File.readlines(notes_path, chomp: true)
-  .map(&:strip)
-  .reject(&:empty?)
-  .map { |line| line.sub(/\A(?:[-*+]|\d+\.)\s+/, "") }
+def notes_to_html(lines)
+  html = []
+  list_items = []
 
-description = if release_notes.empty?
-  "<p>Status Trio #{xml_escape(version)} is available.</p>"
-else
-  items = release_notes.map { |line| "<li>#{xml_escape(line)}</li>" }.join
-  "<ul>#{items}</ul>"
+  flush_list = lambda do
+    next if list_items.empty?
+
+    html << "<ul>#{list_items.join}</ul>"
+    list_items = []
+  end
+
+  lines.map(&:strip).each do |line|
+    next if line.empty?
+    next if line.match?(/\A#\s+/)
+
+    if (heading = line.match(/\A##\s+(.+)\z/))
+      flush_list.call
+      html << "<h2>#{xml_escape(heading[1])}</h2>"
+    elsif (item = line.match(/\A(?:[-*+]|\d+\.)\s+(.+)\z/))
+      list_items << "<li>#{xml_escape(item[1])}</li>"
+    else
+      list_items << "<li>#{xml_escape(line)}</li>"
+    end
+  end
+
+  flush_list.call
+  html.join
 end
+
+release_notes = File.readlines(notes_path, chomp: true)
+description = notes_to_html(release_notes)
+description = "<p>Status Trio #{xml_escape(version)} is available.</p>" if description.empty?
 
 pub_date = Time.now.utc.strftime("%a, %d %b %Y %H:%M:%S +0000")
 item = <<~XML.gsub(/^/, "    ").rstrip
   <item>
-    <title>Version #{xml_escape(version)} (Build #{xml_escape(build)})</title>
+    <title>Version #{xml_escape(version)} (Build #{xml_escape(build)}) （English + 中文， 中文在下方）</title>
     <pubDate>#{pub_date}</pubDate>
     <sparkle:version>#{xml_escape(build)}</sparkle:version>
     <sparkle:shortVersionString>#{xml_escape(version)}</sparkle:shortVersionString>

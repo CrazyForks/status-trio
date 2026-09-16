@@ -7,6 +7,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     private let store: SettingsStore
     private let statusStore: SystemStatusStore
     private let localization: Localization
+    private let activationPolicy: AppActivationPolicy
     private var localizationCancellable: AnyCancellable?
     private var tabController: SettingsTabViewController?
     private var ownsActivationPolicy = false
@@ -14,11 +15,13 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     init(
         store: SettingsStore,
         statusStore: SystemStatusStore,
-        localization: Localization
+        localization: Localization,
+        activationPolicy: AppActivationPolicy
     ) {
         self.store = store
         self.statusStore = statusStore
         self.localization = localization
+        self.activationPolicy = activationPolicy
         super.init(window: nil)
 
         localizationCancellable = localization.$resolvedLanguage
@@ -44,6 +47,8 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
     func windowWillClose(_ notification: Notification) {
         leaveActivationPolicyIfNeeded()
+        window = nil
+        tabController = nil
     }
 
     private func makeWindow() -> NSWindow {
@@ -65,7 +70,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
         window.contentViewController = tabController
         window.delegate = self
-        window.isReleasedWhenClosed = false
+        window.isReleasedWhenClosed = true
         window.isMovableByWindowBackground = true
         window.titleVisibility = .visible
         window.titlebarAppearsTransparent = true
@@ -87,12 +92,12 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     private func enterActivationPolicyIfNeeded() {
         guard !ownsActivationPolicy else { return }
         ownsActivationPolicy = true
-        AppActivationPolicy.enter()
+        activationPolicy.enterTemporaryRegularMode()
     }
 
     private func leaveActivationPolicyIfNeeded() {
         guard ownsActivationPolicy else { return }
         ownsActivationPolicy = false
-        AppActivationPolicy.leave()
+        activationPolicy.leaveTemporaryRegularMode()
     }
 }

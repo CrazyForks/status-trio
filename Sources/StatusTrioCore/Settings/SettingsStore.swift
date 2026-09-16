@@ -21,11 +21,36 @@ final class SettingsStore: ObservableObject {
     static let showsWiFiIconForTemporaryConnectionDefaultsKey = "showsWiFiIconForTemporaryConnection"
     static let showsWiFiIconForInternetSharingDefaultsKey = "showsWiFiIconForInternetSharing"
 
+    static let refreshIntervalRange: ClosedRange<Double> = 5...60
+    static let defaultRefreshIntervalSeconds: Double = 5
+    static let refreshIntervalDefaultsKey = "statusRefreshIntervalSeconds"
+
     static let outputDeviceLimitRange: ClosedRange<Int> = 1...20
     static let defaultMaxVisibleOutputDevices = 5
     static let maxVisibleOutputDevicesDefaultsKey = "maxVisibleOutputDevices"
     static let alwaysShowsAllOutputDevicesDefaultsKey = "alwaysShowsAllOutputDevices"
     static let outputDeviceOrderDefaultsKey = "outputDeviceOrder"
+    static let popupSectionOrderDefaultsKey = "popupSectionOrder"
+    static let enabledPopupSectionsDefaultsKey = "enabledPopupSections"
+    static let defaultEnabledPopupSections: Set<PopupSection> = [.battery, .network, .volume]
+
+    static let appIconPlacementDefaultsKey = "appIconPlacement"
+    static let dockIconBackgroundPreferenceDefaultsKey = "dockIconBackgroundPreference"
+
+    @Published var appIconPlacement: AppIconPlacement {
+        didSet {
+            defaults.set(appIconPlacement.rawValue, forKey: Self.appIconPlacementDefaultsKey)
+        }
+    }
+
+    @Published var dockIconBackgroundPreference: DockIconBackgroundPreference {
+        didSet {
+            defaults.set(
+                dockIconBackgroundPreference.rawValue,
+                forKey: Self.dockIconBackgroundPreferenceDefaultsKey
+            )
+        }
+    }
 
     @Published var iconSize: Double {
         didSet {
@@ -115,6 +140,17 @@ final class SettingsStore: ObservableObject {
         }
     }
 
+    @Published var refreshIntervalSeconds: Double {
+        didSet {
+            let clamped = Self.clampedRefreshInterval(refreshIntervalSeconds)
+            guard clamped == refreshIntervalSeconds else {
+                refreshIntervalSeconds = clamped
+                return
+            }
+            defaults.set(clamped, forKey: Self.refreshIntervalDefaultsKey)
+        }
+    }
+
     @Published var maxVisibleOutputDevices: Int {
         didSet {
             let clamped = Self.clampedOutputDeviceLimit(maxVisibleOutputDevices)
@@ -141,28 +177,38 @@ final class SettingsStore: ObservableObject {
         }
     }
 
+    @Published private(set) var popupSectionOrder: [PopupSection] {
+        didSet {
+            defaults.set(
+                popupSectionOrder.map(\.rawValue),
+                forKey: Self.popupSectionOrderDefaultsKey
+            )
+        }
+    }
+
+    @Published private(set) var enabledPopupSections: Set<PopupSection> {
+        didSet {
+            defaults.set(
+                enabledPopupSections.map(\.rawValue).sorted(),
+                forKey: Self.enabledPopupSectionsDefaultsKey
+            )
+        }
+    }
+
+    var visiblePopupSections: [PopupSection] {
+        popupSectionOrder.filter { enabledPopupSections.contains($0) }
+    }
+
+    var refreshInterval: Duration {
+        .seconds(Int(refreshIntervalSeconds.rounded()))
+    }
+
     var visibleOutputDeviceLimit: Int? {
         alwaysShowsAllOutputDevices ? nil : maxVisibleOutputDevices
     }
 
     func orderedOutputDevices(_ devices: [AudioOutputDevice]) -> [AudioOutputDevice] {
-        guard !outputDeviceOrder.isEmpty else { return devices }
-
-        var ranks: [String: Int] = [:]
-        for (index, uid) in outputDeviceOrder.enumerated() where ranks[uid] == nil {
-            ranks[uid] = index
-        }
-
-        return devices.enumerated()
-            .sorted { lhs, rhs in
-                let leftRank = lhs.element.uid.flatMap { ranks[$0] } ?? Int.max
-                let rightRank = rhs.element.uid.flatMap { ranks[$0] } ?? Int.max
-                if leftRank != rightRank {
-                    return leftRank < rightRank
-                }
-                return lhs.offset < rhs.offset
-            }
-            .map(\.element)
+        OutputDeviceListPresentation.orderedDevices(devices, using: outputDeviceOrder)
     }
 
     func moveOutputDevices(
@@ -188,6 +234,38 @@ final class SettingsStore: ObservableObject {
             at: min(insertionOffset, reorderedDevices.count)
         )
         outputDeviceOrder = reorderedDevices.compactMap(\.uid)
+    }
+
+    func movePopupSections(
+        fromOffsets source: IndexSet,
+        toOffset destination: Int
+    ) {
+        guard !source.isEmpty,
+              source.allSatisfy({ popupSectionOrder.indices.contains($0) }),
+              (0...popupSectionOrder.count).contains(destination) else {
+            return
+        }
+
+        let movedSections = source.map { popupSectionOrder[$0] }
+        let remainingSections = popupSectionOrder.enumerated()
+            .filter { !source.contains($0.offset) }
+            .map(\.element)
+        let insertionOffset = destination - source.filter { $0 < destination }.count
+
+        var reorderedSections = remainingSections
+        reorderedSections.insert(
+            contentsOf: movedSections,
+            at: min(insertionOffset, reorderedSections.count)
+        )
+        popupSectionOrder = reorderedSections
+    }
+
+    func setPopupSection(_ section: PopupSection, enabled: Bool) {
+        if enabled {
+            enabledPopupSections.insert(section)
+        } else {
+            enabledPopupSections.remove(section)
+        }
     }
 
     var isBatterySymbolSizeEnabled: Bool {
@@ -221,8 +299,25 @@ final class SettingsStore: ObservableObject {
         let storedCriticalThreshold = (defaults.object(forKey: Self.batteryCriticalThresholdDefaultsKey) as? NSNumber)?.doubleValue
         let storedBatterySymbolScale = (defaults.object(forKey: Self.batterySymbolScaleDefaultsKey) as? NSNumber)?.doubleValue
         let storedOutputDeviceLimit = (defaults.object(forKey: Self.maxVisibleOutputDevicesDefaultsKey) as? NSNumber)?.intValue
+        let storedRefreshInterval = (defaults.object(forKey: Self.refreshIntervalDefaultsKey) as? NSNumber)?.doubleValue
         let storedOutputDeviceOrder = defaults.stringArray(forKey: Self.outputDeviceOrderDefaultsKey) ?? []
+        let storedPopupSectionOrder = defaults.stringArray(
+            forKey: Self.popupSectionOrderDefaultsKey
+        ) ?? []
+        let storedEnabledPopupSections = defaults.stringArray(
+            forKey: Self.enabledPopupSectionsDefaultsKey
+        )
 
+        let storedAppIconPlacement = defaults.string(forKey: Self.appIconPlacementDefaultsKey)
+        self.appIconPlacement = storedAppIconPlacement
+            .flatMap(AppIconPlacement.init(rawValue:))
+            ?? .menuBar
+        let storedDockIconBackgroundPreference = defaults.string(
+            forKey: Self.dockIconBackgroundPreferenceDefaultsKey
+        )
+        self.dockIconBackgroundPreference = storedDockIconBackgroundPreference
+            .flatMap(DockIconBackgroundPreference.init(rawValue:))
+            ?? .system
         self.iconSize = Self.clampedIconSize(storedIconSize ?? Self.defaultIconSize)
         self.showsBatteryPercentage = defaults.object(forKey: Self.showsBatteryPercentageDefaultsKey) as? Bool ?? true
         self.showsChargingIndicator = defaults.object(forKey: Self.showsChargingIndicatorDefaultsKey) as? Bool ?? true
@@ -245,6 +340,9 @@ final class SettingsStore: ObservableObject {
         self.showsWiFiIconForInternetSharing = defaults.object(
             forKey: Self.showsWiFiIconForInternetSharingDefaultsKey
         ) as? Bool ?? false
+        self.refreshIntervalSeconds = Self.clampedRefreshInterval(
+            storedRefreshInterval ?? Self.defaultRefreshIntervalSeconds
+        )
         self.maxVisibleOutputDevices = Self.clampedOutputDeviceLimit(
             storedOutputDeviceLimit ?? Self.defaultMaxVisibleOutputDevices
         )
@@ -252,6 +350,12 @@ final class SettingsStore: ObservableObject {
             forKey: Self.alwaysShowsAllOutputDevicesDefaultsKey
         ) as? Bool ?? false
         self.outputDeviceOrder = storedOutputDeviceOrder
+        self.popupSectionOrder = Self.sanitizedPopupSectionOrder(
+            storedPopupSectionOrder
+        )
+        self.enabledPopupSections = Self.sanitizedEnabledPopupSections(
+            storedEnabledPopupSections
+        )
     }
 
     static func clampedIconSize(_ value: Double) -> Double {
@@ -275,7 +379,28 @@ final class SettingsStore: ObservableObject {
         ).rounded()
     }
 
+    static func clampedRefreshInterval(_ value: Double) -> Double {
+        guard value.isFinite else { return defaultRefreshIntervalSeconds }
+        let clamped = min(refreshIntervalRange.upperBound, max(refreshIntervalRange.lowerBound, value))
+        return (clamped / 5).rounded() * 5
+    }
+
     static func clampedOutputDeviceLimit(_ value: Int) -> Int {
         min(outputDeviceLimitRange.upperBound, max(outputDeviceLimitRange.lowerBound, value))
+    }
+
+    static func sanitizedPopupSectionOrder(_ rawValues: [String]) -> [PopupSection] {
+        var seen: Set<PopupSection> = []
+        let storedSections = rawValues
+            .compactMap(PopupSection.init(rawValue:))
+            .filter { seen.insert($0).inserted }
+        return storedSections + PopupSection.allCases.filter { !seen.contains($0) }
+    }
+
+    static func sanitizedEnabledPopupSections(_ rawValues: [String]?) -> Set<PopupSection> {
+        guard let rawValues else {
+            return defaultEnabledPopupSections
+        }
+        return Set(rawValues.compactMap(PopupSection.init(rawValue:)))
     }
 }

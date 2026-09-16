@@ -8,7 +8,17 @@ enum StatusPresentation {
         _ snapshot: StatusSnapshot,
         localization: Localization
     ) -> String {
-        let battery = snapshot.battery
+        statusItemAccessibilityValue(
+            MenuBarStatus(snapshot: snapshot),
+            localization: localization
+        )
+    }
+
+    static func statusItemAccessibilityValue(
+        _ status: MenuBarStatus,
+        localization: Localization
+    ) -> String {
+        let battery = status.battery
         let batterySummary: String
         if battery.isPresent {
             let percentage = localization.format(
@@ -29,12 +39,12 @@ enum StatusPresentation {
             batterySummary = localization.string(.batteryStateNotPresent)
         }
 
-        let networkSummary = snapshot.connection == .ethernet
+        let networkSummary = status.connection == .ethernet
             ? localization.string(.ethernetAccessibilityConnected)
-            : wifiAccessibilitySummary(snapshot.wifi, localization: localization)
+            : wifiAccessibilitySummary(status.wifi, localization: localization)
         let volumeSummary = localization.format(
             .accessibilityVolume,
-            volumeValue(snapshot.volume, localization: localization)
+            volumeValue(status.volume, localization: localization)
         )
 
         return localization.format(
@@ -163,6 +173,13 @@ enum StatusPresentation {
         _ volume: VolumeStatus,
         localization: Localization
     ) -> String {
+        volumeTitle(MenuBarVolumeStatus(volume: volume), localization: localization)
+    }
+
+    static func volumeTitle(
+        _ volume: MenuBarVolumeStatus,
+        localization: Localization
+    ) -> String {
         guard let scalar = volume.scalar, scalar.isFinite else {
             return localization.string(.volumeTitleUnavailable)
         }
@@ -172,6 +189,13 @@ enum StatusPresentation {
 
     static func volumeValue(
         _ volume: VolumeStatus,
+        localization: Localization
+    ) -> String {
+        volumeValue(MenuBarVolumeStatus(volume: volume), localization: localization)
+    }
+
+    static func volumeValue(
+        _ volume: MenuBarVolumeStatus,
         localization: Localization
     ) -> String {
         guard let scalar = volume.scalar, scalar.isFinite else { return "—" }
@@ -218,50 +242,83 @@ enum StatusPresentation {
     }
 }
 
+
+private enum PopoverPanel {
+    case summary
+    case wifi(showDetails: Bool)
+    case bluetooth
+}
+
 struct StatusPopoverView: View {
     @ObservedObject var store: SystemStatusStore
     @ObservedObject var settings: SettingsStore
     @EnvironmentObject private var localization: Localization
     let requestWiFiNameAccess: () -> Void
+    let requestBluetoothAuthorization: () -> Void
     let openBatterySettings: () -> Void
     let openWiFiSettings: () -> Void
     let openLocationSettings: () -> Void
+    let openBluetoothSettings: () -> Void
     let openSettings: () -> Void
     let openSoundSettings: () -> Void
     let quit: () -> Void
+    @State private var panel: PopoverPanel = .summary
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            BatteryStatusView(
-                battery: store.displayedSnapshot.battery,
-                onOpenBatterySettings: openBatterySettings
-            )
-            Divider()
-            WiFiStatusView(
-                wifi: store.displayedSnapshot.wifi,
-                onRequestNameAccess: requestWiFiNameAccess,
-                onOpenWiFiSettings: openWiFiSettings,
-                onOpenLocationSettings: openLocationSettings
-            )
-            Divider()
-            VolumeControlsView(
-                settings: settings,
-                volume: store.displayedVolume,
-                isEnabled: store.isVolumeControlAvailable,
-                onVolumeChange: store.setVolume,
-                onToggleMute: store.toggleMute,
-                onSelectOutputDevice: store.selectOutputDevice,
-                onOpenSoundSettings: openSoundSettings
-            )
-
-            Divider()
-
-            Button(
-                PreviewAppIdentity.popupSettingsTitle(
-                    localizedTitle: localization.string(.menuSettings)
+        Group {
+            switch panel {
+            case .summary:
+                summary
+            case .wifi(let showDetails):
+                WiFiNetworkListView(
+                    controller: store.wifiNetworks,
+                    wifi: store.popupSnapshot.wifi,
+                    onBack: { panel = .summary },
+                    onRequestNameAccess: requestWiFiNameAccess,
+                    onOpenWiFiSettings: openWiFiSettings,
+                    onOpenLocationSettings: openLocationSettings,
+                    showsDetailsInitially: showDetails
                 )
-            ) {
+            case .bluetooth:
+                BluetoothDeviceListView(
+                    controller: store.bluetoothDevices,
+                    onBack: {
+                        store.closeBluetoothDetails()
+                        panel = .summary
+                    },
+                    onRequestAuthorization: requestBluetoothAuthorization,
+                    onOpenBluetoothSettings: openBluetoothSettings
+                )
+            }
+        }
+        .padding(14)
+        .frame(width: 330)
+    }
+
+    private var summary: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            ForEach(settings.visiblePopupSections) { section in
+                popupSection(section)
+
+                if section != settings.visiblePopupSections.last {
+                    Divider()
+                }
+            }
+
+            if !settings.visiblePopupSections.isEmpty {
+                Divider()
+            }
+
+            Button {
                 openSettings()
+            } label: {
+                Text(
+                    PreviewAppIdentity.popupSettingsTitle(
+                        localizedTitle: localization.string(.menuSettings)
+                    )
+                )
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
 
@@ -271,7 +328,51 @@ struct StatusPopoverView: View {
             .buttonStyle(.plain)
             .keyboardShortcut("q")
         }
-        .padding(14)
-        .frame(width: 300)
+    }
+
+    private var displayedPopupSnapshot: StatusSnapshot {
+        store.isPreviewEnabled ? store.displayedSnapshot : store.popupSnapshot
+    }
+
+    @ViewBuilder
+    private func popupSection(_ section: PopupSection) -> some View {
+        switch section {
+        case .battery:
+            BatteryStatusView(
+                battery: displayedPopupSnapshot.battery,
+                onOpenBatterySettings: openBatterySettings
+            )
+        case .network:
+            WiFiStatusView(
+                wifi: displayedPopupSnapshot.wifi,
+                onOpenDetails: { showDetails in
+                    store.activateWiFiPanel()
+                    panel = .wifi(showDetails: showDetails)
+                },
+                onRequestNameAccess: requestWiFiNameAccess,
+                onOpenWiFiSettings: openWiFiSettings,
+                onOpenLocationSettings: openLocationSettings
+            )
+        case .bluetooth:
+            BluetoothStatusView(
+                controller: store.bluetoothDevices,
+                onOpenDetails: {
+                    store.openBluetoothDetails()
+                    panel = .bluetooth
+                },
+                onRequestAuthorization: requestBluetoothAuthorization,
+                onOpenBluetoothSettings: openBluetoothSettings
+            )
+        case .volume:
+            VolumeControlsView(
+                settings: settings,
+                volume: store.isPreviewEnabled ? store.displayedVolume : store.liveVolume,
+                isEnabled: store.isVolumeControlAvailable,
+                onVolumeChange: store.setVolume,
+                onToggleMute: store.toggleMute,
+                onSelectOutputDevice: store.selectOutputDevice,
+                onOpenSoundSettings: openSoundSettings
+            )
+        }
     }
 }

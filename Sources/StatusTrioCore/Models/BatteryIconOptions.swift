@@ -1,6 +1,6 @@
 import Foundation
 
-struct BatteryIconOptions: Equatable, Sendable {
+struct BatteryIconOptions: Equatable, Hashable, Sendable {
     let showsPercentage: Bool
     let showsChargingIndicator: Bool
     let usesStatusColors: Bool

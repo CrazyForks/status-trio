@@ -83,7 +83,7 @@ final class NetworkConnectionMonitor: NetworkConnectionMonitoring {
 
     init(pathMonitor: any NetworkPathMonitoring = NWPathConnectionMonitor()) {
         self.pathMonitor = pathMonitor
-        (updates, continuation) = AsyncStream.makeStream()
+        (updates, continuation) = MonitorStream.make(of: NetworkConnection.self)
     }
 
     deinit {

@@ -1,24 +1,42 @@
+import AppKit
 import SwiftUI
 
 struct WiFiStatusView: View {
     @EnvironmentObject private var localization: Localization
     let wifi: WiFiStatus
+    let onOpenDetails: (Bool) -> Void
     let onRequestNameAccess: () -> Void
     let onOpenWiFiSettings: () -> Void
     let onOpenLocationSettings: () -> Void
 
     var body: some View {
         HStack(spacing: 10) {
-            WiFiStatusIcon(wifi: wifi)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(localization.string(.wifiTitle))
-                    .font(.headline)
-
-                subtitle
+            Button {
+                switch StatusMappings.wifiSummaryAction(for: wifi) {
+                case .openDetails:
+                    onOpenDetails(NSEvent.modifierFlags.contains(.option))
+                case .requestNameAccess:
+                    onRequestNameAccess()
+                case .openLocationSettings:
+                    onOpenLocationSettings()
+                }
+            } label: {
+                HStack(spacing: 10) {
+                    WiFiStatusIcon(wifi: wifi)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(localization.string(.networkTitle))
+                            .font(.headline)
+                        subtitle
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.tertiary)
+                }
+                .contentShape(Rectangle())
             }
-
-            Spacer()
+            .buttonStyle(.plain)
+            .accessibilityLabel(wifiAccessibilityLabel)
 
             Button(
                 localization.string(.wifiActionOpenSettings),
@@ -43,14 +61,16 @@ struct WiFiStatusView: View {
                 .truncationMode(.tail)
         } else if wifi.state.isNetworkAssociated && wifi.nameAccess == .notDetermined {
             Button(localization.string(.wifiActionRequestNameAccess), action: onRequestNameAccess)
-                .buttonStyle(.link)
+                .buttonStyle(.plain)
                 .font(.caption)
+                .foregroundStyle(.secondary)
                 .lineLimit(1)
         } else if wifi.state.isNetworkAssociated
                     && (wifi.nameAccess == .denied || wifi.nameAccess == .restricted) {
             Button(localization.string(.wifiActionOpenLocationSettings), action: onOpenLocationSettings)
-                .buttonStyle(.link)
+                .buttonStyle(.plain)
                 .font(.caption)
+                .foregroundStyle(.secondary)
                 .lineLimit(1)
         } else {
             Text(StatusPresentation.wifiSubtitle(wifi, localization: localization))
@@ -59,5 +79,12 @@ struct WiFiStatusView: View {
                 .lineLimit(1)
                 .truncationMode(.middle)
         }
+    }
+
+    private var wifiAccessibilityLabel: String {
+        if let ssid = wifi.ssid, !ssid.isEmpty {
+            return localization.format(.wifiAccessibilityWithSSID, ssid, StatusPresentation.wifiValue(wifi, localization: localization))
+        }
+        return localization.format(.commonLabelValue, localization.string(.networkTitle), StatusPresentation.wifiValue(wifi, localization: localization))
     }
 }

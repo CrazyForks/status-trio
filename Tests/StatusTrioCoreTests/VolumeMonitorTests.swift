@@ -62,6 +62,48 @@ final class VolumeMonitorTests: XCTestCase {
         monitor.stop()
     }
 
+    func testDetailsAreLazyAndLevelRefreshesReuseCachedDevices() async {
+        let reader = FakeVolumeReader(result: makeReading(scalar: 0.25))
+        let eventMonitor = FakeVolumeEventMonitor()
+        let devices = [
+            AudioOutputDevice(
+                id: 42,
+                name: "Speakers",
+                uid: "speakers",
+                isCurrent: true,
+                volume: 0.25
+            )
+        ]
+        let outputController = FakeAudioOutputController(devices: devices)
+        let monitor = VolumeMonitor(
+            reader: reader,
+            eventMonitor: eventMonitor,
+            outputController: outputController
+        )
+        monitor.setDetailsVisible(false)
+        monitor.start()
+        var iterator = monitor.updates.makeAsyncIterator()
+        let hiddenInitial = await iterator.next()
+        XCTAssertEqual(hiddenInitial?.outputDevices, [])
+        XCTAssertEqual(outputController.outputDevicesCallCount, 0)
+
+        monitor.setDetailsVisible(true)
+        monitor.refresh()
+        let visible = await iterator.next()
+        XCTAssertEqual(visible?.outputDevices, devices)
+        XCTAssertEqual(outputController.outputDevicesCallCount, 1)
+
+        eventMonitor.sendVolumeChange()
+        let levelUpdate = await iterator.next()
+        XCTAssertEqual(levelUpdate?.outputDevices, devices)
+        XCTAssertEqual(outputController.outputDevicesCallCount, 1)
+
+        monitor.setDetailsVisible(false)
+        let hiddenAgain = await iterator.next()
+        XCTAssertEqual(hiddenAgain?.outputDevices, [])
+        monitor.stop()
+    }
+
     func testDefaultDeviceCallbackRefreshes() async {
         let reader = FakeVolumeReader(result: makeReading(scalar: 0.25))
         let eventMonitor = FakeVolumeEventMonitor()
@@ -75,6 +117,36 @@ final class VolumeMonitorTests: XCTestCase {
         let status = await iterator.next()
 
         XCTAssertEqual(status?.scalar, 0.75)
+        XCTAssertEqual(reader.readCount, 2)
+        monitor.stop()
+    }
+
+    func testVolumeCallbacksCoalesceIntoSingleRefresh() async {
+        let reader = FakeVolumeReader(result: makeReading(scalar: 0.25))
+        let eventMonitor = FakeVolumeEventMonitor()
+        let sleeper = ManualEventSleeper()
+        let monitor = VolumeMonitor(
+            reader: reader,
+            eventMonitor: eventMonitor,
+            refreshDebounceSleep: { duration in
+                await sleeper.sleep(duration)
+            }
+        )
+        monitor.start()
+        var iterator = monitor.updates.makeAsyncIterator()
+        _ = await iterator.next()
+
+        for index in 0..<20 {
+            reader.result = makeReading(scalar: Double(index) / 100)
+            eventMonitor.sendVolumeChange()
+        }
+
+        await sleeper.waitForCallCount(1)
+        XCTAssertEqual(reader.readCount, 1)
+        sleeper.releaseAll()
+        await sleeper.waitForCompletionCount(1)
+        _ = await iterator.next()
+
         XCTAssertEqual(reader.readCount, 2)
         monitor.stop()
     }
@@ -451,6 +523,25 @@ final class VolumeMonitorTests: XCTestCase {
     ) -> VolumeMonitor {
         VolumeMonitor(reader: reader, eventMonitor: eventMonitor)
     }
+}
+
+@MainActor
+private final class FakeAudioOutputController: AudioOutputControlling {
+    let devices: [AudioOutputDevice]
+    private(set) var outputDevicesCallCount = 0
+
+    init(devices: [AudioOutputDevice]) {
+        self.devices = devices
+    }
+
+    func outputDevices() -> [AudioOutputDevice] {
+        outputDevicesCallCount += 1
+        return devices
+    }
+
+    func setVolume(_ scalar: Double) -> Bool { true }
+    func toggleMute() -> Bool { true }
+    func selectOutputDevice(_ deviceID: AudioDeviceID) -> Bool { true }
 }
 
 private final class FakeVolumeReader: VolumeReadingProviding {

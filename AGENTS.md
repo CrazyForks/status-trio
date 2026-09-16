@@ -49,9 +49,19 @@ Do not create a release if that preflight has not passed.
 - Do not add syntax or language features that require Swift 6.2 or newer unless the CI runner and minimum toolchain are upgraded together.
 - If the Swift compiler crashes with `IRGenRequest`, `SmallVector unable to grow`, or a signal 6, reduce the code pattern that causes the crash. Do not treat it as a flaky failure and do not hide it with experimental compiler flags.
 
+## Change Flow
+
+- Small, low-risk changes — especially your own follow-up tweaks — go straight to `main`: commit directly, or use a short-lived branch and fast-forward it into `main`. No pull request is required.
+- Use a pull request when a change is large, touches several subsystems, or when a review/discussion record is worth keeping.
+- Whichever route is taken, the verification rules above still apply: `swift test` and `swift build -c release`, plus a non-publishing release workflow run when the change touches actor isolation, `@MainActor`, `deinit`, SwiftUI bindings, generics, or `Bundle.module` resources.
+- The release workflow only runs on tags and manual dispatches, so a pull request does not add CI coverage on its own.
+
 ## Release Rules
 
-- Release notes must always be written in English. This includes GitHub Release bodies, Sparkle appcast descriptions, `release_notes` workflow inputs, and release announcements.
+- GitHub Release notes must use a top-level `# Version X.Y.Z （English + 中文， 中文在下方）` heading, followed by English notes and then Chinese notes. Provide the English text through `release_notes` and the Chinese text through `release_notes_zh`; the release workflow combines them.
+- Sparkle appcast items must use the same bilingual order: the version title includes `（English + 中文， 中文在下方）`, followed by English notes and then Chinese notes.
+- GitHub Release bodies must append the first-launch commands `xattr -dr com.apple.quarantine "/Applications/Status Trio.app"` and `open "/Applications/Status Trio.app"` after the bilingual notes. Do not include these commands in the Sparkle appcast.
+- Release announcements remain in English.
 - Release through `.github/workflows/release.yml`; do not publish manually unless the workflow is unavailable and the user explicitly asks for a manual fallback.
 - Version and build numbers must be explicit and must increase the published build number.
 - Confirm tests, DMG creation, Release upload, and appcast publication in the workflow result.

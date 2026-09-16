@@ -24,7 +24,11 @@ on:
         default: false
         type: boolean
       release_notes:
-        description: "Optional release notes. One bullet per line."
+        description: "English release notes. One bullet per line. Defaults to commits since the previous tag."
+        required: false
+        type: string
+      release_notes_zh:
+        description: "Chinese release notes. One bullet per line. Required when publish=true."
         required: false
         type: string
 
@@ -200,9 +204,17 @@ jobs:
         if: ${{ env.PUBLISH == 'true' }}
         env:
           RELEASE_NOTES_INPUT: ${{ inputs.release_notes }}
+          RELEASE_NOTES_ZH_INPUT: ${{ inputs.release_notes_zh }}
         run: |
           set -euo pipefail
           NOTES_PATH="${RUNNER_TEMP}/release-notes.md"
+          APPCAST_NOTES_PATH="${RUNNER_TEMP}/appcast-release-notes.md"
+          RELEASE_BODY_PATH="${RUNNER_TEMP}/github-release-notes.md"
+
+          if [[ -z "${RELEASE_NOTES_ZH_INPUT//[[:space:]]/}" ]]; then
+            echo "::error::release_notes_zh is required when publish=true."
+            exit 1
+          fi
 
           if [[ -n "${RELEASE_NOTES_INPUT}" ]]; then
             printf '%s\n' "${RELEASE_NOTES_INPUT}" > "${NOTES_PATH}"
@@ -216,7 +228,34 @@ jobs:
             printf '\n' >> "${NOTES_PATH}"
           fi
 
-          echo "RELEASE_NOTES_FILE=${NOTES_PATH}" >> "${GITHUB_ENV}"
+          {
+            printf '# Version %s （English + 中文， 中文在下方）\n\n' "${VERSION}"
+            printf '## English\n\n'
+            cat "${NOTES_PATH}"
+            printf '\n## 中文\n\n'
+            printf '%s\n' "${RELEASE_NOTES_ZH_INPUT}"
+          } > "${APPCAST_NOTES_PATH}"
+
+          cp "${APPCAST_NOTES_PATH}" "${RELEASE_BODY_PATH}"
+          {
+            printf '\n## First launch / 首次启动\n\n'
+            printf 'If macOS blocks the first launch, run:\n\n'
+            printf '```bash\n'
+            printf 'xattr -dr com.apple.quarantine "/Applications/Status Trio.app"\n'
+            printf 'open "/Applications/Status Trio.app"\n'
+            printf '```\n\n'
+            printf '如果 macOS 阻止首次启动，请运行：\n\n'
+            printf '```bash\n'
+            printf 'xattr -dr com.apple.quarantine "/Applications/Status Trio.app"\n'
+            printf 'open "/Applications/Status Trio.app"\n'
+            printf '```\n'
+          } >> "${RELEASE_BODY_PATH}"
+
+          {
+            echo "RELEASE_NOTES_FILE=${NOTES_PATH}"
+            echo "APPCAST_RELEASE_NOTES_FILE=${APPCAST_NOTES_PATH}"
+            echo "RELEASE_BODY_FILE=${RELEASE_BODY_PATH}"
+          } >> "${GITHUB_ENV}"
 
       - name: Run tests
         run: |
