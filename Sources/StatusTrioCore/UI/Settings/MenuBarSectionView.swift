@@ -191,15 +191,17 @@ struct MenuBarSectionView: View {
                 isOn: $store.showsChargingIndicator
             )
 
-            if store.showsChargingIndicator {
+            if store.showsChargingIndicator && store.showsBatteryPercentage {
                 SettingsDivider()
 
                 SettingsToggleRow(
-                    symbol: "powerplug.fill",
+                    symbol: "number",
                     tint: .teal,
-                    title: localization.string(.settingsBatteryPlugWhenConnected),
-                    subtitle: localization.string(.settingsBatteryPlugWhenConnectedDescription),
-                    isOn: $store.showsPlugForConnectedPower
+                    title: localization.string(.settingsBatteryPercentageWhenConnected),
+                    subtitle: localization.string(
+                        .settingsBatteryPercentageWhenConnectedDescription
+                    ),
+                    isOn: $store.showsPercentageWhenConnected
                 )
             }
 

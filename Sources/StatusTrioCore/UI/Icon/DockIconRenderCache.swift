@@ -3,7 +3,7 @@
 /// inside the same dot count) does not trigger another render.
 struct DockIconRenderKey: Equatable, Hashable {
     let batteryPercentage: Int
-    let topIndicator: BatteryTopIndicator?
+    let gapContent: BatteryGapContent
     let batteryColorRole: BatteryColorRole
     let connection: NetworkConnection
     let wifiState: WiFiState
@@ -23,7 +23,7 @@ struct DockIconRenderKey: Equatable, Hashable {
         backgroundStyle: DockIconBackgroundStyle
     ) {
         self.batteryPercentage = status.battery.percentage
-        self.topIndicator = StatusMappings.batteryTopIndicator(
+        self.gapContent = StatusMappings.batteryGapContent(
             status.battery,
             options: options
         )

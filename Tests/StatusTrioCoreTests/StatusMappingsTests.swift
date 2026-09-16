@@ -157,94 +157,117 @@ final class StatusMappingsTests: XCTestCase {
         )
     }
 
-    func testBatteryTopIndicatorPrefersThePlugForConnectedPower() {
-        let connectedOnly = BatteryStatus(
-            rawPercentage: 80,
-            isPresent: true,
-            isCharging: false,
-            isLowPowerMode: false,
-            isConnectedToPower: true
-        )
-
+    func testBatteryGapContentDecisionTable() {
         XCTAssertEqual(
-            StatusMappings.batteryTopIndicator(connectedOnly, options: .standard),
+            StatusMappings.batteryGapContent(chargingBattery(), options: .standard),
+            .bolt
+        )
+        XCTAssertEqual(
+            StatusMappings.batteryGapContent(connectedBattery(), options: .standard),
             .plug
         )
         XCTAssertEqual(
-            StatusMappings.batteryTopIndicator(
-                chargedOnPower(),
-                options: .standard
+            StatusMappings.batteryGapContent(chargedOnPower(), options: .standard),
+            .plug
+        )
+        XCTAssertEqual(
+            StatusMappings.batteryGapContent(makeBattery(rawPercentage: 80), options: .standard),
+            .percentage
+        )
+        XCTAssertEqual(
+            StatusMappings.batteryGapContent(absentBattery(), options: .standard),
+            .percentage
+        )
+    }
+
+    func testBatteryGapContentUsesThePercentageForConnectedPowerWhenEnabled() {
+        XCTAssertEqual(
+            StatusMappings.batteryGapContent(
+                connectedBattery(),
+                options: batteryOptions(showsPercentageWhenConnected: true)
+            ),
+            .percentage
+        )
+    }
+
+    func testBatteryGapContentKeepsTheBoltWhileCharging() {
+        XCTAssertEqual(
+            StatusMappings.batteryGapContent(
+                chargingBattery(),
+                options: batteryOptions(showsPercentageWhenConnected: true)
+            ),
+            .bolt
+        )
+    }
+
+    func testBatteryGapContentFallsBackWhenNothingCanBeDrawn() {
+        XCTAssertEqual(
+            StatusMappings.batteryGapContent(
+                connectedBattery(),
+                options: batteryOptions(showsIndicator: false, showsPercentage: false)
+            ),
+            .empty
+        )
+        XCTAssertEqual(
+            StatusMappings.batteryGapContent(
+                connectedBattery(),
+                options: batteryOptions(showsIndicator: false)
+            ),
+            .percentage
+        )
+        XCTAssertEqual(
+            StatusMappings.batteryGapContent(
+                connectedBattery(),
+                options: batteryOptions(
+                    showsPercentage: false,
+                    showsPercentageWhenConnected: true
+                )
             ),
             .plug
         )
     }
 
-    func testBatteryTopIndicatorKeepsTheBoltWhileCharging() {
-        let charging = BatteryStatus(
+    private func chargingBattery() -> BatteryStatus {
+        BatteryStatus(
             rawPercentage: 80,
             isPresent: true,
             isCharging: true,
             isLowPowerMode: false,
             isConnectedToPower: true
         )
-
-        XCTAssertEqual(
-            StatusMappings.batteryTopIndicator(charging, options: .standard),
-            .bolt
-        )
     }
 
-    func testBatteryTopIndicatorRequiresPowerAndAnEnabledIndicator() {
-        let connectedOnly = BatteryStatus(
+    private func connectedBattery() -> BatteryStatus {
+        BatteryStatus(
             rawPercentage: 80,
             isPresent: true,
             isCharging: false,
             isLowPowerMode: false,
             isConnectedToPower: true
         )
-        let absent = BatteryStatus(
+    }
+
+    private func absentBattery() -> BatteryStatus {
+        BatteryStatus(
             rawPercentage: nil,
             isPresent: false,
             isCharging: false,
             isLowPowerMode: false,
             isConnectedToPower: false
         )
-
-        XCTAssertNil(
-            StatusMappings.batteryTopIndicator(
-                makeBattery(rawPercentage: 80),
-                options: .standard
-            )
-        )
-        XCTAssertNil(
-            StatusMappings.batteryTopIndicator(
-                connectedOnly,
-                options: batteryOptions(showsChargingIndicator: false, showsPlug: true)
-            )
-        )
-        XCTAssertNil(
-            StatusMappings.batteryTopIndicator(
-                absent,
-                options: batteryOptions(showsChargingIndicator: true, showsPlug: true)
-            )
-        )
     }
 
-    func testBatteryTopIndicatorFallsBackToTheBoltWhenThePlugIsDisabled() {
-        let connectedOnly = BatteryStatus(
-            rawPercentage: 80,
-            isPresent: true,
-            isCharging: false,
-            isLowPowerMode: false,
-            isConnectedToPower: true
-        )
-
-        XCTAssertEqual(
-            StatusMappings.batteryTopIndicator(
-                connectedOnly,
-                options: batteryOptions(showsChargingIndicator: true, showsPlug: false)
-            ),
-            .bolt
+    private func batteryOptions(
+        showsIndicator: Bool = true,
+        showsPercentage: Bool = true,
+        showsPercentageWhenConnected: Bool = false
+    ) -> BatteryIconOptions {
+        BatteryIconOptions(
+            showsPercentage: showsPercentage,
+            showsChargingIndicator: showsIndicator,
+            usesStatusColors: true,
+            criticalThreshold: 20,
+            showsPercentageWhenConnected: showsPercentageWhenConnected
         )
     }
 
@@ -256,19 +279,6 @@ final class StatusMappingsTests: XCTestCase {
             isCharged: true,
             isLowPowerMode: false,
             isConnectedToPower: true
-        )
-    }
-
-    private func batteryOptions(
-        showsChargingIndicator: Bool,
-        showsPlug: Bool
-    ) -> BatteryIconOptions {
-        BatteryIconOptions(
-            showsPercentage: true,
-            showsChargingIndicator: showsChargingIndicator,
-            usesStatusColors: true,
-            criticalThreshold: 20,
-            showsPlugForConnectedPower: showsPlug
         )
     }
 

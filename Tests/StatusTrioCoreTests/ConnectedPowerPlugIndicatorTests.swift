@@ -3,58 +3,43 @@ import CoreGraphics
 import XCTest
 @testable import StatusTrioCore
 
-/// The arc's top gap carries either the charging bolt or, for a connected power
-/// source that is not charging, a plug. Menu bar and Dock share the renderer, so
-/// both are asserted here.
+/// The arc's top gap carries the charging bolt, or a plug while the Mac is on
+/// power without charging. Menu bar and Dock share the renderer, so both are
+/// asserted here.
 @MainActor
 final class ConnectedPowerPlugIndicatorTests: XCTestCase {
     private let glyphRegion = CGRect(x: 45, y: 0, width: 30, height: 30)
     private let arcRegion = CGRect(x: 0, y: 40, width: 120, height: 80)
 
-    func testMenuBarIconDrawsAPlugForConnectedPowerWhenEnabled() throws {
-        let bolt = try menuBarPixels(
-            for: connectedBattery(),
-            options: batteryOptions(showsPlug: false)
-        )
-        let plug = try menuBarPixels(
-            for: connectedBattery(),
-            options: batteryOptions(showsPlug: true)
-        )
+    func testMenuBarIconDrawsAPlugForConnectedPower() throws {
+        let plug = try menuBarPixels(for: connectedBattery())
+        let bolt = try menuBarPixels(for: chargingBattery())
 
-        XCTAssertGreaterThan(bolt.alphaSum(inSVGRect: glyphRegion, size: 20, scale: 8), 0)
         XCTAssertGreaterThan(plug.alphaSum(inSVGRect: glyphRegion, size: 20, scale: 8), 0)
-        XCTAssertNotEqual(bolt.bytes, plug.bytes)
+        XCTAssertNotEqual(
+            plug.bytes,
+            bolt.bytes,
+            "connected power must not fall back to the charging bolt"
+        )
     }
 
-    func testPlugOptionChangesOnlyTheGlyphAndNotTheArc() throws {
-        let bolt = try menuBarPixels(
-            for: connectedBattery(),
-            options: batteryOptions(showsPlug: false)
-        )
-        let plug = try menuBarPixels(
-            for: connectedBattery(),
-            options: batteryOptions(showsPlug: true)
-        )
+    func testChargingAndConnectedPowerShareTheSameArc() throws {
+        let plug = try menuBarPixels(for: connectedBattery())
+        let bolt = try menuBarPixels(for: chargingBattery())
 
-        // The gap width must not move between the two states, so everything
-        // outside the top gap stays pixel-identical.
+        // Everything outside the top gap stays pixel-identical, so the arc does
+        // not shift when the Mac starts or stops charging.
         XCTAssertEqual(
-            bolt.alphaSum(inSVGRect: arcRegion, size: 20, scale: 8),
-            plug.alphaSum(inSVGRect: arcRegion, size: 20, scale: 8)
+            plug.alphaSum(inSVGRect: arcRegion, size: 20, scale: 8),
+            bolt.alphaSum(inSVGRect: arcRegion, size: 20, scale: 8)
         )
     }
 
-    func testMenuBarIconKeepsTheBoltWhileCharging() throws {
-        let withoutPlug = try menuBarPixels(
-            for: chargingBattery(),
-            options: batteryOptions(showsPlug: false)
-        )
-        let withPlug = try menuBarPixels(
-            for: chargingBattery(),
-            options: batteryOptions(showsPlug: true)
-        )
+    func testPlugGlyphIsNarrowerThanTheBolt() throws {
+        let plug = try XCTUnwrap(topGapInk(in: try menuBarPixels(for: connectedBattery())))
+        let bolt = try XCTUnwrap(topGapInk(in: try menuBarPixels(for: chargingBattery())))
 
-        XCTAssertEqual(withoutPlug.bytes, withPlug.bytes)
+        XCTAssertLessThan(plug.width, bolt.width)
     }
 
     func testMenuBarIconDropsTheIndicatorWhenItIsDisabled() throws {
@@ -64,40 +49,16 @@ final class ConnectedPowerPlugIndicatorTests: XCTestCase {
                 showsPercentage: true,
                 showsChargingIndicator: false,
                 usesStatusColors: true,
-                criticalThreshold: 20,
-                showsPlugForConnectedPower: true
+                criticalThreshold: 20
             )
         )
-        let plug = try menuBarPixels(
-            for: connectedBattery(),
-            options: batteryOptions(showsPlug: true)
-        )
 
-        XCTAssertNotEqual(hidden.bytes, plug.bytes)
-    }
-
-    func testDockIconFollowsThePlugOption() throws {
-        let bolt = try dockPixels(
-            for: MenuBarStatus(snapshot: snapshot(for: connectedBattery())),
-            options: batteryOptions(showsPlug: false)
-        )
-        let plug = try dockPixels(
-            for: MenuBarStatus(snapshot: snapshot(for: connectedBattery())),
-            options: batteryOptions(showsPlug: true)
-        )
-
-        XCTAssertNotEqual(bolt.bytes, plug.bytes)
+        XCTAssertNotEqual(hidden.bytes, try menuBarPixels(for: connectedBattery()).bytes)
     }
 
     func testPlugGlyphIsNotSmallerThanTheBolt() throws {
-        let bolt = try XCTUnwrap(topGapInk(in: try menuBarPixels(
-            for: connectedBattery(),
-            options: batteryOptions(showsPlug: false)
-        )))
-        let plug = try XCTUnwrap(topGapInk(in: try menuBarPixels(
-            for: connectedBattery(),
-            options: batteryOptions(showsPlug: true)
-        )))
+        let plug = try XCTUnwrap(topGapInk(in: try menuBarPixels(for: connectedBattery())))
+        let bolt = try XCTUnwrap(topGapInk(in: try menuBarPixels(for: chargingBattery())))
 
         XCTAssertGreaterThan(
             plug.height,
@@ -107,10 +68,7 @@ final class ConnectedPowerPlugIndicatorTests: XCTestCase {
     }
 
     func testPlugGlyphStaysInsideTheTopGap() throws {
-        let plug = try XCTUnwrap(topGapInk(in: try menuBarPixels(
-            for: connectedBattery(),
-            options: batteryOptions(showsPlug: true)
-        )))
+        let plug = try XCTUnwrap(topGapInk(in: try menuBarPixels(for: connectedBattery())))
 
         XCTAssertGreaterThan(plug.minY, 0, "the plug must not clip at the top of the bitmap")
         XCTAssertLessThan(plug.maxY, 54, "the plug must stay clear of the Wi-Fi glyph")
@@ -118,52 +76,51 @@ final class ConnectedPowerPlugIndicatorTests: XCTestCase {
         XCTAssertLessThan(plug.maxX, 104, "the plug must stay clear of the arc")
     }
 
-    func testDockRenderKeyFollowsThePlugOption() {
-        let status = MenuBarStatus(snapshot: snapshot(for: connectedBattery()))
-        let bolt = DockIconRenderKey(
-            status: status,
-            options: batteryOptions(showsPlug: false),
-            connectionOptions: .standard,
-            backgroundStyle: .dark
+    func testConnectedPowerShowsThePercentageWhenEnabled() throws {
+        let plug = try menuBarPixels(for: connectedBattery())
+        let percentage = try menuBarPixels(
+            for: connectedBattery(),
+            options: BatteryIconOptions(
+                showsPercentage: true,
+                showsChargingIndicator: true,
+                usesStatusColors: true,
+                criticalThreshold: 20,
+                showsPercentageWhenConnected: true
+            )
         )
-        let plug = DockIconRenderKey(
-            status: status,
-            options: batteryOptions(showsPlug: true),
-            connectionOptions: .standard,
-            backgroundStyle: .dark
-        )
+        let onBattery = try menuBarPixels(for: onBatteryBattery())
 
-        XCTAssertEqual(bolt.topIndicator, .bolt)
-        XCTAssertEqual(plug.topIndicator, .plug)
-        XCTAssertNotEqual(bolt, plug)
+        XCTAssertNotEqual(percentage.bytes, plug.bytes)
+        XCTAssertEqual(
+            percentage.alphaSum(inSVGRect: glyphRegion, size: 20, scale: 8),
+            onBattery.alphaSum(inSVGRect: glyphRegion, size: 20, scale: 8),
+            "the connected percentage must use the same numerals as the on-battery one"
+        )
+    }
+
+    func testDockIconDrawsThePlugForConnectedPower() throws {
+        let plug = try dockPixels(for: MenuBarStatus(snapshot: snapshot(for: connectedBattery())))
+        let bolt = try dockPixels(for: MenuBarStatus(snapshot: snapshot(for: chargingBattery())))
+
+        XCTAssertNotEqual(plug.bytes, bolt.bytes)
     }
 
     func testDockRenderKeyDistinguishesChargingFromConnectedPower() {
         let charging = DockIconRenderKey(
             status: MenuBarStatus(snapshot: snapshot(for: chargingBattery())),
-            options: batteryOptions(showsPlug: true),
+            options: .standard,
             connectionOptions: .standard,
             backgroundStyle: .dark
         )
         let connected = DockIconRenderKey(
             status: MenuBarStatus(snapshot: snapshot(for: connectedBattery())),
-            options: batteryOptions(showsPlug: true),
+            options: .standard,
             connectionOptions: .standard,
             backgroundStyle: .dark
         )
 
-        XCTAssertEqual(charging.topIndicator, .bolt)
-        XCTAssertEqual(connected.topIndicator, .plug)
-    }
-
-    private func batteryOptions(showsPlug: Bool) -> BatteryIconOptions {
-        BatteryIconOptions(
-            showsPercentage: true,
-            showsChargingIndicator: true,
-            usesStatusColors: true,
-            criticalThreshold: 20,
-            showsPlugForConnectedPower: showsPlug
-        )
+        XCTAssertEqual(charging.gapContent, .bolt)
+        XCTAssertEqual(connected.gapContent, .plug)
     }
 
     private func connectedBattery() -> BatteryStatus {
@@ -186,6 +143,16 @@ final class ConnectedPowerPlugIndicatorTests: XCTestCase {
         )
     }
 
+    private func onBatteryBattery() -> BatteryStatus {
+        BatteryStatus(
+            rawPercentage: 76,
+            isPresent: true,
+            isCharging: false,
+            isLowPowerMode: false,
+            isConnectedToPower: false
+        )
+    }
+
     private func snapshot(for battery: BatteryStatus) -> StatusSnapshot {
         StatusSnapshot(battery: battery, wifi: .placeholder, volume: .placeholder)
     }
@@ -197,6 +164,7 @@ final class ConnectedPowerPlugIndicatorTests: XCTestCase {
         let maxY: Int
 
         var height: Int { maxY - minY + 1 }
+        var width: Int { maxX - minX + 1 }
     }
 
     /// Ink of the top-gap glyph alone: the window sits inside the arc's gap and
@@ -224,7 +192,7 @@ final class ConnectedPowerPlugIndicatorTests: XCTestCase {
 
     private func menuBarPixels(
         for battery: BatteryStatus,
-        options: BatteryIconOptions
+        options: BatteryIconOptions = .standard
     ) throws -> PixelBuffer {
         let image = try XCTUnwrap(StatusIconRenderer.render(
             snapshot: snapshot(for: battery),
@@ -238,7 +206,7 @@ final class ConnectedPowerPlugIndicatorTests: XCTestCase {
 
     private func dockPixels(
         for status: MenuBarStatus,
-        options: BatteryIconOptions
+        options: BatteryIconOptions = .standard
     ) throws -> PixelBuffer {
         let image = try XCTUnwrap(DockIconRenderer.image(
             status: status,

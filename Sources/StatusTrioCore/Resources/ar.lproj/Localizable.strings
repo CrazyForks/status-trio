@@ -50,8 +50,8 @@
 "settings.battery.showPercentage" = "إظهار نسبة البطارية";
 "settings.battery.showChargingIndicator" = "إظهار رمز أثناء الشحن أو الاتصال بالطاقة";
 "settings.battery.chargingDescription" = "عند التفعيل، تتحول النسبة إلى رمز برق أو قابس أثناء الشحن أو الاتصال بالطاقة.";
-"settings.battery.plugWhenConnected" = "استخدام رمز القابس عند الاتصال بالطاقة دون شحن";
-"settings.battery.plugWhenConnectedDescription" = "يظل رمز البرق أثناء الشحن، وعند الاتصال بالطاقة دون شحن يظهر رمز القابس بدلاً منه.";
+"settings.battery.percentageWhenConnected" = "إظهار النسبة عند الاتصال بالطاقة دون شحن";
+"settings.battery.percentageWhenConnectedDescription" = "عند التفعيل، يعرض مصدر الطاقة المتصل دون شحن النسبة بدلاً من رمز القابس.";
 "settings.battery.symbolScale" = "حجم النسبة/البرق";
 "settings.battery.symbolScaleAccessibility" = "حجم نسبة البطارية ورمز البرق";
 "settings.battery.symbolScaleDescription" = "تستخدم النسبة ورمز البرق الحجم نفسه.";

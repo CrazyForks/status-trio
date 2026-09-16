@@ -65,8 +65,8 @@
 "settings.battery.showPercentage" = "Batterieprozentsatz anzeigen";
 "settings.battery.showChargingIndicator" = "Symbol beim Laden oder Netzbetrieb anzeigen";
 "settings.battery.chargingDescription" = "Wenn aktiviert, wird der Prozentsatz beim Laden oder Netzbetrieb durch ein Blitz- oder Steckersymbol ersetzt.";
-"settings.battery.plugWhenConnected" = "Steckersymbol bei Netzbetrieb ohne Laden anzeigen";
-"settings.battery.plugWhenConnectedDescription" = "Beim Laden bleibt der Blitz; bei Netzbetrieb ohne Laden erscheint stattdessen ein Stecker.";
+"settings.battery.percentageWhenConnected" = "Prozentsatz bei Netzbetrieb ohne Laden anzeigen";
+"settings.battery.percentageWhenConnectedDescription" = "Wenn aktiviert, zeigt eine Netzquelle ohne Ladung den Prozentsatz statt des Steckers.";
 "settings.battery.symbolScale" = "Größe von Prozentsatz/Blitz";
 "settings.battery.symbolScaleAccessibility" = "Größe von Batterieprozentsatz und Blitz";
 "settings.battery.symbolScaleDescription" = "Prozentsatz und Blitz verwenden dieselbe Größe.";

@@ -65,8 +65,8 @@
 "settings.battery.showPercentage" = "顯示電量數字";
 "settings.battery.showChargingIndicator" = "充電/連接電源時顯示指示圖示";
 "settings.battery.chargingDescription" = "開啟後，正在充電或已連接電源時，電量數字會替換為閃電或插頭圖示；關閉則繼續顯示數字。";
-"settings.battery.plugWhenConnected" = "已連接電源但未充電時顯示插頭圖示";
-"settings.battery.plugWhenConnectedDescription" = "充電時仍顯示閃電；已連接電源但未充電時改用插頭圖示。";
+"settings.battery.percentageWhenConnected" = "已連接電源但未充電時顯示電量數字";
+"settings.battery.percentageWhenConnectedDescription" = "開啟後，已連接電源但未充電時顯示電量數字，而不是插頭圖示。";
 "settings.battery.symbolScale" = "電量數字/閃電大小";
 "settings.battery.symbolScaleAccessibility" = "電量數字和閃電大小";
 "settings.battery.symbolScaleDescription" = "數字和閃電使用相同尺寸，調整這裡會同步改變兩者。";

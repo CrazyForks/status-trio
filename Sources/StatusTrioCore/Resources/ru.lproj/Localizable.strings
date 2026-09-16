@@ -65,8 +65,8 @@
 "settings.battery.showPercentage" = "Показывать процент заряда";
 "settings.battery.showChargingIndicator" = "Показывать значок при зарядке или питании от сети";
 "settings.battery.chargingDescription" = "Если включено, процент заменяется молнией или вилкой во время зарядки или при питании от сети.";
-"settings.battery.plugWhenConnected" = "Показывать вилку при питании от сети без зарядки";
-"settings.battery.plugWhenConnectedDescription" = "Во время зарядки остаётся молния; при питании от сети без зарядки вместо неё показывается вилка.";
+"settings.battery.percentageWhenConnected" = "Показывать процент при питании от сети без зарядки";
+"settings.battery.percentageWhenConnectedDescription" = "Если включено, при питании от сети без зарядки показывается процент вместо вилки.";
 "settings.battery.symbolScale" = "Размер процента и молнии";
 "settings.battery.symbolScaleAccessibility" = "Размер процента батареи и молнии";
 "settings.battery.symbolScaleDescription" = "Процент и молния используют один размер.";

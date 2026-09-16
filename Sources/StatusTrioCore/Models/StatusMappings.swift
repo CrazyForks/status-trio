@@ -7,12 +7,16 @@ enum BatteryColorRole: Equatable, Sendable {
     case charging
 }
 
-/// The glyph that fills the battery arc's top gap.
-enum BatteryTopIndicator: Equatable, Sendable {
+/// What fills the battery arc's top gap.
+enum BatteryGapContent: Equatable, Sendable {
     /// Charging: the lightning bolt.
     case bolt
     /// Connected to power without charging: the plug.
     case plug
+    /// The percentage numerals.
+    case percentage
+    /// Nothing: the arc closes into a full circle.
+    case empty
 }
 
 enum WiFiSummaryAction: Equatable, Sendable {
@@ -72,16 +76,23 @@ enum StatusMappings {
     }
 
     /// A charging battery keeps the bolt. A connected power source that is not
-    /// charging — including a battery that is already full — shows the plug
-    /// when the option is enabled, and falls back to the bolt when it is not.
-    static func batteryTopIndicator(
+    /// charging — including a battery that is already full — shows the plug,
+    /// or the percentage when the user asked for the number in that state and
+    /// the percentage is available at all.
+    static func batteryGapContent(
         _ battery: BatteryStatus,
         options: BatteryIconOptions
-    ) -> BatteryTopIndicator? {
-        guard battery.isPresent, options.showsChargingIndicator else { return nil }
-        if battery.isCharging { return .bolt }
-        guard battery.isConnectedToPower else { return nil }
-        return options.showsPlugForConnectedPower ? .plug : .bolt
+    ) -> BatteryGapContent {
+        if battery.isPresent, options.showsChargingIndicator {
+            if battery.isCharging { return .bolt }
+            let showsPercentageForPower = options.showsPercentageWhenConnected
+                && options.showsPercentage
+            if battery.isConnectedToPower, !showsPercentageForPower {
+                return .plug
+            }
+        }
+
+        return options.showsPercentage ? .percentage : .empty
     }
 
     static func batteryProgress(_ battery: BatteryStatus) -> Double {

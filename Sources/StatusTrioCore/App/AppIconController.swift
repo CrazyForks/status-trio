@@ -173,7 +173,7 @@ final class AppIconController {
             settings.$usesBatteryStatusColors,
             settings.$batteryCriticalThreshold
         )
-        .combineLatest(settings.$showsPlugForConnectedPower)
+        .combineLatest(settings.$showsPercentageWhenConnected)
         .combineLatest(settings.$batterySymbolScale)
         .dropFirst()
         .sink { [weak self] batteryValues, symbolScale in
@@ -184,13 +184,13 @@ final class AppIconController {
                 usesStatusColors,
                 criticalThreshold
             ) = batteryValues.0
-            let showsPlugForConnectedPower = batteryValues.1
+            let showsPercentageWhenConnected = batteryValues.1
             currentBatteryOptions = BatteryIconOptions(
                 showsPercentage: showsPercentage,
                 showsChargingIndicator: showsChargingIndicator,
                 usesStatusColors: usesStatusColors,
                 criticalThreshold: Int(criticalThreshold.rounded()),
-                showsPlugForConnectedPower: showsPlugForConnectedPower,
+                showsPercentageWhenConnected: showsPercentageWhenConnected,
                 textScale: symbolScale * BatteryIconOptions.defaultTextScale
             )
             renderLatestDockIcon()

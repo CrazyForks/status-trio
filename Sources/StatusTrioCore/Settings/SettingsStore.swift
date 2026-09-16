@@ -13,7 +13,7 @@ final class SettingsStore: ObservableObject {
     static let defaultBatterySymbolScale: Double = 1
     static let showsBatteryPercentageDefaultsKey = "showsBatteryPercentage"
     static let showsChargingIndicatorDefaultsKey = "showsChargingIndicator"
-    static let showsPlugForConnectedPowerDefaultsKey = "showsPlugForConnectedPower"
+    static let showsPercentageWhenConnectedDefaultsKey = "showsPercentageWhenConnected"
     static let usesBatteryStatusColorsDefaultsKey = "usesBatteryStatusColors"
     static let batteryCriticalThresholdDefaultsKey = "batteryCriticalThreshold"
     static let batterySymbolScaleDefaultsKey = "batterySymbolScale"
@@ -82,11 +82,11 @@ final class SettingsStore: ObservableObject {
         }
     }
 
-    @Published var showsPlugForConnectedPower: Bool {
+    @Published var showsPercentageWhenConnected: Bool {
         didSet {
             defaults.set(
-                showsPlugForConnectedPower,
-                forKey: Self.showsPlugForConnectedPowerDefaultsKey
+                showsPercentageWhenConnected,
+                forKey: Self.showsPercentageWhenConnectedDefaultsKey
             )
         }
     }
@@ -310,7 +310,7 @@ final class SettingsStore: ObservableObject {
             showsChargingIndicator: showsChargingIndicator,
             usesStatusColors: usesBatteryStatusColors,
             criticalThreshold: Int(batteryCriticalThreshold.rounded()),
-            showsPlugForConnectedPower: showsPlugForConnectedPower,
+            showsPercentageWhenConnected: showsPercentageWhenConnected,
             textScale: batterySymbolScale * BatteryIconOptions.defaultTextScale
         )
     }
@@ -361,9 +361,9 @@ final class SettingsStore: ObservableObject {
         self.iconSize = Self.clampedIconSize(storedIconSize ?? Self.defaultIconSize)
         self.showsBatteryPercentage = defaults.object(forKey: Self.showsBatteryPercentageDefaultsKey) as? Bool ?? true
         self.showsChargingIndicator = defaults.object(forKey: Self.showsChargingIndicatorDefaultsKey) as? Bool ?? true
-        self.showsPlugForConnectedPower = defaults.object(
-            forKey: Self.showsPlugForConnectedPowerDefaultsKey
-        ) as? Bool ?? true
+        self.showsPercentageWhenConnected = defaults.object(
+            forKey: Self.showsPercentageWhenConnectedDefaultsKey
+        ) as? Bool ?? false
         self.usesBatteryStatusColors = defaults.object(forKey: Self.usesBatteryStatusColorsDefaultsKey) as? Bool ?? true
         self.batterySymbolScale = Self.clampedBatterySymbolScale(
             storedBatterySymbolScale ?? Self.defaultBatterySymbolScale

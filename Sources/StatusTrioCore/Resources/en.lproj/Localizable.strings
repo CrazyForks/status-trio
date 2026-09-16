@@ -65,8 +65,8 @@
 "settings.battery.showPercentage" = "Show battery percentage";
 "settings.battery.showChargingIndicator" = "Show an indicator while charging or connected to power";
 "settings.battery.chargingDescription" = "When enabled, the percentage becomes a bolt or plug while charging or connected to power.";
-"settings.battery.plugWhenConnected" = "Use a plug icon when connected but not charging";
-"settings.battery.plugWhenConnectedDescription" = "Charging keeps the bolt; a connected power source that is not charging shows a plug instead.";
+"settings.battery.percentageWhenConnected" = "Show the percentage while connected without charging";
+"settings.battery.percentageWhenConnectedDescription" = "When enabled, a connected power source that is not charging shows the percentage instead of the plug.";
 "settings.battery.symbolScale" = "Percentage/bolt size";
 "settings.battery.symbolScaleAccessibility" = "Battery percentage and bolt size";
 "settings.battery.symbolScaleDescription" = "The percentage and bolt share this size.";

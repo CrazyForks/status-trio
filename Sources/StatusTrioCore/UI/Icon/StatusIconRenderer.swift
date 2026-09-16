@@ -249,11 +249,12 @@ enum StatusIconRenderer {
         foreground: CGColor,
         criticalColor: CGColor
     ) {
-        let topIndicator = StatusMappings.batteryTopIndicator(battery, options: options)
-        let hasTopGap = topIndicator != nil || options.showsPercentage
-        let topGapWidth = topIndicator != nil
-            ? StatusIconGeometry.batteryChargingBoltTopGapWidth
-            : StatusIconGeometry.batteryValueTopGapWidth
+        let gapContent = StatusMappings.batteryGapContent(battery, options: options)
+        let hasTopGap = gapContent != .empty
+        let topGapWidth = switch gapContent {
+        case .bolt, .plug: StatusIconGeometry.batteryChargingBoltTopGapWidth
+        case .percentage, .empty: StatusIconGeometry.batteryValueTopGapWidth
+        }
 
         context.setLineWidth(8)
         context.setStrokeColor(foreground.copy(alpha: inactiveTrackAlpha) ?? foreground)
@@ -293,27 +294,28 @@ enum StatusIconRenderer {
 
         let indicatorScale = batteryChargingBoltScale(textScale: options.textScale)
 
-        switch topIndicator {
-        case .bolt?:
+        switch gapContent {
+        case .bolt:
             context.setFillColor(foreground)
             context.addPath(StatusIconGeometry.batteryChargingBolt(
                 scale: indicatorScale
             ))
             context.fillPath()
-        case .plug?:
+        case .plug:
             drawBatteryPlug(
                 boltScale: indicatorScale,
                 foreground: foreground,
                 in: context
             )
-        case nil:
-            guard options.showsPercentage else { return }
+        case .percentage:
             drawBatteryPercentage(
                 battery.percentage,
                 color: foreground,
                 fontSize: batteryValueFontSize(scale: options.textScale),
                 in: context
             )
+        case .empty:
+            break
         }
     }
 
