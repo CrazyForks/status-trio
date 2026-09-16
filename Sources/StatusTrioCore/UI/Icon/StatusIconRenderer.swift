@@ -29,15 +29,28 @@ enum StatusIconRenderer {
         menuBarStatus: MenuBarStatus,
         size: CGFloat,
         options: BatteryIconOptions = .standard,
-        connectionOptions: ConnectionIconOptions = .standard
+        connectionOptions: ConnectionIconOptions = .standard,
+        appearance: NSAppearance? = nil
     ) -> NSImage {
         // Resolve colors while AppKit draws into each menu bar. A pre-rendered
         // bitmap would keep the first display's light or dark foreground.
         NSImage(size: NSSize(width: size, height: size), flipped: false) { _ in
-            let foreground = NSColor.labelColor.usingColorSpace(.deviceRGB)?.cgColor
-                ?? CGColor(gray: 1, alpha: 1)
-            let criticalColor = NSColor.systemRed.usingColorSpace(.deviceRGB)?.cgColor
-                ?? Self.defaultCriticalColor
+            var foreground: CGColor = CGColor(gray: 1, alpha: 1)
+            var criticalColor: CGColor = Self.defaultCriticalColor
+
+            if let appearance {
+                appearance.performAsCurrentDrawingAppearance {
+                    foreground = NSColor.labelColor.usingColorSpace(.deviceRGB)?.cgColor
+                        ?? CGColor(gray: 1, alpha: 1)
+                    criticalColor = NSColor.systemRed.usingColorSpace(.deviceRGB)?.cgColor
+                        ?? Self.defaultCriticalColor
+                }
+            } else {
+                foreground = NSColor.labelColor.usingColorSpace(.deviceRGB)?.cgColor
+                    ?? CGColor(gray: 1, alpha: 1)
+                criticalColor = NSColor.systemRed.usingColorSpace(.deviceRGB)?.cgColor
+                    ?? Self.defaultCriticalColor
+            }
 
             guard let context = NSGraphicsContext.current?.cgContext else { return false }
             draw(
@@ -484,10 +497,14 @@ enum StatusIconRenderer {
     ) {
         context.setLineWidth(7)
         let bars = StatusMappings.wifiBars(rssi: wifi.rssi)
-        if bars == 0 {
-            let mutedColor = foreground.copy(alpha: 0.30) ?? foreground
-            drawWiFiSignal(level: 3, color: mutedColor, in: context)
-        } else {
+        let mutedColor = foreground.copy(alpha: 0.30) ?? foreground
+
+        // Always draw the complete 3-bar signal track in muted color so the icon geometry
+        // remains balanced even when signal is low, matching battery and volume tracks.
+        drawWiFiSignal(level: 3, color: mutedColor, in: context)
+
+        // Overlay active signal bars in solid foreground
+        if bars > 0 {
             drawWiFiSignal(level: bars, color: foreground, in: context)
         }
     }
