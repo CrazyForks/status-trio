@@ -241,3 +241,7 @@
 "settings.audio.indicatorStyleDescription" = "اختر ما إذا كان مستوى الصوت يظهر كأربع نقاط أو كقوس متصل.";
 "settings.audio.indicatorStyle.dots" = "نقاط";
 "settings.audio.indicatorStyle.arc" = "قوس";
+
+/* Compact popover controls. */
+"menu.more" = "إجراءات أخرى";
+"volume.output.choose" = "اختيار جهاز الإخراج";

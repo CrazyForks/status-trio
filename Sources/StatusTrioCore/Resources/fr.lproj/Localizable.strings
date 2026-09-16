@@ -241,3 +241,7 @@
 "settings.audio.indicatorStyleDescription" = "Choisissez d'afficher le volume sous forme de quatre points ou d'un arc continu.";
 "settings.audio.indicatorStyle.dots" = "Points";
 "settings.audio.indicatorStyle.arc" = "Arc";
+
+/* Compact popover controls. */
+"menu.more" = "Autres actions";
+"volume.output.choose" = "Choisir un périphérique de sortie";

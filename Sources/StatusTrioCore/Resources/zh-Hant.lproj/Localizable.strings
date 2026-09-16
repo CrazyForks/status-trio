@@ -241,3 +241,7 @@
 "settings.audio.indicatorStyleDescription" = "選擇在狀態環底部顯示為四個離散點或連續圓弧條。";
 "settings.audio.indicatorStyle.dots" = "四個點";
 "settings.audio.indicatorStyle.arc" = "圓弧條";
+
+/* Compact popover controls. */
+"menu.more" = "更多操作";
+"volume.output.choose" = "選擇輸出裝置";

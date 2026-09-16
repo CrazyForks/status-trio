@@ -312,23 +312,7 @@ struct StatusPopoverView: View {
                     .padding(.vertical, 2)
             }
 
-            VStack(spacing: 2) {
-                PopoverMenuButton(
-                    title: localization.string(.menuSettings),
-                    icon: "gearshape",
-                    shortcut: "⌘,",
-                    action: openSettings
-                )
-                .keyboardShortcut(",", modifiers: .command)
-
-                PopoverMenuButton(
-                    title: localization.string(.menuQuit),
-                    icon: "power",
-                    shortcut: "⌘Q",
-                    action: quit
-                )
-                .keyboardShortcut("q", modifiers: .command)
-            }
+            PopoverFooterView(openSettings: openSettings, quit: quit)
         }
     }
 
@@ -374,46 +358,5 @@ struct StatusPopoverView: View {
                 onOpenSoundSettings: openSoundSettings
             )
         }
-    }
-}
-
-private struct PopoverMenuButton: View {
-    let title: String
-    let icon: String
-    var shortcut: String? = nil
-    let action: () -> Void
-
-    @State private var isHovered = false
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 8) {
-                Image(systemName: icon)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(isHovered ? Color.primary : Color.secondary)
-                    .frame(width: 18)
-
-                Text(title)
-                    .font(.system(size: 12.5))
-                    .foregroundStyle(isHovered ? Color.primary : Color.primary.opacity(0.85))
-
-                Spacer(minLength: 0)
-
-                if let shortcut {
-                    Text(shortcut)
-                        .font(.system(size: 11, weight: .regular, design: .rounded))
-                        .foregroundStyle(.tertiary)
-                }
-            }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 5)
-            .background(
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .fill(isHovered ? Color.primary.opacity(0.08) : Color.clear)
-            )
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .onHover { isHovered = $0 }
     }
 }

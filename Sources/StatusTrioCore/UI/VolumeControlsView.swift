@@ -13,9 +13,34 @@ struct VolumeControlsView: View {
 
     @State private var draftVolume = 0.0
     @State private var isAdjusting = false
+    @State private var isOutputExpanded: Bool
+
+    init(
+        settings: SettingsStore,
+        scrollTargets: PopoverScrollTargets,
+        volume: VolumeStatus,
+        isEnabled: Bool,
+        onVolumeChange: @escaping (Double) -> Void,
+        onToggleMute: @escaping () -> Void,
+        onSelectOutputDevice: @escaping (AudioOutputDevice) -> Void,
+        onOpenSoundSettings: @escaping () -> Void,
+        initiallyExpandsOutput: Bool = false
+    ) {
+        self.settings = settings
+        self.scrollTargets = scrollTargets
+        self.volume = volume
+        self.isEnabled = isEnabled
+        self.onVolumeChange = onVolumeChange
+        self.onToggleMute = onToggleMute
+        self.onSelectOutputDevice = onSelectOutputDevice
+        self.onOpenSoundSettings = onOpenSoundSettings
+        _isOutputExpanded = State(initialValue: initiallyExpandsOutput)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
+            VolumeOutputSummaryView(volume: volume)
+
             HStack(spacing: 10) {
                 Button(action: onToggleMute) {
                     Image(systemName: volumeSymbolName)
@@ -29,56 +54,30 @@ struct VolumeControlsView: View {
                 .help(volume.isMuted ? localization.string(.volumeUnmuted) : localization.string(.volumeMuted))
                 .accessibilityLabel(volume.isMuted ? localization.string(.volumeUnmuted) : localization.string(.volumeMuted))
 
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(StatusPresentation.volumeTitle(volume, localization: localization))
-                        .font(.headline)
-                        .monospacedDigit()
-                    Text(StatusPresentation.volumeSubtitle(volume, localization: localization))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                }
-
-                Spacer()
-
-                Button(
-                    localization.string(.volumeActionOpenSettings),
-                    systemImage: "gearshape",
-                    action: onOpenSoundSettings
+                Slider(
+                    value: $draftVolume,
+                    in: 0...1,
+                    onEditingChanged: handleVolumeEditing
                 )
-                .labelStyle(.iconOnly)
-                .buttonStyle(.plain)
-                .foregroundStyle(.secondary)
-                .help(localization.string(.volumeActionOpenSettings))
-                .accessibilityLabel(localization.string(.volumeActionOpenSettings))
-                .frame(width: 24, height: 24)
+                .tint(volume.isMuted ? Color.secondary : Color.accentColor)
+                .disabled(!isEnabled)
+                .accessibilityLabel(localization.string(.volumeAccessibilityLabel))
+                .accessibilityValue(percentageText)
+                .padding(.horizontal, 2)
+                .background(VolumeControlScrollTarget(targets: scrollTargets))
+
+                Image(systemName: "speaker.wave.3.fill")
+                    .foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
             }
 
-            Slider(
-                value: $draftVolume,
-                in: 0...1,
-                onEditingChanged: handleVolumeEditing
+            AudioOutputPickerView(
+                settings: settings,
+                devices: volume.outputDevices,
+                onSelect: onSelectOutputDevice,
+                onOpenSoundSettings: onOpenSoundSettings,
+                isExpanded: $isOutputExpanded
             )
-            .tint(volume.isMuted ? Color.secondary : Color.accentColor)
-            .disabled(!isEnabled)
-            .accessibilityLabel(localization.string(.volumeAccessibilityLabel))
-            .accessibilityValue(percentageText)
-            .padding(.horizontal, 2)
-            // Only the control row is a scroll target; the output device list
-            // below stays a normal list.
-            .background(VolumeControlScrollTarget(targets: scrollTargets))
-
-            if volume.outputDevices.count > 1 {
-                Divider()
-                    .padding(.top, 2)
-
-                OutputDeviceList(
-                    settings: settings,
-                    devices: volume.outputDevices,
-                    onSelect: onSelectOutputDevice
-                )
-            }
         }
         .onAppear(perform: synchronizeVolume)
         .onChange(of: draftVolume) { _, newValue in
@@ -108,7 +107,10 @@ struct VolumeControlsView: View {
 
     private var percentageText: String {
         guard draftVolume.isFinite else { return "—" }
-        return "\(Int((min(1, max(0, draftVolume)) * 100).rounded()))%"
+        return min(1, max(0, draftVolume)).formatted(
+            .percent.precision(.fractionLength(0))
+                .locale(localization.resolvedLanguage.locale)
+        )
     }
 
     private func handleVolumeEditing(_ isEditing: Bool) {
