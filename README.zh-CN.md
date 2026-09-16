@@ -40,6 +40,19 @@ Status Trio 是一个原生 macOS 状态应用，将 Wi-Fi、电池和音量整�
 - **十二种语言**：跟随系统语言或手动选择，修改后立即生效。
 - **登录时启动**：可选开机登录启动，并在 macOS 需要批准时提供引导。
 
+## 程序坞图标
+
+同一个实时图标也可以放在程序坞，而不是菜单栏，或两处同时显示：
+
+<p align="center">
+  <img src="screenshots/status-trio-dock-light-1440x810.jpg" width="430" alt="程序坞中的 Status Trio 实时图标（浅色外观）">
+  <img src="screenshots/status-trio-dock-dark-1440x810.jpg" width="430" alt="程序坞中的 Status Trio 实时图标（深色外观）">
+</p>
+
+<p align="center">
+  <img src="screenshots/status-trio-dock-light-bt-1440x810.jpg" width="880" alt="程序坞中的 Status Trio 与蓝牙区块（浅色外观）">
+</p>
+
 ## 系统要求
 
 - macOS 15 或更高版本

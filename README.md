@@ -40,6 +40,19 @@ Status Trio is a native macOS status app that combines Wi-Fi, battery, and volum
 - **Twelve languages** — follow the system language or choose one manually; changes apply immediately.
 - **Launch at login** — optional startup with guidance when macOS requires approval.
 
+## Dock icon
+
+The same live icon can live in the Dock instead of the menu bar, or in both places at once:
+
+<p align="center">
+  <img src="screenshots/status-trio-dock-light-1440x810.jpg" width="430" alt="Status Trio live icon in the Dock with light appearance">
+  <img src="screenshots/status-trio-dock-dark-1440x810.jpg" width="430" alt="Status Trio live icon in the Dock with dark appearance">
+</p>
+
+<p align="center">
+  <img src="screenshots/status-trio-dock-light-bt-1440x810.jpg" width="880" alt="Status Trio in the Dock with the Bluetooth panel shown, light appearance">
+</p>
+
 ## Requirements
 
 - macOS 15 or later
