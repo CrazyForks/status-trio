@@ -26,7 +26,10 @@ final class CoreAudioOutputController: AudioOutputControlling {
                     name: deviceName(for: deviceID),
                     uid: deviceUID(for: deviceID),
                     isCurrent: deviceID == currentDeviceID,
-                    volume: volume(for: deviceID)
+                    volume: volume(for: deviceID),
+                    transport: transport(for: deviceID),
+                    dataSource: dataSource(for: deviceID),
+                    iconURL: iconURL(for: deviceID)
                 )
             }
             .sorted { lhs, rhs in
@@ -203,6 +206,53 @@ final class CoreAudioOutputController: AudioOutputControlling {
             for: deviceID,
             selector: kAudioDevicePropertyDeviceUID
         )
+    }
+
+    /// `kAudioDevicePropertyTransportType` is the public property that describes
+    /// the hardware family of a device, which is what the system volume menu
+    /// uses to tell headphones, displays and speakers apart.
+    private func transport(for deviceID: AudioDeviceID) -> AudioOutputTransport? {
+        readUInt32Property(
+            objectID: deviceID,
+            selector: kAudioDevicePropertyTransportType,
+            scope: kAudioObjectPropertyScopeGlobal,
+            element: kAudioObjectPropertyElementMain
+        )
+        .map { AudioOutputTransport(coreAudioValue: $0) }
+    }
+
+    /// `kAudioDevicePropertyDataSource` reports the live source of a built-in
+    /// output device, for example whether the headphone jack or the internal
+    /// speakers are active.
+    private func dataSource(for deviceID: AudioDeviceID) -> AudioOutputDataSource? {
+        readUInt32Property(
+            objectID: deviceID,
+            selector: kAudioDevicePropertyDataSource,
+            scope: kAudioObjectPropertyScopeOutput,
+            element: kAudioObjectPropertyElementMain
+        )
+        .map { AudioOutputDataSource(coreAudioValue: $0) }
+    }
+
+    /// `kAudioDevicePropertyIcon` is an optional CFURLRef to an image file the
+    /// driver ships for the device, for example the icon of a HAL plugin.
+    private func iconURL(for deviceID: AudioDeviceID) -> URL? {
+        var address = propertyAddress(selector: kAudioDevicePropertyIcon)
+        guard AudioObjectHasProperty(deviceID, &address) else { return nil }
+
+        var icon: Unmanaged<CFURL>?
+        var dataSize = UInt32(MemoryLayout<Unmanaged<CFURL>?>.size)
+        let status = AudioObjectGetPropertyData(
+            deviceID,
+            &address,
+            0,
+            nil,
+            &dataSize,
+            &icon
+        )
+
+        guard status == noErr, let icon else { return nil }
+        return icon.takeRetainedValue() as URL
     }
 
     private func stringProperty(
