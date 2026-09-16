@@ -33,6 +33,7 @@
 "settings.iconSize.accessibilityValue" = "%d пунктов";
 "settings.iconSize.description" = "Настраивает размер отрисовки значка в строке меню от 16 до 36 pt.";
 "settings.tab.basics" = "Основные";
+"settings.tab.panel" = "Панель состояния";
 "settings.tab.menuBar" = "Строка меню";
 "settings.tab.audio" = "Аудио";
 "settings.tab.battery" = "Батарея";
@@ -132,8 +133,8 @@
 "settings.refreshInterval" = "Интервал обновления";
 "settings.refreshInterval.description" = "Как часто Status Trio проверяет изменения. Более частое обновление увеличивает нагрузку на CPU.";
 "settings.refreshInterval.value" = "%d секунд";
-"settings.popup.order" = "Порядок в панели";
-"settings.popup.order.description" = "Перетаскивайте элементы, чтобы изменить их порядок в панели.";
+"settings.popup.order" = "Отображаемые элементы";
+"settings.popup.order.description" = "Выберите элементы, отображаемые на панели состояния, и перетаскивайте их, чтобы изменить порядок.";
 "settings.popup.order.battery" = "Аккумулятор";
 "settings.popup.order.volume" = "Громкость";
 

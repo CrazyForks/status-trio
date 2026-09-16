@@ -112,7 +112,7 @@ struct SettingsView: View {
         case .menuBar:
             MenuBarSectionView(store: store, statusStore: statusStore)
         case .popover:
-            PopoverSectionView(store: store)
+            PopoverSectionView(store: store, statusStore: statusStore)
         case .audio:
             AudioSectionView(store: store, statusStore: statusStore)
         case .general:

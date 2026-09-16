@@ -33,6 +33,7 @@
 "settings.iconSize.accessibilityValue" = "%d puntos";
 "settings.iconSize.description" = "Ajusta el tamaño de representación del icono de la barra de menús entre 16 y 36 pt.";
 "settings.tab.basics" = "Básico";
+"settings.tab.panel" = "Panel de estado";
 "settings.tab.menuBar" = "Barra de menús";
 "settings.tab.audio" = "Audio";
 "settings.tab.battery" = "Batería";
@@ -132,8 +133,8 @@
 "settings.refreshInterval" = "Intervalo de actualización";
 "settings.refreshInterval.description" = "Con qué frecuencia Status Trio comprueba cambios. Una actualización más frecuente consume más CPU.";
 "settings.refreshInterval.value" = "%d segundos";
-"settings.popup.order" = "Orden del panel";
-"settings.popup.order.description" = "Arrastra los elementos para cambiar su orden en el panel.";
+"settings.popup.order" = "Elementos mostrados";
+"settings.popup.order.description" = "Elige qué elementos aparecen en el panel de estado y arrástralos para cambiar su orden.";
 "settings.popup.order.battery" = "Batería";
 "settings.popup.order.volume" = "Volumen";
 

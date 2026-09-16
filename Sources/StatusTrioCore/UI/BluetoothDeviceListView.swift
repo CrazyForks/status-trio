@@ -132,7 +132,6 @@ struct BluetoothDeviceListView: View {
                 .buttonStyle(.plain)
         }
         .onAppear { controller.activate() }
-        .onDisappear { controller.deactivate() }
     }
 
     private func section(_ title: String, devices: [BluetoothDevice]) -> some View {
@@ -178,8 +177,9 @@ struct BluetoothDeviceListView: View {
             .foregroundStyle(.secondary)
         case .authorizationDenied:
             Button(localization.string(.bluetoothAuthorizationDenied), action: onOpenBluetoothSettings)
-                .buttonStyle(.link)
+                .buttonStyle(.plain)
                 .font(.caption)
+                .foregroundStyle(.secondary)
         case .authorizationRestricted:
             Text(localization.string(.bluetoothAuthorizationRestricted))
                 .font(.caption)

@@ -282,7 +282,10 @@ struct StatusPopoverView: View {
             case .bluetooth:
                 BluetoothDeviceListView(
                     controller: store.bluetoothDevices,
-                    onBack: { panel = .summary },
+                    onBack: {
+                        store.closeBluetoothDetails()
+                        panel = .summary
+                    },
                     onRequestAuthorization: requestBluetoothAuthorization,
                     onOpenBluetoothSettings: openBluetoothSettings
                 )
@@ -294,17 +297,19 @@ struct StatusPopoverView: View {
 
     private var summary: some View {
         VStack(alignment: .leading, spacing: 12) {
-            ForEach(settings.popupSectionOrder) { section in
+            ForEach(settings.visiblePopupSections) { section in
                 popupSection(section)
 
-                if section != settings.popupSectionOrder.last {
+                if section != settings.visiblePopupSections.last {
                     Divider()
                 }
             }
 
-            Divider()
-                .opacity(0.6)
-                .padding(.vertical, 2)
+            if !settings.visiblePopupSections.isEmpty {
+                Divider()
+                    .opacity(0.6)
+                    .padding(.vertical, 2)
+            }
 
             VStack(spacing: 2) {
                 PopoverMenuButton(
@@ -349,7 +354,7 @@ struct StatusPopoverView: View {
             BluetoothStatusView(
                 controller: store.bluetoothDevices,
                 onOpenDetails: {
-                    requestBluetoothAuthorization()
+                    store.openBluetoothDetails()
                     panel = .bluetooth
                 },
                 onRequestAuthorization: requestBluetoothAuthorization,

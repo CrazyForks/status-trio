@@ -12,7 +12,14 @@ struct WiFiStatusView: View {
     var body: some View {
         HStack(spacing: 10) {
             Button {
-                onOpenDetails(NSEvent.modifierFlags.contains(.option))
+                switch StatusMappings.wifiSummaryAction(for: wifi) {
+                case .openDetails:
+                    onOpenDetails(NSEvent.modifierFlags.contains(.option))
+                case .requestNameAccess:
+                    onRequestNameAccess()
+                case .openLocationSettings:
+                    onOpenLocationSettings()
+                }
             } label: {
                 HStack(spacing: 10) {
                     WiFiStatusIcon(wifi: wifi)
@@ -54,14 +61,16 @@ struct WiFiStatusView: View {
                 .truncationMode(.tail)
         } else if wifi.state.isNetworkAssociated && wifi.nameAccess == .notDetermined {
             Button(localization.string(.wifiActionRequestNameAccess), action: onRequestNameAccess)
-                .buttonStyle(.link)
+                .buttonStyle(.plain)
                 .font(.caption)
+                .foregroundStyle(.secondary)
                 .lineLimit(1)
         } else if wifi.state.isNetworkAssociated
                     && (wifi.nameAccess == .denied || wifi.nameAccess == .restricted) {
             Button(localization.string(.wifiActionOpenLocationSettings), action: onOpenLocationSettings)
-                .buttonStyle(.link)
+                .buttonStyle(.plain)
                 .font(.caption)
+                .foregroundStyle(.secondary)
                 .lineLimit(1)
         } else {
             Text(StatusPresentation.wifiSubtitle(wifi, localization: localization))

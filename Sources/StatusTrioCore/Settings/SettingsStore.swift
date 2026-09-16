@@ -31,6 +31,8 @@ final class SettingsStore: ObservableObject {
     static let alwaysShowsAllOutputDevicesDefaultsKey = "alwaysShowsAllOutputDevices"
     static let outputDeviceOrderDefaultsKey = "outputDeviceOrder"
     static let popupSectionOrderDefaultsKey = "popupSectionOrder"
+    static let enabledPopupSectionsDefaultsKey = "enabledPopupSections"
+    static let defaultEnabledPopupSections: Set<PopupSection> = [.battery, .network, .volume]
 
     static let appIconPlacementDefaultsKey = "appIconPlacement"
     static let dockIconBackgroundPreferenceDefaultsKey = "dockIconBackgroundPreference"
@@ -184,6 +186,19 @@ final class SettingsStore: ObservableObject {
         }
     }
 
+    @Published private(set) var enabledPopupSections: Set<PopupSection> {
+        didSet {
+            defaults.set(
+                enabledPopupSections.map(\.rawValue).sorted(),
+                forKey: Self.enabledPopupSectionsDefaultsKey
+            )
+        }
+    }
+
+    var visiblePopupSections: [PopupSection] {
+        popupSectionOrder.filter { enabledPopupSections.contains($0) }
+    }
+
     var refreshInterval: Duration {
         .seconds(Int(refreshIntervalSeconds.rounded()))
     }
@@ -245,6 +260,14 @@ final class SettingsStore: ObservableObject {
         popupSectionOrder = reorderedSections
     }
 
+    func setPopupSection(_ section: PopupSection, enabled: Bool) {
+        if enabled {
+            enabledPopupSections.insert(section)
+        } else {
+            enabledPopupSections.remove(section)
+        }
+    }
+
     var isBatterySymbolSizeEnabled: Bool {
         showsBatteryPercentage || showsChargingIndicator
     }
@@ -281,6 +304,9 @@ final class SettingsStore: ObservableObject {
         let storedPopupSectionOrder = defaults.stringArray(
             forKey: Self.popupSectionOrderDefaultsKey
         ) ?? []
+        let storedEnabledPopupSections = defaults.stringArray(
+            forKey: Self.enabledPopupSectionsDefaultsKey
+        )
 
         let storedAppIconPlacement = defaults.string(forKey: Self.appIconPlacementDefaultsKey)
         self.appIconPlacement = storedAppIconPlacement
@@ -327,6 +353,9 @@ final class SettingsStore: ObservableObject {
         self.popupSectionOrder = Self.sanitizedPopupSectionOrder(
             storedPopupSectionOrder
         )
+        self.enabledPopupSections = Self.sanitizedEnabledPopupSections(
+            storedEnabledPopupSections
+        )
     }
 
     static func clampedIconSize(_ value: Double) -> Double {
@@ -366,5 +395,12 @@ final class SettingsStore: ObservableObject {
             .compactMap(PopupSection.init(rawValue:))
             .filter { seen.insert($0).inserted }
         return storedSections + PopupSection.allCases.filter { !seen.contains($0) }
+    }
+
+    static func sanitizedEnabledPopupSections(_ rawValues: [String]?) -> Set<PopupSection> {
+        guard let rawValues else {
+            return defaultEnabledPopupSections
+        }
+        return Set(rawValues.compactMap(PopupSection.init(rawValue:)))
     }
 }

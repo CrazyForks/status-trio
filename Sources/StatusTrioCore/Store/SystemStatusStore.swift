@@ -29,6 +29,8 @@ final class SystemStatusStore: ObservableObject {
     private var hasStarted = false
     private var hasStopped = false
     private var isPopoverVisible = false
+    private var isBluetoothEnabled = false
+    private var isBluetoothDetailsOpen = false
 
     init(
         batteryMonitor: any BatteryMonitoring,
@@ -203,8 +205,31 @@ final class SystemStatusStore: ObservableObject {
     }
 
     func requestBluetoothAuthorization() {
+        setBluetoothEnabled(true)
+    }
+
+    func setBluetoothEnabled(_ enabled: Bool) {
         guard !hasStopped else { return }
+        isBluetoothEnabled = enabled
+        if enabled {
+            bluetoothDevices.activate()
+        } else {
+            isBluetoothDetailsOpen = false
+            bluetoothDevices.deactivate()
+        }
+    }
+
+    func openBluetoothDetails() {
+        guard !hasStopped else { return }
+        isBluetoothDetailsOpen = true
         bluetoothDevices.activate()
+    }
+
+    func closeBluetoothDetails() {
+        isBluetoothDetailsOpen = false
+        if !isBluetoothEnabled {
+            bluetoothDevices.deactivate()
+        }
     }
 
     func refreshForPopoverOpening() {
@@ -238,12 +263,12 @@ final class SystemStatusStore: ObservableObject {
 
     func closePopoverDetails() {
         wifiNetworks.deactivate()
-        bluetoothDevices.deactivate()
+        closeBluetoothDetails()
     }
 
     /// Whether a popover detail panel (Wi-Fi or Bluetooth list) is currently open.
     var hasActivePopoverDetails: Bool {
-        wifiNetworks.isActive || bluetoothDevices.isActive
+        wifiNetworks.isActive || isBluetoothDetailsOpen
     }
 
     func refreshAll() {

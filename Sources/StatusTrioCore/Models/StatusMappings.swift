@@ -7,6 +7,12 @@ enum BatteryColorRole: Equatable, Sendable {
     case charging
 }
 
+enum WiFiSummaryAction: Equatable, Sendable {
+    case openDetails
+    case requestNameAccess
+    case openLocationSettings
+}
+
 enum StatusMappings {
     static func wifiBars(rssi: Int?) -> Int {
         guard let rssi else { return 0 }
@@ -20,6 +26,19 @@ enum StatusMappings {
             return 1
         default:
             return 0
+        }
+    }
+
+    static func wifiSummaryAction(for wifi: WiFiStatus) -> WiFiSummaryAction {
+        guard wifi.state.isNetworkAssociated else { return .openDetails }
+
+        switch wifi.nameAccess {
+        case .authorized:
+            return .openDetails
+        case .notDetermined:
+            return .requestNameAccess
+        case .denied, .restricted:
+            return .openLocationSettings
         }
     }
 

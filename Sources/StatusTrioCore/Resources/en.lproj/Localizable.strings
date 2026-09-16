@@ -33,6 +33,7 @@
 "settings.iconSize.accessibilityValue" = "%d points";
 "settings.iconSize.description" = "Adjusts the menu bar icon render size from 16–36 pt.";
 "settings.tab.basics" = "Basics";
+"settings.tab.panel" = "Status Panel";
 "settings.tab.menuBar" = "Menu Bar";
 "settings.tab.audio" = "Audio";
 "settings.tab.battery" = "Battery";
@@ -132,8 +133,8 @@
 "settings.refreshInterval" = "Status refresh interval";
 "settings.refreshInterval.description" = "How often Status Trio checks for changes. Faster updates use more CPU.";
 "settings.refreshInterval.value" = "%d seconds";
-"settings.popup.order" = "Popup Order";
-"settings.popup.order.description" = "Drag items to change their order in the popup.";
+"settings.popup.order" = "Displayed Items";
+"settings.popup.order.description" = "Choose which items appear in the status panel and drag to change their order.";
 "settings.popup.order.battery" = "Battery";
 "settings.popup.order.volume" = "Volume";
 

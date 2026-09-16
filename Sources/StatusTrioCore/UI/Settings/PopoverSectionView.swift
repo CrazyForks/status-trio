@@ -1,7 +1,9 @@
+import AppKit
 import SwiftUI
 
 struct PopoverSectionView: View {
     @ObservedObject var store: SettingsStore
+    @ObservedObject var statusStore: SystemStatusStore
     @EnvironmentObject private var localization: Localization
 
     var body: some View {
@@ -63,10 +65,15 @@ struct PopoverSectionView: View {
             ) {
                 List {
                     ForEach(store.popupSectionOrder) { section in
-                        HStack(spacing: 10) {
+                        HStack(spacing: 8) {
+                            Toggle("", isOn: visibilityBinding(for: section))
+                                .labelsHidden()
+                                .toggleStyle(.checkbox)
+                                .accessibilityLabel(localization.string(section.titleKey))
+
                             popupSectionIcon(section)
                                 .foregroundStyle(.secondary)
-                                .frame(width: 20)
+                                .frame(width: 18)
 
                             Text(localization.string(section.titleKey))
                                 .font(.system(size: 13))
@@ -77,7 +84,7 @@ struct PopoverSectionView: View {
                                 .foregroundStyle(.tertiary)
                                 .accessibilityHidden(true)
                         }
-                        .padding(.vertical, 4)
+                        .padding(.vertical, 3)
                     }
                     .onMove { source, destination in
                         store.movePopupSections(fromOffsets: source, toOffset: destination)
@@ -87,6 +94,22 @@ struct PopoverSectionView: View {
                 .frame(height: popupOrderListHeight)
             }
         }
+    }
+
+    private func visibilityBinding(for section: PopupSection) -> Binding<Bool> {
+        Binding(
+            get: { store.enabledPopupSections.contains(section) },
+            set: { enabled in
+                let wasEnabled = store.enabledPopupSections.contains(section)
+                store.setPopupSection(section, enabled: enabled)
+
+                guard section == .bluetooth, enabled != wasEnabled else { return }
+                if enabled {
+                    NSApp.activate()
+                }
+                statusStore.setBluetoothEnabled(enabled)
+            }
+        )
     }
 
     @ViewBuilder

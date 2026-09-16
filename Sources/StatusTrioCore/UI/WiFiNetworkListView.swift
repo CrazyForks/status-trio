@@ -145,8 +145,9 @@ struct WiFiNetworkListView: View {
                 .foregroundStyle(.secondary)
         case .permissionDenied:
             Button(localization.string(.wifiPermissionDenied), action: onOpenLocationSettings)
-                .buttonStyle(.link)
+                .buttonStyle(.plain)
                 .font(.caption)
+                .foregroundStyle(.secondary)
         case .failed:
             Text(localization.string(.wifiScanFailed))
                 .font(.caption)
@@ -187,8 +188,9 @@ struct WiFiNetworkListView: View {
         case .idle, .connecting(_), .ready:
             if wifi.nameAccess == .notDetermined {
                 Button(localization.string(.wifiActionRequestNameAccess), action: onRequestNameAccess)
-                    .buttonStyle(.link)
+                    .buttonStyle(.plain)
                     .font(.caption)
+                    .foregroundStyle(.secondary)
             }
         }
     }
