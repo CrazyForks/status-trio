@@ -313,7 +313,9 @@ struct StatusPopoverView: View {
 
             VStack(spacing: 2) {
                 PopoverMenuButton(
-                    title: localization.string(.menuSettings),
+                    title: PreviewAppIdentity.popupSettingsTitle(
+                        localizedTitle: localization.string(.menuSettings)
+                    ),
                     icon: "gearshape",
                     shortcut: "⌘,",
                     action: openSettings
