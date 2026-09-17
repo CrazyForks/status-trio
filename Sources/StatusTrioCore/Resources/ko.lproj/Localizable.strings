@@ -147,6 +147,8 @@
 "settings.popup.volumeScroll.scope.description" = "스크롤로 볼륨을 바꿀 위치를 선택합니다.";
 "settings.popup.volumeScroll.scope.panel" = "패널 전체";
 "settings.popup.volumeScroll.scope.volumeControl" = "볼륨 컨트롤만";
+"settings.popup.volumeScroll.natural" = "자연스러운 스크롤";
+"settings.popup.volumeScroll.natural.description" = "켜면 마우스나 트랙패드에서 위로 스크롤할 때 볼륨이 커집니다. 끄면 시스템의 스크롤 방향을 따릅니다.";
 "settings.popup.volumeScroll.direction" = "스크롤 방향";
 "settings.popup.volumeScroll.direction.description" = "볼륨을 높이는 스크롤 방향을 선택합니다.";
 "settings.popup.volumeScroll.direction.up" = "위로 스크롤";

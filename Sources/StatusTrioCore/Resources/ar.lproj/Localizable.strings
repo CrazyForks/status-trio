@@ -147,6 +147,8 @@
 "settings.popup.volumeScroll.scope.description" = "اختر المكان الذي يؤدي فيه التمرير إلى تغيير مستوى الصوت.";
 "settings.popup.volumeScroll.scope.panel" = "اللوحة بالكامل";
 "settings.popup.volumeScroll.scope.volumeControl" = "أداة مستوى الصوت فقط";
+"settings.popup.volumeScroll.natural" = "التمرير الطبيعي";
+"settings.popup.volumeScroll.natural.description" = "عند التشغيل، يؤدي التمرير لأعلى بالماوس أو لوحة التتبع إلى زيادة مستوى الصوت. عند الإيقاف، يتبع مستوى الصوت اتجاه التمرير في النظام.";
 "settings.popup.volumeScroll.direction" = "اتجاه التمرير";
 "settings.popup.volumeScroll.direction.description" = "اختر الاتجاه الذي يرفع مستوى الصوت.";
 "settings.popup.volumeScroll.direction.up" = "للأعلى";

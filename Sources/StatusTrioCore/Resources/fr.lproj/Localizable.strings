@@ -147,6 +147,8 @@
 "settings.popup.volumeScroll.scope.description" = "Choisissez la zone où le défilement modifie le volume.";
 "settings.popup.volumeScroll.scope.panel" = "Tout le panneau";
 "settings.popup.volumeScroll.scope.volumeControl" = "Réglage du volume uniquement";
+"settings.popup.volumeScroll.natural" = "Défilement naturel";
+"settings.popup.volumeScroll.natural.description" = "Lorsque cette option est activée, un défilement vers le haut avec la souris ou le trackpad augmente le volume. Sinon, le volume suit le sens de défilement du système.";
 "settings.popup.volumeScroll.direction" = "Sens du défilement";
 "settings.popup.volumeScroll.direction.description" = "Choisissez le sens qui augmente le volume.";
 "settings.popup.volumeScroll.direction.up" = "Vers le haut";

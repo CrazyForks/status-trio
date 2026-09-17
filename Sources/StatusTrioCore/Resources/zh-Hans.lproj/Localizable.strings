@@ -147,6 +147,8 @@
 "settings.popup.volumeScroll.scope.description" = "选择哪里的滚动手势会改变音量。";
 "settings.popup.volumeScroll.scope.panel" = "整个面板";
 "settings.popup.volumeScroll.scope.volumeControl" = "仅音量组件";
+"settings.popup.volumeScroll.natural" = "自然滚动";
+"settings.popup.volumeScroll.natural.description" = "开启后，鼠标和触控板上滚都会增大音量；关闭后，音量跟随系统的滚动方向。";
 "settings.popup.volumeScroll.direction" = "滚动方向";
 "settings.popup.volumeScroll.direction.description" = "选择增大音量的滚动方向。";
 "settings.popup.volumeScroll.direction.up" = "上滑";

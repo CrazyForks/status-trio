@@ -147,6 +147,8 @@
 "settings.popup.volumeScroll.scope.description" = "Choose where the scroll gesture changes the volume.";
 "settings.popup.volumeScroll.scope.panel" = "Whole Panel";
 "settings.popup.volumeScroll.scope.volumeControl" = "Volume Control Only";
+"settings.popup.volumeScroll.natural" = "Natural Scrolling";
+"settings.popup.volumeScroll.natural.description" = "When on, scrolling up on a mouse or trackpad increases volume. When off, volume follows the system's scrolling direction.";
 "settings.popup.volumeScroll.direction" = "Scroll Direction";
 "settings.popup.volumeScroll.direction.description" = "Choose the direction that turns the volume up.";
 "settings.popup.volumeScroll.direction.up" = "Scroll Up";

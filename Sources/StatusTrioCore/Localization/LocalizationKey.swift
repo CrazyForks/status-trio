@@ -37,6 +37,8 @@ enum LocalizationKey: String, CaseIterable, Hashable, Sendable {
     case settingsPopupVolumeScrollScopeDescription = "settings.popup.volumeScroll.scope.description"
     case settingsPopupVolumeScrollScopePanel = "settings.popup.volumeScroll.scope.panel"
     case settingsPopupVolumeScrollScopeVolumeControl = "settings.popup.volumeScroll.scope.volumeControl"
+    case settingsPopupVolumeScrollNatural = "settings.popup.volumeScroll.natural"
+    case settingsPopupVolumeScrollNaturalDescription = "settings.popup.volumeScroll.natural.description"
     case settingsPopupVolumeScrollDirection = "settings.popup.volumeScroll.direction"
     case settingsPopupVolumeScrollDirectionDescription = "settings.popup.volumeScroll.direction.description"
     case settingsPopupVolumeScrollDirectionUp = "settings.popup.volumeScroll.direction.up"

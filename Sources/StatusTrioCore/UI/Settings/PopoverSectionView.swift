@@ -93,14 +93,12 @@ struct PopoverSectionView: View {
 
                 SettingsDivider()
 
-                SettingsMenuRow(
+                SettingsToggleRow(
                     symbol: "arrow.up.arrow.down",
                     tint: .indigo,
-                    title: localization.string(.settingsPopupVolumeScrollDirection),
-                    subtitle: localization.string(.settingsPopupVolumeScrollDirectionDescription),
-                    selection: $store.popupVolumeScrollDirection,
-                    options: PopupVolumeScrollDirection.allCases,
-                    label: scrollDirectionLabel
+                    title: localization.string(.settingsPopupVolumeScrollNatural),
+                    subtitle: localization.string(.settingsPopupVolumeScrollNaturalDescription),
+                    isOn: $store.popupVolumeNaturalScrolling
                 )
             }
         }
@@ -112,15 +110,6 @@ struct PopoverSectionView: View {
             localization.string(.settingsPopupVolumeScrollScopePanel)
         case .volumeControl:
             localization.string(.settingsPopupVolumeScrollScopeVolumeControl)
-        }
-    }
-
-    private func scrollDirectionLabel(_ direction: PopupVolumeScrollDirection) -> String {
-        switch direction {
-        case .up:
-            localization.string(.settingsPopupVolumeScrollDirectionUp)
-        case .down:
-            localization.string(.settingsPopupVolumeScrollDirectionDown)
         }
     }
 

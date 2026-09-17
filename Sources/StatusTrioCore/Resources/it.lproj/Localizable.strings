@@ -147,6 +147,8 @@
 "settings.popup.volumeScroll.scope.description" = "Scegli dove il gesto di scorrimento modifica il volume.";
 "settings.popup.volumeScroll.scope.panel" = "Tutto il pannello";
 "settings.popup.volumeScroll.scope.volumeControl" = "Solo il controllo del volume";
+"settings.popup.volumeScroll.natural" = "Scorrimento naturale";
+"settings.popup.volumeScroll.natural.description" = "Se attivo, scorrendo verso l’alto con mouse o trackpad il volume aumenta. Se disattivo, il volume segue la direzione di scorrimento del sistema.";
 "settings.popup.volumeScroll.direction" = "Direzione di scorrimento";
 "settings.popup.volumeScroll.direction.description" = "Scegli la direzione che alza il volume.";
 "settings.popup.volumeScroll.direction.up" = "Verso l’alto";

@@ -147,6 +147,8 @@
 "settings.popup.volumeScroll.scope.description" = "Выберите, где прокрутка изменяет громкость.";
 "settings.popup.volumeScroll.scope.panel" = "Вся панель";
 "settings.popup.volumeScroll.scope.volumeControl" = "Только регулятор громкости";
+"settings.popup.volumeScroll.natural" = "Естественная прокрутка";
+"settings.popup.volumeScroll.natural.description" = "Если включено, прокрутка вверх мышью или трекпадом увеличивает громкость. Если выключено, громкость следует направлению прокрутки системы.";
 "settings.popup.volumeScroll.direction" = "Направление прокрутки";
 "settings.popup.volumeScroll.direction.description" = "Выберите направление, увеличивающее громкость.";
 "settings.popup.volumeScroll.direction.up" = "Вверх";
