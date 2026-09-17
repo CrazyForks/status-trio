@@ -106,12 +106,19 @@ final class AppEnvironment {
             setMenuBarVisible: { isVisible in
                 controller.setVisible(isVisible)
             },
-            renderDockIcon: { status, options, connectionOptions, volumeOptions, backgroundStyle in
+            renderDockIcon: {
+                status,
+                options,
+                connectionOptions,
+                volumeOptions,
+                bluetoothAudioOptions,
+                backgroundStyle in
                 DockIconRenderer.image(
                     status: status,
                     options: options,
                     connectionOptions: connectionOptions,
                     volumeOptions: volumeOptions,
+                    bluetoothAudioOptions: bluetoothAudioOptions,
                     backgroundStyle: backgroundStyle
                 )
             }

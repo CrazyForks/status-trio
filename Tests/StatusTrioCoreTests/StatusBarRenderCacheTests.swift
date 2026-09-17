@@ -21,6 +21,24 @@ final class StatusBarRenderCacheTests: XCTestCase {
         XCTAssertFalse(cache.shouldRender(darkAquaKey))
     }
 
+    func testBluetoothAudioOptionsChangeRendersAgain() {
+        var cache = StatusBarRenderCache()
+        let standard = makeKey(
+            appearance: "darkAqua",
+            bluetoothAudioOptions: .standard
+        )
+        let replacementEnabled = makeKey(
+            appearance: "darkAqua",
+            bluetoothAudioOptions: BluetoothAudioIconOptions(
+                replacesNetworkIcon: true
+            )
+        )
+
+        XCTAssertTrue(cache.shouldRender(standard))
+        XCTAssertTrue(cache.shouldRender(replacementEnabled))
+        XCTAssertFalse(cache.shouldRender(replacementEnabled))
+    }
+
     func testOutputDevicesDoNotInvalidateMenuBarStatus() {
         let first = makeSnapshot(outputDevices: [makeDevice(id: 1, uid: "one")])
         let second = makeSnapshot(outputDevices: [makeDevice(id: 2, uid: "two")])
@@ -31,7 +49,8 @@ final class StatusBarRenderCacheTests: XCTestCase {
 
     private func makeKey(
         volumeScalar: Double = 0.5,
-        appearance: String
+        appearance: String,
+        bluetoothAudioOptions: BluetoothAudioIconOptions = .standard
     ) -> StatusBarRenderKey {
         StatusBarRenderKey(
             status: MenuBarStatus(
@@ -40,6 +59,7 @@ final class StatusBarRenderCacheTests: XCTestCase {
             iconSize: 28,
             options: .standard,
             connectionOptions: .standard,
+            bluetoothAudioOptions: bluetoothAudioOptions,
             appearanceName: appearance
         )
     }

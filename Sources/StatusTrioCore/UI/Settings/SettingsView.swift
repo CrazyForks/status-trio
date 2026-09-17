@@ -15,6 +15,7 @@ struct SettingsView: View {
         case appIcon
         case battery
         case network
+        case bluetooth
         case audio
         case popover
         case general
@@ -27,6 +28,7 @@ struct SettingsView: View {
             case .appIcon: return "macwindow.on.rectangle"
             case .battery: return "battery.100percent"
             case .network: return "wifi"
+            case .bluetooth: return "wave.3.right.circle.fill"
             case .audio:   return "hifispeaker.fill"
             case .popover: return "list.bullet.rectangle"
             case .general: return "gearshape.fill"
@@ -39,6 +41,7 @@ struct SettingsView: View {
             case .appIcon: return .indigo
             case .battery: return .green
             case .network: return .blue
+            case .bluetooth: return .blue
             case .audio:   return .cyan
             case .popover: return .purple
             case .general: return .gray
@@ -52,6 +55,7 @@ struct SettingsView: View {
             case .appIcon: return localization.string(.settingsTabAppIcon)
             case .battery: return localization.string(.settingsTabBattery)
             case .network: return localization.string(.settingsTabNetwork)
+            case .bluetooth: return localization.string(.settingsTabBluetooth)
             case .audio:   return localization.string(.settingsTabAudio)
             case .popover: return localization.string(.settingsTabPanel)
             case .general: return localization.string(.settingsPageGeneral)
@@ -134,6 +138,12 @@ struct SettingsView: View {
             )
         case .network:
             NetworkSectionView(
+                store: store,
+                statusStore: statusStore,
+                previewIsDark: $previewIsDark
+            )
+        case .bluetooth:
+            BluetoothSectionView(
                 store: store,
                 statusStore: statusStore,
                 previewIsDark: $previewIsDark

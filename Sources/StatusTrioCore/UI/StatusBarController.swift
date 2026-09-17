@@ -33,6 +33,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     private var batteryOptionsCancellable: AnyCancellable?
     private var connectionIconOptionsCancellable: AnyCancellable?
     private var volumeOptionsCancellable: AnyCancellable?
+    private var bluetoothAudioOptionsCancellable: AnyCancellable?
     private var screenParametersCancellable: AnyCancellable?
     private var refreshIntervalCancellable: AnyCancellable?
     private let openSettings: () -> Void
@@ -99,7 +100,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
                     iconSize: iconSize,
                     options: self.settings.batteryIconOptions,
                     connectionOptions: self.settings.connectionIconOptions,
-                    volumeOptions: self.settings.volumeIconOptions
+                    volumeOptions: self.settings.volumeIconOptions,
+                    bluetoothAudioOptions: self.settings.bluetoothAudioIconOptions
                 )
             }
 
@@ -133,7 +135,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
                 iconSize: self.settings.iconSize,
                 options: options,
                 connectionOptions: self.settings.connectionIconOptions,
-                volumeOptions: self.settings.volumeIconOptions
+                volumeOptions: self.settings.volumeIconOptions,
+                bluetoothAudioOptions: self.settings.bluetoothAudioIconOptions
             )
         }
 
@@ -151,7 +154,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
                 iconSize: self.settings.iconSize,
                 options: self.settings.batteryIconOptions,
                 connectionOptions: self.settings.connectionIconOptions,
-                volumeOptions: self.settings.volumeIconOptions
+                volumeOptions: self.settings.volumeIconOptions,
+                bluetoothAudioOptions: self.settings.bluetoothAudioIconOptions
             )
         }
 
@@ -161,11 +165,29 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
                 self.render(
                     status: MenuBarStatus(snapshot: self.store.snapshot),
                     iconSize: self.settings.iconSize,
-                    options: self.settings.batteryIconOptions,
-                    connectionOptions: self.settings.connectionIconOptions,
-                    volumeOptions: self.settings.volumeIconOptions
-                )
-            }
+                options: self.settings.batteryIconOptions,
+                connectionOptions: self.settings.connectionIconOptions,
+                volumeOptions: self.settings.volumeIconOptions,
+                bluetoothAudioOptions: self.settings.bluetoothAudioIconOptions
+            )
+        }
+
+        bluetoothAudioOptionsCancellable = Publishers.CombineLatest3(
+            settings.$replacesNetworkIconWithBluetoothAudio,
+            settings.$usesBluetoothAudioVolumeColor,
+            settings.$prioritizesNetworkErrorsOverBluetoothAudio
+        )
+        .sink { [weak self] _ in
+            guard let self else { return }
+            self.render(
+                status: MenuBarStatus(snapshot: self.store.snapshot),
+                iconSize: self.settings.iconSize,
+                options: self.settings.batteryIconOptions,
+                connectionOptions: self.settings.connectionIconOptions,
+                volumeOptions: self.settings.volumeIconOptions,
+                bluetoothAudioOptions: self.settings.bluetoothAudioIconOptions
+            )
+        }
 
         localizationCancellable = localization.$resolvedLanguage
             .removeDuplicates()
@@ -520,7 +542,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             iconSize: settings.iconSize,
             options: settings.batteryIconOptions,
             connectionOptions: settings.connectionIconOptions,
-            volumeOptions: settings.volumeIconOptions
+            volumeOptions: settings.volumeIconOptions,
+            bluetoothAudioOptions: settings.bluetoothAudioIconOptions
         )
     }
 
@@ -529,7 +552,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         iconSize: Double,
         options: BatteryIconOptions,
         connectionOptions: ConnectionIconOptions,
-        volumeOptions: VolumeIconOptions
+        volumeOptions: VolumeIconOptions,
+        bluetoothAudioOptions: BluetoothAudioIconOptions
     ) {
         guard isStatusItemVisible, let button = statusItem.button else { return }
 
@@ -539,6 +563,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             options: options,
             connectionOptions: connectionOptions,
             volumeOptions: volumeOptions,
+            bluetoothAudioOptions: bluetoothAudioOptions,
             appearanceName: button.effectiveAppearance.name.rawValue
         )
         guard renderCache.shouldRender(key) else { return }
@@ -548,7 +573,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             size: iconSize,
             options: options,
             connectionOptions: connectionOptions,
-            volumeOptions: volumeOptions
+            volumeOptions: volumeOptions,
+            bluetoothAudioOptions: bluetoothAudioOptions
         )
 
         let nextAccessibilityKey = StatusBarAccessibilityKey(

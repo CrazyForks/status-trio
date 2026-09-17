@@ -104,6 +104,35 @@ final class VolumeMonitorTests: XCTestCase {
         monitor.stop()
     }
 
+    func testHiddenDetailsRefreshPreservesCurrentOutputDevice() async {
+        let currentDevice = AudioOutputDevice(
+            id: 42,
+            name: "AirPods Pro",
+            uid: "airpods-pro",
+            isCurrent: true,
+            volume: 0.5,
+            transport: .bluetooth
+        )
+        let reader = FakeVolumeReader(result: VolumeReading(
+            scalar: 0.5,
+            isMuted: false,
+            deviceName: currentDevice.name,
+            currentDevice: currentDevice
+        ))
+        let monitor = makeMonitor(reader: reader)
+        monitor.setDetailsVisible(true)
+        monitor.start()
+        var iterator = monitor.updates.makeAsyncIterator()
+        _ = await iterator.next()
+
+        monitor.setDetailsVisible(false)
+        let hidden = await iterator.next()
+
+        XCTAssertEqual(hidden?.currentDevice, currentDevice)
+        XCTAssertEqual(hidden?.outputDevices, [])
+        monitor.stop()
+    }
+
     func testDefaultDeviceCallbackRefreshes() async {
         let reader = FakeVolumeReader(result: makeReading(scalar: 0.25))
         let eventMonitor = FakeVolumeEventMonitor()
@@ -354,7 +383,12 @@ final class VolumeMonitorTests: XCTestCase {
             VolumeReading(
                 scalar: nil,
                 isMuted: true,
-                deviceName: "USB Headset"
+                deviceName: "USB Headset",
+                currentDevice: AudioOutputDevice(
+                    id: 42,
+                    name: "USB Headset",
+                    isCurrent: true
+                )
             )
         )
     }
@@ -365,6 +399,36 @@ final class VolumeMonitorTests: XCTestCase {
         let reader = CoreAudioVolumeReader(client: client)
 
         XCTAssertNil(reader.read()?.deviceName)
+    }
+
+    func testReaderMapsCurrentOutputDeviceProperties() {
+        let iconURL = URL(fileURLWithPath: "/tmp/airpods-pro.icns")
+        let client = FakeCoreAudioClient()
+        client.configureDevice(
+            42,
+            scalar: 0.5,
+            isMuted: false,
+            name: "AirPods Pro",
+            uid: "AirPods Pro-1234",
+            transport: kAudioDeviceTransportTypeBluetooth,
+            dataSource: CoreAudioVolumeReader.fourCharacterCode("hdpn"),
+            iconURL: iconURL
+        )
+        let reader = CoreAudioVolumeReader(client: client)
+
+        XCTAssertEqual(
+            reader.read()?.currentDevice,
+            AudioOutputDevice(
+                id: 42,
+                name: "AirPods Pro",
+                uid: "AirPods Pro-1234",
+                isCurrent: true,
+                volume: 0.5,
+                transport: .bluetooth,
+                dataSource: .headphones,
+                iconURL: iconURL
+            )
+        )
     }
 
     func testFirstValueFallsBackThroughOutputElements() {
@@ -621,6 +685,7 @@ private final class FakeCoreAudioClient: CoreAudioClient {
     var uint32Values: [CoreAudioPropertyKey: UInt32] = [:]
     var float32Values: [CoreAudioPropertyKey: Float32] = [:]
     var stringValues: [CoreAudioPropertyKey: String] = [:]
+    var urlValues: [CoreAudioPropertyKey: URL] = [:]
     private(set) var deviceClassReadCount = 0
     private(set) var alivenessReadCount = 0
     private(set) var addAttempts: [ListenerOperation] = []
@@ -652,6 +717,10 @@ private final class FakeCoreAudioClient: CoreAudioClient {
         scalar: Float32?,
         isMuted: Bool,
         name: String?,
+        uid: String? = nil,
+        transport: UInt32? = nil,
+        dataSource: UInt32? = nil,
+        iconURL: URL? = nil,
         supportedElements: [AudioObjectPropertyElement] = CoreAudioVolumeReader.outputElements
     ) {
         defaultDeviceID = deviceID
@@ -684,6 +753,38 @@ private final class FakeCoreAudioClient: CoreAudioClient {
                 scope: kAudioObjectPropertyScopeGlobal,
                 element: kAudioObjectPropertyElementMain
             )] = name
+        }
+        if let uid {
+            stringValues[propertyKey(
+                objectID: deviceID,
+                selector: kAudioDevicePropertyDeviceUID,
+                scope: kAudioObjectPropertyScopeGlobal,
+                element: kAudioObjectPropertyElementMain
+            )] = uid
+        }
+        if let transport {
+            uint32Values[propertyKey(
+                objectID: deviceID,
+                selector: kAudioDevicePropertyTransportType,
+                scope: kAudioObjectPropertyScopeGlobal,
+                element: kAudioObjectPropertyElementMain
+            )] = transport
+        }
+        if let dataSource {
+            uint32Values[propertyKey(
+                objectID: deviceID,
+                selector: kAudioDevicePropertyDataSource,
+                scope: kAudioObjectPropertyScopeOutput,
+                element: kAudioObjectPropertyElementMain
+            )] = dataSource
+        }
+        if let iconURL {
+            urlValues[propertyKey(
+                objectID: deviceID,
+                selector: kAudioDevicePropertyIcon,
+                scope: kAudioObjectPropertyScopeGlobal,
+                element: kAudioObjectPropertyElementMain
+            )] = iconURL
         }
     }
 
@@ -785,6 +886,20 @@ private final class FakeCoreAudioClient: CoreAudioClient {
         element: AudioObjectPropertyElement
     ) -> String? {
         stringValues[propertyKey(
+            objectID: objectID,
+            selector: selector,
+            scope: scope,
+            element: element
+        )]
+    }
+
+    func readURL(
+        objectID: AudioObjectID,
+        selector: AudioObjectPropertySelector,
+        scope: AudioObjectPropertyScope,
+        element: AudioObjectPropertyElement
+    ) -> URL? {
+        urlValues[propertyKey(
             objectID: objectID,
             selector: selector,
             scope: scope,

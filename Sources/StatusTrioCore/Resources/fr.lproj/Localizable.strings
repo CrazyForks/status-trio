@@ -37,6 +37,7 @@
 "settings.tab.appIcon" = "Icône de l’app";
 "settings.tab.battery" = "Batterie";
 "settings.tab.network" = "Réseau";
+"settings.tab.bluetooth" = "Bluetooth";
 "settings.tab.audio" = "Audio";
 "settings.tab.basics" = "Général";
 "settings.tab.panel" = "Panneau d’état";
@@ -48,6 +49,16 @@
 "settings.network.wifiIconForHotspot" = "Utiliser l’icône Wi-Fi pour le partage de connexion";
 "settings.network.wifiIconForTemporaryConnection" = "Utiliser l’icône Wi-Fi pour une connexion temporaire";
 "settings.network.wifiIconForInternetSharing" = "Utiliser l’icône Wi-Fi pour le partage Internet";
+"settings.bluetooth.title" = "Audio Bluetooth";
+"settings.bluetooth.replaceNetworkIcon" = "Remplacer l’icône réseau par le périphérique audio Bluetooth";
+"settings.bluetooth.replaceNetworkIconDescription" = "Lors d’une sortie audio Bluetooth, l’icône bleue du périphérique remplace l’icône Wi-Fi.";
+"settings.bluetooth.volumeColor" = "Utiliser le bleu pour le volume Bluetooth";
+"settings.bluetooth.volumeColorDescription" = "Les points de volume actifs ou l’arc deviennent bleus lors d’une sortie audio Bluetooth.";
+"settings.bluetooth.networkErrorPriority" = "Donner la priorité aux erreurs réseau";
+"settings.bluetooth.networkErrorPriorityDescription" = "Les erreurs de connexion et l’état hors ligne conservent l’icône réseau au lieu du périphérique Bluetooth.";
+"settings.bluetooth.batteryLevels" = "Afficher les niveaux de batterie Bluetooth";
+"settings.bluetooth.batteryLevelsDescription" = "Lit les niveaux de batterie uniquement à l’ouverture du panneau Bluetooth. Aucune autorisation supplémentaire n’est demandée.";
+"bluetooth.battery.unavailable" = "Indisponible";
 "settings.audio.maximumVisible" = "Nombre maximal d’appareils visibles";
 "settings.audio.maximumVisibleDescription" = "Nombre d’appareils affichés avant le bouton Développer.";
 "settings.audio.showAll" = "Toujours afficher tous les appareils";

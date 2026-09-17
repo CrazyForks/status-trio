@@ -18,20 +18,28 @@ enum StatusIconRenderer {
 
     /// Unified optical alpha for all inactive tracks (battery groove, Wi-Fi muted signal, volume hidden dots).
     private static let inactiveTrackAlpha: CGFloat = 0.22
+    private static let bluetoothBlue = CGColor(
+        red: 0,
+        green: 122.0 / 255.0,
+        blue: 1,
+        alpha: 1
+    )
 
     static func image(
         snapshot: StatusSnapshot,
         size: CGFloat,
         options: BatteryIconOptions = .standard,
         connectionOptions: ConnectionIconOptions = .standard,
-        volumeOptions: VolumeIconOptions = .standard
+        volumeOptions: VolumeIconOptions = .standard,
+        bluetoothAudioOptions: BluetoothAudioIconOptions = .standard
     ) -> NSImage {
         image(
             menuBarStatus: MenuBarStatus(snapshot: snapshot),
             size: size,
             options: options,
             connectionOptions: connectionOptions,
-            volumeOptions: volumeOptions
+            volumeOptions: volumeOptions,
+            bluetoothAudioOptions: bluetoothAudioOptions
         )
     }
 
@@ -41,6 +49,7 @@ enum StatusIconRenderer {
         options: BatteryIconOptions = .standard,
         connectionOptions: ConnectionIconOptions = .standard,
         volumeOptions: VolumeIconOptions = .standard,
+        bluetoothAudioOptions: BluetoothAudioIconOptions = .standard,
         appearance: NSAppearance? = nil
     ) -> NSImage {
         // Resolve colors while AppKit draws into each menu bar. A pre-rendered
@@ -69,6 +78,7 @@ enum StatusIconRenderer {
                 options: options,
                 connectionOptions: connectionOptions,
                 volumeOptions: volumeOptions,
+                bluetoothAudioOptions: bluetoothAudioOptions,
                 in: context,
                 size: size,
                 foreground: foreground,
@@ -119,7 +129,8 @@ enum StatusIconRenderer {
         foreground: CGColor,
         options: BatteryIconOptions = .standard,
         connectionOptions: ConnectionIconOptions = .standard,
-        volumeOptions: VolumeIconOptions = .standard
+        volumeOptions: VolumeIconOptions = .standard,
+        bluetoothAudioOptions: BluetoothAudioIconOptions = .standard
     ) -> CGImage? {
         render(
             menuBarStatus: MenuBarStatus(snapshot: snapshot),
@@ -128,7 +139,8 @@ enum StatusIconRenderer {
             foreground: foreground,
             options: options,
             connectionOptions: connectionOptions,
-            volumeOptions: volumeOptions
+            volumeOptions: volumeOptions,
+            bluetoothAudioOptions: bluetoothAudioOptions
         )
     }
 
@@ -139,7 +151,8 @@ enum StatusIconRenderer {
         foreground: CGColor,
         options: BatteryIconOptions = .standard,
         connectionOptions: ConnectionIconOptions = .standard,
-        volumeOptions: VolumeIconOptions = .standard
+        volumeOptions: VolumeIconOptions = .standard,
+        bluetoothAudioOptions: BluetoothAudioIconOptions = .standard
     ) -> CGImage? {
         guard size.isFinite, scale.isFinite, size > 0, scale > 0 else { return nil }
 
@@ -170,6 +183,7 @@ enum StatusIconRenderer {
             options: options,
             connectionOptions: connectionOptions,
             volumeOptions: volumeOptions,
+            bluetoothAudioOptions: bluetoothAudioOptions,
             in: context,
             size: size,
             foreground: foreground,
@@ -185,6 +199,7 @@ enum StatusIconRenderer {
         options: BatteryIconOptions = .standard,
         connectionOptions: ConnectionIconOptions = .standard,
         volumeOptions: VolumeIconOptions = .standard,
+        bluetoothAudioOptions: BluetoothAudioIconOptions = .standard,
         foreground: CGColor,
         in context: CGContext,
         origin: CGPoint,
@@ -199,6 +214,7 @@ enum StatusIconRenderer {
             options: options,
             connectionOptions: connectionOptions,
             volumeOptions: volumeOptions,
+            bluetoothAudioOptions: bluetoothAudioOptions,
             in: context,
             size: size,
             foreground: foreground,
@@ -211,6 +227,7 @@ enum StatusIconRenderer {
         options: BatteryIconOptions,
         connectionOptions: ConnectionIconOptions,
         volumeOptions: VolumeIconOptions,
+        bluetoothAudioOptions: BluetoothAudioIconOptions,
         in context: CGContext,
         size: CGFloat,
         foreground: CGColor,
@@ -233,7 +250,15 @@ enum StatusIconRenderer {
             foreground: foreground,
             criticalColor: criticalColor
         )
-        if menuBarStatus.connection == .ethernet {
+        if let currentDevice = menuBarStatus.volume.currentDevice,
+           StatusMappings.shouldReplaceNetworkIcon(
+               currentDevice: currentDevice,
+               wifi: menuBarStatus.wifi,
+               connection: menuBarStatus.connection,
+               options: bluetoothAudioOptions
+           ) {
+            drawBluetoothAudioDevice(currentDevice, in: context)
+        } else if menuBarStatus.connection == .ethernet {
             if connectionOptions.showsWiFiIconForEthernet {
                 drawStandardWiFi(menuBarStatus.wifi, wifiScale: connectionOptions.wifiScale, in: context, foreground: foreground)
             } else {
@@ -247,7 +272,13 @@ enum StatusIconRenderer {
                 foreground: foreground
             )
         }
-        drawVolume(menuBarStatus.volume, options: volumeOptions, in: context, foreground: foreground)
+        drawVolume(
+            menuBarStatus.volume,
+            options: volumeOptions,
+            bluetoothAudioOptions: bluetoothAudioOptions,
+            in: context,
+            foreground: foreground
+        )
     }
 
     private static func drawBattery(
@@ -497,6 +528,84 @@ enum StatusIconRenderer {
         }
     }
 
+    private static func drawBluetoothAudioDevice(
+        _ device: AudioOutputDevice,
+        in context: CGContext
+    ) {
+        switch AudioOutputDeviceIcon.source(for: device) {
+        case let .symbol(name):
+            drawOfficialSymbol(
+                name: name,
+                pointSize: 38,
+                foreground: bluetoothBlue,
+                in: context
+            )
+        case let .image(url):
+            guard let image = NSImage(contentsOf: url) else {
+                drawOfficialSymbol(
+                    name: "headphones",
+                    pointSize: 38,
+                    foreground: bluetoothBlue,
+                    in: context
+                )
+                return
+            }
+            drawTintedImage(
+                image,
+                maxDimension: 42,
+                center: wifiSymbolCenter,
+                tint: bluetoothBlue,
+                in: context
+            )
+        }
+    }
+
+    private static func drawTintedImage(
+        _ image: NSImage,
+        maxDimension: CGFloat,
+        center: CGPoint,
+        tint: CGColor,
+        in context: CGContext
+    ) {
+        let sourceSize = image.size
+        guard sourceSize.width.isFinite,
+              sourceSize.height.isFinite,
+              sourceSize.width > 0,
+              sourceSize.height > 0 else {
+            return
+        }
+
+        let scale = min(
+            maxDimension / sourceSize.width,
+            maxDimension / sourceSize.height
+        )
+        let size = CGSize(
+            width: sourceSize.width * scale,
+            height: sourceSize.height * scale
+        )
+        let targetRect = CGRect(
+            x: center.x - size.width / 2,
+            y: -(center.y + size.height / 2),
+            width: size.width,
+            height: size.height
+        )
+
+        context.saveGState()
+        defer { context.restoreGState() }
+        context.scaleBy(x: 1, y: -1)
+        context.beginTransparencyLayer(auxiliaryInfo: nil)
+        image.draw(
+            in: targetRect,
+            from: .zero,
+            operation: .sourceOver,
+            fraction: 1
+        )
+        context.setFillColor(tint)
+        context.setBlendMode(.sourceIn)
+        context.fill(targetRect)
+        context.endTransparencyLayer()
+    }
+
     private static func drawWiFi(
         _ wifi: WiFiStatus,
         options: ConnectionIconOptions,
@@ -711,16 +820,21 @@ enum StatusIconRenderer {
     private static func drawVolume(
         _ volume: MenuBarVolumeStatus,
         options: VolumeIconOptions,
+        bluetoothAudioOptions: BluetoothAudioIconOptions,
         in context: CGContext,
         foreground: CGColor
     ) {
         let hiddenColor = foreground.copy(alpha: inactiveTrackAlpha) ?? foreground
+        let activeColor = bluetoothAudioOptions.usesVolumeColor
+            && volume.currentDevice?.isBluetoothAudio == true
+            ? bluetoothBlue
+            : foreground
 
         switch options.displayStyle {
         case .dots:
             let level = StatusMappings.volumeSteps(scalar: volume.scalar, isMuted: volume.isMuted) ?? 0
             for (index, point) in StatusIconGeometry.volumeDots().enumerated() {
-                context.setFillColor(index < level ? foreground : hiddenColor)
+                context.setFillColor(index < level ? activeColor : hiddenColor)
                 let radius = StatusIconGeometry.volumeDotRadius
                 context.fillEllipse(
                     in: CGRect(
@@ -740,7 +854,7 @@ enum StatusIconRenderer {
             context.strokePath()
 
             guard !volume.isMuted, let scalar = volume.scalar, scalar > 0 else { return }
-            context.setStrokeColor(foreground)
+            context.setStrokeColor(activeColor)
             context.addPath(StatusIconGeometry.volumeArcFill(progress: scalar))
             context.strokePath()
         }

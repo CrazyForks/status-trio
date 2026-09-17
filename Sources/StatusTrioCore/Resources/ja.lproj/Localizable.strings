@@ -37,6 +37,7 @@
 "settings.tab.appIcon" = "アプリアイコン";
 "settings.tab.battery" = "バッテリー";
 "settings.tab.network" = "ネットワーク";
+"settings.tab.bluetooth" = "Bluetooth";
 "settings.tab.audio" = "オーディオ";
 "settings.tab.basics" = "基本";
 "settings.tab.panel" = "ステータスパネル";
@@ -48,6 +49,16 @@
 "settings.network.wifiIconForHotspot" = "個人用ホットスポットに Wi-Fi アイコンを使用";
 "settings.network.wifiIconForTemporaryConnection" = "一時接続に Wi-Fi アイコンを使用";
 "settings.network.wifiIconForInternetSharing" = "インターネット共有に Wi-Fi アイコンを使用";
+"settings.bluetooth.title" = "Bluetooth オーディオ";
+"settings.bluetooth.replaceNetworkIcon" = "ネットワークアイコンを Bluetooth オーディオ機器に置き換える";
+"settings.bluetooth.replaceNetworkIconDescription" = "Bluetooth でオーディオを出力すると、Wi-Fi アイコンの代わりに青色の機器アイコンを表示します。";
+"settings.bluetooth.volumeColor" = "Bluetooth の音量を青色で表示";
+"settings.bluetooth.volumeColorDescription" = "Bluetooth でオーディオを出力すると、音量の点または円弧のアクティブ部分が青色になります。";
+"settings.bluetooth.networkErrorPriority" = "ネットワークエラーを優先";
+"settings.bluetooth.networkErrorPriorityDescription" = "接続エラーやオフライン状態では、Bluetooth 機器ではなくネットワークアイコンを表示します。";
+"settings.bluetooth.batteryLevels" = "Bluetooth のバッテリー残量を表示";
+"settings.bluetooth.batteryLevelsDescription" = "Bluetooth パネルを開いたときだけ残量を読み取ります。追加の権限確認は表示されません。";
+"bluetooth.battery.unavailable" = "取得できません";
 "settings.audio.maximumVisible" = "表示する出力デバイスの最大数";
 "settings.audio.maximumVisibleDescription" = "「展開」を表示する前に表示する出力デバイス数です。";
 "settings.audio.showAll" = "常にすべての出力デバイスを表示";

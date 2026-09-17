@@ -227,6 +227,126 @@ final class StatusMappingsTests: XCTestCase {
         )
     }
 
+    func testBluetoothAudioReplacementRequiresABluetoothOutputDeviceAndEnabledOption() {
+        let wifi = WiFiStatus(state: .connected, rssi: -50)
+
+        XCTAssertFalse(StatusMappings.shouldReplaceNetworkIcon(
+            currentDevice: bluetoothDevice(),
+            wifi: wifi,
+            connection: .wifi,
+            options: BluetoothAudioIconOptions(replacesNetworkIcon: false)
+        ))
+        XCTAssertFalse(StatusMappings.shouldReplaceNetworkIcon(
+            currentDevice: builtInDevice(),
+            wifi: wifi,
+            connection: .wifi,
+            options: BluetoothAudioIconOptions(replacesNetworkIcon: true)
+        ))
+        XCTAssertTrue(StatusMappings.shouldReplaceNetworkIcon(
+            currentDevice: bluetoothDevice(),
+            wifi: wifi,
+            connection: .wifi,
+            options: BluetoothAudioIconOptions(replacesNetworkIcon: true)
+        ))
+    }
+
+    func testBluetoothAudioReplacementAcceptsBothBluetoothTransports() {
+        for transport in [AudioOutputTransport.bluetooth, .bluetoothLowEnergy] {
+            XCTAssertTrue(StatusMappings.shouldReplaceNetworkIcon(
+                currentDevice: bluetoothDevice(transport: transport),
+                wifi: WiFiStatus(state: .connected, rssi: -50),
+                connection: .wifi,
+                options: BluetoothAudioIconOptions(replacesNetworkIcon: true)
+            ))
+        }
+    }
+
+    func testBluetoothAudioReplacementNetworkErrorPriorityMatrix() {
+        let suppressingStates: [WiFiState] = [
+            .notAssociated,
+            .noInternet,
+            .off,
+            .unavailable
+        ]
+        for state in suppressingStates {
+            XCTAssertFalse(
+                StatusMappings.shouldReplaceNetworkIcon(
+                    currentDevice: bluetoothDevice(),
+                    wifi: WiFiStatus(state: state, rssi: nil),
+                    connection: .wifi,
+                    options: BluetoothAudioIconOptions(
+                        replacesNetworkIcon: true,
+                        prioritizesNetworkErrors: true
+                    )
+                ),
+                "\(state) should keep the network icon"
+            )
+            XCTAssertTrue(
+                StatusMappings.shouldReplaceNetworkIcon(
+                    currentDevice: bluetoothDevice(),
+                    wifi: WiFiStatus(state: state, rssi: nil),
+                    connection: .wifi,
+                    options: BluetoothAudioIconOptions(
+                        replacesNetworkIcon: true,
+                        prioritizesNetworkErrors: false
+                    )
+                ),
+                "\(state) should yield to Bluetooth when priority is off"
+            )
+        }
+
+        for state in [WiFiState.connected, .hotspot, .temporary, .shared] {
+            for prioritizesErrors in [true, false] {
+                XCTAssertTrue(StatusMappings.shouldReplaceNetworkIcon(
+                    currentDevice: bluetoothDevice(),
+                    wifi: WiFiStatus(state: state, rssi: -50),
+                    connection: .wifi,
+                    options: BluetoothAudioIconOptions(
+                        replacesNetworkIcon: true,
+                        prioritizesNetworkErrors: prioritizesErrors
+                    )
+                ))
+            }
+        }
+    }
+
+    func testOfflineHonorsNetworkErrorPriority() {
+        XCTAssertFalse(StatusMappings.shouldReplaceNetworkIcon(
+            currentDevice: bluetoothDevice(),
+            wifi: WiFiStatus(state: .connected, rssi: -50),
+            connection: .offline,
+            options: BluetoothAudioIconOptions(
+                replacesNetworkIcon: true,
+                prioritizesNetworkErrors: true
+            )
+        ))
+        XCTAssertTrue(StatusMappings.shouldReplaceNetworkIcon(
+            currentDevice: bluetoothDevice(),
+            wifi: WiFiStatus(state: .connected, rssi: -50),
+            connection: .offline,
+            options: BluetoothAudioIconOptions(
+                replacesNetworkIcon: true,
+                prioritizesNetworkErrors: false
+            )
+        ))
+    }
+
+    func testBluetoothReplacementDoesNotTreatEthernetOrUnknownConnectionsAsNetworkErrors() {
+        for connection in [NetworkConnection.ethernet, .other, .unknown] {
+            for prioritizesErrors in [true, false] {
+                XCTAssertTrue(StatusMappings.shouldReplaceNetworkIcon(
+                    currentDevice: bluetoothDevice(),
+                    wifi: WiFiStatus(state: .connected, rssi: -50),
+                    connection: connection,
+                    options: BluetoothAudioIconOptions(
+                        replacesNetworkIcon: true,
+                        prioritizesNetworkErrors: prioritizesErrors
+                    )
+                ))
+            }
+        }
+    }
+
     private func chargingBattery() -> BatteryStatus {
         BatteryStatus(
             rawPercentage: 80,
@@ -289,6 +409,30 @@ final class StatusMappingsTests: XCTestCase {
             isCharging: false,
             isLowPowerMode: false,
             isConnectedToPower: false
+        )
+    }
+
+    private func bluetoothDevice(
+        transport: AudioOutputTransport = .bluetooth
+    ) -> AudioOutputDevice {
+        AudioOutputDevice(
+            id: 1,
+            name: "AirPods Pro",
+            uid: "airpods",
+            isCurrent: true,
+            volume: 0.5,
+            transport: transport
+        )
+    }
+
+    private func builtInDevice() -> AudioOutputDevice {
+        AudioOutputDevice(
+            id: 2,
+            name: "MacBook Pro Speakers",
+            uid: "built-in",
+            isCurrent: true,
+            volume: 0.5,
+            transport: .builtIn
         )
     }
 }

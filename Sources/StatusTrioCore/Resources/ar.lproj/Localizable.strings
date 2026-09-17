@@ -21,6 +21,7 @@
 "settings.tab.appIcon" = "أيقونة التطبيق";
 "settings.tab.battery" = "البطارية";
 "settings.tab.network" = "الشبكة";
+"settings.tab.bluetooth" = "Bluetooth";
 "settings.tab.audio" = "الصوت";
 "settings.tab.basics" = "الأساسيات";
 "settings.tab.panel" = "لوحة الحالة";
@@ -32,6 +33,16 @@
 "settings.network.wifiIconForHotspot" = "استخدام أيقونة Wi-Fi لنقطة الاتصال الشخصية";
 "settings.network.wifiIconForTemporaryConnection" = "استخدام أيقونة Wi-Fi للاتصال المؤقت";
 "settings.network.wifiIconForInternetSharing" = "استخدام أيقونة Wi-Fi لمشاركة الإنترنت";
+"settings.bluetooth.title" = "صوت Bluetooth";
+"settings.bluetooth.replaceNetworkIcon" = "استبدال أيقونة الشبكة بجهاز صوت Bluetooth";
+"settings.bluetooth.replaceNetworkIconDescription" = "عند تشغيل الصوت عبر Bluetooth، تحل أيقونة الجهاز الزرقاء محل أيقونة Wi-Fi.";
+"settings.bluetooth.volumeColor" = "استخدام اللون الأزرق لمستوى صوت Bluetooth";
+"settings.bluetooth.volumeColorDescription" = "تتحول نقاط مستوى الصوت النشطة أو القوس إلى الأزرق عند الإخراج عبر Bluetooth.";
+"settings.bluetooth.networkErrorPriority" = "إعطاء أولوية لأخطاء الشبكة";
+"settings.bluetooth.networkErrorPriorityDescription" = "تبقى أيقونة الشبكة ظاهرة عند انقطاع الاتصال أو غياب الإنترنت بدلًا من أيقونة جهاز Bluetooth.";
+"settings.bluetooth.batteryLevels" = "عرض مستويات بطارية Bluetooth";
+"settings.bluetooth.batteryLevelsDescription" = "تقرأ مستويات البطارية فقط عند فتح لوحة Bluetooth. لن يظهر طلب إذن إضافي.";
+"bluetooth.battery.unavailable" = "غير متاح";
 "settings.audio.maximumVisible" = "الحد الأقصى لأجهزة الإخراج الظاهرة";
 "settings.audio.maximumVisibleDescription" = "عدد أجهزة الإخراج المعروضة قبل زر التوسيع.";
 "settings.audio.showAll" = "إظهار كل أجهزة الإخراج دائمًا";

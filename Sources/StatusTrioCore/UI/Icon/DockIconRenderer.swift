@@ -84,6 +84,7 @@ enum DockIconRenderer {
         options: BatteryIconOptions = .standard,
         connectionOptions: ConnectionIconOptions = .standard,
         volumeOptions: VolumeIconOptions = .standard,
+        bluetoothAudioOptions: BluetoothAudioIconOptions = .standard,
         backgroundStyle: DockIconBackgroundStyle = .dark
     ) -> NSImage? {
         let palette = palette(for: backgroundStyle)
@@ -123,6 +124,7 @@ enum DockIconRenderer {
             options: options,
             connectionOptions: connectionOptions,
             volumeOptions: volumeOptions,
+            bluetoothAudioOptions: bluetoothAudioOptions,
             foreground: palette.foreground,
             in: context,
             origin: CGPoint(

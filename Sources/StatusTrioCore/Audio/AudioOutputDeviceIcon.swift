@@ -9,7 +9,7 @@ import Foundation
 /// of hardware an output device is. macOS itself classifies Apple Bluetooth
 /// accessories through a private Bluetooth product-ID table, so the AirPods,
 /// Beats and HomePod model names stay name based.
-enum AudioOutputTransport: Equatable, Sendable {
+enum AudioOutputTransport: Hashable, Sendable {
     case builtIn
     case bluetooth
     case bluetoothLowEnergy
@@ -49,7 +49,7 @@ enum AudioOutputTransport: Equatable, Sendable {
 /// A Mac with a headphone jack keeps a single built-in output device and
 /// switches this value between the internal speakers and the jack, which is how
 /// the system volume menu knows to show headphones while they are plugged in.
-enum AudioOutputDataSource: Equatable, Sendable {
+enum AudioOutputDataSource: Hashable, Sendable {
     case internalSpeaker
     case headphones
     case externalSpeaker
@@ -180,7 +180,7 @@ enum AudioOutputDeviceKind: CaseIterable, Equatable, Sendable {
 
 /// What to draw for an output device: the image the driver ships, or an
 /// SF Symbol.
-enum AudioOutputDeviceIconSource: Equatable, Sendable {
+enum AudioOutputDeviceIconSource: Hashable, Sendable {
     case image(URL)
     case symbol(String)
 }

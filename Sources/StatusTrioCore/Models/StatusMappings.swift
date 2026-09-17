@@ -98,4 +98,35 @@ enum StatusMappings {
     static func batteryProgress(_ battery: BatteryStatus) -> Double {
         Double(battery.percentage) / 100.0
     }
+
+    static func shouldReplaceNetworkIcon(
+        currentDevice: AudioOutputDevice?,
+        wifi: WiFiStatus,
+        connection: NetworkConnection,
+        options: BluetoothAudioIconOptions
+    ) -> Bool {
+        guard options.replacesNetworkIcon,
+              currentDevice?.transport == .bluetooth
+                || currentDevice?.transport == .bluetoothLowEnergy else {
+            return false
+        }
+
+        guard options.prioritizesNetworkErrors else { return true }
+
+        // A wired connection is not a Wi-Fi error and can still coexist with
+        // Bluetooth audio.
+        if connection == .offline { return false }
+        return !wifi.state.isBluetoothReplacementNetworkError
+    }
+}
+
+private extension WiFiState {
+    var isBluetoothReplacementNetworkError: Bool {
+        switch self {
+        case .notAssociated, .noInternet, .off, .unavailable:
+            true
+        case .connected, .hotspot, .temporary, .shared:
+            false
+        }
+    }
 }

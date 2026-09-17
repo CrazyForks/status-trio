@@ -54,6 +54,17 @@ struct PixelBuffer {
         return bytes[(pixel.y * width + pixel.x) * 4 + 3]
     }
 
+    func rgba(
+        atSVGPoint point: CGPoint,
+        size: CGFloat,
+        scale: CGFloat
+    ) -> (red: UInt8, green: UInt8, blue: UInt8, alpha: UInt8) {
+        guard let pixel = pixelPoint(forSVGPoint: point, size: size, scale: scale) else {
+            return (0, 0, 0, 0)
+        }
+        return rgba(x: pixel.x, y: pixel.y)
+    }
+
     func alphaSum(inSVGRect rect: CGRect, size: CGFloat, scale: CGFloat) -> Int {
         let pixelsPerSVGUnit = pixelsPerSVGUnit(size: size, scale: scale)
         let minX = max(0, Int((rect.minX * pixelsPerSVGUnit).rounded(.down)))

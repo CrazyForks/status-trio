@@ -86,6 +86,7 @@ struct BluetoothStatusView: View {
 struct BluetoothDeviceListView: View {
     @ObservedObject var controller: BluetoothDeviceController
     @EnvironmentObject private var localization: Localization
+    let showsBatteryLevels: Bool
     let onBack: () -> Void
     let onRequestAuthorization: () -> Void
     let onOpenBluetoothSettings: () -> Void
@@ -128,7 +129,16 @@ struct BluetoothDeviceListView: View {
             Button(localization.string(.bluetoothActionOpenSettings), action: onOpenBluetoothSettings)
                 .buttonStyle(.plain)
         }
-        .onAppear { controller.activate() }
+        .onAppear {
+            controller.setBatteryLevelsEnabled(showsBatteryLevels)
+            controller.activate()
+        }
+        .onChange(of: showsBatteryLevels) { _, enabled in
+            controller.setBatteryLevelsEnabled(enabled)
+        }
+        .onDisappear {
+            controller.setBatteryLevelsEnabled(false)
+        }
     }
 
     private func section(_ title: String, devices: [BluetoothDevice]) -> some View {
@@ -145,6 +155,12 @@ struct BluetoothDeviceListView: View {
                         .lineLimit(1)
                         .truncationMode(.tail)
                     Spacer()
+                    if showsBatteryLevels {
+                        Text(batterySummary(for: device))
+                            .font(.caption.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
                     Text(device.isConnected ? localization.string(.bluetoothConnected) : localization.string(.bluetoothNotConnected))
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -200,6 +216,12 @@ struct BluetoothDeviceListView: View {
         case .available:
             EmptyView()
         }
+    }
+
+    private func batterySummary(for device: BluetoothDevice) -> String {
+        let address = BluetoothBatteryReader.normalizedAddress(device.id)
+        return controller.batteryLevels[address]?.summary
+            ?? localization.string(.bluetoothBatteryUnavailable)
     }
 
     private func icon(for kind: BluetoothDeviceKind) -> String {

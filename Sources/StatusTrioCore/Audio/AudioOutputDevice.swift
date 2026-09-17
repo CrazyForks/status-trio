@@ -1,6 +1,6 @@
 import CoreAudio
 
-struct AudioOutputDevice: Identifiable, Equatable, Sendable {
+struct AudioOutputDevice: Identifiable, Hashable, Sendable {
     let id: AudioDeviceID
     let name: String?
     let uid: String?
@@ -33,5 +33,9 @@ struct AudioOutputDevice: Identifiable, Equatable, Sendable {
         self.transport = transport
         self.dataSource = dataSource
         self.iconURL = iconURL
+    }
+
+    var isBluetoothAudio: Bool {
+        transport == .bluetooth || transport == .bluetoothLowEnergy
     }
 }

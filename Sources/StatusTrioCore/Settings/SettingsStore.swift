@@ -25,6 +25,10 @@ final class SettingsStore: ObservableObject {
     static let showsWiFiIconForHotspotDefaultsKey = "showsWiFiIconForHotspot"
     static let showsWiFiIconForTemporaryConnectionDefaultsKey = "showsWiFiIconForTemporaryConnection"
     static let showsWiFiIconForInternetSharingDefaultsKey = "showsWiFiIconForInternetSharing"
+    static let replacesNetworkIconWithBluetoothAudioDefaultsKey = "replacesNetworkIconWithBluetoothAudio"
+    static let usesBluetoothAudioVolumeColorDefaultsKey = "usesBluetoothAudioVolumeColor"
+    static let prioritizesNetworkErrorsOverBluetoothAudioDefaultsKey = "prioritizesNetworkErrorsOverBluetoothAudio"
+    static let showsBluetoothBatteryLevelsDefaultsKey = "showsBluetoothBatteryLevels"
     static let wifiSymbolScaleRange: ClosedRange<Double> = 1.0...1.8
     static let defaultWifiSymbolScale: Double = 1.6
     static let wifiSymbolScaleDefaultsKey = "wifiSymbolScale"
@@ -172,6 +176,42 @@ final class SettingsStore: ObservableObject {
             defaults.set(
                 showsWiFiIconForInternetSharing,
                 forKey: Self.showsWiFiIconForInternetSharingDefaultsKey
+            )
+        }
+    }
+
+    @Published var replacesNetworkIconWithBluetoothAudio: Bool {
+        didSet {
+            defaults.set(
+                replacesNetworkIconWithBluetoothAudio,
+                forKey: Self.replacesNetworkIconWithBluetoothAudioDefaultsKey
+            )
+        }
+    }
+
+    @Published var usesBluetoothAudioVolumeColor: Bool {
+        didSet {
+            defaults.set(
+                usesBluetoothAudioVolumeColor,
+                forKey: Self.usesBluetoothAudioVolumeColorDefaultsKey
+            )
+        }
+    }
+
+    @Published var prioritizesNetworkErrorsOverBluetoothAudio: Bool {
+        didSet {
+            defaults.set(
+                prioritizesNetworkErrorsOverBluetoothAudio,
+                forKey: Self.prioritizesNetworkErrorsOverBluetoothAudioDefaultsKey
+            )
+        }
+    }
+
+    @Published var showsBluetoothBatteryLevels: Bool {
+        didSet {
+            defaults.set(
+                showsBluetoothBatteryLevels,
+                forKey: Self.showsBluetoothBatteryLevelsDefaultsKey
             )
         }
     }
@@ -382,6 +422,14 @@ final class SettingsStore: ObservableObject {
         )
     }
 
+    var bluetoothAudioIconOptions: BluetoothAudioIconOptions {
+        BluetoothAudioIconOptions(
+            replacesNetworkIcon: replacesNetworkIconWithBluetoothAudio,
+            usesVolumeColor: usesBluetoothAudioVolumeColor,
+            prioritizesNetworkErrors: prioritizesNetworkErrorsOverBluetoothAudio
+        )
+    }
+
     var volumeIconOptions: VolumeIconOptions {
         VolumeIconOptions(displayStyle: volumeDisplayStyle)
     }
@@ -461,6 +509,18 @@ final class SettingsStore: ObservableObject {
         ) as? Bool ?? false
         self.showsWiFiIconForInternetSharing = defaults.object(
             forKey: Self.showsWiFiIconForInternetSharingDefaultsKey
+        ) as? Bool ?? false
+        self.replacesNetworkIconWithBluetoothAudio = defaults.object(
+            forKey: Self.replacesNetworkIconWithBluetoothAudioDefaultsKey
+        ) as? Bool ?? false
+        self.usesBluetoothAudioVolumeColor = defaults.object(
+            forKey: Self.usesBluetoothAudioVolumeColorDefaultsKey
+        ) as? Bool ?? false
+        self.prioritizesNetworkErrorsOverBluetoothAudio = defaults.object(
+            forKey: Self.prioritizesNetworkErrorsOverBluetoothAudioDefaultsKey
+        ) as? Bool ?? true
+        self.showsBluetoothBatteryLevels = defaults.object(
+            forKey: Self.showsBluetoothBatteryLevelsDefaultsKey
         ) as? Bool ?? false
         self.wifiSymbolScale = Self.clampedWifiSymbolScale(
             storedWifiSymbolScale ?? Self.defaultWifiSymbolScale

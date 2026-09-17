@@ -283,6 +283,7 @@ struct StatusPopoverView: View {
             case .bluetooth:
                 BluetoothDeviceListView(
                     controller: store.bluetoothDevices,
+                    showsBatteryLevels: settings.showsBluetoothBatteryLevels,
                     onBack: {
                         store.closeBluetoothDetails()
                         panel = .summary

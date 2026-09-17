@@ -4,18 +4,26 @@ struct MenuBarVolumeStatus: Equatable, Sendable {
     let scalar: Double?
     let isMuted: Bool
     let deviceName: String?
+    let currentDevice: AudioOutputDevice?
 
-    init(scalar: Double?, isMuted: Bool, deviceName: String?) {
+    init(
+        scalar: Double?,
+        isMuted: Bool,
+        deviceName: String?,
+        currentDevice: AudioOutputDevice? = nil
+    ) {
         self.scalar = scalar
         self.isMuted = isMuted
         self.deviceName = deviceName
+        self.currentDevice = currentDevice
     }
 
     init(volume: VolumeStatus) {
         self.init(
             scalar: volume.scalar,
             isMuted: volume.isMuted,
-            deviceName: volume.deviceName
+            deviceName: volume.deviceName,
+            currentDevice: volume.currentDevice
         )
     }
 }

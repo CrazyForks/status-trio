@@ -37,6 +37,7 @@
 "settings.tab.appIcon" = "Значок приложения";
 "settings.tab.battery" = "Батарея";
 "settings.tab.network" = "Сеть";
+"settings.tab.bluetooth" = "Bluetooth";
 "settings.tab.audio" = "Аудио";
 "settings.tab.basics" = "Основные";
 "settings.tab.panel" = "Панель состояния";
@@ -48,6 +49,16 @@
 "settings.network.wifiIconForHotspot" = "Использовать значок Wi-Fi для точки доступа";
 "settings.network.wifiIconForTemporaryConnection" = "Использовать значок Wi-Fi для временного подключения";
 "settings.network.wifiIconForInternetSharing" = "Использовать значок Wi-Fi для общего доступа к интернету";
+"settings.bluetooth.title" = "Звук Bluetooth";
+"settings.bluetooth.replaceNetworkIcon" = "Заменять значок сети устройством вывода звука Bluetooth";
+"settings.bluetooth.replaceNetworkIconDescription" = "При выводе звука через Bluetooth синий значок устройства заменяет значок Wi-Fi.";
+"settings.bluetooth.volumeColor" = "Показывать громкость Bluetooth синим";
+"settings.bluetooth.volumeColorDescription" = "Активные точки громкости или дуга становятся синими при выводе звука через Bluetooth.";
+"settings.bluetooth.networkErrorPriority" = "Приоритет ошибок сети";
+"settings.bluetooth.networkErrorPriorityDescription" = "При ошибке подключения или отсутствии сети остаётся значок сети вместо устройства Bluetooth.";
+"settings.bluetooth.batteryLevels" = "Показывать заряд устройств Bluetooth";
+"settings.bluetooth.batteryLevelsDescription" = "Заряд считывается только при открытии панели Bluetooth. Дополнительный запрос разрешения не появляется.";
+"bluetooth.battery.unavailable" = "Недоступно";
 "settings.audio.maximumVisible" = "Максимум видимых устройств вывода";
 "settings.audio.maximumVisibleDescription" = "Сколько устройств вывода показывать до кнопки «Развернуть».";
 "settings.audio.showAll" = "Всегда показывать все устройства вывода";

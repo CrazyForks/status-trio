@@ -37,6 +37,7 @@
 "settings.tab.appIcon" = "App-Symbol";
 "settings.tab.battery" = "Batterie";
 "settings.tab.network" = "Netzwerk";
+"settings.tab.bluetooth" = "Bluetooth";
 "settings.tab.audio" = "Audio";
 "settings.tab.basics" = "Allgemein";
 "settings.tab.panel" = "Statusbereich";
@@ -48,6 +49,16 @@
 "settings.network.wifiIconForHotspot" = "WLAN-Symbol für persönlichen Hotspot verwenden";
 "settings.network.wifiIconForTemporaryConnection" = "WLAN-Symbol für temporäre Verbindung verwenden";
 "settings.network.wifiIconForInternetSharing" = "WLAN-Symbol für Internetfreigabe verwenden";
+"settings.bluetooth.title" = "Bluetooth-Audio";
+"settings.bluetooth.replaceNetworkIcon" = "Netzwerksymbol durch Bluetooth-Audiogerät ersetzen";
+"settings.bluetooth.replaceNetworkIconDescription" = "Bei Audioausgabe über Bluetooth ersetzt das blaue Gerätesymbol das WLAN-Symbol.";
+"settings.bluetooth.volumeColor" = "Bluetooth-Lautstärke blau darstellen";
+"settings.bluetooth.volumeColorDescription" = "Die aktiven Lautstärkepunkte oder der Bogen werden bei Bluetooth-Audioausgabe blau.";
+"settings.bluetooth.networkErrorPriority" = "Netzwerkfehler priorisieren";
+"settings.bluetooth.networkErrorPriorityDescription" = "Bei Verbindungsfehlern oder Offline-Status bleibt das Netzwerksymbol sichtbar statt des Bluetooth-Gerätesymbols.";
+"settings.bluetooth.batteryLevels" = "Bluetooth-Batteriestände anzeigen";
+"settings.bluetooth.batteryLevelsDescription" = "Liest Batteriestände nur beim Öffnen des Bluetooth-Bereichs. Es wird keine zusätzliche Berechtigung angefragt.";
+"bluetooth.battery.unavailable" = "Nicht verfügbar";
 "settings.audio.maximumVisible" = "Maximal sichtbare Ausgabegeräte";
 "settings.audio.maximumVisibleDescription" = "Anzahl der Ausgabegeräte, die vor „Erweitern“ angezeigt werden.";
 "settings.audio.showAll" = "Immer alle Ausgabegeräte anzeigen";

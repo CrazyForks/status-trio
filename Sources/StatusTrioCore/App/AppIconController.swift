@@ -19,6 +19,7 @@ final class AppIconController {
         _ options: BatteryIconOptions,
         _ connectionOptions: ConnectionIconOptions,
         _ volumeOptions: VolumeIconOptions,
+        _ bluetoothAudioOptions: BluetoothAudioIconOptions,
         _ backgroundStyle: DockIconBackgroundStyle
     ) -> NSImage?
 
@@ -41,6 +42,7 @@ final class AppIconController {
     private var currentBatteryOptions: BatteryIconOptions
     private var currentConnectionOptions: ConnectionIconOptions
     private var currentVolumeOptions: VolumeIconOptions
+    private var currentBluetoothAudioOptions: BluetoothAudioIconOptions
     private var currentBackgroundPreference: DockIconBackgroundPreference
     private var isDockTileVisible: Bool
     private var isStarted = false
@@ -77,6 +79,7 @@ final class AppIconController {
         self.currentBatteryOptions = settings.batteryIconOptions
         self.currentConnectionOptions = settings.connectionIconOptions
         self.currentVolumeOptions = settings.volumeIconOptions
+        self.currentBluetoothAudioOptions = settings.bluetoothAudioIconOptions
         self.currentBackgroundPreference = settings.dockIconBackgroundPreference
         self.isDockTileVisible = activationPolicy.isRegularApp
     }
@@ -91,6 +94,7 @@ final class AppIconController {
         currentBatteryOptions = settings.batteryIconOptions
         currentConnectionOptions = settings.connectionIconOptions
         currentVolumeOptions = settings.volumeIconOptions
+        currentBluetoothAudioOptions = settings.bluetoothAudioIconOptions
         currentBackgroundPreference = settings.dockIconBackgroundPreference
         apply(currentPlacement)
         activationPolicy.$isRegularApp
@@ -113,6 +117,7 @@ final class AppIconController {
         subscribeToBatteryOptions()
         subscribeToConnectionOptions()
         subscribeToVolumeDisplayStyle()
+        subscribeToBluetoothAudioOptions()
         subscribeToBackgroundStyle()
     }
 
@@ -249,7 +254,26 @@ final class AppIconController {
                 currentVolumeOptions = VolumeIconOptions(displayStyle: displayStyle)
                 renderLatestDockIcon()
             }
-            .store(in: &cancellables)
+        .store(in: &cancellables)
+    }
+
+    private func subscribeToBluetoothAudioOptions() {
+        Publishers.CombineLatest3(
+            settings.$replacesNetworkIconWithBluetoothAudio,
+            settings.$usesBluetoothAudioVolumeColor,
+            settings.$prioritizesNetworkErrorsOverBluetoothAudio
+        )
+        .dropFirst()
+        .sink { [weak self] replacesNetworkIcon, usesVolumeColor, prioritizesNetworkErrors in
+            guard let self else { return }
+            currentBluetoothAudioOptions = BluetoothAudioIconOptions(
+                replacesNetworkIcon: replacesNetworkIcon,
+                usesVolumeColor: usesVolumeColor,
+                prioritizesNetworkErrors: prioritizesNetworkErrors
+            )
+            renderLatestDockIcon()
+        }
+        .store(in: &cancellables)
     }
 
     private func apply(_ placement: AppIconPlacement) {
@@ -286,6 +310,7 @@ final class AppIconController {
             options: currentBatteryOptions,
             connectionOptions: currentConnectionOptions,
             volumeOptions: currentVolumeOptions,
+            bluetoothAudioOptions: currentBluetoothAudioOptions,
             backgroundStyle: backgroundStyle
         )
         guard renderCache.shouldRender(key) else { return }
@@ -301,6 +326,7 @@ final class AppIconController {
             currentBatteryOptions,
             currentConnectionOptions,
             currentVolumeOptions,
+            currentBluetoothAudioOptions,
             backgroundStyle
         ) else {
             if !hasRenderedDockIcon {

@@ -21,6 +21,7 @@ struct StatusIconPreviewCard: View {
                     batteryOptions: store.batteryIconOptions,
                     connectionOptions: store.connectionIconOptions,
                     volumeOptions: store.volumeIconOptions,
+                    bluetoothAudioOptions: store.bluetoothAudioIconOptions,
                     isDarkBackground: isDarkBackground,
                     trailingInset: 104
                 )
@@ -28,6 +29,7 @@ struct StatusIconPreviewCard: View {
                 .animation(.easeInOut(duration: 0.15), value: store.batteryIconOptions)
                 .animation(.easeInOut(duration: 0.15), value: store.connectionIconOptions)
                 .animation(.easeInOut(duration: 0.15), value: store.volumeIconOptions)
+                .animation(.easeInOut(duration: 0.15), value: store.bluetoothAudioIconOptions)
 
                 appearanceToggle
                     .padding(.trailing, 14)
@@ -76,12 +78,14 @@ struct DockIconPreviewTile: View {
             batteryOptions: store.batteryIconOptions,
             connectionOptions: store.connectionIconOptions,
             volumeOptions: store.volumeIconOptions,
+            bluetoothAudioOptions: store.bluetoothAudioIconOptions,
             backgroundStyle: resolvedBackgroundStyle,
             size: size
         )
         .animation(.easeInOut(duration: 0.15), value: store.batteryIconOptions)
         .animation(.easeInOut(duration: 0.15), value: store.connectionIconOptions)
         .animation(.easeInOut(duration: 0.15), value: store.volumeIconOptions)
+        .animation(.easeInOut(duration: 0.15), value: store.bluetoothAudioIconOptions)
         .accessibilityHidden(true)
     }
 

@@ -37,6 +37,7 @@
 "settings.tab.appIcon" = "App Icon";
 "settings.tab.battery" = "Battery";
 "settings.tab.network" = "Network";
+"settings.tab.bluetooth" = "Bluetooth";
 "settings.tab.audio" = "Audio";
 "settings.tab.basics" = "Basics";
 "settings.tab.panel" = "Status Panel";
@@ -48,6 +49,16 @@
 "settings.network.wifiIconForHotspot" = "Use Wi-Fi icon for Personal Hotspot";
 "settings.network.wifiIconForTemporaryConnection" = "Use Wi-Fi icon for Temporary Connection";
 "settings.network.wifiIconForInternetSharing" = "Use Wi-Fi icon for Internet Sharing";
+"settings.bluetooth.title" = "Bluetooth Audio";
+"settings.bluetooth.replaceNetworkIcon" = "Replace the network icon with the Bluetooth audio device";
+"settings.bluetooth.replaceNetworkIconDescription" = "When audio is playing through Bluetooth, the device icon replaces the Wi-Fi icon in blue.";
+"settings.bluetooth.volumeColor" = "Use blue for Bluetooth volume";
+"settings.bluetooth.volumeColorDescription" = "The active volume dots or arc turn blue while audio is playing through Bluetooth.";
+"settings.bluetooth.networkErrorPriority" = "Let network errors take priority";
+"settings.bluetooth.networkErrorPriorityDescription" = "Connection errors and offline states keep the network icon instead of the Bluetooth device icon.";
+"settings.bluetooth.batteryLevels" = "Show Bluetooth battery levels";
+"settings.bluetooth.batteryLevelsDescription" = "Reads battery levels when the Bluetooth panel is opened. No additional permission prompt is shown.";
+"bluetooth.battery.unavailable" = "Unavailable";
 "settings.audio.maximumVisible" = "Maximum Visible Output Devices";
 "settings.audio.maximumVisibleDescription" = "How many output devices appear before the Expand control.";
 "settings.audio.showAll" = "Always Show All Output Devices";

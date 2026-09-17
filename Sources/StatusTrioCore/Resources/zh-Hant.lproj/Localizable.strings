@@ -37,6 +37,7 @@
 "settings.tab.appIcon" = "應用程式圖示";
 "settings.tab.battery" = "電池";
 "settings.tab.network" = "網路";
+"settings.tab.bluetooth" = "藍牙";
 "settings.tab.audio" = "音訊";
 "settings.tab.basics" = "基礎";
 "settings.tab.panel" = "狀態面板";
@@ -48,6 +49,16 @@
 "settings.network.wifiIconForHotspot" = "個人熱點使用 Wi‑Fi 圖示";
 "settings.network.wifiIconForTemporaryConnection" = "臨時連線使用 Wi‑Fi 圖示";
 "settings.network.wifiIconForInternetSharing" = "網際網路共享使用 Wi‑Fi 圖示";
+"settings.bluetooth.title" = "藍牙音訊";
+"settings.bluetooth.replaceNetworkIcon" = "使用藍牙音訊裝置圖示取代網路圖示";
+"settings.bluetooth.replaceNetworkIconDescription" = "藍牙輸出音訊時，以藍色裝置圖示取代 Wi‑Fi 圖示。";
+"settings.bluetooth.volumeColor" = "藍牙音量使用藍色";
+"settings.bluetooth.volumeColorDescription" = "藍牙輸出音訊時，音量點或圓弧的作用部分會顯示為藍色。";
+"settings.bluetooth.networkErrorPriority" = "網路異常優先於藍牙圖示";
+"settings.bluetooth.networkErrorPriorityDescription" = "斷線或無網路時仍顯示網路圖示，不顯示藍牙裝置圖示。";
+"settings.bluetooth.batteryLevels" = "顯示藍牙裝置電量";
+"settings.bluetooth.batteryLevelsDescription" = "僅在開啟藍牙面板時讀取裝置電量，不會額外要求權限。";
+"bluetooth.battery.unavailable" = "暫不可用";
 "settings.audio.maximumVisible" = "最多顯示輸出裝置";
 "settings.audio.maximumVisibleDescription" = "超過此數量時顯示「展開」按鈕。";
 "settings.audio.showAll" = "一律全部展開";

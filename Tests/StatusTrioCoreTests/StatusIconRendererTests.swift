@@ -1165,6 +1165,137 @@ final class StatusIconRendererTests: XCTestCase {
         XCTAssertEqual(mutedPixels.bytes, zeroPixels.bytes)
     }
 
+    func testBluetoothOutputReplacesNetworkIconWithBluePixels() throws {
+        let snapshot = bluetoothAudioSnapshot(volumeScalar: 0.5)
+        let standard = try PixelBuffer(
+            image: try XCTUnwrap(StatusIconRenderer.render(
+                snapshot: snapshot,
+                size: 20,
+                scale: 8,
+                foreground: CGColor(gray: 1, alpha: 1)
+            ))
+        )
+        let bluetooth = try PixelBuffer(
+            image: try XCTUnwrap(StatusIconRenderer.render(
+                snapshot: snapshot,
+                size: 20,
+                scale: 8,
+                foreground: CGColor(gray: 1, alpha: 1),
+                bluetoothAudioOptions: BluetoothAudioIconOptions(
+                    replacesNetworkIcon: true
+                )
+            ))
+        )
+
+        XCTAssertNotEqual(standard.bytes, bluetooth.bytes)
+        XCTAssertTrue(bluetooth.containsColor(
+            red: 0,
+            green: 122.0 / 255.0,
+            blue: 1,
+            tolerance: 0.08,
+            minimumAlpha: 0.9
+        ))
+    }
+
+    func testNetworkErrorPriorityKeepsNetworkIconInsteadOfBluetooth() throws {
+        let snapshot = StatusSnapshot(
+            battery: .placeholder,
+            wifi: WiFiStatus(state: .noInternet, rssi: nil),
+            connection: .wifi,
+            volume: VolumeStatus(
+                scalar: 0.5,
+                isMuted: false,
+                deviceName: "AirPods Pro",
+                currentDevice: bluetoothOutputDevice(name: "AirPods Pro")
+            )
+        )
+        let standard = try PixelBuffer(
+            image: try XCTUnwrap(StatusIconRenderer.render(
+                snapshot: snapshot,
+                size: 20,
+                scale: 8,
+                foreground: CGColor(gray: 1, alpha: 1),
+                bluetoothAudioOptions: BluetoothAudioIconOptions(
+                    replacesNetworkIcon: true,
+                    prioritizesNetworkErrors: false
+                )
+            ))
+        )
+        let networkPriority = try PixelBuffer(
+            image: try XCTUnwrap(StatusIconRenderer.render(
+                snapshot: snapshot,
+                size: 20,
+                scale: 8,
+                foreground: CGColor(gray: 1, alpha: 1),
+                bluetoothAudioOptions: BluetoothAudioIconOptions(
+                    replacesNetworkIcon: true,
+                    prioritizesNetworkErrors: true
+                )
+            ))
+        )
+
+        XCTAssertNotEqual(standard.bytes, networkPriority.bytes)
+        XCTAssertFalse(networkPriority.containsColor(
+            red: 0,
+            green: 122.0 / 255.0,
+            blue: 1,
+            tolerance: 0.04,
+            minimumAlpha: 0.9
+        ))
+    }
+
+    func testBluetoothOutputColorsActiveVolumeDotsBlue() throws {
+        let snapshot = bluetoothAudioSnapshot(volumeScalar: 0.25)
+        let pixels = try PixelBuffer(
+            image: try XCTUnwrap(StatusIconRenderer.render(
+                snapshot: snapshot,
+                size: 20,
+                scale: 8,
+                foreground: CGColor(gray: 1, alpha: 1),
+                volumeOptions: VolumeIconOptions(displayStyle: .dots),
+                bluetoothAudioOptions: BluetoothAudioIconOptions(
+                    usesVolumeColor: true
+                )
+            ))
+        )
+        let dots = StatusIconGeometry.volumeDots()
+        let active = pixels.rgba(atSVGPoint: dots[0], size: 20, scale: 8)
+        let inactive = pixels.rgba(atSVGPoint: dots[1], size: 20, scale: 8)
+
+        XCTAssertGreaterThanOrEqual(active.alpha, 245)
+        XCTAssertEqual(active.red, 0, accuracy: 8)
+        XCTAssertEqual(active.green, 122, accuracy: 30)
+        XCTAssertEqual(active.blue, 255, accuracy: 8)
+        XCTAssertEqual(inactive.red, 56, accuracy: 8)
+        XCTAssertEqual(inactive.green, 56, accuracy: 8)
+        XCTAssertEqual(inactive.blue, 56, accuracy: 8)
+        XCTAssertEqual(inactive.alpha, 56, accuracy: 3)
+    }
+
+    func testBluetoothOutputColorsActiveVolumeArcBlue() throws {
+        let snapshot = bluetoothAudioSnapshot(volumeScalar: 0.75)
+        let pixels = try PixelBuffer(
+            image: try XCTUnwrap(StatusIconRenderer.render(
+                snapshot: snapshot,
+                size: 20,
+                scale: 8,
+                foreground: CGColor(gray: 1, alpha: 1),
+                volumeOptions: VolumeIconOptions(displayStyle: .arc),
+                bluetoothAudioOptions: BluetoothAudioIconOptions(
+                    usesVolumeColor: true
+                )
+            ))
+        )
+
+        XCTAssertTrue(pixels.containsColor(
+            red: 0,
+            green: 122.0 / 255.0,
+            blue: 1,
+            tolerance: 0.08,
+            minimumAlpha: 0.9
+        ))
+    }
+
     func testZeroVolumeDrawsFourHiddenDots() throws {
         let snapshot = StatusSnapshot(
             battery: .placeholder,
@@ -1199,6 +1330,31 @@ final class StatusIconRendererTests: XCTestCase {
             isCharging: isCharging,
             isLowPowerMode: isLowPowerMode,
             isConnectedToPower: isConnectedToPower ?? isCharging
+        )
+    }
+
+    private func bluetoothAudioSnapshot(volumeScalar: Double) -> StatusSnapshot {
+        StatusSnapshot(
+            battery: .placeholder,
+            wifi: WiFiStatus(state: .connected, rssi: -55),
+            connection: .wifi,
+            volume: VolumeStatus(
+                scalar: volumeScalar,
+                isMuted: false,
+                deviceName: "AirPods Pro",
+                currentDevice: bluetoothOutputDevice(name: "AirPods Pro")
+            )
+        )
+    }
+
+    private func bluetoothOutputDevice(name: String) -> AudioOutputDevice {
+        AudioOutputDevice(
+            id: 42,
+            name: name,
+            uid: "bluetooth-output",
+            isCurrent: true,
+            volume: 0.5,
+            transport: .bluetooth
         )
     }
 

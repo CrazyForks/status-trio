@@ -8,6 +8,7 @@ struct MenuBarPreviewBar: View {
     var batteryOptions: BatteryIconOptions = .standard
     var connectionOptions: ConnectionIconOptions = .standard
     var volumeOptions: VolumeIconOptions = .standard
+    var bluetoothAudioOptions: BluetoothAudioIconOptions = .standard
     var isDarkBackground = true
     var highlightedPart: IconGuidePart?
     var highlightOpacity: Double = 1
@@ -29,6 +30,7 @@ struct MenuBarPreviewBar: View {
                         options: batteryOptions,
                         connectionOptions: connectionOptions,
                         volumeOptions: volumeOptions,
+                        bluetoothAudioOptions: bluetoothAudioOptions,
                         appearance: NSAppearance(
                             named: isDarkBackground ? .darkAqua : .aqua
                         )
@@ -126,6 +128,7 @@ struct DockPreviewBar: View {
     var batteryOptions: BatteryIconOptions = .standard
     var connectionOptions: ConnectionIconOptions = .standard
     var volumeOptions: VolumeIconOptions = .standard
+    var bluetoothAudioOptions: BluetoothAudioIconOptions = .standard
     var backgroundStyle: DockIconBackgroundStyle = .dark
     var isDarkBackground = true
     var statusIconSize: CGFloat = 56
@@ -240,6 +243,7 @@ struct DockIconTile: View {
     var batteryOptions: BatteryIconOptions = .standard
     var connectionOptions: ConnectionIconOptions = .standard
     var volumeOptions: VolumeIconOptions = .standard
+    var bluetoothAudioOptions: BluetoothAudioIconOptions = .standard
     var backgroundStyle: DockIconBackgroundStyle = .dark
     var size: CGFloat = 44
     var highlightedPart: IconGuidePart?
@@ -252,6 +256,7 @@ struct DockIconTile: View {
                 options: batteryOptions,
                 connectionOptions: connectionOptions,
                 volumeOptions: volumeOptions,
+                bluetoothAudioOptions: bluetoothAudioOptions,
                 backgroundStyle: backgroundStyle
             ) {
                 Image(nsImage: image)

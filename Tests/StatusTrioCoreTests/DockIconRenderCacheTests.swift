@@ -98,6 +98,68 @@ struct DockIconRenderCacheTests {
         #expect(rendersArc)
     }
 
+    @Test func rendersAgainWhenBluetoothAudioOptionsChange() {
+        var cache = DockIconRenderCache()
+        let standard = DockIconRenderKey(
+            status: .placeholder,
+            options: .standard,
+            connectionOptions: .standard,
+            bluetoothAudioOptions: .standard,
+            backgroundStyle: .dark
+        )
+        let replacementEnabled = DockIconRenderKey(
+            status: .placeholder,
+            options: .standard,
+            connectionOptions: .standard,
+            bluetoothAudioOptions: BluetoothAudioIconOptions(
+                replacesNetworkIcon: true
+            ),
+            backgroundStyle: .dark
+        )
+
+        let rendersStandard = cache.shouldRender(standard)
+        let rendersReplacementEnabled = cache.shouldRender(replacementEnabled)
+        let rendersReplacementEnabledAgain = cache.shouldRender(replacementEnabled)
+        #expect(rendersStandard)
+        #expect(rendersReplacementEnabled)
+        #expect(rendersReplacementEnabledAgain == false)
+    }
+
+    @Test func rendersAgainWhenTheBluetoothOutputDeviceChanges() {
+        var cache = DockIconRenderCache()
+        let speakers = DockIconRenderKey(
+            status: outputDeviceStatus(
+                name: "MacBook Speakers",
+                transport: .builtIn
+            ),
+            options: .standard,
+            connectionOptions: .standard,
+            bluetoothAudioOptions: BluetoothAudioIconOptions(
+                replacesNetworkIcon: true
+            ),
+            backgroundStyle: .dark
+        )
+        let airPods = DockIconRenderKey(
+            status: outputDeviceStatus(
+                name: "AirPods Pro",
+                transport: .bluetooth
+            ),
+            options: .standard,
+            connectionOptions: .standard,
+            bluetoothAudioOptions: BluetoothAudioIconOptions(
+                replacesNetworkIcon: true
+            ),
+            backgroundStyle: .dark
+        )
+
+        let rendersSpeakers = cache.shouldRender(speakers)
+        let rendersAirPods = cache.shouldRender(airPods)
+        let rendersAirPodsAgain = cache.shouldRender(airPods)
+        #expect(rendersSpeakers)
+        #expect(rendersAirPods)
+        #expect(rendersAirPodsAgain == false)
+    }
+
     @Test func rendersAgainWhenContinuousVolumeChangesWithinSameStep() {
         var cache = DockIconRenderCache()
         let lower = DockIconRenderKey(
@@ -197,6 +259,29 @@ struct DockIconRenderCacheTests {
             battery: .placeholder,
             wifi: .placeholder,
             volume: VolumeStatus(scalar: scalar, isMuted: false, deviceName: nil)
+        ))
+    }
+
+    private func outputDeviceStatus(
+        name: String,
+        transport: AudioOutputTransport
+    ) -> MenuBarStatus {
+        let device = AudioOutputDevice(
+            id: 42,
+            name: name,
+            isCurrent: true,
+            volume: 0.5,
+            transport: transport
+        )
+        return MenuBarStatus(snapshot: StatusSnapshot(
+            battery: .placeholder,
+            wifi: .placeholder,
+            volume: VolumeStatus(
+                scalar: 0.5,
+                isMuted: false,
+                deviceName: name,
+                currentDevice: device
+            )
         ))
     }
 }

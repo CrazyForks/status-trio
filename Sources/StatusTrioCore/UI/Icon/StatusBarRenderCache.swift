@@ -4,6 +4,7 @@ struct StatusBarRenderKey: Equatable {
     let options: BatteryIconOptions
     let connectionOptions: ConnectionIconOptions
     let volumeOptions: VolumeIconOptions
+    let bluetoothAudioOptions: BluetoothAudioIconOptions
     let appearanceName: String
 
     init(
@@ -12,6 +13,7 @@ struct StatusBarRenderKey: Equatable {
         options: BatteryIconOptions,
         connectionOptions: ConnectionIconOptions,
         volumeOptions: VolumeIconOptions = .standard,
+        bluetoothAudioOptions: BluetoothAudioIconOptions = .standard,
         appearanceName: String
     ) {
         self.status = status
@@ -19,6 +21,7 @@ struct StatusBarRenderKey: Equatable {
         self.options = options
         self.connectionOptions = connectionOptions
         self.volumeOptions = volumeOptions
+        self.bluetoothAudioOptions = bluetoothAudioOptions
         self.appearanceName = appearanceName
     }
 }

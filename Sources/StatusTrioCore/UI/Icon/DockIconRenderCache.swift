@@ -13,6 +13,8 @@ struct DockIconRenderKey: Equatable, Hashable {
     let connectionOptions: ConnectionIconOptions
     let volumeOptions: VolumeIconOptions
     let volumeArcProgress: Double?
+    let bluetoothAudioOptions: BluetoothAudioIconOptions
+    let bluetoothAudioDeviceIcon: AudioOutputDeviceIconSource?
     let backgroundStyle: DockIconBackgroundStyle
 
     init(
@@ -20,6 +22,7 @@ struct DockIconRenderKey: Equatable, Hashable {
         options: BatteryIconOptions,
         connectionOptions: ConnectionIconOptions,
         volumeOptions: VolumeIconOptions = .standard,
+        bluetoothAudioOptions: BluetoothAudioIconOptions = .standard,
         backgroundStyle: DockIconBackgroundStyle
     ) {
         self.batteryPercentage = status.battery.percentage
@@ -45,6 +48,10 @@ struct DockIconRenderKey: Equatable, Hashable {
         self.volumeOptions = volumeOptions
         self.volumeArcProgress = volumeOptions.displayStyle == .arc
             ? status.volume.scalar.flatMap(Self.clampedVolume)
+            : nil
+        self.bluetoothAudioOptions = bluetoothAudioOptions
+        self.bluetoothAudioDeviceIcon = status.volume.currentDevice?.isBluetoothAudio == true
+            ? status.volume.currentDevice.map { AudioOutputDeviceIcon.source(for: $0) }
             : nil
         self.backgroundStyle = backgroundStyle
     }

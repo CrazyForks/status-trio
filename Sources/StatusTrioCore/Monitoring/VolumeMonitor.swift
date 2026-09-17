@@ -11,6 +11,19 @@ struct VolumeReading: Equatable, Sendable {
     let scalar: Double?
     let isMuted: Bool
     let deviceName: String?
+    let currentDevice: AudioOutputDevice?
+
+    init(
+        scalar: Double?,
+        isMuted: Bool,
+        deviceName: String?,
+        currentDevice: AudioOutputDevice? = nil
+    ) {
+        self.scalar = scalar
+        self.isMuted = isMuted
+        self.deviceName = deviceName
+        self.currentDevice = currentDevice
+    }
 }
 
 protocol VolumeReadingProviding: AnyObject {
@@ -42,6 +55,13 @@ protocol CoreAudioClient: AnyObject {
         scope: AudioObjectPropertyScope,
         element: AudioObjectPropertyElement
     ) -> String?
+
+    func readURL(
+        objectID: AudioObjectID,
+        selector: AudioObjectPropertySelector,
+        scope: AudioObjectPropertyScope,
+        element: AudioObjectPropertyElement
+    ) -> URL?
 
     func hasProperty(
         objectID: AudioObjectID,
@@ -184,6 +204,37 @@ final class CoreAudioSystemClient: CoreAudioClient {
         return value.isEmpty ? nil : value
     }
 
+    func readURL(
+        objectID: AudioObjectID,
+        selector: AudioObjectPropertySelector,
+        scope: AudioObjectPropertyScope,
+        element: AudioObjectPropertyElement
+    ) -> URL? {
+        var address = AudioObjectPropertyAddress(
+            mSelector: selector,
+            mScope: scope,
+            mElement: element
+        )
+        var url: Unmanaged<CFURL>?
+        var size = UInt32(MemoryLayout<Unmanaged<CFURL>?>.size)
+        let status = AudioObjectGetPropertyData(
+            objectID,
+            &address,
+            0,
+            nil,
+            &size,
+            &url
+        )
+
+        guard
+            status == noErr,
+            size == MemoryLayout<Unmanaged<CFURL>?>.size,
+            let url
+        else { return nil }
+
+        return url.takeRetainedValue() as URL
+    }
+
     func hasProperty(
         objectID: AudioObjectID,
         selector: AudioObjectPropertySelector,
@@ -275,11 +326,23 @@ final class CoreAudioVolumeReader: VolumeReadingProviding {
 
     func read() -> VolumeReading? {
         guard let deviceID = defaultOutputDevice() else { return nil }
+        let scalar = volumeScalar(for: deviceID).map(Double.init)
+        let name = deviceName(for: deviceID)
 
         return VolumeReading(
-            scalar: volumeScalar(for: deviceID).map(Double.init),
+            scalar: scalar,
             isMuted: isMuted(for: deviceID),
-            deviceName: deviceName(for: deviceID)
+            deviceName: name,
+            currentDevice: AudioOutputDevice(
+                id: deviceID,
+                name: name,
+                uid: deviceUID(for: deviceID),
+                isCurrent: true,
+                volume: scalar,
+                transport: transport(for: deviceID),
+                dataSource: dataSource(for: deviceID),
+                iconURL: iconURL(for: deviceID)
+            )
         )
     }
 
@@ -303,6 +366,10 @@ final class CoreAudioVolumeReader: VolumeReadingProviding {
         using read: (AudioObjectPropertyElement) -> UInt32?
     ) -> Bool {
         firstValue(using: read) == 1
+    }
+
+    static func fourCharacterCode(_ code: String) -> UInt32 {
+        code.utf8.reduce(0) { ($0 << 8) | UInt32($1) }
     }
 
     private func volumeScalar(for deviceID: AudioDeviceID) -> Float32? {
@@ -331,6 +398,42 @@ final class CoreAudioVolumeReader: VolumeReadingProviding {
         client.readString(
             objectID: deviceID,
             selector: kAudioObjectPropertyName,
+            scope: kAudioObjectPropertyScopeGlobal,
+            element: kAudioObjectPropertyElementMain
+        )
+    }
+
+    private func deviceUID(for deviceID: AudioDeviceID) -> String? {
+        client.readString(
+            objectID: deviceID,
+            selector: kAudioDevicePropertyDeviceUID,
+            scope: kAudioObjectPropertyScopeGlobal,
+            element: kAudioObjectPropertyElementMain
+        )
+    }
+
+    private func transport(for deviceID: AudioDeviceID) -> AudioOutputTransport? {
+        client.readUInt32(
+            objectID: deviceID,
+            selector: kAudioDevicePropertyTransportType,
+            scope: kAudioObjectPropertyScopeGlobal,
+            element: kAudioObjectPropertyElementMain
+        ).map(AudioOutputTransport.init(coreAudioValue:))
+    }
+
+    private func dataSource(for deviceID: AudioDeviceID) -> AudioOutputDataSource? {
+        client.readUInt32(
+            objectID: deviceID,
+            selector: kAudioDevicePropertyDataSource,
+            scope: kAudioObjectPropertyScopeOutput,
+            element: kAudioObjectPropertyElementMain
+        ).map(AudioOutputDataSource.init(coreAudioValue:))
+    }
+
+    private func iconURL(for deviceID: AudioDeviceID) -> URL? {
+        client.readURL(
+            objectID: deviceID,
+            selector: kAudioDevicePropertyIcon,
             scope: kAudioObjectPropertyScopeGlobal,
             element: kAudioObjectPropertyElementMain
         )
@@ -789,6 +892,7 @@ final class VolumeMonitor: VolumeMonitoring, VolumeControlling {
                 scalar: reading.scalar,
                 isMuted: reading.isMuted,
                 deviceName: reading.deviceName,
+                currentDevice: reading.currentDevice,
                 outputDevices: devices
             )
         } else {

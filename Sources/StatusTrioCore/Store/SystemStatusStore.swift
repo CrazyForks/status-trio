@@ -408,6 +408,7 @@ private extension VolumeStatus {
             scalar: scalar,
             isMuted: isMuted,
             deviceName: deviceName,
+            currentDevice: currentDevice,
             outputDevices: outputDevices
         )
     }
@@ -417,6 +418,7 @@ private extension VolumeStatus {
             scalar: scalar,
             isMuted: isMuted,
             deviceName: deviceName,
+            currentDevice: currentDevice,
             outputDevices: outputDevices
         )
     }

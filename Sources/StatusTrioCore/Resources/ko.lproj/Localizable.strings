@@ -37,6 +37,7 @@
 "settings.tab.appIcon" = "앱 아이콘";
 "settings.tab.battery" = "배터리";
 "settings.tab.network" = "네트워크";
+"settings.tab.bluetooth" = "Bluetooth";
 "settings.tab.audio" = "오디오";
 "settings.tab.basics" = "기본";
 "settings.tab.panel" = "상태 패널";
@@ -48,6 +49,16 @@
 "settings.network.wifiIconForHotspot" = "개인 핫스팟에 Wi-Fi 아이콘 사용";
 "settings.network.wifiIconForTemporaryConnection" = "임시 연결에 Wi-Fi 아이콘 사용";
 "settings.network.wifiIconForInternetSharing" = "인터넷 공유에 Wi-Fi 아이콘 사용";
+"settings.bluetooth.title" = "Bluetooth 오디오";
+"settings.bluetooth.replaceNetworkIcon" = "네트워크 아이콘을 Bluetooth 오디오 기기로 교체";
+"settings.bluetooth.replaceNetworkIconDescription" = "Bluetooth로 오디오를 출력할 때 Wi-Fi 아이콘 대신 파란색 기기 아이콘을 표시합니다.";
+"settings.bluetooth.volumeColor" = "Bluetooth 볼륨을 파란색으로 표시";
+"settings.bluetooth.volumeColorDescription" = "Bluetooth 오디오 출력 중에는 활성 볼륨 점 또는 호가 파란색으로 표시됩니다.";
+"settings.bluetooth.networkErrorPriority" = "네트워크 오류 우선";
+"settings.bluetooth.networkErrorPriorityDescription" = "연결 오류나 오프라인 상태에서는 Bluetooth 기기 아이콘 대신 네트워크 아이콘을 유지합니다.";
+"settings.bluetooth.batteryLevels" = "Bluetooth 배터리 잔량 표시";
+"settings.bluetooth.batteryLevelsDescription" = "Bluetooth 패널을 열 때만 배터리 잔량을 읽습니다. 추가 권한 요청은 표시되지 않습니다.";
+"bluetooth.battery.unavailable" = "사용할 수 없음";
 "settings.audio.maximumVisible" = "표시할 최대 출력 장치 수";
 "settings.audio.maximumVisibleDescription" = "‘펼치기’ 컨트롤 전에 표시할 출력 장치 수입니다.";
 "settings.audio.showAll" = "항상 모든 출력 장치 표시";

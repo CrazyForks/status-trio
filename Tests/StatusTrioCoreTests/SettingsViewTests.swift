@@ -6,7 +6,7 @@ import XCTest
 @MainActor
 final class SettingsViewTests: XCTestCase {
     func testSettingsViewDimensionsAndSections() {
-        XCTAssertEqual(SettingsView.Section.allCases.count, 7)
+        XCTAssertEqual(SettingsView.Section.allCases.count, 8)
         XCTAssertEqual(SettingsView.sidebarWidth, 190)
         XCTAssertEqual(SettingsView.width, 720)
         XCTAssertEqual(SettingsView.height, 530)
@@ -15,7 +15,7 @@ final class SettingsViewTests: XCTestCase {
     func testSidebarListsEveryStatusElementBeforeTheAppWidePanes() {
         XCTAssertEqual(
             SettingsView.Section.allCases,
-            [.appIcon, .battery, .network, .audio, .popover, .general, .about]
+            [.appIcon, .battery, .network, .bluetooth, .audio, .popover, .general, .about]
         )
         XCTAssertEqual(SettingsView.Section.allCases.first, .appIcon)
     }
@@ -42,6 +42,11 @@ final class SettingsViewTests: XCTestCase {
                 previewIsDark: isDark
             ))),
             ("network", AnyView(NetworkSectionView(
+                store: store,
+                statusStore: statusStore,
+                previewIsDark: isDark
+            ))),
+            ("bluetooth", AnyView(BluetoothSectionView(
                 store: store,
                 statusStore: statusStore,
                 previewIsDark: isDark

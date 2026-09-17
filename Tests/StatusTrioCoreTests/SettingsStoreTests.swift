@@ -118,6 +118,69 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertTrue(second.showsWiFiIconForInternetSharing)
     }
 
+    func testBluetoothAudioDisplayDefaults() {
+        let store = SettingsStore(defaults: makeSuite().defaults)
+
+        XCTAssertFalse(store.replacesNetworkIconWithBluetoothAudio)
+        XCTAssertFalse(store.usesBluetoothAudioVolumeColor)
+        XCTAssertTrue(store.prioritizesNetworkErrorsOverBluetoothAudio)
+        XCTAssertFalse(store.showsBluetoothBatteryLevels)
+        XCTAssertEqual(store.bluetoothAudioIconOptions, .standard)
+    }
+
+    func testBluetoothAudioDisplaySettingsPersistAcrossStoreInstances() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+
+        let first = SettingsStore(defaults: suite.defaults)
+        first.replacesNetworkIconWithBluetoothAudio = true
+        first.usesBluetoothAudioVolumeColor = true
+        first.prioritizesNetworkErrorsOverBluetoothAudio = false
+        first.showsBluetoothBatteryLevels = true
+
+        let second = SettingsStore(defaults: suite.defaults)
+        XCTAssertTrue(second.replacesNetworkIconWithBluetoothAudio)
+        XCTAssertTrue(second.usesBluetoothAudioVolumeColor)
+        XCTAssertFalse(second.prioritizesNetworkErrorsOverBluetoothAudio)
+        XCTAssertTrue(second.showsBluetoothBatteryLevels)
+        XCTAssertEqual(
+            second.bluetoothAudioIconOptions,
+            BluetoothAudioIconOptions(
+                replacesNetworkIcon: true,
+                usesVolumeColor: true,
+                prioritizesNetworkErrors: false
+            )
+        )
+    }
+
+    func testBluetoothAudioDisplayFallsBackToDefaultsForNonBooleanStoredValues() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+        suite.defaults.set(
+            "yes",
+            forKey: SettingsStore.replacesNetworkIconWithBluetoothAudioDefaultsKey
+        )
+        suite.defaults.set(
+            "yes",
+            forKey: SettingsStore.usesBluetoothAudioVolumeColorDefaultsKey
+        )
+        suite.defaults.set(
+            "no",
+            forKey: SettingsStore.prioritizesNetworkErrorsOverBluetoothAudioDefaultsKey
+        )
+        suite.defaults.set(
+            "yes",
+            forKey: SettingsStore.showsBluetoothBatteryLevelsDefaultsKey
+        )
+
+        let store = SettingsStore(defaults: suite.defaults)
+
+        XCTAssertFalse(store.replacesNetworkIconWithBluetoothAudio)
+        XCTAssertFalse(store.usesBluetoothAudioVolumeColor)
+        XCTAssertTrue(store.prioritizesNetworkErrorsOverBluetoothAudio)
+        XCTAssertFalse(store.showsBluetoothBatteryLevels)
+    }
+
     func testWiFiSymbolScaleDefaultsAndClamping() {
         let store = SettingsStore(defaults: makeSuite().defaults)
 

@@ -136,13 +136,17 @@ final class CoreBluetoothStateMonitor: NSObject, @preconcurrency CBCentralManage
 final class BluetoothDeviceController: ObservableObject {
     @Published private(set) var devices: [BluetoothDevice] = []
     @Published private(set) var availability: BluetoothAvailability = .idle
+    @Published private(set) var batteryLevels: [String: BluetoothBatteryLevel] = [:]
 
     private let worker: any BluetoothPairedDeviceReading
     private let stateMonitor: any BluetoothStateMonitoring
+    private let batteryReader: any BluetoothBatteryReading
     private let notificationCenter: NotificationCenter
     private let workspaceNotificationCenter: NotificationCenter
     private(set) var isActive = false
     private var requestGate = AsyncRequestGate()
+    private var batteryRequestGate = AsyncRequestGate()
+    private var batteryLevelsEnabled = false
     private var periodicRefreshTask: Task<Void, Never>?
     private var applicationObserver: NSObjectProtocol?
     private var wakeObserver: NSObjectProtocol?
@@ -150,11 +154,13 @@ final class BluetoothDeviceController: ObservableObject {
     init(
         worker: any BluetoothPairedDeviceReading = IOBluetoothPairedDeviceWorker(),
         stateMonitor: any BluetoothStateMonitoring = CoreBluetoothStateMonitor(),
+        batteryReader: any BluetoothBatteryReading = SystemProfilerBluetoothBatteryWorker(),
         notificationCenter: NotificationCenter = .default,
         workspaceNotificationCenter: NotificationCenter = NSWorkspace.shared.notificationCenter
     ) {
         self.worker = worker
         self.stateMonitor = stateMonitor
+        self.batteryReader = batteryReader
         self.notificationCenter = notificationCenter
         self.workspaceNotificationCenter = workspaceNotificationCenter
         stateMonitor.onStateChange = { [weak self] authorization, managerState in
@@ -196,6 +202,7 @@ final class BluetoothDeviceController: ObservableObject {
         guard isActive else { return }
         isActive = false
         _ = requestGate.advance()
+        setBatteryLevelsEnabled(false)
         periodicRefreshTask?.cancel()
         periodicRefreshTask = nil
         removeSystemObservers()
@@ -213,16 +220,32 @@ final class BluetoothDeviceController: ObservableObject {
                 case let .success(devices):
                     self.devices = devices
                     self.availability = .available
+                    self.refreshBatteryLevels()
                 case .poweredOff:
                     self.availability = .poweredOff
+                    self.clearBatteryLevels()
                     self.stopPeriodicRefresh()
                 case .unavailable:
                     self.availability = .unavailable
+                    self.clearBatteryLevels()
                     self.stopPeriodicRefresh()
                 case .failed:
                     self.availability = .failed
+                    self.clearBatteryLevels()
                 }
             }
+        }
+    }
+
+    func setBatteryLevelsEnabled(_ enabled: Bool) {
+        guard batteryLevelsEnabled != enabled else {
+            if enabled { refreshBatteryLevels() }
+            return
+        }
+        batteryLevelsEnabled = enabled
+        clearBatteryLevels()
+        if enabled {
+            refreshBatteryLevels()
         }
     }
 
@@ -242,8 +265,31 @@ final class BluetoothDeviceController: ObservableObject {
             refresh()
         } else {
             _ = requestGate.advance()
+            clearBatteryLevels()
             stopPeriodicRefresh()
         }
+    }
+
+    private func refreshBatteryLevels() {
+        guard isActive, batteryLevelsEnabled, availability == .available else { return }
+        let request = batteryRequestGate.advance()
+        batteryReader.read { [weak self] levels in
+            Task { @MainActor [weak self] in
+                guard let self,
+                      self.isActive,
+                      self.batteryLevelsEnabled,
+                      self.availability == .available,
+                      self.batteryRequestGate.accepts(request) else {
+                    return
+                }
+                self.batteryLevels = levels
+            }
+        }
+    }
+
+    private func clearBatteryLevels() {
+        _ = batteryRequestGate.advance()
+        batteryLevels = [:]
     }
 
     private func registerSystemObservers() {

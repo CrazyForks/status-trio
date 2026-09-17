@@ -161,6 +161,24 @@ struct AppIconControllerTests {
         #expect(harness.log.volumeOptions.last == VolumeIconOptions(displayStyle: .arc))
     }
 
+    @Test func changingBluetoothAudioOptionsRendersWithUpdatedOptions() throws {
+        let harness = try AppIconControllerHarness(initialPlacement: .dock)
+        defer { harness.cleanUp() }
+        harness.controller.start()
+        harness.log.reset()
+
+        harness.settings.replacesNetworkIconWithBluetoothAudio = true
+        harness.settings.usesBluetoothAudioVolumeColor = true
+        harness.settings.prioritizesNetworkErrorsOverBluetoothAudio = false
+
+        #expect(harness.log.renderCount == 3)
+        #expect(harness.log.bluetoothAudioOptions.last == BluetoothAudioIconOptions(
+            replacesNetworkIcon: true,
+            usesVolumeColor: true,
+            prioritizesNetworkErrors: false
+        ))
+    }
+
     /// The icon size slider lives in the App Icon pane and is documented as
     /// menu-bar only: the Dock icon keeps the fixed design size.
     @Test func menuBarIconSizeDoesNotChangeTheDockIcon() throws {
@@ -332,11 +350,18 @@ private final class AppIconControllerHarness {
             setMenuBarVisible: { isVisible in
                 log.events.append(isVisible ? "menu:true" : "menu:false")
             },
-            renderDockIcon: { _, _, connectionOptions, volumeOptions, backgroundStyle in
+            renderDockIcon: {
+                _,
+                _,
+                connectionOptions,
+                volumeOptions,
+                bluetoothAudioOptions,
+                backgroundStyle in
                 log.renderCount += 1
                 log.backgroundStyles.append(backgroundStyle)
                 log.connectionOptions.append(connectionOptions)
                 log.volumeOptions.append(volumeOptions)
+                log.bluetoothAudioOptions.append(bluetoothAudioOptions)
                 return NSImage(size: NSSize(width: 512, height: 512))
             },
             theme: systemTheme,
@@ -374,6 +399,7 @@ private final class AppIconEventLog {
     var backgroundStyles: [DockIconBackgroundStyle] = []
     var connectionOptions: [ConnectionIconOptions] = []
     var volumeOptions: [VolumeIconOptions] = []
+    var bluetoothAudioOptions: [BluetoothAudioIconOptions] = []
 
     func reset() {
         events.removeAll()
@@ -381,6 +407,7 @@ private final class AppIconEventLog {
         backgroundStyles.removeAll()
         connectionOptions.removeAll()
         volumeOptions.removeAll()
+        bluetoothAudioOptions.removeAll()
     }
 }
 

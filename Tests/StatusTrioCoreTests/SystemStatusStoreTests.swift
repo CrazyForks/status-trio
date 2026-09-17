@@ -400,6 +400,39 @@ final class SystemStatusStoreTests: XCTestCase {
         store.stop()
     }
 
+    func testSetVolumePreservesCurrentOutputDevice() async {
+        let volume = FakeVolumeMonitor()
+        let store = SystemStatusStore(
+            batteryMonitor: FakeBatteryMonitor(),
+            wifiMonitor: FakeWiFiMonitor(),
+            volumeMonitor: volume,
+            refreshInterval: .seconds(60)
+        )
+        let currentDevice = AudioOutputDevice(
+            id: 42,
+            name: "AirPods Pro",
+            uid: "airpods-pro",
+            isCurrent: true,
+            volume: 0.4,
+            transport: .bluetooth
+        )
+
+        store.start()
+        volume.send(VolumeStatus(
+            scalar: 0.4,
+            isMuted: false,
+            deviceName: currentDevice.name,
+            currentDevice: currentDevice
+        ))
+        await drainMainActorTasks()
+
+        store.setVolume(0.7)
+
+        XCTAssertEqual(store.liveVolume.currentDevice, currentDevice)
+        XCTAssertEqual(store.snapshot.volume.currentDevice, currentDevice)
+        store.stop()
+    }
+
     func testLiveVolumeUsesSnapshotWhilePopupSnapshotIsDebounced() async {
         let volume = FakeVolumeMonitor()
         let sleeper = ManualSleeper()
