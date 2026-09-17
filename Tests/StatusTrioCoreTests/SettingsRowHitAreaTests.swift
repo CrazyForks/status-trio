@@ -59,20 +59,22 @@ final class SettingsRowHitAreaTests: XCTestCase {
         )
     }
 
-    func testNavigationBackButtonUsesAtLeast32By32HitArea() {
-        let view = NavigationBackButton(
+    func testNavigationBackRowUsesFullHeaderHitArea() {
+        let view = NavigationBackRow(
             accessibilityLabel: "Back",
+            title: "Wi-Fi",
             action: {}
         )
+        .frame(width: 300)
 
         let hitAreas = interactiveSubViewSizes(
             for: view,
-            size: NSSize(width: 100, height: 60)
+            size: NSSize(width: 300, height: 60)
         )
 
         XCTAssertTrue(
-            hitAreas.contains { $0.width >= 32 && $0.height >= 32 },
-            "Expected the back button to have at least a 32x32 hit area, got \(hitAreas)"
+            hitAreas.contains { $0.width >= 250 && $0.height >= 32 },
+            "Expected the back row to react across the header width, got \(hitAreas)"
         )
     }
 

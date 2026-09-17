@@ -202,7 +202,7 @@ enum LocalizationKey: String, CaseIterable, Hashable, Sendable {
     case commonCancel = "common.cancel"
     case wifiPower = "wifi.power"
     case wifiRefresh = "wifi.refresh"
-    case wifiCurrentNetwork = "wifi.currentNetwork"
+    case wifiKnownNetworks = "wifi.knownNetworks"
     case wifiOtherNetworks = "wifi.otherNetworks"
     case wifiScanning = "wifi.scanning"
     case wifiNoNetworks = "wifi.noNetworks"

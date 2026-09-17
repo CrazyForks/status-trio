@@ -152,6 +152,17 @@ struct WiFiNetwork: Identifiable, Equatable, Sendable {
     }
 }
 
+enum WiFiNetworkPresentation {
+    static func grouped(
+        _ networks: [WiFiNetwork]
+    ) -> (known: [WiFiNetwork], other: [WiFiNetwork]) {
+        (
+            known: networks.filter { $0.isSaved || $0.isConnected },
+            other: networks.filter { !$0.isSaved && !$0.isConnected }
+        )
+    }
+}
+
 struct WiFiConnectionDetails: Equatable, Sendable {
     let ssid: String?
     let bssid: String?

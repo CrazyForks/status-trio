@@ -68,6 +68,63 @@ final class WirelessListModelsTests: XCTestCase {
         XCTAssertEqual(office.preferredCandidate?.bssid, "01")
     }
 
+    func testWiFiGroupingKeepsSavedAndConnectedNetworksOutOfOtherNetworks() {
+        let networks = [
+            WiFiNetwork(
+                identity: WiFiNetworkIdentity(ssid: "Studio", security: .wpa2Personal),
+                candidates: [
+                    WiFiNetworkCandidate(
+                        ssid: "Studio",
+                        bssid: "01",
+                        rssi: -42,
+                        channel: 44,
+                        security: .wpa2Personal
+                    )
+                ],
+                connectedBSSID: "01",
+                isSaved: true
+            ),
+            WiFiNetwork(
+                identity: WiFiNetworkIdentity(ssid: "Home", security: .unknown),
+                candidates: [],
+                connectedBSSID: nil,
+                isSaved: true
+            ),
+            WiFiNetwork(
+                identity: WiFiNetworkIdentity(ssid: "Office", security: .wpa3Personal),
+                candidates: [
+                    WiFiNetworkCandidate(
+                        ssid: "Office",
+                        bssid: "02",
+                        rssi: -58,
+                        channel: 149,
+                        security: .wpa3Personal
+                    )
+                ],
+                connectedBSSID: nil,
+                isSaved: true
+            ),
+            WiFiNetwork(
+                identity: WiFiNetworkIdentity(ssid: "Cafe", security: .open),
+                candidates: [
+                    WiFiNetworkCandidate(
+                        ssid: "Cafe",
+                        bssid: "03",
+                        rssi: -66,
+                        channel: 6,
+                        security: .open
+                    )
+                ],
+                connectedBSSID: nil
+            )
+        ]
+
+        let grouped = WiFiNetworkPresentation.grouped(networks)
+
+        XCTAssertEqual(grouped.known.map(\.ssid), ["Studio", "Home", "Office"])
+        XCTAssertEqual(grouped.other.map(\.ssid), ["Cafe"])
+    }
+
     func testPreferredWirelessNetworkParserSkipsHeaderAndPreservesSSIDs() {
         let output = """
         Preferred networks on en0:
