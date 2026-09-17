@@ -1,5 +1,6 @@
 "menu.version" = "Status Trio %@";
 "menu.settings" = "설정…";
+"menu.settings.development" = "개발 버전 · %@";
 "menu.quit" = "Status Trio 종료";
 "menu.about" = "%@ 정보";
 "menu.hide" = "%@ 가리기";

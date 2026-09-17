@@ -1,5 +1,6 @@
 "menu.version" = "Status Trio %@";
 "menu.settings" = "Impostazioni…";
+"menu.settings.development" = "Versione di sviluppo · %@";
 "menu.quit" = "Esci da Status Trio";
 "menu.about" = "Informazioni su %@";
 "menu.hide" = "Nascondi %@";
