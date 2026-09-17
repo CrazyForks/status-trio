@@ -45,6 +45,8 @@ final class SettingsStore: ObservableObject {
     static let defaultPopupVolumeScrollScope: PopupVolumeScrollScope = .panel
     static let popupVolumeScrollDirectionDefaultsKey = "popupVolumeScrollDirection"
     static let defaultPopupVolumeScrollDirection: PopupVolumeScrollDirection = .up
+    static let popupVolumeNaturalScrollingDefaultsKey = "popupVolumeNaturalScrolling"
+    static let defaultPopupVolumeNaturalScrolling = false
 
     static let appIconPlacementDefaultsKey = "appIconPlacement"
     static let dockIconBackgroundPreferenceDefaultsKey = "dockIconBackgroundPreference"
@@ -260,6 +262,15 @@ final class SettingsStore: ObservableObject {
         }
     }
 
+    @Published var popupVolumeNaturalScrolling: Bool {
+        didSet {
+            defaults.set(
+                popupVolumeNaturalScrolling,
+                forKey: Self.popupVolumeNaturalScrollingDefaultsKey
+            )
+        }
+    }
+
     var visiblePopupSections: [PopupSection] {
         popupSectionOrder.filter { enabledPopupSections.contains($0) }
     }
@@ -453,6 +464,9 @@ final class SettingsStore: ObservableObject {
         self.popupVolumeScrollDirection = storedPopupVolumeScrollDirection
             .flatMap(PopupVolumeScrollDirection.init(rawValue:))
             ?? Self.defaultPopupVolumeScrollDirection
+        self.popupVolumeNaturalScrolling = defaults.object(
+            forKey: Self.popupVolumeNaturalScrollingDefaultsKey
+        ) as? Bool ?? Self.defaultPopupVolumeNaturalScrolling
     }
 
     static func clampedIconSize(_ value: Double) -> Double {
