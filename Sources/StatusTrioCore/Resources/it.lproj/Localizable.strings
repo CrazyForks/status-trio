@@ -148,7 +148,7 @@
 "settings.popup.volumeScroll.scope.panel" = "Tutto il pannello";
 "settings.popup.volumeScroll.scope.volumeControl" = "Solo il controllo del volume";
 "settings.popup.volumeScroll.natural" = "Scorrimento naturale";
-"settings.popup.volumeScroll.natural.description" = "Se attivo, scorrendo verso l’alto con mouse o trackpad il volume aumenta. Se disattivo, il volume segue la direzione di scorrimento del sistema. Se lo scorrimento verso l’alto del mouse abbassa il volume, disattiva l’inversione dello scorrimento per Status Trio o aggiungilo all’elenco consentiti/esclusioni in MOS, Scroll Reverser, LinearMouse o app simili.";
+"settings.popup.volumeScroll.natural.description" = "Se attivo, scorrendo verso l’alto con mouse o trackpad il volume aumenta. Se disattivo, il volume segue la direzione di scorrimento del sistema. Se, dopo aver attivato questa opzione, lo scorrimento verso l’alto del mouse abbassa ancora il volume, configura MOS, Scroll Reverser, LinearMouse o un’app simile per lasciare Status Trio invariato, di solito tramite un elenco di eccezioni/ignorati (talvolta chiamato elenco consentiti).";
 "settings.popup.volumeScroll.direction" = "Direzione di scorrimento";
 "settings.popup.volumeScroll.direction.description" = "Scegli la direzione che alza il volume.";
 "settings.popup.volumeScroll.direction.up" = "Verso l’alto";
