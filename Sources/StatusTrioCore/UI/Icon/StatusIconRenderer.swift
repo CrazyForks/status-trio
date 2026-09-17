@@ -3,6 +3,11 @@ import CoreGraphics
 import CoreText
 
 enum StatusIconRenderer {
+    private static let wifiSymbolCenter = CGPoint(
+        x: StatusIconGeometry.canvas.midX,
+        y: 64.0
+    )
+
     // Keep the 7pt rounded Wi-Fi strokes fully inside the bitmap.
     private static let wifiCanvasBounds = CGRect(
         x: 31.5,
@@ -90,7 +95,10 @@ enum StatusIconRenderer {
         let scale = size / 56.0
         context.translateBy(x: 0, y: size)
         context.scaleBy(x: scale, y: -scale)
-        context.translateBy(x: -(59.5 - 28.0), y: -(64.0 - 28.0))
+        context.translateBy(
+            x: -(wifiSymbolCenter.x - 28.0),
+            y: -(wifiSymbolCenter.y - 28.0)
+        )
         context.setLineCap(.round)
         context.setLineJoin(.round)
 
@@ -609,7 +617,7 @@ enum StatusIconRenderer {
         let scale = CGFloat(wifiScale)
         guard scale.isFinite, scale > 0, scale != 1 else { return }
 
-        let pivot = CGPoint(x: 59.5, y: 64.0)
+        let pivot = wifiSymbolCenter
         context.translateBy(x: pivot.x, y: pivot.y)
         context.scaleBy(x: scale, y: scale)
         context.translateBy(x: -pivot.x, y: -pivot.y)
@@ -654,7 +662,7 @@ enum StatusIconRenderer {
         name: String,
         variableValue: Double = 1.0,
         pointSize: CGFloat,
-        center: CGPoint = CGPoint(x: 59.5, y: 64.0),
+        center: CGPoint = wifiSymbolCenter,
         foreground: CGColor,
         in context: CGContext
     ) {
