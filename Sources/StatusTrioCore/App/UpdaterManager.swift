@@ -10,10 +10,18 @@ final class UpdaterManager: NSObject, ObservableObject, SPUUpdaterDelegate {
     @Published private(set) var canCheckForUpdates = false
     @Published private(set) var automaticallyChecksForUpdates = false
 
-    private lazy var controller = SPUStandardUpdaterController(
-        startingUpdater: false,
-        updaterDelegate: self,
-        userDriverDelegate: nil
+    private lazy var userDriver: UpdateFallbackUserDriver = {
+        let driver = UpdateFallbackUserDriver(hostBundle: .main, delegate: nil)
+        driver.shouldSuppressUpdaterError = { [weak self] error in
+            self?.updateSourceFallback.canAdvanceAfterError(error) == true
+        }
+        return driver
+    }()
+    private lazy var updater = SPUUpdater(
+        hostBundle: .main,
+        applicationBundle: .main,
+        userDriver: userDriver,
+        delegate: self
     )
     private var updateSourceFallback = UpdateSourceFallback()
     private var isShowingManualUpdateUI = false
@@ -21,16 +29,16 @@ final class UpdaterManager: NSObject, ObservableObject, SPUUpdaterDelegate {
     var automaticallyChecksForUpdatesBinding: Binding<Bool> {
         Binding(
             get: { self.automaticallyChecksForUpdates },
-            set: { self.controller.updater.automaticallyChecksForUpdates = $0 }
+            set: { self.updater.automaticallyChecksForUpdates = $0 }
         )
     }
 
     private override init() {
         super.init()
 
-        controller.updater.publisher(for: \.canCheckForUpdates)
+        updater.publisher(for: \.canCheckForUpdates)
             .assign(to: &$canCheckForUpdates)
-        controller.updater.publisher(for: \.automaticallyChecksForUpdates)
+        updater.publisher(for: \.automaticallyChecksForUpdates)
             .assign(to: &$automaticallyChecksForUpdates)
     }
 
@@ -38,7 +46,11 @@ final class UpdaterManager: NSObject, ObservableObject, SPUUpdaterDelegate {
         #if DEBUG
         return
         #else
-        controller.startUpdater()
+        do {
+            try updater.start()
+        } catch {
+            NSAlert(error: error).runModal()
+        }
         #endif
     }
 
@@ -51,7 +63,7 @@ final class UpdaterManager: NSObject, ObservableObject, SPUUpdaterDelegate {
         isShowingManualUpdateUI = true
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
-        controller.checkForUpdates(nil)
+        updater.checkForUpdates()
         #endif
     }
 
@@ -94,9 +106,9 @@ final class UpdaterManager: NSObject, ObservableObject, SPUUpdaterDelegate {
     private func retryUpdateCheck(_ updateCheck: SPUUpdateCheck) {
         switch updateCheck {
         case .updates:
-            controller.checkForUpdates(nil)
+            updater.checkForUpdates()
         case .updatesInBackground:
-            controller.updater.checkForUpdatesInBackground()
+            updater.checkForUpdatesInBackground()
         default:
             break
         }

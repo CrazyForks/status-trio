@@ -64,6 +64,21 @@ struct UpdateSourceFallback {
         currentSource.url(for: appcastURL)
     }
 
+    func canAdvanceAfterError(_ error: Error?) -> Bool {
+        guard UpdateSourceRetryPolicy.shouldTryNextSource(after: error) else {
+            return false
+        }
+
+        guard
+            let currentIndex = sources.firstIndex(of: currentSource),
+            sources.indices.contains(currentIndex + 1)
+        else {
+            return false
+        }
+
+        return !attemptedSources.contains(sources[currentIndex + 1])
+    }
+
     mutating func advanceAfterError(_ error: Error?) -> Bool {
         guard UpdateSourceRetryPolicy.shouldTryNextSource(after: error) else {
             attemptedSources.removeAll()

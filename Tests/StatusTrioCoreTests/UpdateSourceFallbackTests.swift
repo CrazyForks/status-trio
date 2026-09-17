@@ -77,6 +77,24 @@ struct UpdateSourceFallbackTests {
     }
 
     @Test
+    func fallbackCanAdvanceWithoutChangingSourceWhenNextSourceExists() {
+        let fallback = UpdateSourceFallback(initialSource: .github)
+        let error = URLError(.cannotConnectToHost)
+
+        #expect(fallback.canAdvanceAfterError(error))
+        #expect(fallback.currentSource == .github)
+    }
+
+    @Test
+    func fallbackCannotAdvanceAfterLastSource() {
+        let fallback = UpdateSourceFallback(initialSource: .ghFast)
+        let error = URLError(.cannotConnectToHost)
+
+        #expect(fallback.canAdvanceAfterError(error) == false)
+        #expect(fallback.currentSource == .ghFast)
+    }
+
+    @Test
     func fallbackUsesSelectedSourceForFeedAndDownloadURLs() {
         let fallback = UpdateSourceFallback(initialSource: .ghFast)
         let appcastString = "https://raw.githubusercontent.com/lingyired/status-trio/main/appcast.xml"
