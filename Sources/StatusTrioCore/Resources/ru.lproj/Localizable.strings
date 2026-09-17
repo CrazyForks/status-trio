@@ -243,3 +243,6 @@
 "settings.audio.indicatorStyleDescription" = "Выберите отображение громкости четырьмя точками или сплошной дугой.";
 "settings.audio.indicatorStyle.dots" = "Точки";
 "settings.audio.indicatorStyle.arc" = "Дуга";
+
+/* Compact popover controls. */
+"menu.more" = "Другие действия";

@@ -243,3 +243,6 @@
 "settings.audio.indicatorStyleDescription" = "Scegli se mostrare il volume con quattro punti o con un arco continuo.";
 "settings.audio.indicatorStyle.dots" = "Punti";
 "settings.audio.indicatorStyle.arc" = "Arco";
+
+/* Compact popover controls. */
+"menu.more" = "Altre azioni";

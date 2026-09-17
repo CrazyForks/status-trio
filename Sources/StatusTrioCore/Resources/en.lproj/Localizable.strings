@@ -243,3 +243,6 @@
 "settings.audio.indicatorStyleDescription" = "Choose whether volume displays as four discrete dots or a continuous bottom arc.";
 "settings.audio.indicatorStyle.dots" = "Dots";
 "settings.audio.indicatorStyle.arc" = "Arc";
+
+/* Compact popover controls. */
+"menu.more" = "More actions";

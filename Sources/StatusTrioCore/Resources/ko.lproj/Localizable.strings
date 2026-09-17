@@ -243,3 +243,6 @@
 "settings.audio.indicatorStyleDescription" = "상태 링 하단에 네 개의 점 또는 연속된 호 모양 막대 중 표시 방식을 선택합니다.";
 "settings.audio.indicatorStyle.dots" = "네 개의 점";
 "settings.audio.indicatorStyle.arc" = "호 막대";
+
+/* Compact popover controls. */
+"menu.more" = "추가 작업";
