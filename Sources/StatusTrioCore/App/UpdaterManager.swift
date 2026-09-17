@@ -15,6 +15,7 @@ final class UpdaterManager: NSObject, ObservableObject, SPUUpdaterDelegate {
         updaterDelegate: self,
         userDriverDelegate: nil
     )
+    private var updateSourceFallback = UpdateSourceFallback()
     private var isShowingManualUpdateUI = false
 
     var automaticallyChecksForUpdatesBinding: Binding<Bool> {
@@ -54,13 +55,50 @@ final class UpdaterManager: NSObject, ObservableObject, SPUUpdaterDelegate {
         #endif
     }
 
+    func feedURLString(for updater: SPUUpdater) -> String? {
+        guard
+            let directURLString = Bundle.main.object(
+                forInfoDictionaryKey: "SUFeedURL"
+            ) as? String
+        else {
+            return nil
+        }
+
+        return updateSourceFallback.appcastURLString(from: directURLString)
+    }
+
+    func updater(
+        _ updater: SPUUpdater,
+        willDownloadUpdate item: SUAppcastItem,
+        with request: NSMutableURLRequest
+    ) {
+        guard let fileURL = item.fileURL else { return }
+        request.url = updateSourceFallback.downloadURL(for: fileURL)
+    }
+
     func updater(
         _ updater: SPUUpdater,
         didFinishUpdateCycleFor updateCheck: SPUUpdateCheck,
         error: Error?
     ) {
+        if updateSourceFallback.advanceAfterError(error) {
+            retryUpdateCheck(updateCheck)
+            return
+        }
+
         guard isShowingManualUpdateUI else { return }
         isShowingManualUpdateUI = false
         NSApp.setActivationPolicy(.accessory)
+    }
+
+    private func retryUpdateCheck(_ updateCheck: SPUUpdateCheck) {
+        switch updateCheck {
+        case .updates:
+            controller.checkForUpdates(nil)
+        case .updatesInBackground:
+            controller.updater.checkForUpdatesInBackground()
+        default:
+            break
+        }
     }
 }
