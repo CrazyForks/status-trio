@@ -5,24 +5,18 @@ import XCTest
 
 @MainActor
 final class CompactAudioLayoutTests: XCTestCase {
-    func testAlwaysShowAllPreferenceKeepsDevicesVisible() throws {
-        let collapsed = try render(alwaysShowAll: false, language: .english, dark: false)
+    func testOutputDeviceListIsVisibleWithoutDisclosureWhenLimitAllowsIt() throws {
+        let limited = try render(alwaysShowAll: false, language: .english, dark: false)
         let all = try render(alwaysShowAll: true, language: .english, dark: false)
-        let disclosed = try render(alwaysShowAll: false, language: .english, dark: false, expandsPicker: true)
-        XCTAssertGreaterThan(all.size.height, collapsed.size.height + 60)
-        XCTAssertGreaterThan(all.descendantCount, collapsed.descendantCount)
-        XCTAssertGreaterThan(disclosed.size.height, collapsed.size.height + 60)
-        XCTAssertGreaterThan(disclosed.descendantCount, collapsed.descendantCount)
+        XCTAssertEqual(limited.size.height, all.size.height, accuracy: 1)
+        XCTAssertEqual(limited.descendantCount, all.descendantCount)
     }
 
-    func testLongDeviceNamesAndLocalizedExpandedControlsFitPopover() throws {
+    func testLongDeviceNamesAndLocalizedControlsFitPopover() throws {
         for language in [AppLanguage.english, .simplifiedChinese, .german, .arabic] {
-            let collapsed = try render(alwaysShowAll: false, language: language, dark: true)
-            let expanded = try render(alwaysShowAll: false, language: language, dark: true, expandsPicker: true)
-            XCTAssertLessThan(collapsed.size.height, 230)
-            XCTAssertLessThan(expanded.size.height, 450)
-            XCTAssertGreaterThan(expanded.size.height, collapsed.size.height + 60)
-            XCTAssertGreaterThan(expanded.descendantCount, collapsed.descendantCount)
+            let size = try render(alwaysShowAll: false, language: language, dark: true)
+            XCTAssertGreaterThan(size.size.height, 200)
+            XCTAssertLessThan(size.size.height, 450)
         }
     }
 
@@ -41,39 +35,8 @@ final class CompactAudioLayoutTests: XCTestCase {
         XCTAssertNil(summary(nil, []).displayDeviceName)
     }
 
-    private func render(alwaysShowAll: Bool, language: AppLanguage, dark: Bool, expandsPicker: Bool = false) throws -> (size: NSSize, descendantCount: Int) {
-        let suite = "StatusTrioCoreTests.CompactAudio.\(UUID().uuidString)"
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
-        defer { defaults.removePersistentDomain(forName: suite) }
-        let localization = Localization(defaults: defaults, preferredLanguages: [language.rawValue])
-        let settings = SettingsStore(defaults: defaults)
-        settings.alwaysShowsAllOutputDevices = alwaysShowAll
-        let devices = [
-            AudioOutputDevice(id: 1, name: "Studio AirPods Pro with a very long device name", isCurrent: true, volume: 0.19, transport: .bluetooth),
-            AudioOutputDevice(id: 2, name: "MacBook Pro Speakers", isCurrent: false, volume: 0.51, transport: .builtIn),
-            AudioOutputDevice(id: 3, name: "External Display", isCurrent: false, transport: .hdmi)
-        ]
-        let view = VStack(alignment: .leading, spacing: 12) {
-            VolumeControlsView(
-                settings: settings,
-                scrollTargets: PopoverScrollTargets(),
-                volume: VolumeStatus(scalar: 0.19, isMuted: false, deviceName: devices[0].name, outputDevices: devices),
-                isEnabled: true,
-                onVolumeChange: { _ in }, onToggleMute: {}, onSelectOutputDevice: { _ in }, onOpenSoundSettings: {},
-                initiallyExpandsOutput: expandsPicker
-            )
-            Divider()
-            PopoverFooterView(openSettings: {}, quit: {})
-        }
-        .padding(14)
-        .frame(width: 330)
-        // A fixture backdrop makes the transparent offscreen capture inspectable.
-        .background(dark ? Color(white: 0.15) : Color(white: 0.96))
-        .environmentObject(localization)
-        .environment(\.colorScheme, dark ? .dark : .light)
-        .environment(\.layoutDirection, language == .arabic ? .rightToLeft : .leftToRight)
-        let hosting = NSHostingView(rootView: view)
-        hosting.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
+    private func render(alwaysShowAll: Bool, language: AppLanguage, dark: Bool) throws -> (size: NSSize, descendantCount: Int) {
+        let hosting = try makeHostingView(alwaysShowAll: alwaysShowAll, language: language, dark: dark)
         let size = hosting.fittingSize
         hosting.frame = NSRect(origin: .zero, size: size)
         hosting.layoutSubtreeIfNeeded()
@@ -86,10 +49,50 @@ final class CompactAudioLayoutTests: XCTestCase {
             let png = try XCTUnwrap(bitmap.representation(using: .png, properties: [:]))
             let url = URL(fileURLWithPath: directory, isDirectory: true)
             try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
-            let state = alwaysShowAll ? "all" : (expandsPicker ? "expanded" : "collapsed")
+            let state = alwaysShowAll ? "all" : "limited"
             try png.write(to: url.appendingPathComponent("audio-\(language.rawValue)-\(dark ? "dark" : "light")-\(state).png"))
         }
         return (size, descendantCount(hosting))
+    }
+
+    private func makeHostingView(
+        alwaysShowAll: Bool,
+        language: AppLanguage,
+        dark: Bool
+    ) throws -> NSHostingView<AnyView> {
+        let suite = "StatusTrioCoreTests.CompactAudio.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let localization = Localization(defaults: defaults, preferredLanguages: [language.rawValue])
+        let settings = SettingsStore(defaults: defaults)
+        settings.alwaysShowsAllOutputDevices = alwaysShowAll
+        let devices = [
+            AudioOutputDevice(id: 1, name: "Studio AirPods Pro with a very long device name", isCurrent: true, volume: 0.19, transport: .bluetooth),
+            AudioOutputDevice(id: 2, name: "MacBook Pro Speakers", isCurrent: false, volume: 0.51, transport: .builtIn),
+            AudioOutputDevice(id: 3, name: "External Display", isCurrent: false, transport: .hdmi)
+        ]
+        let view = AnyView(
+            VStack(alignment: .leading, spacing: 12) {
+                VolumeControlsView(
+                    settings: settings,
+                    scrollTargets: PopoverScrollTargets(),
+                    volume: VolumeStatus(scalar: 0.19, isMuted: false, deviceName: devices[0].name, outputDevices: devices),
+                    isEnabled: true,
+                    onVolumeChange: { _ in }, onToggleMute: {}, onSelectOutputDevice: { _ in }, onOpenSoundSettings: {}
+                )
+                Divider()
+                PopoverFooterView(openSettings: {}, quit: {})
+            }
+            .padding(14)
+            .frame(width: 330)
+            .background(dark ? Color(white: 0.15) : Color(white: 0.96))
+            .environmentObject(localization)
+            .environment(\.colorScheme, dark ? .dark : .light)
+            .environment(\.layoutDirection, language == .arabic ? .rightToLeft : .leftToRight)
+        )
+        let hosting = NSHostingView(rootView: view)
+        hosting.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
+        return hosting
     }
 
     private func descendantCount(_ view: NSView) -> Int {

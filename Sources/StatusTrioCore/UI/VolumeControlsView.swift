@@ -13,33 +13,24 @@ struct VolumeControlsView: View {
 
     @State private var draftVolume = 0.0
     @State private var isAdjusting = false
-    @State private var isOutputExpanded: Bool
-
-    init(
-        settings: SettingsStore,
-        scrollTargets: PopoverScrollTargets,
-        volume: VolumeStatus,
-        isEnabled: Bool,
-        onVolumeChange: @escaping (Double) -> Void,
-        onToggleMute: @escaping () -> Void,
-        onSelectOutputDevice: @escaping (AudioOutputDevice) -> Void,
-        onOpenSoundSettings: @escaping () -> Void,
-        initiallyExpandsOutput: Bool = false
-    ) {
-        self.settings = settings
-        self.scrollTargets = scrollTargets
-        self.volume = volume
-        self.isEnabled = isEnabled
-        self.onVolumeChange = onVolumeChange
-        self.onToggleMute = onToggleMute
-        self.onSelectOutputDevice = onSelectOutputDevice
-        self.onOpenSoundSettings = onOpenSoundSettings
-        _isOutputExpanded = State(initialValue: initiallyExpandsOutput)
-    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            VolumeOutputSummaryView(volume: volume)
+            HStack(alignment: .top, spacing: 10) {
+                VolumeOutputSummaryView(volume: volume)
+
+                Button(
+                    localization.string(.volumeActionOpenSettings),
+                    systemImage: "gearshape",
+                    action: onOpenSoundSettings
+                )
+                .labelStyle(.iconOnly)
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+                .help(localization.string(.volumeActionOpenSettings))
+                .accessibilityLabel(localization.string(.volumeActionOpenSettings))
+                .frame(width: 24, height: 24)
+            }
 
             HStack(spacing: 10) {
                 Button(action: onToggleMute) {
@@ -64,6 +55,8 @@ struct VolumeControlsView: View {
                 .accessibilityLabel(localization.string(.volumeAccessibilityLabel))
                 .accessibilityValue(percentageText)
                 .padding(.horizontal, 2)
+                // Only the control row is a scroll target; the output device
+                // list below stays a normal list.
                 .background(VolumeControlScrollTarget(targets: scrollTargets))
 
                 Image(systemName: "speaker.wave.3.fill")
@@ -71,13 +64,16 @@ struct VolumeControlsView: View {
                     .accessibilityHidden(true)
             }
 
-            AudioOutputPickerView(
-                settings: settings,
-                devices: volume.outputDevices,
-                onSelect: onSelectOutputDevice,
-                onOpenSoundSettings: onOpenSoundSettings,
-                isExpanded: $isOutputExpanded
-            )
+            if volume.outputDevices.count > 1 {
+                Divider()
+                    .padding(.top, 2)
+
+                OutputDeviceList(
+                    settings: settings,
+                    devices: volume.outputDevices,
+                    onSelect: onSelectOutputDevice
+                )
+            }
         }
         .onAppear(perform: synchronizeVolume)
         .onChange(of: draftVolume) { _, newValue in

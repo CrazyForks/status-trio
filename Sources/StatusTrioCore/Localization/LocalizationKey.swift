@@ -234,7 +234,6 @@ enum LocalizationKey: String, CaseIterable, Hashable, Sendable {
     case volumeValue = "volume.value"
     case volumeNoDefaultDevice = "volume.noDefaultDevice"
     case volumeOutputTitle = "volume.output.title"
-    case volumeOutputChoose = "volume.output.choose"
     case volumeOutputEmpty = "volume.output.empty"
     case volumeOutputCurrent = "volume.output.current"
     case volumeOutputSwitchTo = "volume.output.switchTo"
