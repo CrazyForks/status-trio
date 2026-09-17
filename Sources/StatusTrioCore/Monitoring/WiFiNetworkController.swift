@@ -55,29 +55,47 @@ struct WiFiServiceNetworkConfiguration {
     }
 }
 
-private struct WiFiScanPayload: Sendable {
+struct WiFiScanPayload: Sendable {
     let networks: [WiFiNetwork]
     let details: WiFiConnectionDetails
 }
 
-private enum WiFiScanWorkerResult: Sendable {
+enum WiFiScanWorkerResult: Sendable {
     case success(WiFiScanPayload)
     case poweredOff
     case noInterface
     case failed
 }
 
-private enum WiFiAssociationWorkerResult: Sendable {
+enum WiFiAssociationWorkerResult: Sendable {
     case success(WiFiConnectionDetails)
     case networkUnavailable
     case timedOut
     case failed
 }
 
+protocol WiFiNetworkWorking: AnyObject {
+    func scan(completion: @escaping @Sendable (WiFiScanWorkerResult) -> Void)
+    func setPower(
+        _ isOn: Bool,
+        completion: @escaping @Sendable (Bool) -> Void
+    )
+    func associate(
+        to network: WiFiNetwork,
+        password: String?,
+        completion: @escaping @Sendable (WiFiAssociationWorkerResult) -> Void
+    )
+}
+
 /// CoreWLAN exposes synchronous scan and association APIs. This worker owns a
 /// serial queue so those calls never run on the main actor and cannot overlap.
-private final class CoreWLANNetworkWorker: @unchecked Sendable {
+private final class CoreWLANNetworkWorker: WiFiNetworkWorking, @unchecked Sendable {
     private let queue = DispatchQueue(label: "StatusTrio.CoreWLANNetworkWorker")
+    private let systemNetwork: any WiFiSystemNetworkConfiguring
+
+    init(systemNetwork: any WiFiSystemNetworkConfiguring = NetworksetupWiFiSystemNetwork()) {
+        self.systemNetwork = systemNetwork
+    }
 
     func scan(completion: @escaping @Sendable (WiFiScanWorkerResult) -> Void) {
         queue.async { [self] in
@@ -109,7 +127,11 @@ private final class CoreWLANNetworkWorker: @unchecked Sendable {
         completion: @escaping @Sendable (WiFiAssociationWorkerResult) -> Void
     ) {
         queue.async { [self] in
-            completion(associateSynchronously(to: network, password: password))
+            if network.isSaved {
+                completion(associateToPreferredNetworkSynchronously(to: network))
+            } else {
+                completion(associateSynchronously(to: network, password: password))
+            }
         }
     }
 
@@ -121,18 +143,59 @@ private final class CoreWLANNetworkWorker: @unchecked Sendable {
             let rawNetworks = try interface.scanForNetworks(withSSID: nil)
             let associatedBSSID = interface.bssid()
             let candidates = rawNetworks.compactMap(projectCandidate)
+            let savedSSIDs = interface.interfaceName.map {
+                systemNetwork.preferredNetworkSSIDs(interface: $0)
+            } ?? []
             let actualNetwork = rawNetworks.first {
                 bssid($0.bssid, matches: associatedBSSID)
             }
             return .success(
                 WiFiScanPayload(
-                    networks: WiFiNetwork.merge(candidates, connectedBSSID: associatedBSSID),
+                    networks: WiFiNetwork.merge(
+                        candidates,
+                        connectedBSSID: associatedBSSID,
+                        savedSSIDs: savedSSIDs
+                    ),
                     details: makeDetails(interface: interface, actualNetwork: actualNetwork)
                 )
             )
         } catch {
             return .failed
         }
+    }
+
+    private func associateToPreferredNetworkSynchronously(
+        to selected: WiFiNetwork
+    ) -> WiFiAssociationWorkerResult {
+        guard let interface = CWWiFiClient.shared().interface(),
+              interface.powerOn(),
+              let interfaceName = interface.interfaceName else {
+            return .networkUnavailable
+        }
+        guard systemNetwork.associate(interface: interfaceName, ssid: selected.ssid) else {
+            return .failed
+        }
+
+        let targetBSSID = selected.preferredCandidate?.bssid
+        let deadline = Date().addingTimeInterval(12)
+        while Date() < deadline {
+            if isAssociated(
+                interface: interface,
+                with: selected,
+                targetBSSID: targetBSSID
+            ) {
+                let actualNetwork = (try? interface.scanForNetworks(
+                    withSSID: selected.ssid.data(using: .utf8)
+                ))?.first {
+                    bssid($0.bssid, matches: interface.bssid())
+                }
+                return .success(
+                    makeDetails(interface: interface, actualNetwork: actualNetwork)
+                )
+            }
+            Thread.sleep(forTimeInterval: 0.25)
+        }
+        return .timedOut
     }
 
     private func associateSynchronously(
@@ -182,10 +245,13 @@ private final class CoreWLANNetworkWorker: @unchecked Sendable {
     private func isAssociated(
         interface: CWInterface,
         with selected: WiFiNetwork,
-        targetBSSID: String
+        targetBSSID: String?
     ) -> Bool {
-        if bssid(interface.bssid(), matches: targetBSSID) { return true }
+        if let targetBSSID, bssid(interface.bssid(), matches: targetBSSID) {
+            return true
+        }
         guard interface.ssid() == selected.ssid else { return false }
+        if selected.security == .unknown { return true }
         return compatibleSecurity(
             WiFiSecurityKind(coreWLANRawValue: interface.security().rawValue),
             selected.security
@@ -358,7 +424,7 @@ final class WiFiNetworkController: ObservableObject {
     @Published private(set) var passwordPromptNetwork: WiFiNetwork?
     @Published private(set) var credentialIssue: WiFiCredentialIssue?
 
-    private let worker = CoreWLANNetworkWorker()
+    private let worker: any WiFiNetworkWorking
     private let credentialWorker: WiFiCredentialWorker
     private var scanGate = AsyncRequestGate()
     private var connectionGate = AsyncRequestGate()
@@ -367,7 +433,11 @@ final class WiFiNetworkController: ObservableObject {
     private var periodicRefreshTask: Task<Void, Never>?
     private var lastNameAccess: WiFiNameAccess = .notDetermined
 
-    init(credentialStore: any WiFiCredentialStoring = KeychainWiFiPasswordStore()) {
+    init(
+        worker: any WiFiNetworkWorking = CoreWLANNetworkWorker(),
+        credentialStore: any WiFiCredentialStoring = KeychainWiFiPasswordStore()
+    ) {
+        self.worker = worker
         credentialWorker = WiFiCredentialWorker(store: credentialStore)
     }
     deinit {
@@ -436,6 +506,16 @@ final class WiFiNetworkController: ObservableObject {
         pendingNetwork = network
         passwordPromptNetwork = nil
         credentialIssue = nil
+
+        if network.isSaved {
+            startAssociation(
+                to: network,
+                password: nil,
+                suppliedPassword: nil,
+                rememberPassword: false
+            )
+            return
+        }
 
         if network.security.isEnterprise {
             state = .enterpriseNetwork

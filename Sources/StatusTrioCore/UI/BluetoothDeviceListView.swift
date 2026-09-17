@@ -94,11 +94,10 @@ struct BluetoothDeviceListView: View {
         let groups = BluetoothDevicePresentation.grouped(controller.devices)
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
-                Button(action: onBack) {
-                    Image(systemName: "chevron.backward")
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(localization.string(.commonBack))
+                NavigationBackButton(
+                    accessibilityLabel: localization.string(.commonBack),
+                    action: onBack
+                )
                 Text(localization.string(.bluetoothTitle))
                     .font(.headline)
                 Spacer()

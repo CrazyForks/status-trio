@@ -73,6 +73,19 @@ struct WiFiNetwork: Identifiable, Equatable, Sendable {
     let identity: WiFiNetworkIdentity
     let candidates: [WiFiNetworkCandidate]
     let connectedBSSID: String?
+    let isSaved: Bool
+
+    init(
+        identity: WiFiNetworkIdentity,
+        candidates: [WiFiNetworkCandidate],
+        connectedBSSID: String?,
+        isSaved: Bool = false
+    ) {
+        self.identity = identity
+        self.candidates = candidates
+        self.connectedBSSID = connectedBSSID
+        self.isSaved = isSaved
+    }
 
     var id: WiFiNetworkIdentity { identity }
     var ssid: String { identity.ssid }
@@ -96,16 +109,28 @@ struct WiFiNetwork: Identifiable, Equatable, Sendable {
 
     static func merge(
         _ candidates: [WiFiNetworkCandidate],
-        connectedBSSID: String?
+        connectedBSSID: String?,
+        savedSSIDs: Set<String> = []
     ) -> [WiFiNetwork] {
         let groups = Dictionary(grouping: candidates, by: \.identity)
-        return groups.map { identity, values in
+        let visibleNetworks = groups.map { identity, values in
             WiFiNetwork(
                 identity: identity,
                 candidates: values.sorted(by: candidateComesFirst),
-                connectedBSSID: connectedBSSID
+                connectedBSSID: connectedBSSID,
+                isSaved: savedSSIDs.contains(identity.ssid)
             )
         }
+        let visibleSSIDs = Set(groups.keys.map(\.ssid))
+        let savedOnlyNetworks = savedSSIDs.subtracting(visibleSSIDs).map { ssid in
+            WiFiNetwork(
+                identity: WiFiNetworkIdentity(ssid: ssid, security: .unknown),
+                candidates: [],
+                connectedBSSID: nil,
+                isSaved: true
+            )
+        }
+        return (visibleNetworks + savedOnlyNetworks)
         .sorted { lhs, rhs in
             if lhs.isConnected != rhs.isConnected { return lhs.isConnected }
             let leftRSSI = lhs.rssi ?? Int.min

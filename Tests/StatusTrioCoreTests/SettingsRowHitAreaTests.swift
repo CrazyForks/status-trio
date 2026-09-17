@@ -59,17 +59,41 @@ final class SettingsRowHitAreaTests: XCTestCase {
         )
     }
 
+    func testNavigationBackButtonUsesAtLeast32By32HitArea() {
+        let view = NavigationBackButton(
+            accessibilityLabel: "Back",
+            action: {}
+        )
+
+        let hitAreas = interactiveSubViewSizes(
+            for: view,
+            size: NSSize(width: 100, height: 60)
+        )
+
+        XCTAssertTrue(
+            hitAreas.contains { $0.width >= 32 && $0.height >= 32 },
+            "Expected the back button to have at least a 32x32 hit area, got \(hitAreas)"
+        )
+    }
+
     private func interactiveSubViewWidths<V: View>(
         for view: V,
         size: NSSize
     ) -> [CGFloat] {
+        interactiveSubViewSizes(for: view, size: size).map(\.width)
+    }
+
+    private func interactiveSubViewSizes<V: View>(
+        for view: V,
+        size: NSSize
+    ) -> [NSSize] {
         let hostingView = NSHostingView(rootView: view)
         hostingView.frame = NSRect(origin: .zero, size: size)
         hostingView.layoutSubtreeIfNeeded()
 
         return hostingView.subviews
             .filter { !$0.isHidden && $0.frame.height > 0 }
-            .map(\.frame.width)
+            .map(\.frame.size)
     }
 
     private func makeLocalization() -> Localization {

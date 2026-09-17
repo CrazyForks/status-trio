@@ -40,6 +40,59 @@ final class WirelessListModelsTests: XCTestCase {
         XCTAssertEqual(Set(merged.map(\.security)), [.wpa2Personal, .wpa3Personal])
     }
 
+    func testWiFiMergeIncludesSavedNetworksAndMarksVisibleMatches() {
+        let candidates = [
+            WiFiNetworkCandidate(
+                ssid: "Office",
+                bssid: "01",
+                rssi: -45,
+                channel: 44,
+                security: .wpa2Personal
+            )
+        ]
+
+        let merged = WiFiNetwork.merge(
+            candidates,
+            connectedBSSID: nil,
+            savedSSIDs: ["Home", "Office"]
+        )
+
+        let home = try! XCTUnwrap(merged.first { $0.ssid == "Home" })
+        XCTAssertTrue(home.isSaved)
+        XCTAssertTrue(home.candidates.isEmpty)
+        XCTAssertEqual(home.security, .unknown)
+
+        let office = try! XCTUnwrap(merged.first { $0.ssid == "Office" })
+        XCTAssertTrue(office.isSaved)
+        XCTAssertEqual(office.security, .wpa2Personal)
+        XCTAssertEqual(office.preferredCandidate?.bssid, "01")
+    }
+
+    func testPreferredWirelessNetworkParserSkipsHeaderAndPreservesSSIDs() {
+        let output = """
+        Preferred networks on en0:
+        \tStudio
+        \tCafe 5G
+        \tStudio
+        """
+
+        XCTAssertEqual(
+            WiFiPreferredNetworkOutputParser.parse(output),
+            ["Studio", "Cafe 5G"]
+        )
+    }
+
+    func testNetworkSetupSavedNetworkCommandNeverIncludesPassword() {
+        XCTAssertEqual(
+            WiFiNetworkSetupCommand.listPreferredNetworks(interface: "en0").arguments,
+            ["-listpreferredwirelessnetworks", "en0"]
+        )
+        XCTAssertEqual(
+            WiFiNetworkSetupCommand.associate(interface: "en0", ssid: "Home").arguments,
+            ["-setairportnetwork", "en0", "Home"]
+        )
+    }
+
     func testCoreWLANSecurityRawValuesPreserveOpenAndWPA3Identity() {
         XCTAssertEqual(WiFiSecurityKind(coreWLANRawValue: 0), .open)
         XCTAssertEqual(WiFiSecurityKind(coreWLANRawValue: 4), .wpa2Personal)
@@ -112,6 +165,30 @@ final class WirelessListModelsTests: XCTestCase {
             WiFiCredentialResult.issue(.accessDenied),
             WiFiCredentialResult.issue(.keychainLocked)
         )
+    }
+
+    @MainActor
+    func testSavedNetworkAssociatesWithoutResolvingKeychainCredential() {
+        let worker = WiFiNetworkWorkerSpy()
+        let credentialStore = WiFiCredentialStoreSpy()
+        let controller = WiFiNetworkController(
+            worker: worker,
+            credentialStore: credentialStore
+        )
+        controller.activate(nameAccess: .authorized)
+        let saved = WiFiNetwork(
+            identity: WiFiNetworkIdentity(ssid: "Home", security: .wpa2Personal),
+            candidates: [],
+            connectedBSSID: nil,
+            isSaved: true
+        )
+
+        controller.beginConnection(to: saved)
+
+        XCTAssertEqual(credentialStore.resolveCount, 0)
+        XCTAssertEqual(worker.associatedSSIDs, ["Home"])
+        XCTAssertEqual(worker.associationPasswords, [nil])
+        XCTAssertEqual(controller.state, .connecting(saved.identity))
     }
 
     func testWiFiServiceResolverUsesWiFiServiceRatherThanEthernetOrVPNGlobals() {
@@ -277,6 +354,42 @@ private final class BluetoothReaderStub: BluetoothPairedDeviceReading {
     func read(completion: @escaping @Sendable (BluetoothWorkerResult) -> Void) {
         readCount += 1
         completion(result)
+    }
+}
+
+private final class WiFiCredentialStoreSpy: WiFiCredentialStoring, @unchecked Sendable {
+    private(set) var resolveCount = 0
+    private(set) var saveCount = 0
+
+    func resolveCredential(for identity: WiFiNetworkIdentity) -> WiFiCredentialResult {
+        resolveCount += 1
+        return .noCredential
+    }
+
+    func save(_ password: String, for identity: WiFiNetworkIdentity) -> Bool {
+        saveCount += 1
+        return true
+    }
+}
+
+private final class WiFiNetworkWorkerSpy: WiFiNetworkWorking, @unchecked Sendable {
+    private(set) var associatedSSIDs: [String] = []
+    private(set) var associationPasswords: [String?] = []
+
+    func scan(completion: @escaping @Sendable (WiFiScanWorkerResult) -> Void) {}
+
+    func setPower(_ isOn: Bool, completion: @escaping @Sendable (Bool) -> Void) {
+        completion(true)
+    }
+
+    func associate(
+        to network: WiFiNetwork,
+        password: String?,
+        completion: @escaping @Sendable (WiFiAssociationWorkerResult) -> Void
+    ) {
+        associatedSSIDs.append(network.ssid)
+        associationPasswords.append(password)
+        completion(.failed)
     }
 }
 

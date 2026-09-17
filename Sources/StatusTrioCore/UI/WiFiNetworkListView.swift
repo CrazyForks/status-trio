@@ -55,11 +55,10 @@ struct WiFiNetworkListView: View {
 
     private var header: some View {
         HStack(spacing: 8) {
-            Button(action: onBack) {
-                Image(systemName: "chevron.backward")
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(localization.string(.commonBack))
+            NavigationBackButton(
+                accessibilityLabel: localization.string(.commonBack),
+                action: onBack
+            )
 
             Text(localization.string(.wifiTitle))
                 .font(.headline)
@@ -227,7 +226,7 @@ struct WiFiNetworkListView: View {
                         .foregroundStyle(.secondary)
                         .accessibilityHidden(true)
                 }
-                networkSignalIcon(for: network.rssi)
+                networkSignalIcon(for: network.rssi, isSaved: network.isSaved)
                     .foregroundStyle(.secondary)
                     .accessibilityHidden(true)
             }
@@ -247,7 +246,7 @@ struct WiFiNetworkListView: View {
     }
 
     @ViewBuilder
-    private func networkSignalIcon(for rssi: Int?) -> some View {
+    private func networkSignalIcon(for rssi: Int?, isSaved: Bool) -> some View {
         if let rssi {
             let bars = StatusMappings.wifiBars(rssi: rssi)
             if bars == 0 {
@@ -255,6 +254,8 @@ struct WiFiNetworkListView: View {
             } else {
                 Image(systemName: "wifi", variableValue: max(0.25, Double(bars) / 3.0))
             }
+        } else if isSaved {
+            Image(systemName: "wifi")
         } else {
             Image(systemName: "wifi.exclamationmark")
         }
