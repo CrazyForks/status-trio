@@ -1,5 +1,6 @@
 "menu.version" = "Status Trio %@";
 "menu.settings" = "設定…";
+"menu.settings.development" = "開発版 · %@";
 "menu.quit" = "Status Trioを終了";
 "menu.about" = "%@ について";
 "menu.hide" = "%@ を隠す";

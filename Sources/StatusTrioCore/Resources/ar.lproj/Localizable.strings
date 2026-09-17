@@ -1,5 +1,6 @@
 "menu.version" = "Status Trio %@";
 "menu.settings" = "الإعدادات…";
+"menu.settings.development" = "إصدار تطويري · %@";
 "menu.quit" = "إنهاء Status Trio";
 "menu.about" = "حول %@";
 "menu.hide" = "إخفاء %@";

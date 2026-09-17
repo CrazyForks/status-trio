@@ -601,7 +601,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
 
     @objc private func handleOpenWiFiSettings() {
         popover.performClose(nil)
-        Self.openSystemSettings(Self.wifiSettingsURLs)
+        Self.openSystemSettings(Self.wifiSettingsURLs())
     }
 
     @objc private func handleOpenLocationSettings() {
@@ -625,11 +625,23 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     ]
     .compactMap(URL.init(string:))
 
-    static let wifiSettingsURLs = [
-        "x-apple.systempreferences:com.apple.Network-Settings.extension",
-        "x-apple.systempreferences:com.apple.preference.network"
-    ]
-    .compactMap(URL.init(string:))
+    static func wifiSettingsURLs(
+        operatingSystemVersion: OperatingSystemVersion = ProcessInfo.processInfo.operatingSystemVersion
+    ) -> [URL] {
+        let routes: [String]
+        if operatingSystemVersion.majorVersion >= 27 {
+            routes = [
+                "x-apple.systempreferences:com.apple.wifi-settings-extension",
+                "x-apple.systempreferences:com.apple.Network-Settings.extension?Wi-Fi"
+            ]
+        } else {
+            routes = [
+                "x-apple.systempreferences:com.apple.Network-Settings.extension?Wi-Fi",
+                "x-apple.systempreferences:com.apple.preference.network?Wi-Fi"
+            ]
+        }
+        return routes.compactMap(URL.init(string:))
+    }
 
     static let bluetoothSettingsURLs = [
         "x-apple.systempreferences:com.apple.BluetoothSettings",

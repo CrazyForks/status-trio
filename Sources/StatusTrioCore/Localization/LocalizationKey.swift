@@ -24,6 +24,7 @@ enum LocalizationKey: String, CaseIterable, Hashable, Sendable {
     case menuVersion = "menu.version"
     case menuCheckForUpdates = "menu.checkForUpdates"
     case menuSettings = "menu.settings"
+    case menuSettingsDevelopment = "menu.settings.development"
     case menuQuit = "menu.quit"
     case menuMore = "menu.more"
     case menuAbout = "menu.about"
