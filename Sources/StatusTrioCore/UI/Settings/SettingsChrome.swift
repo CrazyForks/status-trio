@@ -218,6 +218,10 @@ extension View {
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius + gap + width, style: style)
                     .strokeBorder(strokeColor, lineWidth: width)
+                    .shadow(
+                        color: isFocused ? Color.accentColor.opacity(0.35) : Color.clear,
+                        radius: 3
+                    )
             )
     }
 }
@@ -261,10 +265,7 @@ struct SettingsPictureRow<T: Hashable & Identifiable, Leading: View, Preview: Vi
                         let isSelected = selection == option
                         let isFocused = focusedOption == option
                         Button {
-                            withAnimation(.easeInOut(duration: 0.15)) {
-                                selection = option
-                                focusedOption = option
-                            }
+                            selectOption(option)
                         } label: {
                             VStack(spacing: 5) {
                                 preview(option)
@@ -284,13 +285,41 @@ struct SettingsPictureRow<T: Hashable & Identifiable, Leading: View, Preview: Vi
                             }
                         }
                         .buttonStyle(.plain)
+                        .focusable()
+                        .focusEffectDisabled()
                         .focused($focusedOption, equals: option)
+                        .onKeyPress(.leftArrow) {
+                            selectRelative(offset: -1)
+                            return .handled
+                        }
+                        .onKeyPress(.rightArrow) {
+                            selectRelative(offset: 1)
+                            return .handled
+                        }
+                        .onKeyPress(.upArrow) {
+                            selectRelative(offset: -1)
+                            return .handled
+                        }
+                        .onKeyPress(.downArrow) {
+                            selectRelative(offset: 1)
+                            return .handled
+                        }
+                        .onKeyPress(.space) {
+                            selectOption(option)
+                            return .handled
+                        }
+                        .onKeyPress(.return) {
+                            selectOption(option)
+                            return .handled
+                        }
                         .accessibilityElement(children: .combine)
                         .accessibilityLabel(caption(option))
                         .accessibilityValue(isSelected ? caption(option) : "")
-                        .accessibilityAddTraits(isSelected ? [.isSelected] : [])
+                        .accessibilityAddTraits(isSelected ? [.isSelected, .isButton] : [.isButton])
                     }
                 }
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel(title)
                 .onKeyPress(.leftArrow) {
                     selectRelative(offset: -1)
                     return .handled
@@ -313,15 +342,18 @@ struct SettingsPictureRow<T: Hashable & Identifiable, Leading: View, Preview: Vi
         .padding(.vertical, SettingsMetrics.rowPaddingV)
     }
 
-    private func selectRelative(offset: Int) {
-        let current = focusedOption ?? selection
-        guard let currentIndex = options.firstIndex(of: current) else { return }
-        let newIndex = max(0, min(options.count - 1, currentIndex + offset))
-        let target = options[newIndex]
+    private func selectOption(_ target: T) {
         withAnimation(.easeInOut(duration: 0.15)) {
             selection = target
             focusedOption = target
         }
+    }
+
+    private func selectRelative(offset: Int) {
+        let current = focusedOption ?? selection
+        guard let currentIndex = options.firstIndex(of: current) else { return }
+        let newIndex = max(0, min(options.count - 1, currentIndex + offset))
+        selectOption(options[newIndex])
     }
 }
 

@@ -47,8 +47,6 @@ struct MenuBarPreviewBar: View {
                 .frame(width: iconSize, height: iconSize)
                 .accessibilityHidden(true)
 
-                Spacer(minLength: 16)
-
                 rightContext
             }
             .padding(.horizontal, 14)
