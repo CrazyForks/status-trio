@@ -68,6 +68,7 @@ struct WiFiSystemReading: Equatable, Sendable {
     var mode: WiFiInterfaceMode
     var rssi: Int?
     var ssid: String?
+    var band: WiFiFrequencyBand? = nil
 }
 
 protocol WiFiSystemReadingProviding: AnyObject {
@@ -126,12 +127,19 @@ final class CoreWLANWiFiSystemReader: WiFiSystemReadingProviding {
     func read(includeSSID: Bool) -> WiFiSystemReading? {
         guard let interface = client.interface() else { return nil }
 
+        let powerOn = interface.powerOn()
+        let serviceActive = interface.serviceActive()
         return WiFiSystemReading(
-            powerOn: interface.powerOn(),
-            serviceActive: interface.serviceActive(),
+            powerOn: powerOn,
+            serviceActive: serviceActive,
             mode: WiFiInterfaceMode(coreWLANMode: interface.interfaceMode()),
             rssi: interface.rssiValue(),
-            ssid: includeSSID ? interface.ssid() : nil
+            ssid: includeSSID ? interface.ssid() : nil,
+            // includeSSID is the existing visible-details gate. This reads the
+            // associated interface only; it never requests a network scan.
+            band: includeSSID && powerOn && serviceActive ? interface.wlanChannel().flatMap {
+                WiFiFrequencyBand(coreWLANBand: $0.channelBand)
+            } : nil
         )
     }
 }
@@ -461,11 +469,13 @@ final class WiFiMonitor: NSObject, WiFiMonitoring, CWEventDelegate {
             sharingActive: result.sharingActive
         )
         let nameAccess = nameAuthorizer.access
+        let state = WiFiClassifier.classify(input)
         publish(
-            WiFiClassifier.classify(input),
+            state,
             rssi: normalizedRSSI(reading.rssi),
             ssid: detailsVisible && nameAccess == .authorized ? normalizedSSID(reading.ssid) : nil,
-            nameAccess: nameAccess
+            nameAccess: nameAccess,
+            band: detailsVisible && (state == .connected || state == .hotspot) ? reading.band : nil
         )
     }
 
@@ -563,13 +573,15 @@ final class WiFiMonitor: NSObject, WiFiMonitoring, CWEventDelegate {
         _ state: WiFiState,
         rssi: Int?,
         ssid: String?,
-        nameAccess: WiFiNameAccess
+        nameAccess: WiFiNameAccess,
+        band: WiFiFrequencyBand? = nil
     ) {
         let candidate = WiFiStatus(
             state: state,
             rssi: rssi,
             ssid: ssid,
-            nameAccess: nameAccess
+            nameAccess: nameAccess,
+            band: band
         )
 
         if state == .unavailable {

@@ -152,6 +152,7 @@ final class AppIconController {
 
     private func subscribeToSnapshot() {
         store.$snapshot
+            .map { MenuBarStatus(snapshot: $0) }
             .removeDuplicates()
             .dropFirst()
             .debounce(

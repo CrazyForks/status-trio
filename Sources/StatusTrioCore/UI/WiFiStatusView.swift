@@ -4,6 +4,7 @@ import SwiftUI
 struct WiFiStatusView: View {
     @EnvironmentObject private var localization: Localization
     let wifi: WiFiStatus
+    var connection: NetworkConnection = .wifi
     var isResolvingName: Bool = false
     let onOpenDetails: (Bool) -> Void
     let onRequestNameAccess: () -> Void
@@ -25,8 +26,10 @@ struct WiFiStatusView: View {
                 HStack(spacing: 10) {
                     WiFiStatusIcon(wifi: wifi)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(localization.string(.wifiTitle))
+                        Text(summarySSID ?? localization.string(.wifiTitle))
                             .font(.headline)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
                         subtitle
                     }
                     Spacer()
@@ -38,6 +41,7 @@ struct WiFiStatusView: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel(wifiAccessibilityLabel)
+            .accessibilityValue(WiFiSummaryPresentation.measurements(wifi, connection: connection, localization: localization) ?? "")
 
             Button(
                 localization.string(.wifiActionOpenSettings),
@@ -54,7 +58,12 @@ struct WiFiStatusView: View {
 
     @ViewBuilder
     private var subtitle: some View {
-        if let ssid = wifi.ssid, !ssid.isEmpty {
+        if summarySSID != nil {
+            Text(WiFiSummaryPresentation.measurements(wifi, connection: connection, localization: localization)
+                 ?? localization.string(wifi.state == .hotspot ? .wifiSubtitleHotspot : .wifiSubtitleConnected))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        } else if let ssid = wifi.ssid, !ssid.isEmpty {
             Text(ssid)
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -86,6 +95,10 @@ struct WiFiStatusView: View {
                 .lineLimit(1)
                 .truncationMode(.middle)
         }
+    }
+
+    private var summarySSID: String? {
+        WiFiSummaryPresentation.summarySSID(wifi, connection: connection)
     }
 
     private var wifiAccessibilityLabel: String {

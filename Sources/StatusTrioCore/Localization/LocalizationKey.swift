@@ -173,6 +173,10 @@ enum LocalizationKey: String, CaseIterable, Hashable, Sendable {
     case commonLabelValue = "common.labelValue"
     case ethernetAccessibilityConnected = "ethernet.accessibility.connected"
 
+    case wifiSummaryBand = "wifi.summary.band"
+    case wifiSummarySignal = "wifi.summary.signal"
+    case wifiSummaryBandAndSignal = "wifi.summary.bandAndSignal"
+
     case wifiTitle = "wifi.title"
     case wifiValueBars = "wifi.value.bars"
     case wifiValueNotAssociated = "wifi.value.notAssociated"

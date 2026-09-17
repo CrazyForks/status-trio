@@ -329,6 +329,7 @@ struct StatusPopoverView: View {
         case .network:
             WiFiStatusView(
                 wifi: store.popupSnapshot.wifi,
+                connection: store.popupSnapshot.connection,
                 isResolvingName: store.isResolvingWiFiName,
                 onOpenDetails: { showDetails in
                     store.activateWiFiPanel()

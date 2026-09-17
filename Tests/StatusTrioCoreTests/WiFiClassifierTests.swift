@@ -1039,17 +1039,81 @@ final class WiFiClassifierTests: XCTestCase {
         )
     }
 
+    func testSystemReaderBandPropagatesAndClearsWithDetailsVisibility() async {
+        let reader = FakeWiFiSystemReader(result: makeReading(band: .fiveGHz))
+        let monitor = makeMonitor(reader: reader)
+        var iterator = monitor.updates.makeAsyncIterator()
+        monitor.start()
+        let visible = await iterator.next()
+        XCTAssertEqual(reader.lastIncludeSSID, true)
+        XCTAssertEqual(visible?.band, .fiveGHz)
+
+        monitor.setDetailsVisible(false)
+        let hidden = await iterator.next()
+        XCTAssertEqual(reader.lastIncludeSSID, false)
+        XCTAssertNil(hidden?.band)
+        monitor.stop()
+    }
+
+    func testFrequencyBandIsOnlyPublishedWhileDetailsAreVisible() async {
+        let reader = DeferredWiFiStatusReader()
+        let monitor = makeMonitor(statusReader: reader)
+        var iterator = monitor.updates.makeAsyncIterator()
+        monitor.start()
+        reader.complete(makeReading(band: .fiveGHz))
+        let visible = await iterator.next()
+        XCTAssertEqual(visible?.band, .fiveGHz)
+
+        monitor.setDetailsVisible(false)
+        XCTAssertEqual(reader.includeSSIDRequests, [true, false])
+        reader.complete(makeReading(band: .sixGHz))
+        let hidden = await iterator.next()
+        XCTAssertNil(hidden?.band)
+        monitor.stop()
+    }
+
+    func testUnavailableReadDoesNotReuseCachedFrequencyBand() async {
+        let reader = DeferredWiFiStatusReader()
+        let monitor = makeMonitor(statusReader: reader)
+        var iterator = monitor.updates.makeAsyncIterator()
+        monitor.start()
+        reader.complete(makeReading(band: .fiveGHz))
+        _ = await iterator.next()
+        monitor.refresh()
+        reader.complete(nil)
+        let fallback = await iterator.next()
+        XCTAssertEqual(fallback?.state, .connected)
+        XCTAssertNil(fallback?.band)
+        monitor.stop()
+    }
+
+    func testRadioOffClearsResidualFrequencyBand() async {
+        let reader = DeferredWiFiStatusReader()
+        let monitor = makeMonitor(statusReader: reader)
+        var iterator = monitor.updates.makeAsyncIterator()
+        monitor.start()
+        var reading = makeReading(band: .fiveGHz)
+        reading.powerOn = false
+        reader.complete(reading)
+        let status = await iterator.next()
+        XCTAssertEqual(status?.state, .off)
+        XCTAssertNil(status?.band)
+        monitor.stop()
+    }
+
     private func makeReading(
         mode: WiFiInterfaceMode = .station,
         rssi: Int? = -50,
-        ssid: String? = nil
+        ssid: String? = nil,
+        band: WiFiFrequencyBand? = nil
     ) -> WiFiSystemReading {
         WiFiSystemReading(
             powerOn: true,
             serviceActive: true,
             mode: mode,
             rssi: rssi,
-            ssid: ssid
+            ssid: ssid,
+            band: band
         )
     }
 
@@ -1164,7 +1228,8 @@ private final class FakeWiFiSystemReader: WiFiSystemReadingProviding {
             serviceActive: result.serviceActive,
             mode: result.mode,
             rssi: result.rssi,
-            ssid: includeSSID ? result.ssid : nil
+            ssid: includeSSID ? result.ssid : nil,
+            band: includeSSID ? result.band : nil
         )
     }
 }

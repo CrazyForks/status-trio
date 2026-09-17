@@ -287,3 +287,8 @@
 "guide.state.noInternetMuted" = "인터넷 없음 + 음소거";
 "guide.state.hotspotLowPower" = "핫스팟 + 저전력 모드";
 "guide.state.weakWiFi" = "약한 Wi-Fi + 25% 음량";
+
+// Current Wi-Fi radio measurements, not Internet speed.
+"wifi.summary.band" = "%@ GHz";
+"wifi.summary.signal" = "%d dBm";
+"wifi.summary.bandAndSignal" = "%@ · %@";

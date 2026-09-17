@@ -33,7 +33,9 @@ struct MenuBarStatus: Equatable, Sendable {
         volume: MenuBarVolumeStatus
     ) {
         self.battery = battery
-        self.wifi = wifi
+        // The frequency band is popover-only metadata, not an icon input.
+        self.wifi = WiFiStatus(state: wifi.state, rssi: wifi.rssi,
+                               ssid: wifi.ssid, nameAccess: wifi.nameAccess)
         self.connection = connection
         self.volume = volume
     }

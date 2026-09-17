@@ -116,6 +116,9 @@ final class LocalizationTests: XCTestCase {
 
     func testEveryParameterizedKeyUsesMatchingPlaceholders() throws {
         let expectedPlaceholderCounts: [LocalizationKey: Int] = [
+            .wifiSummaryBand: 1,
+            .wifiSummarySignal: 1,
+            .wifiSummaryBandAndSignal: 2,
             .menuVersion: 1,
             .menuAbout: 1,
             .menuHide: 1,

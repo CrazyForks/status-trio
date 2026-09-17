@@ -74,17 +74,20 @@ struct WiFiStatus: Equatable, Sendable {
     let rssi: Int?
     let ssid: String?
     let nameAccess: WiFiNameAccess
+    let band: WiFiFrequencyBand?
 
     init(
         state: WiFiState,
         rssi: Int?,
         ssid: String? = nil,
-        nameAccess: WiFiNameAccess = .notDetermined
+        nameAccess: WiFiNameAccess = .notDetermined,
+        band: WiFiFrequencyBand? = nil
     ) {
         self.state = state
         self.rssi = rssi
         self.ssid = ssid
         self.nameAccess = nameAccess
+        self.band = band
     }
 
     static let placeholder = WiFiStatus(state: .unavailable, rssi: nil)

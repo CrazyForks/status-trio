@@ -287,3 +287,8 @@
 "guide.state.noInternetMuted" = "Sem Internet + Sem som";
 "guide.state.hotspotLowPower" = "Hotspot + Modo de baixo consumo";
 "guide.state.weakWiFi" = "Wi-Fi fraco + Volume em 25%";
+
+// Current Wi-Fi radio measurements, not Internet speed.
+"wifi.summary.band" = "%@ GHz";
+"wifi.summary.signal" = "%d dBm";
+"wifi.summary.bandAndSignal" = "%@ · %@";
