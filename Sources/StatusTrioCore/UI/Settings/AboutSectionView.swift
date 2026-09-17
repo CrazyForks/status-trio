@@ -50,48 +50,65 @@ struct AboutSectionView: View {
 
                     SettingsDivider(inset: 0)
 
-                    WrappingHStack(spacing: 8, rowSpacing: 8) {
-                        Link(destination: AppMetadata.repositoryURL) {
-                            HStack(spacing: 4) {
-                                Image(systemName: "star.fill")
-                                    .foregroundStyle(.yellow)
-                                Text(localization.string(.settingsAboutStarOnGitHub))
-                            }
-                        }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
-
-                        Link(destination: AppMetadata.projectHomepageURL) {
-                            Label(localization.string(.settingsAboutProject), systemImage: "globe")
-                        }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
-
-                        Link(destination: AppMetadata.repositoryURL) {
-                            Label(localization.string(.settingsAboutRepository), systemImage: "link")
-                        }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
-
-                        Link(destination: AppMetadata.authorURL) {
-                            Label(AppMetadata.authorName, systemImage: "person.crop.circle")
-                        }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
-
-                        if updaterManager.canCheckForUpdates {
-                            Button(localization.string(.settingsUpdatesCheck)) {
-                                updaterManager.checkForUpdates()
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .controlSize(.small)
-                        }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    AboutActionsView(
+                        canCheckForUpdates: updaterManager.canCheckForUpdates,
+                        onCheckForUpdates: { updaterManager.checkForUpdates() }
+                    )
                 }
                 .padding(.horizontal, SettingsMetrics.rowPaddingH)
                 .padding(.vertical, 14)
             }
         }
+    }
+}
+
+struct AboutActionsView: View {
+    @EnvironmentObject private var localization: Localization
+
+    let canCheckForUpdates: Bool
+    let onCheckForUpdates: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            WrappingHStack(spacing: 8, rowSpacing: 8) {
+                Link(destination: AppMetadata.repositoryURL) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "star.fill")
+                            .foregroundStyle(.yellow)
+                        Text(localization.string(.settingsAboutStarOnGitHub))
+                    }
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+
+                Link(destination: AppMetadata.projectHomepageURL) {
+                    Label(localization.string(.settingsAboutProject), systemImage: "globe")
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+
+                Link(destination: AppMetadata.repositoryURL) {
+                    Label(localization.string(.settingsAboutRepository), systemImage: "link")
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+
+                Link(destination: AppMetadata.authorURL) {
+                    Label(AppMetadata.authorName, systemImage: "person.crop.circle")
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            if canCheckForUpdates {
+                Button(localization.string(.settingsUpdatesCheck)) {
+                    onCheckForUpdates()
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
