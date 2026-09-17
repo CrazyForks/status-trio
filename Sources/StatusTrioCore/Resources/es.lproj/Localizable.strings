@@ -148,7 +148,7 @@
 "settings.popup.volumeScroll.scope.panel" = "Todo el panel";
 "settings.popup.volumeScroll.scope.volumeControl" = "Solo el control de volumen";
 "settings.popup.volumeScroll.natural" = "Desplazamiento natural";
-"settings.popup.volumeScroll.natural.description" = "Si está activado, desplazarse hacia arriba con el ratón o el trackpad sube el volumen. Si está desactivado, el volumen sigue la dirección de desplazamiento del sistema.";
+"settings.popup.volumeScroll.natural.description" = "Si está activado, desplazarse hacia arriba con el ratón o el trackpad sube el volumen. Si está desactivado, el volumen sigue la dirección de desplazamiento del sistema. Si al desplazar el ratón hacia arriba baja el volumen, desactiva la inversión de desplazamiento para Status Trio o añádelo a la lista de permitidos/exclusiones en MOS, Scroll Reverser, LinearMouse o apps similares.";
 "settings.popup.volumeScroll.direction" = "Dirección del desplazamiento";
 "settings.popup.volumeScroll.direction.description" = "Elige la dirección que sube el volumen.";
 "settings.popup.volumeScroll.direction.up" = "Hacia arriba";

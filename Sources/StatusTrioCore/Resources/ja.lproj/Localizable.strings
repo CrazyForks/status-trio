@@ -148,7 +148,7 @@
 "settings.popup.volumeScroll.scope.panel" = "パネル全体";
 "settings.popup.volumeScroll.scope.volumeControl" = "音量コントロールのみ";
 "settings.popup.volumeScroll.natural" = "ナチュラルスクロール";
-"settings.popup.volumeScroll.natural.description" = "オンにすると、マウスまたはトラックパッドの上方向スクロールで音量が上がります。オフでは、システムのスクロール方向に従います。";
+"settings.popup.volumeScroll.natural.description" = "オンにすると、マウスまたはトラックパッドの上方向スクロールで音量が上がります。オフでは、システムのスクロール方向に従います。マウスの上スクロールで音量が下がる場合は、Status Trio のスクロール反転を無効にするか、MOS、Scroll Reverser、LinearMouse などのアプリで許可リスト/除外リストに追加してください。";
 "settings.popup.volumeScroll.direction" = "スクロール方向";
 "settings.popup.volumeScroll.direction.description" = "音量を上げるスクロール方向を選びます。";
 "settings.popup.volumeScroll.direction.up" = "上スクロール";

@@ -148,7 +148,7 @@
 "settings.popup.volumeScroll.scope.panel" = "Whole Panel";
 "settings.popup.volumeScroll.scope.volumeControl" = "Volume Control Only";
 "settings.popup.volumeScroll.natural" = "Natural Scrolling";
-"settings.popup.volumeScroll.natural.description" = "When on, scrolling up on a mouse or trackpad increases volume. When off, volume follows the system's scrolling direction.";
+"settings.popup.volumeScroll.natural.description" = "When on, scrolling up on a mouse or trackpad increases volume. When off, volume follows the system's scrolling direction. If mouse scroll-up lowers the volume, disable scroll reversal for Status Trio or add it to the allowlist/exceptions in MOS, Scroll Reverser, LinearMouse, or similar apps.";
 "settings.popup.volumeScroll.direction" = "Scroll Direction";
 "settings.popup.volumeScroll.direction.description" = "Choose the direction that turns the volume up.";
 "settings.popup.volumeScroll.direction.up" = "Scroll Up";

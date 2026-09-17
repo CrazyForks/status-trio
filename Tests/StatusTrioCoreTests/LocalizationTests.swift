@@ -70,6 +70,26 @@ final class LocalizationTests: XCTestCase {
         }
     }
 
+    func testNaturalScrollingDescriptionMentionsThirdPartyScrollApps() throws {
+        let requiredMentions = ["MOS", "Scroll Reverser", "LinearMouse", "Status Trio"]
+
+        for language in AppLanguage.allCases {
+            let bundle = try XCTUnwrap(Localization.resourceBundle(for: language))
+            let value = bundle.localizedString(
+                forKey: LocalizationKey.settingsPopupVolumeScrollNaturalDescription.rawValue,
+                value: nil,
+                table: nil
+            )
+
+            for mention in requiredMentions {
+                XCTAssertTrue(
+                    value.contains(mention),
+                    "\(language.rawValue) natural-scrolling description missing \(mention)"
+                )
+            }
+        }
+    }
+
     func testEveryParameterizedKeyUsesMatchingPlaceholders() throws {
         let expectedPlaceholderCounts: [LocalizationKey: Int] = [
             .menuVersion: 1,

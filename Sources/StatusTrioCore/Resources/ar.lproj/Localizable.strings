@@ -148,7 +148,7 @@
 "settings.popup.volumeScroll.scope.panel" = "اللوحة بالكامل";
 "settings.popup.volumeScroll.scope.volumeControl" = "أداة مستوى الصوت فقط";
 "settings.popup.volumeScroll.natural" = "التمرير الطبيعي";
-"settings.popup.volumeScroll.natural.description" = "عند التشغيل، يؤدي التمرير لأعلى بالماوس أو لوحة التتبع إلى زيادة مستوى الصوت. عند الإيقاف، يتبع مستوى الصوت اتجاه التمرير في النظام.";
+"settings.popup.volumeScroll.natural.description" = "عند التشغيل، يؤدي التمرير لأعلى بالماوس أو لوحة التتبع إلى زيادة مستوى الصوت. عند الإيقاف، يتبع مستوى الصوت اتجاه التمرير في النظام. إذا أدى تمرير الماوس لأعلى إلى خفض مستوى الصوت، فقم بتعطيل عكس التمرير لـ Status Trio أو أضفه إلى قائمة السماح/الاستثناءات في MOS أو Scroll Reverser أو LinearMouse أو تطبيقات مشابهة.";
 "settings.popup.volumeScroll.direction" = "اتجاه التمرير";
 "settings.popup.volumeScroll.direction.description" = "اختر الاتجاه الذي يرفع مستوى الصوت.";
 "settings.popup.volumeScroll.direction.up" = "للأعلى";

@@ -148,7 +148,7 @@
 "settings.popup.volumeScroll.scope.panel" = "整个面板";
 "settings.popup.volumeScroll.scope.volumeControl" = "仅音量组件";
 "settings.popup.volumeScroll.natural" = "自然滚动";
-"settings.popup.volumeScroll.natural.description" = "开启后，鼠标和触控板上滚都会增大音量；关闭后，音量跟随系统的滚动方向。";
+"settings.popup.volumeScroll.natural.description" = "开启后，鼠标和触控板上滚都会增大音量；关闭后，音量跟随系统的滚动方向。如果鼠标上滚反而减小音量，请在 MOS、Scroll Reverser、LinearMouse 等应用中为 Status Trio 关闭滚动反转，或将其加入允许列表/例外列表。";
 "settings.popup.volumeScroll.direction" = "滚动方向";
 "settings.popup.volumeScroll.direction.description" = "选择增大音量的滚动方向。";
 "settings.popup.volumeScroll.direction.up" = "上滑";

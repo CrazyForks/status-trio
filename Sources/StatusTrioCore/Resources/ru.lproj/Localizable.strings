@@ -148,7 +148,7 @@
 "settings.popup.volumeScroll.scope.panel" = "Вся панель";
 "settings.popup.volumeScroll.scope.volumeControl" = "Только регулятор громкости";
 "settings.popup.volumeScroll.natural" = "Естественная прокрутка";
-"settings.popup.volumeScroll.natural.description" = "Если включено, прокрутка вверх мышью или трекпадом увеличивает громкость. Если выключено, громкость следует направлению прокрутки системы.";
+"settings.popup.volumeScroll.natural.description" = "Если включено, прокрутка вверх мышью или трекпадом увеличивает громкость. Если выключено, громкость следует направлению прокрутки системы. Если прокрутка мыши вверх уменьшает громкость, отключите инверсию прокрутки для Status Trio или добавьте его в список разрешённых/исключений в MOS, Scroll Reverser, LinearMouse или похожих приложениях.";
 "settings.popup.volumeScroll.direction" = "Направление прокрутки";
 "settings.popup.volumeScroll.direction.description" = "Выберите направление, увеличивающее громкость.";
 "settings.popup.volumeScroll.direction.up" = "Вверх";

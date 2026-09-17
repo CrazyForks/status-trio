@@ -148,7 +148,7 @@
 "settings.popup.volumeScroll.scope.panel" = "Tout le panneau";
 "settings.popup.volumeScroll.scope.volumeControl" = "Réglage du volume uniquement";
 "settings.popup.volumeScroll.natural" = "Défilement naturel";
-"settings.popup.volumeScroll.natural.description" = "Lorsque cette option est activée, un défilement vers le haut avec la souris ou le trackpad augmente le volume. Sinon, le volume suit le sens de défilement du système.";
+"settings.popup.volumeScroll.natural.description" = "Lorsque cette option est activée, un défilement vers le haut avec la souris ou le trackpad augmente le volume. Sinon, le volume suit le sens de défilement du système. Si le défilement vers le haut de la souris diminue le volume, désactivez l’inversion du défilement pour Status Trio ou ajoutez-le à la liste d’autorisation/exclusions dans MOS, Scroll Reverser, LinearMouse ou une app similaire.";
 "settings.popup.volumeScroll.direction" = "Sens du défilement";
 "settings.popup.volumeScroll.direction.description" = "Choisissez le sens qui augmente le volume.";
 "settings.popup.volumeScroll.direction.up" = "Vers le haut";
