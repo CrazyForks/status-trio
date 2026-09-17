@@ -1,5 +1,6 @@
 "menu.version" = "Status Trio %@";
 "menu.settings" = "Настройки…";
+"menu.settings.development" = "Версия для разработки · %@";
 "menu.quit" = "Завершить Status Trio";
 "menu.about" = "О программе «%@»";
 "menu.hide" = "Скрыть %@";

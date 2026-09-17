@@ -3,6 +3,7 @@ import Foundation
 enum AppMetadata {
     static let defaultName = "Status Trio"
     private static let nameKeys = ["CFBundleDisplayName", "CFBundleName"]
+    private static let developmentCodenameKey = "STDevelopmentCodename"
 
     static var name: String {
         for key in nameKeys {
@@ -20,6 +21,14 @@ enum AppMetadata {
             }
         }
         return defaultName
+    }
+
+    static var developmentCodename: String? {
+        developmentCodename(from: Bundle.main.infoDictionary ?? [:])
+    }
+
+    static func developmentCodename(from infoDictionary: [String: Any]) -> String? {
+        validName(infoDictionary[developmentCodenameKey])
     }
 
     private static func validName(_ value: Any?) -> String? {

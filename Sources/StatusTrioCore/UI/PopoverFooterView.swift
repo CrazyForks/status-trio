@@ -5,10 +5,20 @@ struct PopoverFooterView: View {
     let openSettings: () -> Void
     let quit: () -> Void
 
+    private var settingsTitle: String {
+        let title = localization.string(.menuSettings)
+        guard let codename = AppMetadata.developmentCodename else {
+            return title
+        }
+        return "\(title) · \(localization.format(.menuSettingsDevelopment, codename))"
+    }
+
     var body: some View {
         HStack(spacing: 8) {
             Button(action: openSettings) {
-                Label(localization.string(.menuSettings), systemImage: "gearshape")
+                Label(settingsTitle, systemImage: "gearshape")
+                    .lineLimit(1)
+                    .truncationMode(.tail)
                     .frame(maxWidth: .infinity, minHeight: 24, alignment: .leading)
                     .contentShape(Rectangle())
             }

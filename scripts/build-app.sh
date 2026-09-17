@@ -9,6 +9,7 @@ APP_NAME="${APP_NAME:-Status Trio}"
 APP_VERSION="${APP_VERSION:-}"
 BUILD_NUMBER="${BUILD_NUMBER:-}"
 SU_FEED_URL="${SU_FEED_URL:-}"
+DEVELOPMENT_CODENAME="${DEVELOPMENT_CODENAME:-}"
 UNIVERSAL_BUILD="${UNIVERSAL_BUILD:-0}"
 
 case "$OPEN_APP" in
@@ -122,6 +123,10 @@ fi
 
 if [[ -n "$BUILD_NUMBER" ]]; then
     /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" "$CONTENTS/Info.plist"
+fi
+
+if [[ -n "$DEVELOPMENT_CODENAME" ]]; then
+    /usr/libexec/PlistBuddy -c "Add :STDevelopmentCodename string $DEVELOPMENT_CODENAME" "$CONTENTS/Info.plist"
 fi
 
 if [[ -n "$SU_FEED_URL" ]]; then

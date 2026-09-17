@@ -23,6 +23,15 @@ final class AppMetadataTests: XCTestCase {
         XCTAssertEqual(AppMetadata.name(from: [:]), "Status Trio")
     }
 
+    func testDevelopmentCodenameUsesNonEmptyInfoValue() {
+        XCTAssertEqual(
+            AppMetadata.developmentCodename(from: ["STDevelopmentCodename": "Fix Issues"]),
+            "Fix Issues"
+        )
+        XCTAssertNil(AppMetadata.developmentCodename(from: ["STDevelopmentCodename": "   "]))
+        XCTAssertNil(AppMetadata.developmentCodename(from: [:]))
+    }
+
     func testProjectHomepageURL() {
         XCTAssertEqual(
             AppMetadata.projectHomepageURL.absoluteString,

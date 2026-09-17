@@ -94,9 +94,20 @@ final class StatusMenuBuilderTests: XCTestCase {
 
     func testSystemSettingsURLFallbackOrder() {
         XCTAssertEqual(
-            StatusBarController.wifiSettingsURLs.map(\.absoluteString),
+            StatusBarController.wifiSettingsURLs(
+                operatingSystemVersion: OperatingSystemVersion(majorVersion: 27, minorVersion: 0, patchVersion: 0)
+            ).map(\.absoluteString),
             [
                 "x-apple.systempreferences:com.apple.wifi-settings-extension",
+                "x-apple.systempreferences:com.apple.Network-Settings.extension?Wi-Fi"
+            ]
+        )
+        XCTAssertEqual(
+            StatusBarController.wifiSettingsURLs(
+                operatingSystemVersion: OperatingSystemVersion(majorVersion: 15, minorVersion: 0, patchVersion: 0)
+            ).map(\.absoluteString),
+            [
+                "x-apple.systempreferences:com.apple.Network-Settings.extension?Wi-Fi",
                 "x-apple.systempreferences:com.apple.preference.network?Wi-Fi"
             ]
         )
