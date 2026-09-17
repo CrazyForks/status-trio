@@ -17,7 +17,10 @@ struct BatteryDetailsView: View {
                     row(.batteryDetailsCurrent, power.amps.formatted(.number.precision(.fractionLength(2)).locale(localization.resolvedLanguage.locale)) + " A")
                     row(.batteryDetailsSampled, power.updatedAt.formatted(.dateTime.hour().minute().second().locale(localization.resolvedLanguage.locale)))
                 } else {
-                    row(.batteryDetailsPower, localization.string(.batteryDetailsUnavailable))
+                    row(.batteryDetailsPower, localization.string(
+                        details.powerAvailability == .collecting
+                            ? .batteryDetailsCollecting
+                            : .batteryDetailsUnavailable))
                 }
                 if let watts = details.adapterWatts {
                     row(.batteryDetailsAdapter, watts.formatted(.number.locale(localization.resolvedLanguage.locale)) + " W")

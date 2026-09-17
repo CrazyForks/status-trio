@@ -259,8 +259,9 @@
 "battery.details.on" = "켬";
 "battery.details.off" = "끔";
 "battery.details.unavailable" = "사용할 수 없음";
+"battery.details.collecting" = "측정 중…";
 "battery.details.loading" = "업데이트 중…";
-"battery.details.explanation" = "배터리 전력은 순전력의 추정치이며 Mac 전체의 소비 전력이 아닙니다. 어댑터 정격 출력은 현재 충전 전력이 아닙니다. 전원 공급 방식이 바뀐 직후에는 값을 확인하지 못할 수 있습니다.";
+"battery.details.explanation" = "배터리 전력은 순전력의 추정치이며 Mac 전체의 소비 전력이 아닙니다. 어댑터 정격 출력은 현재 충전 전력이 아닙니다. 전원이 바뀐 뒤 macOS가 새 값을 제공하기까지 최대 1분이 걸릴 수 있습니다.";
 /* Compact popover controls. */
 "menu.more" = "추가 작업";
 

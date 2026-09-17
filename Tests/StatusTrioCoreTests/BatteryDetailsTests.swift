@@ -55,9 +55,36 @@ final class BatteryDetailsTests: XCTestCase {
     }
 
     func testPowerTransitionsRequireAConsistentNewSample() {
-        XCTAssertNil(parse(registry, state: state(connected: true)).power)
-        XCTAssertNil(parse(registry, notBefore: now.addingTimeInterval(1)).power)
+        let laggingRegistry = parse(registry, state: state(connected: true))
+        XCTAssertNil(laggingRegistry.power)
+        XCTAssertEqual(laggingRegistry.powerAvailability, .collecting)
+        let beforeTransition = parse(registry, notBefore: now.addingTimeInterval(1))
+        XCTAssertNil(beforeTransition.power)
+        XCTAssertEqual(beforeTransition.powerAvailability, .collecting)
         XCTAssertNotNil(parse(registry, notBefore: now).power)
+    }
+
+    func testUnsupportedTelemetryIsUnavailableRatherThanCollecting() {
+        for key in ["Voltage", "Amperage", "UpdateTime"] {
+            var values = registry
+            _ = values.removeValue(forKey: key)
+            let details = BatteryDetailsReader.parse(
+                registry: values, adapterWatts: 90, remainingSeconds: -1,
+                state: state(), now: now)
+            XCTAssertNil(details.power, key)
+            XCTAssertEqual(details.powerAvailability, .unavailable, key)
+        }
+        var values = registry
+        values["Amperage"] = 30_001
+        XCTAssertEqual(parse(values).powerAvailability, .collecting)
+    }
+
+    func testAvailablePowerReportsAvailable() {
+        XCTAssertEqual(parse(registry).powerAvailability, .available)
+    }
+
+    func testDefaultAvailabilityFailsClosed() {
+        XCTAssertEqual(BatteryDetails().powerAvailability, .unavailable)
     }
 
     func testIdleBatteryOnAdapterReportsZeroWattsInsteadOfUnavailable() throws {
@@ -67,9 +94,12 @@ final class BatteryDetailsTests: XCTestCase {
         values["Amperage"] = 0
         let idle = parse(values, state: state(connected: true))
         XCTAssertEqual(try XCTUnwrap(idle.power).watts, 0)
+        XCTAssertEqual(idle.powerAvailability, .available)
         XCTAssertEqual(idle.adapterWatts, 90)
         values["ExternalConnected"] = false
-        XCTAssertNil(parse(values).power, "Zero while unplugged stays a transition, not an idle battery")
+        let unplugged = parse(values)
+        XCTAssertNil(unplugged.power, "Zero while unplugged stays a transition, not an idle battery")
+        XCTAssertEqual(unplugged.powerAvailability, .collecting)
     }
 
     func testMissingStaleAndFutureTelemetryFailClosed() {

@@ -57,6 +57,7 @@ final class BatteryDetailsController: ObservableObject {
         // Expire even when the previous system read is still blocked.
         if let sample = details?.power, !sample.isFresh(at: now) {
             details?.power = nil
+            details?.powerAvailability = .collecting
         }
         guard !inFlight else {
             needsRefresh = true
@@ -78,6 +79,7 @@ final class BatteryDetailsController: ObservableObject {
                     // System IPC and delivery to the main actor can both be delayed.
                     if let sample = current.power, !sample.isFresh(at: Date(), notBefore: self.notBefore) {
                         current.power = nil
+                        current.powerAvailability = .collecting
                     }
                     self.details = current
                 }

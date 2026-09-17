@@ -10,20 +10,26 @@ final class BatteryDetailsLayoutTests: XCTestCase {
             let collapsed = try await render(language: language, expanded: false, available: true)
             let expanded = try await render(language: language, expanded: true, available: true)
             let unavailable = try await render(language: language, expanded: true, available: false)
+            let collecting = try await render(language: language, expanded: true, available: false, collecting: true)
             XCTAssertGreaterThan(expanded.height, collapsed.height + 100)
             XCTAssertLessThan(expanded.height, 380)
             XCTAssertLessThan(unavailable.height, expanded.height)
+            XCTAssertLessThan(collecting.height, expanded.height)
         }
     }
 
-    private func render(language: AppLanguage, expanded: Bool, available: Bool) async throws -> NSSize {
+    private func render(language: AppLanguage, expanded: Bool, available: Bool,
+                        collecting: Bool = false) async throws -> NSSize {
         let suite = "StatusTrioCoreTests.BatteryDetails.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
         let localization = Localization(defaults: defaults, preferredLanguages: ["en"])
         localization.setPreference(.language(language))
-        let fixture = BatteryDetails(remainingMinutes: available ? 121 : nil, cycleCount: 43,
-            power: available ? BatteryPowerSample(volts: 12.279, amps: -1.528, updatedAt: Date()) : nil)
+        let fixture = BatteryDetails(
+            remainingMinutes: available ? 121 : nil,
+            cycleCount: 43,
+            power: available ? BatteryPowerSample(volts: 12.279, amps: -1.528, updatedAt: Date()) : nil,
+            powerAvailability: collecting ? .collecting : .available)
         let controller = BatteryDetailsController { _, _ in fixture }
         defer { controller.deactivate() }
         let battery = BatteryStatus(rawPercentage: 80, isPresent: true, isCharging: false,
@@ -51,7 +57,8 @@ final class BatteryDetailsLayoutTests: XCTestCase {
             let png = try XCTUnwrap(bitmap.representation(using: .png, properties: [:]))
             let url = URL(fileURLWithPath: directory, isDirectory: true)
             try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
-            try png.write(to: url.appendingPathComponent("battery-\(language.rawValue)-\(expanded ? "expanded" : "collapsed")-\(available ? "power" : "unavailable").png"))
+            let state = available ? "power" : (collecting ? "collecting" : "unavailable")
+            try png.write(to: url.appendingPathComponent("battery-\(language.rawValue)-\(expanded ? "expanded" : "collapsed")-\(state).png"))
         }
         return size
     }

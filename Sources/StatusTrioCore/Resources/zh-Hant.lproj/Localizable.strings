@@ -259,8 +259,9 @@
 "battery.details.on" = "開啟";
 "battery.details.off" = "關閉";
 "battery.details.unavailable" = "暫時無法取得";
+"battery.details.collecting" = "採集中…";
 "battery.details.loading" = "更新中…";
-"battery.details.explanation" = "電池功率為淨功率的估算值，並非整部 Mac 的耗電量。電源轉接器的額定功率並非目前的充電功率。切換電源後可能暫時無法取得數值。";
+"battery.details.explanation" = "電池功率為淨功率的估算值，並非整部 Mac 的耗電量。電源轉接器的額定功率並非目前的充電功率。切換電源後 macOS 最多需要一分鐘才會提供新讀數。";
 /* Compact popover controls. */
 "menu.more" = "更多操作";
 

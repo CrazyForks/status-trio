@@ -43,6 +43,15 @@ sample time rather than promising live per-second watts. Hardware validation so
 far covers one Apple silicon Mac on battery. Charging transitions and other Mac
 models still need field validation before making broad accuracy claims.
 
+## Transition wording
+
+After a power-source change the registry can keep reporting the previous source
+for up to about a minute. That window is reported as **Sampling…** rather than
+**Unavailable**: the reader distinguishes a lagging registry, a rejected
+pre-transition sample, and an expired reading from telemetry this Mac does not
+expose at all. Insufficient adapter power (negative current while connected)
+still reads as normal discharge.
+
 Apple references:
 - [IOPSCopyExternalPowerAdapterDetails](https://developer.apple.com/documentation/iokit/1523866-iopscopyexternalpoweradapterdeta)
 - [IOPSGetTimeRemainingEstimate](https://developer.apple.com/documentation/iokit/iopsgettimeremainingestimate())

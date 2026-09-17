@@ -259,8 +259,9 @@
 "battery.details.on" = "Ativado";
 "battery.details.off" = "Desativado";
 "battery.details.unavailable" = "Indisponível";
+"battery.details.collecting" = "Medindo…";
 "battery.details.loading" = "Atualizando…";
-"battery.details.explanation" = "A potência da bateria é uma estimativa aproximada da potência líquida, não do consumo total do Mac. A potência nominal do adaptador não é a potência de carga atual. Os valores podem ficar indisponíveis após uma mudança na fonte de alimentação.";
+"battery.details.explanation" = "A potência da bateria é uma estimativa aproximada da potência líquida, não do consumo total do Mac. A potência nominal do adaptador não é a potência de carga atual. Após uma mudança na fonte de alimentação, o macOS pode levar até um minuto para fornecer novos valores.";
 /* Compact popover controls. */
 "menu.more" = "Mais ações";
 

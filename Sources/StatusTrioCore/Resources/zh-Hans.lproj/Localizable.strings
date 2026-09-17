@@ -259,8 +259,9 @@
 "battery.details.on" = "开启";
 "battery.details.off" = "关闭";
 "battery.details.unavailable" = "暂不可用";
+"battery.details.collecting" = "采集中…";
 "battery.details.loading" = "更新中…";
-"battery.details.explanation" = "电池功率为尽力估算的净功率，并非整机功耗。适配器额定功率并非实时充电功率。切换电源后数据可能暂不可用。";
+"battery.details.explanation" = "电池功率为尽力估算的净功率，并非整机功耗。适配器额定功率并非实时充电功率。切换电源后 macOS 最长需要一分钟才会给出新读数。";
 /* Compact popover controls. */
 "menu.more" = "更多操作";
 

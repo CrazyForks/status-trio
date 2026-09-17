@@ -15,10 +15,28 @@ struct BatteryPowerSample: Equatable, Sendable {
 }
 
 struct BatteryDetails: Equatable, Sendable {
+    enum PowerAvailability: Equatable, Sendable {
+        case available
+        /// The registry still reports the previous power source or sample.
+        case collecting
+        /// This Mac does not expose usable battery power telemetry.
+        case unavailable
+    }
+
     var adapterWatts: Int?
     var remainingMinutes: Int?
     var cycleCount: Int?
     var power: BatteryPowerSample?
+    var powerAvailability: PowerAvailability
+
+    init(adapterWatts: Int? = nil, remainingMinutes: Int? = nil, cycleCount: Int? = nil,
+         power: BatteryPowerSample? = nil, powerAvailability: PowerAvailability = .unavailable) {
+        self.adapterWatts = adapterWatts
+        self.remainingMinutes = remainingMinutes
+        self.cycleCount = cycleCount
+        self.power = power
+        self.powerAvailability = powerAvailability
+    }
 }
 
 /// A small immutable context, so a percentage update does not restart detail collection.
@@ -62,7 +80,7 @@ struct BatteryDetailsReader: Sendable {
         registry: [String: Any], adapterWatts: Int?, remainingSeconds: Double,
         state: BatteryPowerState, now: Date, notBefore: Date? = nil
     ) -> BatteryDetails {
-        guard state.isPresent else { return BatteryDetails() }
+        guard state.isPresent else { return BatteryDetails(powerAvailability: .unavailable) }
         var result = BatteryDetails(
             adapterWatts: state.isConnected ? adapterWatts.flatMap { $0 > 0 ? $0 : nil } : nil,
             remainingMinutes: !state.isConnected && remainingSeconds.isFinite && remainingSeconds >= 60
@@ -74,25 +92,45 @@ struct BatteryDetailsReader: Sendable {
               CFGetTypeID(current) != CFBooleanGetTypeID(),
               !["f", "d"].contains(String(cString: current.objCType)),
               let timestamp = (registry["UpdateTime"] as? NSNumber)?.doubleValue,
-              let connected = registry["ExternalConnected"] as? Bool,
-              let charging = registry["IsCharging"] as? Bool,
-              connected == state.isConnected, charging == state.isCharging,
               millivolts.isFinite, timestamp.isFinite,
               (1_000...30_000).contains(millivolts)
-        else { return result }
+        else {
+            result.powerAvailability = .unavailable
+            return result
+        }
+        // From here a usable sample may exist; failures mean it is not in yet.
+        result.powerAvailability = .collecting
+        // A registry that still describes the previous power source is a
+        // transition, not a machine that cannot report battery power.
+        guard let connected = registry["ExternalConnected"] as? Bool,
+              let charging = registry["IsCharging"] as? Bool,
+              connected == state.isConnected, charging == state.isCharging
+        else { return collecting(&result) }
         // Some IORegistry producers wrap negative current in an unsigned 64-bit
         // NSNumber. Interpret the integer bit pattern, then bound the result.
         let milliamps = Double(current.int64Value)
         guard abs(milliamps) <= 30_000,
               // Zero while unplugged is a power transition, not evidence of zero consumption.
               // Zero while connected means the battery is idle, which is a real reading.
-              milliamps != 0 || connected,
+              milliamps != 0 || connected
+        else { return collecting(&result) }
+        guard
               milliamps > 0 ? (connected && charging) : !charging
-        else { return result }
+        else {
+            result.powerAvailability = .unavailable
+            return result
+        }
         let updatedAt = Date(timeIntervalSince1970: timestamp)
         let sample = BatteryPowerSample(volts: millivolts / 1_000, amps: milliamps / 1_000, updatedAt: updatedAt)
-        guard sample.isFresh(at: now, notBefore: notBefore) else { return result }
+        // Stale or pre-transition samples are simply not in yet.
+        guard sample.isFresh(at: now, notBefore: notBefore) else { return collecting(&result) }
         result.power = sample
+        result.powerAvailability = .available
         return result
+    }
+
+    private static func collecting(_ details: inout BatteryDetails) -> BatteryDetails {
+        details.powerAvailability = .collecting
+        return details
     }
 }

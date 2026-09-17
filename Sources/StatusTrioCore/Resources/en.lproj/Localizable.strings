@@ -259,8 +259,9 @@
 "battery.details.on" = "On";
 "battery.details.off" = "Off";
 "battery.details.unavailable" = "Unavailable";
+"battery.details.collecting" = "Sampling…";
 "battery.details.loading" = "Updating…";
-"battery.details.explanation" = "Battery power is a best-effort net estimate, not total Mac consumption. Adapter rating is not live charging power. Values may be unavailable after a power change.";
+"battery.details.explanation" = "Battery power is a best-effort net estimate, not total Mac consumption. Adapter rating is not live charging power. After a power change macOS takes up to a minute to report new values.";
 /* Compact popover controls. */
 "menu.more" = "More actions";
 

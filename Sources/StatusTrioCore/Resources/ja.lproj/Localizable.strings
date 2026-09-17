@@ -259,8 +259,9 @@
 "battery.details.on" = "オン";
 "battery.details.off" = "オフ";
 "battery.details.unavailable" = "取得できません";
+"battery.details.collecting" = "計測中…";
 "battery.details.loading" = "更新中…";
-"battery.details.explanation" = "バッテリー電力は正味の充放電電力の推定値であり、Mac全体の消費電力ではありません。アダプタの定格出力は現在の充電電力ではありません。電源の切り替え後は値を取得できない場合があります。";
+"battery.details.explanation" = "バッテリー電力は正味の充放電電力の推定値であり、Mac全体の消費電力ではありません。アダプタの定格出力は現在の充電電力ではありません。電源の切り替え後、新しい値の取得には最大1分かかります。";
 /* Compact popover controls. */
 "menu.more" = "その他の操作";
 
