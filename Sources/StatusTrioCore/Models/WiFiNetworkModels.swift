@@ -157,8 +157,12 @@ enum WiFiNetworkPresentation {
         _ networks: [WiFiNetwork]
     ) -> (known: [WiFiNetwork], other: [WiFiNetwork]) {
         (
-            known: networks.filter { $0.isSaved || $0.isConnected },
-            other: networks.filter { !$0.isSaved && !$0.isConnected }
+            known: networks.filter {
+                !$0.candidates.isEmpty && ($0.isSaved || $0.isConnected)
+            },
+            other: networks.filter {
+                !$0.candidates.isEmpty && !$0.isSaved && !$0.isConnected
+            }
         )
     }
 }

@@ -68,7 +68,7 @@ final class WirelessListModelsTests: XCTestCase {
         XCTAssertEqual(office.preferredCandidate?.bssid, "01")
     }
 
-    func testWiFiGroupingKeepsSavedAndConnectedNetworksOutOfOtherNetworks() {
+    func testWiFiGroupingKeepsOnlyVisibleSavedAndConnectedNetworksInKnownNetworks() {
         let networks = [
             WiFiNetwork(
                 identity: WiFiNetworkIdentity(ssid: "Studio", security: .wpa2Personal),
@@ -121,8 +121,24 @@ final class WirelessListModelsTests: XCTestCase {
 
         let grouped = WiFiNetworkPresentation.grouped(networks)
 
-        XCTAssertEqual(grouped.known.map(\.ssid), ["Studio", "Home", "Office"])
+        XCTAssertEqual(grouped.known.map(\.ssid), ["Studio", "Office"])
         XCTAssertEqual(grouped.other.map(\.ssid), ["Cafe"])
+    }
+
+    func testWiFiGroupingHidesSavedNetworksThatAreNotVisible() {
+        let networks = [
+            WiFiNetwork(
+                identity: WiFiNetworkIdentity(ssid: "Home", security: .unknown),
+                candidates: [],
+                connectedBSSID: nil,
+                isSaved: true
+            )
+        ]
+
+        let grouped = WiFiNetworkPresentation.grouped(networks)
+
+        XCTAssertTrue(grouped.known.isEmpty)
+        XCTAssertTrue(grouped.other.isEmpty)
     }
 
     func testPreferredWirelessNetworkParserSkipsHeaderAndPreservesSSIDs() {

@@ -30,7 +30,9 @@ struct WiFiNetworkListView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     knownNetworksSection(grouped.known)
                     otherNetworksSection(grouped.other)
-                    stateMessage
+                    stateMessage(
+                        hasVisibleNetworks: !grouped.known.isEmpty || !grouped.other.isEmpty
+                    )
                 }
             }
             .frame(maxHeight: 330)
@@ -112,7 +114,7 @@ struct WiFiNetworkListView: View {
     }
 
     @ViewBuilder
-    private var stateMessage: some View {
+    private func stateMessage(hasVisibleNetworks: Bool) -> some View {
         switch controller.state {
         case .scanning:
             HStack(spacing: 8) {
@@ -126,7 +128,7 @@ struct WiFiNetworkListView: View {
             Text(localization.string(.wifiPasswordSaveFailed))
                 .font(.caption)
                 .foregroundStyle(.orange)
-        case .ready where controller.networks.isEmpty:
+        case .ready where !hasVisibleNetworks:
             Text(localization.string(.wifiNoNetworks))
                 .font(.caption)
                 .foregroundStyle(.secondary)
