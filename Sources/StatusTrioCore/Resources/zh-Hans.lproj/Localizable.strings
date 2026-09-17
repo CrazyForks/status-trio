@@ -158,7 +158,7 @@
 "common.cancel" = "取消";
 "wifi.power" = "Wi-Fi";
 "wifi.refresh" = "刷新网络";
-"wifi.currentNetwork" = "当前网络";
+"wifi.knownNetworks" = "已知网络";
 "wifi.otherNetworks" = "其他网络";
 "wifi.scanning" = "正在扫描网络…";
 "wifi.noNetworks" = "未发现附近网络。";

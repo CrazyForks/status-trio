@@ -78,6 +78,13 @@ private enum WiFiAssociationWorkerResult: Sendable {
 /// serial queue so those calls never run on the main actor and cannot overlap.
 private final class CoreWLANNetworkWorker: @unchecked Sendable {
     private let queue = DispatchQueue(label: "StatusTrio.CoreWLANNetworkWorker")
+    private let knownNetworkProvider: any WiFiKnownNetworkProviding
+
+    init(
+        knownNetworkProvider: any WiFiKnownNetworkProviding = NetworksetupWiFiKnownNetworkProvider()
+    ) {
+        self.knownNetworkProvider = knownNetworkProvider
+    }
 
     func scan(completion: @escaping @Sendable (WiFiScanWorkerResult) -> Void) {
         queue.async { [self] in
@@ -121,12 +128,19 @@ private final class CoreWLANNetworkWorker: @unchecked Sendable {
             let rawNetworks = try interface.scanForNetworks(withSSID: nil)
             let associatedBSSID = interface.bssid()
             let candidates = rawNetworks.compactMap(projectCandidate)
+            let knownSSIDs = interface.interfaceName.map {
+                knownNetworkProvider.preferredNetworkSSIDs(interface: $0)
+            } ?? []
             let actualNetwork = rawNetworks.first {
                 bssid($0.bssid, matches: associatedBSSID)
             }
             return .success(
                 WiFiScanPayload(
-                    networks: WiFiNetwork.merge(candidates, connectedBSSID: associatedBSSID),
+                    networks: WiFiNetwork.merge(
+                        candidates,
+                        connectedBSSID: associatedBSSID,
+                        knownSSIDs: knownSSIDs
+                    ),
                     details: makeDetails(interface: interface, actualNetwork: actualNetwork)
                 )
             )

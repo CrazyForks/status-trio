@@ -158,7 +158,7 @@
 "common.cancel" = "Cancel";
 "wifi.power" = "Wi-Fi";
 "wifi.refresh" = "Refresh networks";
-"wifi.currentNetwork" = "Current Network";
+"wifi.knownNetworks" = "既知のネットワーク";
 "wifi.otherNetworks" = "Other Networks";
 "wifi.scanning" = "Scanning for networks…";
 "wifi.noNetworks" = "No nearby networks found.";

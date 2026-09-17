@@ -73,6 +73,19 @@ struct WiFiNetwork: Identifiable, Equatable, Sendable {
     let identity: WiFiNetworkIdentity
     let candidates: [WiFiNetworkCandidate]
     let connectedBSSID: String?
+    let isKnown: Bool
+
+    init(
+        identity: WiFiNetworkIdentity,
+        candidates: [WiFiNetworkCandidate],
+        connectedBSSID: String?,
+        isKnown: Bool = false
+    ) {
+        self.identity = identity
+        self.candidates = candidates
+        self.connectedBSSID = connectedBSSID
+        self.isKnown = isKnown
+    }
 
     var id: WiFiNetworkIdentity { identity }
     var ssid: String { identity.ssid }
@@ -96,14 +109,16 @@ struct WiFiNetwork: Identifiable, Equatable, Sendable {
 
     static func merge(
         _ candidates: [WiFiNetworkCandidate],
-        connectedBSSID: String?
+        connectedBSSID: String?,
+        knownSSIDs: Set<String> = []
     ) -> [WiFiNetwork] {
         let groups = Dictionary(grouping: candidates, by: \.identity)
         return groups.map { identity, values in
             WiFiNetwork(
                 identity: identity,
                 candidates: values.sorted(by: candidateComesFirst),
-                connectedBSSID: connectedBSSID
+                connectedBSSID: connectedBSSID,
+                isKnown: knownSSIDs.contains(identity.ssid)
             )
         }
         .sorted { lhs, rhs in
@@ -124,6 +139,28 @@ struct WiFiNetwork: Identifiable, Equatable, Sendable {
         let rightRSSI = rhs.rssi ?? Int.min
         if leftRSSI != rightRSSI { return leftRSSI > rightRSSI }
         return (lhs.bssid ?? "") < (rhs.bssid ?? "")
+    }
+}
+
+enum WiFiNetworkRowAction: Equatable, Sendable {
+    case none
+    case connect
+    case openSettings
+}
+
+enum WiFiNetworkPresentation {
+    static func grouped(
+        _ networks: [WiFiNetwork]
+    ) -> (known: [WiFiNetwork], other: [WiFiNetwork]) {
+        (
+            known: networks.filter { $0.isKnown || $0.isConnected },
+            other: networks.filter { !$0.isKnown && !$0.isConnected }
+        )
+    }
+
+    static func action(for network: WiFiNetwork) -> WiFiNetworkRowAction {
+        if network.isConnected { return .none }
+        return network.isKnown ? .openSettings : .connect
     }
 }
 

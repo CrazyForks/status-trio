@@ -59,17 +59,43 @@ final class SettingsRowHitAreaTests: XCTestCase {
         )
     }
 
+    func testNavigationBackRowUsesFullHeaderHitArea() {
+        let view = NavigationBackRow(
+            accessibilityLabel: "Back",
+            title: "Wi-Fi",
+            action: {}
+        )
+        .frame(width: 300)
+
+        let hitAreas = interactiveSubViewSizes(
+            for: view,
+            size: NSSize(width: 300, height: 60)
+        )
+
+        XCTAssertTrue(
+            hitAreas.contains { $0.width >= 250 && $0.height >= 32 },
+            "Expected the back row to react across the header width, got \(hitAreas)"
+        )
+    }
+
     private func interactiveSubViewWidths<V: View>(
         for view: V,
         size: NSSize
     ) -> [CGFloat] {
+        interactiveSubViewSizes(for: view, size: size).map(\.width)
+    }
+
+    private func interactiveSubViewSizes<V: View>(
+        for view: V,
+        size: NSSize
+    ) -> [NSSize] {
         let hostingView = NSHostingView(rootView: view)
         hostingView.frame = NSRect(origin: .zero, size: size)
         hostingView.layoutSubtreeIfNeeded()
 
         return hostingView.subviews
             .filter { !$0.isHidden && $0.frame.height > 0 }
-            .map(\.frame.width)
+            .map(\.frame.size)
     }
 
     private func makeLocalization() -> Localization {

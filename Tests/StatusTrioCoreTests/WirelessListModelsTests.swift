@@ -61,6 +61,72 @@ final class WirelessListModelsTests: XCTestCase {
         XCTAssertEqual(network.connectedBSSID, "02")
     }
 
+    func testWiFiGroupingSeparatesKnownAndUnknownScannedNetworks() {
+        let candidates = [
+            WiFiNetworkCandidate(ssid: "Home", bssid: "01", rssi: -40, channel: 1, security: .wpa2Personal),
+            WiFiNetworkCandidate(ssid: "Cafe", bssid: "02", rssi: -50, channel: 6, security: .wpa2Personal),
+            WiFiNetworkCandidate(ssid: "Office", bssid: "03", rssi: -60, channel: 11, security: .wpa2Personal)
+        ]
+        let networks = WiFiNetwork.merge(
+            candidates,
+            connectedBSSID: "03",
+            knownSSIDs: ["Home", "Office"]
+        )
+
+        let grouped = WiFiNetworkPresentation.grouped(networks)
+
+        XCTAssertEqual(grouped.known.map(\.ssid), ["Office", "Home"])
+        XCTAssertEqual(grouped.other.map(\.ssid), ["Cafe"])
+    }
+
+    func testKnownWiFiRowOpensSystemSettingsInsteadOfConnecting() {
+        let network = WiFiNetwork.merge(
+            [
+                WiFiNetworkCandidate(
+                    ssid: "Home",
+                    bssid: "01",
+                    rssi: -40,
+                    channel: 1,
+                    security: .wpa2Personal
+                )
+            ],
+            connectedBSSID: nil,
+            knownSSIDs: ["Home"]
+        )[0]
+
+        XCTAssertEqual(WiFiNetworkPresentation.action(for: network), .openSettings)
+    }
+
+    func testUnknownWiFiRowKeepsInAppConnection() {
+        let network = WiFiNetwork.merge(
+            [
+                WiFiNetworkCandidate(
+                    ssid: "Cafe",
+                    bssid: "01",
+                    rssi: -40,
+                    channel: 1,
+                    security: .wpa2Personal
+                )
+            ],
+            connectedBSSID: nil
+        )[0]
+
+        XCTAssertEqual(WiFiNetworkPresentation.action(for: network), .connect)
+    }
+
+    func testPreferredNetworkParserSkipsHeaderAndPreservesSSIDs() {
+        let output = """
+        Preferred networks on en0:
+        \tHome
+        \tCafe 5G
+        """
+
+        XCTAssertEqual(
+            WiFiPreferredNetworkOutputParser.parse(output),
+            ["Home", "Cafe 5G"]
+        )
+    }
+
     func testAsyncRequestGateRejectsLateResults() {
         var gate = AsyncRequestGate()
         let firstRequest = gate.advance()
