@@ -70,6 +70,50 @@ final class LocalizationTests: XCTestCase {
         }
     }
 
+    func testNaturalScrollingDescriptionMentionsThirdPartyScrollApps() throws {
+        let requiredMentions = ["MOS", "Scroll Reverser", "LinearMouse", "Status Trio"]
+        let requiredGuidance: [AppLanguage: (scope: String, remedy: String)] = [
+            .english: ("after turning this on", "exception/ignore list"),
+            .simplifiedChinese: ("如果开启后", "例外/忽略列表"),
+            .traditionalChinese: ("如果開啟後", "例外/忽略清單"),
+            .japanese: ("オンにした後も", "例外/無視リスト"),
+            .korean: ("이 옵션을 켠 후에도", "예외/무시 목록"),
+            .spanish: ("tras activar esta opción", "lista de excepciones/omisiones"),
+            .french: ("après avoir activé cette option", "liste d’exceptions/d’ignorés"),
+            .german: ("nach dem Aktivieren dieser Option", "Ausnahme-/Ignorierliste"),
+            .italian: ("dopo aver attivato questa opzione", "elenco di eccezioni/ignorati"),
+            .brazilianPortuguese: ("depois de ativar esta opção", "lista de exceções/ignorados"),
+            .russian: ("после включения этой опции", "список исключений/игнорирования"),
+            .arabic: ("بعد تشغيل هذا الخيار", "قائمة استثناءات/تجاهل")
+        ]
+
+        for language in AppLanguage.allCases {
+            let bundle = try XCTUnwrap(Localization.resourceBundle(for: language))
+            let value = bundle.localizedString(
+                forKey: LocalizationKey.settingsPopupVolumeScrollNaturalDescription.rawValue,
+                value: nil,
+                table: nil
+            )
+
+            for mention in requiredMentions {
+                XCTAssertTrue(
+                    value.contains(mention),
+                    "\(language.rawValue) natural-scrolling description missing \(mention)"
+                )
+            }
+
+            let guidance = try XCTUnwrap(requiredGuidance[language])
+            XCTAssertTrue(
+                value.contains(guidance.scope),
+                "\(language.rawValue) natural-scrolling description is not scoped to the enabled state"
+            )
+            XCTAssertTrue(
+                value.contains(guidance.remedy),
+                "\(language.rawValue) natural-scrolling description is missing exception guidance"
+            )
+        }
+    }
+
     func testEveryParameterizedKeyUsesMatchingPlaceholders() throws {
         let expectedPlaceholderCounts: [LocalizationKey: Int] = [
             .menuVersion: 1,

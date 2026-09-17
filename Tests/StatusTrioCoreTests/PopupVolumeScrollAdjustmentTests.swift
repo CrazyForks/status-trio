@@ -4,53 +4,75 @@ import XCTest
 final class PopupVolumeScrollAdjustmentTests: XCTestCase {
     private let adjustment = PopupVolumeScrollAdjustment()
 
-    func testScrollUpGestureRaisesVolumeWithNaturalScrolling() throws {
-        // Natural scrolling reports a negative delta for a two-finger swipe up.
+    func testNaturalScrollingRaisesVolumeForPhysicalScrollUpWithSystemNaturalScrolling() throws {
+        // The system reports a negative value after natural-scrolling inversion.
         let delta = try XCTUnwrap(
             adjustment.volumeDelta(
                 deltaY: -4,
                 isPrecise: true,
                 isDirectionInverted: true,
-                direction: .up
+                usesNaturalScrolling: true
             )
         )
 
         XCTAssertEqual(delta, 0.008, accuracy: 0.000_001)
     }
 
-    func testScrollUpGestureRaisesVolumeWithoutNaturalScrolling() throws {
+    func testNaturalScrollingRaisesVolumeForPhysicalScrollUpWithoutSystemNaturalScrolling() throws {
         let delta = try XCTUnwrap(
             adjustment.volumeDelta(
                 deltaY: 4,
                 isPrecise: true,
                 isDirectionInverted: false,
-                direction: .up
+                usesNaturalScrolling: true
             )
         )
 
         XCTAssertEqual(delta, 0.008, accuracy: 0.000_001)
     }
 
-    func testScrollDownPreferenceReversesTheGestureOnBothDevices() throws {
-        let natural = try XCTUnwrap(
+    func testNaturalScrollingOffUsesSystemReportedDirection() throws {
+        let naturalSystem = try XCTUnwrap(
             adjustment.volumeDelta(
                 deltaY: -4,
                 isPrecise: true,
                 isDirectionInverted: true,
-                direction: .down
+                usesNaturalScrolling: false
             )
         )
-        XCTAssertEqual(natural, -0.008, accuracy: 0.000_001)
+        XCTAssertEqual(naturalSystem, -0.008, accuracy: 0.000_001)
 
-        let classic = try XCTUnwrap(
+        let classicSystem = try XCTUnwrap(
             adjustment.volumeDelta(
                 deltaY: 4,
                 isPrecise: true,
                 isDirectionInverted: false,
-                direction: .down
+                usesNaturalScrolling: false
             )
         )
-        XCTAssertEqual(classic, -0.008, accuracy: 0.000_001)
+        XCTAssertEqual(classicSystem, 0.008, accuracy: 0.000_001)
+    }
+
+    func testNaturalScrollingOffMatchesTheOriginalRawDeltaMapping() throws {
+        let negative = try XCTUnwrap(
+            adjustment.volumeDelta(
+                deltaY: -2.5,
+                isPrecise: true,
+                isDirectionInverted: true,
+                usesNaturalScrolling: false
+            )
+        )
+        XCTAssertEqual(negative, -0.005, accuracy: 0.000_001)
+
+        let positive = try XCTUnwrap(
+            adjustment.volumeDelta(
+                deltaY: 2.5,
+                isPrecise: true,
+                isDirectionInverted: false,
+                usesNaturalScrolling: false
+            )
+        )
+        XCTAssertEqual(positive, 0.005, accuracy: 0.000_001)
     }
 
     func testPreciseScrollKeepsFractionalVolumeWithoutStepping() throws {
@@ -59,7 +81,7 @@ final class PopupVolumeScrollAdjustmentTests: XCTestCase {
                 deltaY: 1,
                 isPrecise: true,
                 isDirectionInverted: false,
-                direction: .up
+                usesNaturalScrolling: false
             )
         )
         let second = try XCTUnwrap(
@@ -67,7 +89,7 @@ final class PopupVolumeScrollAdjustmentTests: XCTestCase {
                 deltaY: 9,
                 isPrecise: true,
                 isDirectionInverted: false,
-                direction: .up
+                usesNaturalScrolling: false
             )
         )
 
@@ -80,7 +102,7 @@ final class PopupVolumeScrollAdjustmentTests: XCTestCase {
                 deltaY: 1,
                 isPrecise: false,
                 isDirectionInverted: false,
-                direction: .up
+                usesNaturalScrolling: false
             )
         )
         XCTAssertEqual(increase, 0.02, accuracy: 0.000_001)
@@ -90,34 +112,10 @@ final class PopupVolumeScrollAdjustmentTests: XCTestCase {
                 deltaY: -2,
                 isPrecise: false,
                 isDirectionInverted: false,
-                direction: .up
+                usesNaturalScrolling: false
             )
         )
         XCTAssertEqual(decrease, -0.04, accuracy: 0.000_001)
-    }
-
-    func testBothDeviceSetupsCanReproduceTheOriginalMapping() throws {
-        // 1.1.0 applied the raw delta, so each device setup reaches that
-        // mapping through exactly one of the two choices.
-        let classic = try XCTUnwrap(
-            adjustment.volumeDelta(
-                deltaY: 2.5,
-                isPrecise: true,
-                isDirectionInverted: false,
-                direction: .up
-            )
-        )
-        XCTAssertEqual(classic, 0.005, accuracy: 0.000_001)
-
-        let natural = try XCTUnwrap(
-            adjustment.volumeDelta(
-                deltaY: 2.5,
-                isPrecise: true,
-                isDirectionInverted: true,
-                direction: .down
-            )
-        )
-        XCTAssertEqual(natural, 0.005, accuracy: 0.000_001)
     }
 
     func testInvalidAndZeroDeltasAreIgnored() {
@@ -126,7 +124,7 @@ final class PopupVolumeScrollAdjustmentTests: XCTestCase {
                 deltaY: .nan,
                 isPrecise: true,
                 isDirectionInverted: false,
-                direction: .up
+                usesNaturalScrolling: true
             )
         )
         XCTAssertNil(
@@ -134,7 +132,7 @@ final class PopupVolumeScrollAdjustmentTests: XCTestCase {
                 deltaY: .infinity,
                 isPrecise: true,
                 isDirectionInverted: true,
-                direction: .up
+                usesNaturalScrolling: false
             )
         )
         XCTAssertNil(
@@ -142,7 +140,7 @@ final class PopupVolumeScrollAdjustmentTests: XCTestCase {
                 deltaY: -.infinity,
                 isPrecise: false,
                 isDirectionInverted: false,
-                direction: .down
+                usesNaturalScrolling: true
             )
         )
         XCTAssertNil(
@@ -150,7 +148,7 @@ final class PopupVolumeScrollAdjustmentTests: XCTestCase {
                 deltaY: 0,
                 isPrecise: true,
                 isDirectionInverted: false,
-                direction: .up
+                usesNaturalScrolling: true
             )
         )
         XCTAssertNil(
@@ -158,7 +156,7 @@ final class PopupVolumeScrollAdjustmentTests: XCTestCase {
                 deltaY: 0,
                 isPrecise: false,
                 isDirectionInverted: true,
-                direction: .down
+                usesNaturalScrolling: false
             )
         )
     }

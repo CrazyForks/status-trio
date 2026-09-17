@@ -147,6 +147,8 @@
 "settings.popup.volumeScroll.scope.description" = "اختر المكان الذي يؤدي فيه التمرير إلى تغيير مستوى الصوت.";
 "settings.popup.volumeScroll.scope.panel" = "اللوحة بالكامل";
 "settings.popup.volumeScroll.scope.volumeControl" = "أداة مستوى الصوت فقط";
+"settings.popup.volumeScroll.natural" = "التمرير الطبيعي";
+"settings.popup.volumeScroll.natural.description" = "عند التشغيل، يؤدي التمرير لأعلى بالماوس أو لوحة التتبع إلى زيادة مستوى الصوت. عند الإيقاف، يتبع مستوى الصوت اتجاه التمرير في النظام. إذا استمر تمرير الماوس لأعلى في خفض مستوى الصوت بعد تشغيل هذا الخيار، فاضبط MOS أو Scroll Reverser أو LinearMouse أو تطبيقًا مشابهًا بحيث يترك Status Trio دون تغيير، عادةً عبر قائمة استثناءات/تجاهل (يُطلق عليها أحيانًا قائمة السماح).";
 "settings.popup.volumeScroll.direction" = "اتجاه التمرير";
 "settings.popup.volumeScroll.direction.description" = "اختر الاتجاه الذي يرفع مستوى الصوت.";
 "settings.popup.volumeScroll.direction.up" = "للأعلى";
@@ -259,3 +261,28 @@
 "battery.details.unavailable" = "غير متاح";
 "battery.details.loading" = "جارٍ التحديث…";
 "battery.details.explanation" = "قدرة البطارية هي تقدير تقريبي لصافي القدرة، وليست إجمالي استهلاك Mac. القدرة الاسمية للمحوّل ليست قدرة الشحن الفعلية في الوقت الحالي. قد لا تتوفر القيم بعد تغيير مصدر الطاقة.";
+/* Compact popover controls. */
+"menu.more" = "إجراءات أخرى";
+
+/* Optional icon guide. */
+"guide.title" = "تعرّف على الأيقونة";
+"guide.open" = "فتح الدليل";
+"guide.customize" = "تخصيص…";
+"guide.done" = "تم";
+"guide.example" = "مثال باستخدام إعدادات أيقونتك. اختر جزءًا لمعرفة معناه.";
+"guide.battery" = "يشير قوس البطارية الخارجي إلى مستوى الشحن. يمكن تعديل النسبة المئوية ورموز الشحن في الإعدادات.";
+"guide.network" = "يشير الوسط إلى حالة الشبكة. قد يتغير الرمز حسب نوع الاتصال وإعداداتك.";
+"guide.volumeDots" = "تشير النقاط السفلية إلى مستوى الصوت، لا إشارة الهاتف. المزيد من النقاط الممتلئة يعني صوتًا أعلى. غيّر النمط في إعدادات الصوت.";
+"guide.volumeArc" = "يشير القوس السفلي إلى مستوى الصوت، لا إشارة الهاتف. القوس الأطول يعني صوتًا أعلى. غيّر النمط في إعدادات الصوت.";
+"guide.next" = "التالي";
+"guide.anatomy.title" = "أيقونة واحدة، ثلاث إشارات";
+"guide.anatomy.description" = "اختر جزءًا لإبرازه في شريط القوائم وDock في الوقت نفسه.";
+"guide.placement" = "يمكنك في الإعدادات عرض الأيقونة في شريط القوائم أو Dock أو كليهما، وتغيير الموضع متى شئت.";
+"guide.states.title" = "تركيبات الحالة";
+"guide.states.description" = "نظرة سريعة على تركيبات شائعة للبطارية والشبكة ومستوى الصوت.";
+"guide.state.charging" = "قيد الشحن + Wi-Fi";
+"guide.state.lowBattery" = "بطارية منخفضة + Wi-Fi";
+"guide.state.ethernet" = "مكتملة الشحن + Ethernet";
+"guide.state.noInternetMuted" = "لا إنترنت + صامت";
+"guide.state.hotspotLowPower" = "نقطة اتصال + وضع الطاقة المنخفضة";
+"guide.state.weakWiFi" = "Wi-Fi ضعيف + مستوى الصوت 25%";

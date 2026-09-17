@@ -3,6 +3,10 @@ import Foundation
 
 @MainActor
 final class SettingsStore: ObservableObject {
+    static let hasCompletedIconGuideOnboardingDefaultsKey = "hasCompletedIconGuideOnboarding.v1"
+    static let hasSeenIconGuideDefaultsKey = "hasSeenIconGuide"
+    private static let sparkleHasLaunchedBeforeDefaultsKey = "SUHasLaunchedBefore"
+
     static let iconSizeRange: ClosedRange<Double> = 16...36
     static let defaultIconSize: Double = 24
     static let iconSizeDefaultsKey = "menuBarIconSize"
@@ -45,9 +49,20 @@ final class SettingsStore: ObservableObject {
     static let defaultPopupVolumeScrollScope: PopupVolumeScrollScope = .panel
     static let popupVolumeScrollDirectionDefaultsKey = "popupVolumeScrollDirection"
     static let defaultPopupVolumeScrollDirection: PopupVolumeScrollDirection = .up
+    static let popupVolumeNaturalScrollingDefaultsKey = "popupVolumeNaturalScrolling"
+    static let defaultPopupVolumeNaturalScrolling = false
 
     static let appIconPlacementDefaultsKey = "appIconPlacement"
     static let dockIconBackgroundPreferenceDefaultsKey = "dockIconBackgroundPreference"
+
+    @Published var hasCompletedIconGuideOnboarding: Bool {
+        didSet {
+            defaults.set(
+                hasCompletedIconGuideOnboarding,
+                forKey: Self.hasCompletedIconGuideOnboardingDefaultsKey
+            )
+        }
+    }
 
     @Published var appIconPlacement: AppIconPlacement {
         didSet {
@@ -260,6 +275,15 @@ final class SettingsStore: ObservableObject {
         }
     }
 
+    @Published var popupVolumeNaturalScrolling: Bool {
+        didSet {
+            defaults.set(
+                popupVolumeNaturalScrolling,
+                forKey: Self.popupVolumeNaturalScrollingDefaultsKey
+            )
+        }
+    }
+
     var visiblePopupSections: [PopupSection] {
         popupSectionOrder.filter { enabledPopupSections.contains($0) }
     }
@@ -366,6 +390,22 @@ final class SettingsStore: ObservableObject {
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
+        if defaults.object(forKey: Self.hasCompletedIconGuideOnboardingDefaultsKey) != nil {
+            self.hasCompletedIconGuideOnboarding = defaults.bool(
+                forKey: Self.hasCompletedIconGuideOnboardingDefaultsKey
+            )
+        } else {
+            // Sparkle writes this before its first update check. AppDelegate requests
+            // onboarding before starting Sparkle, so its presence identifies upgrades.
+            let isExistingInstallation =
+                defaults.bool(forKey: Self.sparkleHasLaunchedBeforeDefaultsKey)
+                || defaults.bool(forKey: Self.hasSeenIconGuideDefaultsKey)
+            self.hasCompletedIconGuideOnboarding = isExistingInstallation
+            defaults.set(
+                isExistingInstallation,
+                forKey: Self.hasCompletedIconGuideOnboardingDefaultsKey
+            )
+        }
         let storedIconSize = (defaults.object(forKey: Self.iconSizeDefaultsKey) as? NSNumber)?.doubleValue
         let storedCriticalThreshold = (defaults.object(forKey: Self.batteryCriticalThresholdDefaultsKey) as? NSNumber)?.doubleValue
         let storedBatterySymbolScale = (defaults.object(forKey: Self.batterySymbolScaleDefaultsKey) as? NSNumber)?.doubleValue
@@ -453,6 +493,9 @@ final class SettingsStore: ObservableObject {
         self.popupVolumeScrollDirection = storedPopupVolumeScrollDirection
             .flatMap(PopupVolumeScrollDirection.init(rawValue:))
             ?? Self.defaultPopupVolumeScrollDirection
+        self.popupVolumeNaturalScrolling = defaults.object(
+            forKey: Self.popupVolumeNaturalScrollingDefaultsKey
+        ) as? Bool ?? Self.defaultPopupVolumeNaturalScrolling
     }
 
     static func clampedIconSize(_ value: Double) -> Double {

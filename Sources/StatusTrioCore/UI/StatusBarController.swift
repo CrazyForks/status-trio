@@ -431,7 +431,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             deltaY: Double(event.scrollingDeltaY),
             isPrecise: event.hasPreciseScrollingDeltas,
             isDirectionInverted: event.isDirectionInvertedFromDevice,
-            direction: settings.popupVolumeScrollDirection
+            usesNaturalScrolling: settings.popupVolumeNaturalScrolling
         )
         guard let delta else { return true }
 

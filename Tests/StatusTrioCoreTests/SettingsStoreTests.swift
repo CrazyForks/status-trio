@@ -365,12 +365,13 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(store.popupSectionOrder, [.battery, .network, .bluetooth, .volume])
     }
 
-    func testPopupVolumeScrollDefaultsToEverywhereAndScrollUp() {
+    func testPopupVolumeScrollDefaultsToEverywhereSystemDirectionAndNaturalScrollingOff() {
         let store = SettingsStore(defaults: makeSuite().defaults)
 
         XCTAssertTrue(store.popupScrollAdjustsVolume)
         XCTAssertEqual(store.popupVolumeScrollScope, .panel)
         XCTAssertEqual(store.popupVolumeScrollDirection, .up)
+        XCTAssertFalse(store.popupVolumeNaturalScrolling)
     }
 
     func testPopupVolumeScrollChoicesPersistAcrossStoreInstances() {
@@ -381,11 +382,26 @@ final class SettingsStoreTests: XCTestCase {
         first.popupScrollAdjustsVolume = false
         first.popupVolumeScrollScope = .volumeControl
         first.popupVolumeScrollDirection = .down
+        first.popupVolumeNaturalScrolling = true
 
         let second = SettingsStore(defaults: suite.defaults)
         XCTAssertFalse(second.popupScrollAdjustsVolume)
         XCTAssertEqual(second.popupVolumeScrollScope, .volumeControl)
         XCTAssertEqual(second.popupVolumeScrollDirection, .down)
+        XCTAssertTrue(second.popupVolumeNaturalScrolling)
+    }
+
+    func testPopupVolumeNaturalScrollingFallsBackToOffForNonBooleanStoredValue() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+        suite.defaults.set(
+            "yes",
+            forKey: SettingsStore.popupVolumeNaturalScrollingDefaultsKey
+        )
+
+        let store = SettingsStore(defaults: suite.defaults)
+
+        XCTAssertFalse(store.popupVolumeNaturalScrolling)
     }
 
     func testUnknownStoredPopupVolumeScrollValuesFallBackToDefaults() {
@@ -404,6 +420,7 @@ final class SettingsStoreTests: XCTestCase {
 
         XCTAssertEqual(store.popupVolumeScrollScope, .panel)
         XCTAssertEqual(store.popupVolumeScrollDirection, .up)
+        XCTAssertFalse(store.popupVolumeNaturalScrolling)
     }
 
     func testPopupVolumeScrollOptionsExposeStableChoices() {

@@ -147,6 +147,8 @@
 "settings.popup.volumeScroll.scope.description" = "Elige dónde cambia el volumen el gesto de desplazamiento.";
 "settings.popup.volumeScroll.scope.panel" = "Todo el panel";
 "settings.popup.volumeScroll.scope.volumeControl" = "Solo el control de volumen";
+"settings.popup.volumeScroll.natural" = "Desplazamiento natural";
+"settings.popup.volumeScroll.natural.description" = "Si está activado, desplazarse hacia arriba con el ratón o el trackpad sube el volumen. Si está desactivado, el volumen sigue la dirección de desplazamiento del sistema. Si, tras activar esta opción, desplazar el ratón hacia arriba sigue bajando el volumen, configura MOS, Scroll Reverser, LinearMouse o una app similar para dejar Status Trio sin cambios, normalmente mediante una lista de excepciones/omisiones (a veces llamada lista de permitidos).";
 "settings.popup.volumeScroll.direction" = "Dirección del desplazamiento";
 "settings.popup.volumeScroll.direction.description" = "Elige la dirección que sube el volumen.";
 "settings.popup.volumeScroll.direction.up" = "Hacia arriba";
@@ -259,3 +261,28 @@
 "battery.details.unavailable" = "No disponible";
 "battery.details.loading" = "Actualizando…";
 "battery.details.explanation" = "La potencia de la batería es una estimación aproximada de la potencia neta, no del consumo total del Mac. La potencia nominal del adaptador no es la potencia de carga actual. Los valores pueden no estar disponibles tras cambiar la fuente de alimentación.";
+/* Compact popover controls. */
+"menu.more" = "Más acciones";
+
+/* Optional icon guide. */
+"guide.title" = "Conoce tu icono";
+"guide.open" = "Abrir guía";
+"guide.customize" = "Personalizar…";
+"guide.done" = "Listo";
+"guide.example" = "Ejemplo con tus ajustes del icono. Selecciona una parte.";
+"guide.battery" = "El arco exterior de batería indica la carga. Puedes ajustar el porcentaje y los símbolos de carga en Ajustes.";
+"guide.network" = "El centro indica el estado de la red. Su símbolo puede cambiar según la conexión y tus ajustes.";
+"guide.volumeDots" = "Los puntos inferiores indican el volumen, no la señal móvil. Más puntos llenos significan mayor volumen. Cambia el estilo en los ajustes de audio.";
+"guide.volumeArc" = "El arco inferior indica el volumen, no la señal móvil. Un arco más largo significa mayor volumen. Cambia el estilo en los ajustes de audio.";
+"guide.next" = "Siguiente";
+"guide.anatomy.title" = "Un icono, tres señales";
+"guide.anatomy.description" = "Selecciona una parte para resaltarla al mismo tiempo en la barra de menús y el Dock.";
+"guide.placement" = "En Ajustes puedes mostrar el icono en la barra de menús, en el Dock o en ambos, y cambiar la posición cuando quieras.";
+"guide.states.title" = "Combinaciones de estado";
+"guide.states.description" = "Una vista rápida de combinaciones comunes de batería, red y volumen.";
+"guide.state.charging" = "Cargando + Wi-Fi";
+"guide.state.lowBattery" = "Batería baja + Wi-Fi";
+"guide.state.ethernet" = "Cargado + Ethernet";
+"guide.state.noInternetMuted" = "Sin Internet + Silenciado";
+"guide.state.hotspotLowPower" = "Punto de acceso + Bajo consumo";
+"guide.state.weakWiFi" = "Wi-Fi débil + Volumen al 25%";

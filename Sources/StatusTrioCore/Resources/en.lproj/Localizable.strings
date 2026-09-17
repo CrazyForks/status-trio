@@ -147,6 +147,8 @@
 "settings.popup.volumeScroll.scope.description" = "Choose where the scroll gesture changes the volume.";
 "settings.popup.volumeScroll.scope.panel" = "Whole Panel";
 "settings.popup.volumeScroll.scope.volumeControl" = "Volume Control Only";
+"settings.popup.volumeScroll.natural" = "Natural Scrolling";
+"settings.popup.volumeScroll.natural.description" = "When on, scrolling up on a mouse or trackpad increases volume. When off, volume follows the system's scrolling direction. If scrolling up still lowers the volume after turning this on, configure MOS, Scroll Reverser, LinearMouse, or a similar app to leave Status Trio unchanged, usually through an exception/ignore list (sometimes called an allowlist).";
 "settings.popup.volumeScroll.direction" = "Scroll Direction";
 "settings.popup.volumeScroll.direction.description" = "Choose the direction that turns the volume up.";
 "settings.popup.volumeScroll.direction.up" = "Scroll Up";
@@ -259,3 +261,28 @@
 "battery.details.unavailable" = "Unavailable";
 "battery.details.loading" = "Updating…";
 "battery.details.explanation" = "Battery power is a best-effort net estimate, not total Mac consumption. Adapter rating is not live charging power. Values may be unavailable after a power change.";
+/* Compact popover controls. */
+"menu.more" = "More actions";
+
+/* Optional icon guide. */
+"guide.title" = "Meet your icon";
+"guide.open" = "Open Guide";
+"guide.customize" = "Customize…";
+"guide.done" = "Done";
+"guide.example" = "Example with your icon settings. Select a part to learn more.";
+"guide.battery" = "The outer battery arc shows charge level. Percentage and charging symbols can be adjusted in Settings.";
+"guide.network" = "The center shows network status. Its symbol can change with the connection type and your settings.";
+"guide.volumeDots" = "The dots below show volume, not cellular signal. More filled dots mean louder audio. Change the style in Audio settings.";
+"guide.volumeArc" = "The lower arc shows volume, not cellular signal. A longer arc means louder audio. Change the style in Audio settings.";
+"guide.next" = "Next";
+"guide.anatomy.title" = "One icon, three signals";
+"guide.anatomy.description" = "Select a part to highlight it in the menu bar and Dock at the same time.";
+"guide.placement" = "Choose Menu Bar, Dock, or both in Settings, and switch the position whenever you like.";
+"guide.states.title" = "State combinations";
+"guide.states.description" = "A quick look at common battery, network, and volume combinations.";
+"guide.state.charging" = "Charging + Wi-Fi";
+"guide.state.lowBattery" = "Low battery + Wi-Fi";
+"guide.state.ethernet" = "Charged + Ethernet";
+"guide.state.noInternetMuted" = "No Internet + Muted";
+"guide.state.hotspotLowPower" = "Hotspot + Low Power Mode";
+"guide.state.weakWiFi" = "Weak Wi-Fi + 25% volume";

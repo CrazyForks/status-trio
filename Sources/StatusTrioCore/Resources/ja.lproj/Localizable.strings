@@ -147,6 +147,8 @@
 "settings.popup.volumeScroll.scope.description" = "スクロールで音量を変更する範囲を選びます。";
 "settings.popup.volumeScroll.scope.panel" = "パネル全体";
 "settings.popup.volumeScroll.scope.volumeControl" = "音量コントロールのみ";
+"settings.popup.volumeScroll.natural" = "ナチュラルスクロール";
+"settings.popup.volumeScroll.natural.description" = "オンにすると、マウスまたはトラックパッドの上方向スクロールで音量が上がります。オフでは、システムのスクロール方向に従います。オンにした後もマウスの上スクロールで音量が下がる場合は、通常は例外/無視リスト（許可リストと呼ばれることもあります）を使い、MOS、Scroll Reverser、LinearMouse などのアプリで Status Trio を変更しないよう設定してください。";
 "settings.popup.volumeScroll.direction" = "スクロール方向";
 "settings.popup.volumeScroll.direction.description" = "音量を上げるスクロール方向を選びます。";
 "settings.popup.volumeScroll.direction.up" = "上スクロール";
@@ -259,3 +261,28 @@
 "battery.details.unavailable" = "取得できません";
 "battery.details.loading" = "更新中…";
 "battery.details.explanation" = "バッテリー電力は正味の充放電電力の推定値であり、Mac全体の消費電力ではありません。アダプタの定格出力は現在の充電電力ではありません。電源の切り替え後は値を取得できない場合があります。";
+/* Compact popover controls. */
+"menu.more" = "その他の操作";
+
+/* Optional icon guide. */
+"guide.title" = "アイコンの見方";
+"guide.open" = "ガイドを開く";
+"guide.customize" = "カスタマイズ…";
+"guide.done" = "完了";
+"guide.example" = "現在のアイコン設定を使った例です。各部分を選んで説明を確認できます。";
+"guide.battery" = "外側のバッテリーの弧は充電残量を示します。パーセント表示と充電記号は設定で変更できます。";
+"guide.network" = "中央はネットワークの状態を示します。接続の種類や設定によって記号が変わります。";
+"guide.volumeDots" = "下の点は携帯電話の電波ではなく音量です。塗られた点が多いほど音が大きくなります。オーディオ設定で表示を変更できます。";
+"guide.volumeArc" = "下の弧は携帯電話の電波ではなく音量です。弧が長いほど音が大きくなります。オーディオ設定で表示を変更できます。";
+"guide.next" = "次へ";
+"guide.anatomy.title" = "1つのアイコン、3つの情報";
+"guide.anatomy.description" = "部分を選ぶと、メニューバーと Dock の対応する領域が同時にハイライトされます。";
+"guide.placement" = "表示位置は設定でメニューバー、Dock、または両方から自由に選べ、いつでも変更できます。";
+"guide.states.title" = "状態の組み合わせ";
+"guide.states.description" = "よくあるバッテリー、ネットワーク、音量の組み合わせを確認できます。";
+"guide.state.charging" = "充電中 + Wi-Fi";
+"guide.state.lowBattery" = "低バッテリー + Wi-Fi";
+"guide.state.ethernet" = "満充電 + Ethernet";
+"guide.state.noInternetMuted" = "インターネットなし + ミュート";
+"guide.state.hotspotLowPower" = "ホットスポット + 低電力モード";
+"guide.state.weakWiFi" = "弱い Wi-Fi + 音量25%";
