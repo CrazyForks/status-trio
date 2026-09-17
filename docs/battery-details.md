@@ -31,9 +31,12 @@ an Apple-supported cross-model data contract. Unsupported machines omit the
 additional values. A sample is rejected if fields are missing/implausible,
 its charge state disagrees with the current battery state, its timestamp is more
 than 90 seconds old or over 5 seconds in the future, or it predates an observed
-power-state transition. Zero current is treated as unavailable because it can be
-a transitional reading. Negative 64-bit integer current is supported, including
-unsigned NSNumber representations of the same bit pattern.
+power-state transition. Zero current while unplugged is treated as unavailable
+because it can be a transitional reading. Zero current while connected to power
+is reported as 0 W: the battery is neither charging nor discharging, which is
+the normal state when macOS holds charge or the battery is full. Negative 64-bit
+integer current is supported, including unsigned NSNumber representations of the
+same bit pattern.
 
 The hardware's sampling interval can be about a minute; the interface shows the
 sample time rather than promising live per-second watts. Hardware validation so

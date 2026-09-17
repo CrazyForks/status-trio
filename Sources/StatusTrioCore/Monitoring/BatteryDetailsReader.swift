@@ -84,8 +84,9 @@ struct BatteryDetailsReader: Sendable {
         // NSNumber. Interpret the integer bit pattern, then bound the result.
         let milliamps = Double(current.int64Value)
         guard abs(milliamps) <= 30_000,
-              // Zero after a power transition is ambiguous, not evidence of zero consumption.
-              milliamps != 0,
+              // Zero while unplugged is a power transition, not evidence of zero consumption.
+              // Zero while connected means the battery is idle, which is a real reading.
+              milliamps != 0 || connected,
               milliamps > 0 ? (connected && charging) : !charging
         else { return result }
         let updatedAt = Date(timeIntervalSince1970: timestamp)

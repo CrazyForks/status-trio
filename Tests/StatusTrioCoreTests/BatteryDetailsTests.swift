@@ -60,6 +60,18 @@ final class BatteryDetailsTests: XCTestCase {
         XCTAssertNotNil(parse(registry, notBefore: now).power)
     }
 
+    func testIdleBatteryOnAdapterReportsZeroWattsInsteadOfUnavailable() throws {
+        var values = registry
+        values["ExternalConnected"] = true
+        values["IsCharging"] = false
+        values["Amperage"] = 0
+        let idle = parse(values, state: state(connected: true))
+        XCTAssertEqual(try XCTUnwrap(idle.power).watts, 0)
+        XCTAssertEqual(idle.adapterWatts, 90)
+        values["ExternalConnected"] = false
+        XCTAssertNil(parse(values).power, "Zero while unplugged stays a transition, not an idle battery")
+    }
+
     func testMissingStaleAndFutureTelemetryFailClosed() {
         for key in ["Voltage", "Amperage", "UpdateTime", "ExternalConnected", "IsCharging"] {
             var values = registry

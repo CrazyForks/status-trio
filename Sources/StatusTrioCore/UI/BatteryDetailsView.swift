@@ -9,7 +9,8 @@ struct BatteryDetailsView: View {
         VStack(alignment: .leading, spacing: 6) {
             if let details = controller.details {
                 if let power = details.power {
-                    row(power.watts > 0 ? .batteryDetailsCharging : .batteryDetailsDischarging,
+                    row(power.watts > 0 ? .batteryDetailsCharging
+                            : (power.watts < 0 ? .batteryDetailsDischarging : .batteryDetailsPower),
                         abs(power.watts).formatted(.number.precision(.fractionLength(1)).locale(localization.resolvedLanguage.locale)) + " W")
                         .foregroundStyle(power.watts > 0 ? Color.green : Color.primary)
                     row(.batteryDetailsVoltage, power.volts.formatted(.number.precision(.fractionLength(2)).locale(localization.resolvedLanguage.locale)) + " V")
