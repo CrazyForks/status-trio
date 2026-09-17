@@ -626,8 +626,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     .compactMap(URL.init(string:))
 
     static let wifiSettingsURLs = [
-        "x-apple.systempreferences:com.apple.Network-Settings.extension",
-        "x-apple.systempreferences:com.apple.preference.network"
+        "x-apple.systempreferences:com.apple.wifi-settings-extension",
+        "x-apple.systempreferences:com.apple.preference.network?Wi-Fi"
     ]
     .compactMap(URL.init(string:))
 

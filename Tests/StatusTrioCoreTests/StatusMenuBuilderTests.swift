@@ -96,8 +96,8 @@ final class StatusMenuBuilderTests: XCTestCase {
         XCTAssertEqual(
             StatusBarController.wifiSettingsURLs.map(\.absoluteString),
             [
-                "x-apple.systempreferences:com.apple.Network-Settings.extension",
-                "x-apple.systempreferences:com.apple.preference.network"
+                "x-apple.systempreferences:com.apple.wifi-settings-extension",
+                "x-apple.systempreferences:com.apple.preference.network?Wi-Fi"
             ]
         )
         XCTAssertEqual(
