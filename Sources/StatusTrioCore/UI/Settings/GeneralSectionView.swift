@@ -9,7 +9,6 @@ struct GeneralSectionView: View {
     var body: some View {
         SettingsPage {
             systemGroup
-            placementGroup
             if updaterManager.canCheckForUpdates {
                 updatesGroup
             }
@@ -88,57 +87,44 @@ struct GeneralSectionView: View {
                     .padding(.bottom, 6)
                 }
             }
-        }
-    }
 
-    private var placementGroup: some View {
-        SettingsGroup(localization.string(.settingsAppIconPlacement)) {
+            SettingsDivider()
+
+            // Status refresh interval
             SettingsRow(
-                title: localization.string(.settingsAppIconPlacement),
-                subtitle: localization.string(.settingsAppIconPlacementDescription),
-                leading: { SettingsIcon(symbol: "macwindow.on.rectangle", tint: .indigo) },
-                trailing: {
-                    Picker(
-                        localization.string(.settingsAppIconPlacement),
-                        selection: $store.appIconPlacement
-                    ) {
-                        Text(localization.string(.settingsAppIconPlacementMenuBar))
-                            .tag(AppIconPlacement.menuBar)
-                        Text(localization.string(.settingsAppIconPlacementDock))
-                            .tag(AppIconPlacement.dock)
-                        Text(localization.string(.settingsAppIconPlacementBoth))
-                            .tag(AppIconPlacement.both)
-                    }
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
-                    .fixedSize()
+                "arrow.clockwise",
+                tint: .orange,
+                title: localization.string(.settingsRefreshInterval),
+                subtitle: localization.string(.settingsRefreshIntervalDescription)
+            ) {
+                HStack(spacing: 8) {
+                    Slider(
+                        value: Binding(
+                            get: { store.refreshIntervalSeconds },
+                            set: { store.refreshIntervalSeconds = ($0 / 5).rounded() * 5 }
+                        ),
+                        in: SettingsStore.refreshIntervalRange
+                    )
+                    .frame(width: 130)
+                    .controlSize(.small)
+                    .accessibilityLabel(localization.string(.settingsRefreshInterval))
+                    .accessibilityValue(
+                        localization.format(
+                            .settingsRefreshIntervalValue,
+                            Int(store.refreshIntervalSeconds)
+                        )
+                    )
+
+                    Text(
+                        localization.format(
+                            .settingsRefreshIntervalValue,
+                            Int(store.refreshIntervalSeconds)
+                        )
+                    )
+                    .font(.system(size: 12, design: .monospaced))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 50, alignment: .trailing)
                 }
-            )
-
-            if store.appIconPlacement != .menuBar {
-                SettingsDivider()
-
-                SettingsRow(
-                    title: localization.string(.settingsDockIconBackground),
-                    subtitle: localization.string(.settingsDockIconBackgroundDescription),
-                    leading: { SettingsIcon(symbol: "dock.rectangle", tint: .purple) },
-                    trailing: {
-                        Picker(
-                            localization.string(.settingsDockIconBackground),
-                            selection: $store.dockIconBackgroundPreference
-                        ) {
-                            Text(localization.string(.settingsDockIconBackgroundSystem))
-                                .tag(DockIconBackgroundPreference.system)
-                            Text(localization.string(.settingsDockIconBackgroundDark))
-                                .tag(DockIconBackgroundPreference.dark)
-                            Text(localization.string(.settingsDockIconBackgroundLight))
-                                .tag(DockIconBackgroundPreference.light)
-                        }
-                        .pickerStyle(.segmented)
-                        .labelsHidden()
-                        .fixedSize()
-                    }
-                )
             }
         }
     }

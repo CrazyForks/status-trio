@@ -24,6 +24,7 @@
 "settings.appIconPlacement.menuBar" = "메뉴 막대";
 "settings.appIconPlacement.dock" = "Dock";
 "settings.appIconPlacement.both" = "둘 다";
+"settings.appIcon.dockGroup" = "Dock 아이콘";
 "settings.dockIconBackground" = "Dock 아이콘 배경";
 "settings.dockIconBackground.description" = "Dock에 표시되는 실시간 아이콘에 적용됩니다. '시스템 설정 따르기'는 '시스템 설정 › 모양 › 아이콘 및 위젯 스타일'을 읽습니다(macOS 15 이상).";
 "settings.dockIconBackground.system" = "시스템 설정 따르기";
@@ -31,20 +32,21 @@
 "settings.dockIconBackground.light" = "밝은 색";
 "settings.iconSize" = "아이콘 표시 크기";
 "settings.iconSize.accessibilityValue" = "%d포인트";
-"settings.iconSize.description" = "메뉴 막대 아이콘의 렌더링 크기를 16–36pt에서 조정합니다.";
+"settings.iconSize.description" = "메뉴 막대 아이콘의 렌더링 크기를 16–36pt에서 조정합니다. Dock 아이콘은 고정된 디자인 크기를 사용합니다.";
+"settings.tab.appIcon" = "앱 아이콘";
+"settings.tab.battery" = "배터리";
+"settings.tab.network" = "네트워크";
+"settings.tab.audio" = "오디오";
 "settings.tab.basics" = "기본";
 "settings.tab.panel" = "상태 패널";
-"settings.tab.menuBar" = "메뉴 막대";
-"settings.tab.audio" = "오디오";
-"settings.tab.battery" = "배터리";
 "settings.tab.about" = "정보";
 "settings.menuBar.title" = "메뉴 막대 아이콘";
-"settings.menuBar.connectionIcons" = "연결 아이콘 스타일";
-"settings.menuBar.connectionIcons.description" = "활성화하면 선택한 상태가 전용 표시 대신 표준 Wi-Fi 신호 아이콘으로 표시됩니다.";
-"settings.menuBar.wifiIconForEthernet" = "Ethernet에 Wi-Fi 아이콘 사용";
-"settings.menuBar.wifiIconForHotspot" = "개인 핫스팟에 Wi-Fi 아이콘 사용";
-"settings.menuBar.wifiIconForTemporaryConnection" = "임시 연결에 Wi-Fi 아이콘 사용";
-"settings.menuBar.wifiIconForInternetSharing" = "인터넷 공유에 Wi-Fi 아이콘 사용";
+"settings.network.connectionIcons" = "연결 아이콘 스타일";
+"settings.network.connectionIcons.description" = "활성화하면 선택한 상태가 전용 표시 대신 표준 Wi-Fi 신호 아이콘으로 표시됩니다.";
+"settings.network.wifiIconForEthernet" = "Ethernet에 Wi-Fi 아이콘 사용";
+"settings.network.wifiIconForHotspot" = "개인 핫스팟에 Wi-Fi 아이콘 사용";
+"settings.network.wifiIconForTemporaryConnection" = "임시 연결에 Wi-Fi 아이콘 사용";
+"settings.network.wifiIconForInternetSharing" = "인터넷 공유에 Wi-Fi 아이콘 사용";
 "settings.audio.maximumVisible" = "표시할 최대 출력 장치 수";
 "settings.audio.maximumVisibleDescription" = "‘펼치기’ 컨트롤 전에 표시할 출력 장치 수입니다.";
 "settings.audio.showAll" = "항상 모든 출력 장치 표시";
@@ -92,7 +94,6 @@
 "common.parenthetical" = "%@(%@)";
 "common.labelValue" = "%@ %@";
 "wifi.title" = "Wi-Fi";
-"network.title" = "네트워크";
 "wifi.value.bars" = "%d칸";
 "wifi.value.notAssociated" = "연결되지 않음";
 "wifi.value.off" = "꺼짐";
@@ -139,6 +140,17 @@
 "settings.popup.order.description" = "상태 패널에 표시할 항목을 선택하고 드래그하여 순서를 변경하십시오.";
 "settings.popup.order.battery" = "배터리";
 "settings.popup.order.volume" = "볼륨";
+"settings.popup.volumeScroll.group" = "패널 스크롤";
+"settings.popup.volumeScroll" = "스크롤로 볼륨 조절";
+"settings.popup.volumeScroll.description" = "상태 패널 안에서 스크롤하면 출력 볼륨이 바뀝니다.";
+"settings.popup.volumeScroll.scope" = "적용 범위";
+"settings.popup.volumeScroll.scope.description" = "스크롤로 볼륨을 바꿀 위치를 선택합니다.";
+"settings.popup.volumeScroll.scope.panel" = "패널 전체";
+"settings.popup.volumeScroll.scope.volumeControl" = "볼륨 컨트롤만";
+"settings.popup.volumeScroll.direction" = "스크롤 방향";
+"settings.popup.volumeScroll.direction.description" = "볼륨을 높이는 스크롤 방향을 선택합니다.";
+"settings.popup.volumeScroll.direction.up" = "위로 스크롤";
+"settings.popup.volumeScroll.direction.down" = "아래로 스크롤";
 
 "common.back" = "Back";
 "common.cancel" = "Cancel";
@@ -215,7 +227,7 @@
 "bluetooth.authorizationDenied" = "Bluetooth permission is denied. Open Bluetooth Settings.";
 "bluetooth.authorizationRestricted" = "Bluetooth permission is restricted.";
 
-"settings.preview.hint" = "메뉴 막대 실시간 미리보기 · 아래 설정을 변경하면 즉시 반영됩니다";
+"settings.preview.hint" = "실시간 미리보기 · 아래 설정을 변경하면 즉시 반영됩니다";
 "settings.preview.dark" = "다크 배경";
 "settings.preview.light" = "라이트 배경";
 "settings.preview.toggleHelp" = "메뉴 막대 다크/라이트 배경 미리보기 전환";
@@ -223,7 +235,7 @@
 "settings.audio.activeDeviceFootnote" = "현재 활성화된 오디오 출력 기기는 강조 색상으로 표시됩니다.";
 "settings.audio.inUse" = "사용 중";
 "settings.wifi.symbolScale" = "Wi-Fi 아이콘 크기";
-"settings.wifi.symbolScaleDescription" = "메뉴 막대 링 내의 Wi-Fi 아이콘 배율을 조절합니다 (100% - 180%).";
+"settings.wifi.symbolScaleDescription" = "상태 링 내의 Wi-Fi 아이콘 배율을 조절합니다 (100% - 180%).";
 "settings.audio.indicatorStyleTitle" = "음량 표시기 스타일";
 "settings.audio.indicatorStyle" = "표시 스타일";
 "settings.audio.indicatorStyleDescription" = "상태 링 하단에 네 개의 점 또는 연속된 호 모양 막대 중 표시 방식을 선택합니다.";

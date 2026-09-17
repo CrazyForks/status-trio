@@ -436,7 +436,9 @@ final class WiFiMonitor: NSObject, WiFiMonitoring, CWEventDelegate {
             if generation == self.readGeneration {
                 self.receive(result)
             }
-            if needsRefresh { self.refresh() }
+            // A debounced event already owns the follow-up. Starting it now would
+            // let that timer enqueue another read while this follow-up is in flight.
+            if needsRefresh, self.scheduledRefreshTask == nil { self.refresh() }
         }
     }
 

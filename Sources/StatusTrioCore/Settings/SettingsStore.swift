@@ -4,7 +4,7 @@ import Foundation
 @MainActor
 final class SettingsStore: ObservableObject {
     static let iconSizeRange: ClosedRange<Double> = 16...36
-    static let defaultIconSize: Double = 28
+    static let defaultIconSize: Double = 24
     static let iconSizeDefaultsKey = "menuBarIconSize"
 
     static let batteryCriticalThresholdRange: ClosedRange<Double> = 0...100
@@ -22,7 +22,7 @@ final class SettingsStore: ObservableObject {
     static let showsWiFiIconForTemporaryConnectionDefaultsKey = "showsWiFiIconForTemporaryConnection"
     static let showsWiFiIconForInternetSharingDefaultsKey = "showsWiFiIconForInternetSharing"
     static let wifiSymbolScaleRange: ClosedRange<Double> = 1.0...1.8
-    static let defaultWifiSymbolScale: Double = 1.0
+    static let defaultWifiSymbolScale: Double = 1.6
     static let wifiSymbolScaleDefaultsKey = "wifiSymbolScale"
     static let defaultVolumeDisplayStyle: VolumeDisplayStyle = .dots
     static let volumeDisplayStyleDefaultsKey = "volumeDisplayStyle"
@@ -39,6 +39,12 @@ final class SettingsStore: ObservableObject {
     static let popupSectionOrderDefaultsKey = "popupSectionOrder"
     static let enabledPopupSectionsDefaultsKey = "enabledPopupSections"
     static let defaultEnabledPopupSections: Set<PopupSection> = [.battery, .network, .volume]
+    static let popupScrollAdjustsVolumeDefaultsKey = "popupScrollAdjustsVolume"
+    static let defaultPopupScrollAdjustsVolume = true
+    static let popupVolumeScrollScopeDefaultsKey = "popupVolumeScrollScope"
+    static let defaultPopupVolumeScrollScope: PopupVolumeScrollScope = .panel
+    static let popupVolumeScrollDirectionDefaultsKey = "popupVolumeScrollDirection"
+    static let defaultPopupVolumeScrollDirection: PopupVolumeScrollDirection = .up
 
     static let appIconPlacementDefaultsKey = "appIconPlacement"
     static let dockIconBackgroundPreferenceDefaultsKey = "dockIconBackgroundPreference"
@@ -227,6 +233,33 @@ final class SettingsStore: ObservableObject {
         }
     }
 
+    @Published var popupScrollAdjustsVolume: Bool {
+        didSet {
+            defaults.set(
+                popupScrollAdjustsVolume,
+                forKey: Self.popupScrollAdjustsVolumeDefaultsKey
+            )
+        }
+    }
+
+    @Published var popupVolumeScrollScope: PopupVolumeScrollScope {
+        didSet {
+            defaults.set(
+                popupVolumeScrollScope.rawValue,
+                forKey: Self.popupVolumeScrollScopeDefaultsKey
+            )
+        }
+    }
+
+    @Published var popupVolumeScrollDirection: PopupVolumeScrollDirection {
+        didSet {
+            defaults.set(
+                popupVolumeScrollDirection.rawValue,
+                forKey: Self.popupVolumeScrollDirectionDefaultsKey
+            )
+        }
+    }
+
     var visiblePopupSections: [PopupSection] {
         popupSectionOrder.filter { enabledPopupSections.contains($0) }
     }
@@ -347,6 +380,12 @@ final class SettingsStore: ObservableObject {
         let storedEnabledPopupSections = defaults.stringArray(
             forKey: Self.enabledPopupSectionsDefaultsKey
         )
+        let storedPopupVolumeScrollScope = defaults.string(
+            forKey: Self.popupVolumeScrollScopeDefaultsKey
+        )
+        let storedPopupVolumeScrollDirection = defaults.string(
+            forKey: Self.popupVolumeScrollDirectionDefaultsKey
+        )
 
         let storedAppIconPlacement = defaults.string(forKey: Self.appIconPlacementDefaultsKey)
         self.appIconPlacement = storedAppIconPlacement
@@ -405,6 +444,15 @@ final class SettingsStore: ObservableObject {
         self.enabledPopupSections = Self.sanitizedEnabledPopupSections(
             storedEnabledPopupSections
         )
+        self.popupScrollAdjustsVolume = defaults.object(
+            forKey: Self.popupScrollAdjustsVolumeDefaultsKey
+        ) as? Bool ?? Self.defaultPopupScrollAdjustsVolume
+        self.popupVolumeScrollScope = storedPopupVolumeScrollScope
+            .flatMap(PopupVolumeScrollScope.init(rawValue:))
+            ?? Self.defaultPopupVolumeScrollScope
+        self.popupVolumeScrollDirection = storedPopupVolumeScrollDirection
+            .flatMap(PopupVolumeScrollDirection.init(rawValue:))
+            ?? Self.defaultPopupVolumeScrollDirection
     }
 
     static func clampedIconSize(_ value: Double) -> Double {

@@ -24,6 +24,7 @@
 "settings.appIconPlacement.menuBar" = "メニューバー";
 "settings.appIconPlacement.dock" = "Dock";
 "settings.appIconPlacement.both" = "両方";
+"settings.appIcon.dockGroup" = "Dock アイコン";
 "settings.dockIconBackground" = "Dock アイコンの背景";
 "settings.dockIconBackground.description" = "Dock に表示されるライブアイコンに適用されます。「システム設定を使用」は「システム設定 › 外観 › アイコンとウィジェットのスタイル」を参照します（macOS 15 以降）。";
 "settings.dockIconBackground.system" = "システム設定を使用";
@@ -31,20 +32,21 @@
 "settings.dockIconBackground.light" = "ライト";
 "settings.iconSize" = "アイコンの表示サイズ";
 "settings.iconSize.accessibilityValue" = "%d ポイント";
-"settings.iconSize.description" = "メニューバーアイコンの描画サイズを 16〜36 pt で調整します。";
+"settings.iconSize.description" = "メニューバーアイコンの描画サイズを 16〜36 pt で調整します。Dock アイコンは固定のデザインサイズを使用します。";
+"settings.tab.appIcon" = "アプリアイコン";
+"settings.tab.battery" = "バッテリー";
+"settings.tab.network" = "ネットワーク";
+"settings.tab.audio" = "オーディオ";
 "settings.tab.basics" = "基本";
 "settings.tab.panel" = "ステータスパネル";
-"settings.tab.menuBar" = "メニューバー";
-"settings.tab.audio" = "オーディオ";
-"settings.tab.battery" = "バッテリー";
 "settings.tab.about" = "このアプリについて";
 "settings.menuBar.title" = "メニューバーアイコン";
-"settings.menuBar.connectionIcons" = "接続アイコンのスタイル";
-"settings.menuBar.connectionIcons.description" = "有効にすると、選択した状態は専用マークではなく標準の Wi-Fi シグナルアイコンで表示されます。";
-"settings.menuBar.wifiIconForEthernet" = "Ethernet に Wi-Fi アイコンを使用";
-"settings.menuBar.wifiIconForHotspot" = "個人用ホットスポットに Wi-Fi アイコンを使用";
-"settings.menuBar.wifiIconForTemporaryConnection" = "一時接続に Wi-Fi アイコンを使用";
-"settings.menuBar.wifiIconForInternetSharing" = "インターネット共有に Wi-Fi アイコンを使用";
+"settings.network.connectionIcons" = "接続アイコンのスタイル";
+"settings.network.connectionIcons.description" = "有効にすると、選択した状態は専用マークではなく標準の Wi-Fi シグナルアイコンで表示されます。";
+"settings.network.wifiIconForEthernet" = "Ethernet に Wi-Fi アイコンを使用";
+"settings.network.wifiIconForHotspot" = "個人用ホットスポットに Wi-Fi アイコンを使用";
+"settings.network.wifiIconForTemporaryConnection" = "一時接続に Wi-Fi アイコンを使用";
+"settings.network.wifiIconForInternetSharing" = "インターネット共有に Wi-Fi アイコンを使用";
 "settings.audio.maximumVisible" = "表示する出力デバイスの最大数";
 "settings.audio.maximumVisibleDescription" = "「展開」を表示する前に表示する出力デバイス数です。";
 "settings.audio.showAll" = "常にすべての出力デバイスを表示";
@@ -92,7 +94,6 @@
 "common.parenthetical" = "%@（%@）";
 "common.labelValue" = "%@ %@";
 "wifi.title" = "Wi-Fi";
-"network.title" = "ネットワーク";
 "wifi.value.bars" = "%d 本";
 "wifi.value.notAssociated" = "未接続";
 "wifi.value.off" = "オフ";
@@ -139,6 +140,17 @@
 "settings.popup.order.description" = "ステータスパネルに表示する項目を選択し、ドラッグして順序を変更します。";
 "settings.popup.order.battery" = "バッテリー";
 "settings.popup.order.volume" = "音量";
+"settings.popup.volumeScroll.group" = "パネルのスクロール";
+"settings.popup.volumeScroll" = "スクロールで音量を調整";
+"settings.popup.volumeScroll.description" = "ステータスパネル内をスクロールすると出力音量を変更できます。";
+"settings.popup.volumeScroll.scope" = "適用範囲";
+"settings.popup.volumeScroll.scope.description" = "スクロールで音量を変更する範囲を選びます。";
+"settings.popup.volumeScroll.scope.panel" = "パネル全体";
+"settings.popup.volumeScroll.scope.volumeControl" = "音量コントロールのみ";
+"settings.popup.volumeScroll.direction" = "スクロール方向";
+"settings.popup.volumeScroll.direction.description" = "音量を上げるスクロール方向を選びます。";
+"settings.popup.volumeScroll.direction.up" = "上スクロール";
+"settings.popup.volumeScroll.direction.down" = "下スクロール";
 
 "common.back" = "Back";
 "common.cancel" = "Cancel";
@@ -215,7 +227,7 @@
 "bluetooth.authorizationDenied" = "Bluetooth permission is denied. Open Bluetooth Settings.";
 "bluetooth.authorizationRestricted" = "Bluetooth permission is restricted.";
 
-"settings.preview.hint" = "メニューバーリアルタイムプレビュー · 下の設定を変更するとすぐに反映されます";
+"settings.preview.hint" = "リアルタイムプレビュー · 下の設定を変更するとすぐに反映されます";
 "settings.preview.dark" = "ダーク背景";
 "settings.preview.light" = "ライト背景";
 "settings.preview.toggleHelp" = "メニューバーのダーク/ライト背景プレビューを切り替え";
@@ -223,7 +235,7 @@
 "settings.audio.activeDeviceFootnote" = "現在アクティブな音声出力デバイスはアクセントカラーでハイライトされます。";
 "settings.audio.inUse" = "使用中";
 "settings.wifi.symbolScale" = "Wi-Fiアイコンサイズ";
-"settings.wifi.symbolScaleDescription" = "メニューバーリング内のWi-Fiアイコンのスケールを調整します（100%〜180%）。";
+"settings.wifi.symbolScaleDescription" = "ステータスリング内の Wi-Fi アイコンのスケールを調整します（100%〜180%）。";
 "settings.audio.indicatorStyleTitle" = "音量インジケータスタイル";
 "settings.audio.indicatorStyle" = "表示スタイル";
 "settings.audio.indicatorStyleDescription" = "ステータスリング下部に4つのドットまたは連続する円弧バーのいずれで表示するかを選択します。";

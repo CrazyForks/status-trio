@@ -7,12 +7,15 @@ struct SettingsView: View {
     @ObservedObject var statusStore: SystemStatusStore
     @ObservedObject var localization: Localization
 
-    @State private var selectedSection: Section = .menuBar
+    @State private var selectedSection: Section = .appIcon
+    @State private var previewIsDark: Bool = true
 
     enum Section: String, CaseIterable, Identifiable {
-        case menuBar
-        case popover
+        case appIcon
+        case battery
+        case network
         case audio
+        case popover
         case general
         case about
 
@@ -20,9 +23,11 @@ struct SettingsView: View {
 
         var symbol: String {
             switch self {
-            case .menuBar: return "menubar.rectangle"
-            case .popover: return "list.bullet.rectangle"
+            case .appIcon: return "macwindow.on.rectangle"
+            case .battery: return "battery.100percent"
+            case .network: return "wifi"
             case .audio:   return "hifispeaker.fill"
+            case .popover: return "list.bullet.rectangle"
             case .general: return "gearshape.fill"
             case .about:   return "info.circle.fill"
             }
@@ -30,9 +35,11 @@ struct SettingsView: View {
 
         var tint: Color {
             switch self {
-            case .menuBar: return .blue
-            case .popover: return .indigo
+            case .appIcon: return .indigo
+            case .battery: return .green
+            case .network: return .blue
             case .audio:   return .cyan
+            case .popover: return .purple
             case .general: return .gray
             case .about:   return .orange
             }
@@ -41,9 +48,11 @@ struct SettingsView: View {
         @MainActor
         func title(_ localization: Localization) -> String {
             switch self {
-            case .menuBar: return localization.string(.settingsTabMenuBar)
-            case .popover: return localization.string(.settingsPopupOrder)
+            case .appIcon: return localization.string(.settingsTabAppIcon)
+            case .battery: return localization.string(.settingsTabBattery)
+            case .network: return localization.string(.settingsTabNetwork)
             case .audio:   return localization.string(.settingsTabAudio)
+            case .popover: return localization.string(.settingsTabPanel)
             case .general: return localization.string(.settingsPageGeneral)
             case .about:   return localization.string(.settingsTabAbout)
             }
@@ -109,12 +118,32 @@ struct SettingsView: View {
     @ViewBuilder
     private var detail: some View {
         switch selectedSection {
-        case .menuBar:
-            MenuBarSectionView(store: store, statusStore: statusStore)
+        case .appIcon:
+            AppIconSectionView(
+                store: store,
+                statusStore: statusStore,
+                previewIsDark: $previewIsDark
+            )
+        case .battery:
+            BatterySectionView(
+                store: store,
+                statusStore: statusStore,
+                previewIsDark: $previewIsDark
+            )
+        case .network:
+            NetworkSectionView(
+                store: store,
+                statusStore: statusStore,
+                previewIsDark: $previewIsDark
+            )
+        case .audio:
+            AudioSectionView(
+                store: store,
+                statusStore: statusStore,
+                previewIsDark: $previewIsDark
+            )
         case .popover:
             PopoverSectionView(store: store, statusStore: statusStore)
-        case .audio:
-            AudioSectionView(store: store, statusStore: statusStore)
         case .general:
             GeneralSectionView(store: store, localization: localization)
         case .about:

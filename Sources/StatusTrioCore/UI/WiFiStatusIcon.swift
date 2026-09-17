@@ -25,6 +25,6 @@ struct WiFiStatusIcon: View {
         .font(.system(size: 14, weight: .medium))
         .foregroundStyle(.secondary)
         .frame(width: 24, height: 24)
-        .accessibilityLabel(localization.format(.commonLabelValue, localization.string(.networkTitle), StatusPresentation.wifiValue(wifi, localization: localization)))
+        .accessibilityLabel(localization.format(.commonLabelValue, localization.string(.wifiTitle), StatusPresentation.wifiValue(wifi, localization: localization)))
     }
 }

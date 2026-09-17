@@ -209,7 +209,9 @@ jobs:
         run: |
           set -euo pipefail
           NOTES_PATH="${RUNNER_TEMP}/release-notes.md"
-          APPCAST_NOTES_PATH="${RUNNER_TEMP}/appcast-release-notes.md"
+          NOTES_ZH_PATH="${RUNNER_TEMP}/release-notes-zh.md"
+          APPCAST_NOTES_PATH="${RUNNER_TEMP}/appcast-release-notes-en.md"
+          APPCAST_NOTES_ZH_PATH="${RUNNER_TEMP}/appcast-release-notes-zh.md"
           RELEASE_BODY_PATH="${RUNNER_TEMP}/github-release-notes.md"
 
           if [[ -z "${RELEASE_NOTES_ZH_INPUT//[[:space:]]/}" ]]; then
@@ -229,15 +231,21 @@ jobs:
             printf '\n' >> "${NOTES_PATH}"
           fi
 
+          printf '%s\n' "${RELEASE_NOTES_ZH_INPUT}" > "${NOTES_ZH_PATH}"
+
+          # Sparkle serves the element matching the user's preferred languages,
+          # so the appcast keeps one notes file per language.
+          cp "${NOTES_PATH}" "${APPCAST_NOTES_PATH}"
+          cp "${NOTES_ZH_PATH}" "${APPCAST_NOTES_ZH_PATH}"
+
           {
             printf '# Version %s （English + 中文， 中文在下方）\n\n' "${VERSION}"
             printf '## English\n\n'
             cat "${NOTES_PATH}"
             printf '\n## 中文\n\n'
-            printf '%s\n' "${RELEASE_NOTES_ZH_INPUT}"
-          } > "${APPCAST_NOTES_PATH}"
+            cat "${NOTES_ZH_PATH}"
+          } > "${RELEASE_BODY_PATH}"
 
-          cp "${APPCAST_NOTES_PATH}" "${RELEASE_BODY_PATH}"
           {
             printf '\n## First launch / 首次启动\n\n'
             printf 'If macOS blocks the first launch, run:\n\n'
@@ -254,7 +262,8 @@ jobs:
 
           {
             echo "RELEASE_NOTES_FILE=${NOTES_PATH}"
-            echo "APPCAST_RELEASE_NOTES_FILE=${APPCAST_NOTES_PATH}"
+            echo "APPCAST_RELEASE_NOTES_EN_FILE=${APPCAST_NOTES_PATH}"
+            echo "APPCAST_RELEASE_NOTES_ZH_FILE=${APPCAST_NOTES_ZH_PATH}"
             echo "RELEASE_BODY_FILE=${RELEASE_BODY_PATH}"
           } >> "${GITHUB_ENV}"
 

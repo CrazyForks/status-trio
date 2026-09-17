@@ -8,7 +8,7 @@
   <img src="Support/AppIcon.svg" width="112" alt="Status Trio 应用图标">
 </p>
 
-<p align="center"><strong>三个系统状态，一个原生 macOS 菜单栏图标。</strong></p>
+<p align="center"><strong>三个系统状态，一个原生 macOS 状态图标 —— 可放在菜单栏或程序坞。</strong></p>
 
 <p align="center">
   <a href="README.md">English</a>
@@ -22,22 +22,65 @@
   <img src="screenshots/popup.png" width="360" alt="Status Trio 状态弹层，展示 macOS 菜单栏中的电池、Wi-Fi 和音量">
 </p>
 
-Status Trio 是一个原生 macOS 菜单栏（menubar）应用，将 Wi-Fi、电池和音量整合进一个紧凑、可配置的菜单栏图标。灵感源自 iPhone Duo 将 Wi-Fi、Battery 和 Cellular Data 合并展示的 status bar icon，并在 Mac 上以音量替代 Cellular Data。
+Status Trio 是一个原生 macOS 状态应用，将 Wi-Fi、电池和音量整合进一个紧凑、可配置的图标，可显示在菜单栏、程序坞，或两处同时显示。灵感源自 iPhone Duo 将 Wi-Fi、Battery 和 Cellular Data 合并展示的 status bar icon，并在 Mac 上以音量替代 Cellular Data。
 
 > Status Trio 是独立项目，与 Apple 无隶属关系。
 
 ## 主要特性
 
-- **三合一状态图标**：电池、Wi-Fi 和音量共用一个菜单栏项目。
+- **三合一状态图标**：电池、Wi-Fi 和音量共用一个图标。
+- **菜单栏或程序坞**：可自由选择实时图标显示在菜单栏、程序坞或两处，程序坞图标会跟随 macOS 图标样式。
 - **可配置渲染尺寸**：图标大小为 16–36 pt，默认 28 pt。
 - **可选连接图标**：可有线连接、个人热点、临时连接或互联网共享改用普通 Wi‑Fi 信号图标。
 - **完整电池状态**：电量百分比、充电闪电或已连接电源未充电时的插头图标、充满预计时间、低电量模式和电池设置快捷入口。
 - **Wi-Fi 状态识别**：信号强度、当前网络名称和常见连接状态。
 - **音量一目了然**：显示输出音量和静音状态，并可从弹层快速控制。
-- **原生 macOS 交互**：左键打开状态弹层，右键显示标准菜单。
+- **原生 macOS 交互**：在菜单栏图标或程序坞图标上左键打开状态弹层，右键显示标准菜单。
 - **高效状态更新**：事件驱动监控，并提供低频轮询兜底。
 - **十二种语言**：跟随系统语言或手动选择，修改后立即生效。
 - **登录时启动**：可选开机登录启动，并在 macOS 需要批准时提供引导。
+
+## 程序坞图标
+
+同一个实时图标也可以放在程序坞，而不是菜单栏，或两处同时显示：
+
+<p align="center">
+  <img src="screenshots/status-trio-dock-dark-1440x810.jpg" width="880" alt="程序坞中的 Status Trio 实时图标（暗色外观）">
+  <br>
+  <sub>程序坞图标（暗色外观）</sub>
+</p>
+
+<p align="center">
+  <img src="screenshots/status-trio-dock-light-1440x810.jpg" width="880" alt="程序坞中的 Status Trio 实时图标（亮色外观）">
+  <br>
+  <sub>程序坞图标（亮色外观）</sub>
+</p>
+
+<p align="center">
+  <img src="screenshots/status-trio-dock-light-bt-1440x810.jpg" width="880" alt="程序坞中的 Status Trio 与蓝牙区块（亮色外观）">
+  <br>
+  <sub>蓝牙区块预览</sub>
+</p>
+
+程序坞图标可以跟随系统图标样式，也可以固定为深色或浅色：
+
+<p align="center">
+  <img src="screenshots/status-trio-dock-icons.png" width="880" alt="Status Trio 程序坞图标的深色、浅色与透明背景三种样式">
+</p>
+
+## 图标状态
+
+三合一图标支持的全部状态，均由应用自身的渲染器绘制 —— 顶部是电池指示，中部是 Wi-Fi 状态，底部是音量圆点或圆弧：
+
+<p align="center">
+  <img src="screenshots/status-trio-icon-states.png" width="880" alt="Status Trio 图标状态：顶部依次为充电中、已连接电源未充电、已充满、电量数字、低电量、低电量模式、只显示圆环；中部依次为 Wi-Fi 各档信号、未关联、关闭、无互联网、个人热点、临时连接、互联网共享、有线连接；底部为音量圆点与圆弧样式">
+</p>
+
+同一批状态在深色菜单栏下的渲染：
+
+<p align="center">
+  <img src="screenshots/status-trio-icon-states-dark.png" width="880" alt="Status Trio 图标状态（深色外观）：白色图标配深色底块，保留充电绿色、低电量红色和低电量模式黄色强调">
+</p>
 
 ## 系统要求
 
@@ -91,9 +134,9 @@ open "/Applications/Status Trio.app"
 
 ## 使用方法
 
-- **左键点击**菜单栏图标，打开状态弹层。
+- **左键点击**菜单栏图标或程序坞图标，打开状态弹层。
 - **右键点击**图标，显示原生菜单，其中包含版本和退出操作。
-- 在**设置**中调整图标大小、连接图标样式、电池显示、语言、更新检查和登录时启动。
+- 在**设置**中选择图标显示位置（菜单栏 / 程序坞 / 两处），并调整图标大小、连接图标样式、电池显示、语言、更新检查和登录时启动。
 - 如需显示当前 Wi-Fi 网络名称，请按提示启用定位权限；这是可选功能。
 
 ## 支持的语言
@@ -139,7 +182,7 @@ bash scripts/build-worktree.sh release
 - Swift 6
 - SwiftUI + AppKit
 - macOS 15+
-- `LSUIElement` 菜单栏应用
+- `LSUIElement` 菜单栏辅助应用，显示程序坞图标时切换为常规应用策略
 - 使用 Sparkle 检查更新
 
 ## 文档

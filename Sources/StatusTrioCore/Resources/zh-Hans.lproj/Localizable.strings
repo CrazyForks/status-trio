@@ -24,6 +24,7 @@
 "settings.appIconPlacement.menuBar" = "菜单栏";
 "settings.appIconPlacement.dock" = "程序坞";
 "settings.appIconPlacement.both" = "两处";
+"settings.appIcon.dockGroup" = "Dock 图标";
 "settings.dockIconBackground" = "Dock 图标背景";
 "settings.dockIconBackground.description" = "仅影响程序坞中显示的实时图标。「跟随系统」读取「系统设置 › 外观 › 图标与小组件样式」（macOS 15 及以上）。";
 "settings.dockIconBackground.system" = "跟随系统";
@@ -31,20 +32,21 @@
 "settings.dockIconBackground.light" = "浅色";
 "settings.iconSize" = "图标渲染范围";
 "settings.iconSize.accessibilityValue" = "%d 点";
-"settings.iconSize.description" = "调整菜单栏图标的渲染尺寸，可选 16–36 pt。";
+"settings.iconSize.description" = "调整菜单栏图标的渲染尺寸，可选 16–36 pt。Dock 图标使用固定设计尺寸。";
+"settings.tab.appIcon" = "应用图标";
+"settings.tab.battery" = "电池";
+"settings.tab.network" = "网络";
+"settings.tab.audio" = "音频";
 "settings.tab.basics" = "基础";
 "settings.tab.panel" = "状态面板";
-"settings.tab.menuBar" = "菜单栏";
-"settings.tab.audio" = "音频";
-"settings.tab.battery" = "电池";
 "settings.tab.about" = "关于";
 "settings.menuBar.title" = "菜单栏图标";
-"settings.menuBar.connectionIcons" = "连接图标样式";
-"settings.menuBar.connectionIcons.description" = "启用后，对应状态改用普通 Wi‑Fi 信号图标，不再显示其专用标记。";
-"settings.menuBar.wifiIconForEthernet" = "有线连接使用 Wi‑Fi 图标";
-"settings.menuBar.wifiIconForHotspot" = "个人热点使用 Wi‑Fi 图标";
-"settings.menuBar.wifiIconForTemporaryConnection" = "临时连接使用 Wi‑Fi 图标";
-"settings.menuBar.wifiIconForInternetSharing" = "互联网共享使用 Wi‑Fi 图标";
+"settings.network.connectionIcons" = "连接图标样式";
+"settings.network.connectionIcons.description" = "启用后，对应状态改用普通 Wi‑Fi 信号图标，不再显示其专用标记。";
+"settings.network.wifiIconForEthernet" = "有线连接使用 Wi‑Fi 图标";
+"settings.network.wifiIconForHotspot" = "个人热点使用 Wi‑Fi 图标";
+"settings.network.wifiIconForTemporaryConnection" = "临时连接使用 Wi‑Fi 图标";
+"settings.network.wifiIconForInternetSharing" = "互联网共享使用 Wi‑Fi 图标";
 "settings.audio.maximumVisible" = "最多显示输出设备";
 "settings.audio.maximumVisibleDescription" = "超过该数量时显示“展开”按钮。";
 "settings.audio.showAll" = "始终全部展开";
@@ -92,7 +94,6 @@
 "common.parenthetical" = "%@（%@）";
 "common.labelValue" = "%@ %@";
 "wifi.title" = "Wi-Fi";
-"network.title" = "网络";
 "wifi.value.bars" = "%d 格";
 "wifi.value.notAssociated" = "未关联";
 "wifi.value.off" = "关闭";
@@ -139,6 +140,17 @@
 "settings.popup.order.description" = "选择状态面板显示的项目，并拖动调整顺序。";
 "settings.popup.order.battery" = "电池";
 "settings.popup.order.volume" = "音量";
+"settings.popup.volumeScroll.group" = "面板滚动";
+"settings.popup.volumeScroll" = "滚动调节音量";
+"settings.popup.volumeScroll.description" = "在状态面板内滚动即可调节输出音量。";
+"settings.popup.volumeScroll.scope" = "生效范围";
+"settings.popup.volumeScroll.scope.description" = "选择哪里的滚动手势会改变音量。";
+"settings.popup.volumeScroll.scope.panel" = "整个面板";
+"settings.popup.volumeScroll.scope.volumeControl" = "仅音量组件";
+"settings.popup.volumeScroll.direction" = "滚动方向";
+"settings.popup.volumeScroll.direction.description" = "选择增大音量的滚动方向。";
+"settings.popup.volumeScroll.direction.up" = "上滑";
+"settings.popup.volumeScroll.direction.down" = "下滑";
 
 "common.back" = "返回";
 "common.cancel" = "取消";
@@ -215,7 +227,7 @@
 "bluetooth.authorizationDenied" = "Bluetooth permission is denied. Open Bluetooth Settings.";
 "bluetooth.authorizationRestricted" = "Bluetooth permission is restricted.";
 
-"settings.preview.hint" = "菜单栏实时预览 · 调节下方各项参数即刻在上方呈现";
+"settings.preview.hint" = "实时预览 · 调节下方各项参数即刻在上方呈现";
 "settings.preview.dark" = "深色底色";
 "settings.preview.light" = "浅色底色";
 "settings.preview.toggleHelp" = "切换菜单栏深色/浅色底色预览";
@@ -223,7 +235,7 @@
 "settings.audio.activeDeviceFootnote" = "当前活跃的音频输出设备将优先以主题色高亮显示。";
 "settings.audio.inUse" = "正在使用";
 "settings.wifi.symbolScale" = "Wi-Fi 图标大小";
-"settings.wifi.symbolScaleDescription" = "调节菜单栏状态环内的 Wi-Fi 图标缩放比例（100% - 180%）。";
+"settings.wifi.symbolScaleDescription" = "调节状态环内的 Wi-Fi 图标缩放比例（100% - 180%）。";
 "settings.audio.indicatorStyleTitle" = "音量指示样式";
 "settings.audio.indicatorStyle" = "显示样式";
 "settings.audio.indicatorStyleDescription" = "选择在状态环底部显示为四个离散点还是连续圆弧条。";

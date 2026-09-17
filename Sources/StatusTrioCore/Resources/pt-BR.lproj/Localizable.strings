@@ -24,6 +24,7 @@
 "settings.appIconPlacement.menuBar" = "Barra de menus";
 "settings.appIconPlacement.dock" = "Dock";
 "settings.appIconPlacement.both" = "Ambos";
+"settings.appIcon.dockGroup" = "Ícone do Dock";
 "settings.dockIconBackground" = "Fundo do ícone do Dock";
 "settings.dockIconBackground.description" = "Aplica-se ao ícone dinâmico exibido no Dock. “Seguir o sistema” lê “Estilo de Ícones e Widgets” em Ajustes do Sistema › Aparência (macOS 15 ou posterior).";
 "settings.dockIconBackground.system" = "Seguir o sistema";
@@ -31,20 +32,21 @@
 "settings.dockIconBackground.light" = "Claro";
 "settings.iconSize" = "Tamanho do ícone";
 "settings.iconSize.accessibilityValue" = "%d pontos";
-"settings.iconSize.description" = "Ajusta o tamanho de renderização do ícone na barra de menus entre 16 e 36 pt.";
+"settings.iconSize.description" = "Ajusta o tamanho de renderização do ícone na barra de menus entre 16 e 36 pt. O ícone do Dock mantém o tamanho de design fixo.";
+"settings.tab.appIcon" = "Ícone do app";
+"settings.tab.battery" = "Bateria";
+"settings.tab.network" = "Rede";
+"settings.tab.audio" = "Áudio";
 "settings.tab.basics" = "Básico";
 "settings.tab.panel" = "Painel de status";
-"settings.tab.menuBar" = "Barra de menus";
-"settings.tab.audio" = "Áudio";
-"settings.tab.battery" = "Bateria";
 "settings.tab.about" = "Sobre";
 "settings.menuBar.title" = "Ícone da barra de menus";
-"settings.menuBar.connectionIcons" = "Estilo dos ícones de conexão";
-"settings.menuBar.connectionIcons.description" = "Quando ativado, o estado selecionado usa o ícone padrão de sinal de Wi-Fi em vez da marca especial.";
-"settings.menuBar.wifiIconForEthernet" = "Usar o ícone de Wi-Fi para Ethernet";
-"settings.menuBar.wifiIconForHotspot" = "Usar o ícone de Wi-Fi para ponto de acesso pessoal";
-"settings.menuBar.wifiIconForTemporaryConnection" = "Usar o ícone de Wi-Fi para conexão temporária";
-"settings.menuBar.wifiIconForInternetSharing" = "Usar o ícone de Wi-Fi para compartilhamento de Internet";
+"settings.network.connectionIcons" = "Estilo dos ícones de conexão";
+"settings.network.connectionIcons.description" = "Quando ativado, o estado selecionado usa o ícone padrão de sinal de Wi-Fi em vez da marca especial.";
+"settings.network.wifiIconForEthernet" = "Usar o ícone de Wi-Fi para Ethernet";
+"settings.network.wifiIconForHotspot" = "Usar o ícone de Wi-Fi para ponto de acesso pessoal";
+"settings.network.wifiIconForTemporaryConnection" = "Usar o ícone de Wi-Fi para conexão temporária";
+"settings.network.wifiIconForInternetSharing" = "Usar o ícone de Wi-Fi para compartilhamento de Internet";
 "settings.audio.maximumVisible" = "Máximo de dispositivos visíveis";
 "settings.audio.maximumVisibleDescription" = "Quantos dispositivos aparecem antes do controle Expandir.";
 "settings.audio.showAll" = "Mostrar sempre todos os dispositivos";
@@ -92,7 +94,6 @@
 "common.parenthetical" = "%@ (%@)";
 "common.labelValue" = "%@, %@";
 "wifi.title" = "Wi-Fi";
-"network.title" = "Rede";
 "wifi.value.bars" = "%d barras";
 "wifi.value.notAssociated" = "Não associado";
 "wifi.value.off" = "Desativado";
@@ -139,6 +140,17 @@
 "settings.popup.order.description" = "Escolha quais itens aparecem no painel de status e arraste para alterar a ordem.";
 "settings.popup.order.battery" = "Bateria";
 "settings.popup.order.volume" = "Volume";
+"settings.popup.volumeScroll.group" = "Rolagem do painel";
+"settings.popup.volumeScroll" = "Ajustar o volume com a rolagem";
+"settings.popup.volumeScroll.description" = "Role dentro do painel de status para alterar o volume de saída.";
+"settings.popup.volumeScroll.scope" = "Área";
+"settings.popup.volumeScroll.scope.description" = "Escolha onde o gesto de rolagem altera o volume.";
+"settings.popup.volumeScroll.scope.panel" = "Painel inteiro";
+"settings.popup.volumeScroll.scope.volumeControl" = "Somente o controle de volume";
+"settings.popup.volumeScroll.direction" = "Direção da rolagem";
+"settings.popup.volumeScroll.direction.description" = "Escolha a direção que aumenta o volume.";
+"settings.popup.volumeScroll.direction.up" = "Para cima";
+"settings.popup.volumeScroll.direction.down" = "Para baixo";
 
 "common.back" = "Back";
 "common.cancel" = "Cancel";
@@ -215,7 +227,7 @@
 "bluetooth.authorizationDenied" = "Bluetooth permission is denied. Open Bluetooth Settings.";
 "bluetooth.authorizationRestricted" = "Bluetooth permission is restricted.";
 
-"settings.preview.hint" = "Prévia ao vivo da barra de menus · Altere os ajustes abaixo para ver as alterações imediatamente";
+"settings.preview.hint" = "Prévia ao vivo · Altere os ajustes abaixo para ver as alterações imediatamente";
 "settings.preview.dark" = "Fundo escuro";
 "settings.preview.light" = "Fundo claro";
 "settings.preview.toggleHelp" = "Alternar prévia escura/clara da barra de menus";
@@ -223,7 +235,7 @@
 "settings.audio.activeDeviceFootnote" = "O dispositivo de saída de áudio ativo é destacado com a cor de destaque.";
 "settings.audio.inUse" = "Em uso";
 "settings.wifi.symbolScale" = "Tamanho do ícone de Wi-Fi";
-"settings.wifi.symbolScaleDescription" = "Ajusta a escala do ícone de Wi-Fi no anel da barra de menus de 100% a 180%.";
+"settings.wifi.symbolScaleDescription" = "Ajusta a escala do ícone de Wi-Fi no anel de status de 100% a 180%.";
 "settings.audio.indicatorStyleTitle" = "Estilo do indicador de volume";
 "settings.audio.indicatorStyle" = "Estilo de exibição";
 "settings.audio.indicatorStyleDescription" = "Escolha se o volume é exibido como quatro pontos ou um arco contínuo.";

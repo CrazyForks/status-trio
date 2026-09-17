@@ -11,7 +11,7 @@ enum PopupSection: String, CaseIterable, Identifiable, Sendable {
     var titleKey: LocalizationKey {
         switch self {
         case .battery: .settingsPopupOrderBattery
-        case .network: .networkTitle
+        case .network: .wifiTitle
         case .bluetooth: .bluetoothTitle
         case .volume: .settingsPopupOrderVolume
         }

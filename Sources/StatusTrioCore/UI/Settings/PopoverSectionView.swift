@@ -8,48 +8,8 @@ struct PopoverSectionView: View {
 
     var body: some View {
         SettingsPage {
-            refreshIntervalGroup
             popupOrderGroup
-        }
-    }
-
-    private var refreshIntervalGroup: some View {
-        SettingsGroup(localization.string(.settingsRefreshInterval)) {
-            SettingsRow(
-                "arrow.clockwise",
-                tint: .orange,
-                title: localization.string(.settingsRefreshInterval),
-                subtitle: localization.string(.settingsRefreshIntervalDescription)
-            ) {
-                HStack(spacing: 8) {
-                    Slider(
-                        value: Binding(
-                            get: { store.refreshIntervalSeconds },
-                            set: { store.refreshIntervalSeconds = ($0 / 5).rounded() * 5 }
-                        ),
-                        in: SettingsStore.refreshIntervalRange
-                    )
-                    .frame(width: 130)
-                    .controlSize(.small)
-                    .accessibilityLabel(localization.string(.settingsRefreshInterval))
-                    .accessibilityValue(
-                        localization.format(
-                            .settingsRefreshIntervalValue,
-                            Int(store.refreshIntervalSeconds)
-                        )
-                    )
-
-                    Text(
-                        localization.format(
-                            .settingsRefreshIntervalValue,
-                            Int(store.refreshIntervalSeconds)
-                        )
-                    )
-                    .font(.system(size: 12, design: .monospaced))
-                    .foregroundStyle(.secondary)
-                    .frame(width: 50, alignment: .trailing)
-                }
-            }
+            volumeScrollGroup
         }
     }
 
@@ -58,11 +18,7 @@ struct PopoverSectionView: View {
             localization.string(.settingsPopupOrder),
             footnote: localization.string(.settingsPopupOrderDescription)
         ) {
-            SettingsCustomRow(
-                "list.number",
-                tint: .indigo,
-                title: localization.string(.settingsPopupOrder)
-            ) {
+            SettingsCustomRow {
                 List {
                     ForEach(store.popupSectionOrder) { section in
                         HStack(spacing: 8) {
@@ -110,6 +66,62 @@ struct PopoverSectionView: View {
                 statusStore.setBluetoothEnabled(enabled)
             }
         )
+    }
+
+    private var volumeScrollGroup: some View {
+        SettingsGroup(localization.string(.settingsPopupVolumeScrollGroup)) {
+            SettingsToggleRow(
+                symbol: "speaker.wave.2.fill",
+                tint: .cyan,
+                title: localization.string(.settingsPopupVolumeScroll),
+                subtitle: localization.string(.settingsPopupVolumeScrollDescription),
+                isOn: $store.popupScrollAdjustsVolume
+            )
+
+            if store.popupScrollAdjustsVolume {
+                SettingsDivider()
+
+                SettingsMenuRow(
+                    symbol: "aspectratio",
+                    tint: .teal,
+                    title: localization.string(.settingsPopupVolumeScrollScope),
+                    subtitle: localization.string(.settingsPopupVolumeScrollScopeDescription),
+                    selection: $store.popupVolumeScrollScope,
+                    options: PopupVolumeScrollScope.allCases,
+                    label: scrollScopeLabel
+                )
+
+                SettingsDivider()
+
+                SettingsMenuRow(
+                    symbol: "arrow.up.arrow.down",
+                    tint: .indigo,
+                    title: localization.string(.settingsPopupVolumeScrollDirection),
+                    subtitle: localization.string(.settingsPopupVolumeScrollDirectionDescription),
+                    selection: $store.popupVolumeScrollDirection,
+                    options: PopupVolumeScrollDirection.allCases,
+                    label: scrollDirectionLabel
+                )
+            }
+        }
+    }
+
+    private func scrollScopeLabel(_ scope: PopupVolumeScrollScope) -> String {
+        switch scope {
+        case .panel:
+            localization.string(.settingsPopupVolumeScrollScopePanel)
+        case .volumeControl:
+            localization.string(.settingsPopupVolumeScrollScopeVolumeControl)
+        }
+    }
+
+    private func scrollDirectionLabel(_ direction: PopupVolumeScrollDirection) -> String {
+        switch direction {
+        case .up:
+            localization.string(.settingsPopupVolumeScrollDirectionUp)
+        case .down:
+            localization.string(.settingsPopupVolumeScrollDirectionDown)
+        }
     }
 
     @ViewBuilder

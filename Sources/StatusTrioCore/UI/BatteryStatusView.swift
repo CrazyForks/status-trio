@@ -38,19 +38,19 @@ struct BatteryStatusView: View {
     }
 
     private var summary: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 10) {
             Image(systemName: batterySymbolName)
-                .font(.system(size: 20, weight: .regular))
+                .font(.system(size: 15, weight: .medium))
                 .foregroundStyle(batterySymbolColor)
-                .frame(width: 26, height: 26)
+                .frame(width: 24, height: 24)
                 .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(StatusPresentation.batteryTitle(battery, localization: localization))
-                    .font(.system(size: 13.5, weight: .semibold))
+                    .font(.headline)
                     .monospacedDigit()
                 Text(StatusPresentation.batterySubtitle(battery, localization: localization))
-                    .font(.system(size: 11))
+                    .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .truncationMode(.middle)
@@ -59,16 +59,16 @@ struct BatteryStatusView: View {
             Spacer()
 
             if battery.isPresent {
-                Button(action: onOpenBatterySettings) {
-                    Image(systemName: "gearshape")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(.secondary)
-                        .frame(width: 24, height: 24)
-                        .contentShape(Rectangle())
-                }
+                Button(
+                    localization.string(.batteryActionOpenSettings),
+                    systemImage: "gearshape",
+                    action: onOpenBatterySettings
+                )
+                .labelStyle(.iconOnly)
                 .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
                 .help(localization.string(.batteryActionOpenSettings))
-                .accessibilityLabel(localization.string(.batteryActionOpenSettings))
+                .frame(width: 24, height: 24)
             }
         }
     }

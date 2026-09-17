@@ -161,6 +161,20 @@ struct AppIconControllerTests {
         #expect(harness.log.volumeOptions.last == VolumeIconOptions(displayStyle: .arc))
     }
 
+    /// The icon size slider lives in the App Icon pane and is documented as
+    /// menu-bar only: the Dock icon keeps the fixed design size.
+    @Test func menuBarIconSizeDoesNotChangeTheDockIcon() throws {
+        let harness = try AppIconControllerHarness(initialPlacement: .dock)
+        defer { harness.cleanUp() }
+        harness.controller.start()
+        harness.log.reset()
+
+        harness.settings.iconSize = 32
+
+        #expect(harness.log.events.isEmpty)
+        #expect(harness.log.renderCount == 0)
+    }
+
     @Test func reRendersWhenTheSystemIconStyleChanges() throws {
         let notificationCenter = NotificationCenter()
         var theme = SystemIconAppearanceTheme.default
