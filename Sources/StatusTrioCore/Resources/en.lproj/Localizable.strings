@@ -244,6 +244,24 @@
 "settings.audio.indicatorStyle.dots" = "Dots";
 "settings.audio.indicatorStyle.arc" = "Arc";
 
+// On-demand battery details.
+"battery.details.title" = "Battery Details";
+"battery.details.power" = "Battery power (estimate)";
+"battery.details.charging" = "Charging (estimate)";
+"battery.details.discharging" = "Discharging (estimate)";
+"battery.details.voltage" = "Voltage";
+"battery.details.current" = "Current";
+"battery.details.sampled" = "Sampled at";
+"battery.details.adapter" = "Adapter rating";
+"battery.details.remaining" = "Time remaining";
+"battery.details.cycles" = "Cycle count";
+"battery.details.lowPower" = "Low Power Mode";
+"battery.details.on" = "On";
+"battery.details.off" = "Off";
+"battery.details.unavailable" = "Unavailable";
+"battery.details.collecting" = "Sampling…";
+"battery.details.loading" = "Updating…";
+"battery.details.explanation" = "Battery power is a best-effort net estimate, not total Mac consumption. Adapter rating is not live charging power. After a power change macOS takes up to a minute to report new values.";
 /* Compact popover controls. */
 "menu.more" = "More actions";
 

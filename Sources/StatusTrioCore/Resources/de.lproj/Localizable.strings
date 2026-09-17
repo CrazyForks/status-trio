@@ -244,6 +244,24 @@
 "settings.audio.indicatorStyle.dots" = "Punkte";
 "settings.audio.indicatorStyle.arc" = "Bogen";
 
+// On-demand battery details.
+"battery.details.title" = "Batteriedetails";
+"battery.details.power" = "Batterieleistung (geschätzt)";
+"battery.details.charging" = "Laden (geschätzt)";
+"battery.details.discharging" = "Entladen (geschätzt)";
+"battery.details.voltage" = "Spannung";
+"battery.details.current" = "Stromstärke";
+"battery.details.sampled" = "Messzeit";
+"battery.details.adapter" = "Netzteil-Nennleistung";
+"battery.details.remaining" = "Restlaufzeit";
+"battery.details.cycles" = "Ladezyklen";
+"battery.details.lowPower" = "Stromsparmodus";
+"battery.details.on" = "Ein";
+"battery.details.off" = "Aus";
+"battery.details.unavailable" = "Nicht verfügbar";
+"battery.details.collecting" = "Wird gemessen…";
+"battery.details.loading" = "Wird aktualisiert…";
+"battery.details.explanation" = "Die Batterieleistung ist eine Schätzung der Nettoleistung, nicht des gesamten Mac-Verbrauchs. Die Nennleistung des Netzteils ist nicht die aktuelle Ladeleistung. Nach einem Wechsel der Stromquelle braucht macOS bis zu einer Minute für neue Werte.";
 /* Compact popover controls. */
 "menu.more" = "Weitere Aktionen";
 

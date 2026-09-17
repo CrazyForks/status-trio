@@ -244,6 +244,24 @@
 "settings.audio.indicatorStyle.dots" = "Punti";
 "settings.audio.indicatorStyle.arc" = "Arco";
 
+// On-demand battery details.
+"battery.details.title" = "Dettagli batteria";
+"battery.details.power" = "Potenza della batteria (stimata)";
+"battery.details.charging" = "Carica (stimata)";
+"battery.details.discharging" = "Scarica (stimata)";
+"battery.details.voltage" = "Tensione";
+"battery.details.current" = "Corrente";
+"battery.details.sampled" = "Ora della misurazione";
+"battery.details.adapter" = "Potenza nominale dell’alimentatore";
+"battery.details.remaining" = "Tempo rimanente";
+"battery.details.cycles" = "Cicli di carica";
+"battery.details.lowPower" = "Risparmio energetico";
+"battery.details.on" = "Attivo";
+"battery.details.off" = "Disattivo";
+"battery.details.unavailable" = "Non disponibile";
+"battery.details.collecting" = "Misurazione…";
+"battery.details.loading" = "Aggiornamento…";
+"battery.details.explanation" = "La potenza della batteria è una stima approssimativa della potenza netta, non del consumo totale del Mac. La potenza nominale dell’alimentatore non è la potenza di carica attuale. Dopo un cambio di alimentazione macOS può impiegare fino a un minuto per fornire nuovi valori.";
 /* Compact popover controls. */
 "menu.more" = "Altre azioni";
 

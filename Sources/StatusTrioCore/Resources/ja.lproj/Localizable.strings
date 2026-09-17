@@ -244,6 +244,24 @@
 "settings.audio.indicatorStyle.dots" = "4つのドット";
 "settings.audio.indicatorStyle.arc" = "円弧バー";
 
+// On-demand battery details.
+"battery.details.title" = "バッテリーの詳細";
+"battery.details.power" = "バッテリー電力（推定）";
+"battery.details.charging" = "充電（推定）";
+"battery.details.discharging" = "放電（推定）";
+"battery.details.voltage" = "電圧";
+"battery.details.current" = "電流";
+"battery.details.sampled" = "測定時刻";
+"battery.details.adapter" = "アダプタの定格出力";
+"battery.details.remaining" = "残り時間";
+"battery.details.cycles" = "充放電回数";
+"battery.details.lowPower" = "低電力モード";
+"battery.details.on" = "オン";
+"battery.details.off" = "オフ";
+"battery.details.unavailable" = "取得できません";
+"battery.details.collecting" = "計測中…";
+"battery.details.loading" = "更新中…";
+"battery.details.explanation" = "バッテリー電力は正味の充放電電力の推定値であり、Mac全体の消費電力ではありません。アダプタの定格出力は現在の充電電力ではありません。電源の切り替え後、新しい値の取得には最大1分かかります。";
 /* Compact popover controls. */
 "menu.more" = "その他の操作";
 

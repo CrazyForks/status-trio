@@ -42,6 +42,27 @@ final class SystemStatusStoreTests: XCTestCase {
         store.stop()
     }
 
+    func testPopoverClosingExplicitlyDeactivatesBatteryDetails() async {
+        let details = BatteryDetailsController { _, _ in BatteryDetails(cycleCount: 43) }
+        let store = SystemStatusStore(
+            batteryMonitor: FakeBatteryMonitor(), wifiMonitor: FakeWiFiMonitor(),
+            volumeMonitor: FakeVolumeMonitor(), batteryDetails: details
+        )
+        store.setPopoverVisible(true)
+        details.activate(state: BatteryPowerState(.placeholder))
+        for _ in 0..<100 where details.details == nil {
+            try? await Task.sleep(for: .milliseconds(2))
+        }
+        XCTAssertNotNil(details.details)
+        store.setPopoverVisible(false)
+        XCTAssertFalse(store.isPopoverVisible)
+        XCTAssertNil(details.details, "Closing the popover stops collection even if its hosting view is retained")
+        details.refresh()
+        try? await Task.sleep(for: .milliseconds(10))
+        XCTAssertNil(details.details)
+        store.stop()
+    }
+
     func testPopupDebounceIntervalIs500Milliseconds() {
         XCTAssertEqual(SystemStatusStore.popupDebounceInterval, .milliseconds(500))
     }

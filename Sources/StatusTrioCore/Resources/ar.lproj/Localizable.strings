@@ -244,6 +244,24 @@
 "settings.audio.indicatorStyle.dots" = "نقاط";
 "settings.audio.indicatorStyle.arc" = "قوس";
 
+// On-demand battery details.
+"battery.details.title" = "تفاصيل البطارية";
+"battery.details.power" = "قدرة البطارية (تقديرية)";
+"battery.details.charging" = "الشحن (تقديري)";
+"battery.details.discharging" = "التفريغ (تقديري)";
+"battery.details.voltage" = "الجهد";
+"battery.details.current" = "التيار";
+"battery.details.sampled" = "وقت القياس";
+"battery.details.adapter" = "القدرة الاسمية للمحوّل";
+"battery.details.remaining" = "الوقت المتبقي";
+"battery.details.cycles" = "عدد دورات الشحن";
+"battery.details.lowPower" = "نمط الطاقة المنخفضة";
+"battery.details.on" = "مفعّل";
+"battery.details.off" = "متوقف";
+"battery.details.unavailable" = "غير متاح";
+"battery.details.collecting" = "جارٍ القياس…";
+"battery.details.loading" = "جارٍ التحديث…";
+"battery.details.explanation" = "قدرة البطارية هي تقدير تقريبي لصافي القدرة، وليست إجمالي استهلاك Mac. القدرة الاسمية للمحوّل ليست قدرة الشحن الفعلية في الوقت الحالي. بعد تغيير مصدر الطاقة قد يستغرق macOS حتى دقيقة لتقديم قيم جديدة.";
 /* Compact popover controls. */
 "menu.more" = "إجراءات أخرى";
 

@@ -244,6 +244,24 @@
 "settings.audio.indicatorStyle.dots" = "네 개의 점";
 "settings.audio.indicatorStyle.arc" = "호 막대";
 
+// On-demand battery details.
+"battery.details.title" = "배터리 세부 정보";
+"battery.details.power" = "배터리 전력(추정)";
+"battery.details.charging" = "충전(추정)";
+"battery.details.discharging" = "방전(추정)";
+"battery.details.voltage" = "전압";
+"battery.details.current" = "전류";
+"battery.details.sampled" = "측정 시각";
+"battery.details.adapter" = "어댑터 정격 출력";
+"battery.details.remaining" = "남은 시간";
+"battery.details.cycles" = "사이클 수";
+"battery.details.lowPower" = "저전력 모드";
+"battery.details.on" = "켬";
+"battery.details.off" = "끔";
+"battery.details.unavailable" = "사용할 수 없음";
+"battery.details.collecting" = "측정 중…";
+"battery.details.loading" = "업데이트 중…";
+"battery.details.explanation" = "배터리 전력은 순전력의 추정치이며 Mac 전체의 소비 전력이 아닙니다. 어댑터 정격 출력은 현재 충전 전력이 아닙니다. 전원이 바뀐 뒤 macOS가 새 값을 제공하기까지 최대 1분이 걸릴 수 있습니다.";
 /* Compact popover controls. */
 "menu.more" = "추가 작업";
 

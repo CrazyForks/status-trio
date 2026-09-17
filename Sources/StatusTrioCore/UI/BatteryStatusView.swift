@@ -3,9 +3,41 @@ import SwiftUI
 struct BatteryStatusView: View {
     @EnvironmentObject private var localization: Localization
     let battery: BatteryStatus
+    let detailsController: BatteryDetailsController
+    let isPresented: Bool
     let onOpenBatterySettings: () -> Void
 
+    @State private var isExpanded = false
+
+    init(
+        battery: BatteryStatus, detailsController: BatteryDetailsController,
+        isPresented: Bool, onOpenBatterySettings: @escaping () -> Void,
+        showsDetailsInitially: Bool = false
+    ) {
+        self.battery = battery
+        self.detailsController = detailsController
+        self.isPresented = isPresented
+        self.onOpenBatterySettings = onOpenBatterySettings
+        _isExpanded = State(initialValue: showsDetailsInitially)
+    }
+
     var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            summary
+            if battery.isPresent {
+                DisclosureGroup(isExpanded: $isExpanded) {
+                    // Conditional creation guarantees no collection while collapsed.
+                    if isExpanded && isPresented { BatteryDetailsView(controller: detailsController, battery: battery).padding(.top, 6) }
+                } label: {
+                    Text(localization.string(.batteryDetailsTitle))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
+    private var summary: some View {
         HStack(spacing: 10) {
             Image(systemName: batterySymbolName)
                 .font(.system(size: 15, weight: .medium))

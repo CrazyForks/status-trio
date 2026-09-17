@@ -244,6 +244,24 @@
 "settings.audio.indicatorStyle.dots" = "Точки";
 "settings.audio.indicatorStyle.arc" = "Дуга";
 
+// On-demand battery details.
+"battery.details.title" = "Сведения об аккумуляторе";
+"battery.details.power" = "Мощность аккумулятора (оценка)";
+"battery.details.charging" = "Зарядка (оценка)";
+"battery.details.discharging" = "Разрядка (оценка)";
+"battery.details.voltage" = "Напряжение";
+"battery.details.current" = "Сила тока";
+"battery.details.sampled" = "Время измерения";
+"battery.details.adapter" = "Номинальная мощность адаптера";
+"battery.details.remaining" = "Оставшееся время";
+"battery.details.cycles" = "Число циклов";
+"battery.details.lowPower" = "Режим энергосбережения";
+"battery.details.on" = "Вкл.";
+"battery.details.off" = "Выкл.";
+"battery.details.unavailable" = "Недоступно";
+"battery.details.collecting" = "Измерение…";
+"battery.details.loading" = "Обновление…";
+"battery.details.explanation" = "Мощность аккумулятора — приблизительная оценка мощности его заряда или разряда, а не общего энергопотребления Mac. Номинальная мощность адаптера не равна текущей мощности зарядки. После смены источника питания macOS может выдавать новые значения до минуты.";
 /* Compact popover controls. */
 "menu.more" = "Другие действия";
 
