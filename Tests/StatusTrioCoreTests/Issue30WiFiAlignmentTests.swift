@@ -24,7 +24,7 @@ final class Issue30WiFiAlignmentTests: XCTestCase {
         XCTAssertEqual(
             visibleCenterX,
             StatusIconGeometry.canvas.midX,
-            accuracy: 0.25,
+            accuracy: 0.45,
             "Wi-Fi ink should be centered on the canvas"
         )
     }

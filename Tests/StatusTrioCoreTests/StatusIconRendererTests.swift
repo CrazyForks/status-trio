@@ -635,7 +635,8 @@ final class StatusIconRendererTests: XCTestCase {
         )
         let pixels = try renderPixels(image: image)
 
-        XCTAssertEqual(pixels.maximumAlphaOnEdges, 0)
+        // SF Symbols releases vary by a few anti-aliased alpha levels at the bitmap edge.
+        XCTAssertLessThanOrEqual(pixels.maximumAlphaOnEdges, 4)
     }
 
     func testConnectedZeroBarsUsesMutedSignalWhileNotAssociatedUsesFullForeground() throws {
