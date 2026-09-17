@@ -114,6 +114,7 @@ final class AppIconController {
         subscribeToConnectionOptions()
         subscribeToVolumeDisplayStyle()
         subscribeToBackgroundStyle()
+        subscribeToRingStrokeStyle()
     }
 
     func stop() {
@@ -192,7 +193,8 @@ final class AppIconController {
                 usesStatusColors: usesStatusColors,
                 criticalThreshold: Int(criticalThreshold.rounded()),
                 showsPercentageWhenConnected: showsPercentageWhenConnected,
-                textScale: symbolScale * BatteryIconOptions.defaultTextScale
+                textScale: symbolScale * BatteryIconOptions.defaultTextScale,
+                ringStrokeScale: self.settings.ringStrokeStyle.scale
             )
             renderLatestDockIcon()
         }
@@ -246,7 +248,34 @@ final class AppIconController {
             .dropFirst()
             .sink { [weak self] displayStyle in
                 guard let self else { return }
-                currentVolumeOptions = VolumeIconOptions(displayStyle: displayStyle)
+                currentVolumeOptions = VolumeIconOptions(
+                    displayStyle: displayStyle,
+                    ringStrokeScale: self.settings.ringStrokeStyle.scale
+                )
+                renderLatestDockIcon()
+            }
+            .store(in: &cancellables)
+    }
+
+    private func subscribeToRingStrokeStyle() {
+        settings.$ringStrokeStyle
+            .removeDuplicates()
+            .dropFirst()
+            .sink { [weak self] style in
+                guard let self else { return }
+                currentBatteryOptions = BatteryIconOptions(
+                    showsPercentage: self.settings.showsBatteryPercentage,
+                    showsChargingIndicator: self.settings.showsChargingIndicator,
+                    usesStatusColors: self.settings.usesBatteryStatusColors,
+                    criticalThreshold: Int(self.settings.batteryCriticalThreshold.rounded()),
+                    showsPercentageWhenConnected: self.settings.showsPercentageWhenConnected,
+                    textScale: self.settings.batterySymbolScale * BatteryIconOptions.defaultTextScale,
+                    ringStrokeScale: style.scale
+                )
+                currentVolumeOptions = VolumeIconOptions(
+                    displayStyle: self.settings.volumeDisplayStyle,
+                    ringStrokeScale: style.scale
+                )
                 renderLatestDockIcon()
             }
             .store(in: &cancellables)

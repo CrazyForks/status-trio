@@ -25,6 +25,7 @@
 "settings.appIconPlacement.menuBar" = "Строка меню";
 "settings.appIconPlacement.dock" = "Dock";
 "settings.appIconPlacement.both" = "Оба";
+"settings.appIconPlacement.dockExitHint" = "Значок в Dock исчезнет после закрытия настроек";
 "settings.appIcon.dockGroup" = "Значок в Dock";
 "settings.dockIconBackground" = "Фон значка Dock";
 "settings.dockIconBackground.description" = "Применяется к динамическому значку в Dock. «Как в системе» читает «Стиль значков и виджетов» в «Системных настройках › Внешний вид» (macOS 15 или новее).";
@@ -34,6 +35,11 @@
 "settings.iconSize" = "Размер значка";
 "settings.iconSize.accessibilityValue" = "%d пунктов";
 "settings.iconSize.description" = "Настраивает размер отрисовки значка в строке меню от 16 до 36 pt. Значок в Dock сохраняет фиксированный размер.";
+"settings.ringStrokeStyle" = "Толщина внешнего кольца";
+"settings.ringStrokeStyle.description" = "Настройте толщину линий кольца состояния в строке меню.";
+"settings.ringStrokeStyle.light" = "Тонкая";
+"settings.ringStrokeStyle.regular" = "Обычная";
+"settings.ringStrokeStyle.bold" = "Толстая";
 "settings.tab.appIcon" = "Значок приложения";
 "settings.tab.battery" = "Батарея";
 "settings.tab.network" = "Сеть";

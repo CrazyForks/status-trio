@@ -158,7 +158,10 @@ struct AppIconControllerTests {
         harness.settings.volumeDisplayStyle = .arc
 
         #expect(harness.log.renderCount == 1)
-        #expect(harness.log.volumeOptions.last == VolumeIconOptions(displayStyle: .arc))
+        #expect(
+            harness.log.volumeOptions.last
+                == VolumeIconOptions(displayStyle: .arc, ringStrokeScale: harness.settings.ringStrokeStyle.scale)
+        )
     }
 
     /// The icon size slider lives in the App Icon pane and is documented as

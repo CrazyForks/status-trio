@@ -32,13 +32,6 @@ struct StatusIconPreviewCard: View {
                 appearanceToggle
                     .padding(.trailing, 14)
             }
-
-            Text(localization.string(.settingsPreviewHint))
-                .font(.system(size: 11))
-                .foregroundStyle(.tertiary)
-        }
-    }
-
     private var appearanceToggle: some View {
         Button {
             withAnimation(.easeInOut(duration: 0.2)) {
@@ -69,6 +62,7 @@ struct DockIconPreviewTile: View {
     @ObservedObject var store: SettingsStore
     @ObservedObject var statusStore: SystemStatusStore
     var size: CGFloat = 44
+    var overrideStyle: DockIconBackgroundStyle? = nil
 
     var body: some View {
         DockIconTile(
@@ -86,7 +80,10 @@ struct DockIconPreviewTile: View {
     }
 
     private var resolvedBackgroundStyle: DockIconBackgroundStyle {
-        DockIconBackgroundResolver.style(
+        if let overrideStyle {
+            return overrideStyle
+        }
+        return DockIconBackgroundResolver.style(
             for: store.dockIconBackgroundPreference,
             theme: SystemIconAppearanceReader.current(),
             isDarkAppearance: NSApplication.shared.effectiveAppearance

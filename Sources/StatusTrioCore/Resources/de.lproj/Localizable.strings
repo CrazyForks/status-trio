@@ -25,6 +25,7 @@
 "settings.appIconPlacement.menuBar" = "Menüleiste";
 "settings.appIconPlacement.dock" = "Dock";
 "settings.appIconPlacement.both" = "Beide";
+"settings.appIconPlacement.dockExitHint" = "Das Dock-Symbol verschwindet nach Schließen der Einstellungen";
 "settings.appIcon.dockGroup" = "Dock-Symbol";
 "settings.dockIconBackground" = "Dock-Symbol Hintergrund";
 "settings.dockIconBackground.description" = "Gilt für das Live-Symbol im Dock. „Systemeinstellung folgen“ liest „Symbol- und Widgetstil“ in Systemeinstellungen › Erscheinungsbild (macOS 15 oder neuer).";
@@ -34,6 +35,11 @@
 "settings.iconSize" = "Symbolgröße";
 "settings.iconSize.accessibilityValue" = "%d Punkte";
 "settings.iconSize.description" = "Passt die Darstellungsgröße des Menüleistensymbols auf 16–36 pt an. Das Dock-Symbol behält seine feste Designgröße.";
+"settings.ringStrokeStyle" = "Stärke des äußeren Rings";
+"settings.ringStrokeStyle.description" = "Wähle die Linienstärke des Statusrings in der Menüleiste.";
+"settings.ringStrokeStyle.light" = "Fein";
+"settings.ringStrokeStyle.regular" = "Normal";
+"settings.ringStrokeStyle.bold" = "Kräftig";
 "settings.tab.appIcon" = "App-Symbol";
 "settings.tab.battery" = "Batterie";
 "settings.tab.network" = "Netzwerk";

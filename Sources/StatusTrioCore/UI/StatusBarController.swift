@@ -33,6 +33,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     private var batteryOptionsCancellable: AnyCancellable?
     private var connectionIconOptionsCancellable: AnyCancellable?
     private var volumeOptionsCancellable: AnyCancellable?
+    private var ringStrokeStyleCancellable: AnyCancellable?
     private var screenParametersCancellable: AnyCancellable?
     private var refreshIntervalCancellable: AnyCancellable?
     private let openSettings: () -> Void
@@ -126,7 +127,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
                 usesStatusColors: usesStatusColors,
                 criticalThreshold: Int(criticalThreshold.rounded()),
                 showsPercentageWhenConnected: showsPercentageWhenConnected,
-                textScale: symbolScale * BatteryIconOptions.defaultTextScale
+                textScale: symbolScale * BatteryIconOptions.defaultTextScale,
+                ringStrokeScale: self.settings.ringStrokeStyle.scale
             )
             self.render(
                 status: MenuBarStatus(snapshot: self.store.snapshot),
@@ -156,14 +158,43 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         }
 
         volumeOptionsCancellable = settings.$volumeDisplayStyle
-            .sink { [weak self] _ in
+            .sink { [weak self] displayStyle in
                 guard let self else { return }
+                let volumeOptions = VolumeIconOptions(
+                    displayStyle: displayStyle,
+                    ringStrokeScale: self.settings.ringStrokeStyle.scale
+                )
                 self.render(
                     status: MenuBarStatus(snapshot: self.store.snapshot),
                     iconSize: self.settings.iconSize,
                     options: self.settings.batteryIconOptions,
                     connectionOptions: self.settings.connectionIconOptions,
-                    volumeOptions: self.settings.volumeIconOptions
+                    volumeOptions: volumeOptions
+                )
+            }
+
+        ringStrokeStyleCancellable = settings.$ringStrokeStyle
+            .sink { [weak self] style in
+                guard let self else { return }
+                let batteryOptions = BatteryIconOptions(
+                    showsPercentage: self.settings.showsBatteryPercentage,
+                    showsChargingIndicator: self.settings.showsChargingIndicator,
+                    usesStatusColors: self.settings.usesBatteryStatusColors,
+                    criticalThreshold: Int(self.settings.batteryCriticalThreshold.rounded()),
+                    showsPercentageWhenConnected: self.settings.showsPercentageWhenConnected,
+                    textScale: self.settings.batterySymbolScale * BatteryIconOptions.defaultTextScale,
+                    ringStrokeScale: style.scale
+                )
+                let volumeOptions = VolumeIconOptions(
+                    displayStyle: self.settings.volumeDisplayStyle,
+                    ringStrokeScale: style.scale
+                )
+                self.render(
+                    status: MenuBarStatus(snapshot: self.store.snapshot),
+                    iconSize: self.settings.iconSize,
+                    options: batteryOptions,
+                    connectionOptions: self.settings.connectionIconOptions,
+                    volumeOptions: volumeOptions
                 )
             }
 

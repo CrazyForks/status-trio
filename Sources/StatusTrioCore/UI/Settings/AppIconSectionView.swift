@@ -47,26 +47,42 @@ struct AppIconSectionView: View {
 
     private var placementGroup: some View {
         SettingsGroup(localization.string(.settingsAppIconPlacement)) {
-            SettingsRow(
+            SettingsPictureRow(
                 "macwindow.on.rectangle",
                 tint: .indigo,
                 title: localization.string(.settingsAppIconPlacement),
-                subtitle: localization.string(.settingsAppIconPlacementDescription)
-            ) {
-                Picker(
-                    localization.string(.settingsAppIconPlacement),
-                    selection: $store.appIconPlacement
-                ) {
-                    Text(localization.string(.settingsAppIconPlacementMenuBar))
-                        .tag(AppIconPlacement.menuBar)
-                    Text(localization.string(.settingsAppIconPlacementDock))
-                        .tag(AppIconPlacement.dock)
-                    Text(localization.string(.settingsAppIconPlacementBoth))
-                        .tag(AppIconPlacement.both)
+                subtitle: localization.string(.settingsAppIconPlacementDescription),
+                selection: $store.appIconPlacement,
+                options: [AppIconPlacement.menuBar, .dock, .both],
+                previewSize: CGSize(width: 62, height: 42),
+                caption: { placement in
+                    switch placement {
+                    case .menuBar: return localization.string(.settingsAppIconPlacementMenuBar)
+                    case .dock: return localization.string(.settingsAppIconPlacementDock)
+                    case .both: return localization.string(.settingsAppIconPlacementBoth)
+                    }
+                },
+                preview: { placement in
+                    AppIconPlacementPreview(placement: placement)
                 }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .fixedSize()
+            )
+
+            if !store.appIconPlacement.showsDockIcon {
+                Divider()
+                    .padding(.leading, SettingsMetrics.dividerInset)
+
+                HStack(spacing: 6) {
+                    Image(systemName: "info.circle")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                    Text(localization.string(.settingsAppIconDockExitHint))
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                }
+                .padding(.horizontal, SettingsMetrics.rowPaddingH)
+                .padding(.vertical, 8)
+                .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
     }
@@ -105,6 +121,32 @@ struct AppIconSectionView: View {
                         .frame(width: 44, alignment: .trailing)
                 }
             }
+
+            SettingsDivider()
+
+            SettingsPictureRow(
+                "circle.circle",
+                tint: .indigo,
+                title: localization.string(.settingsRingStrokeStyle),
+                subtitle: localization.string(.settingsRingStrokeStyleDescription),
+                selection: $store.ringStrokeStyle,
+                options: [RingStrokeStyle.light, .regular, .bold],
+                previewSize: CGSize(width: 68, height: 44),
+                caption: { style in
+                    switch style {
+                    case .light: return localization.string(.settingsRingStrokeStyleLight)
+                    case .regular: return localization.string(.settingsRingStrokeStyleRegular)
+                    case .bold: return localization.string(.settingsRingStrokeStyleBold)
+                    }
+                },
+                preview: { style in
+                    RingStrokeStylePreview(
+                        style: style,
+                        store: store,
+                        statusStore: statusStore
+                    )
+                }
+            )
         }
     }
 
@@ -112,35 +154,27 @@ struct AppIconSectionView: View {
 
     private var dockGroup: some View {
         SettingsGroup(localization.string(.settingsAppIconDockGroup)) {
-            SettingsCustomRow(
+            SettingsPictureRow(
                 title: localization.string(.settingsDockIconBackground),
-                subtitle: localization.string(.settingsDockIconBackgroundDescription)
-            ) {
-                HStack(spacing: 12) {
-                    DockIconPreviewTile(
-                        store: store,
-                        statusStore: statusStore,
-                        size: 44
-                    )
-
-                    Picker(
-                        localization.string(.settingsDockIconBackground),
-                        selection: $store.dockIconBackgroundPreference
-                    ) {
-                        Text(localization.string(.settingsDockIconBackgroundSystem))
-                            .tag(DockIconBackgroundPreference.system)
-                        Text(localization.string(.settingsDockIconBackgroundDark))
-                            .tag(DockIconBackgroundPreference.dark)
-                        Text(localization.string(.settingsDockIconBackgroundLight))
-                            .tag(DockIconBackgroundPreference.light)
+                subtitle: localization.string(.settingsDockIconBackgroundDescription),
+                selection: $store.dockIconBackgroundPreference,
+                options: [DockIconBackgroundPreference.system, .dark, .light],
+                previewSize: CGSize(width: 58, height: 42),
+                caption: { pref in
+                    switch pref {
+                    case .system: return localization.string(.settingsDockIconBackgroundSystem)
+                    case .dark: return localization.string(.settingsDockIconBackgroundDark)
+                    case .light: return localization.string(.settingsDockIconBackgroundLight)
                     }
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
-                    .fixedSize()
-
-                    Spacer(minLength: 0)
+                },
+                preview: { pref in
+                    DockBackgroundPreview(
+                        preference: pref,
+                        store: store,
+                        statusStore: statusStore
+                    )
                 }
-            }
+            )
         }
     }
 }

@@ -193,6 +193,140 @@ struct SettingsMenuRow<T: Hashable & Identifiable>: View {
     }
 }
 
+/// Extension for concentric Apple-style focus/selection rings around preview cards.
+extension View {
+    /// Concentric with the picture card: the ring's inner corner is the card's
+    /// own corner plus the gap, matching macOS System Settings Appearance selection ring.
+    func selectionRing(
+        _ isOn: Bool,
+        cornerRadius: CGFloat = 6,
+        style: RoundedCornerStyle = .continuous
+    ) -> some View {
+        let gap: CGFloat = 2.5
+        let width: CGFloat = 2.5
+        return padding(gap + width)
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius + gap + width, style: style)
+                    .strokeBorder(isOn ? Color.accentColor : .clear, lineWidth: width)
+            )
+    }
+}
+
+/// A row whose choices are visual preview cards matching macOS System Settings Appearance and Icon style pickers.
+struct SettingsPictureRow<T: Hashable & Identifiable, Leading: View, Preview: View>: View {
+    let title: String
+    var subtitle: String? = nil
+    @Binding var selection: T
+    let options: [T]
+    var previewSize: CGSize = CGSize(width: 68, height: 44)
+    @ViewBuilder var leading: Leading
+    let caption: (T) -> String
+    @ViewBuilder let preview: (T) -> Preview
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .top, spacing: 12) {
+                if !(Leading.self == EmptyView.self) {
+                    leading
+                        .frame(width: SettingsMetrics.iconSize, height: SettingsMetrics.iconSize)
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.system(size: 13, weight: .regular))
+                    if let subtitle {
+                        Text(subtitle)
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+
+                Spacer(minLength: 12)
+
+                HStack(alignment: .top, spacing: 10) {
+                    ForEach(options) { option in
+                        let isSelected = selection == option
+                        VStack(spacing: 5) {
+                            preview(option)
+                                .frame(width: previewSize.width, height: previewSize.height)
+                                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                        .strokeBorder(Color.primary.opacity(0.12), lineWidth: 1)
+                                )
+                                .selectionRing(isSelected, cornerRadius: 6)
+
+                            Text(caption(option))
+                                .font(.system(size: 11, weight: isSelected ? .semibold : .regular))
+                                .foregroundStyle(isSelected ? .primary : .secondary)
+                                .lineLimit(1)
+                                .fixedSize()
+                        }
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            withAnimation(.easeInOut(duration: 0.15)) {
+                                selection = option
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .padding(.horizontal, SettingsMetrics.rowPaddingH)
+        .padding(.vertical, SettingsMetrics.rowPaddingV)
+    }
+}
+
+extension SettingsPictureRow where Leading == EmptyView {
+    init(
+        title: String,
+        subtitle: String? = nil,
+        selection: Binding<T>,
+        options: [T],
+        previewSize: CGSize = CGSize(width: 68, height: 44),
+        caption: @escaping (T) -> String,
+        @ViewBuilder preview: @escaping (T) -> Preview
+    ) {
+        self.init(
+            title: title,
+            subtitle: subtitle,
+            selection: selection,
+            options: options,
+            previewSize: previewSize,
+            leading: { EmptyView() },
+            caption: caption,
+            preview: preview
+        )
+    }
+}
+
+extension SettingsPictureRow where Leading == SettingsIcon {
+    init(
+        _ symbol: String,
+        tint: Color = .accentColor,
+        title: String,
+        subtitle: String? = nil,
+        selection: Binding<T>,
+        options: [T],
+        previewSize: CGSize = CGSize(width: 68, height: 44),
+        caption: @escaping (T) -> String,
+        @ViewBuilder preview: @escaping (T) -> Preview
+    ) {
+        self.init(
+            title: title,
+            subtitle: subtitle,
+            selection: selection,
+            options: options,
+            previewSize: previewSize,
+            leading: { SettingsIcon(symbol: symbol, tint: tint) },
+            caption: caption,
+            preview: preview
+        )
+    }
+}
+
+
 /// A full-width custom row, useful for sliders and embedded views.
 struct SettingsCustomRow<Leading: View, Content: View>: View {
     var title: String? = nil

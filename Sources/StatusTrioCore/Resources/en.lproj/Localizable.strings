@@ -25,6 +25,7 @@
 "settings.appIconPlacement.menuBar" = "Menu Bar";
 "settings.appIconPlacement.dock" = "Dock";
 "settings.appIconPlacement.both" = "Both";
+"settings.appIconPlacement.dockExitHint" = "The Dock icon will disappear after closing Settings";
 "settings.appIcon.dockGroup" = "Dock Icon";
 "settings.dockIconBackground" = "Dock Icon Background";
 "settings.dockIconBackground.description" = "Applies to the live icon shown in the Dock. “Follow System” reads Icon & Widget Style in System Settings › Appearance (macOS 15 or later).";
@@ -34,6 +35,11 @@
 "settings.iconSize" = "Icon Size";
 "settings.iconSize.accessibilityValue" = "%d points";
 "settings.iconSize.description" = "Adjusts the menu bar icon render size from 16–36 pt. The Dock icon keeps its fixed design size.";
+"settings.ringStrokeStyle" = "Ring Stroke Width";
+"settings.ringStrokeStyle.description" = "Adjust the line thickness of the status ring.";
+"settings.ringStrokeStyle.light" = "Light";
+"settings.ringStrokeStyle.regular" = "Regular";
+"settings.ringStrokeStyle.bold" = "Bold";
 "settings.tab.appIcon" = "App Icon";
 "settings.tab.battery" = "Battery";
 "settings.tab.network" = "Network";
