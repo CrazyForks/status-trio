@@ -23,10 +23,10 @@ struct BatteryIconOptions: Equatable, Hashable, Sendable {
     )
 
     init(
-        showsPercentage: Bool,
-        showsChargingIndicator: Bool,
-        usesStatusColors: Bool,
-        criticalThreshold: Int,
+        showsPercentage: Bool = true,
+        showsChargingIndicator: Bool = true,
+        usesStatusColors: Bool = true,
+        criticalThreshold: Int = 20,
         showsPercentageWhenConnected: Bool = false,
         textScale: Double = defaultTextScale,
         ringStrokeScale: Double = defaultRingStrokeScale

@@ -199,15 +199,25 @@ extension View {
     /// own corner plus the gap, matching macOS System Settings Appearance selection ring.
     func selectionRing(
         _ isOn: Bool,
+        isFocused: Bool = false,
         cornerRadius: CGFloat = 6,
         style: RoundedCornerStyle = .continuous
     ) -> some View {
         let gap: CGFloat = 2.5
         let width: CGFloat = 2.5
+        let strokeColor: Color = {
+            if isOn {
+                return Color.accentColor
+            } else if isFocused {
+                return Color.accentColor.opacity(0.5)
+            } else {
+                return Color.clear
+            }
+        }()
         return padding(gap + width)
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius + gap + width, style: style)
-                    .strokeBorder(isOn ? Color.accentColor : .clear, lineWidth: width)
+                    .strokeBorder(strokeColor, lineWidth: width)
             )
     }
 }
@@ -222,6 +232,8 @@ struct SettingsPictureRow<T: Hashable & Identifiable, Leading: View, Preview: Vi
     @ViewBuilder var leading: Leading
     let caption: (T) -> String
     @ViewBuilder let preview: (T) -> Preview
+
+    @FocusState private var focusedOption: T?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -247,34 +259,69 @@ struct SettingsPictureRow<T: Hashable & Identifiable, Leading: View, Preview: Vi
                 HStack(alignment: .top, spacing: 10) {
                     ForEach(options) { option in
                         let isSelected = selection == option
-                        VStack(spacing: 5) {
-                            preview(option)
-                                .frame(width: previewSize.width, height: previewSize.height)
-                                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                        .strokeBorder(Color.primary.opacity(0.12), lineWidth: 1)
-                                )
-                                .selectionRing(isSelected, cornerRadius: 6)
-
-                            Text(caption(option))
-                                .font(.system(size: 11, weight: isSelected ? .semibold : .regular))
-                                .foregroundStyle(isSelected ? .primary : .secondary)
-                                .lineLimit(1)
-                                .fixedSize()
-                        }
-                        .contentShape(Rectangle())
-                        .onTapGesture {
+                        let isFocused = focusedOption == option
+                        Button {
                             withAnimation(.easeInOut(duration: 0.15)) {
                                 selection = option
+                                focusedOption = option
+                            }
+                        } label: {
+                            VStack(spacing: 5) {
+                                preview(option)
+                                    .frame(width: previewSize.width, height: previewSize.height)
+                                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                            .strokeBorder(Color.primary.opacity(0.12), lineWidth: 1)
+                                    )
+                                    .selectionRing(isSelected, isFocused: isFocused, cornerRadius: 6)
+
+                                Text(caption(option))
+                                    .font(.system(size: 11, weight: isSelected ? .semibold : .regular))
+                                    .foregroundStyle(isSelected ? .primary : .secondary)
+                                    .lineLimit(1)
+                                    .fixedSize()
                             }
                         }
+                        .buttonStyle(.plain)
+                        .focused($focusedOption, equals: option)
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel(caption(option))
+                        .accessibilityValue(isSelected ? caption(option) : "")
+                        .accessibilityAddTraits(isSelected ? [.isSelected] : [])
                     }
+                }
+                .onKeyPress(.leftArrow) {
+                    selectRelative(offset: -1)
+                    return .handled
+                }
+                .onKeyPress(.rightArrow) {
+                    selectRelative(offset: 1)
+                    return .handled
+                }
+                .onKeyPress(.upArrow) {
+                    selectRelative(offset: -1)
+                    return .handled
+                }
+                .onKeyPress(.downArrow) {
+                    selectRelative(offset: 1)
+                    return .handled
                 }
             }
         }
         .padding(.horizontal, SettingsMetrics.rowPaddingH)
         .padding(.vertical, SettingsMetrics.rowPaddingV)
+    }
+
+    private func selectRelative(offset: Int) {
+        let current = focusedOption ?? selection
+        guard let currentIndex = options.firstIndex(of: current) else { return }
+        let newIndex = max(0, min(options.count - 1, currentIndex + offset))
+        let target = options[newIndex]
+        withAnimation(.easeInOut(duration: 0.15)) {
+            selection = target
+            focusedOption = target
+        }
     }
 }
 

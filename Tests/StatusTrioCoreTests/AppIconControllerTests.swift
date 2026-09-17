@@ -164,6 +164,19 @@ struct AppIconControllerTests {
         )
     }
 
+    @Test func changingRingStrokeStyleRendersWithUpdatedOptions() throws {
+        let harness = try AppIconControllerHarness(initialPlacement: .dock)
+        defer { harness.cleanUp() }
+        harness.controller.start()
+        harness.log.reset()
+
+        harness.settings.ringStrokeStyle = .bold
+
+        #expect(harness.log.renderCount == 1)
+        #expect(harness.log.batteryOptions.last?.ringStrokeScale == RingStrokeStyle.bold.scale)
+        #expect(harness.log.volumeOptions.last?.ringStrokeScale == RingStrokeStyle.bold.scale)
+    }
+
     /// The icon size slider lives in the App Icon pane and is documented as
     /// menu-bar only: the Dock icon keeps the fixed design size.
     @Test func menuBarIconSizeDoesNotChangeTheDockIcon() throws {
@@ -335,9 +348,10 @@ private final class AppIconControllerHarness {
             setMenuBarVisible: { isVisible in
                 log.events.append(isVisible ? "menu:true" : "menu:false")
             },
-            renderDockIcon: { _, _, connectionOptions, volumeOptions, backgroundStyle in
+            renderDockIcon: { _, batteryOptions, connectionOptions, volumeOptions, backgroundStyle in
                 log.renderCount += 1
                 log.backgroundStyles.append(backgroundStyle)
+                log.batteryOptions.append(batteryOptions)
                 log.connectionOptions.append(connectionOptions)
                 log.volumeOptions.append(volumeOptions)
                 return NSImage(size: NSSize(width: 512, height: 512))
@@ -375,6 +389,7 @@ private final class AppIconEventLog {
     var events: [String] = []
     var renderCount = 0
     var backgroundStyles: [DockIconBackgroundStyle] = []
+    var batteryOptions: [BatteryIconOptions] = []
     var connectionOptions: [ConnectionIconOptions] = []
     var volumeOptions: [VolumeIconOptions] = []
 
@@ -382,6 +397,7 @@ private final class AppIconEventLog {
         events.removeAll()
         renderCount = 0
         backgroundStyles.removeAll()
+        batteryOptions.removeAll()
         connectionOptions.removeAll()
         volumeOptions.removeAll()
     }

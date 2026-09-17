@@ -1187,6 +1187,78 @@ final class StatusIconRendererTests: XCTestCase {
         }
     }
 
+    func testRingStrokeStyleChangesMenuBarRenderedPixels() throws {
+        let snapshot = StatusSnapshot.placeholder
+        let foreground = CGColor(gray: 1, alpha: 1)
+
+        let lightPixels = try PixelBuffer(
+            image: try XCTUnwrap(StatusIconRenderer.render(
+                snapshot: snapshot,
+                size: 20,
+                scale: 2,
+                foreground: foreground,
+                options: BatteryIconOptions(ringStrokeScale: RingStrokeStyle.light.scale),
+                volumeOptions: VolumeIconOptions(ringStrokeScale: RingStrokeStyle.light.scale)
+            ))
+        )
+        let regularPixels = try PixelBuffer(
+            image: try XCTUnwrap(StatusIconRenderer.render(
+                snapshot: snapshot,
+                size: 20,
+                scale: 2,
+                foreground: foreground,
+                options: BatteryIconOptions(ringStrokeScale: RingStrokeStyle.regular.scale),
+                volumeOptions: VolumeIconOptions(ringStrokeScale: RingStrokeStyle.regular.scale)
+            ))
+        )
+        let boldPixels = try PixelBuffer(
+            image: try XCTUnwrap(StatusIconRenderer.render(
+                snapshot: snapshot,
+                size: 20,
+                scale: 2,
+                foreground: foreground,
+                options: BatteryIconOptions(ringStrokeScale: RingStrokeStyle.bold.scale),
+                volumeOptions: VolumeIconOptions(ringStrokeScale: RingStrokeStyle.bold.scale)
+            ))
+        )
+
+        XCTAssertNotEqual(lightPixels.bytes, regularPixels.bytes)
+        XCTAssertNotEqual(regularPixels.bytes, boldPixels.bytes)
+        XCTAssertNotEqual(lightPixels.bytes, boldPixels.bytes)
+    }
+
+    func testRingStrokeStyleChangesMenuBarRenderedPixelsForVolumeArc() throws {
+        let snapshot = StatusSnapshot(
+            battery: .placeholder,
+            wifi: .placeholder,
+            volume: VolumeStatus(scalar: 0.6, isMuted: false, deviceName: nil)
+        )
+        let foreground = CGColor(gray: 1, alpha: 1)
+
+        let regularPixels = try PixelBuffer(
+            image: try XCTUnwrap(StatusIconRenderer.render(
+                snapshot: snapshot,
+                size: 20,
+                scale: 2,
+                foreground: foreground,
+                options: BatteryIconOptions(ringStrokeScale: RingStrokeStyle.regular.scale),
+                volumeOptions: VolumeIconOptions(displayStyle: .arc, ringStrokeScale: RingStrokeStyle.regular.scale)
+            ))
+        )
+        let boldPixels = try PixelBuffer(
+            image: try XCTUnwrap(StatusIconRenderer.render(
+                snapshot: snapshot,
+                size: 20,
+                scale: 2,
+                foreground: foreground,
+                options: BatteryIconOptions(ringStrokeScale: RingStrokeStyle.bold.scale),
+                volumeOptions: VolumeIconOptions(displayStyle: .arc, ringStrokeScale: RingStrokeStyle.bold.scale)
+            ))
+        )
+
+        XCTAssertNotEqual(regularPixels.bytes, boldPixels.bytes)
+    }
+
     private func makeBattery(
         rawPercentage: Int,
         isCharging: Bool = false,

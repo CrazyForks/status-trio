@@ -145,6 +145,22 @@ final class DockIconRendererTests: XCTestCase {
         XCTAssertNotEqual(withValue.bytes, withoutValue.bytes)
     }
 
+    func testRingStrokeStyleChangesDockRenderedInk() throws {
+        let status = MenuBarStatus.placeholder
+        let regularPixels = try pixels(
+            for: status,
+            options: BatteryIconOptions(ringStrokeScale: RingStrokeStyle.regular.scale),
+            volumeOptions: VolumeIconOptions(ringStrokeScale: RingStrokeStyle.regular.scale)
+        )
+        let boldPixels = try pixels(
+            for: status,
+            options: BatteryIconOptions(ringStrokeScale: RingStrokeStyle.bold.scale),
+            volumeOptions: VolumeIconOptions(ringStrokeScale: RingStrokeStyle.bold.scale)
+        )
+
+        XCTAssertNotEqual(regularPixels.bytes, boldPixels.bytes)
+    }
+
     func testRendererProducesImageForEveryPlacementPreviewState() throws {
         XCTAssertNotNil(DockIconRenderer.image(status: .placeholder))
     }
@@ -153,12 +169,14 @@ final class DockIconRendererTests: XCTestCase {
         for status: MenuBarStatus,
         options: BatteryIconOptions = .standard,
         connectionOptions: ConnectionIconOptions = .standard,
+        volumeOptions: VolumeIconOptions = .standard,
         backgroundStyle: DockIconBackgroundStyle = .dark
     ) throws -> PixelBuffer {
         let image = try XCTUnwrap(DockIconRenderer.image(
             status: status,
             options: options,
             connectionOptions: connectionOptions,
+            volumeOptions: volumeOptions,
             backgroundStyle: backgroundStyle
         ))
         let representation = try XCTUnwrap(

@@ -32,6 +32,13 @@ struct StatusIconPreviewCard: View {
                 appearanceToggle
                     .padding(.trailing, 14)
             }
+
+            Text(localization.string(.settingsPreviewHint))
+                .font(.system(size: 11))
+                .foregroundStyle(.tertiary)
+        }
+    }
+
     private var appearanceToggle: some View {
         Button {
             withAnimation(.easeInOut(duration: 0.2)) {
