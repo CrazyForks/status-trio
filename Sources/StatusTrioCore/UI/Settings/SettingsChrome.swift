@@ -198,9 +198,10 @@ extension View {
     /// Concentric with the picture card: the ring's inner corner is the card's
     /// own corner plus the gap, matching macOS System Settings Appearance selection ring.
     ///
-    /// Keyboard focus is deliberately left to the system focus effect: the option
-    /// buttons are focusable but no longer disable it, so this ring communicates
-    /// selection and is never the only indicator of where focus is.
+    /// This ring is the only selection *and* focus indicator for the card pickers.
+    /// The option buttons stay focusable so Tab reaches them and the arrow keys
+    /// move the selection, but their system focus effect is disabled: it drew a
+    /// second ring on top of this one, and the two rings never lined up.
     func selectionRing(
         _ isOn: Bool,
         cornerRadius: CGFloat = 6,
@@ -282,6 +283,10 @@ struct SettingsPictureRow<T: Hashable & Identifiable, Leading: View, Preview: Vi
                         .buttonStyle(.plain)
                         .focusable()
                         .focused($focusedOption, equals: option)
+                        // The selection ring above already marks the picked card,
+                        // so the system focus effect would draw a second, slightly
+                        // offset ring around it on every click.
+                        .focusEffectDisabled()
                         .onKeyPress(.leftArrow) {
                             selectRelative(offset: backwardStep)
                             return .handled
@@ -334,12 +339,32 @@ struct SettingsPictureRow<T: Hashable & Identifiable, Leading: View, Preview: Vi
 
     /// Wraps at both ends so repeated presses keep cycling through the options.
     private func selectRelative(offset: Int) {
-        guard !options.isEmpty else { return }
         let current = focusedOption ?? selection
-        guard let currentIndex = options.firstIndex(of: current) else { return }
+        guard let next = SettingsPictureRowSelection.wrapped(
+            in: options,
+            from: current,
+            offset: offset
+        ) else { return }
+        selectOption(next)
+    }
+}
+
+/// Selection math for the picture-card option rows.
+///
+/// The card pickers disable their system focus effect, so the arrow keys are the
+/// keyboard path that has to keep working: the offset wraps at both ends and the
+/// reading direction decides which way "forward" points.
+enum SettingsPictureRowSelection {
+    static func wrapped<T: Hashable>(
+        in options: [T],
+        from current: T,
+        offset: Int
+    ) -> T? {
+        guard !options.isEmpty else { return nil }
+        guard let currentIndex = options.firstIndex(of: current) else { return nil }
         let count = options.count
         let newIndex = ((currentIndex + offset) % count + count) % count
-        selectOption(options[newIndex])
+        return options[newIndex]
     }
 }
 
@@ -469,22 +494,57 @@ struct SettingsDivider: View {
 }
 
 /// A scrolling page container with standard macOS settings padding and background.
-struct SettingsPage<Content: View>: View {
+///
+/// The optional `pinnedHeader` sits outside the scroll view, so a page whose
+/// first element is the live menu bar simulation keeps that simulation in place
+/// while the settings below it scroll.
+struct SettingsPage<Content: View, PinnedHeader: View>: View {
+    @ViewBuilder let pinnedHeader: PinnedHeader
     @ViewBuilder let content: Content
 
-    init(@ViewBuilder content: () -> Content) {
+    init(
+        @ViewBuilder pinnedHeader: () -> PinnedHeader,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.pinnedHeader = pinnedHeader()
         self.content = content()
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: SettingsMetrics.groupSpacing) {
-                content
+        VStack(spacing: 0) {
+            if !(PinnedHeader.self == EmptyView.self) {
+                pinnedHeader
+                    .padding(EdgeInsets(top: 20, leading: 24, bottom: 0, trailing: 24))
             }
-            .padding(EdgeInsets(top: 20, leading: 24, bottom: 24, trailing: 24))
-            .frame(maxWidth: .infinity, alignment: .leading)
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: SettingsMetrics.groupSpacing) {
+                    content
+                }
+                .padding(
+                    EdgeInsets(
+                        top: Self.contentTopPadding,
+                        leading: 24,
+                        bottom: 24,
+                        trailing: 24
+                    )
+                )
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
         }
         .background(Color(nsColor: .windowBackgroundColor))
+    }
+
+    /// The pinned header owns the page's top margin, so the scrolling content
+    /// only adds the group gap below it.
+    private static var contentTopPadding: CGFloat {
+        PinnedHeader.self == EmptyView.self ? 20 : SettingsMetrics.groupSpacing
+    }
+}
+
+extension SettingsPage where PinnedHeader == EmptyView {
+    init(@ViewBuilder content: () -> Content) {
+        self.init(pinnedHeader: { EmptyView() }, content: content)
     }
 }
 

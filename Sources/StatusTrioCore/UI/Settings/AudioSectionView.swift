@@ -7,13 +7,13 @@ struct AudioSectionView: View {
     @EnvironmentObject private var localization: Localization
 
     var body: some View {
-        SettingsPage {
+        SettingsPage(pinnedHeader: {
             StatusIconPreviewCard(
                 store: store,
                 statusStore: statusStore,
                 isDarkBackground: $previewIsDark
             )
-
+        }) {
             indicatorStyleGroup
             displayRulesGroup
             deviceOrderGroup

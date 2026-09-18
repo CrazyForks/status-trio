@@ -10,13 +10,13 @@ struct NetworkSectionView: View {
     @State private var showsNetworkIconOptions: Bool = false
 
     var body: some View {
-        SettingsPage {
+        SettingsPage(pinnedHeader: {
             StatusIconPreviewCard(
                 store: store,
                 statusStore: statusStore,
                 isDarkBackground: $previewIsDark
             )
-
+        }) {
             connectionIconsGroup
         }
     }
