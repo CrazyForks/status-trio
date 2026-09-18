@@ -101,3 +101,18 @@ and data-source value types plus `AudioOutputDeviceIcon`, which maps a device to
 an `AudioOutputDeviceKind` and then to an SF Symbol name. Both the popup output
 list (`OutputDeviceRow`) and the settings output-order list
 (`AudioSectionView`) use it so the two surfaces stay aligned.
+
+## Center status icon size contract
+
+The center status icon has one shared size contract regardless of whether it
+draws Wi-Fi or a Bluetooth audio device:
+
+- The base point size is `38 pt`.
+- The default scale is `160%`, producing a `60.8 pt` center icon.
+- The adjustable range is `100%–180%`.
+- The saved setting is used directly as the multiplier. It must not be
+  normalized against the default again.
+- The menu bar and Dock renderers use the same base size and scale semantics.
+
+`SettingsStore` exposes shared center-symbol scale constants to keep the Wi-Fi
+and Bluetooth defaults and ranges from drifting apart.

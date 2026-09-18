@@ -29,11 +29,13 @@ final class SettingsStore: ObservableObject {
     static let usesBluetoothAudioVolumeColorDefaultsKey = "usesBluetoothAudioVolumeColor"
     static let prioritizesNetworkErrorsOverBluetoothAudioDefaultsKey = "prioritizesNetworkErrorsOverBluetoothAudio"
     static let showsBluetoothBatteryLevelsDefaultsKey = "showsBluetoothBatteryLevels"
-    static let bluetoothSymbolScaleRange: ClosedRange<Double> = 1.0...1.8
-    static let defaultBluetoothSymbolScale: Double = 1.6
+    static let statusCenterSymbolScaleRange: ClosedRange<Double> = 1.0...1.8
+    static let defaultStatusCenterSymbolScale: Double = 1.6
+    static let bluetoothSymbolScaleRange = statusCenterSymbolScaleRange
+    static let defaultBluetoothSymbolScale = defaultStatusCenterSymbolScale
     static let bluetoothSymbolScaleDefaultsKey = "bluetoothSymbolScale"
-    static let wifiSymbolScaleRange: ClosedRange<Double> = 1.0...1.8
-    static let defaultWifiSymbolScale: Double = 1.6
+    static let wifiSymbolScaleRange = statusCenterSymbolScaleRange
+    static let defaultWifiSymbolScale = defaultStatusCenterSymbolScale
     static let wifiSymbolScaleDefaultsKey = "wifiSymbolScale"
     static let defaultVolumeDisplayStyle: VolumeDisplayStyle = .dots
     static let volumeDisplayStyleDefaultsKey = "volumeDisplayStyle"

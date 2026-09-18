@@ -3,6 +3,8 @@ import CoreGraphics
 import CoreText
 
 enum StatusIconRenderer {
+    static let centerSymbolBasePointSize: CGFloat = 38
+
     private static let wifiSymbolCenter = CGPoint(
         x: StatusIconGeometry.canvas.midX,
         y: 64.0
@@ -552,8 +554,8 @@ enum StatusIconRenderer {
         foreground: CGColor
     ) {
         let tint = bluetoothColor(foreground: foreground)
-        let scale = bluetoothSymbolScale(options.symbolScale)
-        let pointSize = 38 * scale
+        let pointSize = centerSymbolPointSize(for: options.symbolScale)
+        let scale = pointSize / centerSymbolBasePointSize
         let maxDimension = 42 * scale
 
         switch AudioOutputDeviceIcon.source(for: device) {
@@ -584,13 +586,11 @@ enum StatusIconRenderer {
         }
     }
 
-    private static func bluetoothSymbolScale(_ symbolScale: Double) -> CGFloat {
-        guard symbolScale.isFinite,
-              symbolScale > 0,
-              BluetoothAudioIconOptions.defaultSymbolScale > 0 else {
-            return 1
+    static func centerSymbolPointSize(for scale: Double) -> CGFloat {
+        guard scale.isFinite, scale > 0 else {
+            return centerSymbolBasePointSize
         }
-        return CGFloat(symbolScale / BluetoothAudioIconOptions.defaultSymbolScale)
+        return centerSymbolBasePointSize * CGFloat(scale)
     }
 
     private static func drawTintedImage(
@@ -645,8 +645,7 @@ enum StatusIconRenderer {
         in context: CGContext,
         foreground: CGColor
     ) {
-        let basePointSize: CGFloat = 38.0
-        let symbolPointSize = basePointSize * CGFloat(options.wifiScale)
+        let symbolPointSize = centerSymbolPointSize(for: options.wifiScale)
 
         switch wifi.state {
         case .connected:
@@ -771,8 +770,7 @@ enum StatusIconRenderer {
         in context: CGContext,
         foreground: CGColor
     ) {
-        let basePointSize: CGFloat = 38.0
-        let symbolPointSize = basePointSize * CGFloat(wifiScale)
+        let symbolPointSize = centerSymbolPointSize(for: wifiScale)
         let bars = StatusMappings.wifiBars(rssi: wifi.rssi)
         if bars == 0 {
             let mutedColor = foreground.copy(alpha: inactiveTrackAlpha) ?? foreground

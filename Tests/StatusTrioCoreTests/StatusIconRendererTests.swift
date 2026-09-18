@@ -1134,6 +1134,25 @@ final class StatusIconRendererTests: XCTestCase {
         XCTAssertNotEqual(normalPixels.bytes, scaledPixels.bytes)
     }
 
+    func testCenterSymbolScaleUsesTheSharedBasePointSize() {
+        XCTAssertEqual(StatusIconRenderer.centerSymbolBasePointSize, 38)
+        XCTAssertEqual(StatusIconRenderer.centerSymbolPointSize(for: 1.0), 38)
+        XCTAssertEqual(
+            StatusIconRenderer.centerSymbolPointSize(for: 1.6),
+            60.8,
+            accuracy: 0.001
+        )
+        XCTAssertEqual(
+            StatusIconRenderer.centerSymbolPointSize(for: 1.8),
+            68.4,
+            accuracy: 0.001
+        )
+        XCTAssertEqual(
+            StatusIconRenderer.centerSymbolPointSize(for: 0),
+            StatusIconRenderer.centerSymbolBasePointSize
+        )
+    }
+
     func testMutedVolumeMatchesZeroVolume() throws {
         let zeroSnapshot = StatusSnapshot(
             battery: .placeholder,

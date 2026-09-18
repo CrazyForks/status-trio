@@ -202,6 +202,27 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(store.wifiSymbolScale, 1.0, accuracy: 0.001)
     }
 
+    func testWiFiAndBluetoothSymbolScaleShareTheSameDefaultsAndRange() {
+        XCTAssertEqual(
+            SettingsStore.wifiSymbolScaleRange,
+            SettingsStore.bluetoothSymbolScaleRange
+        )
+        XCTAssertEqual(
+            SettingsStore.defaultWifiSymbolScale,
+            SettingsStore.defaultBluetoothSymbolScale,
+            accuracy: 0.001
+        )
+        XCTAssertEqual(
+            SettingsStore.statusCenterSymbolScaleRange,
+            SettingsStore.wifiSymbolScaleRange
+        )
+        XCTAssertEqual(
+            SettingsStore.defaultStatusCenterSymbolScale,
+            SettingsStore.defaultWifiSymbolScale,
+            accuracy: 0.001
+        )
+    }
+
     func testWiFiSymbolScalePersistsAcrossStoreInstances() {
         let suite = makeSuite()
         defer { clear(suite) }
