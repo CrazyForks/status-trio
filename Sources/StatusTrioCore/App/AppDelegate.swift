@@ -20,7 +20,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         let environment = AppEnvironment.live()
         self.environment = environment
         environment.start()
-        updaterManager.start()
+        updaterManager.start(activationPolicy: environment.activationPolicy)
     }
 
     public func applicationWillTerminate(_ notification: Notification) {

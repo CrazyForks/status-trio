@@ -24,7 +24,7 @@ final class UpdaterManager: NSObject, ObservableObject, SPUUpdaterDelegate {
         delegate: self
     )
     private var updateSourceFallback = UpdateSourceFallback()
-    private var isShowingManualUpdateUI = false
+    private var manualUpdatePresentation: ManualUpdatePresentation?
 
     var automaticallyChecksForUpdatesBinding: Binding<Bool> {
         Binding(
@@ -42,7 +42,10 @@ final class UpdaterManager: NSObject, ObservableObject, SPUUpdaterDelegate {
             .assign(to: &$automaticallyChecksForUpdates)
     }
 
-    func start() {
+    func start(activationPolicy: AppActivationPolicy) {
+        manualUpdatePresentation = ManualUpdatePresentation(
+            activationPolicy: activationPolicy
+        )
         #if DEBUG
         return
         #else
@@ -60,9 +63,7 @@ final class UpdaterManager: NSObject, ObservableObject, SPUUpdaterDelegate {
         #else
         guard canCheckForUpdates else { return }
 
-        isShowingManualUpdateUI = true
-        NSApp.setActivationPolicy(.regular)
-        NSApp.activate(ignoringOtherApps: true)
+        manualUpdatePresentation?.begin()
         updater.checkForUpdates()
         #endif
     }
@@ -98,9 +99,7 @@ final class UpdaterManager: NSObject, ObservableObject, SPUUpdaterDelegate {
             return
         }
 
-        guard isShowingManualUpdateUI else { return }
-        isShowingManualUpdateUI = false
-        NSApp.setActivationPolicy(.accessory)
+        manualUpdatePresentation?.end()
     }
 
     private func retryUpdateCheck(_ updateCheck: SPUUpdateCheck) {
