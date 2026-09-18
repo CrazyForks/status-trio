@@ -388,7 +388,7 @@ final class SystemStatusStoreTests: XCTestCase {
                 deviceName: "Speaker"
             )
         )
-        await drainMainActorTasks()
+        await waitUntil { store.liveVolume.scalar == 0.4 }
 
         store.setVolume(0.7)
 
@@ -424,7 +424,7 @@ final class SystemStatusStoreTests: XCTestCase {
             deviceName: currentDevice.name,
             currentDevice: currentDevice
         ))
-        await drainMainActorTasks()
+        await waitUntil { store.liveVolume.currentDevice == currentDevice }
 
         store.setVolume(0.7)
 
@@ -1018,6 +1018,19 @@ final class SystemStatusStoreTests: XCTestCase {
 
     private func drainMainActorTasks() async {
         await Task { @MainActor in }.value
+    }
+
+    private func waitUntil(_ condition: () -> Bool) async {
+        let clock = ContinuousClock()
+        let deadline = clock.now.advanced(by: .seconds(1))
+
+        while !condition() {
+            guard clock.now < deadline else {
+                XCTFail("Timed out waiting for the expected state")
+                return
+            }
+            try? await Task.sleep(for: .milliseconds(1))
+        }
     }
 }
 

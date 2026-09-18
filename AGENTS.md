@@ -32,6 +32,10 @@ gh run watch <run-id> --repo lingyired/status-trio --exit-status
 
 Do not create a release if that preflight has not passed.
 
+Every failed GitHub Actions run must be added to
+[Swift 6.1 CI compatibility](docs/swift-6.1-ci-compatibility.md), including the
+run ID, failed stage, root cause, fix, and verification result.
+
 ## Swift 6.1 Compatibility Rules
 
 - Do not use `isolated deinit` or enable the `IsolatedDeinit` experimental feature. Use `deinit` with explicit cleanup; use `nonisolated(unsafe)` only for teardown-owned storage and explain why it is safe.

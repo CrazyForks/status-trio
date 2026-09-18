@@ -1,4 +1,4 @@
-# Swift 6.1 CI 兼容性规则
+# Swift 6.1 CI 兼容性与失败记录
 
 本文记录 Status Trio 在 GitHub Actions 上发布时遇到的工具链兼容问题，以及后续开发和发布必须遵守的规则。
 
@@ -18,6 +18,37 @@
 | `34753912541`、`34754021368`、`34754087160` | `Run tests` | `Bundle.module` 在 CI 中的 `lproj` 资源布局/大小写与本地不同 | 使用路径查找并同时尝试标准名和小写名 |
 | `34758026894` | `Run tests` | Swift 6.1.2 IRGen 在处理 `Binding.set: localization.setPreference` 方法引用时崩溃 | 改写为显式闭包，避免触发 thunk 代码生成 |
 | `34758129632` | 全部通过 | 1.0.1 / build 2 发布成功 | 保留上述兼容性修复 |
+| `35293247382` | `Run tests` | 测试用 `drainMainActorTasks()` 假定 `AsyncStream` 消费任务一定已完成；CI 调度较慢时仍读到更新前的 `currentDevice` | 测试改为有超时上限地等待目标状态，不再依赖单次主线程排空 |
+
+## 失败记录规则
+
+每次 GitHub Actions 失败都必须追加到上表，至少包含：
+
+- workflow run ID
+- 失败阶段或 job
+- 可复现的直接根因
+- 修复方式
+- 后续 CI 预检验证结果
+
+不能只记录“重跑后通过”。如果不能确认根因，先记录已知证据和下一步排查方向，确认后再补充。
+
+## 35293247382：测试同步竞态
+
+这次非发布预检在 `SystemStatusStoreTests` 失败：
+
+- `testSetVolumePreservesCurrentOutputDevice` 在 CI 中读到 `currentDevice == nil`
+- 同一测试在本机和后续定向运行中通过
+- 失败测试使用 `await drainMainActorTasks()` 推进主线程，但该方法只排空一次
+  MainActor，不能保证 `AsyncStream` 的消费任务已经执行
+
+修复方式是等待明确的业务状态，而不是等待调度时序：
+
+```swift
+await waitUntil { store.liveVolume.currentDevice == currentDevice }
+```
+
+`waitUntil` 使用 1 秒上限并在超时后让测试失败。`testSetVolumeUpdatesVisibleVolumeImmediately`
+也使用同样方式等待初始音量，避免同类竞态。
 
 ## 当前这次是否和编码有关
 
