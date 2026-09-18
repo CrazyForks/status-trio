@@ -5,6 +5,13 @@ import XCTest
 
 @MainActor
 final class IconGuideRedesignTests: XCTestCase {
+    /// The Bluetooth examples: one per device family, both showing the same
+    /// combined mode.
+    private static let bluetoothStates: [IconGuideState] = [
+        .bluetoothHeadphones,
+        .bluetoothAirPods
+    ]
+
     func testGuideProvidesEightDistinctStateExamples() {
         XCTAssertEqual(IconGuideState.all.count, 8)
         XCTAssertEqual(Set(IconGuideState.all.map(\.id)).count, 8)
@@ -19,27 +26,19 @@ final class IconGuideRedesignTests: XCTestCase {
         XCTAssertEqual(IconGuideState.weakWiFi.status.wifi.rssi, -86)
     }
 
-    /// The two Bluetooth cards must show their mode even on a fresh install,
-    /// where both Bluetooth options are still at their defaults.
+    /// Both Bluetooth cards must show the whole mode — the device symbol in the
+    /// middle and the blue volume row underneath — even on a fresh install, where
+    /// both Bluetooth options are still at their defaults.
     func testBluetoothGuideStatesForceTheModeTheyDemonstrate() {
         let configured = BluetoothAudioIconOptions.standard
 
-        let headphones = IconGuideState.bluetoothHeadphones.bluetoothAudioOptions(
-            configuring: configured
-        )
-        XCTAssertTrue(headphones.replacesNetworkIcon)
-        XCTAssertFalse(headphones.usesVolumeColor)
+        for state in Self.bluetoothStates {
+            let options = state.bluetoothAudioOptions(configuring: configured)
+            XCTAssertTrue(options.replacesNetworkIcon, "\(state) must show the device symbol")
+            XCTAssertTrue(options.usesVolumeColor, "\(state) must show the blue volume row")
+        }
 
-        let tintedVolume = IconGuideState.bluetoothVolumeTint.bluetoothAudioOptions(
-            configuring: configured
-        )
-        XCTAssertFalse(
-            tintedVolume.replacesNetworkIcon,
-            "The blue volume card keeps Wi-Fi in the middle so only the bottom row changes."
-        )
-        XCTAssertTrue(tintedVolume.usesVolumeColor)
-
-        // Unrelated Bluetooth cards keep following the user's configuration.
+        // Unrelated cards keep following the user's configuration.
         XCTAssertEqual(
             IconGuideState.ethernet.bluetoothAudioOptions(configuring: configured),
             configured
@@ -54,7 +53,7 @@ final class IconGuideRedesignTests: XCTestCase {
             symbolScale: 1.35
         )
 
-        for state in [IconGuideState.bluetoothHeadphones, .bluetoothVolumeTint] {
+        for state in Self.bluetoothStates {
             let options = state.bluetoothAudioOptions(configuring: configured)
             XCTAssertEqual(options.prioritizesNetworkErrors, false)
             XCTAssertEqual(options.symbolScale, 1.35)
@@ -62,24 +61,47 @@ final class IconGuideRedesignTests: XCTestCase {
     }
 
     func testBluetoothGuideStatesUseABluetoothDevice() throws {
-        for state in [IconGuideState.bluetoothHeadphones, .bluetoothVolumeTint] {
+        for state in Self.bluetoothStates {
             let device = try XCTUnwrap(state.status.volume.currentDevice)
             XCTAssertTrue(device.isBluetoothAudio)
             XCTAssertEqual(device.transport, .bluetooth)
+            XCTAssertEqual(state.status.volume.deviceName, device.name)
+            XCTAssertEqual(device, state.exampleDevice)
         }
     }
 
-    /// A blank or unrelated glyph would make both new cards unreadable, so the
-    /// example device has to resolve to the headphone symbol.
-    func testBluetoothGuideDeviceResolvesToTheHeadphoneSymbol() {
+    /// The two Bluetooth cards exist to show the two device families, so each
+    /// device has to draw its own symbol instead of both falling back to the same
+    /// glyph.
+    func testBluetoothGuideDevicesDrawDifferentDeviceSymbols() throws {
+        let headphones = try XCTUnwrap(IconGuideState.bluetoothHeadphones.exampleDevice)
+        let airPods = try XCTUnwrap(IconGuideState.bluetoothAirPods.exampleDevice)
+
+        XCTAssertNotEqual(headphones.name, airPods.name)
         XCTAssertEqual(
-            AudioOutputDeviceIcon.source(for: IconGuideState.bluetoothExampleDevice),
+            AudioOutputDeviceIcon.source(for: headphones),
             .symbol("headphones")
+        )
+        XCTAssertEqual(
+            AudioOutputDeviceIcon.symbolCandidates(
+                for: AudioOutputDeviceIcon.kind(for: airPods)
+            ).first,
+            "airpods"
+        )
+
+        let airPodsSource = AudioOutputDeviceIcon.source(for: airPods)
+        guard case let .symbol(airPodsSymbol) = airPodsSource else {
+            XCTFail("The AirPods example must draw a symbol, not a device image.")
+            return
+        }
+        XCTAssertTrue(
+            ["airpods", "headphones"].contains(airPodsSymbol),
+            "The AirPods card must draw an AirPods glyph, or fall back to the headphone one, got \(airPodsSymbol)."
         )
     }
 
     func testBluetoothGuideStatesRequestTheirOwnVolumeExample() throws {
-        for state in [IconGuideState.bluetoothHeadphones, .bluetoothVolumeTint] {
+        for state in Self.bluetoothStates {
             let dockImage = try XCTUnwrap(
                 DockIconRenderer.image(
                     status: state.status,

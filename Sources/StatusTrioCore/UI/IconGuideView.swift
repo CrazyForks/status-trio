@@ -68,7 +68,7 @@ enum IconGuideState: String, CaseIterable, Identifiable, Sendable {
     case hotspotLowPower
     case weakWiFi
     case bluetoothHeadphones
-    case bluetoothVolumeTint
+    case bluetoothAirPods
 
     static var all: [Self] { allCases }
 
@@ -79,7 +79,7 @@ enum IconGuideState: String, CaseIterable, Identifiable, Sendable {
         case .charging: .dots
         case .weakWiFi: .arc
         case .bluetoothHeadphones: .dots
-        case .bluetoothVolumeTint: .dots
+        case .bluetoothAirPods: .dots
         default: nil
         }
     }
@@ -93,30 +93,23 @@ enum IconGuideState: String, CaseIterable, Identifiable, Sendable {
         case .hotspotLowPower: .guideStateHotspotLowPower
         case .weakWiFi: .guideStateWeakWiFi
         case .bluetoothHeadphones: .guideStateBluetoothHeadphones
-        case .bluetoothVolumeTint: .guideStateBluetoothVolumeTint
+        case .bluetoothAirPods: .guideStateBluetoothAirPods
         }
     }
 
-    /// The example's own Bluetooth settings, layered over the configured ones so
-    /// the two new cards always demonstrate their mode. The guide opens on a
-    /// fresh install where both options are still off, and a card that follows
-    /// the defaults would show the same Wi-Fi artwork twice.
+    /// The examples' own Bluetooth settings, layered over the configured ones.
+    /// The guide opens on a fresh install where both options are still off, and a
+    /// card that followed the defaults would show the same Wi-Fi artwork twice.
+    ///
+    /// Both Bluetooth examples show one icon: the device symbol replaces the
+    /// network symbol in the middle and the volume row underneath turns blue.
     func bluetoothAudioOptions(
         configuring configured: BluetoothAudioIconOptions
     ) -> BluetoothAudioIconOptions {
         switch self {
-        case .bluetoothHeadphones:
+        case .bluetoothHeadphones, .bluetoothAirPods:
             BluetoothAudioIconOptions(
                 replacesNetworkIcon: true,
-                usesVolumeColor: configured.usesVolumeColor,
-                prioritizesNetworkErrors: configured.prioritizesNetworkErrors,
-                symbolScale: configured.symbolScale
-            )
-        case .bluetoothVolumeTint:
-            // Wi-Fi stays in the middle so the blue bottom row is the only
-            // thing the card is pointing at.
-            BluetoothAudioIconOptions(
-                replacesNetworkIcon: false,
                 usesVolumeColor: true,
                 prioritizesNetworkErrors: configured.prioritizesNetworkErrors,
                 symbolScale: configured.symbolScale
@@ -126,9 +119,10 @@ enum IconGuideState: String, CaseIterable, Identifiable, Sendable {
         }
     }
 
-    /// A Bluetooth headset stands in for the audio device in the two Bluetooth
-    /// examples. It only feeds the artwork: nothing is read from the system.
-    static let bluetoothExampleDevice = AudioOutputDevice(
+    /// The two Bluetooth examples stand in for the audio device, one per device
+    /// family so the card shows the symbol the system uses for each. They only
+    /// feed the artwork: nothing is read from the system.
+    static let bluetoothHeadphonesExampleDevice = AudioOutputDevice(
         id: 0,
         name: "Bluetooth Headphones",
         uid: "guide.bluetooth.headphones",
@@ -137,9 +131,27 @@ enum IconGuideState: String, CaseIterable, Identifiable, Sendable {
         transport: .bluetooth
     )
 
+    static let airPodsExampleDevice = AudioOutputDevice(
+        id: 1,
+        name: "AirPods",
+        uid: "guide.bluetooth.airpods",
+        isCurrent: true,
+        volume: 0.6,
+        transport: .bluetooth
+    )
+
+    /// The audio device this example draws, if it is a Bluetooth one.
+    var exampleDevice: AudioOutputDevice? {
+        switch self {
+        case .bluetoothHeadphones: Self.bluetoothHeadphonesExampleDevice
+        case .bluetoothAirPods: Self.airPodsExampleDevice
+        default: nil
+        }
+    }
+
     var status: MenuBarStatus {
         switch self {
-        case .bluetoothHeadphones:
+        case .bluetoothHeadphones, .bluetoothAirPods:
             MenuBarStatus(
                 battery: BatteryStatus(
                     rawPercentage: 82,
@@ -153,26 +165,8 @@ enum IconGuideState: String, CaseIterable, Identifiable, Sendable {
                 volume: MenuBarVolumeStatus(
                     scalar: 0.62,
                     isMuted: false,
-                    deviceName: Self.bluetoothExampleDevice.name,
-                    currentDevice: Self.bluetoothExampleDevice
-                )
-            )
-        case .bluetoothVolumeTint:
-            MenuBarStatus(
-                battery: BatteryStatus(
-                    rawPercentage: 64,
-                    isPresent: true,
-                    isCharging: false,
-                    isLowPowerMode: false,
-                    isConnectedToPower: false
-                ),
-                wifi: WiFiStatus(state: .connected, rssi: -54),
-                connection: .wifi,
-                volume: MenuBarVolumeStatus(
-                    scalar: 0.28,
-                    isMuted: false,
-                    deviceName: Self.bluetoothExampleDevice.name,
-                    currentDevice: Self.bluetoothExampleDevice
+                    deviceName: exampleDevice?.name,
+                    currentDevice: exampleDevice
                 )
             )
         case .charging:

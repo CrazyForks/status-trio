@@ -311,7 +311,7 @@
 "guide.state.hotspotLowPower" = "Hotspot + Risparmio energia";
 "guide.state.weakWiFi" = "Wi-Fi debole + Volume al 25%";
 "guide.state.bluetoothHeadphones" = "Cuffie Bluetooth";
-"guide.state.bluetoothVolumeTint" = "Bluetooth + volume blu";
+"guide.state.bluetoothAirPods" = "AirPods";
 
 // Current Wi-Fi radio measurements, not Internet speed.
 "wifi.summary.band" = "%@ GHz";

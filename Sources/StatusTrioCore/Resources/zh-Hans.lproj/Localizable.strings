@@ -311,7 +311,7 @@
 "guide.state.hotspotLowPower" = "热点 + 低电量模式";
 "guide.state.weakWiFi" = "弱 Wi-Fi + 25% 音量";
 "guide.state.bluetoothHeadphones" = "蓝牙耳机";
-"guide.state.bluetoothVolumeTint" = "蓝牙 + 蓝色音量";
+"guide.state.bluetoothAirPods" = "AirPods";
 
 // Current Wi-Fi radio measurements, not Internet speed.
 "wifi.summary.band" = "%@ GHz";

@@ -311,7 +311,7 @@
 "guide.state.hotspotLowPower" = "ホットスポット + 低電力モード";
 "guide.state.weakWiFi" = "弱い Wi-Fi + 音量25%";
 "guide.state.bluetoothHeadphones" = "Bluetooth ヘッドホン";
-"guide.state.bluetoothVolumeTint" = "Bluetooth + 青い音量";
+"guide.state.bluetoothAirPods" = "AirPods";
 
 // Current Wi-Fi radio measurements, not Internet speed.
 "wifi.summary.band" = "%@ GHz";

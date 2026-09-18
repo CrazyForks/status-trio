@@ -311,7 +311,7 @@
 "guide.state.hotspotLowPower" = "نقطة اتصال + وضع الطاقة المنخفضة";
 "guide.state.weakWiFi" = "Wi-Fi ضعيف + مستوى الصوت 25%";
 "guide.state.bluetoothHeadphones" = "سماعات Bluetooth";
-"guide.state.bluetoothVolumeTint" = "Bluetooth + صوت أزرق";
+"guide.state.bluetoothAirPods" = "AirPods";
 
 // Current Wi-Fi radio measurements, not Internet speed.
 "wifi.summary.band" = "%@ GHz";
