@@ -4,6 +4,65 @@ import XCTest
 
 @MainActor
 final class VolumeMonitorTests: XCTestCase {
+    func testSlowSnapshotDoesNotBlockMainActor() async {
+        let started = expectation(description: "system read started")
+        let blockedRead = BlockingAudioRead(onStart: { started.fulfill() })
+        let monitor = VolumeMonitor(
+            statusReader: CoreAudioStatusReader { _ in
+                blockedRead.wait()
+                return AudioStatusReading(
+                    volume: VolumeReading(scalar: 0.5, isMuted: false, deviceName: "Speakers"),
+                    outputDevices: nil
+                )
+            },
+            eventMonitor: FakeVolumeEventMonitor()
+        )
+
+        monitor.refresh()
+        await fulfillment(of: [started], timeout: 5)
+        blockedRead.release.signal()
+        var iterator = monitor.updates.makeAsyncIterator()
+        _ = await iterator.next()
+
+        XCTAssertTrue(blockedRead.mainActorProgressed, "MainActor must run while the system read is blocked")
+        XCTAssertFalse(blockedRead.wasMainThread)
+        monitor.stop()
+    }
+
+    func testSlowDeviceEnumerationDoesNotBlockMainActorOrLoseCurrentDevice() async {
+        let started = expectation(description: "device enumeration started")
+        let blockedEnumeration = BlockingAudioRead(onStart: { started.fulfill() })
+        let currentDevice = AudioOutputDevice(
+            id: 42, name: "AirPods Pro", uid: "airpods", isCurrent: true,
+            volume: 0.5, transport: .bluetooth, dataSource: .headphones,
+            iconURL: URL(fileURLWithPath: "/tmp/airpods-pro.icns")
+        )
+        let monitor = VolumeMonitor(
+            statusReader: CoreAudioStatusReader { includeOutputDevices in
+                let volume = VolumeReading(
+                    scalar: 0.5, isMuted: false,
+                    deviceName: currentDevice.name, currentDevice: currentDevice
+                )
+                XCTAssertTrue(includeOutputDevices)
+                blockedEnumeration.wait()
+                return AudioStatusReading(volume: volume, outputDevices: [currentDevice])
+            },
+            eventMonitor: FakeVolumeEventMonitor()
+        )
+
+        monitor.refresh()
+        await fulfillment(of: [started], timeout: 5)
+        blockedEnumeration.release.signal()
+        var iterator = monitor.updates.makeAsyncIterator()
+        let status = await iterator.next()
+
+        XCTAssertTrue(blockedEnumeration.mainActorProgressed)
+        XCTAssertFalse(blockedEnumeration.wasMainThread)
+        XCTAssertEqual(status?.currentDevice, currentDevice)
+        XCTAssertEqual(status?.outputDevices, [currentDevice])
+        monitor.stop()
+    }
+
     func testSuccessfulReadingMapsToStatus() async {
         let reading = VolumeReading(
             scalar: 0.42,
@@ -76,7 +135,7 @@ final class VolumeMonitorTests: XCTestCase {
         ]
         let outputController = FakeAudioOutputController(devices: devices)
         let monitor = VolumeMonitor(
-            reader: reader,
+            statusReader: InlineAudioStatusReader(reader: reader, outputController: outputController),
             eventMonitor: eventMonitor,
             outputController: outputController
         )
@@ -155,7 +214,7 @@ final class VolumeMonitorTests: XCTestCase {
         let eventMonitor = FakeVolumeEventMonitor()
         let sleeper = ManualEventSleeper()
         let monitor = VolumeMonitor(
-            reader: reader,
+            statusReader: InlineAudioStatusReader(reader: reader),
             eventMonitor: eventMonitor,
             refreshDebounceSleep: { duration in
                 await sleeper.sleep(duration)
@@ -585,7 +644,27 @@ final class VolumeMonitorTests: XCTestCase {
         reader: FakeVolumeReader,
         eventMonitor: FakeVolumeEventMonitor = FakeVolumeEventMonitor()
     ) -> VolumeMonitor {
-        VolumeMonitor(reader: reader, eventMonitor: eventMonitor)
+        VolumeMonitor(statusReader: InlineAudioStatusReader(reader: reader), eventMonitor: eventMonitor)
+    }
+}
+
+@MainActor
+private final class InlineAudioStatusReader: AudioStatusReadingProviding {
+    let reader: FakeVolumeReader
+    let outputController: FakeAudioOutputController?
+
+    init(reader: FakeVolumeReader, outputController: FakeAudioOutputController? = nil) {
+        self.reader = reader
+        self.outputController = outputController
+    }
+
+    func read(
+        includeOutputDevices: Bool,
+        completion: @escaping @MainActor @Sendable (AudioStatusReading) -> Void
+    ) {
+        let volume = reader.read()
+        let devices = includeOutputDevices && volume != nil ? outputController?.outputDevices() ?? [] : nil
+        completion(AudioStatusReading(volume: volume, outputDevices: devices))
     }
 }
 
@@ -619,6 +698,31 @@ private final class FakeVolumeReader: VolumeReadingProviding {
     func read() -> VolumeReading? {
         readCount += 1
         return result
+    }
+}
+
+private final class BlockingAudioRead: @unchecked Sendable {
+    let release = DispatchSemaphore(value: 0)
+    private let onStart: @Sendable () -> Void
+    private let lock = NSLock()
+    private var completedBeforeTimeout = false
+    private var ranOnMainThread = true
+
+    init(onStart: @escaping @Sendable () -> Void) {
+        self.onStart = onStart
+    }
+
+    var mainActorProgressed: Bool { lock.withLock { completedBeforeTimeout } }
+    var wasMainThread: Bool { lock.withLock { ranOnMainThread } }
+
+    func wait() {
+        let isMainThread = Thread.isMainThread
+        onStart()
+        let didRelease = release.wait(timeout: .now() + 10) == .success
+        lock.withLock {
+            ranOnMainThread = isMainThread
+            completedBeforeTimeout = didRelease
+        }
     }
 }
 

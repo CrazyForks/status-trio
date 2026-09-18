@@ -734,7 +734,7 @@ final class VolumeMonitor: VolumeMonitoring, VolumeControlling {
 
     let updates: AsyncStream<VolumeStatus>
     private let continuation: AsyncStream<VolumeStatus>.Continuation
-    private let reader: any VolumeReadingProviding
+    private let statusReader: any AudioStatusReadingProviding
     private let eventMonitor: any VolumeEventMonitoring
     private let outputController: (any AudioOutputControlling)?
     private let refreshDebounceInterval: Duration
@@ -744,10 +744,14 @@ final class VolumeMonitor: VolumeMonitoring, VolumeControlling {
     private var cachedOutputDevices: [AudioOutputDevice] = []
     private var outputDevicesCacheValid = false
     private var detailsVisible = true
+    private var readInFlight = false
+    private var refreshPending = false
+    private var pendingRefreshIncludesOutputDevices = false
+    private var readGeneration: UInt64 = 0
     private var lifecycle = Lifecycle.idle
 
     init(
-        reader: any VolumeReadingProviding = CoreAudioVolumeReader(),
+        statusReader: any AudioStatusReadingProviding = CoreAudioStatusReader(),
         eventMonitor: any VolumeEventMonitoring = CoreAudioVolumeEventMonitor(),
         outputController: (any AudioOutputControlling)? = nil,
         refreshDebounceInterval: Duration = .milliseconds(150),
@@ -755,7 +759,7 @@ final class VolumeMonitor: VolumeMonitoring, VolumeControlling {
             try await Task.sleep(for: $0)
         }
     ) {
-        self.reader = reader
+        self.statusReader = statusReader
         self.eventMonitor = eventMonitor
         self.outputController = outputController
         self.refreshDebounceInterval = refreshDebounceInterval
@@ -799,6 +803,8 @@ final class VolumeMonitor: VolumeMonitoring, VolumeControlling {
 
     func recover() {
         guard lifecycle == .running else { return }
+        readGeneration &+= 1
+        outputDevicesCacheValid = false
         eventMonitor.recover()
     }
 
@@ -806,6 +812,7 @@ final class VolumeMonitor: VolumeMonitoring, VolumeControlling {
         guard lifecycle != .stopped else { return }
         let changed = detailsVisible != visible
         detailsVisible = visible
+        if changed { readGeneration &+= 1 }
         outputDevicesCacheValid = false
 
         if !visible {
@@ -842,6 +849,9 @@ final class VolumeMonitor: VolumeMonitoring, VolumeControlling {
 
     private func scheduleRefresh(includeOutputDevices: Bool = false) {
         guard lifecycle == .running else { return }
+        // A queued result may predate an event or a completed audio command.
+        readGeneration &+= 1
+        if includeOutputDevices { outputDevicesCacheValid = false }
         scheduledRefreshIncludesOutputDevices = scheduledRefreshIncludesOutputDevices || includeOutputDevices
         guard scheduledRefreshTask == nil else { return }
 
@@ -872,16 +882,50 @@ final class VolumeMonitor: VolumeMonitoring, VolumeControlling {
     private func performRefresh(includeOutputDevices: Bool) {
         guard lifecycle != .stopped else { return }
 
+        guard !readInFlight else {
+            refreshPending = true
+            pendingRefreshIncludesOutputDevices = pendingRefreshIncludesOutputDevices || includeOutputDevices
+            return
+        }
+
         eventMonitor.reconcile()
+        readInFlight = true
+        let generation = readGeneration
+        let enumerateDevices = detailsVisible && (includeOutputDevices || !outputDevicesCacheValid)
+        statusReader.read(includeOutputDevices: enumerateDevices) { [weak self] result in
+            guard let self, self.lifecycle != .stopped else { return }
+            self.readInFlight = false
+            let needsRefresh = self.refreshPending || generation != self.readGeneration
+            let includeDevices = self.pendingRefreshIncludesOutputDevices
+            self.refreshPending = false
+            self.pendingRefreshIncludesOutputDevices = false
+
+            if generation == self.readGeneration {
+                self.receive(result)
+            }
+            if needsRefresh {
+                if self.scheduledRefreshTask != nil {
+                    // Preserve an enumeration upgrade when the debounce timer
+                    // already owns the single follow-up read.
+                    self.scheduledRefreshIncludesOutputDevices =
+                        self.scheduledRefreshIncludesOutputDevices || includeDevices
+                } else {
+                    self.performRefresh(includeOutputDevices: includeDevices)
+                }
+            }
+        }
+    }
+
+    private func receive(_ result: AudioStatusReading) {
         let status: VolumeStatus
-        if let reading = reader.read() {
+        if let reading = result.volume {
             let devices: [AudioOutputDevice]
             if !detailsVisible {
                 cachedOutputDevices = []
                 outputDevicesCacheValid = true
                 devices = []
-            } else if includeOutputDevices || !outputDevicesCacheValid {
-                cachedOutputDevices = outputController?.outputDevices() ?? []
+            } else if let outputDevices = result.outputDevices {
+                cachedOutputDevices = outputDevices
                 outputDevicesCacheValid = true
                 devices = cachedOutputDevices
             } else {

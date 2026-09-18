@@ -5,9 +5,13 @@ import Foundation
 
 @MainActor
 final class CoreAudioOutputController: AudioOutputControlling {
-    private let systemObjectID = AudioObjectID(kAudioObjectSystemObject)
+    nonisolated private let systemObjectID = AudioObjectID(kAudioObjectSystemObject)
 
-    func outputDevices() -> [AudioOutputDevice] {
+    nonisolated init() {}
+
+    // Read-only helpers use local storage and immutable device identifiers, so
+    // the background snapshot reader never accesses command-side actor state.
+    nonisolated func outputDevices() -> [AudioOutputDevice] {
         guard let deviceIDs = audioObjectIDs(
             objectID: systemObjectID,
             selector: kAudioHardwarePropertyDevices
@@ -144,11 +148,11 @@ final class CoreAudioOutputController: AudioOutputControlling {
         return false
     }
 
-    private func isOutputDevice(_ deviceID: AudioDeviceID) -> Bool {
+    nonisolated private func isOutputDevice(_ deviceID: AudioDeviceID) -> Bool {
         hasOutputStreams(deviceID: deviceID) && canBeDefaultOutputDevice(deviceID)
     }
 
-    private func hasOutputStreams(deviceID: AudioDeviceID) -> Bool {
+    nonisolated private func hasOutputStreams(deviceID: AudioDeviceID) -> Bool {
         var address = propertyAddress(
             selector: kAudioDevicePropertyStreams,
             scope: kAudioObjectPropertyScopeOutput
@@ -158,7 +162,7 @@ final class CoreAudioOutputController: AudioOutputControlling {
         return status == noErr && dataSize >= UInt32(MemoryLayout<AudioStreamID>.size)
     }
 
-    private func canBeDefaultOutputDevice(_ deviceID: AudioDeviceID) -> Bool {
+    nonisolated private func canBeDefaultOutputDevice(_ deviceID: AudioDeviceID) -> Bool {
         if #available(macOS 15.0, *) {
             let device = AudioHardwareDevice(id: deviceID)
             return (try? device.canBeDefaultOutputDevice) == true
@@ -167,7 +171,7 @@ final class CoreAudioOutputController: AudioOutputControlling {
         return audioDeviceCanBeDefault(deviceID)
     }
 
-    private func defaultOutputDeviceID() -> AudioDeviceID? {
+    nonisolated private func defaultOutputDeviceID() -> AudioDeviceID? {
         var address = propertyAddress(selector: kAudioHardwarePropertyDefaultOutputDevice)
         var deviceID = AudioDeviceID(kAudioObjectUnknown)
         var dataSize = UInt32(MemoryLayout<AudioDeviceID>.size)
@@ -184,7 +188,7 @@ final class CoreAudioOutputController: AudioOutputControlling {
         return deviceID
     }
 
-    private func isHidden(_ deviceID: AudioDeviceID) -> Bool {
+    nonisolated private func isHidden(_ deviceID: AudioDeviceID) -> Bool {
         var address = propertyAddress(selector: kAudioDevicePropertyIsHidden)
         guard AudioObjectHasProperty(deviceID, &address) else { return false }
 
@@ -194,14 +198,14 @@ final class CoreAudioOutputController: AudioOutputControlling {
         return status == noErr && value != 0
     }
 
-    private func deviceName(for deviceID: AudioDeviceID) -> String? {
+    nonisolated private func deviceName(for deviceID: AudioDeviceID) -> String? {
         stringProperty(
             for: deviceID,
             selector: kAudioObjectPropertyName
         )
     }
 
-    private func deviceUID(for deviceID: AudioDeviceID) -> String? {
+    nonisolated private func deviceUID(for deviceID: AudioDeviceID) -> String? {
         stringProperty(
             for: deviceID,
             selector: kAudioDevicePropertyDeviceUID
@@ -211,7 +215,7 @@ final class CoreAudioOutputController: AudioOutputControlling {
     /// `kAudioDevicePropertyTransportType` is the public property that describes
     /// the hardware family of a device, which is what the system volume menu
     /// uses to tell headphones, displays and speakers apart.
-    private func transport(for deviceID: AudioDeviceID) -> AudioOutputTransport? {
+    nonisolated private func transport(for deviceID: AudioDeviceID) -> AudioOutputTransport? {
         readUInt32Property(
             objectID: deviceID,
             selector: kAudioDevicePropertyTransportType,
@@ -224,7 +228,7 @@ final class CoreAudioOutputController: AudioOutputControlling {
     /// `kAudioDevicePropertyDataSource` reports the live source of a built-in
     /// output device, for example whether the headphone jack or the internal
     /// speakers are active.
-    private func dataSource(for deviceID: AudioDeviceID) -> AudioOutputDataSource? {
+    nonisolated private func dataSource(for deviceID: AudioDeviceID) -> AudioOutputDataSource? {
         readUInt32Property(
             objectID: deviceID,
             selector: kAudioDevicePropertyDataSource,
@@ -236,7 +240,7 @@ final class CoreAudioOutputController: AudioOutputControlling {
 
     /// `kAudioDevicePropertyIcon` is an optional CFURLRef to an image file the
     /// driver ships for the device, for example the icon of a HAL plugin.
-    private func iconURL(for deviceID: AudioDeviceID) -> URL? {
+    nonisolated private func iconURL(for deviceID: AudioDeviceID) -> URL? {
         var address = propertyAddress(selector: kAudioDevicePropertyIcon)
         guard AudioObjectHasProperty(deviceID, &address) else { return nil }
 
@@ -255,7 +259,7 @@ final class CoreAudioOutputController: AudioOutputControlling {
         return icon.takeRetainedValue() as URL
     }
 
-    private func stringProperty(
+    nonisolated private func stringProperty(
         for deviceID: AudioDeviceID,
         selector: AudioObjectPropertySelector
     ) -> String? {
@@ -276,7 +280,7 @@ final class CoreAudioOutputController: AudioOutputControlling {
         return value.isEmpty ? nil : value
     }
 
-    private func audioObjectIDs(
+    nonisolated private func audioObjectIDs(
         objectID: AudioObjectID,
         selector: AudioObjectPropertySelector
     ) -> [AudioObjectID]? {
@@ -306,7 +310,7 @@ final class CoreAudioOutputController: AudioOutputControlling {
         return deviceIDs.filter { $0 != kAudioObjectUnknown }
     }
 
-    private func volume(for deviceID: AudioDeviceID) -> Double? {
+    nonisolated private func volume(for deviceID: AudioDeviceID) -> Double? {
         if let masterVolume = readFloat32Property(
             objectID: deviceID,
             selector: kAudioDevicePropertyVolumeScalar,
@@ -330,7 +334,7 @@ final class CoreAudioOutputController: AudioOutputControlling {
         return Double(total / Float32(channelVolumes.count))
     }
 
-    private func readFloat32Property(
+    nonisolated private func readFloat32Property(
         objectID: AudioObjectID,
         selector: AudioObjectPropertySelector,
         scope: AudioObjectPropertyScope,
@@ -345,7 +349,7 @@ final class CoreAudioOutputController: AudioOutputControlling {
         return status == noErr ? value : nil
     }
 
-    private func readUInt32Property(
+    nonisolated private func readUInt32Property(
         objectID: AudioObjectID,
         selector: AudioObjectPropertySelector,
         scope: AudioObjectPropertyScope,
@@ -413,7 +417,7 @@ final class CoreAudioOutputController: AudioOutputControlling {
             && isSettable.boolValue
     }
 
-    private func audioVolumeChannelElements(deviceID: AudioDeviceID) -> [AudioObjectPropertyElement] {
+    nonisolated private func audioVolumeChannelElements(deviceID: AudioDeviceID) -> [AudioObjectPropertyElement] {
         for _ in 0..<3 {
             var address = propertyAddress(
                 selector: kAudioDevicePropertyStreamConfiguration,
@@ -463,7 +467,7 @@ final class CoreAudioOutputController: AudioOutputControlling {
         return [1, 2]
     }
 
-    private func audioDeviceCanBeDefault(_ deviceID: AudioDeviceID) -> Bool {
+    nonisolated private func audioDeviceCanBeDefault(_ deviceID: AudioDeviceID) -> Bool {
         var address = propertyAddress(
             selector: kAudioDevicePropertyDeviceCanBeDefaultDevice,
             scope: kAudioObjectPropertyScopeOutput
@@ -502,7 +506,7 @@ final class CoreAudioOutputController: AudioOutputControlling {
         ) == noErr
     }
 
-    private func propertyAddress(
+    nonisolated private func propertyAddress(
         selector: AudioObjectPropertySelector,
         scope: AudioObjectPropertyScope = kAudioObjectPropertyScopeGlobal,
         element: AudioObjectPropertyElement = kAudioObjectPropertyElementMain
