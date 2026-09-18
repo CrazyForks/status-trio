@@ -58,6 +58,10 @@
 "settings.bluetooth.networkErrorPriorityDescription" = "연결 오류나 오프라인 상태에서는 Bluetooth 기기 아이콘 대신 네트워크 아이콘을 유지합니다.";
 "settings.bluetooth.batteryLevels" = "Bluetooth 배터리 잔량 표시";
 "settings.bluetooth.batteryLevelsDescription" = "Bluetooth 패널을 열 때만 배터리 잔량을 읽습니다. 추가 권한 요청은 표시되지 않습니다.";
+"settings.bluetooth.showInStatusPanel" = "상태 패널에 Bluetooth 표시";
+"settings.bluetooth.showInStatusPanelDescription" = "상태 패널의 Bluetooth 항목을 전환하며 상태 패널 설정과 동기화됩니다.";
+"settings.bluetooth.symbolScale" = "Bluetooth 아이콘 크기";
+"settings.bluetooth.symbolScaleDescription" = "상태 링 안의 Bluetooth 기기 아이콘 크기를 100% ~ 180%로 조절합니다.";
 "bluetooth.battery.unavailable" = "사용할 수 없음";
 "settings.audio.maximumVisible" = "표시할 최대 출력 장치 수";
 "settings.audio.maximumVisibleDescription" = "‘펼치기’ 컨트롤 전에 표시할 출력 장치 수입니다.";

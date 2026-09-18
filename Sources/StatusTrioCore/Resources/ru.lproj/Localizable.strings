@@ -58,6 +58,10 @@
 "settings.bluetooth.networkErrorPriorityDescription" = "При ошибке подключения или отсутствии сети остаётся значок сети вместо устройства Bluetooth.";
 "settings.bluetooth.batteryLevels" = "Показывать заряд устройств Bluetooth";
 "settings.bluetooth.batteryLevelsDescription" = "Заряд считывается только при открытии панели Bluetooth. Дополнительный запрос разрешения не появляется.";
+"settings.bluetooth.showInStatusPanel" = "Показывать Bluetooth на панели состояния";
+"settings.bluetooth.showInStatusPanelDescription" = "Управляет элементом Bluetooth на панели состояния и синхронизируется с настройками панели состояния.";
+"settings.bluetooth.symbolScale" = "Размер значка Bluetooth";
+"settings.bluetooth.symbolScaleDescription" = "Масштаб значка устройства Bluetooth внутри кольца состояния от 100% до 180%.";
 "bluetooth.battery.unavailable" = "Недоступно";
 "settings.audio.maximumVisible" = "Максимум видимых устройств вывода";
 "settings.audio.maximumVisibleDescription" = "Сколько устройств вывода показывать до кнопки «Развернуть».";

@@ -39,6 +39,24 @@ final class StatusBarRenderCacheTests: XCTestCase {
         XCTAssertFalse(cache.shouldRender(replacementEnabled))
     }
 
+    func testBluetoothSymbolScaleChangeRendersAgain() {
+        var cache = StatusBarRenderCache()
+        let standard = makeKey(
+            appearance: "darkAqua",
+            bluetoothAudioOptions: .standard
+        )
+        let scaled = makeKey(
+            appearance: "darkAqua",
+            bluetoothAudioOptions: BluetoothAudioIconOptions(
+                symbolScale: 1.45
+            )
+        )
+
+        XCTAssertTrue(cache.shouldRender(standard))
+        XCTAssertTrue(cache.shouldRender(scaled))
+        XCTAssertFalse(cache.shouldRender(scaled))
+    }
+
     func testOutputDevicesDoNotInvalidateMenuBarStatus() {
         let first = makeSnapshot(outputDevices: [makeDevice(id: 1, uid: "one")])
         let second = makeSnapshot(outputDevices: [makeDevice(id: 2, uid: "two")])

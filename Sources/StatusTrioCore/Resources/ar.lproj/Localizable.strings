@@ -42,6 +42,10 @@
 "settings.bluetooth.networkErrorPriorityDescription" = "تبقى أيقونة الشبكة ظاهرة عند انقطاع الاتصال أو غياب الإنترنت بدلًا من أيقونة جهاز Bluetooth.";
 "settings.bluetooth.batteryLevels" = "عرض مستويات بطارية Bluetooth";
 "settings.bluetooth.batteryLevelsDescription" = "تقرأ مستويات البطارية فقط عند فتح لوحة Bluetooth. لن يظهر طلب إذن إضافي.";
+"settings.bluetooth.showInStatusPanel" = "إظهار Bluetooth في لوحة الحالة";
+"settings.bluetooth.showInStatusPanelDescription" = "يتحكم في عنصر Bluetooth بلوحة الحالة ويبقى متزامنًا مع إعدادات لوحة الحالة.";
+"settings.bluetooth.symbolScale" = "حجم أيقونة Bluetooth";
+"settings.bluetooth.symbolScaleDescription" = "يضبط مقياس أيقونة جهاز Bluetooth داخل حلقة الحالة من 100% إلى 180%.";
 "bluetooth.battery.unavailable" = "غير متاح";
 "settings.audio.maximumVisible" = "الحد الأقصى لأجهزة الإخراج الظاهرة";
 "settings.audio.maximumVisibleDescription" = "عدد أجهزة الإخراج المعروضة قبل زر التوسيع.";

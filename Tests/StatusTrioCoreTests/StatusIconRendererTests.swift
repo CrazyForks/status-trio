@@ -1189,9 +1189,32 @@ final class StatusIconRendererTests: XCTestCase {
 
         XCTAssertNotEqual(standard.bytes, bluetooth.bytes)
         XCTAssertTrue(bluetooth.containsColor(
-            red: 0,
-            green: 122.0 / 255.0,
+            red: 77.0 / 255.0,
+            green: 163.0 / 255.0,
             blue: 1,
+            tolerance: 0.08,
+            minimumAlpha: 0.9
+        ))
+    }
+
+    func testBluetoothOutputUsesDarkerBlueForLightMenuBar() throws {
+        let snapshot = bluetoothAudioSnapshot(volumeScalar: 0.5)
+        let bluetooth = try PixelBuffer(
+            image: try XCTUnwrap(StatusIconRenderer.render(
+                snapshot: snapshot,
+                size: 20,
+                scale: 8,
+                foreground: CGColor(gray: 0, alpha: 1),
+                bluetoothAudioOptions: BluetoothAudioIconOptions(
+                    replacesNetworkIcon: true
+                )
+            ))
+        )
+
+        XCTAssertTrue(bluetooth.containsColor(
+            red: 0,
+            green: 102.0 / 255.0,
+            blue: 204.0 / 255.0,
             tolerance: 0.08,
             minimumAlpha: 0.9
         ))
@@ -1236,8 +1259,8 @@ final class StatusIconRendererTests: XCTestCase {
 
         XCTAssertNotEqual(standard.bytes, networkPriority.bytes)
         XCTAssertFalse(networkPriority.containsColor(
-            red: 0,
-            green: 122.0 / 255.0,
+            red: 77.0 / 255.0,
+            green: 163.0 / 255.0,
             blue: 1,
             tolerance: 0.04,
             minimumAlpha: 0.9
@@ -1263,8 +1286,8 @@ final class StatusIconRendererTests: XCTestCase {
         let inactive = pixels.rgba(atSVGPoint: dots[1], size: 20, scale: 8)
 
         XCTAssertGreaterThanOrEqual(active.alpha, 245)
-        XCTAssertEqual(active.red, 0, accuracy: 8)
-        XCTAssertEqual(active.green, 122, accuracy: 30)
+        XCTAssertEqual(active.red, 92, accuracy: 8)
+        XCTAssertEqual(active.green, 180, accuracy: 30)
         XCTAssertEqual(active.blue, 255, accuracy: 8)
         XCTAssertEqual(inactive.red, 56, accuracy: 8)
         XCTAssertEqual(inactive.green, 56, accuracy: 8)
@@ -1288,12 +1311,54 @@ final class StatusIconRendererTests: XCTestCase {
         )
 
         XCTAssertTrue(pixels.containsColor(
-            red: 0,
-            green: 122.0 / 255.0,
+            red: 77.0 / 255.0,
+            green: 163.0 / 255.0,
             blue: 1,
             tolerance: 0.08,
             minimumAlpha: 0.9
         ))
+    }
+
+    func testBluetoothSymbolScaleChangesRenderedPixels() throws {
+        let snapshot = bluetoothAudioSnapshot(volumeScalar: 0.5)
+        let normalPixels = try PixelBuffer(
+            image: try XCTUnwrap(StatusIconRenderer.render(
+                snapshot: snapshot,
+                size: 20,
+                scale: 8,
+                foreground: CGColor(gray: 1, alpha: 1),
+                bluetoothAudioOptions: BluetoothAudioIconOptions(
+                    replacesNetworkIcon: true,
+                    symbolScale: 1.0
+                )
+            ))
+        )
+        let scaledPixels = try PixelBuffer(
+            image: try XCTUnwrap(StatusIconRenderer.render(
+                snapshot: snapshot,
+                size: 20,
+                scale: 8,
+                foreground: CGColor(gray: 1, alpha: 1),
+                bluetoothAudioOptions: BluetoothAudioIconOptions(
+                    replacesNetworkIcon: true,
+                    symbolScale: 1.5
+                )
+            ))
+        )
+        let bluetoothRegion = CGRect(x: 20, y: 20, width: 80, height: 80)
+        let normalSum = normalPixels.alphaSum(
+            inSVGRect: bluetoothRegion,
+            size: 20,
+            scale: 8
+        )
+        let scaledSum = scaledPixels.alphaSum(
+            inSVGRect: bluetoothRegion,
+            size: 20,
+            scale: 8
+        )
+
+        XCTAssertGreaterThan(scaledSum, normalSum)
+        XCTAssertNotEqual(normalPixels.bytes, scaledPixels.bytes)
     }
 
     func testZeroVolumeDrawsFourHiddenDots() throws {

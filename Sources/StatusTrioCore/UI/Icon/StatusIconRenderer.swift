@@ -18,9 +18,15 @@ enum StatusIconRenderer {
 
     /// Unified optical alpha for all inactive tracks (battery groove, Wi-Fi muted signal, volume hidden dots).
     private static let inactiveTrackAlpha: CGFloat = 0.22
-    private static let bluetoothBlue = CGColor(
+    private static let bluetoothBlueOnLightBackground = CGColor(
         red: 0,
-        green: 122.0 / 255.0,
+        green: 102.0 / 255.0,
+        blue: 204.0 / 255.0,
+        alpha: 1
+    )
+    private static let bluetoothBlueOnDarkBackground = CGColor(
+        red: 77.0 / 255.0,
+        green: 163.0 / 255.0,
         blue: 1,
         alpha: 1
     )
@@ -257,7 +263,12 @@ enum StatusIconRenderer {
                connection: menuBarStatus.connection,
                options: bluetoothAudioOptions
            ) {
-            drawBluetoothAudioDevice(currentDevice, in: context)
+            drawBluetoothAudioDevice(
+                currentDevice,
+                options: bluetoothAudioOptions,
+                in: context,
+                foreground: foreground
+            )
         } else if menuBarStatus.connection == .ethernet {
             if connectionOptions.showsWiFiIconForEthernet {
                 drawStandardWiFi(menuBarStatus.wifi, wifiScale: connectionOptions.wifiScale, in: context, foreground: foreground)
@@ -410,6 +421,12 @@ enum StatusIconRenderer {
         return color.brightnessComponent < 0.5
     }
 
+    private static func bluetoothColor(foreground: CGColor) -> CGColor {
+        usesDarkStatusPalette(foreground: foreground)
+            ? bluetoothBlueOnLightBackground
+            : bluetoothBlueOnDarkBackground
+    }
+
     private static func drawBatteryPercentage(
         _ percentage: Int,
         color: CGColor,
@@ -530,34 +547,50 @@ enum StatusIconRenderer {
 
     private static func drawBluetoothAudioDevice(
         _ device: AudioOutputDevice,
-        in context: CGContext
+        options: BluetoothAudioIconOptions,
+        in context: CGContext,
+        foreground: CGColor
     ) {
+        let tint = bluetoothColor(foreground: foreground)
+        let scale = bluetoothSymbolScale(options.symbolScale)
+        let pointSize = 38 * scale
+        let maxDimension = 42 * scale
+
         switch AudioOutputDeviceIcon.source(for: device) {
         case let .symbol(name):
             drawOfficialSymbol(
                 name: name,
-                pointSize: 38,
-                foreground: bluetoothBlue,
+                pointSize: pointSize,
+                foreground: tint,
                 in: context
             )
         case let .image(url):
             guard let image = NSImage(contentsOf: url) else {
                 drawOfficialSymbol(
                     name: "headphones",
-                    pointSize: 38,
-                    foreground: bluetoothBlue,
+                    pointSize: pointSize,
+                    foreground: tint,
                     in: context
                 )
                 return
             }
             drawTintedImage(
                 image,
-                maxDimension: 42,
+                maxDimension: maxDimension,
                 center: wifiSymbolCenter,
-                tint: bluetoothBlue,
+                tint: tint,
                 in: context
             )
         }
+    }
+
+    private static func bluetoothSymbolScale(_ symbolScale: Double) -> CGFloat {
+        guard symbolScale.isFinite,
+              symbolScale > 0,
+              BluetoothAudioIconOptions.defaultSymbolScale > 0 else {
+            return 1
+        }
+        return CGFloat(symbolScale / BluetoothAudioIconOptions.defaultSymbolScale)
     }
 
     private static func drawTintedImage(
@@ -827,7 +860,7 @@ enum StatusIconRenderer {
         let hiddenColor = foreground.copy(alpha: inactiveTrackAlpha) ?? foreground
         let activeColor = bluetoothAudioOptions.usesVolumeColor
             && volume.currentDevice?.isBluetoothAudio == true
-            ? bluetoothBlue
+            ? bluetoothColor(foreground: foreground)
             : foreground
 
         switch options.displayStyle {

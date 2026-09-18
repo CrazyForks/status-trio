@@ -179,6 +179,18 @@ struct AppIconControllerTests {
         ))
     }
 
+    @Test func changingBluetoothSymbolScaleRendersWithUpdatedScale() throws {
+        let harness = try AppIconControllerHarness(initialPlacement: .dock)
+        defer { harness.cleanUp() }
+        harness.controller.start()
+        harness.log.reset()
+
+        harness.settings.bluetoothSymbolScale = 1.45
+
+        #expect(harness.log.renderCount == 1)
+        #expect(harness.log.bluetoothAudioOptions.last?.symbolScale == 1.45)
+    }
+
     /// The icon size slider lives in the App Icon pane and is documented as
     /// menu-bar only: the Dock icon keeps the fixed design size.
     @Test func menuBarIconSizeDoesNotChangeTheDockIcon() throws {

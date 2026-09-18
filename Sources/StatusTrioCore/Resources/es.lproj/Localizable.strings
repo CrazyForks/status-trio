@@ -58,6 +58,10 @@
 "settings.bluetooth.networkErrorPriorityDescription" = "Los errores de conexión y el estado sin conexión mantienen el icono de red en lugar del dispositivo Bluetooth.";
 "settings.bluetooth.batteryLevels" = "Mostrar niveles de batería Bluetooth";
 "settings.bluetooth.batteryLevelsDescription" = "Lee los niveles de batería solo al abrir el panel Bluetooth. No se solicita permiso adicional.";
+"settings.bluetooth.showInStatusPanel" = "Mostrar Bluetooth en el panel de estado";
+"settings.bluetooth.showInStatusPanelDescription" = "Controla el elemento Bluetooth del panel de estado y se mantiene sincronizado con los ajustes del panel de estado.";
+"settings.bluetooth.symbolScale" = "Tamaño del icono de Bluetooth";
+"settings.bluetooth.symbolScaleDescription" = "Ajusta la escala del icono del dispositivo Bluetooth en el anillo de estado del 100 % al 180 %.";
 "bluetooth.battery.unavailable" = "No disponible";
 "settings.audio.maximumVisible" = "Máximo de dispositivos visibles";
 "settings.audio.maximumVisibleDescription" = "Cuántos dispositivos se muestran antes del control Expandir.";

@@ -29,6 +29,9 @@ final class SettingsStore: ObservableObject {
     static let usesBluetoothAudioVolumeColorDefaultsKey = "usesBluetoothAudioVolumeColor"
     static let prioritizesNetworkErrorsOverBluetoothAudioDefaultsKey = "prioritizesNetworkErrorsOverBluetoothAudio"
     static let showsBluetoothBatteryLevelsDefaultsKey = "showsBluetoothBatteryLevels"
+    static let bluetoothSymbolScaleRange: ClosedRange<Double> = 1.0...1.8
+    static let defaultBluetoothSymbolScale: Double = 1.6
+    static let bluetoothSymbolScaleDefaultsKey = "bluetoothSymbolScale"
     static let wifiSymbolScaleRange: ClosedRange<Double> = 1.0...1.8
     static let defaultWifiSymbolScale: Double = 1.6
     static let wifiSymbolScaleDefaultsKey = "wifiSymbolScale"
@@ -213,6 +216,17 @@ final class SettingsStore: ObservableObject {
                 showsBluetoothBatteryLevels,
                 forKey: Self.showsBluetoothBatteryLevelsDefaultsKey
             )
+        }
+    }
+
+    @Published var bluetoothSymbolScale: Double {
+        didSet {
+            let clamped = Self.clampedBluetoothSymbolScale(bluetoothSymbolScale)
+            guard clamped == bluetoothSymbolScale else {
+                bluetoothSymbolScale = clamped
+                return
+            }
+            defaults.set(clamped, forKey: Self.bluetoothSymbolScaleDefaultsKey)
         }
     }
 
@@ -426,7 +440,8 @@ final class SettingsStore: ObservableObject {
         BluetoothAudioIconOptions(
             replacesNetworkIcon: replacesNetworkIconWithBluetoothAudio,
             usesVolumeColor: usesBluetoothAudioVolumeColor,
-            prioritizesNetworkErrors: prioritizesNetworkErrorsOverBluetoothAudio
+            prioritizesNetworkErrors: prioritizesNetworkErrorsOverBluetoothAudio,
+            symbolScale: bluetoothSymbolScale
         )
     }
 
@@ -459,6 +474,7 @@ final class SettingsStore: ObservableObject {
         let storedBatterySymbolScale = (defaults.object(forKey: Self.batterySymbolScaleDefaultsKey) as? NSNumber)?.doubleValue
         let storedOutputDeviceLimit = (defaults.object(forKey: Self.maxVisibleOutputDevicesDefaultsKey) as? NSNumber)?.intValue
         let storedRefreshInterval = (defaults.object(forKey: Self.refreshIntervalDefaultsKey) as? NSNumber)?.doubleValue
+        let storedBluetoothSymbolScale = (defaults.object(forKey: Self.bluetoothSymbolScaleDefaultsKey) as? NSNumber)?.doubleValue
         let storedWifiSymbolScale = (defaults.object(forKey: Self.wifiSymbolScaleDefaultsKey) as? NSNumber)?.doubleValue
         let storedVolumeDisplayStyle = defaults.string(forKey: Self.volumeDisplayStyleDefaultsKey)
         let storedOutputDeviceOrder = defaults.stringArray(forKey: Self.outputDeviceOrderDefaultsKey) ?? []
@@ -522,6 +538,9 @@ final class SettingsStore: ObservableObject {
         self.showsBluetoothBatteryLevels = defaults.object(
             forKey: Self.showsBluetoothBatteryLevelsDefaultsKey
         ) as? Bool ?? false
+        self.bluetoothSymbolScale = Self.clampedBluetoothSymbolScale(
+            storedBluetoothSymbolScale ?? Self.defaultBluetoothSymbolScale
+        )
         self.wifiSymbolScale = Self.clampedWifiSymbolScale(
             storedWifiSymbolScale ?? Self.defaultWifiSymbolScale
         )
@@ -576,6 +595,14 @@ final class SettingsStore: ObservableObject {
         return min(
             wifiSymbolScaleRange.upperBound,
             max(wifiSymbolScaleRange.lowerBound, value)
+        )
+    }
+
+    static func clampedBluetoothSymbolScale(_ value: Double) -> Double {
+        guard value.isFinite else { return defaultBluetoothSymbolScale }
+        return min(
+            bluetoothSymbolScaleRange.upperBound,
+            max(bluetoothSymbolScaleRange.lowerBound, value)
         )
     }
 

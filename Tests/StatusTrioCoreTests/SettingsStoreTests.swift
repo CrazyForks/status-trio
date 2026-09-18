@@ -125,6 +125,11 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertFalse(store.usesBluetoothAudioVolumeColor)
         XCTAssertTrue(store.prioritizesNetworkErrorsOverBluetoothAudio)
         XCTAssertFalse(store.showsBluetoothBatteryLevels)
+        XCTAssertEqual(
+            store.bluetoothSymbolScale,
+            SettingsStore.defaultBluetoothSymbolScale,
+            accuracy: 0.001
+        )
         XCTAssertEqual(store.bluetoothAudioIconOptions, .standard)
     }
 
@@ -137,18 +142,21 @@ final class SettingsStoreTests: XCTestCase {
         first.usesBluetoothAudioVolumeColor = true
         first.prioritizesNetworkErrorsOverBluetoothAudio = false
         first.showsBluetoothBatteryLevels = true
+        first.bluetoothSymbolScale = 1.45
 
         let second = SettingsStore(defaults: suite.defaults)
         XCTAssertTrue(second.replacesNetworkIconWithBluetoothAudio)
         XCTAssertTrue(second.usesBluetoothAudioVolumeColor)
         XCTAssertFalse(second.prioritizesNetworkErrorsOverBluetoothAudio)
         XCTAssertTrue(second.showsBluetoothBatteryLevels)
+        XCTAssertEqual(second.bluetoothSymbolScale, 1.45, accuracy: 0.001)
         XCTAssertEqual(
             second.bluetoothAudioIconOptions,
             BluetoothAudioIconOptions(
                 replacesNetworkIcon: true,
                 usesVolumeColor: true,
-                prioritizesNetworkErrors: false
+                prioritizesNetworkErrors: false,
+                symbolScale: 1.45
             )
         )
     }
@@ -204,6 +212,31 @@ final class SettingsStoreTests: XCTestCase {
         let second = SettingsStore(defaults: suite.defaults)
         XCTAssertEqual(second.wifiSymbolScale, 1.45, accuracy: 0.001)
         XCTAssertEqual(second.connectionIconOptions.wifiScale, 1.45, accuracy: 0.001)
+    }
+
+    func testBluetoothSymbolScaleDefaultsAndClamping() {
+        let store = SettingsStore(defaults: makeSuite().defaults)
+
+        XCTAssertEqual(SettingsStore.bluetoothSymbolScaleRange, 1.0...1.8)
+        XCTAssertEqual(store.bluetoothSymbolScale, 1.6, accuracy: 0.001)
+
+        store.bluetoothSymbolScale = 2.5
+        XCTAssertEqual(store.bluetoothSymbolScale, 1.8, accuracy: 0.001)
+
+        store.bluetoothSymbolScale = 0.5
+        XCTAssertEqual(store.bluetoothSymbolScale, 1.0, accuracy: 0.001)
+    }
+
+    func testBluetoothSymbolScalePersistsAcrossStoreInstances() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+
+        let first = SettingsStore(defaults: suite.defaults)
+        first.bluetoothSymbolScale = 1.45
+
+        let second = SettingsStore(defaults: suite.defaults)
+        XCTAssertEqual(second.bluetoothSymbolScale, 1.45, accuracy: 0.001)
+        XCTAssertEqual(second.bluetoothAudioIconOptions.symbolScale, 1.45, accuracy: 0.001)
     }
 
     func testVolumeDisplayStyleDefaultsAndPersists() {
@@ -324,6 +357,16 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(SettingsStore.clampedIconSize(-.infinity), 24, accuracy: 0.001)
         XCTAssertEqual(SettingsStore.clampedBatterySymbolScale(.nan), 1, accuracy: 0.001)
         XCTAssertEqual(SettingsStore.clampedBatterySymbolScale(.infinity), 1, accuracy: 0.001)
+        XCTAssertEqual(
+            SettingsStore.clampedBluetoothSymbolScale(.nan),
+            SettingsStore.defaultBluetoothSymbolScale,
+            accuracy: 0.001
+        )
+        XCTAssertEqual(
+            SettingsStore.clampedBluetoothSymbolScale(.infinity),
+            SettingsStore.defaultBluetoothSymbolScale,
+            accuracy: 0.001
+        )
     }
 
     func testIconSizeChangeNotifiesSubscribers() {

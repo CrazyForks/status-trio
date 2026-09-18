@@ -58,6 +58,10 @@
 "settings.bluetooth.networkErrorPriorityDescription" = "Bei Verbindungsfehlern oder Offline-Status bleibt das Netzwerksymbol sichtbar statt des Bluetooth-Gerätesymbols.";
 "settings.bluetooth.batteryLevels" = "Bluetooth-Batteriestände anzeigen";
 "settings.bluetooth.batteryLevelsDescription" = "Liest Batteriestände nur beim Öffnen des Bluetooth-Bereichs. Es wird keine zusätzliche Berechtigung angefragt.";
+"settings.bluetooth.showInStatusPanel" = "Bluetooth im Statusbereich anzeigen";
+"settings.bluetooth.showInStatusPanelDescription" = "Steuert das Bluetooth-Element im Statusbereich und bleibt mit den Einstellungen des Statusbereichs synchron.";
+"settings.bluetooth.symbolScale" = "Bluetooth-Symbolgröße";
+"settings.bluetooth.symbolScaleDescription" = "Passt die Größe des Bluetooth-Gerätesymbols im Statusring von 100 % bis 180 % an.";
 "bluetooth.battery.unavailable" = "Nicht verfügbar";
 "settings.audio.maximumVisible" = "Maximal sichtbare Ausgabegeräte";
 "settings.audio.maximumVisibleDescription" = "Anzahl der Ausgabegeräte, die vor „Erweitern“ angezeigt werden.";

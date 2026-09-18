@@ -58,6 +58,10 @@
 "settings.bluetooth.networkErrorPriorityDescription" = "斷線或無網路時仍顯示網路圖示，不顯示藍牙裝置圖示。";
 "settings.bluetooth.batteryLevels" = "顯示藍牙裝置電量";
 "settings.bluetooth.batteryLevelsDescription" = "僅在開啟藍牙面板時讀取裝置電量，不會額外要求權限。";
+"settings.bluetooth.showInStatusPanel" = "在狀態面板中顯示藍牙";
+"settings.bluetooth.showInStatusPanelDescription" = "控制狀態面板中的藍牙項目，並與狀態面板設定保持同步。";
+"settings.bluetooth.symbolScale" = "藍牙圖示大小";
+"settings.bluetooth.symbolScaleDescription" = "調整狀態環內藍牙裝置圖示的縮放比例（100% - 180%）。";
 "bluetooth.battery.unavailable" = "暫不可用";
 "settings.audio.maximumVisible" = "最多顯示輸出裝置";
 "settings.audio.maximumVisibleDescription" = "超過此數量時顯示「展開」按鈕。";

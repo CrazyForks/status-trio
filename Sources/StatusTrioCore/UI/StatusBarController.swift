@@ -172,12 +172,13 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             )
         }
 
-        bluetoothAudioOptionsCancellable = Publishers.CombineLatest3(
+        bluetoothAudioOptionsCancellable = Publishers.CombineLatest4(
             settings.$replacesNetworkIconWithBluetoothAudio,
             settings.$usesBluetoothAudioVolumeColor,
-            settings.$prioritizesNetworkErrorsOverBluetoothAudio
+            settings.$prioritizesNetworkErrorsOverBluetoothAudio,
+            settings.$bluetoothSymbolScale
         )
-        .sink { [weak self] _ in
+        .sink { [weak self] replacesNetworkIcon, usesVolumeColor, prioritizesNetworkErrors, symbolScale in
             guard let self else { return }
             self.render(
                 status: MenuBarStatus(snapshot: self.store.snapshot),
@@ -185,7 +186,12 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
                 options: self.settings.batteryIconOptions,
                 connectionOptions: self.settings.connectionIconOptions,
                 volumeOptions: self.settings.volumeIconOptions,
-                bluetoothAudioOptions: self.settings.bluetoothAudioIconOptions
+                bluetoothAudioOptions: BluetoothAudioIconOptions(
+                    replacesNetworkIcon: replacesNetworkIcon,
+                    usesVolumeColor: usesVolumeColor,
+                    prioritizesNetworkErrors: prioritizesNetworkErrors,
+                    symbolScale: symbolScale
+                )
             )
         }
 

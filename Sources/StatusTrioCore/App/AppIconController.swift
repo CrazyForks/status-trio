@@ -258,18 +258,20 @@ final class AppIconController {
     }
 
     private func subscribeToBluetoothAudioOptions() {
-        Publishers.CombineLatest3(
+        Publishers.CombineLatest4(
             settings.$replacesNetworkIconWithBluetoothAudio,
             settings.$usesBluetoothAudioVolumeColor,
-            settings.$prioritizesNetworkErrorsOverBluetoothAudio
+            settings.$prioritizesNetworkErrorsOverBluetoothAudio,
+            settings.$bluetoothSymbolScale
         )
         .dropFirst()
-        .sink { [weak self] replacesNetworkIcon, usesVolumeColor, prioritizesNetworkErrors in
+        .sink { [weak self] replacesNetworkIcon, usesVolumeColor, prioritizesNetworkErrors, symbolScale in
             guard let self else { return }
             currentBluetoothAudioOptions = BluetoothAudioIconOptions(
                 replacesNetworkIcon: replacesNetworkIcon,
                 usesVolumeColor: usesVolumeColor,
-                prioritizesNetworkErrors: prioritizesNetworkErrors
+                prioritizesNetworkErrors: prioritizesNetworkErrors,
+                symbolScale: symbolScale
             )
             renderLatestDockIcon()
         }

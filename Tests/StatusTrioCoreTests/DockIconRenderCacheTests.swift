@@ -125,6 +125,33 @@ struct DockIconRenderCacheTests {
         #expect(rendersReplacementEnabledAgain == false)
     }
 
+    @Test func rendersAgainWhenBluetoothSymbolScaleChanges() {
+        var cache = DockIconRenderCache()
+        let standard = DockIconRenderKey(
+            status: .placeholder,
+            options: .standard,
+            connectionOptions: .standard,
+            bluetoothAudioOptions: .standard,
+            backgroundStyle: .dark
+        )
+        let scaled = DockIconRenderKey(
+            status: .placeholder,
+            options: .standard,
+            connectionOptions: .standard,
+            bluetoothAudioOptions: BluetoothAudioIconOptions(
+                symbolScale: 1.45
+            ),
+            backgroundStyle: .dark
+        )
+
+        let rendersStandard = cache.shouldRender(standard)
+        let rendersScaled = cache.shouldRender(scaled)
+        let rendersScaledAgain = cache.shouldRender(scaled)
+        #expect(rendersStandard)
+        #expect(rendersScaled)
+        #expect(rendersScaledAgain == false)
+    }
+
     @Test func rendersAgainWhenTheBluetoothOutputDeviceChanges() {
         var cache = DockIconRenderCache()
         let speakers = DockIconRenderKey(
