@@ -1008,7 +1008,7 @@ VERSION=1.2.0 BUILD=9 PUBLISH=true bash scripts/validate-appcast-notes.sh
 git diff --stat appcast.xml
 ```
 
-预期：`XML OK`；校验打印 `12/12 languages` 且 `12 titles and 12 descriptions, en first.`；`git diff --stat` 显示仅 `appcast.xml` 变动，约 20 行新增（10 个新语言 × 2 个节点），且无删除行。
+预期：`XML OK`；校验打印 `12/12 languages` 且 `12 titles and 12 descriptions, en first.`；`git diff --stat` 显示仅 `appcast.xml` 变动。纯新增为 20 行（10 个新语言 × 2 个节点），另有两行被改写，且都是有意的术语对齐：英文段标题 `Icon guide` → `Meet your icon`（对齐界面 `guide.title`），简体段 `电量详情` / `电量行` → `电池详情` / `电池行`（对齐 `battery.details.title` 与 `battery.title`）。
 
 - [ ] **Step 4: 确认 Sparkle 关心的字段未变**
 
