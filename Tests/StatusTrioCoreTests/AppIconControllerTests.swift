@@ -180,7 +180,7 @@ struct AppIconControllerTests {
         #expect(harness.log.connectionOptions.last?.wifiScale == 1.5)
     }
 
-    @Test func connectionOptionChangeKeepsConfiguredWiFiSymbolScale() throws {
+    @Test func connectionOptionChangeKeepsConfiguredWiFiSymbolScale() async throws {
         let harness = try AppIconControllerHarness(initialPlacement: .dock)
         defer { harness.cleanUp() }
         harness.controller.start()
@@ -188,6 +188,7 @@ struct AppIconControllerTests {
         harness.log.reset()
 
         harness.settings.showsWiFiIconForHotspot = true
+        try await waitForCoalescedRenders()
 
         #expect(harness.log.renderCount == 1)
         #expect(harness.log.connectionOptions.last?.wifiScale == 1.5)
@@ -223,7 +224,7 @@ struct AppIconControllerTests {
 
     /// The stroke width has to survive every other icon option change, on the
     /// Dock path as well as the menu bar path.
-    @Test func ringStrokeStyleSurvivesOtherOptionChanges() throws {
+    @Test func ringStrokeStyleSurvivesOtherOptionChanges() async throws {
         let harness = try AppIconControllerHarness(initialPlacement: .dock)
         defer { harness.cleanUp() }
         harness.controller.start()
@@ -232,13 +233,14 @@ struct AppIconControllerTests {
 
         harness.settings.showsBatteryPercentage = false
         harness.settings.volumeDisplayStyle = .arc
+        try await waitForCoalescedRenders()
 
         #expect(harness.log.renderCount > 0)
         #expect(harness.log.batteryOptions.last?.ringStrokeScale == RingStrokeStyle.bold.scale)
         #expect(harness.log.volumeOptions.last?.ringStrokeScale == RingStrokeStyle.bold.scale)
     }
 
-    @Test func changingBluetoothAudioOptionsRendersWithUpdatedOptions() throws {
+    @Test func changingBluetoothAudioOptionsRendersWithUpdatedOptions() async throws {
         let harness = try AppIconControllerHarness(initialPlacement: .dock)
         defer { harness.cleanUp() }
         harness.controller.start()
@@ -247,8 +249,11 @@ struct AppIconControllerTests {
         harness.settings.replacesNetworkIconWithBluetoothAudio = true
         harness.settings.usesBluetoothAudioVolumeColor = true
         harness.settings.prioritizesNetworkErrorsOverBluetoothAudio = false
+        try await waitForCoalescedRenders()
 
-        #expect(harness.log.renderCount == 3)
+        // The first change redraws at once; the two that follow within the
+        // coalescing interval collapse into one trailing redraw.
+        #expect(harness.log.renderCount == 2)
         #expect(harness.log.bluetoothAudioOptions.last == BluetoothAudioIconOptions(
             replacesNetworkIcon: true,
             usesVolumeColor: true,
@@ -266,6 +271,27 @@ struct AppIconControllerTests {
 
         #expect(harness.log.renderCount == 1)
         #expect(harness.log.bluetoothAudioOptions.last?.symbolScale == 1.45)
+    }
+
+    /// A slider drag publishes a value per frame. The burst has to collapse into
+    /// one trailing redraw that carries the newest options, instead of
+    /// allocating one bitmap per frame.
+    @Test func sliderBurstRepaintsTheDockIconOnce() async throws {
+        let harness = try AppIconControllerHarness(initialPlacement: .dock)
+        defer { harness.cleanUp() }
+        harness.controller.start()
+        harness.settings.ringStrokeStyle = .bold
+        harness.log.reset()
+
+        for threshold in stride(from: 25.0, through: 40.0, by: 1.0) {
+            harness.settings.batteryCriticalThreshold = threshold
+        }
+
+        #expect(harness.log.renderCount == 0, "A drag must not redraw on every value.")
+        try await waitForCoalescedRenders()
+
+        #expect(harness.log.renderCount == 1)
+        #expect(harness.log.batteryOptions.last?.criticalThreshold == 40)
     }
 
     /// The icon size slider lives in the App Icon pane and is documented as
@@ -379,6 +405,12 @@ struct AppIconControllerTests {
         harness.log.reset()
         harness.controller.stop()
         #expect(harness.log.events.isEmpty)
+    }
+
+    /// Waits out the render coalescer's interval so a burst's trailing redraw has
+    /// happened.
+    private func waitForCoalescedRenders() async throws {
+        try await Task.sleep(for: .milliseconds(200))
     }
 }
 

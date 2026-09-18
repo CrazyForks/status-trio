@@ -29,18 +29,14 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     private let localization: Localization
     private var cancellable: AnyCancellable?
     private var localizationCancellable: AnyCancellable?
-    private var iconSizeCancellable: AnyCancellable?
-    private var batteryOptionsCancellable: AnyCancellable?
-    private var connectionIconOptionsCancellable: AnyCancellable?
-    private var volumeOptionsCancellable: AnyCancellable?
-    private var ringStrokeStyleCancellable: AnyCancellable?
-    private var bluetoothAudioOptionsCancellable: AnyCancellable?
+    private var appearanceCancellable: AnyCancellable?
     private var screenParametersCancellable: AnyCancellable?
     private var refreshIntervalCancellable: AnyCancellable?
     private let openSettings: () -> Void
     private let quitAction: () -> Void
     private var appearanceObservations: [NSKeyValueObservation] = []
     private var renderCache = StatusBarRenderCache()
+    private let renderCoalescer = IconRenderCoalescer()
     private var isStatusItemVisible: Bool
     private var accessibilityKey: StatusBarAccessibilityKey?
     private var popoverDismissMonitor: Any?
@@ -92,109 +88,22 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
                 self?.renderLatestSnapshot()
             }
 
-        iconSizeCancellable = settings.$iconSize
-            .removeDuplicates()
-            .sink { [weak self] iconSize in
+        // One subscription carries every icon option. Adding a setting to
+        // `SettingsStore.iconAppearancePublisher` is enough to reach the menu
+        // bar; the scattered subscriptions this replaced could silently miss
+        // one, and the icon then stayed stale until the next status poll.
+        appearanceCancellable = settings.iconAppearancePublisher
+            .dropFirst()
+            .sink { [weak self] appearance in
                 guard let self else { return }
-                self.render(
-                    status: MenuBarStatus(snapshot: self.store.snapshot),
-                    iconSize: iconSize,
-                    options: self.settings.batteryIconOptions,
-                    connectionOptions: self.settings.connectionIconOptions,
-                    volumeOptions: self.settings.volumeIconOptions,
-                    bluetoothAudioOptions: self.settings.bluetoothAudioIconOptions
-                )
+                self.renderCoalescer.submit { [weak self] in
+                    guard let self else { return }
+                    self.render(
+                        appearance,
+                        status: MenuBarStatus(snapshot: self.store.snapshot)
+                    )
+                }
             }
-
-        batteryOptionsCancellable = Publishers.CombineLatest4(
-            settings.$showsBatteryPercentage,
-            settings.$showsChargingIndicator,
-            settings.$usesBatteryStatusColors,
-            settings.$batteryCriticalThreshold
-        )
-        .combineLatest(settings.$showsPercentageWhenConnected)
-        .combineLatest(settings.$batterySymbolScale)
-        .sink { [weak self] batteryValues, symbolScale in
-            guard let self else { return }
-            let (
-                showsPercentage,
-                showsChargingIndicator,
-                usesStatusColors,
-                criticalThreshold
-            ) = batteryValues.0
-            let showsPercentageWhenConnected = batteryValues.1
-            let options = BatteryIconOptions(
-                showsPercentage: showsPercentage,
-                showsChargingIndicator: showsChargingIndicator,
-                usesStatusColors: usesStatusColors,
-                criticalThreshold: Int(criticalThreshold.rounded()),
-                showsPercentageWhenConnected: showsPercentageWhenConnected,
-                textScale: symbolScale * BatteryIconOptions.defaultTextScale,
-                ringStrokeScale: self.settings.ringStrokeStyle.scale
-            )
-            self.render(
-                status: MenuBarStatus(snapshot: self.store.snapshot),
-                iconSize: self.settings.iconSize,
-                options: options,
-                connectionOptions: self.settings.connectionIconOptions,
-                volumeOptions: self.settings.volumeIconOptions,
-                bluetoothAudioOptions: self.settings.bluetoothAudioIconOptions
-            )
-        }
-
-        connectionIconOptionsCancellable = Publishers.CombineLatest4(
-            settings.$showsWiFiIconForEthernet,
-            settings.$showsWiFiIconForHotspot,
-            settings.$showsWiFiIconForTemporaryConnection,
-            settings.$showsWiFiIconForInternetSharing
-        )
-        .combineLatest(settings.$wifiSymbolScale)
-        .sink { [weak self] _ in
-            guard let self else { return }
-            self.render(
-                status: MenuBarStatus(snapshot: self.store.snapshot),
-                iconSize: self.settings.iconSize,
-                options: self.settings.batteryIconOptions,
-                connectionOptions: self.settings.connectionIconOptions,
-                volumeOptions: self.settings.volumeIconOptions,
-                bluetoothAudioOptions: self.settings.bluetoothAudioIconOptions
-            )
-        }
-
-        volumeOptionsCancellable = settings.$volumeDisplayStyle
-            .sink { [weak self] _ in
-                self?.renderLatestSnapshot()
-            }
-
-        // The ring stroke width is part of both the battery and the volume option
-        // structs, so a dedicated subscription keeps the menu bar in step with it.
-        ringStrokeStyleCancellable = settings.$ringStrokeStyle
-            .sink { [weak self] _ in
-                self?.renderLatestSnapshot()
-            }
-
-        bluetoothAudioOptionsCancellable = Publishers.CombineLatest4(
-            settings.$replacesNetworkIconWithBluetoothAudio,
-            settings.$usesBluetoothAudioVolumeColor,
-            settings.$prioritizesNetworkErrorsOverBluetoothAudio,
-            settings.$bluetoothSymbolScale
-        )
-        .sink { [weak self] replacesNetworkIcon, usesVolumeColor, prioritizesNetworkErrors, symbolScale in
-            guard let self else { return }
-            self.render(
-                status: MenuBarStatus(snapshot: self.store.snapshot),
-                iconSize: self.settings.iconSize,
-                options: self.settings.batteryIconOptions,
-                connectionOptions: self.settings.connectionIconOptions,
-                volumeOptions: self.settings.volumeIconOptions,
-                bluetoothAudioOptions: BluetoothAudioIconOptions(
-                    replacesNetworkIcon: replacesNetworkIcon,
-                    usesVolumeColor: usesVolumeColor,
-                    prioritizesNetworkErrors: prioritizesNetworkErrors,
-                    symbolScale: symbolScale
-                )
-            )
-        }
 
         localizationCancellable = localization.$resolvedLanguage
             .removeDuplicates()
@@ -543,45 +452,30 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         popoverContentRetention.markOpened()
     }
 
-    private func render(status: MenuBarStatus) {
-        render(
-            status: status,
-            iconSize: settings.iconSize,
-            options: settings.batteryIconOptions,
-            connectionOptions: settings.connectionIconOptions,
-            volumeOptions: settings.volumeIconOptions,
-            bluetoothAudioOptions: settings.bluetoothAudioIconOptions
-        )
-    }
-
     private func render(
-        status: MenuBarStatus,
-        iconSize: Double,
-        options: BatteryIconOptions,
-        connectionOptions: ConnectionIconOptions,
-        volumeOptions: VolumeIconOptions,
-        bluetoothAudioOptions: BluetoothAudioIconOptions
+        _ appearance: StatusIconAppearance,
+        status: MenuBarStatus
     ) {
         guard isStatusItemVisible, let button = statusItem.button else { return }
 
         let key = StatusBarRenderKey(
             status: status,
-            iconSize: iconSize,
-            options: options,
-            connectionOptions: connectionOptions,
-            volumeOptions: volumeOptions,
-            bluetoothAudioOptions: bluetoothAudioOptions,
+            iconSize: appearance.iconSize,
+            options: appearance.batteryOptions,
+            connectionOptions: appearance.connectionOptions,
+            volumeOptions: appearance.volumeOptions,
+            bluetoothAudioOptions: appearance.bluetoothAudioOptions,
             appearanceName: button.effectiveAppearance.name.rawValue
         )
         guard renderCache.shouldRender(key) else { return }
 
         button.image = StatusIconRenderer.image(
             menuBarStatus: status,
-            size: iconSize,
-            options: options,
-            connectionOptions: connectionOptions,
-            volumeOptions: volumeOptions,
-            bluetoothAudioOptions: bluetoothAudioOptions
+            size: appearance.iconSize,
+            options: appearance.batteryOptions,
+            connectionOptions: appearance.connectionOptions,
+            volumeOptions: appearance.volumeOptions,
+            bluetoothAudioOptions: appearance.bluetoothAudioOptions
         )
 
         let nextAccessibilityKey = StatusBarAccessibilityKey(
@@ -599,8 +493,17 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         )
     }
 
+    /// The status, the appearance, and the window's effective appearance all feed
+    /// one cached render, so the newest state wins over a redraw that is still
+    /// waiting out the coalescing interval.
     private func renderLatestSnapshot() {
-        render(status: MenuBarStatus(snapshot: store.snapshot))
+        renderCoalescer.submit { [weak self] in
+            guard let self else { return }
+            self.render(
+                StatusIconAppearance(settings: self.settings),
+                status: MenuBarStatus(snapshot: self.store.snapshot)
+            )
+        }
     }
 
     private static var appVersion: String {

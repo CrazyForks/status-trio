@@ -37,12 +37,10 @@ final class AppIconController {
     private var cancellables: Set<AnyCancellable> = []
     private var renderCache = DockIconRenderCache()
     private let imageCache = DockIconImageCache()
+    private let renderCoalescer = IconRenderCoalescer()
     private var hasRenderedDockIcon = false
     private var currentPlacement: AppIconPlacement
-    private var currentBatteryOptions: BatteryIconOptions
-    private var currentConnectionOptions: ConnectionIconOptions
-    private var currentVolumeOptions: VolumeIconOptions
-    private var currentBluetoothAudioOptions: BluetoothAudioIconOptions
+    private var currentAppearance: StatusIconAppearance
     private var currentBackgroundPreference: DockIconBackgroundPreference
     private var isDockTileVisible: Bool
     private var isStarted = false
@@ -76,10 +74,7 @@ final class AppIconController {
             notificationCenter: notificationCenter
         )
         self.currentPlacement = settings.appIconPlacement
-        self.currentBatteryOptions = settings.batteryIconOptions
-        self.currentConnectionOptions = settings.connectionIconOptions
-        self.currentVolumeOptions = settings.volumeIconOptions
-        self.currentBluetoothAudioOptions = settings.bluetoothAudioIconOptions
+        self.currentAppearance = StatusIconAppearance(settings: settings)
         self.currentBackgroundPreference = settings.dockIconBackgroundPreference
         self.isDockTileVisible = activationPolicy.isRegularApp
     }
@@ -91,10 +86,7 @@ final class AppIconController {
         // Adopt whatever the settings hold now: they can change between
         // construction and the first start.
         currentPlacement = settings.appIconPlacement
-        currentBatteryOptions = settings.batteryIconOptions
-        currentConnectionOptions = settings.connectionIconOptions
-        currentVolumeOptions = settings.volumeIconOptions
-        currentBluetoothAudioOptions = settings.bluetoothAudioIconOptions
+        currentAppearance = StatusIconAppearance(settings: settings)
         currentBackgroundPreference = settings.dockIconBackgroundPreference
         apply(currentPlacement)
         activationPolicy.$isRegularApp
@@ -114,18 +106,15 @@ final class AppIconController {
         monitor.start()
         subscribeToPlacement()
         subscribeToSnapshot()
-        subscribeToBatteryOptions()
-        subscribeToConnectionOptions()
-        subscribeToVolumeDisplayStyle()
-        subscribeToBluetoothAudioOptions()
+        subscribeToIconAppearance()
         subscribeToBackgroundStyle()
-        subscribeToRingStrokeStyle()
     }
 
     func stop() {
         guard isStarted else { return }
         isStarted = false
         cancellables.removeAll()
+        renderCoalescer.cancel()
         monitor.onChange = nil
         monitor.stop()
         clearDockIcon()
@@ -171,70 +160,6 @@ final class AppIconController {
             .store(in: &cancellables)
     }
 
-    private func subscribeToBatteryOptions() {
-        // @Published emits before the stored value changes, so every sink keeps its
-        // own copy of the delivered value instead of reading SettingsStore back.
-        Publishers.CombineLatest4(
-            settings.$showsBatteryPercentage,
-            settings.$showsChargingIndicator,
-            settings.$usesBatteryStatusColors,
-            settings.$batteryCriticalThreshold
-        )
-        .combineLatest(settings.$showsPercentageWhenConnected)
-        .combineLatest(settings.$batterySymbolScale)
-        .dropFirst()
-        .sink { [weak self] batteryValues, symbolScale in
-            guard let self else { return }
-            let (
-                showsPercentage,
-                showsChargingIndicator,
-                usesStatusColors,
-                criticalThreshold
-            ) = batteryValues.0
-            let showsPercentageWhenConnected = batteryValues.1
-            currentBatteryOptions = BatteryIconOptions(
-                showsPercentage: showsPercentage,
-                showsChargingIndicator: showsChargingIndicator,
-                usesStatusColors: usesStatusColors,
-                criticalThreshold: Int(criticalThreshold.rounded()),
-                showsPercentageWhenConnected: showsPercentageWhenConnected,
-                textScale: symbolScale * BatteryIconOptions.defaultTextScale,
-                ringStrokeScale: self.settings.ringStrokeStyle.scale
-            )
-            renderLatestDockIcon()
-        }
-        .store(in: &cancellables)
-    }
-
-    private func subscribeToConnectionOptions() {
-        Publishers.CombineLatest4(
-            settings.$showsWiFiIconForEthernet,
-            settings.$showsWiFiIconForHotspot,
-            settings.$showsWiFiIconForTemporaryConnection,
-            settings.$showsWiFiIconForInternetSharing
-        )
-        .combineLatest(settings.$wifiSymbolScale)
-        .dropFirst()
-        .sink { [weak self] values, wifiScale in
-            guard let self else { return }
-            let (
-                showsForEthernet,
-                showsForHotspot,
-                showsForTemporaryConnection,
-                showsForInternetSharing
-            ) = values
-            currentConnectionOptions = ConnectionIconOptions(
-                showsWiFiIconForEthernet: showsForEthernet,
-                showsWiFiIconForHotspot: showsForHotspot,
-                showsWiFiIconForTemporaryConnection: showsForTemporaryConnection,
-                showsWiFiIconForInternetSharing: showsForInternetSharing,
-                wifiScale: wifiScale
-            )
-            renderLatestDockIcon()
-        }
-        .store(in: &cancellables)
-    }
-
     private func subscribeToBackgroundStyle() {
         settings.$dockIconBackgroundPreference
             .removeDuplicates()
@@ -247,64 +172,22 @@ final class AppIconController {
             .store(in: &cancellables)
     }
 
-    private func subscribeToVolumeDisplayStyle() {
-        settings.$volumeDisplayStyle
-            .removeDuplicates()
+    private func subscribeToIconAppearance() {
+        // One subscription carries every icon option, for the Dock and the menu
+        // bar alike; `SettingsStore.iconAppearancePublisher` lists them once.
+        //
+        // @Published emits before the stored value changes, so the delivered
+        // value is used instead of reading SettingsStore back.
+        settings.iconAppearancePublisher
             .dropFirst()
-            .sink { [weak self] displayStyle in
+            .sink { [weak self] appearance in
                 guard let self else { return }
-                currentVolumeOptions = VolumeIconOptions(
-                    displayStyle: displayStyle,
-                    ringStrokeScale: self.settings.ringStrokeStyle.scale
-                )
-                renderLatestDockIcon()
+                currentAppearance = appearance
+                renderCoalescer.submit { [weak self] in
+                    self?.renderLatestDockIcon()
+                }
             }
             .store(in: &cancellables)
-    }
-
-    private func subscribeToRingStrokeStyle() {
-        settings.$ringStrokeStyle
-            .removeDuplicates()
-            .dropFirst()
-            .sink { [weak self] style in
-                guard let self else { return }
-                currentBatteryOptions = BatteryIconOptions(
-                    showsPercentage: self.settings.showsBatteryPercentage,
-                    showsChargingIndicator: self.settings.showsChargingIndicator,
-                    usesStatusColors: self.settings.usesBatteryStatusColors,
-                    criticalThreshold: Int(self.settings.batteryCriticalThreshold.rounded()),
-                    showsPercentageWhenConnected: self.settings.showsPercentageWhenConnected,
-                    textScale: self.settings.batterySymbolScale * BatteryIconOptions.defaultTextScale,
-                    ringStrokeScale: style.scale
-                )
-                currentVolumeOptions = VolumeIconOptions(
-                    displayStyle: self.settings.volumeDisplayStyle,
-                    ringStrokeScale: style.scale
-                )
-                renderLatestDockIcon()
-            }
-        .store(in: &cancellables)
-    }
-
-    private func subscribeToBluetoothAudioOptions() {
-        Publishers.CombineLatest4(
-            settings.$replacesNetworkIconWithBluetoothAudio,
-            settings.$usesBluetoothAudioVolumeColor,
-            settings.$prioritizesNetworkErrorsOverBluetoothAudio,
-            settings.$bluetoothSymbolScale
-        )
-        .dropFirst()
-        .sink { [weak self] replacesNetworkIcon, usesVolumeColor, prioritizesNetworkErrors, symbolScale in
-            guard let self else { return }
-            currentBluetoothAudioOptions = BluetoothAudioIconOptions(
-                replacesNetworkIcon: replacesNetworkIcon,
-                usesVolumeColor: usesVolumeColor,
-                prioritizesNetworkErrors: prioritizesNetworkErrors,
-                symbolScale: symbolScale
-            )
-            renderLatestDockIcon()
-        }
-        .store(in: &cancellables)
     }
 
     private func apply(_ placement: AppIconPlacement) {
@@ -338,10 +221,10 @@ final class AppIconController {
         let status = MenuBarStatus(snapshot: store.snapshot)
         let key = DockIconRenderKey(
             status: status,
-            options: currentBatteryOptions,
-            connectionOptions: currentConnectionOptions,
-            volumeOptions: currentVolumeOptions,
-            bluetoothAudioOptions: currentBluetoothAudioOptions,
+            options: currentAppearance.batteryOptions,
+            connectionOptions: currentAppearance.connectionOptions,
+            volumeOptions: currentAppearance.volumeOptions,
+            bluetoothAudioOptions: currentAppearance.bluetoothAudioOptions,
             backgroundStyle: backgroundStyle
         )
         guard renderCache.shouldRender(key) else { return }
@@ -354,10 +237,10 @@ final class AppIconController {
 
         guard let image = renderDockIcon(
             status,
-            currentBatteryOptions,
-            currentConnectionOptions,
-            currentVolumeOptions,
-            currentBluetoothAudioOptions,
+            currentAppearance.batteryOptions,
+            currentAppearance.connectionOptions,
+            currentAppearance.volumeOptions,
+            currentAppearance.bluetoothAudioOptions,
             backgroundStyle
         ) else {
             if !hasRenderedDockIcon {
