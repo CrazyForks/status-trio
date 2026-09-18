@@ -17,18 +17,21 @@ enum IconStateSheet {
         let batteryOptions: BatteryIconOptions
         let connectionOptions: ConnectionIconOptions
         let volumeOptions: VolumeIconOptions
+        let bluetoothAudioOptions: BluetoothAudioIconOptions
     }
 
     /// Which part of the combined icon a section documents.
     enum Zone {
         case battery
         case network
+        case bluetooth
         case volume
 
         func tint(in palette: SheetCanvas.Palette) -> CGColor {
             switch self {
             case .battery: palette.batteryTint
             case .network: palette.networkTint
+            case .bluetooth: palette.bluetoothTint
             case .volume: palette.volumeTint
             }
         }
@@ -83,6 +86,22 @@ enum IconStateSheet {
         MenuBarVolumeStatus(scalar: 0.6, isMuted: false, deviceName: nil)
     }
 
+    /// The Bluetooth device the sheet uses as its example. `StatusIconRenderer`
+    /// resolves the glyph from the device, so the sheet shows the same symbol
+    /// the app draws for a connected headset.
+    static let bluetoothDeviceName = "AirPods Pro"
+
+    static var bluetoothDevice: AudioOutputDevice {
+        AudioOutputDevice(
+            id: 42,
+            name: bluetoothDeviceName,
+            uid: "sheet-bluetooth-output",
+            isCurrent: true,
+            volume: 0.6,
+            transport: .bluetooth
+        )
+    }
+
     private static func battery(
         _ percentage: Int,
         charging: Bool = false,
@@ -109,20 +128,38 @@ enum IconStateSheet {
         batteryOptions: BatteryIconOptions = .standard,
         connectionOptions: ConnectionIconOptions = .standard,
         volumeOptions: VolumeIconOptions = .standard,
-        volume: MenuBarVolumeStatus? = nil
+        bluetoothOptions: BluetoothAudioIconOptions = .standard,
+        volume: MenuBarVolumeStatus? = nil,
+        bluetoothDevice: AudioOutputDevice? = nil,
+        volumeScalar: Double = 0.6
     ) -> Entry {
-        Entry(
+        let resolvedVolume: MenuBarVolumeStatus
+        if let volume {
+            resolvedVolume = volume
+        } else if let bluetoothDevice {
+            resolvedVolume = MenuBarVolumeStatus(
+                scalar: volumeScalar,
+                isMuted: false,
+                deviceName: bluetoothDevice.name,
+                currentDevice: bluetoothDevice
+            )
+        } else {
+            resolvedVolume = baselineVolume
+        }
+
+        return Entry(
             zh: zh,
             en: en,
             status: MenuBarStatus(
                 battery: battery ?? baselineBattery,
                 wifi: wifi ?? baselineWiFi,
                 connection: connection,
-                volume: volume ?? baselineVolume
+                volume: resolvedVolume
             ),
             batteryOptions: batteryOptions,
             connectionOptions: connectionOptions,
-            volumeOptions: volumeOptions
+            volumeOptions: volumeOptions,
+            bluetoothAudioOptions: bluetoothOptions
         )
     }
 
@@ -256,6 +293,59 @@ enum IconStateSheet {
                         en: "Hotspot as Wi-Fi icon",
                         wifi: WiFiStatus(state: .hotspot, rssi: -58),
                         connectionOptions: ConnectionIconOptions(showsWiFiIconForHotspot: true)
+                    )
+                ]
+            ),
+            Section(
+                zh: "蓝牙音频（中部与底部）",
+                en: "Bluetooth audio (middle and bottom)",
+                zone: .bluetooth,
+                entries: [
+                    entry(
+                        zh: "取代 Wi-Fi 图标",
+                        en: "Replaces the Wi-Fi icon",
+                        bluetoothOptions: BluetoothAudioIconOptions(
+                            replacesNetworkIcon: true
+                        ),
+                        bluetoothDevice: bluetoothDevice
+                    ),
+                    entry(
+                        zh: "网络异常时保留 Wi-Fi 图标",
+                        en: "Keeps Wi-Fi when the network is down",
+                        wifi: WiFiStatus(state: .noInternet, rssi: -58),
+                        bluetoothOptions: BluetoothAudioIconOptions(
+                            replacesNetworkIcon: true
+                        ),
+                        bluetoothDevice: bluetoothDevice
+                    ),
+                    entry(
+                        zh: "未开启取代时仍显示 Wi-Fi 图标",
+                        en: "Wi-Fi stays while replacement is off",
+                        bluetoothDevice: bluetoothDevice
+                    ),
+                    entry(
+                        zh: "音量圆点变蓝",
+                        en: "Blue volume dots",
+                        bluetoothOptions: BluetoothAudioIconOptions(
+                            usesVolumeColor: true
+                        ),
+                        bluetoothDevice: bluetoothDevice,
+                        volumeScalar: 0.75
+                    ),
+                    entry(
+                        zh: "音量圆弧变蓝",
+                        en: "Blue volume arc",
+                        volumeOptions: VolumeIconOptions(displayStyle: .arc),
+                        bluetoothOptions: BluetoothAudioIconOptions(
+                            usesVolumeColor: true
+                        ),
+                        bluetoothDevice: bluetoothDevice
+                    ),
+                    entry(
+                        zh: "未开启蓝色时保持单色",
+                        en: "Monochrome volume while the color is off",
+                        bluetoothDevice: bluetoothDevice,
+                        volumeScalar: 0.75
                     )
                 ]
             ),
@@ -466,7 +556,8 @@ enum IconStateSheet {
             foreground: palette.glyph,
             options: entry.batteryOptions,
             connectionOptions: entry.connectionOptions,
-            volumeOptions: entry.volumeOptions
+            volumeOptions: entry.volumeOptions,
+            bluetoothAudioOptions: entry.bluetoothAudioOptions
         ) else {
             throw SheetError.iconUnavailable
         }

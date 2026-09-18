@@ -38,6 +38,7 @@ enum SheetCanvas {
         let glyph: CGColor
         let batteryTint: CGColor
         let networkTint: CGColor
+        let bluetoothTint: CGColor
         let volumeTint: CGColor
 
         static var light: Palette {
@@ -50,6 +51,7 @@ enum SheetCanvas {
                 glyph: color(0, 0, 0),
                 batteryTint: color(0.20, 0.78, 0.35),
                 networkTint: color(0.00, 0.48, 1.00),
+                bluetoothTint: color(0, 102.0 / 255.0, 204.0 / 255.0),
                 volumeTint: color(0.20, 0.70, 0.85)
             )
         }
@@ -64,6 +66,7 @@ enum SheetCanvas {
                 glyph: color(1, 1, 1),
                 batteryTint: color(0.19, 0.82, 0.35),
                 networkTint: color(0.04, 0.52, 1.00),
+                bluetoothTint: color(77.0 / 255.0, 163.0 / 255.0, 1),
                 volumeTint: color(0.39, 0.82, 1.00)
             )
         }

@@ -37,9 +37,12 @@ final class IconStateSheetTests: XCTestCase {
 
     func testSheetCoversEachZone() {
         let sections = IconStateSheet.sections
-        XCTAssertEqual(sections.count, 3)
-        XCTAssertEqual(sections.map(\.zh), ["电池（顶部）", "Wi-Fi（中部）", "音量（底部）"])
-        XCTAssertEqual(sections.map(\.zone).count, 3)
+        XCTAssertEqual(sections.count, 4)
+        XCTAssertEqual(
+            sections.map(\.zh),
+            ["电池（顶部）", "Wi-Fi（中部）", "蓝牙音频（中部与底部）", "音量（底部）"]
+        )
+        XCTAssertEqual(sections.map(\.zone).count, 4)
         for section in sections {
             XCTAssertGreaterThanOrEqual(section.entries.count, 6, section.zh)
             for entry in section.entries {

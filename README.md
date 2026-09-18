@@ -70,16 +70,16 @@ The Dock icon can follow the system icon style or be pinned to a fixed backgroun
 
 ## Icon states
 
-Every state the combined icon can show, drawn by the app's own renderer — battery indicators on top, Wi-Fi in the middle, volume dots or the arc at the bottom:
+Every state the combined icon can show, drawn by the app's own renderer — battery indicators on top, Wi-Fi (or the Bluetooth audio device that replaces it) in the middle, volume dots or the arc at the bottom, tinted blue while a Bluetooth device is playing:
 
 <p align="center">
-  <img src="screenshots/status-trio-icon-states.png" width="880" alt="Status Trio icon states: charging, plugged in, percentage, low battery, and Low Power Mode at the top; Wi-Fi signal, hotspot, temporary, shared, and wired states in the middle; volume dots and arc styles at the bottom">
+  <img src="screenshots/status-trio-icon-states.png" width="880" alt="Status Trio icon states: charging, plugged in, percentage, low battery, and Low Power Mode at the top; Wi-Fi signal, hotspot, temporary, shared, and wired states in the middle; Bluetooth audio replacing the Wi-Fi icon, keeping Wi-Fi during a network error, and blue volume dots and arc below that; volume dots and arc styles for every level at the bottom">
 </p>
 
 The same states rendered for a dark menu bar:
 
 <p align="center">
-  <img src="screenshots/status-trio-icon-states-dark.png" width="880" alt="The same Status Trio icon states in dark appearance: white glyphs on dark chips, with the charging green, low battery red, and Low Power Mode yellow accents">
+  <img src="screenshots/status-trio-icon-states-dark.png" width="880" alt="The same Status Trio icon states in dark appearance: white glyphs on dark chips, green charging, red low battery and yellow Low Power Mode accents, and the brighter blue the app uses for Bluetooth audio on a dark menu bar">
 </p>
 
 ## Requirements
