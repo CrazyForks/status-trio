@@ -348,6 +348,13 @@ final class BluetoothDeviceController: ObservableObject {
         }
     }
 
+    /// Whether a visible surface has asked for battery levels. This is shared
+    /// state between the summary row and the detail page, so it is observable
+    /// rather than private.
+    var isBatteryLevelsRequested: Bool {
+        batteryLevelsEnabled
+    }
+
     private func receiveSystemState(
         authorization: BluetoothAuthorizationStatus,
         managerState: BluetoothManagerState

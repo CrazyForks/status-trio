@@ -41,13 +41,14 @@ struct BluetoothStatusView: View {
         }
         .task(id: batteryReadTaskID) {
             // Reading levels launches system_profiler, so it runs only for the
-            // AirPods the summary actually reports.
+            // AirPods the summary actually reports. This view deliberately has
+            // no `onDisappear`: SwiftUI runs the outgoing summary's disappear
+            // hook *after* the incoming detail page has asked for its levels,
+            // so switching off here would leave the detail page showing
+            // "Unavailable" for every device. The detail page owns releasing it.
             controller.setBatteryLevelsEnabled(
                 showsBatteryLevels && summaryPresentation.hasConnectedAirPods
             )
-        }
-        .onDisappear {
-            controller.setBatteryLevelsEnabled(false)
         }
     }
 
