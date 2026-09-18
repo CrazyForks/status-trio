@@ -66,6 +66,17 @@ final class IconGuideRedesignTests: XCTestCase {
         )
     }
 
+    /// The guide renders the production artwork, so its anatomy and gallery
+    /// previews must follow the configured ring stroke width instead of falling
+    /// back to the default.
+    func testGuidePreviewsForwardTheConfiguredRingStrokeWidth() {
+        let options = IconGuideView.demoBatteryOptions(
+            configured: BatteryIconOptions(ringStrokeScale: RingStrokeStyle.bold.scale)
+        )
+
+        XCTAssertEqual(options.ringStrokeScale, RingStrokeStyle.bold.scale)
+    }
+
     func testStateGalleryCoversLightAndDarkDockAppearances() throws {
         XCTAssertFalse(IconGuidePreviewAppearance.light.isDarkBackground)
         XCTAssertTrue(IconGuidePreviewAppearance.dark.isDarkBackground)

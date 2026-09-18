@@ -18,6 +18,12 @@
 "settings.iconSize" = "حجم الرمز";
 "settings.iconSize.accessibilityValue" = "%d نقطة";
 "settings.iconSize.description" = "يضبط حجم عرض رمز شريط القوائم بين 16 و36 نقطة. يحتفظ رمز Dock بحجم التصميم الثابت.";
+"settings.ringStrokeStyle" = "سمك الحلقة الخارجية";
+"settings.ringStrokeStyle.description" = "اضبط سمك خط حلقة الحالة في شريط القوائم وفي Dock.";
+"settings.ringStrokeStyle.light" = "رفيع";
+"settings.ringStrokeStyle.regular" = "عادي";
+"settings.ringStrokeStyle.bold" = "عريض";
+"settings.statusIcon.title" = "أيقونة الحالة";
 "settings.tab.appIcon" = "أيقونة التطبيق";
 "settings.tab.battery" = "البطارية";
 "settings.tab.network" = "الشبكة";
@@ -103,6 +109,7 @@
 "settings.appIconPlacement.menuBar" = "شريط القوائم";
 "settings.appIconPlacement.dock" = "Dock";
 "settings.appIconPlacement.both" = "كلاهما";
+"settings.appIconPlacement.dockExitHint" = "سيختفي رمز Dock بعد إغلاق الإعدادات";
 "settings.appIcon.dockGroup" = "أيقونة Dock";
 "settings.dockIconBackground" = "خلفية أيقونة Dock";
 "settings.dockIconBackground.description" = "ينطبق على الأيقونة المباشرة في Dock. يقرأ «اتباع النظام» إعداد «نمط الرموز والودجات» في إعدادات النظام › المظهر (macOS 15 أو أحدث).";

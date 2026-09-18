@@ -336,7 +336,8 @@ struct IconGuideView: View {
             usesStatusColors: true,
             criticalThreshold: configured.criticalThreshold,
             showsPercentageWhenConnected: true,
-            textScale: configured.textScale
+            textScale: configured.textScale,
+            ringStrokeScale: configured.ringStrokeScale
         )
     }
 
@@ -457,7 +458,8 @@ private struct IconGuideStateCard: View {
     private var volumeOptions: VolumeIconOptions {
         VolumeIconOptions(
             displayStyle: state.volumeDisplayStyleOverride
-                ?? settings.volumeDisplayStyle
+                ?? settings.volumeDisplayStyle,
+            ringStrokeScale: settings.ringStrokeStyle.scale
         )
     }
 }

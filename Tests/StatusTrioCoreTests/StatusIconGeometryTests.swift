@@ -24,6 +24,40 @@ final class StatusIconGeometryTests: XCTestCase {
         XCTAssertTrue(StatusIconGeometry.canvas.contains(fill.boundingBox))
     }
 
+    /// The volume dots sit at fixed positions, so a bolder stroke must not close
+    /// the gap between neighbours (they would read as a solid bar) or push the
+    /// lowest dot against the canvas edge.
+    func testVolumeDotsStaySeparateAndInsideCanvasAtEveryStrokeWidth() {
+        let points = StatusIconGeometry.volumeDots()
+
+        for style in RingStrokeStyle.allCases {
+            let options = VolumeIconOptions(displayStyle: .dots, ringStrokeScale: style.scale)
+            let radius = StatusIconGeometry.volumeDotRadius * CGFloat(options.dotRadiusScale)
+
+            for (index, point) in points.enumerated() {
+                let dot = CGRect(
+                    x: point.x - radius,
+                    y: point.y - radius,
+                    width: radius * 2,
+                    height: radius * 2
+                )
+                XCTAssertTrue(
+                    StatusIconGeometry.canvas.contains(dot),
+                    "\(style) dot \(index) escapes the canvas"
+                )
+            }
+
+            for (index, pair) in zip(points, points.dropFirst()).enumerated() {
+                let centreDistance = hypot(pair.1.x - pair.0.x, pair.1.y - pair.0.y)
+                XCTAssertGreaterThanOrEqual(
+                    centreDistance - radius * 2,
+                    3,
+                    "\(style) dots \(index) and \(index + 1) are too close to read as separate marks"
+                )
+            }
+        }
+    }
+
     func testBatteryFullAndHalfProgressBounds() {
         let track = StatusIconGeometry.batteryTrack()
         let fill = StatusIconGeometry.batteryFill(progress: 0.5)

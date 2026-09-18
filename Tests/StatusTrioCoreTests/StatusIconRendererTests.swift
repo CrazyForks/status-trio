@@ -1402,6 +1402,117 @@ final class StatusIconRendererTests: XCTestCase {
         }
     }
 
+    /// Only the battery ring width varies; the volume options stay on the
+    /// regular width, so this fails if the battery multiplier regresses on its
+    /// own.
+    func testRingStrokeStyleChangesMenuBarBatteryRingPixels() throws {
+        let snapshot = StatusSnapshot.placeholder
+        let foreground = CGColor(gray: 1, alpha: 1)
+        let regularVolume = VolumeIconOptions(
+            displayStyle: .dots,
+            ringStrokeScale: RingStrokeStyle.regular.scale
+        )
+
+        let lightPixels = try menuBarPixels(
+            snapshot: snapshot,
+            foreground: foreground,
+            options: BatteryIconOptions(ringStrokeScale: RingStrokeStyle.light.scale),
+            volumeOptions: regularVolume
+        )
+        let boldPixels = try menuBarPixels(
+            snapshot: snapshot,
+            foreground: foreground,
+            options: BatteryIconOptions(ringStrokeScale: RingStrokeStyle.bold.scale),
+            volumeOptions: regularVolume
+        )
+
+        XCTAssertNotEqual(lightPixels.bytes, boldPixels.bytes)
+    }
+
+    /// Only the discrete volume dots vary; the battery ring stays on the regular
+    /// width.
+    func testRingStrokeStyleChangesMenuBarVolumeDotPixels() throws {
+        let snapshot = StatusSnapshot(
+            battery: .placeholder,
+            wifi: .placeholder,
+            volume: VolumeStatus(scalar: 0.6, isMuted: false, deviceName: nil)
+        )
+        let foreground = CGColor(gray: 1, alpha: 1)
+        let regularBattery = BatteryIconOptions(ringStrokeScale: RingStrokeStyle.regular.scale)
+
+        let lightPixels = try menuBarPixels(
+            snapshot: snapshot,
+            foreground: foreground,
+            options: regularBattery,
+            volumeOptions: VolumeIconOptions(
+                displayStyle: .dots,
+                ringStrokeScale: RingStrokeStyle.light.scale
+            )
+        )
+        let boldPixels = try menuBarPixels(
+            snapshot: snapshot,
+            foreground: foreground,
+            options: regularBattery,
+            volumeOptions: VolumeIconOptions(
+                displayStyle: .dots,
+                ringStrokeScale: RingStrokeStyle.bold.scale
+            )
+        )
+
+        XCTAssertNotEqual(lightPixels.bytes, boldPixels.bytes)
+    }
+
+    /// Only the continuous volume arc varies; the battery ring stays on the
+    /// regular width.
+    func testRingStrokeStyleChangesMenuBarVolumeArcPixels() throws {
+        let snapshot = StatusSnapshot(
+            battery: .placeholder,
+            wifi: .placeholder,
+            volume: VolumeStatus(scalar: 0.6, isMuted: false, deviceName: nil)
+        )
+        let foreground = CGColor(gray: 1, alpha: 1)
+        let regularBattery = BatteryIconOptions(ringStrokeScale: RingStrokeStyle.regular.scale)
+
+        let regularPixels = try menuBarPixels(
+            snapshot: snapshot,
+            foreground: foreground,
+            options: regularBattery,
+            volumeOptions: VolumeIconOptions(
+                displayStyle: .arc,
+                ringStrokeScale: RingStrokeStyle.regular.scale
+            )
+        )
+        let boldPixels = try menuBarPixels(
+            snapshot: snapshot,
+            foreground: foreground,
+            options: regularBattery,
+            volumeOptions: VolumeIconOptions(
+                displayStyle: .arc,
+                ringStrokeScale: RingStrokeStyle.bold.scale
+            )
+        )
+
+        XCTAssertNotEqual(regularPixels.bytes, boldPixels.bytes)
+    }
+
+    private func menuBarPixels(
+        snapshot: StatusSnapshot,
+        foreground: CGColor,
+        options: BatteryIconOptions,
+        volumeOptions: VolumeIconOptions
+    ) throws -> PixelBuffer {
+        try PixelBuffer(
+            image: try XCTUnwrap(StatusIconRenderer.render(
+                snapshot: snapshot,
+                size: 20,
+                scale: 2,
+                foreground: foreground,
+                options: options,
+                volumeOptions: volumeOptions
+            ))
+        )
+    }
+
     private func makeBattery(
         rawPercentage: Int,
         isCharging: Bool = false,

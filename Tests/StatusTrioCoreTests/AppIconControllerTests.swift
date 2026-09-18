@@ -158,7 +158,40 @@ struct AppIconControllerTests {
         harness.settings.volumeDisplayStyle = .arc
 
         #expect(harness.log.renderCount == 1)
-        #expect(harness.log.volumeOptions.last == VolumeIconOptions(displayStyle: .arc))
+        #expect(
+            harness.log.volumeOptions.last
+                == VolumeIconOptions(displayStyle: .arc, ringStrokeScale: harness.settings.ringStrokeStyle.scale)
+        )
+    }
+
+    @Test func changingRingStrokeStyleRendersWithUpdatedOptions() throws {
+        let harness = try AppIconControllerHarness(initialPlacement: .dock)
+        defer { harness.cleanUp() }
+        harness.controller.start()
+        harness.log.reset()
+
+        harness.settings.ringStrokeStyle = .bold
+
+        #expect(harness.log.renderCount == 1)
+        #expect(harness.log.batteryOptions.last?.ringStrokeScale == RingStrokeStyle.bold.scale)
+        #expect(harness.log.volumeOptions.last?.ringStrokeScale == RingStrokeStyle.bold.scale)
+    }
+
+    /// The stroke width has to survive every other icon option change, on the
+    /// Dock path as well as the menu bar path.
+    @Test func ringStrokeStyleSurvivesOtherOptionChanges() throws {
+        let harness = try AppIconControllerHarness(initialPlacement: .dock)
+        defer { harness.cleanUp() }
+        harness.controller.start()
+        harness.settings.ringStrokeStyle = .bold
+        harness.log.reset()
+
+        harness.settings.showsBatteryPercentage = false
+        harness.settings.volumeDisplayStyle = .arc
+
+        #expect(harness.log.renderCount > 0)
+        #expect(harness.log.batteryOptions.last?.ringStrokeScale == RingStrokeStyle.bold.scale)
+        #expect(harness.log.volumeOptions.last?.ringStrokeScale == RingStrokeStyle.bold.scale)
     }
 
     @Test func changingBluetoothAudioOptionsRendersWithUpdatedOptions() throws {
@@ -364,13 +397,14 @@ private final class AppIconControllerHarness {
             },
             renderDockIcon: {
                 _,
-                _,
+                batteryOptions,
                 connectionOptions,
                 volumeOptions,
                 bluetoothAudioOptions,
                 backgroundStyle in
                 log.renderCount += 1
                 log.backgroundStyles.append(backgroundStyle)
+                log.batteryOptions.append(batteryOptions)
                 log.connectionOptions.append(connectionOptions)
                 log.volumeOptions.append(volumeOptions)
                 log.bluetoothAudioOptions.append(bluetoothAudioOptions)
@@ -409,6 +443,7 @@ private final class AppIconEventLog {
     var events: [String] = []
     var renderCount = 0
     var backgroundStyles: [DockIconBackgroundStyle] = []
+    var batteryOptions: [BatteryIconOptions] = []
     var connectionOptions: [ConnectionIconOptions] = []
     var volumeOptions: [VolumeIconOptions] = []
     var bluetoothAudioOptions: [BluetoothAudioIconOptions] = []
@@ -417,6 +452,7 @@ private final class AppIconEventLog {
         events.removeAll()
         renderCount = 0
         backgroundStyles.removeAll()
+        batteryOptions.removeAll()
         connectionOptions.removeAll()
         volumeOptions.removeAll()
         bluetoothAudioOptions.removeAll()
