@@ -5,9 +5,9 @@ import XCTest
 
 @MainActor
 final class IconGuideRedesignTests: XCTestCase {
-    func testGuideProvidesSixDistinctStateExamples() {
-        XCTAssertEqual(IconGuideState.all.count, 6)
-        XCTAssertEqual(Set(IconGuideState.all.map(\.id)).count, 6)
+    func testGuideProvidesEightDistinctStateExamples() {
+        XCTAssertEqual(IconGuideState.all.count, 8)
+        XCTAssertEqual(Set(IconGuideState.all.map(\.id)).count, 8)
 
         XCTAssertTrue(IconGuideState.charging.status.battery.isCharging)
         XCTAssertEqual(IconGuideState.lowBattery.status.battery.percentage, 12)
@@ -17,6 +17,83 @@ final class IconGuideRedesignTests: XCTestCase {
         XCTAssertTrue(IconGuideState.hotspotLowPower.status.battery.isLowPowerMode)
         XCTAssertEqual(IconGuideState.weakWiFi.status.wifi.state, .connected)
         XCTAssertEqual(IconGuideState.weakWiFi.status.wifi.rssi, -86)
+    }
+
+    /// The two Bluetooth cards must show their mode even on a fresh install,
+    /// where both Bluetooth options are still at their defaults.
+    func testBluetoothGuideStatesForceTheModeTheyDemonstrate() {
+        let configured = BluetoothAudioIconOptions.standard
+
+        let headphones = IconGuideState.bluetoothHeadphones.bluetoothAudioOptions(
+            configuring: configured
+        )
+        XCTAssertTrue(headphones.replacesNetworkIcon)
+        XCTAssertFalse(headphones.usesVolumeColor)
+
+        let tintedVolume = IconGuideState.bluetoothVolumeTint.bluetoothAudioOptions(
+            configuring: configured
+        )
+        XCTAssertFalse(
+            tintedVolume.replacesNetworkIcon,
+            "The blue volume card keeps Wi-Fi in the middle so only the bottom row changes."
+        )
+        XCTAssertTrue(tintedVolume.usesVolumeColor)
+
+        // Unrelated Bluetooth cards keep following the user's configuration.
+        XCTAssertEqual(
+            IconGuideState.ethernet.bluetoothAudioOptions(configuring: configured),
+            configured
+        )
+    }
+
+    func testBluetoothGuideStatesKeepTheConfiguredBluetoothPreferences() {
+        let configured = BluetoothAudioIconOptions(
+            replacesNetworkIcon: false,
+            usesVolumeColor: false,
+            prioritizesNetworkErrors: false,
+            symbolScale: 1.35
+        )
+
+        for state in [IconGuideState.bluetoothHeadphones, .bluetoothVolumeTint] {
+            let options = state.bluetoothAudioOptions(configuring: configured)
+            XCTAssertEqual(options.prioritizesNetworkErrors, false)
+            XCTAssertEqual(options.symbolScale, 1.35)
+        }
+    }
+
+    func testBluetoothGuideStatesUseABluetoothDevice() throws {
+        for state in [IconGuideState.bluetoothHeadphones, .bluetoothVolumeTint] {
+            let device = try XCTUnwrap(state.status.volume.currentDevice)
+            XCTAssertTrue(device.isBluetoothAudio)
+            XCTAssertEqual(device.transport, .bluetooth)
+        }
+    }
+
+    /// A blank or unrelated glyph would make both new cards unreadable, so the
+    /// example device has to resolve to the headphone symbol.
+    func testBluetoothGuideDeviceResolvesToTheHeadphoneSymbol() {
+        XCTAssertEqual(
+            AudioOutputDeviceIcon.source(for: IconGuideState.bluetoothExampleDevice),
+            .symbol("headphones")
+        )
+    }
+
+    func testBluetoothGuideStatesRequestTheirOwnVolumeExample() throws {
+        for state in [IconGuideState.bluetoothHeadphones, .bluetoothVolumeTint] {
+            let dockImage = try XCTUnwrap(
+                DockIconRenderer.image(
+                    status: state.status,
+                    volumeOptions: VolumeIconOptions(
+                        displayStyle: try XCTUnwrap(state.volumeDisplayStyleOverride),
+                        ringStrokeScale: RingStrokeStyle.regular.scale
+                    ),
+                    bluetoothAudioOptions: state.bluetoothAudioOptions(
+                        configuring: .standard
+                    )
+                )
+            )
+            XCTAssertEqual(dockImage.size, NSSize(width: 256, height: 256))
+        }
     }
 
     func testEveryGuideStateRendersInMenuBarAndDock() throws {

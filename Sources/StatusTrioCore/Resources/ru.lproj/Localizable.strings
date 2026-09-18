@@ -310,6 +310,8 @@
 "guide.state.noInternetMuted" = "Нет Интернета + Без звука";
 "guide.state.hotspotLowPower" = "Точка доступа + Энергосбережение";
 "guide.state.weakWiFi" = "Слабый Wi-Fi + Громкость 25%";
+"guide.state.bluetoothHeadphones" = "Bluetooth-наушники";
+"guide.state.bluetoothVolumeTint" = "Bluetooth + синяя громкость";
 
 // Current Wi-Fi radio measurements, not Internet speed.
 "wifi.summary.band" = "%@ GHz";
