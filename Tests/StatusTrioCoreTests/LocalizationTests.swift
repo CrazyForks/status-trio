@@ -293,11 +293,11 @@ final class LocalizationTests: XCTestCase {
     private func makeSuite() -> (defaults: UserDefaults, name: String) {
         let name = "StatusTrioCoreTests.Localization.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: name)!
-        defaults.removePersistentDomain(forName: name)
+        defaults.removeTestSuite(named: name)
         return (defaults, name)
     }
 
     private func clear(_ suite: (defaults: UserDefaults, name: String)) {
-        suite.defaults.removePersistentDomain(forName: suite.name)
+        suite.defaults.removeTestSuite(named: suite.name)
     }
 }

@@ -8,7 +8,7 @@ final class IconGuideTests: XCTestCase {
     func testFirstOnboardingRequestPresentsOnlyOnce() {
         let name = "IconGuideTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: name)!
-        defer { defaults.removePersistentDomain(forName: name) }
+        defer { defaults.removeTestSuite(named: name) }
         let settings = SettingsStore(defaults: defaults)
         settings.volumeDisplayStyle = .arc
         settings.showsBatteryPercentage = false
@@ -28,7 +28,7 @@ final class IconGuideTests: XCTestCase {
     func testExistingInstallationSkipsAutomaticOnboarding() {
         let name = "IconGuideTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: name)!
-        defer { defaults.removePersistentDomain(forName: name) }
+        defer { defaults.removeTestSuite(named: name) }
         defaults.set(true, forKey: "SUHasLaunchedBefore")
 
         let settings = SettingsStore(defaults: defaults)
@@ -40,7 +40,7 @@ final class IconGuideTests: XCTestCase {
     func testLegacySeenGuideSkipsAutomaticOnboarding() {
         let name = "IconGuideTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: name)!
-        defer { defaults.removePersistentDomain(forName: name) }
+        defer { defaults.removeTestSuite(named: name) }
         defaults.set(true, forKey: SettingsStore.hasSeenIconGuideDefaultsKey)
 
         let settings = SettingsStore(defaults: defaults)
@@ -52,7 +52,7 @@ final class IconGuideTests: XCTestCase {
     func testOnboardingViewRendersWithoutCrashing() {
         let name = "IconGuideTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: name)!
-        defer { defaults.removePersistentDomain(forName: name) }
+        defer { defaults.removeTestSuite(named: name) }
         let settings = SettingsStore(defaults: defaults)
         let localization = Localization(
             defaults: defaults,

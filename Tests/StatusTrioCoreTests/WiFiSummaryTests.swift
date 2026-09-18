@@ -15,7 +15,7 @@ final class WiFiSummaryTests: XCTestCase {
     func testMeasurementsKeepMissingValuesUnknownAndRespectConnectionState() {
         let name = "WiFiSummaryTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: name)!
-        defer { defaults.removePersistentDomain(forName: name) }
+        defer { defaults.removeTestSuite(named: name) }
         let localization = Localization(defaults: defaults, preferredLanguages: ["en"])
         func summary(_ wifi: WiFiStatus, connection: NetworkConnection = .wifi) -> String? {
             WiFiSummaryPresentation.measurements(wifi, connection: connection, localization: localization)
@@ -36,7 +36,7 @@ final class WiFiSummaryTests: XCTestCase {
     func testVisibleAndAccessibleMeasurementsRequireNamedActiveWiFi() {
         let name = "WiFiSummaryTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: name)!
-        defer { defaults.removePersistentDomain(forName: name) }
+        defer { defaults.removeTestSuite(named: name) }
         let localization = Localization(defaults: defaults, preferredLanguages: ["en"])
         let connected = WiFiStatus(state: .connected, rssi: -58, ssid: "Example Network", band: .fiveGHz)
         for connection in [NetworkConnection.offline, .other, .unknown, .ethernet] {
@@ -58,7 +58,7 @@ final class WiFiSummaryTests: XCTestCase {
     func testSummaryWaitsForFreshAuthorizedNameBeforePublishingMeasurements() {
         let name = "WiFiSummaryTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: name)!
-        defer { defaults.removePersistentDomain(forName: name) }
+        defer { defaults.removeTestSuite(named: name) }
         let localization = Localization(defaults: defaults, preferredLanguages: ["en"])
         let awaitingName = WiFiStatus(
             state: .connected,

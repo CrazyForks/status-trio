@@ -130,7 +130,8 @@ final class StatusMenuBuilderTests: XCTestCase {
     private func makeLocalization(_ language: AppLanguage) -> Localization {
         let suiteName = "StatusTrioCoreTests.StatusMenuBuilder.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
-        defaults.removePersistentDomain(forName: suiteName)
+        defaults.removeTestSuite(named: suiteName)
+        addTeardownBlock { TestUserDefaults.removeSuite(named: suiteName) }
         let localization = Localization(defaults: defaults, preferredLanguages: ["en"])
         localization.setPreference(.language(language))
         return localization

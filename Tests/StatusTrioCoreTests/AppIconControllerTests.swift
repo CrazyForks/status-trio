@@ -362,7 +362,7 @@ private final class AppIconControllerHarness {
         guard let defaults = UserDefaults(suiteName: suiteName) else {
             throw AppIconHarnessError.missingDefaultsSuite
         }
-        defaults.removePersistentDomain(forName: suiteName)
+        defaults.removeTestSuite(named: suiteName)
         self.defaults = defaults
 
         let log = self.log
@@ -430,7 +430,7 @@ private final class AppIconControllerHarness {
 
     func cleanUp() {
         store.stop()
-        defaults.removePersistentDomain(forName: suiteName)
+        defaults.removeTestSuite(named: suiteName)
     }
 }
 

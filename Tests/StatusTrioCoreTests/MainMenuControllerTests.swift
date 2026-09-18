@@ -116,9 +116,9 @@ final class MainMenuControllerTests: XCTestCase {
     private func makeEnvironment() throws -> (localization: Localization, cleanUp: () -> Void) {
         let name = "StatusTrioCoreTests.MainMenu.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: name))
-        defaults.removePersistentDomain(forName: name)
+        defaults.removeTestSuite(named: name)
         let localization = Localization(defaults: defaults, preferredLanguages: ["en"])
-        return (localization, { defaults.removePersistentDomain(forName: name) })
+        return (localization, { defaults.removeTestSuite(named: name) })
     }
 }
 

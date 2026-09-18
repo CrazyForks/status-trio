@@ -8,7 +8,7 @@ final class PopoverScrollTargetsTests: XCTestCase {
     func testStatusPanelRegistersItsVolumeControlRegion() throws {
         let name = "StatusTrioCoreTests.PopoverScrollTargets.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: name) ?? .standard
-        defer { defaults.removePersistentDomain(forName: name) }
+        defer { defaults.removeTestSuite(named: name) }
 
         let window = makeWindow()
         let targets = PopoverScrollTargets()

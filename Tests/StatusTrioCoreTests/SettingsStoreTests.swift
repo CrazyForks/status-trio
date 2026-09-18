@@ -851,12 +851,15 @@ final class SettingsStoreTests: XCTestCase {
         guard let defaults = UserDefaults(suiteName: name) else {
             fatalError("could not create isolated user defaults suite")
         }
-        defaults.removePersistentDomain(forName: name)
+        defaults.removeTestSuite(named: name)
+        // Discard the suite when the test ends, so a test that forgets to call
+        // `clear` still cannot leave a preference file behind.
+        addTeardownBlock { TestUserDefaults.removeSuite(named: name) }
         return (defaults, name)
     }
 
     private func clear(_ suite: (defaults: UserDefaults, name: String)) {
-        suite.defaults.removePersistentDomain(forName: suite.name)
+        suite.defaults.removeTestSuite(named: suite.name)
     }
 
     private func makeOutputDevice(id: AudioDeviceID, uid: String) -> AudioOutputDevice {

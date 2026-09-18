@@ -24,7 +24,8 @@ final class AppDockMenuTests: XCTestCase {
     private func makeLocalization(language: String = "zh-Hans") -> Localization {
         let name = "StatusTrioCoreTests.AppDockMenu.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: name) ?? .standard
-        defaults.removePersistentDomain(forName: name)
+        defaults.removeTestSuite(named: name)
+        addTeardownBlock { TestUserDefaults.removeSuite(named: name) }
         return Localization(defaults: defaults, preferredLanguages: [language])
     }
 }

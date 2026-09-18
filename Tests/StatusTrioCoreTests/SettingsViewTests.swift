@@ -81,7 +81,7 @@ final class SettingsViewTests: XCTestCase {
     func testSettingsViewHostingViewRendersWithoutCrashing() {
         let name = "StatusTrioCoreTests.SettingsViewTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: name) ?? .standard
-        defer { defaults.removePersistentDomain(forName: name) }
+        defer { defaults.removeTestSuite(named: name) }
 
         let localization = Localization(defaults: defaults, preferredLanguages: ["en"])
         let store = SettingsStore(defaults: defaults)
@@ -108,7 +108,7 @@ final class SettingsViewTests: XCTestCase {
     func testSectionTitlesLocalizedForAllLanguages() {
         let name = "StatusTrioCoreTests.SettingsViewTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: name) ?? .standard
-        defer { defaults.removePersistentDomain(forName: name) }
+        defer { defaults.removeTestSuite(named: name) }
 
         for lang in AppLanguage.allCases {
             let localization = Localization(defaults: defaults, preferredLanguages: [lang.rawValue])
@@ -124,12 +124,12 @@ final class SettingsViewTests: XCTestCase {
 private func makeSuite() -> (defaults: UserDefaults, name: String) {
     let name = "StatusTrioCoreTests.SettingsViewTests.\(UUID().uuidString)"
     let defaults = UserDefaults(suiteName: name) ?? .standard
-    defaults.removePersistentDomain(forName: name)
+    defaults.removeTestSuite(named: name)
     return (defaults, name)
 }
 
 private func clear(_ suite: (defaults: UserDefaults, name: String)) {
-    suite.defaults.removePersistentDomain(forName: suite.name)
+    suite.defaults.removeTestSuite(named: suite.name)
 }
 
 @MainActor

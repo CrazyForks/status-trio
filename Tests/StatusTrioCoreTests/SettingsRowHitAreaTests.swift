@@ -101,7 +101,8 @@ final class SettingsRowHitAreaTests: XCTestCase {
     private func makeLocalization() -> Localization {
         let suiteName = "StatusTrioCoreTests.SettingsHitArea.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
-        defaults.removePersistentDomain(forName: suiteName)
+        defaults.removeTestSuite(named: suiteName)
+        addTeardownBlock { TestUserDefaults.removeSuite(named: suiteName) }
         let localization = Localization(defaults: defaults, preferredLanguages: ["en"])
         localization.setPreference(.language(.simplifiedChinese))
         return localization
@@ -110,7 +111,8 @@ final class SettingsRowHitAreaTests: XCTestCase {
     private func makeSettings() -> SettingsStore {
         let suiteName = "StatusTrioCoreTests.SettingsHitAreaStore.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
-        defaults.removePersistentDomain(forName: suiteName)
+        defaults.removeTestSuite(named: suiteName)
+        addTeardownBlock { TestUserDefaults.removeSuite(named: suiteName) }
         return SettingsStore(defaults: defaults)
     }
 }

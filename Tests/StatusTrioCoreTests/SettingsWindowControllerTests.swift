@@ -7,7 +7,7 @@ final class SettingsWindowControllerTests: XCTestCase {
     func testShowCreatesReusesAndLocalizesSingleWindow() throws {
         let suiteName = "StatusTrioCoreTests.SettingsWindow.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
-        defer { defaults.removePersistentDomain(forName: suiteName) }
+        defer { defaults.removeTestSuite(named: suiteName) }
 
         let localization = Localization(defaults: defaults, preferredLanguages: ["en"])
         localization.setPreference(.language(.simplifiedChinese))
@@ -41,7 +41,7 @@ final class SettingsWindowControllerTests: XCTestCase {
     func testClosingWindowReleasesContentForNextPresentation() throws {
         let suiteName = "StatusTrioCoreTests.SettingsWindowRelease.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
-        defer { defaults.removePersistentDomain(forName: suiteName) }
+        defer { defaults.removeTestSuite(named: suiteName) }
 
         let activationApplication = SettingsActivationPolicyApplicationSpy()
         let controller = SettingsWindowController(
@@ -67,7 +67,7 @@ final class SettingsWindowControllerTests: XCTestCase {
     func testClosingSettingsKeepsUserSelectedDockPolicyRegular() throws {
         let suiteName = "StatusTrioCoreTests.SettingsDockPolicy.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
-        defer { defaults.removePersistentDomain(forName: suiteName) }
+        defer { defaults.removeTestSuite(named: suiteName) }
 
         let activationApplication = SettingsActivationPolicyApplicationSpy()
         let policy = AppActivationPolicy(application: activationApplication)
@@ -89,7 +89,7 @@ final class SettingsWindowControllerTests: XCTestCase {
     func testSettingsWindowTogglesVolumeDetailsVisibility() throws {
         let suiteName = "StatusTrioCoreTests.SettingsVolumeDetails.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
-        defer { defaults.removePersistentDomain(forName: suiteName) }
+        defer { defaults.removeTestSuite(named: suiteName) }
 
         let volume = NoopVolumeMonitor()
         let statusStore = SystemStatusStore(

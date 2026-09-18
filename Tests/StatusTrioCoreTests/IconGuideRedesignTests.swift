@@ -122,7 +122,7 @@ final class IconGuideRedesignTests: XCTestCase {
     func testRedesignedOnboardingRendersWideLayout() {
         let name = "IconGuideRedesignTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: name)!
-        defer { defaults.removePersistentDomain(forName: name) }
+        defer { defaults.removeTestSuite(named: name) }
         let settings = SettingsStore(defaults: defaults)
         let localization = Localization(
             defaults: defaults,
@@ -145,7 +145,7 @@ final class IconGuideRedesignTests: XCTestCase {
     func testOnboardingHeightStaysEqualAcrossPages() {
         let name = "IconGuideRedesignTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: name)!
-        defer { defaults.removePersistentDomain(forName: name) }
+        defer { defaults.removeTestSuite(named: name) }
         let settings = SettingsStore(defaults: defaults)
         let localization = Localization(
             defaults: defaults,
@@ -193,7 +193,7 @@ final class IconGuideRedesignTests: XCTestCase {
     func testFooterPrimaryActionStaysFixedAcrossPages() throws {
         let name = "IconGuideRedesignTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: name)!
-        defer { defaults.removePersistentDomain(forName: name) }
+        defer { defaults.removeTestSuite(named: name) }
         let settings = SettingsStore(defaults: defaults)
         let localization = Localization(
             defaults: defaults,

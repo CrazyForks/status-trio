@@ -62,7 +62,7 @@ final class CompactAudioLayoutTests: XCTestCase {
     ) throws -> NSHostingView<AnyView> {
         let suite = "StatusTrioCoreTests.CompactAudio.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
-        defer { defaults.removePersistentDomain(forName: suite) }
+        defer { defaults.removeTestSuite(named: suite) }
         let localization = Localization(defaults: defaults, preferredLanguages: [language.rawValue])
         let settings = SettingsStore(defaults: defaults)
         settings.alwaysShowsAllOutputDevices = alwaysShowAll

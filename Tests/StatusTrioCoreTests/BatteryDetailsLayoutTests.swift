@@ -22,7 +22,7 @@ final class BatteryDetailsLayoutTests: XCTestCase {
                         collecting: Bool = false) async throws -> NSSize {
         let suite = "StatusTrioCoreTests.BatteryDetails.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
-        defer { defaults.removePersistentDomain(forName: suite) }
+        defer { defaults.removeTestSuite(named: suite) }
         let localization = Localization(defaults: defaults, preferredLanguages: ["en"])
         localization.setPreference(.language(language))
         let fixture = BatteryDetails(
