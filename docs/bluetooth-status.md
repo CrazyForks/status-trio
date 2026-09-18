@@ -46,10 +46,18 @@ exposes no reliable model table for registry product IDs. Every other connected
 accessory stays name-only — its detail belongs on the device page.
 
 Battery levels come from the same `system_profiler SPBluetoothDataType` report.
-The summary therefore enables that read only when a connected AirPods is present
-and the **Show Bluetooth battery levels** setting is on. The name is the gate,
-not the presence of a readable level, so a just-connected AirPods still triggers
-the first read.
+Two surfaces share that read — the summary row (for the AirPods it reports) and
+the detail page (for every device) — so the controller tracks them as *claims*
+keyed by token rather than one boolean. SwiftUI may run the outgoing surface's
+disappear hook either before or after the incoming surface's appear hook, and a
+boolean let the last writer win: leaving the summary switched the read off right
+after the detail page had asked for it, so every device row showed "Unavailable"
+while the summary still showed the level it had just read. A claim count makes
+the outcome the same in either order; the read runs while any claim is held and
+stops when the last is released. The summary claims only while the setting is on
+and a connected AirPods is present — the name is the gate, not the presence of a
+readable level, so a just-connected AirPods still triggers the first read. The
+detail page claims from the setting alone. Closing the popover drops every claim.
 
 ## Activation and permission
 

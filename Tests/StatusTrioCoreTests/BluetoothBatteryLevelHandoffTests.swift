@@ -51,9 +51,14 @@ final class BluetoothBatteryLevelHandoffTests: XCTestCase {
             "the detail page must receive the levels it reads"
         )
 
-        // Leaving the detail page is what releases the read.
+        // Going back to the summary: whichever order SwiftUI runs the two
+        // hooks in, the summary keeps its own claim, so the read stays on.
         model.showsDetail = false
         await settle()
+        XCTAssertTrue(controller.isBatteryLevelsRequested)
+
+        // Closing the popover releases every claim.
+        controller.deactivate()
         XCTAssertFalse(controller.isBatteryLevelsRequested)
     }
 

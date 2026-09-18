@@ -301,7 +301,8 @@ final class BluetoothDeviceController: ObservableObject {
         guard isActive else { return }
         isActive = false
         _ = requestGate.advance()
-        setBatteryLevelsEnabled(false)
+        batteryLevelRequests.removeAll()
+        updateBatteryLevelRequests()
         periodicRefreshTask?.cancel()
         periodicRefreshTask = nil
         removeSystemObservers()
@@ -336,21 +337,46 @@ final class BluetoothDeviceController: ObservableObject {
         }
     }
 
-    func setBatteryLevelsEnabled(_ enabled: Bool) {
+    /// Surfaces that need battery levels, by token. Two of them share this need
+    /// — the summary row (for the AirPods it reports) and the detail page (for
+    /// every device) — and SwiftUI may run the outgoing surface's disappear hook
+    /// either before or after the incoming surface's appear hook. A count makes
+    /// the outcome independent of that order, where a single boolean let the
+    /// last writer win and left the detail page reading nothing.
+    private var batteryLevelRequests: Set<String> = []
+
+    /// Claims battery levels for a surface. The read starts when the first
+    /// claim arrives and stops when the last one is released.
+    func requestBatteryLevels(_ token: String) {
+        guard batteryLevelRequests.insert(token).inserted else {
+            // The claim is already held: keep the reading warm.
+            refreshBatteryLevels()
+            return
+        }
+        updateBatteryLevelRequests()
+    }
+
+    /// Releases a surface's claim, whatever the order it arrives in.
+    func releaseBatteryLevels(_ token: String) {
+        guard batteryLevelRequests.remove(token) != nil else { return }
+        updateBatteryLevelRequests()
+    }
+
+    private func updateBatteryLevelRequests() {
+        let enabled = !batteryLevelRequests.isEmpty
         guard batteryLevelsEnabled != enabled else {
             if enabled { refreshBatteryLevels() }
             return
         }
         batteryLevelsEnabled = enabled
+        // Levels read for a released claim must not outlive it.
         clearBatteryLevels()
         if enabled {
             refreshBatteryLevels()
         }
     }
 
-    /// Whether a visible surface has asked for battery levels. This is shared
-    /// state between the summary row and the detail page, so it is observable
-    /// rather than private.
+    /// Whether a visible surface has asked for battery levels.
     var isBatteryLevelsRequested: Bool {
         batteryLevelsEnabled
     }

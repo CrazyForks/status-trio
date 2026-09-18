@@ -40,17 +40,19 @@ struct BluetoothStatusView: View {
                 .frame(width: 24, height: 24)
         }
         .task(id: batteryReadTaskID) {
-            // Reading levels launches system_profiler, so it runs only for the
-            // AirPods the summary actually reports. This view deliberately has
-            // no `onDisappear`: SwiftUI runs the outgoing summary's disappear
-            // hook *after* the incoming detail page has asked for its levels,
-            // so switching off here would leave the detail page showing
-            // "Unavailable" for every device. The detail page owns releasing it.
-            controller.setBatteryLevelsEnabled(
-                showsBatteryLevels && summaryPresentation.hasConnectedAirPods
-            )
+            // Reading levels launches system_profiler, so the claim is held only
+            // while the summary actually reports an AirPods. A claim rather than
+            // a toggle keeps this correct whichever order SwiftUI runs it in
+            // against the detail page's own claim.
+            guard showsBatteryLevels, summaryPresentation.hasConnectedAirPods else { return }
+            controller.requestBatteryLevels(Self.summaryBatteryLevelsToken)
+        }
+        .onDisappear {
+            controller.releaseBatteryLevels(Self.summaryBatteryLevelsToken)
         }
     }
+
+    private static let summaryBatteryLevelsToken = "bluetooth.summary"
 
     /// The task re-runs when the level setting or one of the device names
     /// changes. The name also covers an AirPods swapping to another device at
@@ -170,14 +172,26 @@ struct BluetoothDeviceListView: View {
                 .buttonStyle(.plain)
         }
         .onAppear {
-            controller.setBatteryLevelsEnabled(showsBatteryLevels)
+            updateBatteryLevelClaim()
             controller.activate()
         }
-        .onChange(of: showsBatteryLevels) { _, enabled in
-            controller.setBatteryLevelsEnabled(enabled)
+        .onChange(of: showsBatteryLevels) { _, _ in
+            updateBatteryLevelClaim()
         }
         .onDisappear {
-            controller.setBatteryLevelsEnabled(false)
+            controller.releaseBatteryLevels(Self.detailBatteryLevelsToken)
+        }
+    }
+
+    private static let detailBatteryLevelsToken = "bluetooth.detail"
+
+    /// The detail page is the only surface that reports levels for every
+    /// device, so it claims the read directly from the setting.
+    private func updateBatteryLevelClaim() {
+        if showsBatteryLevels {
+            controller.requestBatteryLevels(Self.detailBatteryLevelsToken)
+        } else {
+            controller.releaseBatteryLevels(Self.detailBatteryLevelsToken)
         }
     }
 
