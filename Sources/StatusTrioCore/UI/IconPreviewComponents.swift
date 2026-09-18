@@ -49,8 +49,6 @@ struct MenuBarPreviewBar: View {
                 .frame(width: iconSize, height: iconSize)
                 .accessibilityHidden(true)
 
-                Spacer(minLength: 16)
-
                 rightContext
             }
             .padding(.horizontal, 14)
@@ -60,26 +58,7 @@ struct MenuBarPreviewBar: View {
     }
 
     private var backdrop: some View {
-        RoundedRectangle(cornerRadius: 10, style: .continuous)
-            .fill(
-                isDarkBackground
-                    ? LinearGradient(
-                        colors: [
-                            Color(red: 0.16, green: 0.16, blue: 0.19),
-                            Color(red: 0.10, green: 0.10, blue: 0.12)
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                    : LinearGradient(
-                        colors: [
-                            Color(red: 0.96, green: 0.96, blue: 0.98),
-                            Color(red: 0.89, green: 0.89, blue: 0.92)
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-            )
+        MenuBarPreviewBackdrop(isDarkBackground: isDarkBackground, cornerRadius: 10)
             .overlay(
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
                     .strokeBorder(

@@ -65,9 +65,29 @@ final class StatusBarRenderCacheTests: XCTestCase {
         XCTAssertEqual(MenuBarStatus(snapshot: first), MenuBarStatus(snapshot: second))
     }
 
+    /// The ring stroke width is part of both option structs, so the menu bar
+    /// cache must treat it as a change and redraw instead of keeping a stale
+    /// image.
+    func testRingStrokeWidthChangeRendersAgain() {
+        var cache = StatusBarRenderCache()
+        let light = makeKey(
+            appearance: "darkAqua",
+            options: BatteryIconOptions(ringStrokeScale: RingStrokeStyle.light.scale)
+        )
+        let bold = makeKey(
+            appearance: "darkAqua",
+            options: BatteryIconOptions(ringStrokeScale: RingStrokeStyle.bold.scale)
+        )
+
+        XCTAssertTrue(cache.shouldRender(light))
+        XCTAssertTrue(cache.shouldRender(bold))
+        XCTAssertFalse(cache.shouldRender(bold))
+    }
+
     private func makeKey(
         volumeScalar: Double = 0.5,
         appearance: String,
+        options: BatteryIconOptions = .standard,
         bluetoothAudioOptions: BluetoothAudioIconOptions = .standard
     ) -> StatusBarRenderKey {
         StatusBarRenderKey(
@@ -75,7 +95,7 @@ final class StatusBarRenderCacheTests: XCTestCase {
                 snapshot: makeSnapshot(volumeScalar: volumeScalar)
             ),
             iconSize: 28,
-            options: .standard,
+            options: options,
             connectionOptions: .standard,
             bluetoothAudioOptions: bluetoothAudioOptions,
             appearanceName: appearance

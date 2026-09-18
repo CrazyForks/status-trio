@@ -145,6 +145,57 @@ final class DockIconRendererTests: XCTestCase {
         XCTAssertNotEqual(withValue.bytes, withoutValue.bytes)
     }
 
+    /// Only the battery ring width varies; the volume options stay on the
+    /// regular width, so the battery multiplier is what must change the ink.
+    func testRingStrokeStyleChangesDockBatteryInk() throws {
+        let status = MenuBarStatus.placeholder
+        let regularVolume = VolumeIconOptions(ringStrokeScale: RingStrokeStyle.regular.scale)
+
+        let lightPixels = try pixels(
+            for: status,
+            options: BatteryIconOptions(ringStrokeScale: RingStrokeStyle.light.scale),
+            volumeOptions: regularVolume
+        )
+        let boldPixels = try pixels(
+            for: status,
+            options: BatteryIconOptions(ringStrokeScale: RingStrokeStyle.bold.scale),
+            volumeOptions: regularVolume
+        )
+
+        XCTAssertNotEqual(lightPixels.bytes, boldPixels.bytes)
+    }
+
+    /// Only the volume dots vary; the battery ring stays on the regular width.
+    func testRingStrokeStyleChangesDockVolumeInk() throws {
+        let status = MenuBarStatus(
+            snapshot: StatusSnapshot(
+                battery: .placeholder,
+                wifi: .placeholder,
+                volume: VolumeStatus(scalar: 0.6, isMuted: false, deviceName: nil)
+            )
+        )
+        let regularBattery = BatteryIconOptions(ringStrokeScale: RingStrokeStyle.regular.scale)
+
+        let lightPixels = try pixels(
+            for: status,
+            options: regularBattery,
+            volumeOptions: VolumeIconOptions(
+                displayStyle: .dots,
+                ringStrokeScale: RingStrokeStyle.light.scale
+            )
+        )
+        let boldPixels = try pixels(
+            for: status,
+            options: regularBattery,
+            volumeOptions: VolumeIconOptions(
+                displayStyle: .dots,
+                ringStrokeScale: RingStrokeStyle.bold.scale
+            )
+        )
+
+        XCTAssertNotEqual(lightPixels.bytes, boldPixels.bytes)
+    }
+
     func testRendererProducesImageForEveryPlacementPreviewState() throws {
         XCTAssertNotNil(DockIconRenderer.image(status: .placeholder))
     }
@@ -153,12 +204,14 @@ final class DockIconRendererTests: XCTestCase {
         for status: MenuBarStatus,
         options: BatteryIconOptions = .standard,
         connectionOptions: ConnectionIconOptions = .standard,
+        volumeOptions: VolumeIconOptions = .standard,
         backgroundStyle: DockIconBackgroundStyle = .dark
     ) throws -> PixelBuffer {
         let image = try XCTUnwrap(DockIconRenderer.image(
             status: status,
             options: options,
             connectionOptions: connectionOptions,
+            volumeOptions: volumeOptions,
             backgroundStyle: backgroundStyle
         ))
         let representation = try XCTUnwrap(

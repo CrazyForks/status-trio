@@ -25,6 +25,7 @@
 "settings.appIconPlacement.menuBar" = "Barra de menús";
 "settings.appIconPlacement.dock" = "Dock";
 "settings.appIconPlacement.both" = "Ambos";
+"settings.appIconPlacement.dockExitHint" = "El icono del Dock desaparecerá tras cerrar Ajustes";
 "settings.appIcon.dockGroup" = "Icono del Dock";
 "settings.dockIconBackground" = "Fondo del icono del Dock";
 "settings.dockIconBackground.description" = "Se aplica al icono dinámico del Dock. «Seguir el sistema» lee «Estilo de iconos y widgets» en Ajustes del Sistema › Apariencia (macOS 15 o posterior).";
@@ -34,6 +35,12 @@
 "settings.iconSize" = "Tamaño del icono";
 "settings.iconSize.accessibilityValue" = "%d puntos";
 "settings.iconSize.description" = "Ajusta el tamaño de representación del icono de la barra de menús entre 16 y 36 pt. El icono del Dock mantiene su tamaño de diseño fijo.";
+"settings.ringStrokeStyle" = "Grosor del anillo exterior";
+"settings.ringStrokeStyle.description" = "Ajusta el grosor de línea del anillo de estado en la barra de menús y en el Dock.";
+"settings.ringStrokeStyle.light" = "Fino";
+"settings.ringStrokeStyle.regular" = "Normal";
+"settings.ringStrokeStyle.bold" = "Grueso";
+"settings.statusIcon.title" = "Icono de estado";
 "settings.tab.appIcon" = "Icono de la app";
 "settings.tab.battery" = "Batería";
 "settings.tab.network" = "Red";

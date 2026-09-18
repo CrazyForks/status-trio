@@ -25,6 +25,7 @@
 "settings.appIconPlacement.menuBar" = "菜单栏";
 "settings.appIconPlacement.dock" = "程序坞";
 "settings.appIconPlacement.both" = "两处";
+"settings.appIconPlacement.dockExitHint" = "关闭设置后，程序坞图标将自动消失";
 "settings.appIcon.dockGroup" = "Dock 图标";
 "settings.dockIconBackground" = "Dock 图标背景";
 "settings.dockIconBackground.description" = "仅影响程序坞中显示的实时图标。「跟随系统」读取「系统设置 › 外观 › 图标与小组件样式」（macOS 15 及以上）。";
@@ -34,6 +35,12 @@
 "settings.iconSize" = "图标渲染范围";
 "settings.iconSize.accessibilityValue" = "%d 点";
 "settings.iconSize.description" = "调整菜单栏图标的渲染尺寸，可选 16–36 pt。Dock 图标使用固定设计尺寸。";
+"settings.ringStrokeStyle" = "外环线条粗细";
+"settings.ringStrokeStyle.description" = "调整菜单栏与程序坞图标状态环线条的粗细。";
+"settings.ringStrokeStyle.light" = "细";
+"settings.ringStrokeStyle.regular" = "正常";
+"settings.ringStrokeStyle.bold" = "粗";
+"settings.statusIcon.title" = "状态图标";
 "settings.tab.appIcon" = "应用图标";
 "settings.tab.battery" = "电池";
 "settings.tab.network" = "网络";

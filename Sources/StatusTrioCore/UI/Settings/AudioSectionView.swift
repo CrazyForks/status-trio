@@ -25,25 +25,29 @@ struct AudioSectionView: View {
 
     private var indicatorStyleGroup: some View {
         SettingsGroup(localization.string(.settingsAudioIndicatorStyleTitle)) {
-            SettingsRow(
+            SettingsPictureRow(
                 "waveform",
                 tint: .indigo,
                 title: localization.string(.settingsAudioIndicatorStyle),
-                subtitle: localization.string(.settingsAudioIndicatorStyleDescription)
-            ) {
-                Picker(
-                    localization.string(.settingsAudioIndicatorStyle),
-                    selection: $store.volumeDisplayStyle
-                ) {
-                    Text(localization.string(.settingsAudioIndicatorStyleDots))
-                        .tag(VolumeDisplayStyle.dots)
-                    Text(localization.string(.settingsAudioIndicatorStyleArc))
-                        .tag(VolumeDisplayStyle.arc)
+                subtitle: localization.string(.settingsAudioIndicatorStyleDescription),
+                selection: $store.volumeDisplayStyle,
+                options: [VolumeDisplayStyle.dots, .arc],
+                previewSize: CGSize(width: 68, height: 44),
+                caption: { style in
+                    switch style {
+                    case .dots: return localization.string(.settingsAudioIndicatorStyleDots)
+                    case .arc: return localization.string(.settingsAudioIndicatorStyleArc)
+                    }
+                },
+                preview: { style in
+                    VolumeIndicatorPreview(
+                        style: style,
+                        isDarkBackground: previewIsDark,
+                        store: store,
+                        statusStore: statusStore
+                    )
                 }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .frame(width: 150)
-            }
+            )
         }
     }
 

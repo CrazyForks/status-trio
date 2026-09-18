@@ -39,6 +39,8 @@ final class SettingsStore: ObservableObject {
     static let wifiSymbolScaleDefaultsKey = "wifiSymbolScale"
     static let defaultVolumeDisplayStyle: VolumeDisplayStyle = .dots
     static let volumeDisplayStyleDefaultsKey = "volumeDisplayStyle"
+    static let defaultRingStrokeStyle: RingStrokeStyle = .regular
+    static let ringStrokeStyleDefaultsKey = "ringStrokeStyle"
 
     static let refreshIntervalRange: ClosedRange<Double> = 5...60
     static let defaultRefreshIntervalSeconds: Double = 5
@@ -249,6 +251,12 @@ final class SettingsStore: ObservableObject {
         }
     }
 
+    @Published var ringStrokeStyle: RingStrokeStyle {
+        didSet {
+            defaults.set(ringStrokeStyle.rawValue, forKey: Self.ringStrokeStyleDefaultsKey)
+        }
+    }
+
     @Published var refreshIntervalSeconds: Double {
         didSet {
             let clamped = Self.clampedRefreshInterval(refreshIntervalSeconds)
@@ -424,7 +432,8 @@ final class SettingsStore: ObservableObject {
             usesStatusColors: usesBatteryStatusColors,
             criticalThreshold: Int(batteryCriticalThreshold.rounded()),
             showsPercentageWhenConnected: showsPercentageWhenConnected,
-            textScale: batterySymbolScale * BatteryIconOptions.defaultTextScale
+            textScale: batterySymbolScale * BatteryIconOptions.defaultTextScale,
+            ringStrokeScale: ringStrokeStyle.scale
         )
     }
 
@@ -448,7 +457,10 @@ final class SettingsStore: ObservableObject {
     }
 
     var volumeIconOptions: VolumeIconOptions {
-        VolumeIconOptions(displayStyle: volumeDisplayStyle)
+        VolumeIconOptions(
+            displayStyle: volumeDisplayStyle,
+            ringStrokeScale: ringStrokeStyle.scale
+        )
     }
 
     private let defaults: UserDefaults
@@ -479,6 +491,7 @@ final class SettingsStore: ObservableObject {
         let storedBluetoothSymbolScale = (defaults.object(forKey: Self.bluetoothSymbolScaleDefaultsKey) as? NSNumber)?.doubleValue
         let storedWifiSymbolScale = (defaults.object(forKey: Self.wifiSymbolScaleDefaultsKey) as? NSNumber)?.doubleValue
         let storedVolumeDisplayStyle = defaults.string(forKey: Self.volumeDisplayStyleDefaultsKey)
+        let storedRingStrokeStyle = defaults.string(forKey: Self.ringStrokeStyleDefaultsKey)
         let storedOutputDeviceOrder = defaults.stringArray(forKey: Self.outputDeviceOrderDefaultsKey) ?? []
         let storedPopupSectionOrder = defaults.stringArray(
             forKey: Self.popupSectionOrderDefaultsKey
@@ -549,6 +562,9 @@ final class SettingsStore: ObservableObject {
         self.volumeDisplayStyle = storedVolumeDisplayStyle
             .flatMap(VolumeDisplayStyle.init(rawValue:))
             ?? Self.defaultVolumeDisplayStyle
+        self.ringStrokeStyle = storedRingStrokeStyle
+            .flatMap(RingStrokeStyle.init(rawValue:))
+            ?? Self.defaultRingStrokeStyle
         self.refreshIntervalSeconds = Self.clampedRefreshInterval(
             storedRefreshInterval ?? Self.defaultRefreshIntervalSeconds
         )

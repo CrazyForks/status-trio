@@ -33,6 +33,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     private var batteryOptionsCancellable: AnyCancellable?
     private var connectionIconOptionsCancellable: AnyCancellable?
     private var volumeOptionsCancellable: AnyCancellable?
+    private var ringStrokeStyleCancellable: AnyCancellable?
     private var bluetoothAudioOptionsCancellable: AnyCancellable?
     private var screenParametersCancellable: AnyCancellable?
     private var refreshIntervalCancellable: AnyCancellable?
@@ -128,7 +129,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
                 usesStatusColors: usesStatusColors,
                 criticalThreshold: Int(criticalThreshold.rounded()),
                 showsPercentageWhenConnected: showsPercentageWhenConnected,
-                textScale: symbolScale * BatteryIconOptions.defaultTextScale
+                textScale: symbolScale * BatteryIconOptions.defaultTextScale,
+                ringStrokeScale: self.settings.ringStrokeStyle.scale
             )
             self.render(
                 status: MenuBarStatus(snapshot: self.store.snapshot),
@@ -161,16 +163,15 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
 
         volumeOptionsCancellable = settings.$volumeDisplayStyle
             .sink { [weak self] _ in
-                guard let self else { return }
-                self.render(
-                    status: MenuBarStatus(snapshot: self.store.snapshot),
-                    iconSize: self.settings.iconSize,
-                options: self.settings.batteryIconOptions,
-                connectionOptions: self.settings.connectionIconOptions,
-                volumeOptions: self.settings.volumeIconOptions,
-                bluetoothAudioOptions: self.settings.bluetoothAudioIconOptions
-            )
-        }
+                self?.renderLatestSnapshot()
+            }
+
+        // The ring stroke width is part of both the battery and the volume option
+        // structs, so a dedicated subscription keeps the menu bar in step with it.
+        ringStrokeStyleCancellable = settings.$ringStrokeStyle
+            .sink { [weak self] _ in
+                self?.renderLatestSnapshot()
+            }
 
         bluetoothAudioOptionsCancellable = Publishers.CombineLatest4(
             settings.$replacesNetworkIconWithBluetoothAudio,

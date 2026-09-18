@@ -308,7 +308,7 @@ enum StatusIconRenderer {
         case .percentage, .empty: StatusIconGeometry.batteryValueTopGapWidth
         }
 
-        context.setLineWidth(8)
+        context.setLineWidth(8 * CGFloat(options.ringStrokeScale))
         context.setStrokeColor(foreground.copy(alpha: inactiveTrackAlpha) ?? foreground)
         context.addPath(StatusIconGeometry.batteryTrack(
             hasTopGap: hasTopGap,
@@ -864,9 +864,9 @@ enum StatusIconRenderer {
         switch options.displayStyle {
         case .dots:
             let level = StatusMappings.volumeSteps(scalar: volume.scalar, isMuted: volume.isMuted) ?? 0
+            let radius = StatusIconGeometry.volumeDotRadius * CGFloat(options.dotRadiusScale)
             for (index, point) in StatusIconGeometry.volumeDots().enumerated() {
                 context.setFillColor(index < level ? activeColor : hiddenColor)
-                let radius = StatusIconGeometry.volumeDotRadius
                 context.fillEllipse(
                     in: CGRect(
                         x: point.x - radius,
@@ -878,7 +878,7 @@ enum StatusIconRenderer {
             }
         case .arc:
             // Continuous arc bounded between Dot 0 (left, ~122°) and Dot 3 (right, ~59°)
-            context.setLineWidth(7)
+            context.setLineWidth(7 * CGFloat(options.ringStrokeScale))
             context.setLineCap(.round)
             context.setStrokeColor(hiddenColor)
             context.addPath(StatusIconGeometry.volumeArcTrack())

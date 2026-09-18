@@ -25,6 +25,7 @@
 "settings.appIconPlacement.menuBar" = "メニューバー";
 "settings.appIconPlacement.dock" = "Dock";
 "settings.appIconPlacement.both" = "両方";
+"settings.appIconPlacement.dockExitHint" = "設定を閉じると Dock アイコンは非表示になります";
 "settings.appIcon.dockGroup" = "Dock アイコン";
 "settings.dockIconBackground" = "Dock アイコンの背景";
 "settings.dockIconBackground.description" = "Dock に表示されるライブアイコンに適用されます。「システム設定を使用」は「システム設定 › 外観 › アイコンとウィジェットのスタイル」を参照します（macOS 15 以降）。";
@@ -34,6 +35,12 @@
 "settings.iconSize" = "アイコンの表示サイズ";
 "settings.iconSize.accessibilityValue" = "%d ポイント";
 "settings.iconSize.description" = "メニューバーアイコンの描画サイズを 16〜36 pt で調整します。Dock アイコンは固定のデザインサイズを使用します。";
+"settings.ringStrokeStyle" = "外枠リングの太さ";
+"settings.ringStrokeStyle.description" = "メニューバーと Dock のステータスリングの線の太さを選択します。";
+"settings.ringStrokeStyle.light" = "細め";
+"settings.ringStrokeStyle.regular" = "標準";
+"settings.ringStrokeStyle.bold" = "太め";
+"settings.statusIcon.title" = "ステータスアイコン";
 "settings.tab.appIcon" = "アプリアイコン";
 "settings.tab.battery" = "バッテリー";
 "settings.tab.network" = "ネットワーク";

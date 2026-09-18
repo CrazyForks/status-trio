@@ -757,6 +757,95 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(published, [.light, .system])
     }
 
+    func testRingStrokeStyleDefaultsToRegularAndFeedsOptions() {
+        let store = SettingsStore(defaults: makeSuite().defaults)
+
+        XCTAssertEqual(store.ringStrokeStyle, .regular)
+        XCTAssertEqual(store.batteryIconOptions.ringStrokeScale, RingStrokeStyle.regular.scale)
+        XCTAssertEqual(store.volumeIconOptions.ringStrokeScale, RingStrokeStyle.regular.scale)
+    }
+
+    func testRingStrokeStylePersistsAndFeedsOptions() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+
+        let first = SettingsStore(defaults: suite.defaults)
+        first.ringStrokeStyle = .bold
+        XCTAssertEqual(first.batteryIconOptions.ringStrokeScale, RingStrokeStyle.bold.scale)
+        XCTAssertEqual(first.volumeIconOptions.ringStrokeScale, RingStrokeStyle.bold.scale)
+
+        let second = SettingsStore(defaults: suite.defaults)
+        XCTAssertEqual(second.ringStrokeStyle, .bold)
+        XCTAssertEqual(second.batteryIconOptions.ringStrokeScale, RingStrokeStyle.bold.scale)
+        XCTAssertEqual(second.volumeIconOptions.ringStrokeScale, RingStrokeStyle.bold.scale)
+    }
+
+    func testUnknownRingStrokeStyleFallsBackToRegular() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+        suite.defaults.set(
+            "ultra-heavy",
+            forKey: SettingsStore.ringStrokeStyleDefaultsKey
+        )
+
+        let store = SettingsStore(defaults: suite.defaults)
+        XCTAssertEqual(store.ringStrokeStyle, .regular)
+        XCTAssertEqual(store.batteryIconOptions.ringStrokeScale, RingStrokeStyle.regular.scale)
+        XCTAssertEqual(store.volumeIconOptions.ringStrokeScale, RingStrokeStyle.regular.scale)
+    }
+
+    func testRingStrokeStylePublishesChanges() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+
+        let store = SettingsStore(defaults: suite.defaults)
+        var published: [RingStrokeStyle] = []
+        let cancellable = store.$ringStrokeStyle.dropFirst().sink {
+            published.append($0)
+        }
+        defer { cancellable.cancel() }
+
+        store.ringStrokeStyle = .light
+        store.ringStrokeStyle = .bold
+
+        XCTAssertEqual(published, [.light, .bold])
+    }
+
+    func testRingStrokeStyleAcceptsDescriptiveSynonyms() {
+        XCTAssertEqual(RingStrokeStyle(rawValue: "standard"), .light)
+        XCTAssertEqual(RingStrokeStyle(rawValue: "normal"), .regular)
+        XCTAssertEqual(RingStrokeStyle(rawValue: "heavy"), .bold)
+        XCTAssertNil(RingStrokeStyle(rawValue: "ultra-heavy"))
+        XCTAssertEqual(RingStrokeStyle.allCases, [.light, .regular, .bold])
+    }
+
+    /// `.standard` is what the previews, the icon guide, and many tests use, so
+    /// it has to track the enum rather than a second hard-coded number.
+    func testStandardOptionsShareTheRegularStrokeWidth() {
+        XCTAssertEqual(BatteryIconOptions.defaultRingStrokeScale, RingStrokeStyle.regular.scale)
+        XCTAssertEqual(VolumeIconOptions.defaultRingStrokeScale, RingStrokeStyle.regular.scale)
+        XCTAssertEqual(BatteryIconOptions.standard.ringStrokeScale, RingStrokeStyle.regular.scale)
+        XCTAssertEqual(VolumeIconOptions.standard.ringStrokeScale, RingStrokeStyle.regular.scale)
+    }
+
+    func testVolumeDotRadiusScalesMoreGentlyThanTheRing() {
+        XCTAssertEqual(
+            VolumeIconOptions(ringStrokeScale: RingStrokeStyle.light.scale).dotRadiusScale,
+            1,
+            accuracy: 0.0001
+        )
+        XCTAssertEqual(
+            VolumeIconOptions(ringStrokeScale: RingStrokeStyle.regular.scale).dotRadiusScale,
+            1.125,
+            accuracy: 0.0001
+        )
+        XCTAssertEqual(
+            VolumeIconOptions(ringStrokeScale: RingStrokeStyle.bold.scale).dotRadiusScale,
+            1.25,
+            accuracy: 0.0001
+        )
+    }
+
     private func makeSuite() -> (defaults: UserDefaults, name: String) {
         let name = "StatusTrioCoreTests.SettingsStore.\(UUID().uuidString)"
         guard let defaults = UserDefaults(suiteName: name) else {

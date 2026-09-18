@@ -193,6 +193,205 @@ struct SettingsMenuRow<T: Hashable & Identifiable>: View {
     }
 }
 
+/// Extension for concentric Apple-style selection rings around preview cards.
+extension View {
+    /// Concentric with the picture card: the ring's inner corner is the card's
+    /// own corner plus the gap, matching macOS System Settings Appearance selection ring.
+    ///
+    /// Keyboard focus is deliberately left to the system focus effect: the option
+    /// buttons are focusable but no longer disable it, so this ring communicates
+    /// selection and is never the only indicator of where focus is.
+    func selectionRing(
+        _ isOn: Bool,
+        cornerRadius: CGFloat = 6,
+        style: RoundedCornerStyle = .continuous
+    ) -> some View {
+        let gap: CGFloat = 2.5
+        let width: CGFloat = 2.5
+        return padding(gap + width)
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius + gap + width, style: style)
+                    .strokeBorder(isOn ? Color.accentColor : Color.clear, lineWidth: width)
+            )
+    }
+}
+
+/// A row whose choices are visual preview cards matching macOS System Settings Appearance and Icon style pickers.
+struct SettingsPictureRow<T: Hashable & Identifiable, Leading: View, Preview: View>: View {
+    let title: String
+    var subtitle: String? = nil
+    @Binding var selection: T
+    let options: [T]
+    var previewSize: CGSize = CGSize(width: 68, height: 44)
+    @ViewBuilder var leading: Leading
+    let caption: (T) -> String
+    @ViewBuilder let preview: (T) -> Preview
+
+    @FocusState private var focusedOption: T?
+    @Environment(\.layoutDirection) private var layoutDirection
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .top, spacing: 12) {
+                if !(Leading.self == EmptyView.self) {
+                    leading
+                        .frame(width: SettingsMetrics.iconSize, height: SettingsMetrics.iconSize)
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.system(size: 13, weight: .regular))
+                    if let subtitle {
+                        Text(subtitle)
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+
+                Spacer(minLength: 12)
+
+                HStack(alignment: .top, spacing: 10) {
+                    ForEach(options) { option in
+                        let isSelected = selection == option
+                        Button {
+                            selectOption(option)
+                        } label: {
+                            VStack(spacing: 5) {
+                                preview(option)
+                                    .frame(width: previewSize.width, height: previewSize.height)
+                                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                            .strokeBorder(Color.primary.opacity(0.12), lineWidth: 1)
+                                    )
+                                    .selectionRing(isSelected, cornerRadius: 6)
+
+                                // The caption is capped to the card width and may
+                                // wrap to two lines, so a long translation cannot
+                                // stretch the row or push the cards out of the group.
+                                Text(caption(option))
+                                    .font(.system(size: 11, weight: isSelected ? .semibold : .regular))
+                                    .foregroundStyle(isSelected ? .primary : .secondary)
+                                    .multilineTextAlignment(.center)
+                                    .lineLimit(2)
+                                    .frame(width: previewSize.width)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        .focusable()
+                        .focused($focusedOption, equals: option)
+                        .onKeyPress(.leftArrow) {
+                            selectRelative(offset: backwardStep)
+                            return .handled
+                        }
+                        .onKeyPress(.rightArrow) {
+                            selectRelative(offset: forwardStep)
+                            return .handled
+                        }
+                        .onKeyPress(.upArrow) {
+                            selectRelative(offset: -1)
+                            return .handled
+                        }
+                        .onKeyPress(.downArrow) {
+                            selectRelative(offset: 1)
+                            return .handled
+                        }
+                        .onKeyPress(.space) {
+                            selectOption(option)
+                            return .handled
+                        }
+                        .onKeyPress(.return) {
+                            selectOption(option)
+                            return .handled
+                        }
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel(caption(option))
+                        .accessibilityAddTraits(isSelected ? [.isSelected, .isButton] : [.isButton])
+                    }
+                }
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel(title)
+            }
+        }
+        .padding(.horizontal, SettingsMetrics.rowPaddingH)
+        .padding(.vertical, SettingsMetrics.rowPaddingV)
+    }
+
+    /// Left and right follow the reading direction: the option row mirrors in a
+    /// right-to-left layout, so an unconditional -1/+1 would move the selection
+    /// the wrong way on screen in Arabic.
+    private var backwardStep: Int { layoutDirection == .rightToLeft ? 1 : -1 }
+    private var forwardStep: Int { -backwardStep }
+
+    private func selectOption(_ target: T) {
+        withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.15)) {
+            selection = target
+            focusedOption = target
+        }
+    }
+
+    /// Wraps at both ends so repeated presses keep cycling through the options.
+    private func selectRelative(offset: Int) {
+        guard !options.isEmpty else { return }
+        let current = focusedOption ?? selection
+        guard let currentIndex = options.firstIndex(of: current) else { return }
+        let count = options.count
+        let newIndex = ((currentIndex + offset) % count + count) % count
+        selectOption(options[newIndex])
+    }
+}
+
+extension SettingsPictureRow where Leading == EmptyView {
+    init(
+        title: String,
+        subtitle: String? = nil,
+        selection: Binding<T>,
+        options: [T],
+        previewSize: CGSize = CGSize(width: 68, height: 44),
+        caption: @escaping (T) -> String,
+        @ViewBuilder preview: @escaping (T) -> Preview
+    ) {
+        self.init(
+            title: title,
+            subtitle: subtitle,
+            selection: selection,
+            options: options,
+            previewSize: previewSize,
+            leading: { EmptyView() },
+            caption: caption,
+            preview: preview
+        )
+    }
+}
+
+extension SettingsPictureRow where Leading == SettingsIcon {
+    init(
+        _ symbol: String,
+        tint: Color = .accentColor,
+        title: String,
+        subtitle: String? = nil,
+        selection: Binding<T>,
+        options: [T],
+        previewSize: CGSize = CGSize(width: 68, height: 44),
+        caption: @escaping (T) -> String,
+        @ViewBuilder preview: @escaping (T) -> Preview
+    ) {
+        self.init(
+            title: title,
+            subtitle: subtitle,
+            selection: selection,
+            options: options,
+            previewSize: previewSize,
+            leading: { SettingsIcon(symbol: symbol, tint: tint) },
+            caption: caption,
+            preview: preview
+        )
+    }
+}
+
+
 /// A full-width custom row, useful for sliders and embedded views.
 struct SettingsCustomRow<Leading: View, Content: View>: View {
     var title: String? = nil
