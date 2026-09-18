@@ -20,10 +20,26 @@
 - `build`：显式的数字构建号，必须大于 appcast 中已发布的最大构建号
 - `publish=false`：只构建 DMG，并上传为 Actions artifact
 - `publish=true`：创建 Release、创建 tag，并更新 Sparkle appcast
-- `release_notes`：英文说明，每行一个列表项；留空时根据上一个 tag 到当前提交自动生成
-- `release_notes_zh`：中文说明，每行一个列表项；`publish=true` 时必填
 
-正式发布统一使用手动 workflow，因为 `publish=true` 需要同时提供双语说明。workflow 会在 GitHub Release 不存在对应 tag 时自动从 `main` 创建 tag。
+文案不再通过输入传入，改为读取仓库内的 `release-notes/<version>/`。每个 dispatch（含 `publish=false` 预检）都会运行 `scripts/validate-appcast-notes.sh`，打印语言覆盖表，并把生成的 appcast 条目干跑到临时文件后断言 XML 合法、变体齐全、`en` 排第一、无未替换占位符。
+
+正式发布统一使用手动 workflow。workflow 会在 GitHub Release 不存在对应 tag 时自动从 `main` 创建 tag。
+
+## 文案目录
+
+每个版本一个目录，每种语言一个文件，语言名与 `Sources/StatusTrioCore/Resources/*.lproj` 逐字一致（大小写敏感）：
+
+```
+release-notes/1.2.0/
+  en.md  zh-Hans.md  zh-Hant.md  ja.md  ko.md
+  de.md  fr.md       es.md       it.md  pt-BR.md  ru.md  ar.md
+```
+
+- 每份文件第一行是 `# <标题>`，必须同时含 `%VERSION%` 与 `%BUILD%` 占位符，由脚本注入实际数字（这样标题里的版本号不可能手写错）。
+- 其余行为 `- 条目` 或 `## 小节`；空行忽略；不要写 `**加粗**` 之类的 Markdown 内联语法，它们会被 XML 转义成字面量。
+- `en.md` 与 `zh-Hans.md` 一份两用：既进 appcast，也拼成 GitHub Release 正文的英文段与中文段。
+- 术语必须取自该语言已有的 `.lproj` 字符串，而不是字面转换。例如繁体用「圖示 / 捲動 / 音訊 / 設定」，简体用「电池详情」而不是「电量详情」。
+- 只有 `zh-Hans` 包含针对中国大陆网络的镜像回退说明，其余语言不含。
 
 ## Release notes 规则
 
@@ -43,9 +59,9 @@ GitHub Release 正文必须包含英文和中文，英文在上、中文在下�
 - 中文变更二。
 ```
 
-工作流会根据 `version` 自动生成标题，并把 `release_notes` 和 `release_notes_zh` 合并为上述格式。`publish=true` 时必须提供 `release_notes_zh`；未提供 `release_notes` 时，英文部分会根据上一个 tag 到当前提交自动生成。
+工作流会根据 `version` 自动生成标题，并把 `release-notes/<version>/en.md` 与 `zh-Hans.md` 合并为上述格式，同时剥掉每份文件的 `# ` 标题行（正文自己有一级标题）。
 
-Sparkle `appcast.xml` 使用分语言说明：每个新条目同时写入 `<title xml:lang="en">` / `<title xml:lang="zh-Hans">` 与 `<description xml:lang="en">` / `<description xml:lang="zh-Hans">`，Sparkle 按用户的系统语言渲染对应的一组，匹配不到时回退英文。每个同名字节点都必须显式带 `xml:lang`；把两种语言堆进同一个 `<description>` 会让所有用户都看到双语。`release_notes` 填入英文说明、`release_notes_zh` 填入中文说明，工作流分别写入两个节点，同时把双语合并版本写入 GitHub Release 正文。
+Sparkle `appcast.xml` 使用分语言说明：每个新条目为文案目录中每种语言写入一组带显式 `xml:lang` 的 `<title>` 与 `<description>`，`en` 必须排第一——Sparkle 的 `-bestNodeInNodes:name:` 在用户偏好语言都匹配不到时取**文档顺序第一个节点**作为兜底。把两种语言堆进同一个 `<description>` 会让所有用户都看到双语。`publish=true` 要求 12 种语言齐全，`publish=false` 只警告不阻断。GitHub Release 正文始终是英文 + 简体双语。
 
 GitHub Release 正文会在双语说明后自动追加首次启动提示：
 
