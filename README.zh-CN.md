@@ -15,11 +15,11 @@
 </p>
 
 <p align="center">
-  <img src="screenshots/menu-bar-icons.png" width="1000" alt="同一个 Status Trio 菜单栏图标的两种状态：连接 Wi-Fi 时显示 Wi-Fi 图标，连接 AirPods 时显示 AirPods 图标">
+  <img src="screenshots/menu-bar-wifi.jpg" width="1000" alt="Status Trio 菜单栏图标：连接 Wi-Fi 时显示 Wi-Fi 图标，并展开状态弹层">
 </p>
 
 <p align="center">
-  <img src="screenshots/popup.png" width="350" alt="Status Trio 状态弹层，展示 macOS 菜单栏中的电池、Wi-Fi、蓝牙和音量">
+  <img src="screenshots/menu-bar-airpods.jpg" width="1000" alt="Status Trio 菜单栏图标：连接 AirPods 时显示 AirPods 图标，并展开状态弹层">
 </p>
 
 Status Trio 是一个原生 macOS 状态应用，将 Wi-Fi、电池和音量整合进一个紧凑、可配置的图标，可显示在菜单栏、程序坞，或两处同时显示。灵感源自 iPhone Duo 将 Wi-Fi、Battery 和 Cellular Data 合并展示的 status bar icon，并在 Mac 上以音量替代 Cellular Data。
