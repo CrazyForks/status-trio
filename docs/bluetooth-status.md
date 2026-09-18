@@ -18,6 +18,25 @@ reading is joined to its device with the existing ` · ` separator, so the level
 reads as a property of that device rather than another entry in the list:
 `AirPods Pro · L 80% · R 75% · Case 60%、MX Master 3`.
 
+## Device names come from the system profiler
+
+The paired-device list, including each device's name, is read from
+`system_profiler SPBluetoothDataType` — the same report the battery levels come
+from. `IOBluetoothDevice.nameOrAddress` is deliberately not used: it returns a
+cached name that kept reporting the old value after the device was renamed in
+System Settings, so a renamed AirPods stayed on its previous name indefinitely.
+The profiler reports what the system currently uses. Reading it takes well under
+a second and reuses the existing refresh cadence, so it adds no timer.
+
+The parser separates "the report could not be read" (a read failure) from "the
+machine has no paired devices" (an empty list), so a malformed report is never
+displayed as an empty device list. It accepts the profiler's wrapped
+`SPBluetoothDataType` list and a bare section, and reads the device kind from
+`device_minorType` with `device_majorType` as the fallback, because the major
+type alone classifies every headphone, speaker, and wearable alike. Unknown
+wording stays generic rather than being guessed as audio, which would make the
+device eligible for a battery level.
+
 ## AirPods only
 
 Only connected AirPods report a battery level. The rule is
@@ -26,16 +45,16 @@ audio class alone would also match speakers and other headphones, and macOS
 exposes no reliable model table for registry product IDs. Every other connected
 accessory stays name-only — its detail belongs on the device page.
 
-Battery levels come from the existing `system_profiler SPBluetoothDataType`
-reader, which is a subprocess. The summary therefore enables the reader only
-when a connected AirPods is present and the **Show Bluetooth battery levels**
-setting is on. The name is the gate, not the presence of a readable level, so a
-just-connected AirPods still triggers the first read.
+Battery levels come from the same `system_profiler SPBluetoothDataType` report.
+The summary therefore enables that read only when a connected AirPods is present
+and the **Show Bluetooth battery levels** setting is on. The name is the gate,
+not the presence of a readable level, so a just-connected AirPods still triggers
+the first read.
 
 ## Activation and permission
 
-Reading the paired-device database through IOBluetooth needs no CoreBluetooth
-grant, but starting the state monitor is what raises the system prompt. So
+Reading the paired-device database needs no CoreBluetooth grant, but starting
+the state monitor is what raises the system prompt. So
 `BluetoothPanelActivation.shouldActivate(authorization:)` allows the popover to
 activate the monitor on its own only when the grant is already `allowed`, which
 refreshes the names the row reports. Every other grant state is only observed.

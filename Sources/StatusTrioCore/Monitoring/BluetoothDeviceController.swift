@@ -1,7 +1,6 @@
 import AppKit
 @preconcurrency import CoreBluetooth
 import Foundation
-import IOBluetooth
 
 enum BluetoothWorkerResult: Sendable {
     case success([BluetoothDevice])
@@ -23,61 +22,155 @@ protocol BluetoothStateMonitoring: AnyObject {
 }
 
 
-/// Reads only the operating system paired-device database. It deliberately
-/// does not perform a Bluetooth inquiry, so nearby BLE advertisements never
-/// appear as paired devices.
-final class IOBluetoothPairedDeviceWorker: @unchecked Sendable, BluetoothPairedDeviceReading {
-    private let queue = DispatchQueue(label: "StatusTrio.IOBluetoothPairedDeviceWorker")
+/// Reads the operating system's paired-device database from the system
+/// profiler. It deliberately does not perform a Bluetooth inquiry, so nearby
+/// BLE advertisements never appear as paired devices.
+///
+/// The profiler is the only source of device names: `IOBluetoothDevice
+/// .nameOrAddress` returns a cached name that keeps reporting the old value
+/// after the device is renamed, while the profiler reports what the system
+/// currently uses. Battery levels already come from the same report.
+final class SystemProfilerBluetoothPairedDeviceWorker: @unchecked Sendable, BluetoothPairedDeviceReading {
+    typealias OutputProvider = @Sendable () -> Data?
+    private let queue = DispatchQueue(label: "StatusTrio.SystemProfilerBluetoothPairedDeviceWorker")
+    private let outputProvider: OutputProvider
+
+    init(
+        outputProvider: @escaping OutputProvider = SystemProfilerBluetoothPairedDeviceWorker.readSystemProfilerOutput
+    ) {
+        self.outputProvider = outputProvider
+    }
 
     func read(completion: @escaping @Sendable (BluetoothWorkerResult) -> Void) {
         queue.async {
-            guard let controller = IOBluetoothHostController.default() else {
-                completion(.unavailable)
-                return
-            }
-            // IOBluetoothHostController reports the HCI adapter state. The
-            // previous inverted comparison reported powered off when it was on.
-            guard controller.powerState == kBluetoothHCIPowerStateON else {
-                completion(.poweredOff)
-                return
-            }
-            // A nil result is not documented as an empty paired list, so it is
-            // surfaced as a read failure rather than silently showing no devices.
-            guard let pairedDevices = IOBluetoothDevice.pairedDevices() as? [IOBluetoothDevice] else {
+            guard let data = self.outputProvider(),
+                  let devices = BluetoothPairedDeviceReader.parse(json: data) else {
                 completion(.failed)
                 return
-            }
-
-            let devices = pairedDevices.compactMap { device -> BluetoothDevice? in
-                guard let identifier = device.addressString, !identifier.isEmpty else { return nil }
-                let name = device.nameOrAddress ?? identifier
-                return BluetoothDevice(
-                    id: identifier,
-                    name: name,
-                    kind: self.kind(for: Int(device.deviceClassMajor)),
-                    isConnected: device.isConnected()
-                )
             }
             completion(.success(devices))
         }
     }
 
-    private func kind(for majorClass: Int) -> BluetoothDeviceKind {
-        // Bluetooth Class-of-Device major values are defined by the Bluetooth
-        // specification. Unknown values remain generic rather than guessed.
-        switch majorClass {
-        case 0x01: .computer
-        case 0x02: .phone
-        case 0x04: .audio
-        case 0x05: .peripheral
-        default: .unknown
+    static func readSystemProfilerOutput() -> Data? {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/sbin/system_profiler")
+        process.arguments = ["-json", "SPBluetoothDataType"]
+
+        let output = Pipe()
+        process.standardOutput = output
+        process.standardError = FileHandle.nullDevice
+
+        do {
+            try process.run()
+            let data = output.fileHandleForReading.readDataToEndOfFile()
+            process.waitUntilExit()
+            return process.terminationStatus == 0 ? data : nil
+        } catch {
+            return nil
+        }
+    }
+}
+
+enum BluetoothPairedDeviceReader {
+    /// `nil` means the report could not be read at all; an empty array means the
+    /// machine has no paired devices. The two stay distinct so a read failure is
+    /// never displayed as an empty device list.
+    static func parse(json: Data) -> [BluetoothDevice]? {
+        guard let root = try? JSONSerialization.jsonObject(with: json) as? [String: Any],
+              // The profiler wraps the sections in one more level, which JSON
+              // reports as an array. A bare section is accepted too, so a
+              // wrapped-versus-unwrapped change can never read as "no devices".
+              let value = root["SPBluetoothDataType"] else {
+            return nil
+        }
+        let sections: [[String: Any]]
+        if let list = value as? [[String: Any]] {
+            sections = list
+        } else if let single = value as? [String: Any] {
+            sections = [single]
+        } else {
+            return nil
+        }
+
+        var devices: [BluetoothDevice] = []
+        for section in sections {
+            for (collectionKey, isConnected) in [
+                ("device_connected", true),
+                ("device_not_connected", false)
+            ] {
+                for entry in entries(from: section[collectionKey]) {
+                    guard let properties = entry.properties,
+                          let address = properties["device_address"] as? String,
+                          !address.isEmpty,
+                          !entry.name.isEmpty else {
+                        continue
+                    }
+                    devices.append(BluetoothDevice(
+                        id: address,
+                        name: entry.name,
+                        kind: kind(properties: properties),
+                        isConnected: isConnected
+                    ))
+                }
+            }
+        }
+        return devices
+    }
+
+    /// Each collection is a list whose entries map a device name to its
+    /// properties. A single bare entry is accepted as well.
+    private static func entries(from value: Any?) -> [(name: String, properties: [String: Any]?)] {
+        let rawEntries: [Any]
+        if let list = value as? [Any] {
+            rawEntries = list
+        } else if let single = value as? [String: Any], !single.isEmpty {
+            rawEntries = [single]
+        } else {
+            return []
+        }
+
+        return rawEntries.flatMap { rawEntry -> [(name: String, properties: [String: Any]?)] in
+            guard let entry = rawEntry as? [String: Any] else { return [] }
+            return entry.map { (name: $0.key, properties: $0.value as? [String: Any]) }
+        }
+    }
+
+    /// The minor type is the precise classification; the major type is the
+    /// fallback. Unknown wording stays generic rather than being guessed as
+    /// audio, which would make the device eligible for a battery level.
+    private static func kind(properties: [String: Any]) -> BluetoothDeviceKind {
+        switch properties["device_minorType"] as? String {
+        case "Headphones", "Headset", "Speaker":
+            return .audio
+        case "Keyboard", "Mouse", "Trackpad", "Gamepad":
+            return .peripheral
+        case "Computer":
+            return .computer
+        case "Phone":
+            return .phone
+        default:
+            break
+        }
+
+        switch properties["device_majorType"] as? String {
+        case "Audio", "Wearable":
+            return .audio
+        case "Peripheral", "Input":
+            return .peripheral
+        case "Computer":
+            return .computer
+        case "Phone":
+            return .phone
+        default:
+            return .unknown
         }
     }
 }
 
 /// CoreBluetooth supplies the app authorization and the asynchronous adapter
-/// lifecycle. IOBluetooth is intentionally not treated as an authorization
-/// authority; it is used only for the paired-device database above.
+/// lifecycle; it is never used to enumerate devices. The paired-device database
+/// comes from the system profiler above instead.
 @MainActor
 final class CoreBluetoothStateMonitor: NSObject, @preconcurrency CBCentralManagerDelegate, BluetoothStateMonitoring {
     var onStateChange: ((BluetoothAuthorizationStatus, BluetoothManagerState) -> Void)?
@@ -152,7 +245,7 @@ final class BluetoothDeviceController: ObservableObject {
     private var wakeObserver: NSObjectProtocol?
 
     init(
-        worker: any BluetoothPairedDeviceReading = IOBluetoothPairedDeviceWorker(),
+        worker: any BluetoothPairedDeviceReading = SystemProfilerBluetoothPairedDeviceWorker(),
         stateMonitor: any BluetoothStateMonitoring = CoreBluetoothStateMonitor(),
         batteryReader: any BluetoothBatteryReading = SystemProfilerBluetoothBatteryWorker(),
         notificationCenter: NotificationCenter = .default,
