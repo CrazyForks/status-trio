@@ -2,47 +2,14 @@
 # frozen_string_literal: true
 
 require "cgi"
+require "optparse"
 require "time"
 
-unless [7, 8, 9].include?(ARGV.length)
-  warn <<~USAGE
-    Usage: ruby scripts/update-appcast.rb \
-      VERSION BUILD MINIMUM_SYSTEM_VERSION DMG_URL ED_SIGNATURE DMG_LENGTH \
-      RELEASE_NOTES_FILE [RELEASE_NOTES_ZH_FILE] [APPCAST_PATH]
-
-    RELEASE_NOTES_ZH_FILE adds the Chinese variant of a localized item. When the
-    eighth argument ends in .xml it is treated as APPCAST_PATH instead.
-  USAGE
-  exit 2
-end
-
-version, build, minimum_system_version, dmg_url, ed_signature, dmg_length, notes_path, second_arg, third_arg = ARGV
-
-notes_zh_path = nil
-appcast_path = nil
-
-if third_arg
-  notes_zh_path = second_arg
-  appcast_path = third_arg
-elsif second_arg
-  if second_arg.end_with?(".xml")
-    appcast_path = second_arg
-  else
-    notes_zh_path = second_arg
-  end
-end
-
-appcast_path ||= File.expand_path("../appcast.xml", __dir__)
-
-raise "VERSION must not be empty." if version.nil? || version.empty?
-raise "BUILD must contain only digits." unless build.match?(/\A\d+\z/)
-raise "MINIMUM_SYSTEM_VERSION must not be empty." if minimum_system_version.nil? || minimum_system_version.empty?
-raise "DMG_URL must use HTTPS." unless dmg_url.start_with?("https://")
-raise "ED_SIGNATURE must not be empty." if ed_signature.nil? || ed_signature.empty?
-raise "DMG_LENGTH must contain only digits." unless dmg_length.match?(/\A\d+\z/)
-raise "Release notes file does not exist: #{notes_path}" unless File.file?(notes_path)
-raise "Chinese release notes file does not exist: #{notes_zh_path}" if notes_zh_path && !File.file?(notes_zh_path)
-raise "Appcast file does not exist: #{appcast_path}" unless File.file?(appcast_path)
+# Languages the app ships (Sources/StatusTrioCore/Resources/*.lproj). `en` must
+# stay first: Sparkle's -bestNodeInNodes:name: falls back to the first node in
+# document order when the user's preferred languages match nothing.
+SUPPORTED_LANGUAGES = %w[en ar de es fr it ja ko pt-BR ru zh-Hans zh-Hant].freeze
+RTL_LANGUAGES = %w[ar].freeze
 
 def xml_escape(value)
   CGI.escapeHTML(value.to_s)
@@ -50,11 +17,6 @@ end
 
 def cdata_escape(value)
   value.to_s.gsub("]]>", "]]]]><![CDATA[>")
-end
-
-appcast = File.read(appcast_path)
-if appcast.match?(%r{<sparkle:version>\s*#{Regexp.escape(build)}\s*</sparkle:version>})
-  raise "Build #{build} already exists in #{appcast_path}."
 end
 
 def notes_to_html(lines)
@@ -86,58 +48,196 @@ def notes_to_html(lines)
   html.join
 end
 
-def notes_description(notes_path, version)
-  description = notes_to_html(File.readlines(notes_path, chomp: true))
-  description.empty? ? "<p>Status Trio #{xml_escape(version)} is available.</p>" : description
+def load_notes(dir)
+  raise "Release notes directory does not exist: #{dir}" unless File.directory?(dir)
+
+  notes = {}
+  Dir.children(dir).sort.each do |name|
+    next if name.start_with?(".")
+    next unless name.end_with?(".md")
+
+    language = name.delete_suffix(".md")
+    unless SUPPORTED_LANGUAGES.include?(language)
+      raise "Unsupported release notes language file: #{name} " \
+            "(expected one of: #{SUPPORTED_LANGUAGES.join(', ')})"
+    end
+
+    notes[language] = File.join(dir, name)
+  end
+
+  raise "Release notes directory has no language files: #{dir}" if notes.empty?
+
+  notes
 end
 
-description_en = notes_description(notes_path, version)
-description_zh = notes_zh_path ? notes_description(notes_zh_path, version) : nil
+def notes_title(path, version, build)
+  line = File.readlines(path, chomp: true).find { |candidate| candidate.strip.match?(/\A#\s+\S/) }
+  raise "Missing a '# <title>' heading in #{path}." unless line
 
-pub_date = Time.now.utc.strftime("%a, %d %b %Y %H:%M:%S +0000")
-title_en = "Version #{xml_escape(version)} (Build #{xml_escape(build)})"
-title_zh = "版本 #{xml_escape(version)}（构建 #{xml_escape(build)}）"
+  title = line.strip.sub(/\A#\s+/, "")
+  %w[%VERSION% %BUILD%].each do |token|
+    raise "Title in #{path} must contain #{token}." unless title.include?(token)
+  end
 
-# Sparkle picks the variant matching the user's preferred languages, so every
-# localized element needs an explicit xml:lang. Without a Chinese notes file we
-# keep the single bilingual-marker item for local runs.
-item_lines = []
-if description_zh
-  item_lines << %(<title xml:lang="en">#{title_en}</title>)
-  item_lines << %(<title xml:lang="zh-Hans">#{title_zh}</title>)
-else
-  item_lines << %(<title>#{title_en} （English + 中文， 中文在下方）</title>)
-end
-item_lines << "<pubDate>#{pub_date}</pubDate>"
-item_lines << "<sparkle:version>#{xml_escape(build)}</sparkle:version>"
-item_lines << "<sparkle:shortVersionString>#{xml_escape(version)}</sparkle:shortVersionString>"
-item_lines << "<sparkle:minimumSystemVersion>#{xml_escape(minimum_system_version)}</sparkle:minimumSystemVersion>"
-if description_zh
-  item_lines << %(<description xml:lang="en"><![CDATA[#{cdata_escape(description_en)}]]></description>)
-  item_lines << %(<description xml:lang="zh-Hans"><![CDATA[#{cdata_escape(description_zh)}]]></description>)
-else
-  item_lines << %(<description><![CDATA[#{cdata_escape(description_en)}]]></description>)
-end
-item_lines << %(<enclosure url="#{xml_escape(dmg_url)}")
-item_lines << %(           type="application/octet-stream")
-item_lines << %(           sparkle:edSignature="#{xml_escape(ed_signature)}")
-item_lines << %(           length="#{xml_escape(dmg_length)}" />)
-
-item = (["    <item>"] + item_lines.map { |line| "      #{line}" } + ["    </item>"]).join("\n")
-
-updated = appcast.dup
-existing_item = appcast.match(/^[ \t]*<item\b/m)
-
-if existing_item
-  updated.insert(existing_item.begin(0), "#{item}\n")
-else
-  channel_end = appcast.rindex("</channel>")
-  raise "Could not find </channel> in #{appcast_path}." unless channel_end
-
-  closing_indent = appcast[0...channel_end][/[ \t]*\z/]
-  indent_start = channel_end - closing_indent.length
-  updated[indent_start, closing_indent.length] = "#{item}\n#{closing_indent}"
+  title.gsub("%VERSION%", version).gsub("%BUILD%", build)
 end
 
-File.write(appcast_path, updated)
-puts "Updated #{appcast_path} with build #{build}."
+def notes_description(path, language)
+  html = notes_to_html(File.readlines(path, chomp: true))
+  raise "Release notes for #{language} are empty: #{path}" if html.empty?
+
+  RTL_LANGUAGES.include?(language) ? %(<div dir="rtl">#{html}</div>) : html
+end
+
+# Returns [[language, title_line, description_line], ...] with `en` first.
+def localized_lines(notes, version, build)
+  languages = SUPPORTED_LANGUAGES.select { |language| notes.key?(language) }
+
+  languages.map do |language|
+    title = %(<title xml:lang="#{language}">) \
+            "#{xml_escape(notes_title(notes[language], version, build))}</title>"
+    body = cdata_escape(notes_description(notes[language], language))
+    description = %(<description xml:lang="#{language}"><![CDATA[#{body}]]></description>)
+    [language, title, description]
+  end
+end
+
+def build_item(pub_date:, version:, build:, minimum_system_version:, enclosure_lines:, localized:)
+  lines = []
+  localized.each { |(_, title, _)| lines << title }
+  lines << "<pubDate>#{pub_date}</pubDate>"
+  lines << "<sparkle:version>#{xml_escape(build)}</sparkle:version>"
+  lines << "<sparkle:shortVersionString>#{xml_escape(version)}</sparkle:shortVersionString>"
+  lines << "<sparkle:minimumSystemVersion>#{xml_escape(minimum_system_version)}</sparkle:minimumSystemVersion>"
+  localized.each { |(_, _, description)| lines << description }
+  enclosure_lines.each { |line| lines << line }
+
+  (["    <item>"] + lines.map { |line| "      #{line}" } + ["    </item>"]).join("\n")
+end
+
+def new_enclosure_lines(dmg_url:, ed_signature:, dmg_length:)
+  [
+    %(<enclosure url="#{xml_escape(dmg_url)}"),
+    %(           type="application/octet-stream"),
+    %(           sparkle:edSignature="#{xml_escape(ed_signature)}"),
+    %(           length="#{xml_escape(dmg_length)}" />)
+  ]
+end
+
+def existing_item(appcast, build)
+  appcast.scan(%r{[ \t]*<item>.*?</item>}m).find do |block|
+    block.match?(%r{<sparkle:version>\s*#{Regexp.escape(build)}\s*</sparkle:version>})
+  end
+end
+
+def item_element(block, name, build)
+  block[%r{<#{name}>(.*?)</#{name}>}m, 1] ||
+    raise("Existing item for build #{build} has no <#{name}>.")
+end
+
+def item_enclosure_lines(block, build)
+  match = block[%r{[ \t]*<enclosure\b.*?/>}m] ||
+          raise("Existing item for build #{build} has no <enclosure>.")
+  match.lines.map(&:strip)
+end
+
+def parse_options
+  options = {}
+  OptionParser.new do |parser|
+    parser.banner = "Usage: ruby scripts/update-appcast.rb --version V --build N --notes-dir DIR [options]"
+    parser.on("--version V") { |value| options[:version] = value }
+    parser.on("--build N") { |value| options[:build] = value }
+    parser.on("--minimum-system-version V") { |value| options[:minimum] = value }
+    parser.on("--dmg-url URL") { |value| options[:dmg_url] = value }
+    parser.on("--ed-signature SIG") { |value| options[:signature] = value }
+    parser.on("--length N") { |value| options[:length] = value }
+    parser.on("--notes-dir DIR") { |value| options[:notes_dir] = value }
+    parser.on("--appcast PATH") { |value| options[:appcast] = value }
+    parser.on("--output PATH") { |value| options[:output] = value }
+    parser.on("--replace-existing") { options[:replace] = true }
+  end.parse!
+
+  options[:appcast] ||= File.expand_path("../appcast.xml", __dir__)
+  options[:output] ||= options[:appcast]
+  options[:minimum] ||= "15.0"
+
+  raise "VERSION must not be empty." if options[:version].to_s.empty?
+  raise "BUILD must contain only digits." unless options[:build].to_s.match?(/\A\d+\z/)
+  raise "MINIMUM_SYSTEM_VERSION must not be empty." if options[:minimum].to_s.empty?
+  raise "Release notes directory must be given with --notes-dir." if options[:notes_dir].to_s.empty?
+  raise "Appcast file does not exist: #{options[:appcast]}" unless File.file?(options[:appcast])
+
+  unless options[:replace]
+    raise "DMG_URL must use HTTPS." unless options[:dmg_url].to_s.start_with?("https://")
+    raise "ED_SIGNATURE must not be empty." if options[:signature].to_s.empty?
+    raise "DMG_LENGTH must contain only digits." unless options[:length].to_s.match?(/\A\d+\z/)
+  end
+
+  options
+end
+
+options = parse_options
+appcast = File.read(options[:appcast])
+notes = load_notes(options[:notes_dir])
+localized = localized_lines(notes, options[:version], options[:build])
+raise "No release notes languages found in #{options[:notes_dir]}." if localized.empty?
+
+existing = existing_item(appcast, options[:build])
+
+updated =
+  if options[:replace]
+    raise "Build #{options[:build]} does not exist in #{options[:appcast]}." unless existing
+
+    stored_version = item_element(existing, "sparkle:shortVersionString", options[:build])
+    unless stored_version == options[:version]
+      raise "Existing build #{options[:build]} has shortVersionString #{stored_version}, " \
+            "expected #{options[:version]}."
+    end
+
+    replacement = build_item(
+      pub_date: item_element(existing, "pubDate", options[:build]),
+      version: stored_version,
+      build: options[:build],
+      minimum_system_version: item_element(existing, "sparkle:minimumSystemVersion", options[:build]),
+      enclosure_lines: item_enclosure_lines(existing, options[:build]),
+      localized: localized
+    )
+
+    # Block form avoids backreference interpretation in the replacement text.
+    appcast.sub(existing) { replacement }
+  else
+    if existing
+      raise "Build #{options[:build]} already exists in #{options[:appcast]}."
+    end
+
+    item = build_item(
+      pub_date: Time.now.utc.strftime("%a, %d %b %Y %H:%M:%S +0000"),
+      version: options[:version],
+      build: options[:build],
+      minimum_system_version: options[:minimum],
+      enclosure_lines: new_enclosure_lines(
+        dmg_url: options[:dmg_url],
+        ed_signature: options[:signature],
+        dmg_length: options[:length]
+      ),
+      localized: localized
+    )
+
+    first_item = appcast.match(/^[ \t]*<item\b/m)
+    if first_item
+      appcast.dup.insert(first_item.begin(0), "#{item}\n")
+    else
+      channel_end = appcast.rindex("</channel>")
+      raise "Could not find </channel> in #{options[:appcast]}." unless channel_end
+
+      closing_indent = appcast[0...channel_end][/[ \t]*\z/]
+      indent_start = channel_end - closing_indent.length
+      copy = appcast.dup
+      copy[indent_start, closing_indent.length] = "#{item}\n#{closing_indent}"
+      copy
+    end
+  end
+
+File.write(options[:output], updated)
+puts "Updated #{options[:output]} with build #{options[:build]} " \
+     "(#{localized.length} languages: #{localized.map(&:first).join(', ')})."
