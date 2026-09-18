@@ -244,6 +244,18 @@ final class SystemStatusStore: ObservableObject {
         }
     }
 
+    /// Enables the Bluetooth monitor when the popover opens, so the row can
+    /// report device names. Starting the monitor is what raises the system
+    /// permission prompt, so this only runs for an app that already holds the
+    /// grant; every other state is left for the row to report and for the
+    /// user's tap to resolve.
+    private func activateBluetoothForPopover() {
+        guard BluetoothPanelActivation.shouldActivate(
+            authorization: bluetoothDevices.authorization
+        ) else { return }
+        setBluetoothEnabled(true)
+    }
+
     func closeBatteryDetails() {
         batteryDetails.deactivate()
     }
@@ -272,6 +284,7 @@ final class SystemStatusStore: ObservableObject {
         popupSnapshot = snapshot
         startWiFiNameResolutionIfNeeded()
         bluetoothDevices.prepareForPresentation()
+        activateBluetoothForPopover()
         refreshAll()
         wifiNetworks.refresh(nameAccess: popupSnapshot.wifi.nameAccess)
     }

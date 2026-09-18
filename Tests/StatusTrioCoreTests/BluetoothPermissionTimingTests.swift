@@ -91,6 +91,62 @@ final class BluetoothPermissionTimingTests: XCTestCase {
         store.setBluetoothEnabled(false)
         XCTAssertEqual(stateMonitor.stopCount, 1)
     }
+
+    /// An authorized app has nothing left to ask for, so opening the popover
+    /// refreshes the connected device names the summary reports. This is what
+    /// makes the row show device names instead of "open details" after launch.
+    func testOpeningThePopoverActivatesBluetoothWhenAlreadyAuthorized() {
+        let stateMonitor = BluetoothStateMonitorSpy(authorization: .allowed)
+        let bluetoothController = BluetoothDeviceController(
+            stateMonitor: stateMonitor,
+            notificationCenter: NotificationCenter(),
+            workspaceNotificationCenter: NotificationCenter()
+        )
+        let store = SystemStatusStore(
+            batteryMonitor: EmptyBatteryMonitorForBluetoothTiming(),
+            wifiMonitor: EmptyWiFiMonitorForBluetoothTiming(),
+            volumeMonitor: EmptyVolumeMonitorForBluetoothTiming(),
+            bluetoothDevices: bluetoothController
+        )
+
+        store.setPopoverVisible(true)
+        XCTAssertEqual(stateMonitor.startCount, 1)
+        // Monitoring survives the popover, so its device names stay warm.
+        XCTAssertTrue(bluetoothController.isActive)
+
+        store.closePopoverDetails()
+        XCTAssertEqual(stateMonitor.stopCount, 0)
+    }
+
+    /// Permission is only ever requested by the user's tap, never by the
+    /// popover appearing.
+    func testOpeningThePopoverKeepsUnauthorizedBluetoothIdle() {
+        let expected: [(BluetoothAuthorizationStatus, BluetoothAvailability)] = [
+            (.denied, .authorizationDenied),
+            (.restricted, .authorizationRestricted)
+        ]
+        for (authorization, availability) in expected {
+            let stateMonitor = BluetoothStateMonitorSpy(authorization: authorization)
+            let bluetoothController = BluetoothDeviceController(
+                stateMonitor: stateMonitor,
+                notificationCenter: NotificationCenter(),
+                workspaceNotificationCenter: NotificationCenter()
+            )
+            let store = SystemStatusStore(
+                batteryMonitor: EmptyBatteryMonitorForBluetoothTiming(),
+                wifiMonitor: EmptyWiFiMonitorForBluetoothTiming(),
+                volumeMonitor: EmptyVolumeMonitorForBluetoothTiming(),
+                bluetoothDevices: bluetoothController
+            )
+
+            store.setPopoverVisible(true)
+
+            XCTAssertEqual(stateMonitor.startCount, 0)
+            XCTAssertFalse(bluetoothController.isActive)
+            XCTAssertEqual(bluetoothController.availability, availability)
+            store.stop()
+        }
+    }
 }
 
 @MainActor

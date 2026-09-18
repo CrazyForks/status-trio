@@ -64,7 +64,7 @@
 "settings.bluetooth.networkErrorPriority" = "Let network errors take priority";
 "settings.bluetooth.networkErrorPriorityDescription" = "Connection errors and offline states keep the network icon instead of the Bluetooth device icon.";
 "settings.bluetooth.batteryLevels" = "Show Bluetooth battery levels";
-"settings.bluetooth.batteryLevelsDescription" = "Reads battery levels when the Bluetooth panel is opened. No additional permission prompt is shown.";
+"settings.bluetooth.batteryLevelsDescription" = "Reads AirPods battery levels while the Bluetooth entry is shown. No additional permission prompt is shown.";
 "settings.bluetooth.showInStatusPanel" = "Show Bluetooth in the status panel";
 "settings.bluetooth.showInStatusPanelDescription" = "Controls the Bluetooth item in the status panel and stays in sync with the Status Panel settings.";
 "settings.bluetooth.symbolScale" = "Bluetooth icon size";

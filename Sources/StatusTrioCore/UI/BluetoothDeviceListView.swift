@@ -1,8 +1,12 @@
 import SwiftUI
 
+/// The Bluetooth summary row. It reports live device state: a permission
+/// request while the grant is undecided, then the connected device names, with
+/// battery levels only for connected AirPods.
 struct BluetoothStatusView: View {
     @ObservedObject var controller: BluetoothDeviceController
     @EnvironmentObject private var localization: Localization
+    let showsBatteryLevels: Bool
     let onOpenDetails: () -> Void
     let onRequestAuthorization: () -> Void
     let onOpenBluetoothSettings: () -> Void
@@ -26,7 +30,7 @@ struct BluetoothStatusView: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("\(localization.string(.bluetoothTitle)), \(summary)")
+            .accessibilityLabel("\(localization.string(.bluetoothTitle)), \(accessibilitySummary)")
 
             Button(localization.string(.bluetoothActionOpenSettings), systemImage: "gearshape", action: onOpenBluetoothSettings)
                 .labelStyle(.iconOnly)
@@ -35,11 +39,48 @@ struct BluetoothStatusView: View {
                 .help(localization.string(.bluetoothActionOpenSettings))
                 .frame(width: 24, height: 24)
         }
+        .task(id: batteryReadTaskID) {
+            // Reading levels launches system_profiler, so it runs only for the
+            // AirPods the summary actually reports.
+            controller.setBatteryLevelsEnabled(
+                showsBatteryLevels && summaryPresentation.hasConnectedAirPods
+            )
+        }
+        .onDisappear {
+            controller.setBatteryLevelsEnabled(false)
+        }
+    }
+
+    /// The task re-runs when the level setting or one of the device names
+    /// changes. The name also covers an AirPods swapping to another device at
+    /// the same address.
+    private var batteryReadTaskID: String {
+        let names = BluetoothDevicePresentation.grouped(controller.devices).connected
+            .map(\.name)
+            .joined(separator: "、")
+        return "\(showsBatteryLevels)-\(names)"
+    }
+
+    private var summaryPresentation: BluetoothSummary {
+        BluetoothSummary.presentation(
+            availability: controller.availability,
+            devices: controller.devices,
+            batteryLevels: controller.batteryLevels
+        )
+    }
+
+    private var accessibilitySummary: String {
+        switch summaryPresentation {
+        case .requestAuthorization:
+            return localization.string(.bluetoothAuthorizationNotDetermined)
+        default:
+            return summaryText
+        }
     }
 
     @ViewBuilder
     private var subtitle: some View {
-        if controller.availability == .authorizationNotDetermined {
+        if case .requestAuthorization = summaryPresentation {
             Button(
                 localization.string(.bluetoothActionRequestAuthorization),
                 action: onRequestAuthorization
@@ -49,7 +90,7 @@ struct BluetoothStatusView: View {
             .foregroundStyle(.secondary)
             .lineLimit(1)
         } else {
-            Text(summary)
+            Text(summaryText)
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
@@ -57,28 +98,26 @@ struct BluetoothStatusView: View {
         }
     }
 
-    private var summary: String {
-        switch controller.availability {
-        case .idle:
-            return localization.string(.bluetoothOpenDetails)
+    private var summaryText: String {
+        switch summaryPresentation {
+        case .requestAuthorization:
+            return localization.string(.bluetoothAuthorizationNotDetermined)
         case .initializing:
             return localization.string(.bluetoothInitializing)
-        case .authorizationNotDetermined:
-            return localization.string(.bluetoothAuthorizationNotDetermined)
         case .authorizationDenied:
             return localization.string(.bluetoothAuthorizationDenied)
         case .authorizationRestricted:
             return localization.string(.bluetoothAuthorizationRestricted)
-        case .available:
-            let devices = controller.connectedDevices
-            if devices.isEmpty { return localization.string(.bluetoothNoConnectedDevices) }
-            return devices.map(\.name).joined(separator: ", ")
         case .poweredOff:
             return localization.string(.bluetoothOff)
         case .unavailable:
             return localization.string(.bluetoothUnavailable)
-        case .failed:
+        case .readFailed:
             return localization.string(.bluetoothReadFailed)
+        case .noConnectedDevices:
+            return localization.string(.bluetoothNoConnectedDevices)
+        case .devices(let names, _):
+            return names
         }
     }
 }

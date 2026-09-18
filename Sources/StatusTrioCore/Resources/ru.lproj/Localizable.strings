@@ -64,7 +64,7 @@
 "settings.bluetooth.networkErrorPriority" = "Приоритет ошибок сети";
 "settings.bluetooth.networkErrorPriorityDescription" = "При ошибке подключения или отсутствии сети остаётся значок сети вместо устройства Bluetooth.";
 "settings.bluetooth.batteryLevels" = "Показывать заряд устройств Bluetooth";
-"settings.bluetooth.batteryLevelsDescription" = "Заряд считывается только при открытии панели Bluetooth. Дополнительный запрос разрешения не появляется.";
+"settings.bluetooth.batteryLevelsDescription" = "Заряд AirPods считывается, пока показан пункт Bluetooth. Дополнительный запрос разрешения не появляется.";
 "settings.bluetooth.showInStatusPanel" = "Показывать Bluetooth на панели состояния";
 "settings.bluetooth.showInStatusPanelDescription" = "Управляет элементом Bluetooth на панели состояния и синхронизируется с настройками панели состояния.";
 "settings.bluetooth.symbolScale" = "Размер значка Bluetooth";

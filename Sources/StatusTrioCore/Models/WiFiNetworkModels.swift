@@ -344,6 +344,96 @@ struct BluetoothDevice: Identifiable, Equatable, Sendable {
     let name: String
     let kind: BluetoothDeviceKind
     let isConnected: Bool
+
+    /// AirPods are identified by name. The audio class alone would also match
+    /// speakers and other headphones, and macOS exposes no reliable model
+    /// table for registry product IDs; every AirPods name contains "AirPods".
+    var isAirPods: Bool {
+        kind == .audio && name.lowercased().contains("airpods")
+    }
+
+    /// Whether the popover summary may report this device's battery level.
+    var isAirPodsSummaryCandidate: Bool {
+        isConnected && isAirPods
+    }
+}
+
+/// What the popover's Bluetooth row reports. Deriving the text from state
+/// keeps the summary testable without rendering SwiftUI.
+enum BluetoothSummary: Equatable, Sendable {
+    case requestAuthorization
+    case initializing
+    case authorizationDenied
+    case authorizationRestricted
+    case poweredOff
+    case unavailable
+    case readFailed
+    case noConnectedDevices
+    /// The joined device names, and whether any of them is an AirPods whose
+    /// level the summary reports. Reading levels launches a `system_profiler`
+    /// subprocess, so callers gate it on that flag.
+    case devices(String, hasAirPods: Bool)
+
+    var deviceNames: String? {
+        guard case .devices(let names, _) = self else { return nil }
+        return names
+    }
+
+    var hasConnectedAirPods: Bool {
+        guard case .devices(_, let hasAirPods) = self else { return false }
+        return hasAirPods
+    }
+
+    static func presentation(
+        availability: BluetoothAvailability,
+        devices: [BluetoothDevice],
+        batteryLevels: [String: BluetoothBatteryLevel]
+    ) -> BluetoothSummary {
+        switch availability {
+        case .authorizationNotDetermined:
+            return .requestAuthorization
+        case .authorizationDenied:
+            return .authorizationDenied
+        case .authorizationRestricted:
+            return .authorizationRestricted
+        case .poweredOff:
+            return .poweredOff
+        case .unavailable:
+            return .unavailable
+        case .failed:
+            return .readFailed
+        // An idle controller has not read anything yet; saying so would only
+        // repeat the initializing state it is about to enter.
+        case .idle, .initializing:
+            return .initializing
+        case .available:
+            let connected = BluetoothDevicePresentation.grouped(devices).connected
+            guard !connected.isEmpty else { return .noConnectedDevices }
+            let names = connected.map { entry(for: $0, batteryLevels: batteryLevels) }
+                .joined(separator: "、")
+            return .devices(names, hasAirPods: connected.contains { $0.isAirPodsSummaryCandidate })
+        }
+    }
+
+    private static func entry(
+        for device: BluetoothDevice,
+        batteryLevels: [String: BluetoothBatteryLevel]
+    ) -> String {
+        guard device.isAirPodsSummaryCandidate else { return device.name }
+        let address = BluetoothBatteryReader.normalizedAddress(device.id)
+        guard let summary = batteryLevels[address]?.summary else { return device.name }
+        // The middle dot marks the level as a property of this device, while
+        // the ideographic comma above separates devices from each other.
+        return "\(device.name) · \(summary)"
+    }
+}
+
+/// Starting the Bluetooth state monitor is what raises the system permission
+/// prompt, so the popover may only activate an app that already has the grant.
+enum BluetoothPanelActivation {
+    static func shouldActivate(authorization: BluetoothAuthorizationStatus) -> Bool {
+        authorization == .allowed
+    }
 }
 
 enum BluetoothDevicePresentation {

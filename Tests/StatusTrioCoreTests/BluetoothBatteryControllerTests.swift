@@ -76,6 +76,65 @@ struct BluetoothBatteryControllerTests {
         #expect(controller.batteryLevels.isEmpty)
     }
 
+    /// The summary only reports AirPods levels, so a non-AirPods session must
+    /// stay on the cached connected-device read.
+    @Test func batteryReadsStayOffWhenNoAirPodsAreConnected() async {
+        let deviceReader = BluetoothPairedDeviceReaderStub(result: .success([
+            BluetoothDevice(id: "AC:90:85:C2:9C:1F", name: "MX Master 3", kind: .peripheral, isConnected: true)
+        ]))
+        let batteryReader = BluetoothBatteryReaderStub(result: [:])
+        let controller = BluetoothDeviceController(
+            worker: deviceReader,
+            stateMonitor: BluetoothBatteryStateMonitorStub(),
+            batteryReader: batteryReader,
+            notificationCenter: NotificationCenter(),
+            workspaceNotificationCenter: NotificationCenter()
+        )
+
+        controller.setBatteryLevelsEnabled(false)
+        controller.activate()
+        await waitUntil { deviceReader.readCount == 1 }
+
+        #expect(batteryReader.readCount == 0)
+        #expect(controller.batteryLevels.isEmpty)
+    }
+
+    /// A connected AirPods entry is what enables the level read, and leaving
+    /// the summary turns it back off.
+    @Test func batteryReadsFollowConnectedAirPods() async {
+        let deviceReader = BluetoothPairedDeviceReaderStub(result: .success([
+            BluetoothDevice(id: "AC:90:85:C2:9C:1F", name: "AirPods Pro", kind: .audio, isConnected: true)
+        ]))
+        let batteryReader = BluetoothBatteryReaderStub(result: [
+            BluetoothBatteryReader.normalizedAddress("AC:90:85:C2:9C:1F"): BluetoothBatteryLevel(
+                deviceAddress: "AC:90:85:C2:9C:1F",
+                main: nil,
+                left: 85,
+                right: 80,
+                caseLevel: 70
+            )
+        ])
+        let controller = BluetoothDeviceController(
+            worker: deviceReader,
+            stateMonitor: BluetoothBatteryStateMonitorStub(),
+            batteryReader: batteryReader,
+            notificationCenter: NotificationCenter(),
+            workspaceNotificationCenter: NotificationCenter()
+        )
+
+        controller.setBatteryLevelsEnabled(true)
+        controller.activate()
+        await waitUntil { !controller.batteryLevels.isEmpty }
+
+        #expect(batteryReader.readCount == 1)
+        #expect(controller.batteryLevels[BluetoothBatteryReader.normalizedAddress("ac9085c29c1f")]?.summary == "L 85% · R 80% · Case 70%")
+
+        controller.setBatteryLevelsEnabled(false)
+
+        #expect(controller.batteryLevels.isEmpty)
+        #expect(batteryReader.readCount == 1)
+    }
+
     private func waitUntil(_ condition: () -> Bool) async {
         for _ in 0..<1_000 {
             if condition() { return }

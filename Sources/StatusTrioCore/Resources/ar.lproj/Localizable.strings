@@ -47,7 +47,7 @@
 "settings.bluetooth.networkErrorPriority" = "إعطاء أولوية لأخطاء الشبكة";
 "settings.bluetooth.networkErrorPriorityDescription" = "تبقى أيقونة الشبكة ظاهرة عند انقطاع الاتصال أو غياب الإنترنت بدلًا من أيقونة جهاز Bluetooth.";
 "settings.bluetooth.batteryLevels" = "عرض مستويات بطارية Bluetooth";
-"settings.bluetooth.batteryLevelsDescription" = "تقرأ مستويات البطارية فقط عند فتح لوحة Bluetooth. لن يظهر طلب إذن إضافي.";
+"settings.bluetooth.batteryLevelsDescription" = "تقرأ مستويات بطارية AirPods أثناء عرض إدخال Bluetooth. لن يظهر طلب إذن إضافي.";
 "settings.bluetooth.showInStatusPanel" = "إظهار Bluetooth في لوحة الحالة";
 "settings.bluetooth.showInStatusPanelDescription" = "يتحكم في عنصر Bluetooth بلوحة الحالة ويبقى متزامنًا مع إعدادات لوحة الحالة.";
 "settings.bluetooth.symbolScale" = "حجم أيقونة Bluetooth";

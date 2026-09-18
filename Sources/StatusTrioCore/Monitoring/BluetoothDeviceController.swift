@@ -177,6 +177,12 @@ final class BluetoothDeviceController: ObservableObject {
         BluetoothDevicePresentation.grouped(devices).connected
     }
 
+    /// The app's current CoreBluetooth grant. Reading it never prompts; only
+    /// starting the state monitor does.
+    var authorization: BluetoothAuthorizationStatus {
+        stateMonitor.authorization
+    }
+
     func prepareForPresentation() {
         guard !isActive else { return }
         switch stateMonitor.authorization {

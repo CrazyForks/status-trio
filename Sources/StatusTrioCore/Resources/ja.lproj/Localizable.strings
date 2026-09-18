@@ -64,7 +64,7 @@
 "settings.bluetooth.networkErrorPriority" = "ネットワークエラーを優先";
 "settings.bluetooth.networkErrorPriorityDescription" = "接続エラーやオフライン状態では、Bluetooth 機器ではなくネットワークアイコンを表示します。";
 "settings.bluetooth.batteryLevels" = "Bluetooth のバッテリー残量を表示";
-"settings.bluetooth.batteryLevelsDescription" = "Bluetooth パネルを開いたときだけ残量を読み取ります。追加の権限確認は表示されません。";
+"settings.bluetooth.batteryLevelsDescription" = "Bluetooth 項目の表示中に AirPods の残量を読み取ります。追加の権限確認は表示されません。";
 "settings.bluetooth.showInStatusPanel" = "ステータスパネルに Bluetooth を表示";
 "settings.bluetooth.showInStatusPanelDescription" = "ステータスパネルの Bluetooth 項目を切り替え、ステータスパネル設定と同期します。";
 "settings.bluetooth.symbolScale" = "Bluetooth アイコンサイズ";

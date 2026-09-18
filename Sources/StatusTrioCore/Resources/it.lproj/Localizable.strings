@@ -64,7 +64,7 @@
 "settings.bluetooth.networkErrorPriority" = "Dai priorità agli errori di rete";
 "settings.bluetooth.networkErrorPriorityDescription" = "Gli errori di connessione e lo stato offline mantengono l’icona di rete invece del dispositivo Bluetooth.";
 "settings.bluetooth.batteryLevels" = "Mostra i livelli batteria Bluetooth";
-"settings.bluetooth.batteryLevelsDescription" = "Legge i livelli batteria solo quando apri il pannello Bluetooth. Non viene richiesta un’autorizzazione aggiuntiva.";
+"settings.bluetooth.batteryLevelsDescription" = "Legge i livelli batteria degli AirPods mentre la voce Bluetooth è visibile. Non viene richiesta un’autorizzazione aggiuntiva.";
 "settings.bluetooth.showInStatusPanel" = "Mostra Bluetooth nel pannello di stato";
 "settings.bluetooth.showInStatusPanelDescription" = "Controlla l’elemento Bluetooth nel pannello di stato e resta sincronizzato con le impostazioni del pannello di stato.";
 "settings.bluetooth.symbolScale" = "Dimensione icona Bluetooth";

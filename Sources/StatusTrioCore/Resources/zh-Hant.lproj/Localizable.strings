@@ -64,7 +64,7 @@
 "settings.bluetooth.networkErrorPriority" = "網路異常優先於藍牙圖示";
 "settings.bluetooth.networkErrorPriorityDescription" = "斷線或無網路時仍顯示網路圖示，不顯示藍牙裝置圖示。";
 "settings.bluetooth.batteryLevels" = "顯示藍牙裝置電量";
-"settings.bluetooth.batteryLevelsDescription" = "僅在開啟藍牙面板時讀取裝置電量，不會額外要求權限。";
+"settings.bluetooth.batteryLevelsDescription" = "當狀態面板顯示藍牙裝置時讀取 AirPods 電量，不會額外要求權限。";
 "settings.bluetooth.showInStatusPanel" = "在狀態面板中顯示藍牙";
 "settings.bluetooth.showInStatusPanelDescription" = "控制狀態面板中的藍牙項目，並與狀態面板設定保持同步。";
 "settings.bluetooth.symbolScale" = "藍牙圖示大小";
