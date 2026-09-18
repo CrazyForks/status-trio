@@ -70,7 +70,7 @@ enum IconGuideState: String, CaseIterable, Identifiable, Sendable {
     case wifiOff
     case bluetoothHeadphones
     case bluetoothAirPods
-    case bluetoothVolumeTint
+    case wifiVolumeTint
 
     static var all: [Self] { allCases }
 
@@ -82,7 +82,7 @@ enum IconGuideState: String, CaseIterable, Identifiable, Sendable {
         case .weakWiFi: .arc
         case .bluetoothHeadphones: .dots
         case .bluetoothAirPods: .dots
-        case .bluetoothVolumeTint: .dots
+        case .wifiVolumeTint: .dots
         default: nil
         }
     }
@@ -98,7 +98,7 @@ enum IconGuideState: String, CaseIterable, Identifiable, Sendable {
         case .wifiOff: .guideStateWiFiOff
         case .bluetoothHeadphones: .guideStateBluetoothHeadphones
         case .bluetoothAirPods: .guideStateBluetoothAirPods
-        case .bluetoothVolumeTint: .guideStateBluetoothVolumeTint
+        case .wifiVolumeTint: .guideStateWiFiVolumeTint
         }
     }
 
@@ -108,8 +108,9 @@ enum IconGuideState: String, CaseIterable, Identifiable, Sendable {
     ///
     /// The two device cards show one icon: the device symbol replaces the network
     /// symbol in the middle and the volume row underneath turns blue. The third
-    /// keeps the normal network symbol and only tints the volume row, which is
-    /// what the volume colour option does on its own.
+    /// keeps the Wi-Fi symbol in the middle and only tints the volume row, which
+    /// is what the volume colour option does on its own; its label names Wi-Fi
+    /// because that is the symbol the card draws.
     func bluetoothAudioOptions(
         configuring configured: BluetoothAudioIconOptions
     ) -> BluetoothAudioIconOptions {
@@ -121,7 +122,7 @@ enum IconGuideState: String, CaseIterable, Identifiable, Sendable {
                 prioritizesNetworkErrors: configured.prioritizesNetworkErrors,
                 symbolScale: configured.symbolScale
             )
-        case .bluetoothVolumeTint:
+        case .wifiVolumeTint:
             BluetoothAudioIconOptions(
                 replacesNetworkIcon: false,
                 usesVolumeColor: true,
@@ -159,7 +160,7 @@ enum IconGuideState: String, CaseIterable, Identifiable, Sendable {
     /// volume row to take the device colour.
     var exampleDevice: AudioOutputDevice? {
         switch self {
-        case .bluetoothHeadphones, .bluetoothVolumeTint: Self.bluetoothHeadphonesExampleDevice
+        case .bluetoothHeadphones, .wifiVolumeTint: Self.bluetoothHeadphonesExampleDevice
         case .bluetoothAirPods: Self.airPodsExampleDevice
         default: nil
         }
@@ -167,7 +168,7 @@ enum IconGuideState: String, CaseIterable, Identifiable, Sendable {
 
     var status: MenuBarStatus {
         switch self {
-        case .bluetoothHeadphones, .bluetoothAirPods, .bluetoothVolumeTint:
+        case .bluetoothHeadphones, .bluetoothAirPods, .wifiVolumeTint:
             MenuBarStatus(
                 battery: BatteryStatus(
                     rawPercentage: 82,

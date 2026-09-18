@@ -313,7 +313,7 @@
 "guide.state.wifiOff" = "Wi-Fi disattivato";
 "guide.state.bluetoothHeadphones" = "Cuffie Bluetooth";
 "guide.state.bluetoothAirPods" = "AirPods";
-"guide.state.bluetoothVolumeTint" = "Bluetooth + volume blu";
+"guide.state.wifiVolumeTint" = "Wi-Fi + volume blu";
 
 // Current Wi-Fi radio measurements, not Internet speed.
 "wifi.summary.band" = "%@ GHz";

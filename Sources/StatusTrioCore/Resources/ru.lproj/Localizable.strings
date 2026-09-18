@@ -313,7 +313,7 @@
 "guide.state.wifiOff" = "Wi-Fi выключен";
 "guide.state.bluetoothHeadphones" = "Bluetooth-наушники";
 "guide.state.bluetoothAirPods" = "AirPods";
-"guide.state.bluetoothVolumeTint" = "Bluetooth + синяя громкость";
+"guide.state.wifiVolumeTint" = "Wi-Fi + синяя громкость";
 
 // Current Wi-Fi radio measurements, not Internet speed.
 "wifi.summary.band" = "%@ GHz";

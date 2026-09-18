@@ -313,7 +313,7 @@
 "guide.state.wifiOff" = "Wi-Fi 꺼짐";
 "guide.state.bluetoothHeadphones" = "Bluetooth 헤드폰";
 "guide.state.bluetoothAirPods" = "AirPods";
-"guide.state.bluetoothVolumeTint" = "Bluetooth + 파란 볼륨";
+"guide.state.wifiVolumeTint" = "Wi-Fi + 파란 볼륨";
 
 // Current Wi-Fi radio measurements, not Internet speed.
 "wifi.summary.band" = "%@ GHz";

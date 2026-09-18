@@ -313,7 +313,7 @@
 "guide.state.wifiOff" = "Wi-Fi 已关闭";
 "guide.state.bluetoothHeadphones" = "蓝牙耳机";
 "guide.state.bluetoothAirPods" = "AirPods";
-"guide.state.bluetoothVolumeTint" = "蓝牙 + 蓝色音量";
+"guide.state.wifiVolumeTint" = "Wi-Fi + 蓝色音量";
 
 // Current Wi-Fi radio measurements, not Internet speed.
 "wifi.summary.band" = "%@ GHz";

@@ -13,7 +13,7 @@ final class IconGuideRedesignTests: XCTestCase {
     ]
 
     private static var bluetoothStates: [IconGuideState] {
-        bluetoothDeviceStates + [.bluetoothVolumeTint]
+        bluetoothDeviceStates + [.wifiVolumeTint]
     }
 
     func testGuideProvidesTenDistinctStateExamples() {
@@ -45,7 +45,7 @@ final class IconGuideRedesignTests: XCTestCase {
             XCTAssertTrue(options.usesVolumeColor, "\(state) must show the blue volume row")
         }
 
-        let tinted = IconGuideState.bluetoothVolumeTint.bluetoothAudioOptions(
+        let tinted = IconGuideState.wifiVolumeTint.bluetoothAudioOptions(
             configuring: configured
         )
         XCTAssertFalse(
@@ -58,6 +58,23 @@ final class IconGuideRedesignTests: XCTestCase {
         XCTAssertEqual(
             IconGuideState.ethernet.bluetoothAudioOptions(configuring: configured),
             configured
+        )
+    }
+
+    /// The blue volume card is labelled Wi-Fi, so it has to draw the Wi-Fi
+    /// symbol: the tint comes from the Bluetooth output, not from replacing the
+    /// centre symbol.
+    func testBlueVolumeCardKeepsTheWiFiSymbolItIsNamedFor() {
+        let options = IconGuideState.wifiVolumeTint.bluetoothAudioOptions(
+            configuring: .standard
+        )
+
+        XCTAssertFalse(options.replacesNetworkIcon)
+        XCTAssertTrue(options.usesVolumeColor)
+        XCTAssertEqual(IconGuideState.wifiVolumeTint.status.connection, .wifi)
+        XCTAssertEqual(IconGuideState.wifiVolumeTint.status.wifi.state, .connected)
+        XCTAssertNotNil(
+            IconGuideState.wifiVolumeTint.status.volume.currentDevice?.isBluetoothAudio
         )
     }
 
