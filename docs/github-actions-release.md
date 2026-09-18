@@ -56,6 +56,29 @@ open "/Applications/Status Trio.app"
 
 这些首次启动命令只写入 GitHub Release，不写入 Sparkle appcast。
 
+## 预检产物与更新验证
+
+`publish=false` 的预检产物使用的是**下一个正式版的构建号**（准备发布 1.2.0 / build 9 时，预检也用 build 9）。Sparkle 只按 `sparkle:version`（即 `CFBundleVersion`）判断新旧，因此有两条硬性注意事项：
+
+- **不要把预检产物安装到 `/Applications`。** 本机一旦存在构建号相同的应用，正式版发布后 Sparkle 会判定「已是最新」，这台机器就再也收不到该版本的更新。需要在本机试用预检构建时，改用 `scripts/build-worktree.sh` 产出的构建——它的 bundle id 带 `.dev.<branch>` 后缀，不会覆盖正式安装。
+- **验证「旧版本 → 新版本」的更新链路时，必须先安装上一个正式发布的构建号。** 例如验证 1.2.0 时先装 1.1.0（build 8），`9 > 8` 才成立；装预检构建无法测出更新。
+
+Sparkle 的磁盘缓存还会掩盖网络结果：`~/Library/Caches/com.lingsmbp.StatusTrio/` 里缓存过比较新的 feed 时，即使这次网络请求失败，也可能照常显示「有更新」。要验证真实网络路径（包括镜像回退是否生效），先清掉缓存再检查：
+
+```bash
+osascript -e 'quit app "Status Trio"' 2>/dev/null
+rm -rf ~/Library/Caches/com.lingsmbp.StatusTrio
+```
+
+查看这次检查实际请求了哪个源：
+
+```bash
+sqlite3 ~/Library/Caches/com.lingsmbp.StatusTrio/Cache.db \
+  "select request_key, time_stamp from cfurl_cache_response;"
+```
+
+出现 `raw.githubusercontent.com` 之外、带 `gh-proxy.com/` 或 `ghfast.top/` 前缀的记录，说明镜像回退已经接管。
+
 ## 第一次配置
 
 ### 1. 配置 Sparkle EdDSA 私钥
