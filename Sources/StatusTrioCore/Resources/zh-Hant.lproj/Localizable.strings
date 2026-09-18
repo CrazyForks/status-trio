@@ -253,8 +253,8 @@
 "bluetooth.authorizationRestricted" = "Bluetooth permission is restricted.";
 
 "settings.preview.hint" = "即時預覽 · 調整下方各項參數即刻在上方呈現";
-"settings.preview.dark" = "深色底色";
-"settings.preview.light" = "淺色底色";
+"settings.preview.dark" = "深色";
+"settings.preview.light" = "淺色";
 "settings.preview.toggleHelp" = "切換選單列深色/淺色底色預覽";
 "settings.audio.displayRules" = "顯示規則";
 "settings.audio.activeDeviceFootnote" = "目前活躍的音訊輸出裝置將優先以主題色強調顯示。";

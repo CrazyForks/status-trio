@@ -253,8 +253,8 @@
 "bluetooth.authorizationRestricted" = "Bluetooth permission is restricted.";
 
 "settings.preview.hint" = "실시간 미리보기 · 아래 설정을 변경하면 즉시 반영됩니다";
-"settings.preview.dark" = "다크 배경";
-"settings.preview.light" = "라이트 배경";
+"settings.preview.dark" = "다크";
+"settings.preview.light" = "라이트";
 "settings.preview.toggleHelp" = "메뉴 막대 다크/라이트 배경 미리보기 전환";
 "settings.audio.displayRules" = "표시 규칙";
 "settings.audio.activeDeviceFootnote" = "현재 활성화된 오디오 출력 기기는 강조 색상으로 표시됩니다.";

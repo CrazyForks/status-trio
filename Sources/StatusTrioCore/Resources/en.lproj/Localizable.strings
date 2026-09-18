@@ -253,8 +253,8 @@
 "bluetooth.authorizationRestricted" = "Bluetooth permission is restricted.";
 
 "settings.preview.hint" = "Live Preview · Adjust settings below to see changes immediately";
-"settings.preview.dark" = "Dark Background";
-"settings.preview.light" = "Light Background";
+"settings.preview.dark" = "Dark";
+"settings.preview.light" = "Light";
 "settings.preview.toggleHelp" = "Toggle menu bar dark/light preview";
 "settings.audio.displayRules" = "Display Rules";
 "settings.audio.activeDeviceFootnote" = "The active audio output device is highlighted with the accent color.";

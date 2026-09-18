@@ -253,8 +253,8 @@
 "bluetooth.authorizationRestricted" = "Bluetooth permission is restricted.";
 
 "settings.preview.hint" = "リアルタイムプレビュー · 下の設定を変更するとすぐに反映されます";
-"settings.preview.dark" = "ダーク背景";
-"settings.preview.light" = "ライト背景";
+"settings.preview.dark" = "ダーク";
+"settings.preview.light" = "ライト";
 "settings.preview.toggleHelp" = "メニューバーのダーク/ライト背景プレビューを切り替え";
 "settings.audio.displayRules" = "表示ルール";
 "settings.audio.activeDeviceFootnote" = "現在アクティブな音声出力デバイスはアクセントカラーでハイライトされます。";

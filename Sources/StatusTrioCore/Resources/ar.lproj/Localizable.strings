@@ -253,8 +253,8 @@
 "bluetooth.authorizationRestricted" = "Bluetooth permission is restricted.";
 
 "settings.preview.hint" = "معاينة مباشرة · اضبط الإعدادات أدناه لرؤية التغييرات فورًا";
-"settings.preview.dark" = "خلفية داكنة";
-"settings.preview.light" = "خلفية فاتحة";
+"settings.preview.dark" = "داكن";
+"settings.preview.light" = "فاتح";
 "settings.preview.toggleHelp" = "تبديل معاينة شريط القوائم بين الداكن والفاتح";
 "settings.audio.displayRules" = "قواعد العرض";
 "settings.audio.activeDeviceFootnote" = "يتم تمييز جهاز إخراج الصوت النشط بلون التمييز.";

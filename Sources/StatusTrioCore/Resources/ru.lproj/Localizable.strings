@@ -253,8 +253,8 @@
 "bluetooth.authorizationRestricted" = "Bluetooth permission is restricted.";
 
 "settings.preview.hint" = "Интерактивный просмотр · Изменяйте параметры ниже, чтобы сразу видеть результат";
-"settings.preview.dark" = "Темный фон";
-"settings.preview.light" = "Светлый фон";
+"settings.preview.dark" = "Темный";
+"settings.preview.light" = "Светлый";
 "settings.preview.toggleHelp" = "Переключить темный/светлый фон строки меню";
 "settings.audio.displayRules" = "Правила отображения";
 "settings.audio.activeDeviceFootnote" = "Активное устройство вывода звука выделяется цветом темы.";
