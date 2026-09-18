@@ -19,6 +19,7 @@
 | `34758026894` | `Run tests` | Swift 6.1.2 IRGen 在处理 `Binding.set: localization.setPreference` 方法引用时崩溃 | 改写为显式闭包，避免触发 thunk 代码生成 |
 | `34758129632` | 全部通过 | 1.0.1 / build 2 发布成功 | 保留上述兼容性修复 |
 | `35293247382` | `Run tests` | 测试用 `drainMainActorTasks()` 假定 `AsyncStream` 消费任务一定已完成；CI 调度较慢时仍读到更新前的 `currentDevice` | 测试改为有超时上限地等待目标状态，不再依赖单次主线程排空；后续预检 `35293533279` 全部通过 |
+| `35307956823` | `Upload release artifacts` | runner 向 GitHub artifact 服务建 artifact 的请求超时（`Failed to CreateArtifact: Unable to make request: ETIMEDOUT`），发生在编译、测试、打包全部成功之后 | 与代码和工具链无关，无代码改动；重跑同一 run 的失败 job 后全部阶段通过 |
 
 ## 失败记录规则
 
@@ -70,6 +71,18 @@ set: { newPreference in
 ```
 
 所以结论是：**代码写法是当前崩溃的触发条件，但根因是 CI 与本地 Swift 工具链不一致。** 后续开发需要同时处理这两件事。
+
+## 35307956823：artifact 上传超时
+
+这次非发布预检（`version=1.1.1`、`build=9`、`publish=false`，分支 `fix/dock-icon-after-update-check`）在最后一步失败：
+
+- `Run tests`、`Build, sign, notarize, and publish` 均通过，说明 Xcode 16.4 / Swift 6.1.2 下编译、测试、打包都正常
+- 只有 `Upload release artifacts` 失败，报错是 `Failed to CreateArtifact: Unable to make request: ETIMEDOUT`
+- 该步骤带 `if: always()`，失败原因是 runner 与 GitHub artifact 服务之间的请求超时，属于基础设施抖动
+
+因为失败点在所有编译与测试阶段之后，且报错不包含任何编译或测试诊断，这次失败与代码无关，没有对应的代码修复。处理方式是重跑失败 job，重跑后 `Set up job` 到 `Complete job` 全部通过（包括 artifact 上传）。
+
+判断同类失败的标准：失败的必须是最后一个上传/清理步骤，并且日志里没有任何 Swift 编译、链接或测试输出。如果失败出现在 `Run tests` 或 `Build, sign, notarize, and publish`，必须按上面的规则排查代码。
 
 ## 强制开发规则
 
