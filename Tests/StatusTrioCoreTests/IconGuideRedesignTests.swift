@@ -5,16 +5,20 @@ import XCTest
 
 @MainActor
 final class IconGuideRedesignTests: XCTestCase {
-    /// The Bluetooth examples: one per device family, both showing the same
-    /// combined mode.
-    private static let bluetoothStates: [IconGuideState] = [
+    /// The Bluetooth examples: two device families plus the card that keeps the
+    /// normal network symbol.
+    private static let bluetoothDeviceStates: [IconGuideState] = [
         .bluetoothHeadphones,
         .bluetoothAirPods
     ]
 
-    func testGuideProvidesEightDistinctStateExamples() {
-        XCTAssertEqual(IconGuideState.all.count, 8)
-        XCTAssertEqual(Set(IconGuideState.all.map(\.id)).count, 8)
+    private static var bluetoothStates: [IconGuideState] {
+        bluetoothDeviceStates + [.bluetoothVolumeTint]
+    }
+
+    func testGuideProvidesNineDistinctStateExamples() {
+        XCTAssertEqual(IconGuideState.all.count, 9)
+        XCTAssertEqual(Set(IconGuideState.all.map(\.id)).count, 9)
 
         XCTAssertTrue(IconGuideState.charging.status.battery.isCharging)
         XCTAssertEqual(IconGuideState.lowBattery.status.battery.percentage, 12)
@@ -26,17 +30,25 @@ final class IconGuideRedesignTests: XCTestCase {
         XCTAssertEqual(IconGuideState.weakWiFi.status.wifi.rssi, -86)
     }
 
-    /// Both Bluetooth cards must show the whole mode — the device symbol in the
-    /// middle and the blue volume row underneath — even on a fresh install, where
-    /// both Bluetooth options are still at their defaults.
+    /// Every Bluetooth card must show the mode it is named for, even on a fresh
+    /// install where both Bluetooth options are still at their defaults.
     func testBluetoothGuideStatesForceTheModeTheyDemonstrate() {
         let configured = BluetoothAudioIconOptions.standard
 
-        for state in Self.bluetoothStates {
+        for state in Self.bluetoothDeviceStates {
             let options = state.bluetoothAudioOptions(configuring: configured)
             XCTAssertTrue(options.replacesNetworkIcon, "\(state) must show the device symbol")
             XCTAssertTrue(options.usesVolumeColor, "\(state) must show the blue volume row")
         }
+
+        let tinted = IconGuideState.bluetoothVolumeTint.bluetoothAudioOptions(
+            configuring: configured
+        )
+        XCTAssertFalse(
+            tinted.replacesNetworkIcon,
+            "The blue volume card keeps the normal network symbol in the middle."
+        )
+        XCTAssertTrue(tinted.usesVolumeColor)
 
         // Unrelated cards keep following the user's configuration.
         XCTAssertEqual(

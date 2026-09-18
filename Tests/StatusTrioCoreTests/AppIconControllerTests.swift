@@ -188,7 +188,7 @@ struct AppIconControllerTests {
         harness.log.reset()
 
         harness.settings.showsWiFiIconForHotspot = true
-        try await waitForCoalescedRenders()
+        try await waitForCoalescedRenders { harness.log.renderCount == 1 }
 
         #expect(harness.log.renderCount == 1)
         #expect(harness.log.connectionOptions.last?.wifiScale == 1.5)
@@ -233,7 +233,7 @@ struct AppIconControllerTests {
 
         harness.settings.showsBatteryPercentage = false
         harness.settings.volumeDisplayStyle = .arc
-        try await waitForCoalescedRenders()
+        try await waitForCoalescedRenders { harness.log.renderCount > 0 }
 
         #expect(harness.log.renderCount > 0)
         #expect(harness.log.batteryOptions.last?.ringStrokeScale == RingStrokeStyle.bold.scale)
@@ -249,7 +249,7 @@ struct AppIconControllerTests {
         harness.settings.replacesNetworkIconWithBluetoothAudio = true
         harness.settings.usesBluetoothAudioVolumeColor = true
         harness.settings.prioritizesNetworkErrorsOverBluetoothAudio = false
-        try await waitForCoalescedRenders()
+        try await waitForCoalescedRenders { harness.log.renderCount == 2 }
 
         // The first change redraws at once; the two that follow within the
         // coalescing interval collapse into one trailing redraw.
@@ -288,7 +288,7 @@ struct AppIconControllerTests {
         }
 
         #expect(harness.log.renderCount == 0, "A drag must not redraw on every value.")
-        try await waitForCoalescedRenders()
+        try await waitForCoalescedRenders { harness.log.renderCount == 1 }
 
         #expect(harness.log.renderCount == 1)
         #expect(harness.log.batteryOptions.last?.criticalThreshold == 40)
@@ -407,10 +407,22 @@ struct AppIconControllerTests {
         #expect(harness.log.events.isEmpty)
     }
 
-    /// Waits out the render coalescer's interval so a burst's trailing redraw has
-    /// happened.
-    private func waitForCoalescedRenders() async throws {
-        try await Task.sleep(for: .milliseconds(200))
+    /// Waits for the render coalescer's trailing redraw.
+    ///
+    /// Polling rather than sleeping a fixed interval: every test in the run
+    /// starts at once, so the main actor can stay busy for longer than the
+    /// coalescing interval before the trailing redraw gets to run. A fixed wait
+    /// that is generous locally is not on CI.
+    private func waitForCoalescedRenders(
+        until condition: () -> Bool,
+        timeout: TimeInterval = 5
+    ) async throws {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if condition() { return }
+            try await Task.sleep(for: .milliseconds(5))
+        }
+        Issue.record("The coalesced redraw did not run within \(timeout) seconds.")
     }
 }
 

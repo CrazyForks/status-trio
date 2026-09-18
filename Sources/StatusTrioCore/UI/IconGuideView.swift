@@ -69,6 +69,7 @@ enum IconGuideState: String, CaseIterable, Identifiable, Sendable {
     case weakWiFi
     case bluetoothHeadphones
     case bluetoothAirPods
+    case bluetoothVolumeTint
 
     static var all: [Self] { allCases }
 
@@ -80,6 +81,7 @@ enum IconGuideState: String, CaseIterable, Identifiable, Sendable {
         case .weakWiFi: .arc
         case .bluetoothHeadphones: .dots
         case .bluetoothAirPods: .dots
+        case .bluetoothVolumeTint: .dots
         default: nil
         }
     }
@@ -94,6 +96,7 @@ enum IconGuideState: String, CaseIterable, Identifiable, Sendable {
         case .weakWiFi: .guideStateWeakWiFi
         case .bluetoothHeadphones: .guideStateBluetoothHeadphones
         case .bluetoothAirPods: .guideStateBluetoothAirPods
+        case .bluetoothVolumeTint: .guideStateBluetoothVolumeTint
         }
     }
 
@@ -101,8 +104,10 @@ enum IconGuideState: String, CaseIterable, Identifiable, Sendable {
     /// The guide opens on a fresh install where both options are still off, and a
     /// card that followed the defaults would show the same Wi-Fi artwork twice.
     ///
-    /// Both Bluetooth examples show one icon: the device symbol replaces the
-    /// network symbol in the middle and the volume row underneath turns blue.
+    /// The two device cards show one icon: the device symbol replaces the network
+    /// symbol in the middle and the volume row underneath turns blue. The third
+    /// keeps the normal network symbol and only tints the volume row, which is
+    /// what the volume colour option does on its own.
     func bluetoothAudioOptions(
         configuring configured: BluetoothAudioIconOptions
     ) -> BluetoothAudioIconOptions {
@@ -114,13 +119,20 @@ enum IconGuideState: String, CaseIterable, Identifiable, Sendable {
                 prioritizesNetworkErrors: configured.prioritizesNetworkErrors,
                 symbolScale: configured.symbolScale
             )
+        case .bluetoothVolumeTint:
+            BluetoothAudioIconOptions(
+                replacesNetworkIcon: false,
+                usesVolumeColor: true,
+                prioritizesNetworkErrors: configured.prioritizesNetworkErrors,
+                symbolScale: configured.symbolScale
+            )
         default:
             configured
         }
     }
 
-    /// The two Bluetooth examples stand in for the audio device, one per device
-    /// family so the card shows the symbol the system uses for each. They only
+    /// The Bluetooth examples stand in for the audio device, one per device
+    /// family so each card shows the symbol the system uses for it. They only
     /// feed the artwork: nothing is read from the system.
     static let bluetoothHeadphonesExampleDevice = AudioOutputDevice(
         id: 0,
@@ -140,10 +152,12 @@ enum IconGuideState: String, CaseIterable, Identifiable, Sendable {
         transport: .bluetooth
     )
 
-    /// The audio device this example draws, if it is a Bluetooth one.
+    /// The audio device this example draws, if it is a Bluetooth one. The card
+    /// that keeps the network symbol still needs a Bluetooth output for its
+    /// volume row to take the device colour.
     var exampleDevice: AudioOutputDevice? {
         switch self {
-        case .bluetoothHeadphones: Self.bluetoothHeadphonesExampleDevice
+        case .bluetoothHeadphones, .bluetoothVolumeTint: Self.bluetoothHeadphonesExampleDevice
         case .bluetoothAirPods: Self.airPodsExampleDevice
         default: nil
         }
@@ -151,7 +165,7 @@ enum IconGuideState: String, CaseIterable, Identifiable, Sendable {
 
     var status: MenuBarStatus {
         switch self {
-        case .bluetoothHeadphones, .bluetoothAirPods:
+        case .bluetoothHeadphones, .bluetoothAirPods, .bluetoothVolumeTint:
             MenuBarStatus(
                 battery: BatteryStatus(
                     rawPercentage: 82,
@@ -442,11 +456,11 @@ struct IconGuideStateGalleryView: View {
     @EnvironmentObject private var localization: Localization
     @State private var previewAppearance: IconGuidePreviewAppearance = .dark
 
-    /// Four columns keep the eight examples on two rows, so adding one does not
+    /// Five columns keep the nine examples on two rows, so adding one does not
     /// grow the page past the height the onboarding window is sized for.
     private let columns = Array(
         repeating: GridItem(.flexible(), spacing: 12),
-        count: 4
+        count: 5
     )
 
     var body: some View {

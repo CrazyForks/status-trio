@@ -312,6 +312,7 @@
 "guide.state.weakWiFi" = "Wi-Fi débil + Volumen al 25%";
 "guide.state.bluetoothHeadphones" = "Auriculares Bluetooth";
 "guide.state.bluetoothAirPods" = "AirPods";
+"guide.state.bluetoothVolumeTint" = "Bluetooth + volumen azul";
 
 // Current Wi-Fi radio measurements, not Internet speed.
 "wifi.summary.band" = "%@ GHz";
