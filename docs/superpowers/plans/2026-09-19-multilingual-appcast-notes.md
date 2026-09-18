@@ -19,7 +19,7 @@
 - GitHub Release 正文格式不变：`# Version X.Y.Z （English + 中文， 中文在下方）`，英文在上中文在下，末尾追加首次启动 `xattr` / `open` 命令；正文不含 `# ` 单层标题行。
 - `release-notes/<version>/` 目录名必须等于解析出的 `VERSION`。
 - 文案文件第一行必须同时含 `%VERSION%` 与 `%BUILD%` 占位符。
-- 除 `zh-Hans` 与 `zh-Hant` 外，其余语言**不包含**「更新下载 / mirror fallback」小节（该内容只面向中文读者）。
+- 只有 `zh-Hans` 包含「更新下载 / mirror fallback」小节；其余 11 种语言（含 `zh-Hant`）一律不含该小节。
 - 不改动 `appcast.xml` 的 EdDSA 签名机制、DMG 签名流程或 GitHub Release 正文结构。
 
 ---
@@ -691,7 +691,7 @@ git commit -m "test(release): validate multilingual appcast notes on every dispa
 | `ru` | `# Версия %VERSION% (сборка %BUILD%)` |
 | `ar` | `# الإصدار %VERSION% (البنية %BUILD%)` |
 
-正文：`zh-Hant` 以 `zh-Hans.md` 为基准（因此**包含**「更新下载」小节）；其余 9 种以 `en.md` 为基准（因此**不含**该小节）。逐条对应，不增不减。
+正文：10 种语言全部以 `en.md` 为基准（因此**都不含**「更新下载」小节——该小节只在 `zh-Hans.md` 里）。逐条对应，不增不减。
 
 - [ ] **Step 2: 机械校验结构一致性**
 
@@ -705,7 +705,7 @@ for f in en zh-Hans zh-Hant ja ko de fr es it pt-BR ru ar; do
 done
 ```
 
-预期：`en` = `h2=8 bullets=26`；`zh-Hans` 与 `zh-Hant` = `h2=9 bullets=29`；其余 9 种 = `h2=8 bullets=26`。标题行都含 `%VERSION%` 与 `%BUILD%`。
+预期：`en` = `h2=8 bullets=26`；`zh-Hans` = `h2=9 bullets=29`（唯一含「更新下载」小节的语言）；其余 11 种（含 `zh-Hant`）= `h2=8 bullets=26`。标题行都含 `%VERSION%` 与 `%BUILD%`。
 
 - [ ] **Step 3: 校验术语用词确实取自 lproj**
 
