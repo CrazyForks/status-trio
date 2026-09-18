@@ -310,6 +310,10 @@
 "guide.state.noInternetMuted" = "無網際網路 + 靜音";
 "guide.state.hotspotLowPower" = "熱點 + 低耗電模式";
 "guide.state.weakWiFi" = "弱 Wi-Fi + 25% 音量";
+"guide.state.wifiOff" = "Wi-Fi 已關閉";
+"guide.state.bluetoothHeadphones" = "藍牙耳機";
+"guide.state.bluetoothAirPods" = "AirPods";
+"guide.state.wifiVolumeTint" = "Wi-Fi + 藍色音量";
 
 // Current Wi-Fi radio measurements, not Internet speed.
 "wifi.summary.band" = "%@ GHz";

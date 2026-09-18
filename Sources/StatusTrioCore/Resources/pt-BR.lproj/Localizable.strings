@@ -310,6 +310,10 @@
 "guide.state.noInternetMuted" = "Sem Internet + Sem som";
 "guide.state.hotspotLowPower" = "Hotspot + Modo de baixo consumo";
 "guide.state.weakWiFi" = "Wi-Fi fraco + Volume em 25%";
+"guide.state.wifiOff" = "Wi-Fi desativado";
+"guide.state.bluetoothHeadphones" = "Fones Bluetooth";
+"guide.state.bluetoothAirPods" = "AirPods";
+"guide.state.wifiVolumeTint" = "Wi-Fi + volume azul";
 
 // Current Wi-Fi radio measurements, not Internet speed.
 "wifi.summary.band" = "%@ GHz";

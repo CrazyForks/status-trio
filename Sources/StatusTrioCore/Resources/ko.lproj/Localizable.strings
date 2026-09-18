@@ -310,6 +310,10 @@
 "guide.state.noInternetMuted" = "인터넷 없음 + 음소거";
 "guide.state.hotspotLowPower" = "핫스팟 + 저전력 모드";
 "guide.state.weakWiFi" = "약한 Wi-Fi + 25% 음량";
+"guide.state.wifiOff" = "Wi-Fi 꺼짐";
+"guide.state.bluetoothHeadphones" = "Bluetooth 헤드폰";
+"guide.state.bluetoothAirPods" = "AirPods";
+"guide.state.wifiVolumeTint" = "Wi-Fi + 파란 볼륨";
 
 // Current Wi-Fi radio measurements, not Internet speed.
 "wifi.summary.band" = "%@ GHz";

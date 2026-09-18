@@ -67,6 +67,10 @@ enum IconGuideState: String, CaseIterable, Identifiable, Sendable {
     case noInternetMuted
     case hotspotLowPower
     case weakWiFi
+    case wifiOff
+    case bluetoothHeadphones
+    case bluetoothAirPods
+    case wifiVolumeTint
 
     static var all: [Self] { allCases }
 
@@ -76,6 +80,9 @@ enum IconGuideState: String, CaseIterable, Identifiable, Sendable {
         switch self {
         case .charging: .dots
         case .weakWiFi: .arc
+        case .bluetoothHeadphones: .dots
+        case .bluetoothAirPods: .dots
+        case .wifiVolumeTint: .dots
         default: nil
         }
     }
@@ -88,11 +95,97 @@ enum IconGuideState: String, CaseIterable, Identifiable, Sendable {
         case .noInternetMuted: .guideStateNoInternetMuted
         case .hotspotLowPower: .guideStateHotspotLowPower
         case .weakWiFi: .guideStateWeakWiFi
+        case .wifiOff: .guideStateWiFiOff
+        case .bluetoothHeadphones: .guideStateBluetoothHeadphones
+        case .bluetoothAirPods: .guideStateBluetoothAirPods
+        case .wifiVolumeTint: .guideStateWiFiVolumeTint
+        }
+    }
+
+    /// The examples' own Bluetooth settings, layered over the configured ones.
+    /// The guide opens on a fresh install where both options are still off, and a
+    /// card that followed the defaults would show the same Wi-Fi artwork twice.
+    ///
+    /// The two device cards show one icon: the device symbol replaces the network
+    /// symbol in the middle and the volume row underneath turns blue. The third
+    /// keeps the Wi-Fi symbol in the middle and only tints the volume row, which
+    /// is what the volume colour option does on its own; its label names Wi-Fi
+    /// because that is the symbol the card draws.
+    func bluetoothAudioOptions(
+        configuring configured: BluetoothAudioIconOptions
+    ) -> BluetoothAudioIconOptions {
+        switch self {
+        case .bluetoothHeadphones, .bluetoothAirPods:
+            BluetoothAudioIconOptions(
+                replacesNetworkIcon: true,
+                usesVolumeColor: true,
+                prioritizesNetworkErrors: configured.prioritizesNetworkErrors,
+                symbolScale: configured.symbolScale
+            )
+        case .wifiVolumeTint:
+            BluetoothAudioIconOptions(
+                replacesNetworkIcon: false,
+                usesVolumeColor: true,
+                prioritizesNetworkErrors: configured.prioritizesNetworkErrors,
+                symbolScale: configured.symbolScale
+            )
+        default:
+            configured
+        }
+    }
+
+    /// The Bluetooth examples stand in for the audio device, one per device
+    /// family so each card shows the symbol the system uses for it. They only
+    /// feed the artwork: nothing is read from the system.
+    static let bluetoothHeadphonesExampleDevice = AudioOutputDevice(
+        id: 0,
+        name: "Bluetooth Headphones",
+        uid: "guide.bluetooth.headphones",
+        isCurrent: true,
+        volume: 0.6,
+        transport: .bluetooth
+    )
+
+    static let airPodsExampleDevice = AudioOutputDevice(
+        id: 1,
+        name: "AirPods",
+        uid: "guide.bluetooth.airpods",
+        isCurrent: true,
+        volume: 0.6,
+        transport: .bluetooth
+    )
+
+    /// The audio device this example draws, if it is a Bluetooth one. The card
+    /// that keeps the network symbol still needs a Bluetooth output for its
+    /// volume row to take the device colour.
+    var exampleDevice: AudioOutputDevice? {
+        switch self {
+        case .bluetoothHeadphones, .wifiVolumeTint: Self.bluetoothHeadphonesExampleDevice
+        case .bluetoothAirPods: Self.airPodsExampleDevice
+        default: nil
         }
     }
 
     var status: MenuBarStatus {
         switch self {
+        case .bluetoothHeadphones, .bluetoothAirPods, .wifiVolumeTint:
+            MenuBarStatus(
+                battery: BatteryStatus(
+                    rawPercentage: 82,
+                    isPresent: true,
+                    isCharging: false,
+                    isLowPowerMode: false,
+                    isConnectedToPower: false
+                ),
+                wifi: WiFiStatus(state: .connected, rssi: -50),
+                connection: .wifi,
+                volume: MenuBarVolumeStatus(
+                    scalar: 0.62,
+                    isMuted: false,
+                    deviceName: exampleDevice?.name,
+                    currentDevice: exampleDevice
+                )
+            )
         case .charging:
             MenuBarStatus(
                 battery: BatteryStatus(
@@ -192,6 +285,23 @@ enum IconGuideState: String, CaseIterable, Identifiable, Sendable {
                 connection: .wifi,
                 volume: MenuBarVolumeStatus(
                     scalar: 0.25,
+                    isMuted: false,
+                    deviceName: nil
+                )
+            )
+        case .wifiOff:
+            MenuBarStatus(
+                battery: BatteryStatus(
+                    rawPercentage: 91,
+                    isPresent: true,
+                    isCharging: false,
+                    isLowPowerMode: false,
+                    isConnectedToPower: false
+                ),
+                wifi: WiFiStatus(state: .off, rssi: nil),
+                connection: .offline,
+                volume: MenuBarVolumeStatus(
+                    scalar: 0.5,
                     isMuted: false,
                     deviceName: nil
                 )
@@ -366,9 +476,11 @@ struct IconGuideStateGalleryView: View {
     @EnvironmentObject private var localization: Localization
     @State private var previewAppearance: IconGuidePreviewAppearance = .dark
 
+    /// Five columns keep the nine examples on two rows, so adding one does not
+    /// grow the page past the height the onboarding window is sized for.
     private let columns = Array(
         repeating: GridItem(.flexible(), spacing: 12),
-        count: 3
+        count: 5
     )
 
     var body: some View {
@@ -431,6 +543,9 @@ private struct IconGuideStateCard: View {
                 batteryOptions: settings.batteryIconOptions,
                 connectionOptions: settings.connectionIconOptions,
                 volumeOptions: volumeOptions,
+                bluetoothAudioOptions: state.bluetoothAudioOptions(
+                    configuring: settings.bluetoothAudioIconOptions
+                ),
                 backgroundStyle: previewAppearance.dockBackgroundStyle,
                 size: 56
             )

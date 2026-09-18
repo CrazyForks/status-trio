@@ -9,13 +9,13 @@ struct BluetoothSectionView: View {
     @EnvironmentObject private var localization: Localization
 
     var body: some View {
-        SettingsPage {
+        SettingsPage(pinnedHeader: {
             StatusIconPreviewCard(
                 store: store,
                 statusStore: statusStore,
                 isDarkBackground: $previewIsDark
             )
-
+        }) {
             SettingsGroup(localization.string(.settingsBluetoothTitle)) {
                 SettingsToggleRow(
                     symbol: "list.bullet.rectangle",

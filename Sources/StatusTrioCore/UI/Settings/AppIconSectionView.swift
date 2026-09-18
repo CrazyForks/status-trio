@@ -10,14 +10,15 @@ struct AppIconSectionView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        SettingsPage {
-            // 1. Ultra-Clear Live Menu Bar Preview
+        SettingsPage(pinnedHeader: {
+            // The live menu bar simulation stays at the top of the pane while
+            // the option groups below it scroll.
             StatusIconPreviewCard(
                 store: store,
                 statusStore: statusStore,
                 isDarkBackground: $previewIsDark
             )
-
+        }) {
             SettingsGroup {
                 SettingsRow(
                     "questionmark.circle",
