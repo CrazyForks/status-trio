@@ -310,6 +310,7 @@
 "guide.state.noInternetMuted" = "インターネットなし + ミュート";
 "guide.state.hotspotLowPower" = "ホットスポット + 低電力モード";
 "guide.state.weakWiFi" = "弱い Wi-Fi + 音量25%";
+"guide.state.wifiOff" = "Wi-Fi オフ";
 "guide.state.bluetoothHeadphones" = "Bluetooth ヘッドホン";
 "guide.state.bluetoothAirPods" = "AirPods";
 "guide.state.bluetoothVolumeTint" = "Bluetooth + 青い音量";

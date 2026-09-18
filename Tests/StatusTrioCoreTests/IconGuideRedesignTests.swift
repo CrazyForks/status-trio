@@ -16,9 +16,9 @@ final class IconGuideRedesignTests: XCTestCase {
         bluetoothDeviceStates + [.bluetoothVolumeTint]
     }
 
-    func testGuideProvidesNineDistinctStateExamples() {
-        XCTAssertEqual(IconGuideState.all.count, 9)
-        XCTAssertEqual(Set(IconGuideState.all.map(\.id)).count, 9)
+    func testGuideProvidesTenDistinctStateExamples() {
+        XCTAssertEqual(IconGuideState.all.count, 10)
+        XCTAssertEqual(Set(IconGuideState.all.map(\.id)).count, 10)
 
         XCTAssertTrue(IconGuideState.charging.status.battery.isCharging)
         XCTAssertEqual(IconGuideState.lowBattery.status.battery.percentage, 12)
@@ -28,6 +28,10 @@ final class IconGuideRedesignTests: XCTestCase {
         XCTAssertTrue(IconGuideState.hotspotLowPower.status.battery.isLowPowerMode)
         XCTAssertEqual(IconGuideState.weakWiFi.status.wifi.state, .connected)
         XCTAssertEqual(IconGuideState.weakWiFi.status.wifi.rssi, -86)
+        // The gallery has to show the Wi-Fi-slash artwork, which no other card
+        // draws.
+        XCTAssertEqual(IconGuideState.wifiOff.status.wifi.state, .off)
+        XCTAssertEqual(IconGuideState.wifiOff.status.connection, .offline)
     }
 
     /// Every Bluetooth card must show the mode it is named for, even on a fresh

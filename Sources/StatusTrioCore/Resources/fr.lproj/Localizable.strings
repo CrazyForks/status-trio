@@ -310,6 +310,7 @@
 "guide.state.noInternetMuted" = "Sans Internet + Silencieux";
 "guide.state.hotspotLowPower" = "Partage de connexion + Économie d’énergie";
 "guide.state.weakWiFi" = "Wi-Fi faible + Volume à 25 %";
+"guide.state.wifiOff" = "Wi-Fi désactivé";
 "guide.state.bluetoothHeadphones" = "Casque Bluetooth";
 "guide.state.bluetoothAirPods" = "AirPods";
 "guide.state.bluetoothVolumeTint" = "Bluetooth + volume bleu";

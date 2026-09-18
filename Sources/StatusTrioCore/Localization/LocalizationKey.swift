@@ -20,6 +20,7 @@ enum LocalizationKey: String, CaseIterable, Hashable, Sendable {
     case guideStateNoInternetMuted = "guide.state.noInternetMuted"
     case guideStateHotspotLowPower = "guide.state.hotspotLowPower"
     case guideStateWeakWiFi = "guide.state.weakWiFi"
+    case guideStateWiFiOff = "guide.state.wifiOff"
     case guideStateBluetoothHeadphones = "guide.state.bluetoothHeadphones"
     case guideStateBluetoothAirPods = "guide.state.bluetoothAirPods"
     case guideStateBluetoothVolumeTint = "guide.state.bluetoothVolumeTint"

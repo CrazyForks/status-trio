@@ -67,6 +67,7 @@ enum IconGuideState: String, CaseIterable, Identifiable, Sendable {
     case noInternetMuted
     case hotspotLowPower
     case weakWiFi
+    case wifiOff
     case bluetoothHeadphones
     case bluetoothAirPods
     case bluetoothVolumeTint
@@ -94,6 +95,7 @@ enum IconGuideState: String, CaseIterable, Identifiable, Sendable {
         case .noInternetMuted: .guideStateNoInternetMuted
         case .hotspotLowPower: .guideStateHotspotLowPower
         case .weakWiFi: .guideStateWeakWiFi
+        case .wifiOff: .guideStateWiFiOff
         case .bluetoothHeadphones: .guideStateBluetoothHeadphones
         case .bluetoothAirPods: .guideStateBluetoothAirPods
         case .bluetoothVolumeTint: .guideStateBluetoothVolumeTint
@@ -282,6 +284,23 @@ enum IconGuideState: String, CaseIterable, Identifiable, Sendable {
                 connection: .wifi,
                 volume: MenuBarVolumeStatus(
                     scalar: 0.25,
+                    isMuted: false,
+                    deviceName: nil
+                )
+            )
+        case .wifiOff:
+            MenuBarStatus(
+                battery: BatteryStatus(
+                    rawPercentage: 91,
+                    isPresent: true,
+                    isCharging: false,
+                    isLowPowerMode: false,
+                    isConnectedToPower: false
+                ),
+                wifi: WiFiStatus(state: .off, rssi: nil),
+                connection: .offline,
+                volume: MenuBarVolumeStatus(
+                    scalar: 0.5,
                     isMuted: false,
                     deviceName: nil
                 )

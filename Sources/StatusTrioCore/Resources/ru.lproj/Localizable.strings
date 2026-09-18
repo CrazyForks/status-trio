@@ -310,6 +310,7 @@
 "guide.state.noInternetMuted" = "Нет Интернета + Без звука";
 "guide.state.hotspotLowPower" = "Точка доступа + Энергосбережение";
 "guide.state.weakWiFi" = "Слабый Wi-Fi + Громкость 25%";
+"guide.state.wifiOff" = "Wi-Fi выключен";
 "guide.state.bluetoothHeadphones" = "Bluetooth-наушники";
 "guide.state.bluetoothAirPods" = "AirPods";
 "guide.state.bluetoothVolumeTint" = "Bluetooth + синяя громкость";

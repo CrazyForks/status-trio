@@ -310,6 +310,7 @@
 "guide.state.noInternetMuted" = "Kein Internet + Stumm";
 "guide.state.hotspotLowPower" = "Hotspot + Energiesparmodus";
 "guide.state.weakWiFi" = "Schwaches WLAN + 25 % Lautstärke";
+"guide.state.wifiOff" = "WLAN aus";
 "guide.state.bluetoothHeadphones" = "Bluetooth-Kopfhörer";
 "guide.state.bluetoothAirPods" = "AirPods";
 "guide.state.bluetoothVolumeTint" = "Bluetooth + blaue Lautstärke";

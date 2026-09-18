@@ -310,6 +310,7 @@
 "guide.state.noInternetMuted" = "无互联网 + 静音";
 "guide.state.hotspotLowPower" = "热点 + 低电量模式";
 "guide.state.weakWiFi" = "弱 Wi-Fi + 25% 音量";
+"guide.state.wifiOff" = "Wi-Fi 已关闭";
 "guide.state.bluetoothHeadphones" = "蓝牙耳机";
 "guide.state.bluetoothAirPods" = "AirPods";
 "guide.state.bluetoothVolumeTint" = "蓝牙 + 蓝色音量";

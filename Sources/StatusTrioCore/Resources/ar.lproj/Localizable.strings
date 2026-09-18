@@ -310,6 +310,7 @@
 "guide.state.noInternetMuted" = "لا إنترنت + صامت";
 "guide.state.hotspotLowPower" = "نقطة اتصال + وضع الطاقة المنخفضة";
 "guide.state.weakWiFi" = "Wi-Fi ضعيف + مستوى الصوت 25%";
+"guide.state.wifiOff" = "Wi-Fi مُعطّل";
 "guide.state.bluetoothHeadphones" = "سماعات Bluetooth";
 "guide.state.bluetoothAirPods" = "AirPods";
 "guide.state.bluetoothVolumeTint" = "Bluetooth + صوت أزرق";

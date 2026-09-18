@@ -310,6 +310,7 @@
 "guide.state.noInternetMuted" = "No Internet + Muted";
 "guide.state.hotspotLowPower" = "Hotspot + Low Power Mode";
 "guide.state.weakWiFi" = "Weak Wi-Fi + 25% volume";
+"guide.state.wifiOff" = "Wi-Fi off";
 "guide.state.bluetoothHeadphones" = "Bluetooth headphones";
 "guide.state.bluetoothAirPods" = "AirPods";
 "guide.state.bluetoothVolumeTint" = "Bluetooth + blue volume";
