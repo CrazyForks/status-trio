@@ -15,11 +15,11 @@
 </p>
 
 <p align="center">
-  <img src="screenshots/normal.png" width="494" alt="Status Trio menu bar icon showing Wi-Fi, battery, and volume at a glance">
+  <img src="screenshots/menu-bar-icons.png" width="1000" alt="The same Status Trio menu bar icon in two states: a Wi-Fi glyph with a Wi-Fi connection, and an AirPods glyph while AirPods are connected">
 </p>
 
 <p align="center">
-  <img src="screenshots/popup.png" width="360" alt="Status Trio popover showing battery, Wi-Fi, and volume controls in the macOS menu bar">
+  <img src="screenshots/popup.png" width="360" alt="Status Trio popover showing battery, Wi-Fi, Bluetooth, and volume controls in the macOS menu bar">
 </p>
 
 Status Trio is a native macOS status app that combines Wi-Fi, battery, and volume into one compact, configurable icon, shown in the menu bar, in the Dock, or in both. It is inspired by the iPhone Duo's combined status bar icon for Wi-Fi, Battery, and Cellular Data, adapted for Mac with Volume instead of Cellular Data.
