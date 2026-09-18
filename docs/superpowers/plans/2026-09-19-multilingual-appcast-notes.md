@@ -400,7 +400,7 @@ echo "仓库文件未被改动: $(git diff --stat appcast.xml | wc -l) 行"
 
 断言必须**限定在新条目内**，因为 `appcast.xml` 里 1.2.0 与 1.1.0 各自已有 2 个带 `xml:lang` 的标题，整文件计数会混入历史条目。
 
-预期：`XML OK`；`items: 8`（基准 7 + 新条目）；`titles=4 descriptions=4`（2 语言 × 2，此刻只有 en 与 zh-Hans）；`first=en`；`git diff --stat appcast.xml` 为 0 行——证明 `--output` 没有碰仓库文件。
+预期：`XML OK`；`items: 8`（基准 7 + 新条目）；`titles=2 descriptions=2`（每种语言各一个 title 与一个 description；此刻只有 en 与 zh-Hans）；`first=en`；`git diff --stat appcast.xml` 为 0 行——证明 `--output` 没有碰仓库文件。
 
 - [ ] **Step 4: 验证错误路径**
 
@@ -585,7 +585,7 @@ ruby -e '
   print block
 ' "$OUTPUT" "$BUILD" > "$ITEM"
 
-expected=$(( ${#present[@]} * 2 ))
+expected="${#present[@]}"
 titles="$(grep -c '<title xml:lang=' "$ITEM" || true)"
 descriptions="$(grep -c '<description xml:lang=' "$ITEM" || true)"
 
@@ -637,7 +637,7 @@ chmod +x scripts/validate-appcast-notes.sh
 VERSION=1.2.0 BUILD=10 PUBLISH=false bash scripts/validate-appcast-notes.sh
 ```
 
-预期：打印覆盖表（此刻 `2/12 languages`）、`Appcast notes OK: 4 titles and 4 descriptions, en first.`，退出码 0。
+预期：打印覆盖表（此刻 `2/12 languages`）、`Appcast notes OK: 2 titles and 2 descriptions, en first.`，退出码 0。
 
 - [ ] **Step 3: 验证两条失败路径**
 
@@ -738,7 +738,7 @@ cd /Users/lingsmbp/Documents/aiwork/status-trio
 VERSION=1.2.0 BUILD=10 PUBLISH=true bash scripts/validate-appcast-notes.sh
 ```
 
-预期：`Release notes coverage for 1.2.0: 12/12 languages`，`missing: none`，`Appcast notes OK: 24 titles and 24 descriptions, en first.`，退出码 0。
+预期：`Release notes coverage for 1.2.0: 12/12 languages`，`missing: none`，`Appcast notes OK: 12 titles and 12 descriptions, en first.`，退出码 0。
 
 - [ ] **Step 5: 确认 RTL 包装只作用于阿拉伯语**
 
@@ -939,7 +939,7 @@ cd /Users/lingsmbp/Documents/aiwork/status-trio
 VERSION=1.2.0 BUILD=10 PUBLISH=false bash scripts/validate-appcast-notes.sh
 ```
 
-预期：覆盖表 + `Appcast notes OK: 24 titles and 24 descriptions, en first.`，退出码 0。
+预期：覆盖表 + `Appcast notes OK: 12 titles and 12 descriptions, en first.`，退出码 0。
 
 - [ ] **Step 6: 提交**
 
@@ -1003,7 +1003,7 @@ VERSION=1.2.0 BUILD=9 PUBLISH=true bash scripts/validate-appcast-notes.sh
 git diff --stat appcast.xml
 ```
 
-预期：`XML OK`；校验打印 `12/12 languages` 且 `24 titles and 24 descriptions, en first.`；`git diff --stat` 显示仅 `appcast.xml` 变动，约 20 行新增（10 个新语言 × 2 个节点），且无删除行。
+预期：`XML OK`；校验打印 `12/12 languages` 且 `12 titles and 12 descriptions, en first.`；`git diff --stat` 显示仅 `appcast.xml` 变动，约 20 行新增（10 个新语言 × 2 个节点），且无删除行。
 
 - [ ] **Step 4: 确认 Sparkle 关心的字段未变**
 
@@ -1108,7 +1108,7 @@ VERSION=1.2.0 BUILD=9 PUBLISH=true bash scripts/validate-appcast-notes.sh
 echo "exit=$?"
 ```
 
-预期：build 9 已存在于 appcast，因此走 `--replace-existing` 分支（顺带覆盖 Task 3 的路径）；打印 `12/12 languages`、`24 titles and 24 descriptions, en first.`、`exit=0`。
+预期：build 9 已存在于 appcast，因此走 `--replace-existing` 分支（顺带覆盖 Task 3 的路径）；打印 `12/12 languages`、`12 titles and 12 descriptions, en first.`、`exit=0`。
 
 - [ ] **Step 2: 确认工作树干净**
 
