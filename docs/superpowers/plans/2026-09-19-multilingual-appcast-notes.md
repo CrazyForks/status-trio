@@ -925,7 +925,8 @@ git commit -m "refactor(release): read appcast notes from release-notes/<version
 cd /Users/lingsmbp/Documents/aiwork/status-trio
 ruby -ryaml -e '
   yaml = YAML.load_file(".github/workflows/release.yml")
-  inputs = yaml["on"]["workflow_dispatch"]["inputs"].keys
+  # YAML 1.1 parses the bare key `on` as boolean true, so try both.
+  inputs = (yaml["on"] || yaml[true])["workflow_dispatch"]["inputs"].keys
   puts "inputs(#{inputs.length}): #{inputs.join(", ")}"
   steps = yaml["jobs"]["release"]["steps"].map { |s| s["name"] }.compact
   puts "validate step 存在: #{steps.include?("Validate appcast notes")}"

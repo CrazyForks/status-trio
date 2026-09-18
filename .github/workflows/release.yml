@@ -23,14 +23,6 @@ on:
         required: true
         default: false
         type: boolean
-      release_notes:
-        description: "English release notes. One bullet per line. Defaults to commits since the previous tag."
-        required: false
-        type: string
-      release_notes_zh:
-        description: "Chinese release notes. One bullet per line. Required when publish=true."
-        required: false
-        type: string
 
 permissions:
   contents: write
@@ -103,6 +95,9 @@ jobs:
           } >> "${GITHUB_ENV}"
 
           echo "Resolved release ${TAG}: ${VERSION} (${BUILD})"
+
+      - name: Validate appcast notes
+        run: bash scripts/validate-appcast-notes.sh
 
       - name: Validate Sparkle signing secret
         if: ${{ env.PUBLISH == 'true' }}
@@ -203,47 +198,26 @@ jobs:
 
       - name: Prepare release notes
         if: ${{ env.PUBLISH == 'true' }}
-        env:
-          RELEASE_NOTES_INPUT: ${{ inputs.release_notes }}
-          RELEASE_NOTES_ZH_INPUT: ${{ inputs.release_notes_zh }}
         run: |
           set -euo pipefail
-          NOTES_PATH="${RUNNER_TEMP}/release-notes.md"
-          NOTES_ZH_PATH="${RUNNER_TEMP}/release-notes-zh.md"
-          APPCAST_NOTES_PATH="${RUNNER_TEMP}/appcast-release-notes-en.md"
-          APPCAST_NOTES_ZH_PATH="${RUNNER_TEMP}/appcast-release-notes-zh.md"
+          NOTES_DIR="${GITHUB_WORKSPACE}/release-notes/${VERSION}"
           RELEASE_BODY_PATH="${RUNNER_TEMP}/github-release-notes.md"
 
-          if [[ -z "${RELEASE_NOTES_ZH_INPUT//[[:space:]]/}" ]]; then
-            echo "::error::release_notes_zh is required when publish=true."
-            exit 1
-          fi
-
-          if [[ -n "${RELEASE_NOTES_INPUT}" ]]; then
-            printf '%s\n' "${RELEASE_NOTES_INPUT}" > "${NOTES_PATH}"
-          else
-            PREVIOUS_TAG="$(git describe --tags --abbrev=0 "${TAG}^" 2>/dev/null || true)"
-            if [[ -n "${PREVIOUS_TAG}" ]] && git rev-parse "${PREVIOUS_TAG}" >/dev/null 2>&1; then
-              git log --pretty=format:'- %s' "${PREVIOUS_TAG}..HEAD" > "${NOTES_PATH}"
-            else
-              git log --pretty=format:'- %s' -20 > "${NOTES_PATH}"
+          for language in en zh-Hans; do
+            if [[ ! -f "${NOTES_DIR}/${language}.md" ]]; then
+              echo "::error::Release notes file does not exist: ${NOTES_DIR}/${language}.md"
+              exit 1
             fi
-            printf '\n' >> "${NOTES_PATH}"
-          fi
+          done
 
-          printf '%s\n' "${RELEASE_NOTES_ZH_INPUT}" > "${NOTES_ZH_PATH}"
-
-          # Sparkle serves the element matching the user's preferred languages,
-          # so the appcast keeps one notes file per language.
-          cp "${NOTES_PATH}" "${APPCAST_NOTES_PATH}"
-          cp "${NOTES_ZH_PATH}" "${APPCAST_NOTES_ZH_PATH}"
-
+          # The body carries its own H1, so each language's '# <title>' line is
+          # dropped; '## section' headings are preserved.
           {
             printf '# Version %s （English + 中文， 中文在下方）\n\n' "${VERSION}"
             printf '## English\n\n'
-            cat "${NOTES_PATH}"
+            grep -v '^# ' "${NOTES_DIR}/en.md"
             printf '\n## 中文\n\n'
-            cat "${NOTES_ZH_PATH}"
+            grep -v '^# ' "${NOTES_DIR}/zh-Hans.md"
           } > "${RELEASE_BODY_PATH}"
 
           {
@@ -261,9 +235,7 @@ jobs:
           } >> "${RELEASE_BODY_PATH}"
 
           {
-            echo "RELEASE_NOTES_FILE=${NOTES_PATH}"
-            echo "APPCAST_RELEASE_NOTES_EN_FILE=${APPCAST_NOTES_PATH}"
-            echo "APPCAST_RELEASE_NOTES_ZH_FILE=${APPCAST_NOTES_ZH_PATH}"
+            echo "RELEASE_NOTES_DIR=${NOTES_DIR}"
             echo "RELEASE_BODY_FILE=${RELEASE_BODY_PATH}"
           } >> "${GITHUB_ENV}"
 
