@@ -78,6 +78,50 @@ struct AppIconControllerTests {
         #expect(harness.application.applicationIconImage == nil)
     }
 
+    @Test func manualUpdateCheckKeepsTheDockPlacementIcon() throws {
+        // Reproduces the "check for updates, dismiss You're up to date, the Dock
+        // icon turns back into the app icon" report: a Dock placement owns the
+        // regular policy, so a manual check may only borrow it.
+        let harness = try AppIconControllerHarness(initialPlacement: .dock)
+        defer { harness.cleanUp() }
+        harness.controller.start()
+        let presentation = ManualUpdatePresentation(
+            activationPolicy: harness.activationPolicy,
+            application: AppIconActivationSpy()
+        )
+        harness.log.reset()
+
+        presentation.begin()
+        presentation.end()
+
+        #expect(harness.activationPolicy.isRegularApp)
+        #expect(harness.application.currentActivationPolicy == .regular)
+        #expect(harness.application.applicationIconImage != nil)
+        #expect(harness.log.events.contains("policy:accessory") == false)
+        #expect(harness.log.events.contains("dock:nil") == false)
+    }
+
+    @Test func manualUpdateCheckRestoresMenuBarOnlyPlacement() throws {
+        // A menu-bar-only placement has no persistent Dock tile, so the tile the
+        // check borrows must be gone once the update cycle finishes.
+        let harness = try AppIconControllerHarness(initialPlacement: .menuBar)
+        defer { harness.cleanUp() }
+        harness.controller.start()
+        let presentation = ManualUpdatePresentation(
+            activationPolicy: harness.activationPolicy,
+            application: AppIconActivationSpy()
+        )
+        harness.log.reset()
+
+        presentation.begin()
+        #expect(harness.application.applicationIconImage != nil)
+
+        presentation.end()
+        #expect(harness.activationPolicy.isRegularApp == false)
+        #expect(harness.application.currentActivationPolicy == .accessory)
+        #expect(harness.application.applicationIconImage == nil)
+    }
+
     @Test func bothPlacementKeepsMenuBarVisible() throws {
         let harness = try AppIconControllerHarness(initialPlacement: .both)
         defer { harness.cleanUp() }
@@ -489,6 +533,15 @@ private final class AppIconApplicationSpy: ApplicationActivationPolicyApplying, 
     func setApplicationIconImage(_ image: NSImage?) {
         applicationIconImage = image
         log.events.append(image == nil ? "dock:nil" : "dock:image")
+    }
+}
+
+@MainActor
+private final class AppIconActivationSpy: ApplicationActivating {
+    private(set) var activationCount = 0
+
+    func activate(ignoringOtherApps flag: Bool) {
+        activationCount += 1
     }
 }
 
