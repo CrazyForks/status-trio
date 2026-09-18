@@ -85,6 +85,41 @@ set: { newPreference in
 
 判断同类失败的标准：失败的必须是最后一个上传/清理步骤，并且日志里没有任何 Swift 编译、链接或测试输出。如果失败出现在 `Run tests` 或 `Build, sign, notarize, and publish`，必须按上面的规则排查代码。
 
+## 35331580264：蓝牙电量读取的所有权竞态
+
+这次非发布预检在 `BluetoothBatteryLevelHandoffTests` 失败：
+
+- `testDetailPageKeepsReadingLevelsAfterLeavingTheSummary` 在最后一行
+  `XCTAssertFalse` 失败，即从详情页返回摘要后电量读取没有被重新打开
+- 同一测试在本机通过，因此不能按抖动处理
+
+直接根因不是工具链问题，而是一个真实的顺序竞态：摘要行和详情页**共用一个布尔
+标记**来决定是否读取电量。SwiftUI 在切换子树时，离开方与进入方的生命周期回调
+顺序并不固定，实测两种情况都会出现：
+
+```
+去详情页：summary.task → detail.appear → summary.disappear
+返回摘要：detail.disappear → summary.task → summary.appear
+```
+
+于是“最后写入者获胜”：离开摘要时会把详情页刚申请的电量读取关掉，详情页每个
+设备都显示“不可用”；返回摘要时又会因为标记被关掉而不再重开。
+
+修复方式是让结果与顺序无关，而不是再去猜顺序：控制器改为按 token 记录**申领
+计数**，只要还有任一界面持有申领就继续读取，最后一个释放时停止。
+
+```swift
+func requestBatteryLevels(_ token: String)
+func releaseBatteryLevels(_ token: String)
+```
+
+摘要在“开关打开且连了 AirPods”时申领，详情页仅按开关申领，关闭 popover 时清空
+全部申领。新增控制器级测试直接覆盖两种顺序、重复申领和关闭场景，不再依赖
+SwiftUI 的时序。
+
+修复后的非发布预检 `35332232060` 的 `Run tests`、release 构建、签名和产出上传
+全部通过。
+
 ## 强制开发规则
 
 ### 1. 以 CI 工具链为准
