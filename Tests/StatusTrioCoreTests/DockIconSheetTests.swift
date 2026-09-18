@@ -26,4 +26,19 @@ final class DockIconSheetTests: XCTestCase {
         XCTAssertEqual(DockIconSheet.variants.map(\.style), [.dark, .light, .clear])
         XCTAssertEqual(DockIconSheet.variants.map(\.zh), ["深色背景", "浅色背景", "透明背景"])
     }
+
+    func testSheetCoversWiFiAndBluetoothRows() {
+        let rows = DockIconSheet.rows
+        XCTAssertEqual(rows.count, 2)
+        XCTAssertEqual(rows.map(\.zh), ["Wi-Fi 状态", "蓝牙音频取代 Wi-Fi 图标"])
+        XCTAssertEqual(rows[0].bluetoothAudioOptions, .standard)
+        XCTAssertTrue(rows[1].bluetoothAudioOptions.replacesNetworkIcon)
+        XCTAssertTrue(rows[1].bluetoothAudioOptions.usesVolumeColor)
+        XCTAssertEqual(rows[0].status.volume.currentDevice, nil)
+        XCTAssertEqual(rows[1].status.volume.currentDevice, SheetFixtures.bluetoothDevice)
+        for row in rows {
+            XCTAssertFalse(row.zh.isEmpty)
+            XCTAssertFalse(row.en.isEmpty)
+        }
+    }
 }

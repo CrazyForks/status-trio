@@ -62,10 +62,10 @@ The same live icon can live in the Dock instead of the menu bar, or in both plac
   <sub>Bluetooth panel preview</sub>
 </p>
 
-The Dock icon can follow the system icon style or be pinned to a fixed background:
+The Dock icon draws the same combined icon as the menu bar, so a Bluetooth audio device takes over the middle glyph there too. Its background can follow the system icon style or be pinned to a fixed shade:
 
 <p align="center">
-  <img src="screenshots/status-trio-dock-icons.png" width="880" alt="Status Trio Dock icon in dark, light, and clear backgrounds, each captioned below the tile">
+  <img src="screenshots/status-trio-dock-icons.png" width="880" alt="Status Trio Dock icon in dark, light, and clear backgrounds, in two rows: the Wi-Fi state and Bluetooth audio replacing the Wi-Fi icon with blue volume dots">
 </p>
 
 ## Icon states

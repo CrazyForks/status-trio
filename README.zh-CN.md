@@ -62,10 +62,10 @@ Status Trio 是一个原生 macOS 状态应用，将 Wi-Fi、电池和音量整�
   <sub>蓝牙区块预览</sub>
 </p>
 
-程序坞图标可以跟随系统图标样式，也可以固定为深色或浅色：
+程序坞图标绘制的是和菜单栏一致的三合一图标，蓝牙音频设备同样会取代中部图标。它的背景可以跟随系统图标样式，也可以固定为深色或浅色：
 
 <p align="center">
-  <img src="screenshots/status-trio-dock-icons.png" width="880" alt="Status Trio 程序坞图标的深色、浅色与透明背景三种样式">
+  <img src="screenshots/status-trio-dock-icons.png" width="880" alt="Status Trio 程序坞图标：两行分别展示 Wi-Fi 状态与蓝牙音频取代 Wi-Fi 图标，各含深色、浅色与透明背景三种样式">
 </p>
 
 ## 图标状态

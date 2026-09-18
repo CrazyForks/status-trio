@@ -86,22 +86,6 @@ enum IconStateSheet {
         MenuBarVolumeStatus(scalar: 0.6, isMuted: false, deviceName: nil)
     }
 
-    /// The Bluetooth device the sheet uses as its example. `StatusIconRenderer`
-    /// resolves the glyph from the device, so the sheet shows the same symbol
-    /// the app draws for a connected headset.
-    static let bluetoothDeviceName = "AirPods Pro"
-
-    static var bluetoothDevice: AudioOutputDevice {
-        AudioOutputDevice(
-            id: 42,
-            name: bluetoothDeviceName,
-            uid: "sheet-bluetooth-output",
-            isCurrent: true,
-            volume: 0.6,
-            transport: .bluetooth
-        )
-    }
-
     private static func battery(
         _ percentage: Int,
         charging: Bool = false,
@@ -307,7 +291,7 @@ enum IconStateSheet {
                         bluetoothOptions: BluetoothAudioIconOptions(
                             replacesNetworkIcon: true
                         ),
-                        bluetoothDevice: bluetoothDevice
+                        bluetoothDevice: SheetFixtures.bluetoothDevice
                     ),
                     entry(
                         zh: "网络异常时保留 Wi-Fi 图标",
@@ -316,12 +300,12 @@ enum IconStateSheet {
                         bluetoothOptions: BluetoothAudioIconOptions(
                             replacesNetworkIcon: true
                         ),
-                        bluetoothDevice: bluetoothDevice
+                        bluetoothDevice: SheetFixtures.bluetoothDevice
                     ),
                     entry(
                         zh: "未开启取代时仍显示 Wi-Fi 图标",
                         en: "Wi-Fi stays while replacement is off",
-                        bluetoothDevice: bluetoothDevice
+                        bluetoothDevice: SheetFixtures.bluetoothDevice
                     ),
                     entry(
                         zh: "音量圆点变蓝",
@@ -329,7 +313,7 @@ enum IconStateSheet {
                         bluetoothOptions: BluetoothAudioIconOptions(
                             usesVolumeColor: true
                         ),
-                        bluetoothDevice: bluetoothDevice,
+                        bluetoothDevice: SheetFixtures.bluetoothDevice,
                         volumeScalar: 0.75
                     ),
                     entry(
@@ -339,12 +323,12 @@ enum IconStateSheet {
                         bluetoothOptions: BluetoothAudioIconOptions(
                             usesVolumeColor: true
                         ),
-                        bluetoothDevice: bluetoothDevice
+                        bluetoothDevice: SheetFixtures.bluetoothDevice
                     ),
                     entry(
                         zh: "未开启蓝色时保持单色",
                         en: "Monochrome volume while the color is off",
-                        bluetoothDevice: bluetoothDevice,
+                        bluetoothDevice: SheetFixtures.bluetoothDevice,
                         volumeScalar: 0.75
                     )
                 ]
@@ -500,29 +484,16 @@ enum IconStateSheet {
         in context: CGContext
     ) {
         let flip: (CGFloat) -> CGFloat = { totalHeight - $0 }
-        context.setFillColor(section.zone.tint(in: palette))
-        context.addPath(SheetCanvas.roundedRect(
-            CGRect(x: margin, y: flip(topY + 12), width: 3, height: 16),
-            cornerRadius: 1.5
-        ))
-        context.fillPath()
 
-        let zhFont = SheetCanvas.font("PingFangSC-Semibold", 14)
-        SheetCanvas.draw(
-            section.zh,
-            font: zhFont,
-            color: palette.ink,
-            topLeft: CGPoint(x: margin + 12, y: flip(topY + 12)),
-            in: context
-        )
-        SheetCanvas.draw(
-            section.en,
-            font: SheetCanvas.font("HelveticaNeue-Medium", 12),
-            color: palette.mutedInk,
-            topLeft: CGPoint(
-                x: margin + 12 + SheetCanvas.textWidth(of: section.zh, font: zhFont) + 8,
-                y: flip(topY + 14)
-            ),
+        SheetCanvas.drawSectionHeading(
+            zh: section.zh,
+            en: section.en,
+            tint: section.zone.tint(in: palette),
+            ink: palette.ink,
+            mutedInk: palette.mutedInk,
+            left: margin,
+            topY: topY,
+            totalHeight: totalHeight,
             in: context
         )
 

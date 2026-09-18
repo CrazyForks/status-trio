@@ -3,8 +3,9 @@ import CoreGraphics
 import Foundation
 @testable import StatusTrioCore
 
-/// Renders the Dock icon sheet (dark, light, and clear backgrounds) used by the
-/// READMEs. Every tile comes from `DockIconRenderer`.
+/// Renders the Dock icon sheet used by the READMEs: the three background
+/// styles, once for the Wi-Fi state and once for Bluetooth audio taking over
+/// the middle glyph. Every tile comes from `DockIconRenderer`.
 @MainActor
 enum DockIconSheet {
     enum SheetError: Error {
@@ -18,21 +19,33 @@ enum DockIconSheet {
         let style: DockIconBackgroundStyle
     }
 
+    /// One row of tiles: the heading that documents it and the status it draws.
+    struct Row {
+        let zh: String
+        let en: String
+        let tint: CGColor
+        let status: MenuBarStatus
+        let bluetoothAudioOptions: BluetoothAudioIconOptions
+    }
+
     private static let margin: CGFloat = 36
     private static let panelWidth: CGFloat = 262
     private static let panelHeight: CGFloat = 268
     private static let panelSpacing: CGFloat = 18
     private static let iconSize: CGFloat = 190
     private static let titleHeight: CGFloat = 96
+    private static let headingHeight: CGFloat = 46
     private static let labelHeight: CGFloat = 58
-    private static let footerHeight: CGFloat = 58
+    private static let footerHeight: CGFloat = 96
 
     private static var totalWidth: CGFloat {
         margin * 2 + panelWidth * 3 + panelSpacing * 2
     }
 
     private static var totalHeight: CGFloat {
-        titleHeight + panelHeight + labelHeight + footerHeight
+        titleHeight
+            + CGFloat(rows.count) * (headingHeight + panelHeight + labelHeight)
+            + footerHeight
     }
 
     static var variants: [Variant] {
@@ -43,9 +56,36 @@ enum DockIconSheet {
         ]
     }
 
+    /// The Dock shows the same combined icon as the menu bar, so the sheet
+    /// documents both the network glyph and the Bluetooth audio device that
+    /// replaces it.
+    static var rows: [Row] {
+        [
+            Row(
+                zh: "Wi-Fi 状态",
+                en: "Wi-Fi connected",
+                tint: SheetCanvas.Palette.light.networkTint,
+                status: status(playsBluetoothAudio: false),
+                bluetoothAudioOptions: .standard
+            ),
+            Row(
+                zh: "蓝牙音频取代 Wi-Fi 图标",
+                en: "Bluetooth audio replaces the Wi-Fi icon",
+                tint: SheetCanvas.Palette.light.bluetoothTint,
+                status: status(playsBluetoothAudio: true),
+                bluetoothAudioOptions: BluetoothAudioIconOptions(
+                    replacesNetworkIcon: true,
+                    usesVolumeColor: true
+                )
+            )
+        ]
+    }
+
     /// A charging battery keeps the green accent visible in every variant.
-    private static var status: MenuBarStatus {
-        MenuBarStatus(
+    private static func status(playsBluetoothAudio: Bool) -> MenuBarStatus {
+        let device = playsBluetoothAudio ? SheetFixtures.bluetoothDevice : nil
+
+        return MenuBarStatus(
             battery: BatteryStatus(
                 rawPercentage: 76,
                 isPresent: true,
@@ -55,7 +95,12 @@ enum DockIconSheet {
             ),
             wifi: WiFiStatus(state: .connected, rssi: -52),
             connection: .wifi,
-            volume: MenuBarVolumeStatus(scalar: 0.6, isMuted: false, deviceName: nil)
+            volume: MenuBarVolumeStatus(
+                scalar: 0.6,
+                isMuted: false,
+                deviceName: device?.name,
+                currentDevice: device
+            )
         )
     }
 
@@ -74,38 +119,97 @@ enum DockIconSheet {
             in: context
         )
         SheetCanvas.draw(
-            "Dock icon backgrounds · drawn by the app's own renderer",
+            "Dock icons · drawn by the app's own renderer",
             font: SheetCanvas.font("HelveticaNeue", 12),
             color: SheetCanvas.mutedInk,
             topLeft: CGPoint(x: margin, y: flip(64)),
             in: context
         )
 
-        for (index, variant) in variants.enumerated() {
-            let x = margin + CGFloat(index) * (panelWidth + panelSpacing)
-            try drawPanel(variant, left: x, topY: titleHeight, totalHeight: totalHeight, in: context)
-            drawLabel(variant, left: x, topY: titleHeight + panelHeight + 16, totalHeight: totalHeight, in: context)
+        var cursor = titleHeight
+        for row in rows {
+            SheetCanvas.drawSectionHeading(
+                zh: row.zh,
+                en: row.en,
+                tint: row.tint,
+                ink: SheetCanvas.ink,
+                mutedInk: SheetCanvas.mutedInk,
+                left: margin,
+                topY: cursor,
+                totalHeight: totalHeight,
+                in: context
+            )
+
+            context.setStrokeColor(SheetCanvas.hairline)
+            context.setLineWidth(1)
+            context.move(to: CGPoint(x: margin, y: flip(cursor + 34)))
+            context.addLine(to: CGPoint(x: totalWidth - margin, y: flip(cursor + 34)))
+            context.strokePath()
+
+            cursor += headingHeight
+
+            for (index, variant) in variants.enumerated() {
+                let left = margin + CGFloat(index) * (panelWidth + panelSpacing)
+                try drawPanel(
+                    row,
+                    variant,
+                    left: left,
+                    topY: cursor,
+                    totalHeight: totalHeight,
+                    in: context
+                )
+                drawLabel(
+                    variant,
+                    left: left,
+                    topY: cursor + panelHeight + 16,
+                    totalHeight: totalHeight,
+                    in: context
+                )
+            }
+
+            cursor += panelHeight + labelHeight
         }
 
-        SheetCanvas.draw(
-            "深色 / 浅色在「设置 › 应用图标 › Dock 图标背景」中选择；透明对应系统「图标与小组件样式」为透明时的近似效果。",
-            font: SheetCanvas.font("PingFangSC-Regular", 11),
-            color: SheetCanvas.mutedInk,
-            topLeft: CGPoint(x: margin, y: flip(totalHeight - footerHeight + 24)),
-            in: context
-        )
-        SheetCanvas.draw(
-            "Choose dark or light in Settings › App Icon › Dock icon background; clear approximates the system's Clear icon style.",
-            font: SheetCanvas.font("HelveticaNeue", 11),
-            color: SheetCanvas.mutedInk,
-            topLeft: CGPoint(x: margin, y: flip(totalHeight - footerHeight + 42)),
-            in: context
-        )
+        for footer in footerLines {
+            SheetCanvas.draw(
+                footer.text,
+                font: SheetCanvas.font(footer.font, 11),
+                color: SheetCanvas.mutedInk,
+                topLeft: CGPoint(x: margin, y: flip(totalHeight - footerHeight + footer.offset)),
+                in: context
+            )
+        }
 
         return try SheetCanvas.pngData(context)
     }
 
+    private static var footerLines: [(text: String, font: String, offset: CGFloat)] {
+        [
+            (
+                "深色 / 浅色在「设置 › 应用图标 › Dock 图标背景」中选择；透明对应系统「图标与小组件样式」为透明时的近似效果。",
+                "PingFangSC-Regular",
+                24
+            ),
+            (
+                "Choose dark or light in Settings › App Icon › Dock icon background; clear approximates the system's Clear icon style.",
+                "HelveticaNeue",
+                42
+            ),
+            (
+                "蓝牙图标需先在「设置 › 蓝牙音频」中开启「使用蓝牙音频设备图标代替网络图标」。",
+                "PingFangSC-Regular",
+                62
+            ),
+            (
+                "The Bluetooth icon needs “Replace the network icon with the Bluetooth audio device” turned on in Settings › Bluetooth Audio.",
+                "HelveticaNeue",
+                80
+            )
+        ]
+    }
+
     private static func drawPanel(
+        _ row: Row,
         _ variant: Variant,
         left: CGFloat,
         topY: CGFloat,
@@ -144,7 +248,11 @@ enum DockIconSheet {
         context.addPath(SheetCanvas.roundedRect(panel.insetBy(dx: 0.5, dy: 0.5), cornerRadius: 18))
         context.strokePath()
 
-        guard let image = DockIconRenderer.image(status: status, backgroundStyle: variant.style) else {
+        guard let image = DockIconRenderer.image(
+            status: row.status,
+            bluetoothAudioOptions: row.bluetoothAudioOptions,
+            backgroundStyle: variant.style
+        ) else {
             throw SheetError.iconUnavailable
         }
 

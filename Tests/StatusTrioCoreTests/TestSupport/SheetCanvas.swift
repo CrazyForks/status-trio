@@ -104,28 +104,120 @@ enum SheetCanvas {
         topLeft: CGPoint,
         in context: CGContext
     ) {
-        let attributes: [NSAttributedString.Key: Any] = [
-            .font: font,
-            .foregroundColor: color
-        ]
-        let line = CTLineCreateWithAttributedString(
-            NSAttributedString(string: text, attributes: attributes)
-        )
         context.saveGState()
         context.textPosition = CGPoint(x: topLeft.x, y: topLeft.y - CTFontGetAscent(font))
-        CTLineDraw(line, context)
+        CTLineDraw(line(of: text, font: font, color: color), context)
         context.restoreGState()
     }
 
-    static func textWidth(of text: String, font: CTFont) -> CGFloat {
-        let attributes: [NSAttributedString.Key: Any] = [.font: font]
-        let line = CTLineCreateWithAttributedString(
+    /// Draws a line with an explicit baseline in the context's own
+    /// coordinates, so a small label can share the baseline of a larger one.
+    static func draw(
+        _ text: String,
+        font: CTFont,
+        color: CGColor,
+        baseline: CGFloat,
+        x: CGFloat,
+        in context: CGContext
+    ) {
+        context.saveGState()
+        context.textPosition = CGPoint(x: x, y: baseline)
+        CTLineDraw(line(of: text, font: font, color: color), context)
+        context.restoreGState()
+    }
+
+    /// The bilingual heading used by the generated sheets: an accent bar that
+    /// spans the Chinese glyphs, the Chinese title, and the English label on
+    /// the same baseline.
+    ///
+    /// `topY` is the heading's distance from the top of the sheet. The bar is
+    /// measured from `inkBounds`, because the font's line box is far taller
+    /// than the glyphs and a bar drawn from it floats above the text.
+    static func drawSectionHeading(
+        zh: String,
+        en: String,
+        tint: CGColor,
+        ink: CGColor,
+        mutedInk: CGColor,
+        left: CGFloat,
+        topY: CGFloat,
+        totalHeight: CGFloat,
+        in context: CGContext
+    ) {
+        let zhFont = font("PingFangSC-Semibold", 14)
+        let enFont = font("HelveticaNeue-Medium", 12)
+        let baseline = totalHeight - (topY + textInset) - CTFontGetAscent(zhFont)
+        let bounds = inkBounds(of: zh, font: zhFont)
+
+        context.saveGState()
+        defer { context.restoreGState() }
+
+        context.setFillColor(tint)
+        context.addPath(roundedRect(
+            CGRect(
+                x: left,
+                y: baseline + bounds.minY,
+                width: 3,
+                height: bounds.height
+            ),
+            cornerRadius: 1.5
+        ))
+        context.fillPath()
+
+        draw(zh, font: zhFont, color: ink, baseline: baseline, x: left + 12, in: context)
+        draw(
+            en,
+            font: enFont,
+            color: mutedInk,
+            baseline: baseline,
+            x: left + 12 + textWidth(of: zh, font: zhFont) + 8,
+            in: context
+        )
+    }
+
+    /// Distance from a heading's top edge to the top of its glyphs.
+    private static let textInset: CGFloat = 12
+
+    /// The glyph ink box of one line, measured from its baseline in text space
+    /// (y up). Decorations line up with the letters instead of with the font's
+    /// line box.
+    static func inkBounds(of text: String, font: CTFont) -> CGRect {
+        let bounds = CTLineGetImageBounds(line(of: text, font: font), nil)
+        guard !bounds.isNull, !bounds.isEmpty, bounds.height > 0 else {
+            return CGRect(
+                x: 0,
+                y: -CTFontGetDescent(font),
+                width: 0,
+                height: CTFontGetAscent(font) + CTFontGetDescent(font)
+            )
+        }
+        return bounds
+    }
+
+    private static func line(
+        of text: String,
+        font: CTFont,
+        color: CGColor? = nil
+    ) -> CTLine {
+        var attributes: [NSAttributedString.Key: Any] = [.font: font]
+        if let color {
+            attributes[.foregroundColor] = color
+        }
+        return CTLineCreateWithAttributedString(
             NSAttributedString(string: text, attributes: attributes)
         )
+    }
+
+    static func textWidth(of text: String, font: CTFont) -> CGFloat {
         var ascent: CGFloat = 0
         var descent: CGFloat = 0
         var leading: CGFloat = 0
-        let width = CTLineGetTypographicBounds(line, &ascent, &descent, &leading)
+        let width = CTLineGetTypographicBounds(
+            line(of: text, font: font),
+            &ascent,
+            &descent,
+            &leading
+        )
         return CGFloat(width)
     }
 
