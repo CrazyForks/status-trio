@@ -1,13 +1,16 @@
 # On-demand battery details
 
-Expand **Battery Details** in the popover to view additional battery information.
-Collection runs on a serial utility queue only while the details are visible,
+Open the **Battery** page in the popover to view additional battery information.
+The popover's battery row is the affordance: it carries a chevron and switches the
+popover to a dedicated page with a back row, matching the Wi-Fi and Bluetooth rows.
+Collection runs on a serial utility queue only while that page is visible,
 refreshing every 15 seconds with 3 seconds of scheduling tolerance. Repeated
-requests coalesce into one follow-up read. Closing the details discards outstanding
+requests coalesce into one follow-up read. Leaving the page discards outstanding
 results and cancels the collector's refresh loop; it adds no permanent polling timer.
 The store explicitly deactivates collection when the popover closes, even while
-its hosting view is retained. Expired power is also removed on refresh requests
-while an earlier read is blocked.
+its hosting view is retained, and reports the open page through
+`hasActivePopoverDetails` so the popover does not reopen on the battery page.
+Expired power is also removed on refresh requests while an earlier read is blocked.
 The existing battery icon monitoring is unchanged.
 
 ## Meaning and sources

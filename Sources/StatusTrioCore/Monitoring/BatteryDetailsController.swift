@@ -7,6 +7,9 @@ import Foundation
 final class BatteryDetailsController: ObservableObject {
     typealias Reader = @Sendable (BatteryPowerState, Date?) -> BatteryDetails
     @Published private(set) var details: BatteryDetails?
+    /// True while the collector owns periodic work. The popover uses this to
+    /// treat an open battery page like its Wi-Fi and Bluetooth counterparts.
+    var isActive: Bool { active }
     private let reader: Reader
     private static let queue = DispatchQueue(label: "com.lingsmbp.StatusTrio.battery-details", qos: .utility)
     private var active = false

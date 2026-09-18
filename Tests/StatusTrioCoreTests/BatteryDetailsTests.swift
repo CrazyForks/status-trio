@@ -225,4 +225,13 @@ final class BatteryDetailsControllerTests: XCTestCase {
         await waitUntil { controller.details != nil }
         controller.deactivate()
     }
+
+    func testActiveReflectsWhetherCollectionIsRunning() {
+        let controller = BatteryDetailsController { _, _ in BatteryDetails(cycleCount: 43) }
+        XCTAssertFalse(controller.isActive)
+        controller.activate(state: state)
+        XCTAssertTrue(controller.isActive)
+        controller.deactivate()
+        XCTAssertFalse(controller.isActive)
+    }
 }

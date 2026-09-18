@@ -245,6 +245,7 @@ enum StatusPresentation {
 
 private enum PopoverPanel {
     case summary
+    case battery
     case wifi(showDetails: Bool)
     case bluetooth
 }
@@ -270,6 +271,16 @@ struct StatusPopoverView: View {
             switch panel {
             case .summary:
                 summary
+            case .battery:
+                BatteryDetailsView(
+                    controller: store.batteryDetails,
+                    battery: store.popupSnapshot.battery,
+                    onBack: {
+                        store.closeBatteryDetails()
+                        panel = .summary
+                    },
+                    onOpenBatterySettings: openBatterySettings
+                )
             case .wifi(let showDetails):
                 WiFiNetworkListView(
                     controller: store.wifiNetworks,
@@ -323,8 +334,7 @@ struct StatusPopoverView: View {
         case .battery:
             BatteryStatusView(
                 battery: store.popupSnapshot.battery,
-                detailsController: store.batteryDetails,
-                isPresented: store.isPopoverVisible,
+                onOpenBatteryDetails: { panel = .battery },
                 onOpenBatterySettings: openBatterySettings
             )
         case .network:

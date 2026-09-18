@@ -244,6 +244,10 @@ final class SystemStatusStore: ObservableObject {
         }
     }
 
+    func closeBatteryDetails() {
+        batteryDetails.deactivate()
+    }
+
     func refreshForPopoverOpening() {
         setPopoverVisible(true)
     }
@@ -290,11 +294,15 @@ final class SystemStatusStore: ObservableObject {
     func closePopoverDetails() {
         wifiNetworks.deactivate()
         closeBluetoothDetails()
+        closeBatteryDetails()
     }
 
-    /// Whether a popover detail panel (Wi-Fi or Bluetooth list) is currently open.
-    var hasActivePopoverDetails: Bool {
-        wifiNetworks.isActive || isBluetoothDetailsOpen
+    /// Whether a popover detail panel (Wi-Fi, Bluetooth, or battery) is
+    /// currently open. Query this before `setPopoverVisible(false)`: the
+    /// battery page stops its collector when its view disappears, and that
+    /// happens while the popover is already closing.
+    var hasOpenPopoverPanel: Bool {
+        wifiNetworks.isActive || isBluetoothDetailsOpen || batteryDetails.isActive
     }
 
     func refreshAll() {

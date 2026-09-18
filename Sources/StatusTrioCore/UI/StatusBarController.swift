@@ -418,10 +418,12 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     func popoverDidClose(_ notification: Notification) {
         removePopoverDismissMonitor()
         removeVolumeScrollMonitor()
+        // Read this before closing the popover: a detail panel keeps its own
+        // SwiftUI state, so reusing the built content would reopen on that
+        // panel. The battery page also clears its collector on disappear, so
+        // the flag has to be sampled while the panel is still open.
+        let hadOpenDetails = store.hasOpenPopoverPanel
         store.setPopoverVisible(false)
-        // A detail panel keeps its own SwiftUI state, so reusing the built content
-        // would reopen on that panel; drop it straight away in that case.
-        let hadOpenDetails = store.hasActivePopoverDetails
         store.closePopoverDetails()
         if hadOpenDetails {
             cancelPopoverContentRelease()

@@ -86,7 +86,7 @@ final class BluetoothPermissionTimingTests: XCTestCase {
         store.closePopoverDetails()
 
         XCTAssertEqual(stateMonitor.stopCount, 0)
-        XCTAssertFalse(store.hasActivePopoverDetails)
+        XCTAssertFalse(store.hasOpenPopoverPanel)
 
         store.setBluetoothEnabled(false)
         XCTAssertEqual(stateMonitor.stopCount, 1)

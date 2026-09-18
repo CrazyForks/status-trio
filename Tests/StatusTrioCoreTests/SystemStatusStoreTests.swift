@@ -77,25 +77,25 @@ final class SystemStatusStoreTests: XCTestCase {
             wifiNetworks: wifiNetworks,
             bluetoothDevices: bluetoothDevices
         )
-        XCTAssertFalse(store.hasActivePopoverDetails)
+        XCTAssertFalse(store.hasOpenPopoverPanel)
 
         wifiNetworks.activate(nameAccess: .authorized)
-        XCTAssertTrue(store.hasActivePopoverDetails)
+        XCTAssertTrue(store.hasOpenPopoverPanel)
 
         store.closePopoverDetails()
-        XCTAssertFalse(store.hasActivePopoverDetails)
+        XCTAssertFalse(store.hasOpenPopoverPanel)
 
         store.openBluetoothDetails()
-        XCTAssertTrue(store.hasActivePopoverDetails)
+        XCTAssertTrue(store.hasOpenPopoverPanel)
 
         store.closeBluetoothDetails()
-        XCTAssertFalse(store.hasActivePopoverDetails)
+        XCTAssertFalse(store.hasOpenPopoverPanel)
 
         store.setBluetoothEnabled(true)
-        XCTAssertFalse(store.hasActivePopoverDetails)
+        XCTAssertFalse(store.hasOpenPopoverPanel)
 
         store.setBluetoothEnabled(false)
-        XCTAssertFalse(store.hasActivePopoverDetails)
+        XCTAssertFalse(store.hasOpenPopoverPanel)
     }
 
     func testPopupSnapshotDebouncesRapidUpdates() async {

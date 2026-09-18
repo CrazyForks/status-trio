@@ -1,11 +1,39 @@
 import SwiftUI
 
+/// The battery page, reached from the popover's battery summary row. It owns
+/// the on-demand collector: collection runs only while this page is on screen.
 struct BatteryDetailsView: View {
     @EnvironmentObject private var localization: Localization
     @ObservedObject var controller: BatteryDetailsController
     let battery: BatteryStatus
+    let onBack: () -> Void
+    let onOpenBatterySettings: () -> Void
 
     var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            NavigationBackRow(
+                accessibilityLabel: localization.string(.commonBack),
+                title: StatusPresentation.batteryTitle(battery, localization: localization),
+                action: onBack
+            )
+
+            fields
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            Divider()
+            Button(localization.string(.batteryActionOpenSettings), action: onOpenBatterySettings)
+                .buttonStyle(.plain)
+        }
+        .task(id: BatteryPowerState(battery)) {
+            controller.activate(state: BatteryPowerState(battery))
+        }
+        // A panel can also disappear because the popover closed; the store
+        // deactivates collection there too, so this is the in-popover path.
+        .onDisappear { controller.deactivate() }
+    }
+
+    @ViewBuilder
+    private var fields: some View {
         VStack(alignment: .leading, spacing: 6) {
             if let details = controller.details {
                 if let power = details.power {
@@ -44,11 +72,6 @@ struct BatteryDetailsView: View {
         }
         .font(.caption)
         .monospacedDigit()
-        .task(id: BatteryPowerState(battery)) {
-            controller.activate(state: BatteryPowerState(battery))
-
-        }
-        .onDisappear { controller.deactivate() }
     }
 
     private func row(_ key: LocalizationKey, _ value: String) -> some View {

@@ -1,62 +1,48 @@
 import SwiftUI
 
+/// The battery summary row. Like the Wi-Fi and Bluetooth rows, the row itself
+/// is the affordance: activating it switches the popover to the battery page.
 struct BatteryStatusView: View {
     @EnvironmentObject private var localization: Localization
     let battery: BatteryStatus
-    let detailsController: BatteryDetailsController
-    let isPresented: Bool
+    let onOpenBatteryDetails: () -> Void
     let onOpenBatterySettings: () -> Void
 
-    @State private var isExpanded = false
-
-    init(
-        battery: BatteryStatus, detailsController: BatteryDetailsController,
-        isPresented: Bool, onOpenBatterySettings: @escaping () -> Void,
-        showsDetailsInitially: Bool = false
-    ) {
-        self.battery = battery
-        self.detailsController = detailsController
-        self.isPresented = isPresented
-        self.onOpenBatterySettings = onOpenBatterySettings
-        _isExpanded = State(initialValue: showsDetailsInitially)
-    }
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            summary
-            if battery.isPresent {
-                DisclosureGroup(isExpanded: $isExpanded) {
-                    // Conditional creation guarantees no collection while collapsed.
-                    if isExpanded && isPresented { BatteryDetailsView(controller: detailsController, battery: battery).padding(.top, 6) }
-                } label: {
-                    Text(localization.string(.batteryDetailsTitle))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-        }
-    }
-
-    private var summary: some View {
         HStack(spacing: 10) {
-            Image(systemName: batterySymbolName)
-                .font(.system(size: 15, weight: .medium))
-                .foregroundStyle(batterySymbolColor)
-                .frame(width: 24, height: 24)
-                .accessibilityHidden(true)
+            Button(action: onOpenBatteryDetails) {
+                HStack(spacing: 10) {
+                    Image(systemName: batterySymbolName)
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(batterySymbolColor)
+                        .frame(width: 24, height: 24)
+                        .accessibilityHidden(true)
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(StatusPresentation.batteryTitle(battery, localization: localization))
-                    .font(.headline)
-                    .monospacedDigit()
-                Text(StatusPresentation.batterySubtitle(battery, localization: localization))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(StatusPresentation.batteryTitle(battery, localization: localization))
+                            .font(.headline)
+                            .monospacedDigit()
+                        Text(StatusPresentation.batterySubtitle(battery, localization: localization))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                    }
+
+                    Spacer()
+
+                    if showsDetailAffordance {
+                        Image(systemName: "chevron.right")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+                .contentShape(Rectangle())
             }
-
-            Spacer()
+            .buttonStyle(.plain)
+            .disabled(!showsDetailAffordance)
+            .accessibilityLabel(StatusPresentation.batteryTitle(battery, localization: localization))
+            .accessibilityValue(StatusPresentation.batterySubtitle(battery, localization: localization))
 
             if battery.isPresent {
                 Button(
@@ -72,6 +58,10 @@ struct BatteryStatusView: View {
             }
         }
     }
+
+    /// A Mac without a battery has no details to open, so the row stays inert
+    /// and shows no chevron — the same shape as an unavailable Bluetooth radio.
+    var showsDetailAffordance: Bool { battery.isPresent }
 
     private var batterySymbolName: String {
         guard battery.isPresent else { return "battery.slash" }
