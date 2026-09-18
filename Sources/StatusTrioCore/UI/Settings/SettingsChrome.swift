@@ -12,6 +12,16 @@ enum SettingsMetrics {
     static let iconCorner: CGFloat = 6.5
     /// Where a divider starts, clearing the icon column.
     static let dividerInset: CGFloat = rowPaddingH + iconSize + 12
+    /// Outer margin of a settings page. The scrolling card groups and the pinned
+    /// menu bar preview above them both span it, so the preview is exactly as
+    /// wide as the groups.
+    static let pageMargin: CGFloat = 24
+    /// The page's top margin, owned by the pinned menu bar preview when the page
+    /// has one.
+    static let pageTopMargin: CGFloat = 20
+    /// How far the selection ring is drawn outside its card: the gap plus the
+    /// stroke, on every side.
+    static let selectionRingInset: CGFloat = 5
 }
 
 /// A titled, rounded card group for settings rows.
@@ -202,14 +212,18 @@ extension View {
     /// The option buttons stay focusable so Tab reaches them and the arrow keys
     /// move the selection, but their system focus effect is disabled: it drew a
     /// second ring on top of this one, and the two rings never lined up.
+    ///
+    /// The ring is drawn `selectionRingInset` outside the card on every side, so
+    /// the ring's outer edge — not the card's — is what sits on the row's
+    /// content column.
     func selectionRing(
         _ isOn: Bool,
         cornerRadius: CGFloat = 6,
         style: RoundedCornerStyle = .continuous
     ) -> some View {
-        let gap: CGFloat = 2.5
-        let width: CGFloat = 2.5
-        return padding(gap + width)
+        let gap = SettingsMetrics.selectionRingInset / 2
+        let width = SettingsMetrics.selectionRingInset / 2
+        return padding(SettingsMetrics.selectionRingInset)
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius + gap + width, style: style)
                     .strokeBorder(isOn ? Color.accentColor : Color.clear, lineWidth: width)
@@ -495,9 +509,13 @@ struct SettingsDivider: View {
 
 /// A scrolling page container with standard macOS settings padding and background.
 ///
-/// The optional `pinnedHeader` sits outside the scroll view, so a page whose
-/// first element is the live menu bar simulation keeps that simulation in place
-/// while the settings below it scroll.
+/// The optional `pinnedHeader` is the page's live menu bar simulation. It is a
+/// pinned section header *inside* the scroll view, so it stays at the top of the
+/// pane while the groups below it scroll, and so it shares their width exactly —
+/// including on the panes whose content overflows and therefore shows a
+/// scrollbar. The header must not sit outside the scroll view: a scrollbar that
+/// takes layout space only narrows the scrolling content, which used to leave the
+/// app icon page's card groups one scrollbar narrower than the preview above them.
 struct SettingsPage<Content: View, PinnedHeader: View>: View {
     @ViewBuilder let pinnedHeader: PinnedHeader
     @ViewBuilder let content: Content
@@ -511,34 +529,48 @@ struct SettingsPage<Content: View, PinnedHeader: View>: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            if !(PinnedHeader.self == EmptyView.self) {
-                pinnedHeader
-                    .padding(EdgeInsets(top: 20, leading: 24, bottom: 0, trailing: 24))
-            }
-
-            ScrollView {
-                VStack(alignment: .leading, spacing: SettingsMetrics.groupSpacing) {
-                    content
+        ScrollView {
+            if PinnedHeader.self == EmptyView.self {
+                contentColumn
+                    .padding(.top, SettingsMetrics.pageTopMargin)
+            } else {
+                LazyVStack(alignment: .leading, spacing: 0, pinnedViews: [.sectionHeaders]) {
+                    Section {
+                        contentColumn
+                    } header: {
+                        pinnedHeader
+                            .padding(
+                                EdgeInsets(
+                                    top: SettingsMetrics.pageTopMargin,
+                                    leading: SettingsMetrics.pageMargin,
+                                    bottom: SettingsMetrics.groupSpacing,
+                                    trailing: SettingsMetrics.pageMargin
+                                )
+                            )
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            // The groups scroll underneath the pinned preview, so
+                            // it has to paint the page's own background.
+                            .background(Color(nsColor: .windowBackgroundColor))
+                    }
                 }
-                .padding(
-                    EdgeInsets(
-                        top: Self.contentTopPadding,
-                        leading: 24,
-                        bottom: 24,
-                        trailing: 24
-                    )
-                )
-                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         .background(Color(nsColor: .windowBackgroundColor))
     }
 
-    /// The pinned header owns the page's top margin, so the scrolling content
-    /// only adds the group gap below it.
-    private static var contentTopPadding: CGFloat {
-        PinnedHeader.self == EmptyView.self ? 20 : SettingsMetrics.groupSpacing
+    private var contentColumn: some View {
+        VStack(alignment: .leading, spacing: SettingsMetrics.groupSpacing) {
+            content
+        }
+        .padding(
+            EdgeInsets(
+                top: 0,
+                leading: SettingsMetrics.pageMargin,
+                bottom: SettingsMetrics.pageMargin,
+                trailing: SettingsMetrics.pageMargin
+            )
+        )
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
