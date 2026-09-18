@@ -139,18 +139,10 @@ if [[ ! -f "$RELEASE_BODY_FILE" ]]; then
     exit 1
 fi
 
-if [[ -z "${APPCAST_RELEASE_NOTES_FILE:-}" ]]; then
-    APPCAST_RELEASE_NOTES_FILE="${APPCAST_RELEASE_NOTES_EN_FILE:-$RELEASE_BODY_FILE}"
-fi
+RELEASE_NOTES_DIR="${RELEASE_NOTES_DIR:-$ROOT/release-notes/$VERSION}"
 
-if [[ ! -f "$APPCAST_RELEASE_NOTES_FILE" ]]; then
-    echo "Error: appcast release notes file does not exist: $APPCAST_RELEASE_NOTES_FILE" >&2
-    exit 1
-fi
-
-APPCAST_RELEASE_NOTES_ZH_FILE="${APPCAST_RELEASE_NOTES_ZH_FILE:-}"
-if [[ -n "$APPCAST_RELEASE_NOTES_ZH_FILE" && ! -f "$APPCAST_RELEASE_NOTES_ZH_FILE" ]]; then
-    echo "Error: localized appcast release notes file does not exist: $APPCAST_RELEASE_NOTES_ZH_FILE" >&2
+if [[ ! -d "$RELEASE_NOTES_DIR" ]]; then
+    echo "Error: release notes directory does not exist: $RELEASE_NOTES_DIR" >&2
     exit 1
 fi
 
@@ -266,23 +258,15 @@ if ! gh api "repos/$RELEASE_REPO/git/ref/tags/$TAG" >/dev/null 2>&1; then
 fi
 gh release create "$TAG" "${RELEASE_ARGS[@]}"
 
-APPCAST_NOTES_ARGS=(
-    "$VERSION"
-    "$BUILD"
-    "$MINIMUM_SYSTEM_VERSION"
-    "$DMG_URL"
-    "$ED_SIGNATURE"
-    "$DMG_LENGTH"
-    "$APPCAST_RELEASE_NOTES_FILE"
-)
-
-if [[ -n "$APPCAST_RELEASE_NOTES_ZH_FILE" ]]; then
-    APPCAST_NOTES_ARGS+=("$APPCAST_RELEASE_NOTES_ZH_FILE")
-fi
-
-APPCAST_NOTES_ARGS+=("$APPCAST_PATH")
-
-ruby "$ROOT/scripts/update-appcast.rb" "${APPCAST_NOTES_ARGS[@]}"
+ruby "$ROOT/scripts/update-appcast.rb" \
+    --version "$VERSION" \
+    --build "$BUILD" \
+    --minimum-system-version "$MINIMUM_SYSTEM_VERSION" \
+    --dmg-url "$DMG_URL" \
+    --ed-signature "$ED_SIGNATURE" \
+    --length "$DMG_LENGTH" \
+    --notes-dir "$RELEASE_NOTES_DIR" \
+    --appcast "$APPCAST_PATH"
 
 xmllint --noout "$APPCAST_PATH"
 
