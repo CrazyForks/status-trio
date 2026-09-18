@@ -16,7 +16,7 @@
 - When Wi-Fi is connected, the popover uses the network name (SSID) as its title and shows the current band and signal strength below it, for example 5 GHz / -52 dBm.
 - Missing measurements are omitted rather than shown as 0; Ethernet, offline, and other non-Wi-Fi paths do not show them.
 
-## Icon guide
+## Meet your icon
 - A fresh installation opens the Meet your icon guide on first launch. Select the battery arc, the center network glyph, or the volume indicator to read what each one means; the volume explanation follows your current dots or arc setting.
 - The guide includes a gallery of common state combinations: charging, low battery, Ethernet, no Internet and muted, hotspot with Low Power Mode, weak Wi-Fi at 25% volume, Wi-Fi off, Bluetooth headphones, AirPods, and Wi-Fi with blue volume.
 - Updating to this version, restarting, and existing installations do not open it automatically. Reopen it any time from Settings, App Icon, Open Guide.
