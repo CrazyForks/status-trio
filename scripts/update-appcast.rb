@@ -138,7 +138,11 @@ end
 def item_enclosure_lines(block, build)
   match = block[%r{[ \t]*<enclosure\b.*?/>}m] ||
           raise("Existing item for build #{build} has no <enclosure>.")
-  match.lines.map(&:strip)
+
+  # Strip only the item-level indent so the enclosure is re-emitted byte for
+  # byte; deeper continuation indentation must survive.
+  indent = match[/\A[ \t]*/]
+  match.lines.map { |line| line.chomp.sub(/\A#{Regexp.escape(indent)}/, "") }
 end
 
 def parse_options
