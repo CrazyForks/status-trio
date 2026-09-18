@@ -116,6 +116,10 @@
 "battery.accessibility.value" = "電池 %d%%";
 "common.parenthetical" = "%@（%@）";
 "common.labelValue" = "%@ %@";
+"common.expand" = "展開";
+"common.collapse" = "收合";
+"common.expanded" = "已展開";
+"common.collapsed" = "已收合";
 "wifi.title" = "Wi-Fi";
 "wifi.value.bars" = "%d 格";
 "wifi.value.notAssociated" = "未關聯";

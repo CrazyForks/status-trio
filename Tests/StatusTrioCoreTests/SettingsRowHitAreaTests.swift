@@ -59,6 +59,46 @@ final class SettingsRowHitAreaTests: XCTestCase {
         )
     }
 
+    func testDisclosureRowUsesFullRowHitArea() {
+        let localization = makeLocalization()
+        let view = SettingsDisclosureRow(
+            "cable.connector",
+            tint: .teal,
+            title: localization.string(.settingsNetworkConnectionIcons),
+            subtitle: localization.string(.settingsNetworkConnectionIconsDescription),
+            isExpanded: .constant(false)
+        )
+        .environmentObject(localization)
+        .frame(width: 300)
+
+        let hitAreaWidths = interactiveSubViewWidths(
+            for: view,
+            size: NSSize(width: 300, height: 80)
+        )
+
+        XCTAssertTrue(
+            hitAreaWidths.contains { abs($0 - 300) < 0.5 },
+            "Expected the disclosure row to react across its full width, got \(hitAreaWidths)"
+        )
+    }
+
+    func testWiFiDetailsToggleUsesFullRowHitArea() {
+        let localization = makeLocalization()
+        let view = WiFiDetailsToggleRow(isExpanded: .constant(false))
+            .environmentObject(localization)
+            .frame(width: 260)
+
+        let hitAreaWidths = interactiveSubViewWidths(
+            for: view,
+            size: NSSize(width: 260, height: 40)
+        )
+
+        XCTAssertTrue(
+            hitAreaWidths.contains { abs($0 - 260) < 0.5 },
+            "Expected the details row to react across the whole list width, got \(hitAreaWidths)"
+        )
+    }
+
     func testNavigationBackRowUsesFullHeaderHitArea() {
         let view = NavigationBackRow(
             accessibilityLabel: "Back",

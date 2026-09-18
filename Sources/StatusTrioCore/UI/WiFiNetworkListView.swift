@@ -83,16 +83,7 @@ struct WiFiNetworkListView: View {
             }
 
             if networks.contains(where: \.isConnected) || controller.details.ssid != nil {
-                Button {
-                    showsDetails.toggle()
-                } label: {
-                    Label(
-                        localization.string(showsDetails ? .wifiDetailsHide : .wifiDetailsShow),
-                        systemImage: showsDetails ? "chevron.up" : "info.circle"
-                    )
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(localization.string(.wifiDetailsShow))
+                WiFiDetailsToggleRow(isExpanded: $showsDetails)
 
                 if showsDetails {
                     WiFiDetailsView(details: controller.details)

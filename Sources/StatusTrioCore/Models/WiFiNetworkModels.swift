@@ -162,6 +162,16 @@ enum WiFiNetworkPresentation {
         if network.isConnected { return .none }
         return network.isKnown ? .openSettings : .connect
     }
+
+    /// The details row names the action it performs, so its caption and its
+    /// accessibility label both flip once the details are open.
+    static func detailsToggleTitleKey(isExpanded: Bool) -> LocalizationKey {
+        isExpanded ? .wifiDetailsHide : .wifiDetailsShow
+    }
+
+    static func detailsToggleSymbol(isExpanded: Bool) -> String {
+        isExpanded ? "chevron.up" : "info.circle"
+    }
 }
 
 struct WiFiConnectionDetails: Equatable, Sendable {

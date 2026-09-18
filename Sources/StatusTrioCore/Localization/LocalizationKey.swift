@@ -197,6 +197,10 @@ enum LocalizationKey: String, CaseIterable, Hashable, Sendable {
 
     case commonParenthetical = "common.parenthetical"
     case commonLabelValue = "common.labelValue"
+    case commonExpand = "common.expand"
+    case commonCollapse = "common.collapse"
+    case commonExpanded = "common.expanded"
+    case commonCollapsed = "common.collapsed"
     case ethernetAccessibilityConnected = "ethernet.accessibility.connected"
 
     case wifiSummaryBand = "wifi.summary.band"

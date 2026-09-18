@@ -51,34 +51,13 @@ struct NetworkSectionView: View {
 
             SettingsDivider()
 
-            HStack(alignment: .center, spacing: 12) {
-                SettingsIcon(symbol: "cable.connector", tint: .teal)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(localization.string(.settingsNetworkConnectionIcons))
-                        .font(.system(size: 13, weight: .regular))
-                    Text(localization.string(.settingsNetworkConnectionIconsDescription))
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-
-                Spacer(minLength: 8)
-
-                Button {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        showsNetworkIconOptions.toggle()
-                    }
-                } label: {
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(.secondary)
-                        .rotationEffect(.degrees(showsNetworkIconOptions ? 180 : 0))
-                }
-                .buttonStyle(.plain)
-            }
-            .padding(.horizontal, SettingsMetrics.rowPaddingH)
-            .padding(.vertical, SettingsMetrics.rowPaddingV)
+            SettingsDisclosureRow(
+                "cable.connector",
+                tint: .teal,
+                title: localization.string(.settingsNetworkConnectionIcons),
+                subtitle: localization.string(.settingsNetworkConnectionIconsDescription),
+                isExpanded: $showsNetworkIconOptions
+            )
 
             if showsNetworkIconOptions {
                 VStack(spacing: 0) {

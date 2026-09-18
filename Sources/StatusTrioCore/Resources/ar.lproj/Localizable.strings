@@ -99,6 +99,10 @@
 "battery.accessibility.value" = "البطارية %d%%";
 "common.parenthetical" = "%@ (%@)";
 "common.labelValue" = "%@، %@";
+"common.expand" = "توسيع";
+"common.collapse" = "طي";
+"common.expanded" = "موسّع";
+"common.collapsed" = "مطويّ";
 "settings.launchAtLogin" = "التشغيل عند تسجيل الدخول";
 "settings.launchAtLogin.description" = "تشغيل Status Trio تلقائيًا عند تسجيل الدخول.";
 "settings.launchAtLogin.requiresApproval" = "في انتظار الموافقة. اسمح لـ Status Trio في إعدادات النظام › عام › عناصر تسجيل الدخول.";

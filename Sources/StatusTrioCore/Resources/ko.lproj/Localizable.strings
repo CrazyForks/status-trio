@@ -116,6 +116,10 @@
 "battery.accessibility.value" = "배터리 %d%%";
 "common.parenthetical" = "%@(%@)";
 "common.labelValue" = "%@ %@";
+"common.expand" = "펼치기";
+"common.collapse" = "접기";
+"common.expanded" = "펼쳐짐";
+"common.collapsed" = "접힘";
 "wifi.title" = "Wi-Fi";
 "wifi.value.bars" = "%d칸";
 "wifi.value.notAssociated" = "연결되지 않음";

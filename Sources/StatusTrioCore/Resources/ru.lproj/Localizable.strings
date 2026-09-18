@@ -116,6 +116,10 @@
 "battery.accessibility.value" = "Батарея %d%%";
 "common.parenthetical" = "%@ (%@)";
 "common.labelValue" = "%@, %@";
+"common.expand" = "Развернуть";
+"common.collapse" = "Свернуть";
+"common.expanded" = "Развёрнуто";
+"common.collapsed" = "Свёрнуто";
 "wifi.title" = "Wi-Fi";
 "wifi.value.bars" = "%d дел.";
 "wifi.value.notAssociated" = "Не подключено";

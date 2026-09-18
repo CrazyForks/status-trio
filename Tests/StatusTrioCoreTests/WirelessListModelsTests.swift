@@ -114,6 +114,20 @@ final class WirelessListModelsTests: XCTestCase {
         XCTAssertEqual(WiFiNetworkPresentation.action(for: network), .connect)
     }
 
+    func testDetailsToggleStatesTheActionItPerforms() {
+        XCTAssertEqual(
+            WiFiNetworkPresentation.detailsToggleTitleKey(isExpanded: false),
+            .wifiDetailsShow
+        )
+        XCTAssertEqual(WiFiNetworkPresentation.detailsToggleSymbol(isExpanded: false), "info.circle")
+
+        XCTAssertEqual(
+            WiFiNetworkPresentation.detailsToggleTitleKey(isExpanded: true),
+            .wifiDetailsHide
+        )
+        XCTAssertEqual(WiFiNetworkPresentation.detailsToggleSymbol(isExpanded: true), "chevron.up")
+    }
+
     func testPreferredNetworkParserSkipsHeaderAndPreservesSSIDs() {
         let output = """
         Preferred networks on en0:

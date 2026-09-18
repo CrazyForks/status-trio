@@ -116,6 +116,10 @@
 "battery.accessibility.value" = "バッテリー %d%%";
 "common.parenthetical" = "%@（%@）";
 "common.labelValue" = "%@ %@";
+"common.expand" = "展開";
+"common.collapse" = "折りたたむ";
+"common.expanded" = "展開済み";
+"common.collapsed" = "折りたたみ済み";
 "wifi.title" = "Wi-Fi";
 "wifi.value.bars" = "%d 本";
 "wifi.value.notAssociated" = "未接続";

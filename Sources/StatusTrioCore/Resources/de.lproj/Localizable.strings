@@ -116,6 +116,10 @@
 "battery.accessibility.value" = "Batterie %d%%";
 "common.parenthetical" = "%@ (%@)";
 "common.labelValue" = "%@, %@";
+"common.expand" = "Erweitern";
+"common.collapse" = "Reduzieren";
+"common.expanded" = "Erweitert";
+"common.collapsed" = "Reduziert";
 "wifi.title" = "Wi-Fi";
 "wifi.value.bars" = "%d Balken";
 "wifi.value.notAssociated" = "Nicht verbunden";
