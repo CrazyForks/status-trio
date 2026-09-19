@@ -22,6 +22,9 @@
 | `35307956823` | `Upload release artifacts` | runner 向 GitHub artifact 服务建 artifact 的请求超时（`Failed to CreateArtifact: Unable to make request: ETIMEDOUT`），发生在编译、测试、打包全部成功之后 | 与代码和工具链无关，无代码改动；重跑同一 run 的失败 job 后全部阶段通过 |
 | `35316867111` | `Run tests` | 新增的图标合并重绘测试在断言前固定 `Task.sleep(200ms)`；Swift Testing 会同时启动整轮测试，CI 上主 actor 被排满的时间超过该固定等待，coalescer 的尾部重绘还没执行 | 测试改为轮询目标状态（5 秒上限，命中即返回），不再依赖固定睡眠；后续预检 `35317347672` 全部通过 |
 | `35375443023`（fork 非发布预检） | `Build, sign, notarize, and publish` | 使用 `version=1.2.1`，但仓库没有 `release-notes/1.2.1`；前置校验允许非发布时跳过，`scripts/release.sh` 仍要求该目录存在。Swift 6.1.2 测试已通过，尚未进入 release 构建 | 保持音频代码提交 `55983e2` 不变，改用已有说明的 `version=1.2.0`、递增的 `build=10`、`publish=false`；后续预检 `35375769964` 的测试、通用 release 构建、DMG 打包和 artifact 上传全部通过 |
+| `35447073294` | `Run tests` | `SettingsRowHitAreaTests.testPreferenceCheckboxRowUsesFullRowHitArea` 失败（`got [14.0]`）。该测试把 `NSHostingView.subviews` 当作命中区代理；macOS 26 SDK 把 `.checkbox` 样式的 `Toggle` 画成 14×14 的 AppKit `Checkbox` 加一个 SwiftUI 标签，脱离窗口时不存在任何全宽子视图。旧工具链（Xcode 16.4）与本机 macOS 27 都会生成全宽 `_FocusRingView`，所以失效的是探针的假设，不是产品行为 | `interactiveSubViewSizes` 改为先把行放进已 `makeKeyAndOrderFront` 的 `NSWindow` 再测量：窗口的 key-view proxy 在 macOS 26 上正好是 300 pt 宽；后续预检 `35448004467` 通过 |
+| `35447273818` | `Run tests` | 同一根因的诊断复现（临时 dump 视图树以取得 macOS 26 上的实测尺寸与类名） | 同上 |
+| `35447521372` | `Run tests` | `AppIconControllerTests.visibleDockRendersStatusChanges`（Swift Testing）偶发失败：`renderCount → 0`，期望 `1`。上一版修复在探针里调用了进程级的 `NSApplication.shared.setActivationPolicy(.accessory)`，改变了其他测试判断 Dock 是否可见的前提 | 从 `interactiveSubViewSizes` 移除该调用，只保留窗口，并在 `defer` 里 `orderOut` 加清空 `contentView`；后续预检 `35448004467` 通过 |
 
 ## 35375443023：非发布预检缺少下一版本说明
 
