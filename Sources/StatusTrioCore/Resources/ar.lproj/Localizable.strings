@@ -273,12 +273,14 @@
 
 // On-demand battery details.
 "battery.details.title" = "تفاصيل البطارية";
+"battery.details.systemPower" = "قدرة النظام (تقديرية)";
+"battery.details.systemReadAt" = "وقت قراءة النظام";
 "battery.details.power" = "قدرة البطارية (تقديرية)";
 "battery.details.charging" = "الشحن (تقديري)";
-"battery.details.discharging" = "التفريغ (تقديري)";
-"battery.details.voltage" = "الجهد";
-"battery.details.current" = "التيار";
-"battery.details.sampled" = "وقت القياس";
+"battery.details.discharging" = "تفريغ البطارية (تقديري)";
+"battery.details.voltage" = "جهد البطارية";
+"battery.details.current" = "تيار البطارية";
+"battery.details.sampled" = "وقت قياس البطارية";
 "battery.details.adapter" = "القدرة الاسمية للمحوّل";
 "battery.details.remaining" = "الوقت المتبقي";
 "battery.details.cycles" = "عدد دورات الشحن";
@@ -288,7 +290,7 @@
 "battery.details.unavailable" = "غير متاح";
 "battery.details.collecting" = "جارٍ القياس…";
 "battery.details.loading" = "جارٍ التحديث…";
-"battery.details.explanation" = "قدرة البطارية هي تقدير تقريبي لصافي القدرة، وليست إجمالي استهلاك Mac. القدرة الاسمية للمحوّل ليست قدرة الشحن الفعلية في الوقت الحالي. بعد تغيير مصدر الطاقة قد يستغرق macOS حتى دقيقة لتقديم قيم جديدة.";
+"battery.details.explanation" = "عند توصيل الطاقة الخارجية، تُعرض قدرة استهلاك النظام الكلية؛ وعند استخدام البطارية، تُعرض قدرة تفريغها الصافية. كلاهما تقديري. قدرة المحوّل الاسمية ليست الاستهلاك الفعلي. قد يتأخر تحديث قراءات البطارية حتى دقيقة بعد تبديل مصدر الطاقة.";
 /* Compact popover controls. */
 "menu.more" = "إجراءات أخرى";
 

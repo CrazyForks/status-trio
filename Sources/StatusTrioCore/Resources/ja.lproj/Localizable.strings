@@ -273,12 +273,14 @@
 
 // On-demand battery details.
 "battery.details.title" = "バッテリーの詳細";
+"battery.details.systemPower" = "システム消費電力（推定）";
+"battery.details.systemReadAt" = "システム読み取り時刻";
 "battery.details.power" = "バッテリー電力（推定）";
 "battery.details.charging" = "充電（推定）";
-"battery.details.discharging" = "放電（推定）";
-"battery.details.voltage" = "電圧";
-"battery.details.current" = "電流";
-"battery.details.sampled" = "測定時刻";
+"battery.details.discharging" = "バッテリー放電電力（推定）";
+"battery.details.voltage" = "バッテリー電圧";
+"battery.details.current" = "バッテリー電流";
+"battery.details.sampled" = "バッテリー計測時刻";
 "battery.details.adapter" = "アダプタの定格出力";
 "battery.details.remaining" = "残り時間";
 "battery.details.cycles" = "充放電回数";
@@ -288,7 +290,7 @@
 "battery.details.unavailable" = "取得できません";
 "battery.details.collecting" = "計測中…";
 "battery.details.loading" = "更新中…";
-"battery.details.explanation" = "バッテリー電力は正味の充放電電力の推定値であり、Mac全体の消費電力ではありません。アダプタの定格出力は現在の充電電力ではありません。電源の切り替え後、新しい値の取得には最大1分かかります。";
+"battery.details.explanation" = "外部電源接続時はシステム全体の消費電力、バッテリー使用時は正味の放電電力を表示します。いずれも推定値です。アダプタの定格出力は実際の消費電力ではありません。電源切り替え後、バッテリーの値の更新に最大1分かかる場合があります。";
 /* Compact popover controls. */
 "menu.more" = "その他の操作";
 

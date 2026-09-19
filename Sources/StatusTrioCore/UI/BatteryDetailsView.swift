@@ -36,19 +36,16 @@ struct BatteryDetailsView: View {
     private var fields: some View {
         VStack(alignment: .leading, spacing: 6) {
             if let details = controller.details {
+                let reading = BatteryPowerPresentation(details: details, isConnectedToPower: battery.isConnectedToPower)
+                row(reading.title, reading.watts.map {
+                    $0.formatted(.number.precision(.fractionLength(1)).locale(localization.resolvedLanguage.locale)) + " W"
+                } ?? localization.string(reading.unavailableTitle))
+                if let timestamp = reading.timestamp {
+                    row(reading.timestampTitle, timestamp.formatted(.dateTime.hour().minute().second().locale(localization.resolvedLanguage.locale)))
+                }
                 if let power = details.power {
-                    row(power.watts > 0 ? .batteryDetailsCharging
-                            : (power.watts < 0 ? .batteryDetailsDischarging : .batteryDetailsPower),
-                        abs(power.watts).formatted(.number.precision(.fractionLength(1)).locale(localization.resolvedLanguage.locale)) + " W")
-                        .foregroundStyle(power.watts > 0 ? Color.green : Color.primary)
                     row(.batteryDetailsVoltage, power.volts.formatted(.number.precision(.fractionLength(2)).locale(localization.resolvedLanguage.locale)) + " V")
                     row(.batteryDetailsCurrent, power.amps.formatted(.number.precision(.fractionLength(2)).locale(localization.resolvedLanguage.locale)) + " A")
-                    row(.batteryDetailsSampled, power.updatedAt.formatted(.dateTime.hour().minute().second().locale(localization.resolvedLanguage.locale)))
-                } else {
-                    row(.batteryDetailsPower, localization.string(
-                        details.powerAvailability == .collecting
-                            ? .batteryDetailsCollecting
-                            : .batteryDetailsUnavailable))
                 }
                 if let watts = details.adapterWatts {
                     row(.batteryDetailsAdapter, watts.formatted(.number.locale(localization.resolvedLanguage.locale)) + " W")

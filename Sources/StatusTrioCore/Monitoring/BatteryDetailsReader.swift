@@ -27,14 +27,17 @@ struct BatteryDetails: Equatable, Sendable {
     var remainingMinutes: Int?
     var cycleCount: Int?
     var power: BatteryPowerSample?
+    var systemPower: SystemPowerSample?
     var powerAvailability: PowerAvailability
 
     init(adapterWatts: Int? = nil, remainingMinutes: Int? = nil, cycleCount: Int? = nil,
-         power: BatteryPowerSample? = nil, powerAvailability: PowerAvailability = .unavailable) {
+         power: BatteryPowerSample? = nil, powerAvailability: PowerAvailability = .unavailable,
+         systemPower: SystemPowerSample? = nil) {
         self.adapterWatts = adapterWatts
         self.remainingMinutes = remainingMinutes
         self.cycleCount = cycleCount
         self.power = power
+        self.systemPower = systemPower
         self.powerAvailability = powerAvailability
     }
 }
@@ -70,7 +73,8 @@ struct BatteryDetailsReader: Sendable {
             remainingSeconds: IOPSGetTimeRemainingEstimate(),
             state: state,
             now: Date(),
-            notBefore: notBefore
+            notBefore: notBefore,
+            systemPower: state.isConnected ? SystemPowerReader().read() : nil
         )
     }
 
@@ -78,14 +82,16 @@ struct BatteryDetailsReader: Sendable {
     /// not a stable cross-model API. Never combine values from nested telemetry sources.
     static func parse(
         registry: [String: Any], adapterWatts: Int?, remainingSeconds: Double,
-        state: BatteryPowerState, now: Date, notBefore: Date? = nil
+        state: BatteryPowerState, now: Date, notBefore: Date? = nil,
+        systemPower: SystemPowerSample? = nil
     ) -> BatteryDetails {
         guard state.isPresent else { return BatteryDetails(powerAvailability: .unavailable) }
         var result = BatteryDetails(
             adapterWatts: state.isConnected ? adapterWatts.flatMap { $0 > 0 ? $0 : nil } : nil,
             remainingMinutes: !state.isConnected && remainingSeconds.isFinite && remainingSeconds >= 60
                 && remainingSeconds < Double(Int.max) ? Int(remainingSeconds / 60) : nil,
-            cycleCount: (registry["CycleCount"] as? Int).flatMap { $0 >= 0 ? $0 : nil }
+            cycleCount: (registry["CycleCount"] as? Int).flatMap { $0 >= 0 ? $0 : nil },
+            systemPower: systemPower
         )
         guard let millivolts = (registry["Voltage"] as? NSNumber)?.doubleValue,
               let current = registry["Amperage"] as? NSNumber,

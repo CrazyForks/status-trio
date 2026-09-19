@@ -273,12 +273,14 @@
 
 // On-demand battery details.
 "battery.details.title" = "Detalles de la batería";
+"battery.details.systemPower" = "Consumo del sistema (estimado)";
+"battery.details.systemReadAt" = "Lectura del sistema";
 "battery.details.power" = "Potencia de la batería (estimada)";
 "battery.details.charging" = "Carga (estimada)";
-"battery.details.discharging" = "Descarga (estimada)";
-"battery.details.voltage" = "Voltaje";
-"battery.details.current" = "Corriente";
-"battery.details.sampled" = "Hora de la medición";
+"battery.details.discharging" = "Descarga de batería (estimada)";
+"battery.details.voltage" = "Voltaje de la batería";
+"battery.details.current" = "Corriente de la batería";
+"battery.details.sampled" = "Muestra de la batería";
 "battery.details.adapter" = "Potencia nominal del adaptador";
 "battery.details.remaining" = "Tiempo restante";
 "battery.details.cycles" = "Ciclos de carga";
@@ -288,7 +290,7 @@
 "battery.details.unavailable" = "No disponible";
 "battery.details.collecting" = "Midiendo…";
 "battery.details.loading" = "Actualizando…";
-"battery.details.explanation" = "La potencia de la batería es una estimación aproximada de la potencia neta, no del consumo total del Mac. La potencia nominal del adaptador no es la potencia de carga actual. Tras cambiar la fuente de alimentación, macOS puede tardar hasta un minuto en dar valores nuevos.";
+"battery.details.explanation" = "Con alimentación externa se muestra el consumo total del sistema; con batería, su descarga neta. Ambos son estimaciones. La potencia nominal del adaptador no es el consumo real. Al cambiar de fuente, los datos de batería pueden tardar hasta un minuto en actualizarse.";
 /* Compact popover controls. */
 "menu.more" = "Más acciones";
 

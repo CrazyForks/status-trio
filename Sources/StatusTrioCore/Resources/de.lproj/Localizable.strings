@@ -273,12 +273,14 @@
 
 // On-demand battery details.
 "battery.details.title" = "Batteriedetails";
+"battery.details.systemPower" = "Systemleistung (geschätzt)";
+"battery.details.systemReadAt" = "System ausgelesen um";
 "battery.details.power" = "Batterieleistung (geschätzt)";
 "battery.details.charging" = "Laden (geschätzt)";
-"battery.details.discharging" = "Entladen (geschätzt)";
-"battery.details.voltage" = "Spannung";
-"battery.details.current" = "Stromstärke";
-"battery.details.sampled" = "Messzeit";
+"battery.details.discharging" = "Batterieentladung (geschätzt)";
+"battery.details.voltage" = "Batteriespannung";
+"battery.details.current" = "Batteriestrom";
+"battery.details.sampled" = "Batterie gemessen um";
 "battery.details.adapter" = "Netzteil-Nennleistung";
 "battery.details.remaining" = "Restlaufzeit";
 "battery.details.cycles" = "Ladezyklen";
@@ -288,7 +290,7 @@
 "battery.details.unavailable" = "Nicht verfügbar";
 "battery.details.collecting" = "Wird gemessen…";
 "battery.details.loading" = "Wird aktualisiert…";
-"battery.details.explanation" = "Die Batterieleistung ist eine Schätzung der Nettoleistung, nicht des gesamten Mac-Verbrauchs. Die Nennleistung des Netzteils ist nicht die aktuelle Ladeleistung. Nach einem Wechsel der Stromquelle braucht macOS bis zu einer Minute für neue Werte.";
+"battery.details.explanation" = "Am Netz wird der gesamte Systemverbrauch angezeigt, im Batteriebetrieb die Nettoentladung. Beides sind Schätzwerte. Die Netzteil-Nennleistung ist nicht der tatsächliche Verbrauch. Nach einem Wechsel der Stromquelle können Batteriewerte bis zu eine Minute verzögert sein.";
 /* Compact popover controls. */
 "menu.more" = "Weitere Aktionen";
 
