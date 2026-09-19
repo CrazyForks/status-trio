@@ -30,6 +30,27 @@ final class ManualEventSleeper {
         }
     }
 
+    /// Bounded variant of `waitForCallCount(_:)`. Returns `false` when the call
+    /// never arrives, so a regression fails the test instead of parking it until
+    /// the whole-run timeout and turning a failure into a CI hang.
+    func waitForCallCount(_ count: Int, timeout: Duration) async -> Bool {
+        guard callCount < count else { return true }
+        let timeoutTask = Task { @MainActor in
+            try? await Task.sleep(for: timeout)
+            guard !Task.isCancelled else { return }
+            // Wake only the waiters this call is responsible for; other pending
+            // waits keep waiting for their own call.
+            let pending = callWaiters.filter { $0.count == count }.map { $0.continuation }
+            callWaiters.removeAll { $0.count == count }
+            pending.forEach { $0.resume() }
+        }
+        await withCheckedContinuation { continuation in
+            callWaiters.append((count, continuation))
+        }
+        timeoutTask.cancel()
+        return callCount >= count
+    }
+
     func waitForCompletionCount(_ count: Int) async {
         guard completionCount < count else { return }
         await withCheckedContinuation { continuation in

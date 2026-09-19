@@ -19,47 +19,70 @@ final class VolumeMonitorTests: XCTestCase {
         )
 
         monitor.refresh()
+        // Returning from `refresh()` at all already means the synchronous read did
+        // not run on the main thread. The heartbeat below adds the positive half:
+        // the MainActor keeps being scheduled while the read is still outstanding.
         await fulfillment(of: [started], timeout: 5)
+        XCTAssertFalse(blockedRead.wasMainThread, "The system read must run off the main thread")
+
+        let heartbeat = expectation(description: "MainActor keeps running while the read is blocked")
+        Task { @MainActor in heartbeat.fulfill() }
+        await fulfillment(of: [heartbeat], timeout: 5)
+
         blockedRead.release.signal()
         var iterator = monitor.updates.makeAsyncIterator()
         _ = await iterator.next()
 
-        XCTAssertTrue(blockedRead.mainActorProgressed, "MainActor must run while the system read is blocked")
-        XCTAssertFalse(blockedRead.wasMainThread)
+        XCTAssertTrue(blockedRead.finished, "The released system read must complete")
         monitor.stop()
     }
 
-    func testSlowDeviceEnumerationDoesNotBlockMainActorOrLoseCurrentDevice() async {
+    func testSlowDeviceEnumerationDoesNotBlockMainActorAndKeepsTheSnapshotDevice() async {
         let started = expectation(description: "device enumeration started")
         let blockedEnumeration = BlockingAudioRead(onStart: { started.fulfill() })
-        let currentDevice = AudioOutputDevice(
+        // The volume snapshot names the device that was current when it was read,
+        // while the enumeration below is the list observed later. Both can be
+        // "current" across a switch, so the status must keep the snapshot's device
+        // next to the scalar it was read with and publish the list as read.
+        let snapshotDevice = AudioOutputDevice(
             id: 42, name: "AirPods Pro", uid: "airpods", isCurrent: true,
             volume: 0.5, transport: .bluetooth, dataSource: .headphones,
             iconURL: URL(fileURLWithPath: "/tmp/airpods-pro.icns")
         )
+        let enumeratedDevice = AudioOutputDevice(id: 84, name: "USB Speakers", isCurrent: true)
         let monitor = VolumeMonitor(
             statusReader: CoreAudioStatusReader { includeOutputDevices in
                 let volume = VolumeReading(
                     scalar: 0.5, isMuted: false,
-                    deviceName: currentDevice.name, currentDevice: currentDevice
+                    deviceName: snapshotDevice.name, currentDevice: snapshotDevice
                 )
-                XCTAssertTrue(includeOutputDevices)
-                blockedEnumeration.wait()
-                return AudioStatusReading(volume: volume, outputDevices: [currentDevice])
+                if includeOutputDevices { blockedEnumeration.wait() }
+                return AudioStatusReading(
+                    volume: volume,
+                    outputDevices: includeOutputDevices ? [enumeratedDevice] : nil
+                )
             },
             eventMonitor: FakeVolumeEventMonitor()
         )
 
         monitor.refresh()
         await fulfillment(of: [started], timeout: 5)
+        XCTAssertFalse(blockedEnumeration.wasMainThread, "Device enumeration must run off the main thread")
+
+        let heartbeat = expectation(description: "MainActor keeps running during a slow enumeration")
+        Task { @MainActor in heartbeat.fulfill() }
+        await fulfillment(of: [heartbeat], timeout: 5)
+
         blockedEnumeration.release.signal()
         var iterator = monitor.updates.makeAsyncIterator()
         let status = await iterator.next()
 
-        XCTAssertTrue(blockedEnumeration.mainActorProgressed)
-        XCTAssertFalse(blockedEnumeration.wasMainThread)
-        XCTAssertEqual(status?.currentDevice, currentDevice)
-        XCTAssertEqual(status?.outputDevices, [currentDevice])
+        XCTAssertTrue(blockedEnumeration.finished, "The released enumeration must complete")
+        XCTAssertEqual(
+            status?.currentDevice, snapshotDevice,
+            "A slow enumeration must not replace the device the volume was read with"
+        )
+        XCTAssertEqual(status?.outputDevices, [enumeratedDevice], "The enumerated list is published as read")
         monitor.stop()
     }
 
@@ -701,28 +724,32 @@ private final class FakeVolumeReader: VolumeReadingProviding {
     }
 }
 
+/// Holds a system read open so a test can observe the MainActor while the read is
+/// still outstanding. `wait()` is meant to run off the main thread; the short
+/// timeout exists only so a regression reports a failure instead of deadlocking.
 private final class BlockingAudioRead: @unchecked Sendable {
     let release = DispatchSemaphore(value: 0)
+    private static let waitTimeout: DispatchTimeInterval = .seconds(5)
     private let onStart: @Sendable () -> Void
     private let lock = NSLock()
-    private var completedBeforeTimeout = false
+    private var finishedInTime = false
     private var ranOnMainThread = true
 
     init(onStart: @escaping @Sendable () -> Void) {
         self.onStart = onStart
     }
 
-    var mainActorProgressed: Bool { lock.withLock { completedBeforeTimeout } }
+    /// Whether the read completed instead of hitting the safety timeout.
+    var finished: Bool { lock.withLock { finishedInTime } }
+    /// Whether the read ran on the main thread — the regression under test.
     var wasMainThread: Bool { lock.withLock { ranOnMainThread } }
 
     func wait() {
         let isMainThread = Thread.isMainThread
+        lock.withLock { ranOnMainThread = isMainThread }
         onStart()
-        let didRelease = release.wait(timeout: .now() + 10) == .success
-        lock.withLock {
-            ranOnMainThread = isMainThread
-            completedBeforeTimeout = didRelease
-        }
+        let didRelease = release.wait(timeout: .now() + Self.waitTimeout) == .success
+        lock.withLock { finishedInTime = didRelease }
     }
 }
 

@@ -6,15 +6,24 @@ import XCTest
 final class VolumeMonitorAsyncTests: XCTestCase {
     func testRefreshBurstRetainsOneFollowUpAndUpgradesToDeviceEnumeration() async {
         let reader = DeferredAudioStatusReader()
-        let monitor = makeMonitor(reader: reader)
+        let events = AsyncVolumeEvents()
+        let monitor = makeMonitor(reader: reader, events: events)
         monitor.setDetailsVisible(false)
         monitor.start()
         monitor.setDetailsVisible(true)
         for _ in 0..<100 { monitor.refresh() }
         XCTAssertEqual(reader.requests, [false])
+        XCTAssertEqual(events.reconcileCount, 1, "The first read reconciles listener registration")
 
+        // The visibility change invalidated the in-flight read. This test pins the
+        // coalescing and the enumeration upgrade; the stale-reading discard itself
+        // is guarded by the tests below that stop before the follow-up completes.
         reader.complete(reading(scalar: 0.2))
         XCTAssertEqual(reader.requests, [false, true])
+        XCTAssertEqual(
+            events.reconcileCount, 2,
+            "The coalesced follow-up must still reconcile listeners, not only the first read"
+        )
         reader.complete(reading(scalar: 0.7, devices: [device]))
         monitor.stop()
 
@@ -28,6 +37,8 @@ final class VolumeMonitorAsyncTests: XCTestCase {
     }
 
     func testOrdinaryRefreshBurstPublishesBothCompletedReadings() async {
+        // `refresh()` passes `detailsVisible`, which defaults to true, so this
+        // burst enumerates devices and is not a level-only refresh.
         let reader = DeferredAudioStatusReader()
         let monitor = makeMonitor(reader: reader)
         monitor.start()
@@ -142,7 +153,8 @@ final class VolumeMonitorAsyncTests: XCTestCase {
         let monitor = makeMonitor(reader: reader, events: events, sleeper: sleeper)
         monitor.start()
         events.defaultDeviceChanged?()
-        await sleeper.waitForCallCount(1)
+        let debounceStarted = await sleeper.waitForCallCount(1, timeout: .seconds(5))
+        XCTAssertTrue(debounceStarted, "The device change must schedule a debounced refresh")
         monitor.setDetailsVisible(false)
         monitor.setDetailsVisible(true)
         monitor.refresh()
@@ -173,7 +185,8 @@ final class VolumeMonitorAsyncTests: XCTestCase {
             case .toggleMute: monitor.toggleMute()
             case .selectDevice: monitor.selectOutputDevice(84)
             }
-            await sleeper.waitForCallCount(1)
+            let debounceStarted = await sleeper.waitForCallCount(1, timeout: .seconds(5))
+            XCTAssertTrue(debounceStarted, "The command must schedule a debounced refresh")
             reader.complete(reading(scalar: 0.2, devices: [device]))
             XCTAssertEqual(reader.requests, [true], "The debounce timer owns the follow-up")
             XCTAssertEqual(controller.commands, [command])
@@ -203,7 +216,8 @@ final class VolumeMonitorAsyncTests: XCTestCase {
         _ = await iterator.next()
 
         events.volumeChanged?()
-        await sleeper.waitForCallCount(1)
+        let levelDebounce = await sleeper.waitForCallCount(1, timeout: .seconds(5))
+        XCTAssertTrue(levelDebounce, "The level event must schedule a debounced refresh")
         let levelRead = expectation(description: "level read starts")
         reader.onRead = { levelRead.fulfill() }
         sleeper.releaseAll()
@@ -212,9 +226,15 @@ final class VolumeMonitorAsyncTests: XCTestCase {
         XCTAssertEqual(reader.requests, [true, false], "Level updates reuse the cached list")
 
         events.volumeChanged?()
-        await sleeper.waitForCallCount(2)
+        let upgradeDebounce = await sleeper.waitForCallCount(2, timeout: .seconds(5))
+        XCTAssertTrue(upgradeDebounce, "The second level event must schedule a debounced refresh")
         monitor.refresh()
         XCTAssertEqual(reader.requests, [true, false])
+        // The second volume event bumped the read generation, so the level read
+        // that was already in flight is discarded. `bufferingNewest(1)` would hide
+        // a wrongly published value behind the final 0.8, so the discard itself is
+        // guarded by the tests that stop before the follow-up completes; this test
+        // pins the pending enumeration upgrade the debounce timer must carry over.
         reader.complete(reading(scalar: 0.3))
         XCTAssertEqual(reader.requests, [true, false], "The debounce timer owns the follow-up")
         let enumeration = expectation(description: "upgraded enumeration starts")
@@ -273,6 +293,10 @@ private final class DeferredAudioStatusReader: AudioStatusReadingProviding {
     }
 
     func complete(_ reading: AudioStatusReading) {
+        guard !completions.isEmpty else {
+            XCTFail("complete() called with no read in flight")
+            return
+        }
         completions.removeFirst()(reading)
     }
 }
@@ -282,6 +306,7 @@ private final class AsyncVolumeEvents: VolumeEventMonitoring {
     var defaultDeviceChanged: (@MainActor @Sendable () -> Void)?
     var volumeChanged: (@MainActor @Sendable () -> Void)?
     private(set) var stopCount = 0
+    private(set) var reconcileCount = 0
     private(set) var recoverCount = 0
 
     func start(
@@ -292,7 +317,7 @@ private final class AsyncVolumeEvents: VolumeEventMonitoring {
         volumeChanged = onVolumeChange
     }
 
-    func reconcile() {}
+    func reconcile() { reconcileCount += 1 }
     func recover() { recoverCount += 1 }
     func stop() { stopCount += 1 }
 }
