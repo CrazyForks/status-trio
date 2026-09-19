@@ -129,9 +129,28 @@ final class SettingsRowHitAreaTests: XCTestCase {
         for view: V,
         size: NSSize
     ) -> [NSSize] {
+        NSApplication.shared.setActivationPolicy(.accessory)
+
         let hostingView = NSHostingView(rootView: view)
         hostingView.frame = NSRect(origin: .zero, size: size)
+
+        // A hit area only exists once the row is in a window. A detached hosting
+        // view is left partially laid out, and the interactive subtree it
+        // realizes depends on the SDK: the macOS 26 SDK draws a `.checkbox`
+        // toggle as an AppKit checkbox plus a SwiftUI label, so the row's
+        // full-width target is only materialized by the window's key-view proxy.
+        let window = NSWindow(
+            contentRect: hostingView.frame,
+            styleMask: [.borderless],
+            backing: .buffered,
+            defer: false
+        )
+        window.contentView = hostingView
+        window.makeKeyAndOrderFront(nil)
+        defer { window.orderOut(nil) }
+
         hostingView.layoutSubtreeIfNeeded()
+        RunLoop.current.run(until: Date().addingTimeInterval(0.05))
 
         return hostingView.subviews
             .filter { !$0.isHidden && $0.frame.height > 0 }

@@ -3,12 +3,11 @@ import SwiftUI
 import XCTest
 @testable import StatusTrioCore
 
-// TEMPORARY DIAGNOSTIC — remove before merging. Dumps the AppKit view tree that
-// SwiftUI realizes for the row views whose hit-area tests differ between the
-// macOS 15 and macOS 26 toolchains.
+// TEMPORARY DIAGNOSTIC — remove before merging.
 @MainActor
 final class ZZToolchainDiagnosticTests: XCTestCase {
-    func testDumpRowViewTrees() {
+    func testDumpTreesWithWindow() {
+        NSApplication.shared.setActivationPolicy(.accessory)
         let localization = makeLocalization()
 
         dump("PreferenceCheckboxRow", PreferenceCheckboxRow(
@@ -28,24 +27,22 @@ final class ZZToolchainDiagnosticTests: XCTestCase {
     private func dump<V: View>(_ name: String, _ view: V, size: NSSize) {
         let hostingView = NSHostingView(rootView: view)
         hostingView.frame = NSRect(origin: .zero, size: size)
+        let window = NSWindow(
+            contentRect: hostingView.frame,
+            styleMask: [.borderless],
+            backing: .buffered,
+            defer: false
+        )
+        window.contentView = hostingView
+        window.makeKeyAndOrderFront(nil)
         hostingView.layoutSubtreeIfNeeded()
+        RunLoop.current.run(until: Date().addingTimeInterval(0.05))
 
-        print("DIAG-BEGIN \(name) hosting=\(type(of: hostingView)) frame=\(hostingView.frame)")
-        walk(hostingView, depth: 0)
-        for x in stride(from: CGFloat(10), through: size.width - 10, by: 50) {
-            let point = NSPoint(x: x, y: size.height / 2)
-            let hit = hostingView.hitTest(point)
-            print("DIAG-HIT \(name) x=\(x) -> \(hit.map { String(describing: type(of: $0)) } ?? "nil")")
-        }
-        print("DIAG-END \(name)")
-    }
-
-    private func walk(_ view: NSView, depth: Int) {
-        let indent = String(repeating: "  ", count: depth)
-        print("DIAG-TREE \(indent)\(type(of: view)) frame=\(view.frame) hidden=\(view.isHidden) alpha=\(view.alphaValue)")
-        for child in view.subviews {
-            walk(child, depth: depth + 1)
-        }
+        let widths = hostingView.subviews
+            .filter { !$0.isHidden && $0.frame.height > 0 }
+            .map { "\(type(of: $0))=\($0.frame.size)" }
+        print("DIAG-WINDOW \(name) qualifying=\(widths)")
+        window.orderOut(nil)
     }
 
     private func makeLocalization() -> Localization {
