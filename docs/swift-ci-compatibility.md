@@ -236,11 +236,14 @@ issue [#40](https://github.com/lingyired/status-trio/issues/40) 的根因不是�
   `LSMinimumSystemVersion`（一份独立声明，而不是产物自身的值），由构建脚本自动调用，
   本地构建与 CI 预检都会执行。
 
-非发布预检 [`35448004467`](https://github.com/lingyired/status-trio/actions/runs/35448004467)
+非发布预检 [`35449290621`](https://github.com/lingyired/status-trio/actions/runs/35449290621)
 （`version=1.3.0`、`build=10`、`publish=false`）通过：602 个 XCTest（3 跳过）与 146 个
 Swift Testing 全绿；通用 release 构建的两个切片都是 `minos 15.0 / sdk 26.0`，
 `LC_BUILD_VERSION check passed`；DMG 打包与 artifact 上传成功，未发布 Release 或更新 appcast。
-该次预检之后只有记录 CI 历史的 Markdown 提交。
+这次预检跑的是加了下面那几道护栏之后的代码，也就是说 `minos` 与 `LSMinimumSystemVersion`
+的交叉比对在 CI 上确实执行并通过了。该次预检之后只有记录 CI 历史的 Markdown 提交。
+
+同一条分支上更早一次通过的预检是 `35448004467`（护栏加强之前）。
 
 本次迁移过程中修掉的三个失败 run 见上面的失败记录表：`35447073294`、`35447273818`、`35447521372`。
 
