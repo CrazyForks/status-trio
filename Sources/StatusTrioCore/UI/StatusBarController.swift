@@ -266,6 +266,10 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         // modern activate() can be ignored by the user-activation policy.
         NSApp.activate(ignoringOtherApps: true)
         popover.show(relativeTo: rect, of: view, preferredEdge: preferredEdge)
+        // The popover's backing window only exists once it has been shown, and
+        // without a Spaces behavior it stays on this app's desktop Space while
+        // another app is full-screen.
+        popover.contentViewController?.view.window?.enableDisplayOnFullScreenSpaces()
         popover.contentViewController?.view.window?.makeKey()
         installPopoverDismissMonitor()
         installVolumeScrollMonitor()
