@@ -31,6 +31,13 @@ macOS 15 / Xcode 16.4 / Swift 6.1.2 workflow：
 [同一代码提交的通过记录](https://github.com/hhh2210/status-trio/actions/runs/35375769964)。
 两次均未发布 Release 或更新 appcast。
 
+合并前又在上游仓库以同一 workflow 复跑了一次非发布预检
+[`35418503401`](https://github.com/lingyired/status-trio/actions/runs/35418503401)
+（`version=1.2.0`、递增的 `build=10`、`publish=false`）：574 个 XCTest（3 跳过）、
+146 个 Swift Testing 全部通过，通用 release 构建、`StatusTrio-1.2.0.dmg` 打包和
+artifact 上传成功，未发布 Release 或更新 appcast。该次预检验证的是 Swift 代码提交
+`e22cd13`；其后只有记录 CI 历史的 Markdown 提交。
+
 ## 失败记录规则
 
 每次 GitHub Actions 失败都必须追加到上表，至少包含：
