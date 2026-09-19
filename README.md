@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="screenshots/status-style.png" width="288" alt="Four Status Trio menu bar icon styles rendered from different settings">
+  <img src="screenshots/status-trio-dock-state-strip.png" width="1000" alt="Eight Status Trio Dock icon states alternating dark and light backgrounds, including Wi-Fi, Bluetooth audio, battery, dots, and arc states">
 </p>
 
 # Status Trio

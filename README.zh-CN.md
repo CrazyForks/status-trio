@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="screenshots/status-style.png" width="288" alt="不同设置下呈现的四种 Status Trio 菜单栏图标样式">
+  <img src="screenshots/status-trio-dock-state-strip.png" width="1000" alt="Status Trio 八种程序坞图标状态，深色与浅色背景交替，包含 Wi-Fi、蓝牙音频、电池、圆点和圆弧状态">
 </p>
 
 # Status Trio
