@@ -22,8 +22,13 @@ final class BatteryDetailsLayoutTests: XCTestCase {
         for language in AppLanguage.allCases {
             let connected = try await render(language: language, available: true, connected: true)
             XCTAssertLessThan(connected.height, 440, language.rawValue)
+            let charging = try await render(language: language, available: true, connected: true, charging: true)
+            XCTAssertLessThan(charging.height, 440, language.rawValue)
             let missing = try await render(language: language, available: true, connected: true, systemAvailable: false)
-            XCTAssertLessThan(missing.height, connected.height, language.rawValue)
+            // An unavailable system reading drops the timestamp row, not just
+            // shortens a value, so the page must lose at least one row of height.
+            XCTAssertGreaterThanOrEqual(connected.height - missing.height, 10,
+                                        "\(language.rawValue) kept the system timestamp row")
         }
     }
 
@@ -72,7 +77,7 @@ final class BatteryDetailsLayoutTests: XCTestCase {
 
     private func render(language: AppLanguage, available: Bool,
                         collecting: Bool = false, connected: Bool = false,
-                        systemAvailable: Bool = true) async throws -> NSSize {
+                        systemAvailable: Bool = true, charging: Bool = false) async throws -> NSSize {
         let suite = "StatusTrioCoreTests.BatteryDetails.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
         defer { defaults.removeTestSuite(named: suite) }
@@ -82,7 +87,7 @@ final class BatteryDetailsLayoutTests: XCTestCase {
             adapterWatts: connected ? 90 : nil,
             remainingMinutes: available ? 121 : nil,
             cycleCount: 43,
-            power: available ? BatteryPowerSample(volts: 12.279, amps: connected ? 0 : -1.528, updatedAt: Date()) : nil,
+            power: available ? BatteryPowerSample(volts: 12.279, amps: connected ? (charging ? 1.528 : 0) : -1.528, updatedAt: Date()) : nil,
             powerAvailability: collecting ? .collecting : .unavailable,
             systemPower: connected && systemAvailable ? SystemPowerSample(watts: 17.25, readAt: Date()) : nil)
         let controller = BatteryDetailsController { _, _ in fixture }
@@ -98,7 +103,8 @@ final class BatteryDetailsLayoutTests: XCTestCase {
             .environmentObject(localization)
             .environment(\.colorScheme, .light)
         // Allow SwiftUI's appearance task and the serial reader to publish the fixture.
-        let state = connected ? (systemAvailable ? "system" : "system-unavailable")
+        let state = connected
+            ? (systemAvailable ? (charging ? "system-charging" : "system") : "system-unavailable")
             : (available ? "power" : (collecting ? "collecting" : "unavailable"))
         let size = try await capture(view, named: "battery-\(language.rawValue)-page-\(state)")
         XCTAssertEqual(size.width, 330, accuracy: 0.5)

@@ -74,8 +74,15 @@ struct BatteryDetailsReader: Sendable {
             state: state,
             now: Date(),
             notBefore: notBefore,
-            systemPower: state.isConnected ? SystemPowerReader().read() : nil
+            systemPower: Self.readsSystemPower(for: state) ? SystemPowerReader().read() : nil
         )
+    }
+
+    /// Sampling AppleSMC costs an IPC round trip, so only do it when the page can
+    /// show the result: a Mac without a battery has no discharge row to compare
+    /// the system total against, and SMC is only queried on external power.
+    static func readsSystemPower(for state: BatteryPowerState) -> Bool {
+        state.isPresent && state.isConnected
     }
 
     /// IORegistry is public, but these AppleSmartBattery properties are best-effort,

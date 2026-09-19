@@ -43,6 +43,13 @@ struct BatteryDetailsView: View {
                 if let timestamp = reading.timestamp {
                     row(reading.timestampTitle, timestamp.formatted(.dateTime.hour().minute().second().locale(localization.resolvedLanguage.locale)))
                 }
+                if let charging = reading.chargingWatts {
+                    // The primary row describes the whole system on external power,
+                    // so the battery's own charge power keeps its own green row.
+                    row(.batteryDetailsCharging,
+                        charging.formatted(.number.precision(.fractionLength(1)).locale(localization.resolvedLanguage.locale)) + " W",
+                        tint: .green)
+                }
                 if let power = details.power {
                     row(.batteryDetailsVoltage, power.volts.formatted(.number.precision(.fractionLength(2)).locale(localization.resolvedLanguage.locale)) + " V")
                     row(.batteryDetailsCurrent, power.amps.formatted(.number.precision(.fractionLength(2)).locale(localization.resolvedLanguage.locale)) + " A")
@@ -71,11 +78,11 @@ struct BatteryDetailsView: View {
         .monospacedDigit()
     }
 
-    private func row(_ key: LocalizationKey, _ value: String) -> some View {
+    private func row(_ key: LocalizationKey, _ value: String, tint: Color? = nil) -> some View {
         HStack(alignment: .firstTextBaseline) {
             Text(localization.string(key)).foregroundStyle(.secondary)
             Spacer(minLength: 8)
-            Text(value).multilineTextAlignment(.trailing)
+            Text(value).multilineTextAlignment(.trailing).foregroundStyle(tint ?? .primary)
         }
         .accessibilityElement(children: .combine)
     }

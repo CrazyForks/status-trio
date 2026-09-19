@@ -7,8 +7,14 @@ struct BatteryPowerPresentation {
     let timestamp: Date?
     let timestampTitle: LocalizationKey
     let unavailableTitle: LocalizationKey
+    /// Charge power, shown as its own row so the primary row can stay
+    /// source-accurate. A battery only charges on external power.
+    let chargingWatts: Double?
 
     init(details: BatteryDetails, isConnectedToPower: Bool) {
+        chargingWatts = isConnectedToPower
+            ? details.power.flatMap { $0.watts > 0 ? $0.watts : nil }
+            : nil
         if isConnectedToPower {
             title = .batteryDetailsSystemPower
             watts = details.systemPower?.watts

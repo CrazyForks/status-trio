@@ -122,6 +122,16 @@ final class BatteryDetailsTests: XCTestCase {
         XCTAssertNotNil(withoutSMC.power)
     }
 
+    func testSystemPowerIsOnlySampledForAPresentBatteryOnExternalPower() {
+        XCTAssertTrue(BatteryDetailsReader.readsSystemPower(for: state(connected: true)))
+        XCTAssertFalse(BatteryDetailsReader.readsSystemPower(for: state()))
+        let absent = BatteryPowerState(BatteryStatus(rawPercentage: 0, isPresent: false,
+                                                     isCharging: false, isLowPowerMode: false,
+                                                     isConnectedToPower: true))
+        XCTAssertFalse(BatteryDetailsReader.readsSystemPower(for: absent),
+                       "A Mac without a battery has no discharge row to compare against")
+    }
+
     func testMissingStaleAndFutureTelemetryFailClosed() {
         for key in ["Voltage", "Amperage", "UpdateTime", "ExternalConnected", "IsCharging"] {
             var values = registry

@@ -28,6 +28,11 @@ The existing battery icon monitoring is unchanged.
   battery discharge. An idle battery at an 80% charge limit therefore no longer
   makes the primary power row show 0 W while plugged in. Missing system telemetry
   stays unavailable; the UI never substitutes a battery value or adapter rating.
+- **Charging (estimate)** is a separate green row that appears only when the
+  battery current is positive on external power. The primary row keeps describing
+  the selected source, so charge power is never mixed into the system total. An
+  idle battery at a charge limit shows no charging row, which is the state this
+  page previously mislabeled as 0 W battery power.
 - **Battery power** internally remains an estimate of net power entering/leaving the battery,
   computed from `Voltage` (mV) and signed `Amperage` (mA) from one
   `AppleSmartBattery` registry snapshot. It is not total Mac power consumption.
@@ -36,13 +41,14 @@ The existing battery icon monitoring is unchanged.
   registry diagnostics. No battery health percentage is inferred from capacity
   ratios, and no `system_profiler`/`ioreg` subprocess is launched.
 
-System power is read only while connected to external power and while the page
-is open, on the existing serial utility queue. Each read opens and closes its own
-AppleSMC connection and sends only read-key-info (9) and read-bytes (5) commands
-for `PSTR`. Supported encodings are `flt `, `fpe2`, and `sp78`. Missing keys,
-failed IPC/firmware replies, unexpected sizes/types, non-finite, nonpositive,
-and implausible (>1,000 W) readings stay unavailable. There is no privileged
-helper, sensor enumeration, persistent connection, or additional polling loop.
+System power is read only for a Mac with a present battery on external power and
+while the page is open, on the existing serial utility queue. Each read opens and
+closes its own AppleSMC connection and sends only read-key-info (9) and
+read-bytes (5) commands for `PSTR`. Supported encodings are `flt `, `fpe2`, and
+`sp78`. Missing keys, failed IPC/firmware replies, unexpected sizes/types,
+non-finite, nonpositive, and implausible (>1,000 W) readings stay unavailable.
+There is no privileged helper, sensor enumeration, persistent connection, or
+additional polling loop.
 
 The timestamp follows the selected source: **System read at** records when the
 SMC read started (SMC provides no hardware timestamp); **Battery sampled at**
@@ -50,6 +56,12 @@ uses the registry's `UpdateTime`. Both expire after 90 seconds, reject dates
 more than five seconds in the future or before a power-state transition, and
 are checked again before publication after delayed IPC. Battery voltage/current
 remain explicitly labeled diagnostics with their own hardware update cadence.
+
+AppleSMC exposes no "not sampled yet" signal, so it cannot be told apart from a
+Mac that has no usable `PSTR` at all: a page on external power without a system
+reading says **Unavailable**, never **Sampling…**. The battery path can tell the
+difference, because `AppleSmartBattery` reports the previous power source while
+macOS catches up, so only that row shows **Sampling…** during a transition.
 
 IORegistry access is a public API, but these registry properties and the AppleSMC
 sensor interface are not Apple-supported cross-model contracts. Neither estimate

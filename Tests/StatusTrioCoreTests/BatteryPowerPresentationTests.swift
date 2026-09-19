@@ -52,4 +52,28 @@ final class BatteryPowerPresentationTests: XCTestCase {
             XCTAssertNil(row.timestamp)
         }
     }
+
+    func testChargingKeepsItsOwnRowOnExternalPower() {
+        let charging = BatteryDetails(
+            power: BatteryPowerSample(volts: 12, amps: 1.5, updatedAt: batteryTime),
+            systemPower: SystemPowerSample(watts: 17.25, readAt: systemTime))
+        let row = BatteryPowerPresentation(details: charging, isConnectedToPower: true)
+        XCTAssertEqual(row.watts, 17.25, "The primary row stays the system total while charging")
+        XCTAssertEqual(row.chargingWatts, 18)
+    }
+
+    func testChargeRowNeedsPositiveCurrentOnExternalPower() {
+        let idle = BatteryPowerPresentation(
+            details: BatteryDetails(power: BatteryPowerSample(volts: 12, amps: 0, updatedAt: batteryTime)),
+            isConnectedToPower: true)
+        XCTAssertNil(idle.chargingWatts, "An idle battery at a charge limit is not charging")
+        let discharging = BatteryPowerPresentation(
+            details: BatteryDetails(power: BatteryPowerSample(volts: 12, amps: -1.5, updatedAt: batteryTime)),
+            isConnectedToPower: true)
+        XCTAssertNil(discharging.chargingWatts, "Discharge is never reported as charge power")
+        let unplugged = BatteryPowerPresentation(
+            details: BatteryDetails(power: BatteryPowerSample(volts: 12, amps: 1.5, updatedAt: batteryTime)),
+            isConnectedToPower: false)
+        XCTAssertNil(unplugged.chargingWatts, "Charging cannot happen while unplugged")
+    }
 }
