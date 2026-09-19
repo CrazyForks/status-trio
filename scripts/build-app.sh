@@ -149,17 +149,33 @@ iconutil --convert icns --output "$CONTENTS/Resources/AppIcon.icns" "$ICONSET_DI
 
 chmod +x "$CONTENTS/MacOS/StatusTrio"
 
-# SwiftPM can record the deployment target as the SDK version in LC_BUILD_VERSION.
-# macOS uses that field to decide whether an app adopts the current design system,
-# so restore the real SDK version before signing.
-SDK_VERSION="$(xcrun --sdk macosx --show-sdk-version)"
-if [[ "${SDK_VERSION%%.*}" -ge 26 ]]; then
-    TOOLCHAIN_PLATFORM_VERSION="26.0"
-    VTMP_BINARY="$(mktemp "${TMPDIR:-/tmp}/StatusTrio.vtool.XXXXXX")"
-    xcrun vtool         -set-build-version macos 15.0 "$TOOLCHAIN_PLATFORM_VERSION"         -replace         -output "$VTMP_BINARY"         "$CONTENTS/MacOS/StatusTrio"
-    mv "$VTMP_BINARY" "$CONTENTS/MacOS/StatusTrio"
-    chmod +x "$CONTENTS/MacOS/StatusTrio"
+# SwiftPM's build system can record the deployment target in LC_BUILD_VERSION's
+# `sdk` field. macOS reads that field to decide whether an app adopts the current
+# design language, so a wrong value silently keeps the pre-Tahoe popover
+# appearance. Carry the deployment target through unchanged (instead of hardcoding
+# it, which would silently reset it if Package.swift's platform ever changes) and
+# declare the macOS 26 design language explicitly.
+#
+# STATUS_TRIO_SDK_VERSION_OVERRIDE exists only so the guard below can be tested.
+SDK_VERSION="${STATUS_TRIO_SDK_VERSION_OVERRIDE:-$(xcrun --sdk macosx --show-sdk-version)}"
+if [[ "${SDK_VERSION%%.*}" -lt 26 ]]; then
+    echo "Error: Status Trio must be built with the macOS 26 SDK or newer; found ${SDK_VERSION}." >&2
+    echo "       An older SDK silently ships the pre-Tahoe popover appearance." >&2
+    exit 2
 fi
+
+BUILT_MINOS="$(vtool -show-build "$CONTENTS/MacOS/StatusTrio" | awk '/^[[:space:]]*minos[[:space:]]/ {print $2; exit}')"
+if [[ -z "$BUILT_MINOS" ]]; then
+    echo "Error: unable to read the deployment target from the built binary." >&2
+    exit 1
+fi
+
+VTMP_BINARY="$(mktemp "${TMPDIR:-/tmp}/StatusTrio.vtool.XXXXXX")"
+xcrun vtool -set-build-version macos "$BUILT_MINOS" 26.0 -replace -output "$VTMP_BINARY" "$CONTENTS/MacOS/StatusTrio"
+mv "$VTMP_BINARY" "$CONTENTS/MacOS/StatusTrio"
+chmod +x "$CONTENTS/MacOS/StatusTrio"
+
+bash "$ROOT/scripts/verify-platform-version.sh" "$CONTENTS/MacOS/StatusTrio" "$BUILT_MINOS"
 
 SIGNING_IDENTITY="${CODE_SIGN_IDENTITY:--}"
 SIGNING_ARGS=(--force --deep --sign "$SIGNING_IDENTITY")
