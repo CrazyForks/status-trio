@@ -1,12 +1,12 @@
-# Swift 6.1 CI 兼容性与失败记录
+# Swift 工具链 CI 兼容性与失败记录
 
 本文记录 Status Trio 在 GitHub Actions 上发布时遇到的工具链兼容问题，以及后续开发和发布必须遵守的规则。
 
 ## 结论
 
-最近一次 1.0.1 打包失败，和最早的几次发布失败不是同一个具体错误，但属于同一类问题：**本机使用较新的 Xcode 27 / Swift 6.4 可以编译，而 GitHub Actions 使用 Xcode 16.4 / Swift 6.1.2，两者的语法支持、诊断和代码生成行为不同。**
+本机是 Xcode 27 / Swift 6.4，CI（`macos-26`）是 Xcode 26.6 / Swift 6.3.3，两者的语法支持、诊断和代码生成行为仍可能不同，不能只用本机 `swift test` 证明代码可以发布。CI 工具链必须作为最低兼容标准。
 
-因此，不能只用本机 `swift test` 证明代码可以发布。CI 工具链必须作为最低兼容标准。
+下表中 2026-09-19 之前的记录都发生在旧 CI 工具链（`macos-15` / Xcode 16.4 / Swift 6.1.2）上：`isolated deinit`、`weak let`、`Bundle.module` 资源布局、IRGen 崩溃这些具体症状属于那个编译器，而由它们归纳出的规则至今有效。
 
 ## 失败记录
 
@@ -145,9 +145,9 @@ SwiftUI 的时序。
 
 发布环境的基准是：
 
-- `macos-15`
-- Xcode `16.4`
-- Swift `6.1.2`
+- `macos-26`
+- Xcode `26.6`
+- Swift `6.3.3`
 
 本机 Xcode 27 / Swift 6.4 的通过结果只能作为辅助验证，不能替代 CI。
 
@@ -184,7 +184,6 @@ gh workflow run release.yml \
 - 不把 actor-isolated 方法直接当作闭包/函数值传递
 - 不使用 `weak let`，weak 绑定必须是 `var`
 - 不假设本地和 CI 的 `Bundle.module` 资源目录大小写或布局一致
-- 不引入低于 CI 编译器版本无法解析的 Swift 6.2+ 语法
 
 ### 4. 遇到编译器崩溃时的处理方式
 
@@ -213,3 +212,28 @@ gh workflow run release.yml \
 - [ ] GitHub Release 有 DMG 和 `.sha256` 文件。
 - [ ] 线上 `appcast.xml` 的版本、构建号、长度和 EdDSA 签名已更新。
 - [ ] 未配置 Developer ID / notarization 时，明确说明 Ad-hoc 签名和首次安装限制。
+
+## 工具链迁移记录
+
+日期：2026-09-19。
+
+issue [#40](https://github.com/lingyired/status-trio/issues/40) 的根因不是缺代码，而是**构建 SDK 太旧**。
+`scripts/build-app.sh` 从 `b728e6c`（2026-09-13）起就带有用 `vtool` 改写 `LC_BUILD_VERSION.sdk`
+的修补，但 CI 一直是 `macos-15` + Xcode 16.4（SDK 15.5），`if SDK >= 26` 从未成立，
+这段修补在任何一次发布里都**没有生效过**——线上 app 的 `sdk 15.5` 就是证据。macOS 依据
+`sdk` 字段判断 app 是否采纳当前设计语言，所以菜单栏面板一直停在 Tahoe 之前的磨砂观感。
+
+迁移把 CI 换成 `macos-26` + Xcode 26.6（Swift 6.3.3）来激活它，并补上两道护栏：
+
+- `scripts/build-app.sh` 在 SDK < 26 时以退出码 2 直接失败，不再静默跳过；`minos` 从产物读回后
+  原样写回，不再硬编码 `15.0`（`platforms` 将来抬高时不会被悄悄改回去）。
+- `scripts/verify-platform-version.sh` 逐架构断言 `minos` 与 `sdk`，由构建脚本自动调用，
+  本地构建与 CI 预检都会执行。
+
+非发布预检 [`35448004467`](https://github.com/lingyired/status-trio/actions/runs/35448004467)
+（`version=1.3.0`、`build=10`、`publish=false`）通过：602 个 XCTest（3 跳过）与 146 个
+Swift Testing 全绿；通用 release 构建的两个切片都是 `minos 15.0 / sdk 26.0`，
+`LC_BUILD_VERSION check passed`；DMG 打包与 artifact 上传成功，未发布 Release 或更新 appcast。
+该次预检之后只有记录 CI 历史的 Markdown 提交。
+
+本次迁移过程中修掉的三个失败 run 见上面的失败记录表：`35447073294`、`35447273818`、`35447521372`。

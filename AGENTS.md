@@ -4,11 +4,13 @@
 
 The release workflow is the acceptance environment:
 
-- Runner: `macos-15`
-- Xcode: `16.4`
-- Swift: `6.1.2`
+- Runner: `macos-26`
+- Xcode: `26.6`
+- Swift: `6.3.3`
 
 A newer local toolchain is useful, but it is not proof that CI will compile. Swift code must remain buildable with the CI toolchain.
+
+The app must be built with the macOS 26 SDK or newer. macOS reads the `LC_BUILD_VERSION` `sdk` field to decide whether an app adopts the current design language, so building with an older SDK silently ships the pre-Tahoe popover appearance (issue #40). `scripts/build-app.sh` fails when the SDK is older than 26, and `scripts/verify-platform-version.sh` asserts the result; do not remove either.
 
 Before committing Swift changes:
 
@@ -33,16 +35,15 @@ gh run watch <run-id> --repo lingyired/status-trio --exit-status
 Do not create a release if that preflight has not passed.
 
 Every failed GitHub Actions run must be added to
-[Swift 6.1 CI compatibility](docs/swift-6.1-ci-compatibility.md), including the
+[Swift toolchain CI compatibility](docs/swift-ci-compatibility.md), including the
 run ID, failed stage, root cause, fix, and verification result.
 
-## Swift 6.1 Compatibility Rules
+## Swift Toolchain Compatibility Rules
 
 - Do not use `isolated deinit` or enable the `IsolatedDeinit` experimental feature. Use `deinit` with explicit cleanup; use `nonisolated(unsafe)` only for teardown-owned storage and explain why it is safe.
 - Do not pass actor-isolated methods directly as function values. Use an explicit closure instead.
 - Do not write `weak let`; weak reference bindings must be `var`.
 - Do not assume SwiftPM `Bundle.module` resource names or directory casing match local builds. For localized resources, try the canonical and lowercase `lproj` names and load with `Bundle(path:)`.
-- Do not add syntax or language features that require Swift 6.2 or newer unless the CI runner and minimum toolchain are upgraded together.
 - If the Swift compiler crashes with `IRGenRequest`, `SmallVector unable to grow`, or a signal 6, reduce the code pattern that causes the crash. Do not treat it as a flaky failure and do not hide it with experimental compiler flags.
 
 ## Change Flow
@@ -78,4 +79,4 @@ run ID, failed stage, root cause, fix, and verification result.
 - `npx skills update -p` skips `swiftui-pro` and `swift-testing-pro` because both upstream repositories ship two skills under the same name (`<skill>/SKILL.md` and `<skill>/skills/<skill>/SKILL.md`), which makes the target path ambiguous. Update those two by hand.
 - When re-vendoring by hand, sync each whole upstream skill folder rather than `SKILL.md` alone, and delete files the upstream removed.
 
-See [Swift 6.1 CI compatibility](docs/swift-6.1-ci-compatibility.md) for the incident history and examples.
+See [Swift toolchain CI compatibility](docs/swift-ci-compatibility.md) for the incident history and examples.
