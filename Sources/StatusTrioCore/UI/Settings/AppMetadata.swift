@@ -44,8 +44,12 @@ enum AppMetadata {
     static let authorWebsiteURL = URL(string: "https://lingai.net/")!
 
     static var versionDisplayString: String {
-        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
-        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
+        versionDisplayString(from: Bundle.main.infoDictionary ?? [:])
+    }
+
+    static func versionDisplayString(from infoDictionary: [String: Any]) -> String {
+        let version = infoDictionary["CFBundleShortVersionString"] as? String ?? "1.0.0"
+        let build = infoDictionary["CFBundleVersion"] as? String ?? "1"
         return "\(version) (\(build))"
     }
 }

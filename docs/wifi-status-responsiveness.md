@@ -32,7 +32,7 @@ event monitoring, classification and the existing stale-reading policy are uncha
 - Deferred-completion tests cover 100 refresh requests collapsing to one follow-up,
   closing details, permission changes, wake/recovery, shutdown and deallocation.
 - Run `swift test`, `swift build -c release` and the non-publishing release workflow
-  on Xcode 16.4 / Swift 6.1.2, as required by `AGENTS.md`.
+  on the CI toolchain (`macos-26` / Xcode 26.6 / Swift 6.3.3), as required by `AGENTS.md`.
 
 The synchronous system call itself cannot be cancelled once it starts. A stuck
 call can still delay fresh Wi-Fi data, but it no longer occupies the main thread

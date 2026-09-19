@@ -1,7 +1,9 @@
 # 菜单栏面板玻璃通透度调研（issue #40）
 
-状态：**调研完成，待决策**。本文是调查记录，不是已批准的设计规格。方案定下来之后，
-设计规格应写到 `docs/superpowers/specs/`，实施计划写到 `docs/superpowers/plans/`。
+状态：**调查完成，方案 0 已决策并实施**。本文是调查记录，不是设计规格；决策见
+`docs/superpowers/specs/2026-09-19-macos-26-sdk-migration-design.md`，实施见
+`docs/superpowers/plans/2026-09-19-macos-26-sdk-migration.md`。下文凡说「现状」「未决」的，
+都是调查当时的状态，并在相应位置补记了结论。
 
 关联 issue：[#40 菜单栏展开玻璃透明度与原生透明度不一致](https://github.com/lingyired/status-trio/issues/40)
 
@@ -17,13 +19,18 @@ macOS 27.0 浅色模式。维护者当时的回复是「后面会使用自带的
 1. **决定性发现：popover 用的是不是原生 Liquid Glass，由「构建时链接的 SDK」决定，而不是运行的系统。**
    同一个 `NSPopover`，`LC_BUILD_VERSION.sdk = 27.0` 时 `NSPopoverFrame` 内部是私有 `NSGlassView`
    （原生 Liquid Glass）；`sdk = 15.5` 时退化成 `material = 6`（`.popover`，Tahoe 之前的磨砂材质）。
-   本项目现状正是后者——已安装 app 的 `sdk` 字段是 15.5，CI 固定 Xcode 16.4。
-   **因此「要原生液体玻璃」很可能只需把构建 SDK 升到 macOS 26+，不需要换掉 `NSPopover`。**
+   本项目当时正是后者——已安装 app 的 `sdk` 字段是 15.5，CI 固定 Xcode 16.4。
+   **因此「要原生液体玻璃」只需把构建 SDK 升到 macOS 26+，不需要换掉 `NSPopover`。**
 2. **`minos` 不影响这个判定**：实测 `minos 15.0 + sdk 27.0` 仍是原生 Liquid Glass。
    所以 `platforms: [.macOS(.v15)]` 与最低系统版本都可以原样保留。
 3. 若不升级构建 SDK，则在 `NSPopover` 内部用什么招都做不出原生玻璃：玻璃由私有
    `NSPopoverFrame` 绘制，内容层只能叠加（更不透明）。那种情况下唯一出路是自绘 `NSPanel`。
-4. 是否升级 CI 工具链（Xcode 16.4 → Xcode 26）尚无结论，见文末未决问题。
+4. **关键事实（后补）**：`scripts/build-app.sh` **本来就有一段 `vtool` 修补**，由 `b728e6c`
+   （2026-09-13「feat: redesign settings window」）引入，用途正是把 `LC_BUILD_VERSION.sdk`
+   改写成 `26.0`。但 CI 一直是 `macos-15` + Xcode 16.4（SDK 15.5），`if SDK >= 26` 从未成立，
+   所以这段修补**在任何一次发布里都没有生效过**——线上 app 的 `sdk 15.5` 就是直接证据。
+   也就是说，#40 的根因不是缺代码，而是**已有的修复因为 CI 工具链太旧而一直休眠**。
+5. 决定：升级 CI 工具链（`macos-15` / Xcode 16.4 → `macos-26` / Xcode 26.6），激活并硬化那段修补。
 
 ## 决定性发现：构建 SDK 决定是否使用原生 Liquid Glass
 
@@ -51,8 +58,9 @@ codesign -s - --force probe-sdk15      # arm64 必须重新做 ad-hoc 签名
 ### 现状核对
 
 - 已安装的 `/Applications/Status Trio.app`：`otool -l` 显示 `minos 15.0 / sdk 15.5`。
-- CI：`.github/workflows/release.yml` 固定 `runs-on: macos-15` 与
+- CI（调查当时）：`.github/workflows/release.yml` 固定 `runs-on: macos-15` 与
   `DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer`（即 macOS 15 SDK）。
+  现已改为 `macos-26` / Xcode 26.6。
 
 ### CI 升级可行性（已核实）
 
@@ -65,9 +73,10 @@ GitHub Actions 的 `macos-26` 镜像已存在（见 `actions/runner-images` 的
 - 用 macOS 26+ SDK 构建后，**整个 app 采纳新设计语言**，不只是 popover：设置窗口、按钮/控件、
   `SettingsChrome.SidebarMaterial` 这类 `NSVisualEffectView` 用法都会变样，需要一次视觉回归。
   参考文档亦建议新设计不要再拿 `NSVisualEffectView.material` 伪装。
-- 与 AGENTS.md 的「Highest Priority: Match the CI Toolchain（macos-15 / Xcode 16.4 / Swift 6.1.2）」
-  直接冲突：AGENTS.md 与 `docs/swift-6.1-ci-compatibility.md` 需要同步更新，Swift 6.2+ 的语法限制
-  条款要重新评估。
+- 与当时的 AGENTS.md「Highest Priority: Match the CI Toolchain（macos-15 / Xcode 16.4 / Swift 6.1.2）」
+  直接冲突：AGENTS.md 与 `docs/swift-ci-compatibility.md` 需要同步更新，Swift 6.2+ 的语法限制
+  条款要重新评估。**迁移时已一并处理**：AGENTS.md 现为 `macos-26` / Xcode 26.6 / Swift 6.3.3，
+  该语法限制条款已删除，并新增「必须用 macOS 26+ SDK 构建」的硬性要求。
 - 构建 SDK 升级与「支持 macOS 15–25 老系统」并不矛盾：老系统上系统仍给旧的磨砂表现，
   这本身就是正确的原生行为，也是最干净的「旧版本兼容」。
 
@@ -219,12 +228,15 @@ MarkEdit 的
 
 ### 方案 0（首选）：不换组件，只把构建 SDK 升到 macOS 26+
 
-保留原生 `NSPopover`，CI 从 `macos-15` / Xcode 16.4 换成 `macos-26` / Xcode 26.x。
-系统 chrome 由 AppKit 自己切换成原生 Liquid Glass，代码里一行玻璃相关的东西都不用写，
-最少代码、最少回归面、也最符合「就要原生效果」的目标。
+保留原生 `NSPopover`，CI 从 `macos-15` / Xcode 16.4 换成 `macos-26` / Xcode 26.6。
+系统 chrome 由 AppKit 自己切换成原生 Liquid Glass，**不需要新写玻璃代码**——但并不是
+「一行都不用动」：`scripts/build-app.sh` 里那段改写 `LC_BUILD_VERSION.sdk` 的 `vtool` 修补
+必须被激活并硬化（它原本在 SDK < 26 时静默跳过，`minos` 还被硬编码成 `15.0`），
+否则构建成功、发布成功、观感却悄悄退回旧版。这是最少代码、最少回归面、也最符合
+「就要原生效果」的目标。
 
 代价与前提：见上文「副作用」——需要改 CI 与 AGENTS.md 的工具链条款，并做一次全局视觉回归。
-风险点是工具链升级本身（`docs/swift-6.1-ci-compatibility.md` 记录的历史崩溃属于旧编译器，
+风险点是工具链升级本身（`docs/swift-ci-compatibility.md` 记录的历史崩溃属于旧编译器，
 新编译器一般更好，但不能假定，需要真跑预检）。
 
 ### 方案 A（备选）：自绘 NSPanel + 公开双路径玻璃 + 用户可选档位
@@ -265,13 +277,17 @@ blendingMode: .behindWindow)`。
 ## 若走方案 0 需要改动的面
 
 - `.github/workflows/release.yml`：`runs-on: macos-15` → `macos-26`，
-  `DEVELOPER_DIR` → `/Applications/Xcode_26.x.app/Contents/Developer`。
+  `DEVELOPER_DIR` → `/Applications/Xcode_26.6.app/Contents/Developer`。
 - `AGENTS.md`：更新「Highest Priority: Match the CI Toolchain」的 runner / Xcode / Swift 版本，
-  并重新评估 Swift 6.2+ 语法限制条款。
-- `docs/swift-6.1-ci-compatibility.md`：追加本次工具链迁移的记录与预检结果。
+  新增「必须用 macOS 26+ SDK 构建」的硬性要求，并删除 Swift 6.2+ 语法限制条款。
+- `docs/swift-ci-compatibility.md`：追加本次工具链迁移的记录与预检结果。
+- `scripts/build-app.sh`：激活并硬化既有的 `vtool` 修补——SDK < 26 时直接失败，`minos` 从产物读回。
+- `scripts/verify-platform-version.sh`（新增）：逐架构断言 `minos` 与 `sdk`。
 - 视觉回归：设置窗口、按钮/控件、`SettingsChrome.SidebarMaterial`、`IconPreviewComponents`
   等所有 `NSVisualEffectView` / 自绘视图在 26+ 下的新表现。
-- 产品代码理论上**零改动**；实际可能需要处理新 SDK 引入的弃用告警或 API 变化。
+- 产品代码**不是零改动**：构建脚本与新增断言脚本要改（见上），测试里还有一处依赖 SwiftUI
+  内部视图层级的命中区探针需要按新 SDK 调整（`SettingsRowHitAreaTests`）。业务代码本身无需改动；
+  新 SDK 引入的弃用告警按告警处理。
 
 ## 若走方案 A 需要改动的代码面
 
@@ -334,12 +350,17 @@ cd backups/popover-glass-probe-20260919
 - 按 Esc 关闭，8 分钟自动退出，整块对比板可拖动。
 - 该目录已被 `.gitignore` 覆盖（`backups/`），不属于产品代码，不会进提交。
 
-## 未决问题（等决策）
+## 未决问题（当时的清单，现已全部有结论）
 
 1. **是否采用方案 0**，即把 CI 从 Xcode 16.4 升到 Xcode 26 以换取原生 Liquid Glass？
    这会与 AGENTS.md 现行的工具链条款冲突，需要同步修改。
+   → **是**，已实施并跑通 `publish=false` 预检。
 2. 真机并排对比的结论：A（新 SDK）是否就是 #40 想要的观感？
+   → 结构证据（`NSGlassView` vs `material=6`）成立；**最终观感由维护者在 macOS 26+ 上确认**。
 3. 若采用方案 0，是否还需要 app 内自造通透度选项？系统已有「液体玻璃：透明 / 色调」
    （`NSGlassTintAmount`），我的建议是跟随系统、不另造选项。
+   → **不另造选项**，跟随系统。
 4. 若不能升级 SDK，是否接受方案 A（自绘 NSPanel，需要自造玻璃与面板生命周期）？
+   → 不适用：SDK 已升级，方案 A 未采用。
 5. 现有用户升级后会一次性看到新观感且无法在 app 内回退，这个是否可接受、是否要写进发布说明？
+   → 可接受，**已写进 `release-notes/1.3.0/`**（12 种语言）。

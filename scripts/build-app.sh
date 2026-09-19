@@ -55,6 +55,20 @@ esac
 
 cd "$ROOT"
 
+# SwiftPM's build system can record the deployment target in LC_BUILD_VERSION's
+# `sdk` field. macOS reads that field to decide whether an app adopts the current
+# design language, so building against an older SDK silently keeps the pre-Tahoe
+# popover appearance. Checked before compiling on purpose: failing afterwards
+# would leave a complete-looking, runnable bundle built with the wrong SDK.
+#
+# STATUS_TRIO_SDK_VERSION_OVERRIDE exists only so this guard can be tested.
+SDK_VERSION="${STATUS_TRIO_SDK_VERSION_OVERRIDE:-$(xcrun --sdk macosx --show-sdk-version)}"
+if [[ "${SDK_VERSION%%.*}" -lt 26 ]]; then
+    echo "Error: Status Trio must be built with the macOS 26 SDK or newer; found ${SDK_VERSION}." >&2
+    echo "       An older SDK silently ships the pre-Tahoe popover appearance." >&2
+    exit 2
+fi
+
 SWIFT_BUILD_ARGS=(build -c "$CONFIGURATION")
 if [[ "$UNIVERSAL_BUILD" == "1" ]]; then
     SWIFT_BUILD_ARGS+=(--arch arm64 --arch x86_64)
@@ -149,17 +163,39 @@ iconutil --convert icns --output "$CONTENTS/Resources/AppIcon.icns" "$ICONSET_DI
 
 chmod +x "$CONTENTS/MacOS/StatusTrio"
 
-# SwiftPM can record the deployment target as the SDK version in LC_BUILD_VERSION.
-# macOS uses that field to decide whether an app adopts the current design system,
-# so restore the real SDK version before signing.
-SDK_VERSION="$(xcrun --sdk macosx --show-sdk-version)"
-if [[ "${SDK_VERSION%%.*}" -ge 26 ]]; then
-    TOOLCHAIN_PLATFORM_VERSION="26.0"
-    VTMP_BINARY="$(mktemp "${TMPDIR:-/tmp}/StatusTrio.vtool.XXXXXX")"
-    xcrun vtool         -set-build-version macos 15.0 "$TOOLCHAIN_PLATFORM_VERSION"         -replace         -output "$VTMP_BINARY"         "$CONTENTS/MacOS/StatusTrio"
-    mv "$VTMP_BINARY" "$CONTENTS/MacOS/StatusTrio"
-    chmod +x "$CONTENTS/MacOS/StatusTrio"
+# Carry the deployment target through unchanged instead of hardcoding it — a
+# hardcoded value would silently reset it if Package.swift's platform is ever
+# raised — and declare the macOS 26 design language explicitly. The SDK guard
+# earlier in this script is what keeps the build off an older SDK.
+BUILT_MINOS="$(vtool -show-build "$CONTENTS/MacOS/StatusTrio" | awk '/^[[:space:]]*minos[[:space:]]/ {print $2; exit}')"
+if [[ -z "$BUILT_MINOS" ]]; then
+    echo "Error: unable to read the deployment target from the built binary." >&2
+    exit 1
 fi
+
+# The bundle tells users which macOS it supports; the binary must not require a
+# newer one, or dyld refuses to launch it on a version we still claim. Comparing
+# the compiled deployment target against this independent declaration is what
+# makes it asserted rather than merely echoed back from the artifact.
+DECLARED_MINOS="$(/usr/libexec/PlistBuddy -c 'Print :LSMinimumSystemVersion' "$CONTENTS/Info.plist" 2>/dev/null || true)"
+if [[ -z "$DECLARED_MINOS" ]]; then
+    echo "Error: $CONTENTS/Info.plist declares no LSMinimumSystemVersion." >&2
+    exit 1
+fi
+if [[ "$BUILT_MINOS" != "$DECLARED_MINOS" ]]; then
+    echo "Error: the binary targets macOS ${BUILT_MINOS} but the bundle declares LSMinimumSystemVersion ${DECLARED_MINOS}." >&2
+    echo "       Raising the deployment target means updating Support/Info.plist and the release notes." >&2
+    exit 1
+fi
+
+VTMP_BINARY="$(mktemp "${TMPDIR:-/tmp}/StatusTrio.vtool.XXXXXX")"
+xcrun vtool -set-build-version macos "$BUILT_MINOS" 26.0 -replace -output "$VTMP_BINARY" "$CONTENTS/MacOS/StatusTrio"
+mv "$VTMP_BINARY" "$CONTENTS/MacOS/StatusTrio"
+chmod +x "$CONTENTS/MacOS/StatusTrio"
+
+# The declared minimum is the expected value for every slice, so a slice that
+# alone requires a newer macOS is caught here rather than by a user.
+bash "$ROOT/scripts/verify-platform-version.sh" "$CONTENTS/MacOS/StatusTrio" "$DECLARED_MINOS"
 
 SIGNING_IDENTITY="${CODE_SIGN_IDENTITY:--}"
 SIGNING_ARGS=(--force --deep --sign "$SIGNING_IDENTITY")

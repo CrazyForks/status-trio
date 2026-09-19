@@ -1,12 +1,12 @@
-# Swift 6.1 CI 兼容性与失败记录
+# Swift 工具链 CI 兼容性与失败记录
 
 本文记录 Status Trio 在 GitHub Actions 上发布时遇到的工具链兼容问题，以及后续开发和发布必须遵守的规则。
 
 ## 结论
 
-最近一次 1.0.1 打包失败，和最早的几次发布失败不是同一个具体错误，但属于同一类问题：**本机使用较新的 Xcode 27 / Swift 6.4 可以编译，而 GitHub Actions 使用 Xcode 16.4 / Swift 6.1.2，两者的语法支持、诊断和代码生成行为不同。**
+本机是 Xcode 27 / Swift 6.4，CI（`macos-26`）是 Xcode 26.6 / Swift 6.3.3，两者的语法支持、诊断和代码生成行为仍可能不同，不能只用本机 `swift test` 证明代码可以发布。CI 工具链必须作为最低兼容标准。
 
-因此，不能只用本机 `swift test` 证明代码可以发布。CI 工具链必须作为最低兼容标准。
+下表中 2026-09-19 之前的记录都发生在旧 CI 工具链（`macos-15` / Xcode 16.4 / Swift 6.1.2）上：`isolated deinit`、`weak let`、`Bundle.module` 资源布局、IRGen 崩溃这些具体症状属于那个编译器，而由它们归纳出的规则至今有效。
 
 ## 失败记录
 
@@ -22,6 +22,9 @@
 | `35307956823` | `Upload release artifacts` | runner 向 GitHub artifact 服务建 artifact 的请求超时（`Failed to CreateArtifact: Unable to make request: ETIMEDOUT`），发生在编译、测试、打包全部成功之后 | 与代码和工具链无关，无代码改动；重跑同一 run 的失败 job 后全部阶段通过 |
 | `35316867111` | `Run tests` | 新增的图标合并重绘测试在断言前固定 `Task.sleep(200ms)`；Swift Testing 会同时启动整轮测试，CI 上主 actor 被排满的时间超过该固定等待，coalescer 的尾部重绘还没执行 | 测试改为轮询目标状态（5 秒上限，命中即返回），不再依赖固定睡眠；后续预检 `35317347672` 全部通过 |
 | `35375443023`（fork 非发布预检） | `Build, sign, notarize, and publish` | 使用 `version=1.2.1`，但仓库没有 `release-notes/1.2.1`；前置校验允许非发布时跳过，`scripts/release.sh` 仍要求该目录存在。Swift 6.1.2 测试已通过，尚未进入 release 构建 | 保持音频代码提交 `55983e2` 不变，改用已有说明的 `version=1.2.0`、递增的 `build=10`、`publish=false`；后续预检 `35375769964` 的测试、通用 release 构建、DMG 打包和 artifact 上传全部通过 |
+| `35447073294` | `Run tests` | `SettingsRowHitAreaTests.testPreferenceCheckboxRowUsesFullRowHitArea` 失败（`got [14.0]`）。该测试把 `NSHostingView.subviews` 当作命中区代理；macOS 26 SDK 把 `.checkbox` 样式的 `Toggle` 画成 14×14 的 AppKit `Checkbox` 加一个 SwiftUI 标签，脱离窗口时不存在任何全宽子视图。旧工具链（Xcode 16.4）与本机 macOS 27 都会生成全宽 `_FocusRingView`，所以失效的是探针的假设，不是产品行为 | `interactiveSubViewSizes` 改为先把行放进已 `makeKeyAndOrderFront` 的 `NSWindow` 再测量：窗口的 key-view proxy 在 macOS 26 上正好是 300 pt 宽；后续预检 `35448004467` 通过 |
+| `35447273818` | `Run tests` | 同一根因的诊断复现（临时 dump 视图树以取得 macOS 26 上的实测尺寸与类名） | 同上 |
+| `35447521372` | `Run tests` | `AppIconControllerTests.visibleDockRendersStatusChanges`（Swift Testing）偶发失败：`renderCount → 0`，期望 `1`。上一版修复在探针里调用了进程级的 `NSApplication.shared.setActivationPolicy(.accessory)`，改变了其他测试判断 Dock 是否可见的前提 | 从 `interactiveSubViewSizes` 移除该调用，只保留窗口，并在 `defer` 里 `orderOut` 加清空 `contentView`；后续预检 `35448004467` 通过 |
 
 ## 35375443023：非发布预检缺少下一版本说明
 
@@ -142,9 +145,9 @@ SwiftUI 的时序。
 
 发布环境的基准是：
 
-- `macos-15`
-- Xcode `16.4`
-- Swift `6.1.2`
+- `macos-26`
+- Xcode `26.6`
+- Swift `6.3.3`
 
 本机 Xcode 27 / Swift 6.4 的通过结果只能作为辅助验证，不能替代 CI。
 
@@ -181,7 +184,6 @@ gh workflow run release.yml \
 - 不把 actor-isolated 方法直接当作闭包/函数值传递
 - 不使用 `weak let`，weak 绑定必须是 `var`
 - 不假设本地和 CI 的 `Bundle.module` 资源目录大小写或布局一致
-- 不引入低于 CI 编译器版本无法解析的 Swift 6.2+ 语法
 
 ### 4. 遇到编译器崩溃时的处理方式
 
@@ -210,3 +212,62 @@ gh workflow run release.yml \
 - [ ] GitHub Release 有 DMG 和 `.sha256` 文件。
 - [ ] 线上 `appcast.xml` 的版本、构建号、长度和 EdDSA 签名已更新。
 - [ ] 未配置 Developer ID / notarization 时，明确说明 Ad-hoc 签名和首次安装限制。
+
+## 工具链迁移记录
+
+日期：2026-09-19。
+
+issue [#40](https://github.com/lingyired/status-trio/issues/40) 的根因不是缺代码，而是**构建 SDK 太旧**。
+`scripts/build-app.sh` 从 `b728e6c`（2026-09-13）起就带有用 `vtool` 改写 `LC_BUILD_VERSION.sdk`
+的修补，但 CI 一直是 `macos-15` + Xcode 16.4（SDK 15.5），`if SDK >= 26` 从未成立，
+这段修补在任何一次发布里都**没有生效过**——线上 app 的 `sdk 15.5` 就是证据。macOS 依据
+`sdk` 字段判断 app 是否采纳当前设计语言，所以菜单栏面板一直停在 Tahoe 之前的磨砂观感。
+
+迁移把 CI 换成 `macos-26` + Xcode 26.6（Swift 6.3.3）来激活它，并补上三道护栏：
+
+- `scripts/build-app.sh` 在 **`swift build` 之前**就以退出码 2 失败（SDK < 26），不再静默跳过。
+  放在编译前是有意的：放在后面会先花掉一次完整编译，并留下一个能运行、观感却是旧的 bundle，
+  正是这次要消灭的那种「构建成功、观感悄悄回退」。
+- `minos` 从产物读回后原样写回，不再硬编码 `15.0`；**并且**与 `Support/Info.plist` 的
+  `LSMinimumSystemVersion` 交叉比对，不一致就失败。只把产物里的值读回来再写回去是不够的——
+  那样断言只是自我比较，`Package.swift` 抬高 `platforms` 时仍会静默产出 macOS 15 用户
+  无法启动的包。
+- `scripts/verify-platform-version.sh` 逐架构断言 `minos` 与 `sdk`，期望值取
+  `LSMinimumSystemVersion`（一份独立声明，而不是产物自身的值），由构建脚本自动调用，
+  本地构建与 CI 预检都会执行。
+
+非发布预检 [`35452394846`](https://github.com/lingyired/status-trio/actions/runs/35452394846)
+（`version=1.3.0`、`build=11`、`publish=false`）通过：608 个 XCTest（3 跳过）与 146 个
+Swift Testing 全绿；通用 release 构建的两个切片都是 `minos 15.0 / sdk 26.0`，
+`LC_BUILD_VERSION check passed`；DMG 打包与 artifact 上传成功，未发布 Release 或更新 appcast。
+这次预检跑的是加了下面那几道护栏、并且页脚显示运行版本的代码，也就是说 `minos` 与
+`LSMinimumSystemVersion` 的交叉比对在 CI 上确实执行并通过了。
+
+同一条分支上更早两次通过的预检是 `35449290621`（`build=10`，护栏加强后的代码）与
+`35448004467`（`build=10`，护栏加强之前）。
+
+本次迁移过程中修掉的三个失败 run 见上面的失败记录表：`35447073294`、`35447273818`、`35447521372`。
+
+### 复审后追加的护栏（2026-09-19）
+
+整条分支复审时发现上面第二道护栏原本不成立：`build-app.sh` 把产物里的 `minos` 原样回传给
+断言脚本，断言等于拿产物的值和它自己比，`Package.swift` 抬高 `platforms` 时必然通过。
+现在是产物值 vs `LSMinimumSystemVersion` 的交叉比对，任一侧改动而另一侧没跟上都会失败。
+
+同一次复审还改了两处：
+
+- `SettingsRowHitAreaTests` 的探针原本固定等 50 ms；这个仓库已经因为固定睡眠吃过两次
+  CI 失败（见上表 `35293247382`、`35316867111`），现在改为 2 秒上限的轮询。
+- `release-notes/1.3.0/` 的 12 个文件原本写「macOS 15 及以上不受影响」，与同一条目的标题
+  「macOS 26 及以上的原生 Liquid Glass」自相矛盾——受影响的正包括 macOS 26+。现改为
+  「macOS 15–25 的观感保持不变」。`README.md` / `README.zh-CN.md` 的系统要求也补上了
+  「构建需要 macOS 26 SDK」。
+
+### 之后的跟进改动（2026-09-19）
+
+- `Support/Info.plist` 的构建号由 10 提到 **11**。原因：开发机本地可能装着比线上 appcast 更超前的
+  构建（例如 1.2.1/10），而 Sparkle 比较的是**已安装 app** 的 `CFBundleVersion`，`1.3.0 (10)`
+  不会推送到这类机器。构建号的最终取值仍在发布时决定，判断基准是**已发布的 appcast**（当时为 9），
+  不是本地已安装的版本。
+- 弹窗页脚在「设置」按钮右侧、⋯ 菜单左侧显示运行版本（如 `1.3.0 (11)`）；开发构建仍在按钮文字里
+  保留「开发版 · <代号>」。对比不同构建或排障时不必再打开「设置 → 关于」。

@@ -8,7 +8,7 @@
 4. 创建 GitHub Release 并上传 DMG
 5. 更新并发布 `appcast.xml`
 
-> 开发前请先阅读 [Swift 6.1 CI 兼容性规则](swift-6.1-ci-compatibility.md)。CI 使用 Xcode 16.4 / Swift 6.1.2，本机较新的 Swift 工具链不能替代 CI 验证。
+> 开发前请先阅读 [Swift 工具链 CI 兼容性规则](swift-ci-compatibility.md)。CI 使用 `macos-26` / Xcode 26.6 / Swift 6.3.3，本机较新的 Swift 工具链不能替代 CI 验证。
 
 ## 触发方式
 

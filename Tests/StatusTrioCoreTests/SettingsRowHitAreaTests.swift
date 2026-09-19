@@ -131,9 +131,48 @@ final class SettingsRowHitAreaTests: XCTestCase {
     ) -> [NSSize] {
         let hostingView = NSHostingView(rootView: view)
         hostingView.frame = NSRect(origin: .zero, size: size)
-        hostingView.layoutSubtreeIfNeeded()
 
-        return hostingView.subviews
+        // A hit area only exists once the row is in a window. A detached hosting
+        // view is left partially laid out, and the interactive subtree it
+        // realizes depends on the SDK: the macOS 26 SDK draws a `.checkbox`
+        // toggle as an AppKit checkbox plus a SwiftUI label, so the row's
+        // full-width target is only materialized inside a window.
+        //
+        // Nothing here may touch the process-wide activation policy: other tests
+        // read it to decide whether the Dock is visible.
+        let window = NSWindow(
+            contentRect: hostingView.frame,
+            styleMask: [.borderless],
+            backing: .buffered,
+            defer: false
+        )
+        window.contentView = hostingView
+        // Ordering the window front is what materializes the row's full-width
+        // key-view proxy on the macOS 26 SDK; a window that is merely created is
+        // not enough.
+        window.makeKeyAndOrderFront(nil)
+        defer {
+            window.orderOut(nil)
+            window.contentView = nil
+        }
+
+        // Poll for the full-width target with a bounded timeout rather than
+        // sleeping a fixed amount: this suite runs beside the Swift Testing
+        // tests, and two CI incidents in this repository were caused by fixed
+        // sleeps that lost exactly this kind of layout race.
+        let deadline = Date().addingTimeInterval(2)
+        var sizes = qualifyingSubViewSizes(of: hostingView)
+        while !sizes.contains(where: { abs($0.width - size.width) < 0.5 }), Date() < deadline {
+            RunLoop.current.run(until: Date().addingTimeInterval(0.01))
+            hostingView.layoutSubtreeIfNeeded()
+            sizes = qualifyingSubViewSizes(of: hostingView)
+        }
+
+        return sizes
+    }
+
+    private func qualifyingSubViewSizes(of hostingView: NSView) -> [NSSize] {
+        hostingView.subviews
             .filter { !$0.isHidden && $0.frame.height > 0 }
             .map(\.frame.size)
     }
