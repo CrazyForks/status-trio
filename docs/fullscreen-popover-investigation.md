@@ -75,6 +75,22 @@ collectionBehavior.insert([.canJoinAllSpaces, .fullScreenAuxiliary])
 | `bash scripts/build-app.sh release no-open` | 产出 `dist/StatusTrio.app`，ad-hoc 签名通过 |
 | 真机全屏弹出 | **通过**：维护者在 macOS 27 上确认，全屏 App 下点击状态栏图标可正常弹出 |
 
+### CI 预检
+
+改动新增的是 `NSWindow` 扩展（Swift 6 下隐式 `@MainActor`），按 AGENTS.md 需要额外跑一次
+非发布预检。已在
+[`35456441704`](https://github.com/lingyired/status-trio/actions/runs/35456441704)
+（`version=1.3.0`、`build=12`、`publish=false`，分支 `fix/issue-48-fullscreen-popover`，
+Swift 6.3.3 / Xcode 26.6）通过：
+
+- `Run tests`：608 个 XCTest（3 跳过、0 失败）与 149 个 Swift Testing（26 个 suite）全绿，
+  其中包含本次新增的 3 个 `PopoverWindowPlacementTests`；
+- `Build, sign, notarize, and publish`：通用 release 构建两个切片均为 `minos 15.0 / sdk 26.0`，
+  `LC_BUILD_VERSION check passed`；DMG 打包与 artifact 上传成功；
+- `publish=false`：未创建 GitHub Release，也未改动 appcast。
+
+CI 上 608 个 XCTest 全部通过，也反证了下面那两个用例确实只是本机沙箱限制造成的。
+
 ### 已知环境性失败（与本次改动无关）
 
 在受限沙箱中运行测试时，以下两个用例在 **`origin/main` 干净基线**上同样失败，原因是

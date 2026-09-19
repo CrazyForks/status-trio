@@ -271,3 +271,14 @@ Swift Testing 全绿；通用 release 构建的两个切片都是 `minos 15.0 / 
   不是本地已安装的版本。
 - 弹窗页脚在「设置」按钮右侧、⋯ 菜单左侧显示运行版本（如 `1.3.0 (11)`）；开发构建仍在按钮文字里
   保留「开发版 · <代号>」。对比不同构建或排障时不必再打开「设置 → 关于」。
+
+### issue #48 的预检（2026-09-20）
+
+菜单栏面板在全屏 Space 下不弹出（[#48](https://github.com/lingyired/status-trio/issues/48)）的修复
+新增了 `NSWindow` 扩展，属于 §2 的 `@MainActor` 范围，因此在分支
+`fix/issue-48-fullscreen-popover` 上跑了一次非发布预检
+[`35456441704`](https://github.com/lingyired/status-trio/actions/runs/35456441704)
+（`version=1.3.0`、**`build=12`**、`publish=false`）：608 个 XCTest（3 跳过）与 149 个
+Swift Testing 全绿，两个切片均为 `minos 15.0 / sdk 26.0`，DMG 与 artifact 上传成功，未发布。
+`build=12` 大于线上 appcast 的最大构建号 9，也大于 `Support/Info.plist` 当前记录的 11。
+根因与工程细节见 [fullscreen-popover-investigation.md](fullscreen-popover-investigation.md)。
