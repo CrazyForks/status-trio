@@ -70,4 +70,12 @@ run ID, failed stage, root cause, fix, and verification result.
 - Confirm tests, DMG creation, Release upload, and appcast publication in the workflow result.
 - The current repository has no Developer ID certificate or notarization secrets. Releases are Ad-hoc signed; document this limitation rather than claiming notarization.
 
+## Project Skills
+
+- Skills live in `.agents/skills/<skill-name>/`, and the directory name must match the skill's frontmatter `name`. `skills-lock.json` at the repository root records the upstream GitHub source of each vendored skill.
+- Update them from the repository root with `npx skills update -p -y`. The project path re-installs from source instead of diffing hashes, so the run is idempotent but always rewrites files — review with `git diff` before committing. The lock covers 24 of the 25 skills; `ui-ux-pro-max` is intentionally excluded.
+- Do not add `ui-ux-pro-max` to `skills-lock.json`. `npx skills add nextlevelbuilder/ui-ux-pro-max-skill` resolves to the repository's own `.claude/skills/ui-ux-pro-max` variant — a thin orchestrator that delegates to six sub-skills this project does not vendor — whereas the copy here is the render of `src/ui-ux-pro-max/templates/base/skill-content.md` for the `.agents` layout, produced by the vendor's `uipro` CLI. To update it, re-render that template and take `src/ui-ux-pro-max/{data,scripts}`; never sync `.claude/skills/`.
+- `npx skills update -p` skips `swiftui-pro` and `swift-testing-pro` because both upstream repositories ship two skills under the same name (`<skill>/SKILL.md` and `<skill>/skills/<skill>/SKILL.md`), which makes the target path ambiguous. Update those two by hand.
+- When re-vendoring by hand, sync each whole upstream skill folder rather than `SKILL.md` alone, and delete files the upstream removed.
+
 See [Swift 6.1 CI compatibility](docs/swift-6.1-ci-compatibility.md) for the incident history and examples.
