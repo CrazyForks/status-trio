@@ -129,8 +129,6 @@ final class SettingsRowHitAreaTests: XCTestCase {
         for view: V,
         size: NSSize
     ) -> [NSSize] {
-        NSApplication.shared.setActivationPolicy(.accessory)
-
         let hostingView = NSHostingView(rootView: view)
         hostingView.frame = NSRect(origin: .zero, size: size)
 
@@ -138,7 +136,10 @@ final class SettingsRowHitAreaTests: XCTestCase {
         // view is left partially laid out, and the interactive subtree it
         // realizes depends on the SDK: the macOS 26 SDK draws a `.checkbox`
         // toggle as an AppKit checkbox plus a SwiftUI label, so the row's
-        // full-width target is only materialized by the window's key-view proxy.
+        // full-width target is only materialized inside a window.
+        //
+        // Nothing here may touch the process-wide activation policy: other tests
+        // read it to decide whether the Dock is visible.
         let window = NSWindow(
             contentRect: hostingView.frame,
             styleMask: [.borderless],
@@ -147,7 +148,10 @@ final class SettingsRowHitAreaTests: XCTestCase {
         )
         window.contentView = hostingView
         window.makeKeyAndOrderFront(nil)
-        defer { window.orderOut(nil) }
+        defer {
+            window.orderOut(nil)
+            window.contentView = nil
+        }
 
         hostingView.layoutSubtreeIfNeeded()
         RunLoop.current.run(until: Date().addingTimeInterval(0.05))

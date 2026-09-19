@@ -6,43 +6,47 @@ import XCTest
 // TEMPORARY DIAGNOSTIC — remove before merging.
 @MainActor
 final class ZZToolchainDiagnosticTests: XCTestCase {
-    func testDumpTreesWithWindow() {
-        NSApplication.shared.setActivationPolicy(.accessory)
+    func testWhichConditionRealizesTheRowTarget() {
         let localization = makeLocalization()
 
-        dump("PreferenceCheckboxRow", PreferenceCheckboxRow(
-            label: .settingsBatteryShowPercentage,
-            isOn: .constant(false)
-        ).environmentObject(localization), size: NSSize(width: 300, height: 40))
-
-        dump("SettingsDisclosureRow", SettingsDisclosureRow(
-            "cable.connector",
-            tint: .teal,
-            title: localization.string(.settingsNetworkConnectionIcons),
-            subtitle: localization.string(.settingsNetworkConnectionIconsDescription),
-            isExpanded: .constant(false)
-        ).environmentObject(localization).frame(width: 300), size: NSSize(width: 300, height: 80))
+        probe("detached", localization: localization, inWindow: false, ordered: false)
+        probe("window-not-ordered", localization: localization, inWindow: true, ordered: false)
+        probe("window-ordered", localization: localization, inWindow: true, ordered: true)
     }
 
-    private func dump<V: View>(_ name: String, _ view: V, size: NSSize) {
-        let hostingView = NSHostingView(rootView: view)
-        hostingView.frame = NSRect(origin: .zero, size: size)
-        let window = NSWindow(
-            contentRect: hostingView.frame,
-            styleMask: [.borderless],
-            backing: .buffered,
-            defer: false
+    private func probe(_ name: String, localization: Localization, inWindow: Bool, ordered: Bool) {
+        let hostingView = NSHostingView(
+            rootView: PreferenceCheckboxRow(
+                label: .settingsBatteryShowPercentage,
+                isOn: .constant(false)
+            )
+            .environmentObject(localization)
         )
-        window.contentView = hostingView
-        window.makeKeyAndOrderFront(nil)
+        hostingView.frame = NSRect(x: 0, y: 0, width: 300, height: 40)
+
+        var window: NSWindow?
+        if inWindow {
+            let created = NSWindow(
+                contentRect: hostingView.frame,
+                styleMask: [.borderless],
+                backing: .buffered,
+                defer: false
+            )
+            created.contentView = hostingView
+            window = created
+            if ordered { created.makeKeyAndOrderFront(nil) }
+        }
+
         hostingView.layoutSubtreeIfNeeded()
         RunLoop.current.run(until: Date().addingTimeInterval(0.05))
 
-        let widths = hostingView.subviews
+        let qualifying = hostingView.subviews
             .filter { !$0.isHidden && $0.frame.height > 0 }
-            .map { "\(type(of: $0))=\($0.frame.size)" }
-        print("DIAG-WINDOW \(name) qualifying=\(widths)")
-        window.orderOut(nil)
+            .map { "\(type(of: $0))=\(Int($0.frame.size.width))" }
+        print("DIAG-VARIANT \(name) qualifying=\(qualifying)")
+
+        window?.orderOut(nil)
+        window?.contentView = nil
     }
 
     private func makeLocalization() -> Localization {
