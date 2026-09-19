@@ -223,11 +223,17 @@ issue [#40](https://github.com/lingyired/status-trio/issues/40) 的根因不是�
 这段修补在任何一次发布里都**没有生效过**——线上 app 的 `sdk 15.5` 就是证据。macOS 依据
 `sdk` 字段判断 app 是否采纳当前设计语言，所以菜单栏面板一直停在 Tahoe 之前的磨砂观感。
 
-迁移把 CI 换成 `macos-26` + Xcode 26.6（Swift 6.3.3）来激活它，并补上两道护栏：
+迁移把 CI 换成 `macos-26` + Xcode 26.6（Swift 6.3.3）来激活它，并补上三道护栏：
 
-- `scripts/build-app.sh` 在 SDK < 26 时以退出码 2 直接失败，不再静默跳过；`minos` 从产物读回后
-  原样写回，不再硬编码 `15.0`（`platforms` 将来抬高时不会被悄悄改回去）。
-- `scripts/verify-platform-version.sh` 逐架构断言 `minos` 与 `sdk`，由构建脚本自动调用，
+- `scripts/build-app.sh` 在 **`swift build` 之前**就以退出码 2 失败（SDK < 26），不再静默跳过。
+  放在编译前是有意的：放在后面会先花掉一次完整编译，并留下一个能运行、观感却是旧的 bundle，
+  正是这次要消灭的那种「构建成功、观感悄悄回退」。
+- `minos` 从产物读回后原样写回，不再硬编码 `15.0`；**并且**与 `Support/Info.plist` 的
+  `LSMinimumSystemVersion` 交叉比对，不一致就失败。只把产物里的值读回来再写回去是不够的——
+  那样断言只是自我比较，`Package.swift` 抬高 `platforms` 时仍会静默产出 macOS 15 用户
+  无法启动的包。
+- `scripts/verify-platform-version.sh` 逐架构断言 `minos` 与 `sdk`，期望值取
+  `LSMinimumSystemVersion`（一份独立声明，而不是产物自身的值），由构建脚本自动调用，
   本地构建与 CI 预检都会执行。
 
 非发布预检 [`35448004467`](https://github.com/lingyired/status-trio/actions/runs/35448004467)
@@ -237,3 +243,18 @@ Swift Testing 全绿；通用 release 构建的两个切片都是 `minos 15.0 / 
 该次预检之后只有记录 CI 历史的 Markdown 提交。
 
 本次迁移过程中修掉的三个失败 run 见上面的失败记录表：`35447073294`、`35447273818`、`35447521372`。
+
+### 复审后追加的护栏（2026-09-19）
+
+整条分支复审时发现上面第二道护栏原本不成立：`build-app.sh` 把产物里的 `minos` 原样回传给
+断言脚本，断言等于拿产物的值和它自己比，`Package.swift` 抬高 `platforms` 时必然通过。
+现在是产物值 vs `LSMinimumSystemVersion` 的交叉比对，任一侧改动而另一侧没跟上都会失败。
+
+同一次复审还改了两处：
+
+- `SettingsRowHitAreaTests` 的探针原本固定等 50 ms；这个仓库已经因为固定睡眠吃过两次
+  CI 失败（见上表 `35293247382`、`35316867111`），现在改为 2 秒上限的轮询。
+- `release-notes/1.3.0/` 的 12 个文件原本写「macOS 15 及以上不受影响」，与同一条目的标题
+  「macOS 26 及以上的原生 Liquid Glass」自相矛盾——受影响的正包括 macOS 26+。现改为
+  「macOS 15–25 的观感保持不变」。`README.md` / `README.zh-CN.md` 的系统要求也补上了
+  「构建需要 macOS 26 SDK」。

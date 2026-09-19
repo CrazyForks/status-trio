@@ -84,8 +84,10 @@ The same states rendered for a dark menu bar:
 
 ## Requirements
 
-- macOS 15 or later
-- Swift 6 toolchain (Xcode 16 or later)
+- macOS 15 or later to run the app
+- Swift 6 toolchain with the macOS 26 SDK (Xcode 26 or later) to build it. Building against an
+  older SDK silently produces the pre-Tahoe popover appearance, so `scripts/build-app.sh` fails
+  when the SDK is older than 26.
 
 ## Run from source
 

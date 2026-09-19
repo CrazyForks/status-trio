@@ -147,16 +147,32 @@ final class SettingsRowHitAreaTests: XCTestCase {
             defer: false
         )
         window.contentView = hostingView
+        // Ordering the window front is what materializes the row's full-width
+        // key-view proxy on the macOS 26 SDK; a window that is merely created is
+        // not enough.
         window.makeKeyAndOrderFront(nil)
         defer {
             window.orderOut(nil)
             window.contentView = nil
         }
 
-        hostingView.layoutSubtreeIfNeeded()
-        RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+        // Poll for the full-width target with a bounded timeout rather than
+        // sleeping a fixed amount: this suite runs beside the Swift Testing
+        // tests, and two CI incidents in this repository were caused by fixed
+        // sleeps that lost exactly this kind of layout race.
+        let deadline = Date().addingTimeInterval(2)
+        var sizes = qualifyingSubViewSizes(of: hostingView)
+        while !sizes.contains(where: { abs($0.width - size.width) < 0.5 }), Date() < deadline {
+            RunLoop.current.run(until: Date().addingTimeInterval(0.01))
+            hostingView.layoutSubtreeIfNeeded()
+            sizes = qualifyingSubViewSizes(of: hostingView)
+        }
 
-        return hostingView.subviews
+        return sizes
+    }
+
+    private func qualifyingSubViewSizes(of hostingView: NSView) -> [NSSize] {
+        hostingView.subviews
             .filter { !$0.isHidden && $0.frame.height > 0 }
             .map(\.frame.size)
     }

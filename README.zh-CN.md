@@ -84,8 +84,9 @@ Status Trio 是一个原生 macOS 状态应用，将 Wi-Fi、电池和音量整�
 
 ## 系统要求
 
-- macOS 15 或更高版本
-- Swift 6 工具链（Xcode 16 或更高版本）
+- 运行 app 需要 macOS 15 或更高版本
+- 构建需要带 macOS 26 SDK 的 Swift 6 工具链（Xcode 26 或更高版本）。用更旧的 SDK 构建会静默产出
+  Tahoe 之前的弹出面板观感，因此 `scripts/build-app.sh` 在 SDK 低于 26 时会直接失败。
 
 ## 从源码运行
 
