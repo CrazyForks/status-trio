@@ -14,13 +14,68 @@ macOS 27.0 浅色模式。维护者当时的回复是「后面会使用自带的
 
 ## 结论摘要
 
-1. **NSPopover 的玻璃由私有视图绘制，公开 API 改不了通透度。** 面板内部加任何视图都只能
-   叠加材质（更不透明），不能削弱系统底盘。因此「用户可选通透度」只能靠自绘 `NSPanel` 实现。
-2. **macOS 26+ 的公开 `NSGlassEffectView(.clear)` 已经足够通透**，不需要私有 API 就能满足
-   #40 的诉求。
-3. **双路径兼容是生态标准做法**：macOS 26+ 用 `NSGlassEffectView`，macOS 15–25 退回
-   `NSVisualEffectView`。本项目 `platforms: [.macOS(.v15)]`，这条路必须实现。
-4. 是否接受「换成自绘面板」这一较大改动，**尚无结论**，见文末未决问题。
+1. **决定性发现：popover 用的是不是原生 Liquid Glass，由「构建时链接的 SDK」决定，而不是运行的系统。**
+   同一个 `NSPopover`，`LC_BUILD_VERSION.sdk = 27.0` 时 `NSPopoverFrame` 内部是私有 `NSGlassView`
+   （原生 Liquid Glass）；`sdk = 15.5` 时退化成 `material = 6`（`.popover`，Tahoe 之前的磨砂材质）。
+   本项目现状正是后者——已安装 app 的 `sdk` 字段是 15.5，CI 固定 Xcode 16.4。
+   **因此「要原生液体玻璃」很可能只需把构建 SDK 升到 macOS 26+，不需要换掉 `NSPopover`。**
+2. **`minos` 不影响这个判定**：实测 `minos 15.0 + sdk 27.0` 仍是原生 Liquid Glass。
+   所以 `platforms: [.macOS(.v15)]` 与最低系统版本都可以原样保留。
+3. 若不升级构建 SDK，则在 `NSPopover` 内部用什么招都做不出原生玻璃：玻璃由私有
+   `NSPopoverFrame` 绘制，内容层只能叠加（更不透明）。那种情况下唯一出路是自绘 `NSPanel`。
+4. 是否升级 CI 工具链（Xcode 16.4 → Xcode 26）尚无结论，见文末未决问题。
+
+## 决定性发现：构建 SDK 决定是否使用原生 Liquid Glass
+
+### 实验方法
+
+不重装工具链，直接改写探针二进制的 `LC_BUILD_VERSION` 字段再运行：
+
+```bash
+cd backups/popover-glass-probe-20260919
+vtool -set-build-version macos 15.0 15.5 -replace -output probe-sdk15 probe
+codesign -s - --force probe-sdk15      # arm64 必须重新做 ad-hoc 签名
+./probe-sdk15 ./out_sdk15
+```
+
+### 实测结果
+
+| 二进制 | `LC_BUILD_VERSION` | `NSPopoverFrame` 实测 | 含义 |
+|---|---|---|---|
+| `probe` | minos 27.0 / **sdk 27.0** | `material=0`，子树含私有 `NSGlassView` + `ContentHolderView` + `_NSCoreHostingView<RootView>` | 原生 Liquid Glass |
+| `probe-sdk15` | minos 15.0 / **sdk 15.5** | `material=6`（`.popover`）、`state=1`，子树只有我们的内容 | Tahoe 之前的磨砂材质 |
+| `probe-min15sdk27` | minos 15.0 / **sdk 27.0** | `material=0` + `NSGlassView` | 原生 Liquid Glass |
+
+第三行是关键：决定因素是 `sdk` 字段，不是 `minos`。
+
+### 现状核对
+
+- 已安装的 `/Applications/Status Trio.app`：`otool -l` 显示 `minos 15.0 / sdk 15.5`。
+- CI：`.github/workflows/release.yml` 固定 `runs-on: macos-15` 与
+  `DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer`（即 macOS 15 SDK）。
+
+### CI 升级可行性（已核实）
+
+GitHub Actions 的 `macos-26` 镜像已存在（见 `actions/runner-images` 的
+`images/macos/macos-26-Readme.md`），预装 Xcode 26.0.1 / 26.1.1 / 26.2 / 26.3 / 26.4.1 /
+26.5 / 26.6（默认 26.6），另有 `xcode-27-arm64` 预览镜像。runner 层面是现成的。
+
+### 副作用（决策时需一并考虑）
+
+- 用 macOS 26+ SDK 构建后，**整个 app 采纳新设计语言**，不只是 popover：设置窗口、按钮/控件、
+  `SettingsChrome.SidebarMaterial` 这类 `NSVisualEffectView` 用法都会变样，需要一次视觉回归。
+  参考文档亦建议新设计不要再拿 `NSVisualEffectView.material` 伪装。
+- 与 AGENTS.md 的「Highest Priority: Match the CI Toolchain（macos-15 / Xcode 16.4 / Swift 6.1.2）」
+  直接冲突：AGENTS.md 与 `docs/swift-6.1-ci-compatibility.md` 需要同步更新，Swift 6.2+ 的语法限制
+  条款要重新评估。
+- 构建 SDK 升级与「支持 macOS 15–25 老系统」并不矛盾：老系统上系统仍给旧的磨砂表现，
+  这本身就是正确的原生行为，也是最干净的「旧版本兼容」。
+
+### 用户可选性
+
+系统全局键 `NSGlassTintAmount`（本机 = 1）就是 macOS 26/27 的「液体玻璃：透明 / 色调」总开关。
+若目标是「原生」，正确做法是**跟随系统**，而不是在 app 内再造一个通透度选项——后者会与系统
+设计语言打架。这一条属于产品决策。
 
 ## 探针实测：NSPopover 的背景到底由谁绘制
 
@@ -140,18 +195,50 @@ MarkEdit 的
 `reduceTransparency = AppPreferences.Window.reduceTransparency || NSWorkspace.shared.accessibilityDisplayShouldReduceTransparency`。
 系统开启「降低透明度」时不能硬套玻璃。
 
+### 补充调研（维护者提供的 `liquid-glass-macos-research.md`）
+
+该文档给出的三条接入路径与本文结论一致：
+
+- **路径 A（SwiftUI）**：`.glassEffect()` / `GlassEffectContainer` / `.glassEffectID(_:in:)`，
+  加在 `.frame()` / `.padding()` 之后；`Button` 用 `.buttonStyle(.glass)` / `.glassProminent)`。
+  适用于面板**内容内部**的玻璃卡片，管不到窗口 chrome。
+- **路径 B（AppKit）**：公开的 `NSGlassEffectView`（`.regular` / `.clear` / `tintColor` /
+  `cornerRadius`），窗口级做法是「窗口透明 + 根视图换成 `NSGlassEffectView`」
+  （参考 [Aaron-212/CustomWindowBackgroundDemo](https://github.com/Aaron-212/CustomWindowBackgroundDemo)）。
+  这正是方案 A 的背景实现方式。
+- **路径 C（私有 API）**：beta 期的 `NSClassFromString` + `set_variant:` hack，文档自己也标注
+  不建议，与本文结论一致。
+- 其他要点：`#available(macOS 26, *)` 守卫 + `NSVisualEffectView` 降级；尊重
+  `accessibilityDisplayShouldReduceTransparency`；不要再拿 `NSVisualEffectView.material`
+  伪装新设计；Sheet 不要自定义 `presentationBackground`。
+
+**注意**：该文档的前提是「必须用 Xcode 26 SDK 编译才能链接到新符号」。本文第一节的决定性实验
+正是围绕这个前提做的——它同时解释了为什么现状是旧磨砂：**不是没写玻璃代码，而是构建 SDK 太旧**。
+
 ## 方案对比
 
-### 方案 A（推荐）：自绘 NSPanel + 公开双路径玻璃 + 用户可选档位
+### 方案 0（首选）：不换组件，只把构建 SDK 升到 macOS 26+
 
-- macOS 26+：`NSGlassEffectView(.regular / .clear)`。
-- macOS 15–25：`NSVisualEffectView(material: .popover / .hudWindow / .underWindowBackground,
-  blendingMode: .behindWindow)`。
+保留原生 `NSPopover`，CI 从 `macos-15` / Xcode 16.4 换成 `macos-26` / Xcode 26.x。
+系统 chrome 由 AppKit 自己切换成原生 Liquid Glass，代码里一行玻璃相关的东西都不用写，
+最少代码、最少回归面、也最符合「就要原生效果」的目标。
+
+代价与前提：见上文「副作用」——需要改 CI 与 AGENTS.md 的工具链条款，并做一次全局视觉回归。
+风险点是工具链升级本身（`docs/swift-6.1-ci-compatibility.md` 记录的历史崩溃属于旧编译器，
+新编译器一般更好，但不能假定，需要真跑预检）。
+
+### 方案 A（备选）：自绘 NSPanel + 公开双路径玻璃 + 用户可选档位
+
+只有在「不能升级构建 SDK」时才需要走这条。macOS 26+ 用 `NSGlassEffectView(.regular / .clear)`，
+macOS 15–25 退回 `NSVisualEffectView(material: .popover / .hudWindow / .underWindowBackground,
+blendingMode: .behindWindow)`。
+
 - 复用现有的 `popoverDismissMonitor`、`popoverToggleGate`、`dockAnchor`、`PopoverContentRetention`，
   只把 show/close 从 `NSPopover` 改接到 panel。
 - 代价：原生箭头、`.transient` 语义、系统弹出动画需要自己处理；`StatusBarController` 与
   `PopoverLifecycleTests` 等测试需要改写。
-- 这是唯一能真正满足「用户可选通透度」的路径。
+- 如果同时不升级 SDK，`NSGlassEffectView` 只能用 `NSClassFromString("NSGlassEffectView")` 反射调用，
+  失去编译期检查（生态里 Lunar、cmux 等就是这么做的）。
 
 ### 方案 B：保留 NSPopover，只在内容层加玻璃
 
@@ -165,12 +252,26 @@ MarkEdit 的
 
 ## 兼容性维度（需要明确「旧版本兼容」指哪一层）
 
-1. **macOS 版本**：15–25 没有 `NSGlassEffectView`，只能给材质档；26+ 才有 glass 档。
-   档位命名要避免让旧系统用户看到不存在的选项。
-2. **旧版 App 的偏好写入**：新 key 在旧版本中被忽略即可，不会破坏旧版行为。
-3. **已有用户升级后的默认值**：默认档决定他们是「保持现状的观感」还是「直接变通透」，
-   两者体验差异很大，属于需要拍板的产品决定。
-4. **辅助功能「降低透明度」**：系统级设置优先级最高，任何档位都要让路。
+1. **构建 SDK**：这是唯一的开关。sdk ≥ 26 → 原生 Liquid Glass；sdk = 15.x → Tahoe 之前的磨砂。
+   与 `minos` / `platforms: [.macOS(.v15)]` 无关（已实测）。
+2. **运行的系统**：macOS 15–25 上没有 Liquid Glass，系统给旧表现，属于正确的原生降级，
+   不需要产品代码处理——前提是走方案 0。
+3. **旧版 App 的偏好写入**：只有走方案 A（自造选项）才会涉及。新 key 在旧版本中被忽略即可。
+4. **已有用户升级后的默认值**：走方案 0 时，所有 macOS 26+ 用户会一次性看到新观感，
+   无法用设置回退到旧磨砂；这一点需要在发布说明里讲清楚。
+5. **辅助功能「降低透明度」**：系统级设置优先级最高，任何方案都要让路。
+6. **系统「液体玻璃：透明 / 色调」（`NSGlassTintAmount`）**：走方案 0 时自动跟随，无需处理。
+
+## 若走方案 0 需要改动的面
+
+- `.github/workflows/release.yml`：`runs-on: macos-15` → `macos-26`，
+  `DEVELOPER_DIR` → `/Applications/Xcode_26.x.app/Contents/Developer`。
+- `AGENTS.md`：更新「Highest Priority: Match the CI Toolchain」的 runner / Xcode / Swift 版本，
+  并重新评估 Swift 6.2+ 语法限制条款。
+- `docs/swift-6.1-ci-compatibility.md`：追加本次工具链迁移的记录与预检结果。
+- 视觉回归：设置窗口、按钮/控件、`SettingsChrome.SidebarMaterial`、`IconPreviewComponents`
+  等所有 `NSVisualEffectView` / 自绘视图在 26+ 下的新表现。
+- 产品代码理论上**零改动**；实际可能需要处理新 SDK 引入的弃用告警或 API 变化。
 
 ## 若走方案 A 需要改动的代码面
 
@@ -189,6 +290,24 @@ MarkEdit 的
 
 ## 复现方式
 
+### 双 SDK 真机并排对比（方案 0 的观感证据）
+
+同一个 `NSPopover`、同一份内容，只有 `LC_BUILD_VERSION.sdk` 不同，两个进程并排显示：
+
+```bash
+cd backups/popover-glass-probe-20260919
+swiftc -O compare.swift -o cmp-modern
+cp cmp-modern cmp-legacy
+vtool -set-build-version macos 15.0 15.5 -replace -output tmp cmp-legacy && mv tmp cmp-legacy
+codesign -s - --force cmp-legacy
+
+./cmp-modern "A · macOS 27 SDK（原生 Liquid Glass）" 400 980 light &
+./cmp-legacy "B · macOS 15 SDK（现状）"          1300 980 light &
+```
+
+第 4 个参数 `light` 会把进程外观强制为浅色，以复现 issue #40 报告时的条件；
+省略则跟随系统。两个进程 5 分钟自动退出。
+
 ### 探针（结构证据）
 
 ```bash
@@ -200,7 +319,7 @@ swiftc -O probe.swift -o probe && ./probe ./out
 `.underWindowBackground`、`.sidebar`、`.headerView`、`.popover` + `vibrantLight` 外观、
 以及清空窗口背景的两组。所有结果都只影响叠加层，不改变 `NSPopoverFrame`。
 
-### 可视原型（观感判断）
+### 可视原型（方案 A 的档位候选）
 
 ```bash
 cd backups/popover-glass-probe-20260919
@@ -217,9 +336,10 @@ cd backups/popover-glass-probe-20260919
 
 ## 未决问题（等决策）
 
-1. 是否接受方案 A（换成自绘 NSPanel）？
-2. 「旧版本兼容」具体指哪一层：旧 macOS、旧版 App 的偏好、还是老用户升级后的观感？
-3. 默认档位是什么；老用户升级后是保持现状还是直接变通透？
-4. 提供几档、如何命名（例如「跟随系统 / 通透」，还是再拆出「高对比」）？
-5. macOS 15–25 上只有材质档、没有 `.clear`，这个降级是否可接受？
-6. 是否需要在方案 A 之前先做真机观感确认（原型 `P2` vs `P1`）？
+1. **是否采用方案 0**，即把 CI 从 Xcode 16.4 升到 Xcode 26 以换取原生 Liquid Glass？
+   这会与 AGENTS.md 现行的工具链条款冲突，需要同步修改。
+2. 真机并排对比的结论：A（新 SDK）是否就是 #40 想要的观感？
+3. 若采用方案 0，是否还需要 app 内自造通透度选项？系统已有「液体玻璃：透明 / 色调」
+   （`NSGlassTintAmount`），我的建议是跟随系统、不另造选项。
+4. 若不能升级 SDK，是否接受方案 A（自绘 NSPanel，需要自造玻璃与面板生命周期）？
+5. 现有用户升级后会一次性看到新观感且无法在 app 内回退，这个是否可接受、是否要写进发布说明？
