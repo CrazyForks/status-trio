@@ -62,6 +62,9 @@ final class BatteryDetailsController: ObservableObject {
             details?.power = nil
             details?.powerAvailability = .collecting
         }
+        if let sample = details?.systemPower, !sample.isFresh(at: now) {
+            details?.systemPower = nil
+        }
         guard !inFlight else {
             needsRefresh = true
             return
@@ -83,6 +86,9 @@ final class BatteryDetailsController: ObservableObject {
                     if let sample = current.power, !sample.isFresh(at: Date(), notBefore: self.notBefore) {
                         current.power = nil
                         current.powerAvailability = .collecting
+                    }
+                    if let sample = current.systemPower, !sample.isFresh(at: Date(), notBefore: self.notBefore) {
+                        current.systemPower = nil
                     }
                     self.details = current
                 }

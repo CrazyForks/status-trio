@@ -102,6 +102,36 @@ final class BatteryDetailsTests: XCTestCase {
         XCTAssertEqual(unplugged.powerAvailability, .collecting)
     }
 
+    func testSystemPowerIsIndependentOfBatteryCurrentAndAvailability() throws {
+        let system = SystemPowerSample(watts: 17.25, readAt: now)
+        var idle = registry
+        idle["ExternalConnected"] = true
+        idle["Amperage"] = 0
+        let pluggedIn = BatteryDetailsReader.parse(
+            registry: idle, adapterWatts: 90, remainingSeconds: -1,
+            state: state(connected: true), now: now, systemPower: system)
+        XCTAssertEqual(try XCTUnwrap(pluggedIn.power).watts, 0)
+        XCTAssertEqual(pluggedIn.systemPower?.watts, 17.25)
+        let missingBattery = BatteryDetailsReader.parse(
+            registry: [:], adapterWatts: 90, remainingSeconds: -1,
+            state: state(connected: true), now: now, systemPower: system)
+        XCTAssertNil(missingBattery.power)
+        XCTAssertEqual(missingBattery.systemPower?.watts, 17.25)
+        let withoutSMC = parse(registry)
+        XCTAssertNil(withoutSMC.systemPower)
+        XCTAssertNotNil(withoutSMC.power)
+    }
+
+    func testSystemPowerIsOnlySampledForAPresentBatteryOnExternalPower() {
+        XCTAssertTrue(BatteryDetailsReader.readsSystemPower(for: state(connected: true)))
+        XCTAssertFalse(BatteryDetailsReader.readsSystemPower(for: state()))
+        let absent = BatteryPowerState(BatteryStatus(rawPercentage: 0, isPresent: false,
+                                                     isCharging: false, isLowPowerMode: false,
+                                                     isConnectedToPower: true))
+        XCTAssertFalse(BatteryDetailsReader.readsSystemPower(for: absent),
+                       "A Mac without a battery has no discharge row to compare against")
+    }
+
     func testMissingStaleAndFutureTelemetryFailClosed() {
         for key in ["Voltage", "Amperage", "UpdateTime", "ExternalConnected", "IsCharging"] {
             var values = registry
@@ -170,11 +200,12 @@ final class BatteryDetailsControllerTests: XCTestCase {
             let controller = BatteryDetailsController { _, _ in
                 BatteryDetails(cycleCount: 43, power: BatteryPowerSample(
                     volts: 12, amps: -1, updatedAt: Date().addingTimeInterval(offset)
-                ))
+                ), systemPower: SystemPowerSample(watts: 17.25, readAt: Date().addingTimeInterval(offset)))
             }
             controller.activate(state: state)
             await waitUntil { controller.details != nil }
             XCTAssertNil(controller.details?.power)
+            XCTAssertNil(controller.details?.systemPower)
             XCTAssertEqual(controller.details?.cycleCount, 43)
             controller.deactivate()
         }
@@ -194,6 +225,24 @@ final class BatteryDetailsControllerTests: XCTestCase {
         await waitUntil { reader.count == 2 }
         controller.refresh(now: sampled.addingTimeInterval(91))
         XCTAssertNil(controller.details?.power)
+        controller.deactivate()
+        reader.gate.signal()
+    }
+
+    func testSystemPowerExpiresWhileTheNextReadIsBlocked() async {
+        let reader = BlockingBatteryDetailsReader()
+        let sampled = Date()
+        let controller = BatteryDetailsController { _, _ in
+            _ = reader.read()
+            return BatteryDetails(systemPower: SystemPowerSample(watts: 17.25, readAt: sampled))
+        }
+        controller.activate(state: state)
+        reader.gate.signal()
+        await waitUntil { controller.details?.systemPower != nil }
+        controller.refresh()
+        await waitUntil { reader.count == 2 }
+        controller.refresh(now: sampled.addingTimeInterval(91))
+        XCTAssertNil(controller.details?.systemPower)
         controller.deactivate()
         reader.gate.signal()
     }

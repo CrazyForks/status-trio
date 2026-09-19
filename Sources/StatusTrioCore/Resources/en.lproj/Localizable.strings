@@ -273,12 +273,14 @@
 
 // On-demand battery details.
 "battery.details.title" = "Battery Details";
+"battery.details.systemPower" = "System power (estimate)";
+"battery.details.systemReadAt" = "System read at";
 "battery.details.power" = "Battery power (estimate)";
 "battery.details.charging" = "Charging (estimate)";
-"battery.details.discharging" = "Discharging (estimate)";
-"battery.details.voltage" = "Voltage";
-"battery.details.current" = "Current";
-"battery.details.sampled" = "Sampled at";
+"battery.details.discharging" = "Battery discharge (estimate)";
+"battery.details.voltage" = "Battery voltage";
+"battery.details.current" = "Battery current";
+"battery.details.sampled" = "Battery sampled at";
 "battery.details.adapter" = "Adapter rating";
 "battery.details.remaining" = "Time remaining";
 "battery.details.cycles" = "Cycle count";
@@ -288,7 +290,7 @@
 "battery.details.unavailable" = "Unavailable";
 "battery.details.collecting" = "Sampling…";
 "battery.details.loading" = "Updating…";
-"battery.details.explanation" = "Battery power is a best-effort net estimate, not total Mac consumption. Adapter rating is not live charging power. After a power change macOS takes up to a minute to report new values.";
+"battery.details.explanation" = "On external power, watts show total system consumption; on battery, they show net battery discharge. Both are estimates. Adapter rating is not actual draw. Battery readings may lag power changes by up to a minute.";
 /* Compact popover controls. */
 "menu.more" = "More actions";
 

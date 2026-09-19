@@ -273,12 +273,14 @@
 
 // On-demand battery details.
 "battery.details.title" = "電池詳細資訊";
+"battery.details.systemPower" = "整機功耗（估算）";
+"battery.details.systemReadAt" = "整機讀取時間";
 "battery.details.power" = "電池功率（估算）";
 "battery.details.charging" = "充電（估算）";
-"battery.details.discharging" = "放電（估算）";
-"battery.details.voltage" = "電壓";
-"battery.details.current" = "電流";
-"battery.details.sampled" = "取樣時間";
+"battery.details.discharging" = "電池放電功率（估算）";
+"battery.details.voltage" = "電池電壓";
+"battery.details.current" = "電池電流";
+"battery.details.sampled" = "電池取樣時間";
 "battery.details.adapter" = "電源轉接器額定功率";
 "battery.details.remaining" = "剩餘時間";
 "battery.details.cycles" = "循環使用次數";
@@ -288,7 +290,7 @@
 "battery.details.unavailable" = "暫時無法取得";
 "battery.details.collecting" = "採集中…";
 "battery.details.loading" = "更新中…";
-"battery.details.explanation" = "電池功率為淨功率的估算值，並非整部 Mac 的耗電量。電源轉接器的額定功率並非目前的充電功率。切換電源後 macOS 最多需要一分鐘才會提供新讀數。";
+"battery.details.explanation" = "接電時顯示整部 Mac 的功耗，使用電池時顯示電池淨放電功率，皆為估算值。電源轉接器額定功率並非實際功耗。切換電源後，電池讀數可能延遲一分鐘更新。";
 /* Compact popover controls. */
 "menu.more" = "更多操作";
 

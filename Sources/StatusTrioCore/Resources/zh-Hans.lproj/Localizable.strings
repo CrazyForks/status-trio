@@ -273,12 +273,14 @@
 
 // On-demand battery details.
 "battery.details.title" = "电池详情";
+"battery.details.systemPower" = "整机功耗（估算）";
+"battery.details.systemReadAt" = "整机读取时间";
 "battery.details.power" = "电池功率（估算）";
 "battery.details.charging" = "充电（估算）";
-"battery.details.discharging" = "放电（估算）";
-"battery.details.voltage" = "电压";
-"battery.details.current" = "电流";
-"battery.details.sampled" = "采样时间";
+"battery.details.discharging" = "电池放电功率（估算）";
+"battery.details.voltage" = "电池电压";
+"battery.details.current" = "电池电流";
+"battery.details.sampled" = "电池采样时间";
 "battery.details.adapter" = "适配器额定功率";
 "battery.details.remaining" = "剩余时间";
 "battery.details.cycles" = "循环次数";
@@ -288,7 +290,7 @@
 "battery.details.unavailable" = "暂不可用";
 "battery.details.collecting" = "采集中…";
 "battery.details.loading" = "更新中…";
-"battery.details.explanation" = "电池功率为尽力估算的净功率，并非整机功耗。适配器额定功率并非实时充电功率。切换电源后 macOS 最长需要一分钟才会给出新读数。";
+"battery.details.explanation" = "接电时显示整机功耗，离电时显示电池净放电功率，均为估算值。适配器额定功率并非实际功耗。切换电源后，电池读数可能延迟一分钟更新。";
 /* Compact popover controls. */
 "menu.more" = "更多操作";
 

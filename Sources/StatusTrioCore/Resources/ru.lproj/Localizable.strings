@@ -273,12 +273,14 @@
 
 // On-demand battery details.
 "battery.details.title" = "Сведения об аккумуляторе";
+"battery.details.systemPower" = "Мощность системы (оценка)";
+"battery.details.systemReadAt" = "Время чтения системы";
 "battery.details.power" = "Мощность аккумулятора (оценка)";
 "battery.details.charging" = "Зарядка (оценка)";
-"battery.details.discharging" = "Разрядка (оценка)";
-"battery.details.voltage" = "Напряжение";
-"battery.details.current" = "Сила тока";
-"battery.details.sampled" = "Время измерения";
+"battery.details.discharging" = "Разряд батареи (оценка)";
+"battery.details.voltage" = "Напряжение батареи";
+"battery.details.current" = "Ток батареи";
+"battery.details.sampled" = "Время замера батареи";
 "battery.details.adapter" = "Номинальная мощность адаптера";
 "battery.details.remaining" = "Оставшееся время";
 "battery.details.cycles" = "Число циклов";
@@ -288,7 +290,7 @@
 "battery.details.unavailable" = "Недоступно";
 "battery.details.collecting" = "Измерение…";
 "battery.details.loading" = "Обновление…";
-"battery.details.explanation" = "Мощность аккумулятора — приблизительная оценка мощности его заряда или разряда, а не общего энергопотребления Mac. Номинальная мощность адаптера не равна текущей мощности зарядки. После смены источника питания macOS может выдавать новые значения до минуты.";
+"battery.details.explanation" = "При питании от сети показано общее потребление системы, от батареи — её чистая мощность разряда. Оба значения оценочные. Номинальная мощность адаптера не равна реальному потреблению. После смены источника данные батареи могут обновляться с задержкой до минуты.";
 /* Compact popover controls. */
 "menu.more" = "Другие действия";
 
