@@ -301,6 +301,20 @@ Swift Testing 全绿，两个切片均为 `minos 15.0 / sdk 26.0`，DMG 与 arti
 - `build=13` 大于线上 appcast 的最大构建号 9，也大于 `Support/Info.plist` 当前记录的 11。
 
 这次预检同时验证了新增的强制门禁：`Tests/StatusTrioCoreTests/ForbiddenPatternGuardTests.swift`
-在 `swift test` 内运行 `scripts/check-forbidden-patterns.sh` 及其 `--self-test`，因此任何重新出现的
-方法引用都会让 `Run tests` 失败，无需改动任何 workflow 文件。该守卫只覆盖 `Sources/`，且只识别
-已知的标签族与位置（脚本头部列明了这些非目标），编译层面的最终判据仍是本预检。
+在 `swift test` 内运行 `scripts/check-forbidden-patterns.sh` 及其 `--self-test`，因此**在守卫的覆盖范围内**
+重新出现的方法引用会让 `Run tests` 失败，无需改动任何 workflow 文件。守卫当前的覆盖范围与非目标
+（脚本头部列有同一份清单）是：
+
+- 会扫描的函数值位置：参数标签 `action:`/`get:`/`set:`/`using:`/`block:`/`perform:`、
+  `request*:` 与 `open*:` 两个回调族、`on[A-Z]…:` 回调族（锚定在词边界上，因此
+  `connectionOptions:`、`iconSize:` 不会误判成 `on…:`），以及
+  `.map`/`.compactMap`/`.filter`/`.forEach`/`.sink`/`.assign` 与 `.callAsFunction`。
+- 判定规则：带接收者的**点号成员引用**（`receiver.method`）只要 `Sources/` 下存在同名 `func`
+  声明，不论参数个数都算违规——这正是 `34758026894` 的崩溃形状
+  `Binding(get: { 0 }, set: loc.setPreference)`；**裸标识符**仍要求 `Sources/` 下存在零参数
+  `func <name>()`，唯一的例外是 `on[A-Z]…:` 回调族（该族期望的闭包本身带参数，例如
+  `Slider(onEditingChanged: (Bool) -> Void)`，所以 `onEditingChanged: handleVolumeEditing`
+  算违规）。其余非目标见脚本头部。
+- **不覆盖**：`Tests/` 下的任何代码。扫描只遍历 `$ROOT/Sources`，所以守卫通过并不代表测试目标里
+  没有方法引用；编译层面的最终判据仍然是本预检
+  （`swift test` + `swift build -c release` + 非发布 release workflow）。

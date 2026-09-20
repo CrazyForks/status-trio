@@ -143,7 +143,7 @@ Expected: exit code 1, with exactly eleven violation lines: `StatusBarController
 - [ ] **Step 3: Run the self-test and record the expected PASS**
 
 Run: `bash scripts/check-forbidden-patterns.sh --self-test`
-Expected: exits 0 and prints `self-test: 3/3 violations detected`, `self-test: 7/7 safe shapes ignored`. This proves the guard's precision before it is used to justify runtime-significant edits.
+Expected: exits 0 and prints `self-test: 10/10 violations detected`, `self-test: 7/7 safe shapes ignored`. This proves the guard's precision before it is used to justify runtime-significant edits.
 
 - [ ] **Step 4: Verify the allowlist entries against the tree**
 
@@ -200,13 +200,13 @@ Edit `installPopoverContentIfNeeded()` so the call reads (each closure calls exa
                 // generates the thunk that crashed IRGen in CI run 34758026894
                 // (docs/swift-ci-compatibility.md).
                 requestWiFiNameAccess: { self.handleRequestWiFiNameAccess() },
-                requestBluetoothAuthorization: { handleRequestBluetoothAuthorization() },
-                openBatterySettings: { handleOpenBatterySettings() },
-                openWiFiSettings: { handleOpenWiFiSettings() },
-                openLocationSettings: { handleOpenLocationSettings() },
-                openBluetoothSettings: { handleOpenBluetoothSettings() },
-                openSettings: { handleOpenSettings() },
-                openSoundSettings: { handleOpenSoundSettings() },
+                requestBluetoothAuthorization: { self.handleRequestBluetoothAuthorization() },
+                openBatterySettings: { self.handleOpenBatterySettings() },
+                openWiFiSettings: { self.handleOpenWiFiSettings() },
+                openLocationSettings: { self.handleOpenLocationSettings() },
+                openBluetoothSettings: { self.handleOpenBluetoothSettings() },
+                openSettings: { self.handleOpenSettings() },
+                openSoundSettings: { self.handleOpenSoundSettings() },
                 quit: quitAction
             )
         }
@@ -385,7 +385,10 @@ final class ForbiddenPatternGuardTests: XCTestCase {
             0,
             "scripts/check-forbidden-patterns.sh reported violations:\n\(result.output)"
         )
-        XCTAssertTrue(result.output.contains("forbidden-patterns: clean"), result.output)
+        XCTAssertTrue(
+            result.output.contains("No forbidden actor-isolated method references found"),
+            result.output
+        )
     }
 
     func testGuardSelfTestPasses() throws {
@@ -462,7 +465,7 @@ fi
 - [ ] **Step 6: Verify the wiring locally**
 
 Run: `bash scripts/test.sh`
-Expected: the guard prints `forbidden-patterns: clean (0 violations, 4 allowlisted, N external)` and `swift test` runs the full suite to PASS, including `ForbiddenPatternGuardTests`.
+Expected: the guard prints `No forbidden actor-isolated method references found under <package root>/Sources` and exits 0, then `swift test` runs the full suite to PASS, including `ForbiddenPatternGuardTests`.
 
 - [ ] **Step 7: Commit**
 
