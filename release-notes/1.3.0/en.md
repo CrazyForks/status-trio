@@ -13,3 +13,8 @@
 - The battery is checked on every fallback tick. Wi-Fi and volume are checked less often while the Status Panel and the Settings window are both closed, and go back to your Status refresh interval as soon as either one is on screen.
 - The Status refresh interval slider still goes down to 5 seconds for anyone who wants the old cadence.
 - The volume row no longer redraws the Status Panel when the volume reading has not changed.
+
+## Bluetooth stops working in the background
+- The Bluetooth panel used to read the paired-device list every 15 seconds for as long as the app was running, even after the panel was closed. It now refreshes when a device connects or disconnects, and falls back to a slow check only while a Bluetooth view is on screen.
+- Paired devices and battery levels now come from one system report instead of two, which halves the work each refresh does.
+- The summary row and the device page are unchanged: the same names, the same levels, and the same permission behaviour — the app still asks for Bluetooth only when you open a Bluetooth view.
