@@ -41,7 +41,7 @@ Reduce sustained CPU usage and avoid unnecessary memory growth in the menu bar a
 
 ### Adjustable refresh interval
 
-- Persist a refresh interval in `SettingsStore`, default 5 seconds, range 5–300 seconds, step 5 seconds.
+- Persist a refresh interval in `SettingsStore`. Shipped value (updated 2026-09-20): default **15 seconds**, range **5–60 seconds**, step 5 seconds. This design originally proposed a 5-second default and a 5–300 second range; the shipped interval is the narrower range the slider renders and `clampedRefreshInterval` pins.
 - Add a setting in the Basics pane.
 - `SystemStatusStore` reads the current interval for each sleep cycle, so the next scheduled refresh uses the new value without replacing the store.
 - Existing status monitors remain event-driven; the interval is only a fallback.

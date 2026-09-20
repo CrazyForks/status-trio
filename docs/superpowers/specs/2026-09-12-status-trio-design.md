@@ -6,6 +6,14 @@
 - 目标系统：macOS 15+
 - 技术路线：原生 SwiftUI + AppKit
 
+> **这是第一版（v1）的设计快照，不是当前行为的规格。** 文件里的“5 秒兜底刷新”
+> 描述的是 2026-09-12 时的设计。现在的兜底刷新默认 15 秒（范围 5...60 秒，用户存储的值
+> 优先），并且只在没有可见界面时按第 4 个 tick 刷新 Wi‑Fi 与音量；显示器睡眠时会跳过，
+> 并带上限自愈。当前行为以
+> `docs/superpowers/specs/2026-09-14-performance-optimization-design.md` 与
+> `docs/superpowers/plans/2026-09-20-status-poll-scheduling.md` 为准。历史条款保留原文，
+> 不做追溯修改。
+
 ## 1. 背景与目标
 
 Status Trio 是一个仅供个人使用、常驻 macOS 菜单栏的状态工具。它把电池容量、Wi‑Fi 状态和音量状态组合进一个 20 pt 图标中，并在左键弹层和右键菜单中提供少量交互。

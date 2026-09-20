@@ -20,13 +20,13 @@
 - Any user-visible behavior change requires release notes added to the existing unreleased `release-notes/1.3.0/en.md` and `release-notes/1.3.0/zh-Hans.md`.
 - Any change to menu bar icon rendering or icon settings must be mirrored in the Dock icon in the same change (SettingsStore option derivation, StatusBarController subscriptions, AppIconController subscriptions/state, `DockIconRenderKey` cache inputs, `DockIconRenderer` rendering, plus tests for both). This plan changes no icon input, and the refresh interval is deliberately absent from `SettingsStore.iconAppearancePublisher` (`Sources/StatusTrioCore/Settings/SettingsStore+IconAppearance.swift:21-42`), so no Dock mirror is required — both icons read the same `store.snapshot`, so both gain the same freshness and lose none.
 - Tests are mixed: most files use Swift Testing (`import Testing`, `@Test`, `#expect`, `@MainActor` suites), some use XCTest (`XCTAssert*`, `XCTSkipUnless`). Read the test file you extend and match its framework and style. Every file this plan extends is XCTest (`@MainActor final class ...: XCTestCase`).
-- Do not run the app to verify this plan. The fallback poll's cost is proven by the injected sleep and the fake monitors' counters, and the idle-`top` measurement in `## Verification` is the only optional extra evidence.
+- Do not run the app to verify the *behaviour* of this plan. The fallback poll's cost and gating are proven by the injected sleep and the fake monitors' counters. The idle-`top` before/after measurement in Task 7 Step 4 is **required evidence, not an optional extra**: the release notes advertise the saving, so the after-change sample must be taken on this branch's own build and both numbers recorded before 1.3.0 is published.
 
 ## Review Focus
 
 - **The menu bar icon must still change while the popover is closed.** Wi-Fi and volume are refreshed on most hidden ticks *less* eagerly, so the push path is what keeps the icon live: `testPushedWiFiAndVolumeStillUpdateTheSnapshotWhileThePopoverIsClosed` drives `wifi.send(_:)` / `volume.send(_:)` with the popover closed and asserts `store.snapshot` — the value both icons render from — takes the new values.
 - **Battery must never go stale, because it is drawn.** A user on battery power sees the percentage text and the charging bolt; `testFallbackTickRefreshesBatteryEveryTickAndWiFiAndVolumeOnTheHiddenStride` asserts a battery refresh on every one of the four ticks while Wi-Fi and volume refresh once, and `testFallbackTickRefreshesWiFiAndVolumeWhileThePopoverIsOpen` asserts that opening the popover restores all three to the configured interval.
-- **A skipped-display path must not be able to stop the poll forever.** The display-asleep rule only skips *work*; the timer keeps running and the display-wake notification resumes full refreshes, which `testFallbackTickSkipsWhileTheDisplayIsAsleepAndRefreshesOnDisplayWake` pins by asserting zero battery refreshes while asleep and a refresh plus recovery after `screensDidWakeNotification`.
+- **A skipped-display path must not be able to stop the poll forever.** The display-asleep rule only skips *work*, and the skip itself is bounded by `maximumDisplayAsleepSkips` so a *lost* display-wake notification cannot freeze the icon for the rest of the session. `testFallbackTickSkipsWhileTheDisplayIsAsleepAndRefreshesOnDisplayWake` pins zero battery refreshes while asleep plus a refresh and recovery after `screensDidWakeNotification`, and `testFallbackTickSelfHealsAfterTheDisplayAsleepSkipCap` pins that the cap runs one refresh and then resets the counter.
 - **A user who chose 5 seconds must still get 5 seconds.** The adjustable range stays `5...60` with 5-second steps and 5 seconds is the lower bound, pinned by the existing `SettingsStoreTests.testRefreshIntervalDefaultsAndRange` (updated only for the new default) and by `SettingsStoreTests.testRefreshIntervalClampsRoundsAndPersists`, which asserts that 7 seconds rounds down to 5 and that a clamped value survives a reload.
 - **An unchanged volume reading must not invalidate the popover body.** `@Published liveVolume` fires `objectWillChange` on every assignment, so a poll that re-reads the same scalar re-rendered every volume observer; `testUnchangedVolumeYieldDoesNotRepublishLiveVolume` counts `objectWillChange` emissions across one equal and one changed yield and requires exactly two — the changed reading's `liveVolume` and `snapshot`, with the repeat contributing nothing.
 
@@ -807,12 +807,21 @@ gh run watch <run-id> --repo lingyired/status-trio --exit-status
 
 Expected: the workflow passes without publishing. This plan changes `@MainActor` state and `deinit`, so this step is mandatory; record the run ID in the commit message or the PR body. If the run fails, append the run ID, failed stage, root cause and fix to `docs/swift-ci-compatibility.md`.
 
-- [ ] **Step 4: Measure the idle cost**
+- [ ] **Step 4: Measure the idle cost (required — do this before 1.3.0 is published)**
 
-Take a `top` sample on the same machine before applying the change and one after, from the same build kind (launch the build under test first; the review's 0.125 % figure came from the installed 1.2.1 bundle and is not a post-change measurement):
+This is a release requirement, not an optional extra: the release notes already advertise the saving, so an after-change sample must exist before users receive 1.3.0, and both numbers go in the PR body.
 
-Run: `top -l 20 -s 1 -pid $(pgrep -x StatusTrio) | tail -5`
-Expected: the average CPU and RSS are recorded for both samples. The change moves the per-tick IOKit, CoreWLAN/`SCDynamicStore` and CoreAudio work from every 5 seconds to every fourth fallback tick while no detail surface is visible; put both numbers in the PR body rather than asserting a target.
+The pre-change baseline on record was taken from the **installed 1.2.1 / build 10** bundle, which is a different build from this branch. Use it as context only; it is not a like-for-like comparison.
+
+Build a dev bundle from this branch and launch it. `scripts/build-worktree.sh` derives a bundle id (`com.lingsmbp.StatusTrio.dev.<branch>`) and app name from the branch, so it does not overwrite or collide with the installed app — never install a preflight artifact into `/Applications`.
+
+```bash
+bash scripts/build-worktree.sh release no-open
+open dist/StatusTrio.app
+top -l 20 -s 1 -pid $(pgrep -x StatusTrio) | tail -5
+```
+
+Expected: the average CPU, RSS and idle-wakeup numbers are recorded for the after-change sample (and the on-record pre-change numbers are cited alongside them, with their build identity). The change moves the per-tick IOKit, CoreWLAN/`SCDynamicStore` and CoreAudio work from every 5 seconds to every fourth fallback tick while no detail surface is visible; put both numbers in the PR body rather than asserting a target. Quit the dev build when the sample is done.
 
 - [ ] **Step 5: Review the diff**
 
@@ -821,13 +830,13 @@ Expected: no whitespace errors, and only `SystemStatusStore.swift`, `SettingsSto
 
 ## Verification
 
-- `swift test` passes, with the new tests: `testFallbackSleepToleranceCoversTheAdjustableRange`, `testFallbackPollDefaultsToFifteenSeconds`, `testFallbackTickRefreshesBatteryEveryTickAndWiFiAndVolumeOnTheHiddenStride`, `testFallbackTickRefreshesWiFiAndVolumeWhileThePopoverIsOpen`, `testPushedWiFiAndVolumeStillUpdateTheSnapshotWhileThePopoverIsClosed`, `testFallbackTickSkipsWhileTheDisplayIsAsleepAndRefreshesOnDisplayWake`, `testUnchangedVolumeYieldDoesNotRepublishLiveVolume`.
+- `swift test` passes, with the new tests: `testFallbackSleepToleranceCoversTheAdjustableRange`, `testFallbackPollDefaultsToFifteenSeconds`, `testFallbackTickRefreshesBatteryEveryTickAndWiFiAndVolumeOnTheHiddenStride`, `testFallbackTickRefreshesWiFiAndVolumeWhileThePopoverIsOpen`, `testPushedWiFiAndVolumeStillUpdateTheSnapshotWhileThePopoverIsClosed`, `testFallbackTickSkipsWhileTheDisplayIsAsleepAndRefreshesOnDisplayWake`, `testFallbackTickSelfHealsAfterTheDisplayAsleepSkipCap`, `testUnchangedVolumeYieldDoesNotRepublishLiveVolume`.
 - `swift build -c release` passes.
 - The three interval defaults move together (`SettingsStore.defaultRefreshIntervalSeconds`, `SystemStatusStore.init`, `AppEnvironment.makeStore`), and the two `testMakeStore*` tests that build a store through the factory still pass.
 - The updated expectations in `testPeriodicRefreshUsesInjectedSleep`, `testStopPreventsFurtherPeriodicRefresh`, `testWakeNotificationAfterStopDoesNotRefresh`, `testRefreshIntervalDefaultsAndRange` still pin the behaviour they were written for; none of them loses an assertion.
 - A non-publishing release preflight passes on the CI toolchain.
 - `bash scripts/validate-appcast-notes.sh` passes after the release-note edits.
-- Idle CPU is re-measured and recorded, per the review index's measurement rule.
+- Idle CPU is re-measured on this branch's own dev bundle before 1.3.0 is published, with both the before and after numbers recorded in the PR body — the release notes advertise the saving, so this is required evidence, not an optional extra.
 
 ## Out of Scope
 

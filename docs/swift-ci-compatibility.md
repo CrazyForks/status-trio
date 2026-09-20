@@ -353,6 +353,13 @@ Swift Testing 全绿，两个切片均为 `minos 15.0 / sdk 26.0`，DMG 与 arti
 改到每第 4 个 tick；显示器睡眠时整个 tick 跳过，任一唤醒通知都会清掉该标志并先
 `recoverAll()` 再 `refreshAll()`；`applyVolume` 在值未变化时不再重复发布 `liveVolume`。
 
+> **补齐（预检 `35513133152` 之后）：** 显示器睡眠的跳过当时没有上限，而「显示器单独睡眠」
+> （屏保、显示器休眠定时器、系统不睡眠）只有 `screensDidWakeNotification` 一个清除入口。
+> 该通知一旦丢失，`batteryMonitor.refresh()` 会在整场会话里停摆，画进菜单栏图标的电量
+> 就此冻结。现补上 `maximumDisplayAsleepSkips`：连续跳过 20 个 tick（默认间隔 15 秒即
+> 5 分钟）后强行刷新一次并清零计数，任一唤醒通知也会清零。因此丢一次通知最多只会让
+> 每个上限损失一次刷新，而不是让轮询停摆整场会话。
+
 这一步牵涉 `@MainActor` 状态与 `deinit`（新增两个 observer token，仅由 `deinit` 与 `stop()`
 移除），因此按规则跑了非发布预检
 [`35513133152`](https://github.com/lingyired/status-trio/actions/runs/35513133152)
@@ -361,13 +368,30 @@ Swift Testing 全绿，两个切片均为 `minos 15.0 / sdk 26.0`，DMG 与 arti
 **636 个 XCTest（6 跳过，0 失败）** 与 **163 个 Swift Testing / 27 个 suite** 全绿，
 两个切片均为 `minos 15.0 / sdk 26.0`，未发布 Release、未改动 appcast。
 
-`build=15` 是因为 `13`、`14` 已被方法引用改写的两次预检占用；它仍大于线上 appcast 的
-最大构建号 9 与 `Support/Info.plist` 记录的 11。本轮没有用户可见的行为回归：
-轮询节奏本身不是可见特性，菜单栏图标仍由推送通道更新，用户若想恢复旧节奏可在设置里选 5 秒。
+`build=15` 是因为 `12`（issue #48 全屏修复的预检，见上）、`13`、`14` 都已被更早的预检
+占用；它仍大于线上 appcast 的最大构建号 9 与 `Support/Info.plist` 记录的 11。
+本轮的用户可见影响是有界的：状态面板与设置窗口都关闭时，Wi-Fi 与音量的读数最多滞后
+4 个 tick（默认间隔下 60 秒），这段滞后正常由推送通道覆盖；电池每个 tick 都刷新，
+想恢复旧节奏的用户也可以在设置里选 5 秒。
+
+> **⚠️ 构建身份不一致（必读）：** 现有的「改动前」基线取自**线上安装的 1.2.1 / build 10**，
+> 不是本分支（工作树为 1.3.0）的构建。两者不是同构建对比，该数字只能作为背景参考，
+> 不能当作本分支改动前后的对照。
 
 功耗对比只记录了**改动前**的基线（线上安装的 1.2.1/10，空闲采样 20 次：平均 CPU 0.125 %、
 RSS 25 MB、累计 idle wakeups 0；另一次在界面打开状态下的采样为平均 CPU 0.225 %、
 RSS 134 MB、20 秒累计 240 次 idle wakeups——两次采样条件不同，不能互相比较）。
-**改动后**的采样需要在开发 bundle 上运行新构建才能取得（`scripts/build-worktree.sh` 会使用
-独立的 dev bundle id），为了不在维护者的机器上多出一个菜单栏实例并触发权限弹窗，本次未执行，
-留给发布前由维护者按同样命令补测。
+
+> **⏳ 改动后采样：发布 1.3.0 之前必须完成（当前仍未完成）。** 发布说明已经宣传了这项节省，
+> 因此必须在发布前、在同一台机器上，用本分支自己的 dev bundle 采集，并把改动前后两个
+> 数字一起记录到 PR。发布后再补测就没有意义了。命令如下（`scripts/build-worktree.sh`
+> 会派生出独立的 dev bundle id，不覆盖已安装的正式版）：
+>
+> ```bash
+> bash scripts/build-worktree.sh release no-open
+> open dist/StatusTrio.app
+> top -l 20 -s 1 -pid $(pgrep -x StatusTrio) | tail -5
+> ```
+>
+> 本次预检未执行采样，是为了不在维护者的机器上多出一个菜单栏实例并触发权限弹窗；
+> 这个理由只解释了当时的推迟，不能替代发布前必须拿到的证据。

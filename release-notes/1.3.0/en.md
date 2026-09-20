@@ -9,7 +9,7 @@
 - Clicking the menu bar icon now opens the status panel while another app is in full screen. The panel used to open behind that app, so the click looked like it did nothing.
 
 ## Cheaper background refresh
-- The fallback refresh — the timer that catches a change the system did not push to the app — now runs every 15 seconds instead of every 5, and macOS may slide that timer so it fires alongside other work. The icon still updates the moment the system reports a change.
-- The battery is checked on every fallback tick. Wi-Fi and volume are checked on a slower watchdog while the panel and the Settings window are both closed, and go back to your configured interval as soon as either one is on screen.
-- The refresh interval slider still goes down to 5 seconds for anyone who wants the old cadence.
-- The volume row no longer redraws the panel when the volume reading has not changed.
+- The fallback refresh — the timer that catches a change the system did not push to the app — now runs every 15 seconds by default instead of every 5, and macOS may slide that timer so it fires alongside other work. The icon still updates the moment the system reports a change.
+- The battery is checked on every fallback tick. Wi-Fi and volume are checked less often while the Status Panel and the Settings window are both closed, and go back to your Status refresh interval as soon as either one is on screen.
+- The Status refresh interval slider still goes down to 5 seconds for anyone who wants the old cadence.
+- The volume row no longer redraws the Status Panel when the volume reading has not changed.
