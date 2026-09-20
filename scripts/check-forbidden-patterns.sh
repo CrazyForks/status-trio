@@ -9,18 +9,36 @@
 #
 # Detection rule, in this order:
 #   1. Collect function-value positions: argument labels
-#      (`action:`/`get:`/`set:`/`using:`/`block:`, plus the `request*:` and
-#      `open*:` families this repo uses for its action callbacks) and the
+#      (`action:`/`get:`/`set:`/`using:`/`block:`/`perform:`, the `request*:`
+#      and `open*:` families this repo uses for its action callbacks, and the
+#      `on[A-Z]…:` callback family) and the
 #      `.map/.compactMap/.filter/.forEach/.sink/.assign` operators, plus any
 #      `.callAsFunction` reference.
 #   2. Drop anything that is already a closure (`{`), a call (`(`), a keypath
 #      (`\.`), or a library initializer reference (`<Type>.init`). These stay in
 #      `--list` under the token that was captured (`URL.init`), so a reader can
 #      see they were considered instead of a second anonymous `external`.
-#   3. A remaining bare identifier whose last component is declared as a
-#      zero-argument `func <name>()` anywhere under Sources/ is a VIOLATION
-#      unless it is in ALLOWED below, or is a forwarded closure value.
+#   3. A remaining reference is a VIOLATION unless it is in ALLOWED below or is
+#      a forwarded closure value:
+#        a. A *dotted* member reference (`receiver.method`) whose `<method>`
+#           matches a `func <method>(` declaration anywhere under Sources/,
+#           regardless of arity. The receiver proves the token names a member
+#           rather than a type or a local value, and this is exactly the shape
+#           that crashed IRGen: `Binding(get: { 0 }, set: loc.setPreference)`.
+#        b. A *bare* identifier declared as a zero-argument `func <name>()`
+#           anywhere under Sources/. A bare name can also be a type or a local
+#           value, so the arity test stays here. The one exception is the
+#           `on[A-Z]…:` callback family, which is judged on any arity: those
+#           labels are the ones whose expected closure type takes arguments in
+#           this repo (`onEditingChanged: (Bool) -> Void`, `onVolumeChange:
+#           (Double) -> Void`), so an argument-taking method reference there is
+#           the forbidden conversion — `onEditingChanged: handleVolumeEditing`
+#           at VolumeControlsView.swift:51 is the live example the
+#           zero-argument test used to hide.
 #   4. Anything else is `external` and is reported by --list but never fails.
+#
+# Every function-value position on a line is judged; a line may hold several,
+# and judging only the first let a second violation on the same line through.
 #
 # The declaration lookup fails closed on overloads: one zero-argument
 # declaration anywhere under Sources/ is enough, so adding an unrelated
@@ -31,31 +49,47 @@
 #
 # Forwarded closure values: `Button(action: openSettings)` forwards a stored
 # closure (`let openSettings: () -> Void` at PopoverFooterView.swift:18, used at
-# :32) or a closure parameter (`using read: (AudioObjectPropertyElement) ->
-# UInt32?` at VolumeMonitor.swift:366, used at :369). That is a value, not a
-# method reference, so when the reference's own file declares the name with a
-# function type the reference is `external`. Without that exemption an unrelated
+# :32) or a closure parameter with its own argument label
+# (`using read: (AudioObjectPropertyElement) -> UInt32?` at
+# VolumeMonitor.swift:367, used at :369). That is a value, not a method
+# reference, so when the reference's own file declares the name with a function
+# type the reference is `external`. Without that exemption an unrelated
 # `func openSettings()` elsewhere would turn the protected forward into a
-# violation, and `read` would become a twelfth real-tree finding.
+# violation, and `read` would become a real-tree finding (`func read()` also
+# exists at VolumeMonitor.swift:327).
+#
+# The exemption must be declaration-shaped. A bare `<name>: … ->` anywhere in
+# the file let two unrelated shapes mask a real violation: a comment line
+# (`// handleToggle: () -> Void`) and an argument label on another function
+# (`func configure(handleSave: @escaping (Int) -> Void)`). `//` comments are
+# stripped first, and a match must be a `let`/`var` declaration or a
+# label-plus-name parameter position, which neither masking shape is.
 #
 # Known limits (non-goals). A bash guard has no type information, so these
 # shapes are deliberately not detected rather than guessed at: a guessed
 # detection is a false positive, and a guard that cries wolf gets switched off.
-#   1. Argument-taking method references, e.g. `.map(probe.handleTransform)`,
-#      where the reference feeds a function type that takes arguments.
+#   1. Argument-taking *bare* method references outside the `on[A-Z]…:` family,
+#      e.g. `.map(handleTransform)` or `block: handleListener`, where the bare
+#      name keeps the zero-argument rule and the shape stays `external`. The
+#      recorded crash shape in a `set:` position was dotted, which is caught.
 #   2. Non-argument positions, e.g. `let handler: () -> Void = probe.handleX`.
-#   3. Argument labels outside the families above, e.g. `perform:` in
-#      `.onTapGesture(perform:)`.
-#   4. A value that ends its line without `)` or `,`, which the scan's
-#      terminator requirement cannot see.
+#   3. Argument labels outside the families above, e.g. `with:`/`handler:`, and
+#      `#selector(...)` references, which name a selector rather than a `func`
+#      declaration to look up.
+#   4. A `/* … */` block comment that mentions a forwarded closure value; only
+#      `//` comments are stripped before the exemption is matched.
+#   5. Anything under Tests/. The scan walks `$ROOT/Sources` only, so a clean
+#      run says nothing about method references in the test target.
 # The CI preflight (AGENTS.md: `swift test`, `swift build -c release`, and a
 # non-publishing release workflow run), not this guard, is the authority for
 # compiler-level behaviour.
 #
 # False-positive policy: the rule errs strict on purpose. Nonisolated methods
-# declared in this repo are flagged too, so each one needs an allowlist entry
-# with a written justification. That keeps a reviewer in the loop instead of
-# silently trusting a heuristic that cannot see isolation.
+# declared in this repo are flagged too — bare and dotted alike — so each one
+# needs an allowlist entry with a written justification. That keeps a reviewer
+# in the loop instead of silently trusting a heuristic that cannot see
+# isolation. The `on[A-Z]…:` family is anchored to a token boundary so that
+# `connectionOptions:`/`iconSize:` do not read as `on…:` callbacks.
 #
 # Usage: check-forbidden-patterns.sh [--root <dir>] [--list] [--self-test]
 # Exit codes: 0 = clean, 1 = violations found or a self-test assertion failed,
@@ -79,9 +113,10 @@ usage() {
 }
 
 # One line per `<label>: <value>` pair on the line, `<label>` first and the
-# value's first token second. Every argument label counts, not just the six the
-# scan looks for: `requestWiFiNameAccess: handleRequestWiFiNameAccess` is the
-# same function-value position as `action:`.
+# value's first token second. Every argument label counts, not just the
+# families the scan looks for: `requestWiFiNameAccess:
+# handleRequestWiFiNameAccess` is the same function-value position as
+# `action:`.
 labelled_values() {
     grep -oE '[A-Za-z_][A-Za-z0-9_]*:[[:space:]]*[A-Za-z_][A-Za-z0-9_.]*' <<<"$1" || true
 }
@@ -108,19 +143,22 @@ value_identifier() {
     done
 }
 
-# Prints one identifier per function-value position on the line. A line may
-# hold several, and each one is judged on its own.
+# Prints `<label><TAB><identifier>` for every function-value position on the
+# line. `<label>` is the argument label the value was found under, or `-` for an
+# operator/`.callAsFunction` position. A line may hold several positions, and
+# each one is judged on its own with the arity rule its label implies.
 shape_identifiers() {
     local line="$1"
-    local pair value name found=0
+    local pair label value name found=0
 
     while IFS= read -r pair; do
         [[ -n "$pair" ]] || continue
+        label="${pair%%:*}"
         value="${pair#*:}"
         value="${value#"${value%%[![:space:]]*}"}"
         name="$(value_identifier "$value")"
         [[ -n "$name" ]] || continue
-        echo "$name"
+        printf '%s\t%s\n' "$label" "$name"
         found=1
     done < <(labelled_values "$line")
 
@@ -132,7 +170,7 @@ shape_identifiers() {
         's/.*\.(map|compactMap|filter|forEach|sink|assign)\([[:space:]]*([A-Za-z_][A-Za-z0-9_.]*)[(,) ].*/\2/p' \
         <<<"$line")"
     if [[ -n "$call" ]]; then
-        echo "$call"
+        printf '%s\t%s\n' "-" "$call"
         found=1
     fi
 
@@ -140,7 +178,7 @@ shape_identifiers() {
         # A `.callAsFunction` reference is unconditional: Swift synthesizes the
         # method, so there is no `func callAsFunction` declaration to look up.
         name="$(sed -nE 's/.*\.([A-Za-z_][A-Za-z0-9_.]*\.callAsFunction).*/\1/p' <<<"$line")"
-        echo "${name:-callAsFunction}"
+        printf '%s\t%s\n' "-" "${name:-callAsFunction}"
         found=1
     fi
 
@@ -149,16 +187,8 @@ shape_identifiers() {
     # scan patterns cannot produce this today (every one of them implies a
     # label, an operator call or a `.callAsFunction`), so it is a fallback.
     if [[ "$found" == "0" ]]; then
-        echo "external"
+        printf '%s\t%s\n' "-" "external"
     fi
-}
-
-# The token referenced as a function value, exactly as captured. Rule 2 is
-# applied by the caller (`is_rule2_shape`) rather than here, because `--list`
-# reports the captured token for a dropped shape: `URL.init` says what was
-# considered, where the literal `external` said nothing.
-extract_identifier() {
-    shape_identifiers "$1" | head -1
 }
 
 # Rule 2: a keypath, an inline closure, a call, or a library initializer
@@ -189,15 +219,36 @@ has_zero_arg_declaration() {
     [[ -n "$decls" ]]
 }
 
+# True when `name` is declared under Sources/ as a method of any arity. Used for
+# a dotted member reference, where the receiver already proves the token names a
+# member, so arity carries no information: `set: loc.setPreference` crashed
+# IRGen and takes a value.
+has_func_declaration() {
+    local name="$1" root="$2"
+    local decls
+    decls="$(grep -rhoE "func ${name}\(" "$root/Sources" --include='*.swift' || true)"
+    [[ -n "$decls" ]]
+}
+
 # True when `name` is a function-typed value declared in the same file as the
 # reference — a stored property (`let openSettings: () -> Void`) or a closure
-# parameter (`using read: (AudioObjectPropertyElement) -> UInt32?`). The
-# identifier in `Button(action: openSettings)` then forwards that value, so an
-# unrelated same-named `func` elsewhere must not make it a violation.
+# parameter with its own argument label
+# (`using read: (AudioObjectPropertyElement) -> UInt32?`). The identifier in
+# `Button(action: openSettings)` then forwards that value, so an unrelated
+# same-named `func` elsewhere must not make it a violation.
+#
+# The match is declaration-shaped on purpose. A bare `<name>: … ->` anywhere on
+# any line let two unrelated shapes mask a real violation: a comment line
+# (`// handleToggle: () -> Void`) and an argument label on another function
+# (`func configure(handleSave: @escaping (Int) -> Void)`, where the label is not
+# a value in the reference's scope). `//` comments are stripped first, and a
+# match must be a `let`/`var` declaration or a label-plus-name parameter
+# position, which neither masking shape is.
 is_forwarded_closure() {
     local name="$1" path="$2"
     [[ -f "$path" ]] || return 1
-    grep -qE "(^|[^A-Za-z0-9_.])${name}[[:space:]]*:[^=]*->" "$path"
+    sed -E 's://.*::' "$path" \
+        | grep -qE "(^|[^A-Za-z0-9_.])(let|var)[[:space:]]+${name}[[:space:]]*:[^=]*->|(^|[^A-Za-z0-9_.])[A-Za-z_][A-Za-z0-9_]*[[:space:]]+${name}[[:space:]]*:[^=]*->"
 }
 
 is_allowlisted() {
@@ -210,12 +261,30 @@ is_allowlisted() {
     return 1
 }
 
+# True when a bare identifier under this argument label must resolve to a
+# zero-argument `func` to count as a violation. The `on[A-Z]…:` callback family
+# is the exception: those are the labels whose expected closure type takes
+# arguments in this repo (`Slider(onEditingChanged: (Bool) -> Void)`,
+# `onVolumeChange: (Double) -> Void`), so an argument-taking method reference
+# there is the forbidden conversion. `VolumeControlsView.swift:51`
+# (`onEditingChanged: handleVolumeEditing`, `handleVolumeEditing(_ isEditing:
+# Bool)`) is the live example the zero-argument test used to hide. Everywhere
+# else the slot expects `() -> Void`, where a bare argument-taking `func` cannot
+# be a function value at all, so the zero-argument test is a real precision
+# guard rather than a gap.
+label_expects_zero_arg() {
+    case "$1" in
+        on[A-Z]*) return 1 ;;
+    esac
+    return 0
+}
+
 # Prints `<path>:<line>:<verdict>:<name>` for every considered shape and returns
 # 1 when at least one of them is a violation.
 report() {
     local root="$1"
     local -a violations=()
-    local line location path lineno text name lookup display verdict found
+    local line location path lineno text label name lookup display verdict dotted
 
     while IFS= read -r line; do
         [[ -n "$line" ]] || continue
@@ -230,42 +299,72 @@ report() {
         lineno="${path##*:}"
         path="${path%:*}"
 
-        name="$(extract_identifier "$text")"
+        # Every function-value position on the line is judged on its own: a
+        # line may hold several, and judging only the first let a second
+        # violation on the same line through.
+        while IFS=$'\t' read -r label name; do
+            [[ -n "$name" ]] || continue
 
-        # The identifier that gets looked up: `dismiss.callAsFunction` resolves
-        # as `callAsFunction`. A rule-2 shape keeps the captured token instead,
-        # which is what --list prints for it.
-        lookup="${name##*.}"
-        display="$lookup"
+            # The identifier that gets looked up: `dismiss.callAsFunction`
+            # resolves as `callAsFunction`. A rule-2 shape keeps the captured
+            # token instead, which is what --list prints for it.
+            lookup="${name##*.}"
+            display="$lookup"
+            dotted=0
+            if [[ "$name" == *.* ]]; then
+                dotted=1
+            fi
 
-        if [[ "$name" == "external" ]] || is_rule2_shape "$name"; then
-            verdict="external"
-            display="$name"
-        elif is_allowlisted "$lookup"; then
-            # The allowlist is consulted before the declaration lookup: an
-            # allowlisted method may take arguments (`.filter(isOutputDevice)`
-            # passes `(AudioDeviceID) -> Bool`), and its entry is exactly the
-            # record that a reviewer checked that reference.
-            verdict="allowed"
-        elif [[ "$lookup" == "callAsFunction" ]]; then
-            # Synthesized by the compiler, so `has_zero_arg_declaration` cannot
-            # see it.
-            verdict="violation"
-        elif has_zero_arg_declaration "$lookup" "$root" \
-            && ! is_forwarded_closure "$lookup" "$path"; then
-            verdict="violation"
-        else
-            verdict="external"
-        fi
+            if [[ "$name" == "external" ]] || is_rule2_shape "$name"; then
+                verdict="external"
+                display="$name"
+            elif is_allowlisted "$lookup"; then
+                # The allowlist is consulted before the declaration lookup: an
+                # allowlisted method may take arguments (`.filter(isOutputDevice)`
+                # passes `(AudioDeviceID) -> Bool`), and its entry is exactly the
+                # record that a reviewer checked that reference.
+                verdict="allowed"
+            elif [[ "$lookup" == "callAsFunction" ]]; then
+                # Synthesized by the compiler, so the declaration lookup cannot
+                # see it.
+                verdict="violation"
+            elif (( dotted )); then
+                # A dotted member reference cannot be a type or a local value,
+                # so any `func` declaration under Sources/ is enough; arity
+                # carries no information here. This is the recorded crash shape
+                # (`set: loc.setPreference`).
+                if has_func_declaration "$lookup" "$root"; then
+                    verdict="violation"
+                else
+                    verdict="external"
+                fi
+            elif is_forwarded_closure "$lookup" "$path"; then
+                verdict="external"
+            elif label_expects_zero_arg "$label"; then
+                if has_zero_arg_declaration "$lookup" "$root"; then
+                    verdict="violation"
+                else
+                    verdict="external"
+                fi
+            elif has_func_declaration "$lookup" "$root"; then
+                verdict="violation"
+            else
+                verdict="external"
+            fi
 
-        # `--list` shows every considered shape; a plain run stays quiet about
-        # the ones that are fine so the violation list is the whole output.
-        if [[ "$MODE" == "list" ]]; then
-            printf '%s:%s:%s:%s\n' "$path" "$lineno" "$verdict" "$display"
-        fi
-        if [[ "$verdict" == "violation" ]]; then
-            violations+=("$path:$lineno:$display")
-        fi
+            # `--list` shows every considered shape; a plain run stays quiet
+            # about the ones that are fine so the violation list is the whole
+            # output.
+            if [[ "$MODE" == "list" ]]; then
+                printf '%s:%s:%s:%s\n' "$path" "$lineno" "$verdict" "$display"
+            fi
+            if [[ "$verdict" == "violation" ]]; then
+                # Recorded with the verdict, exactly like the `--list` form, so
+                # the failure block below and `--list` describe a violation the
+                # same way instead of printing two different shapes.
+                violations+=("$path:$lineno:violation:$display")
+            fi
+        done < <(shape_identifiers "$text")
     done < <(scan_shapes "$root" | LC_ALL=C sort)
 
     if (( ${#violations[@]} == 0 )); then
@@ -294,8 +393,14 @@ report() {
 
 scan_shapes() {
   local root="$1"
+  # The `on[A-Z]…:` family is anchored to a token boundary: unanchored it also
+  # matches the tail of an unrelated label (`connectionOptions:`, `iconSize:`,
+  # `isDirectionInverted:` all contain `on` + a capital). The label families
+  # terminate on `)`/`,` or at end of line, so a value that is the last token on
+  # its line is still seen.
   grep -rnE \
-    -e '(action|get|set|using|block|request[A-Za-z0-9_]*|open[A-Za-z0-9_]*):[[:space:]]*[A-Za-z_][A-Za-z0-9_.]*[),]' \
+    -e '(action|get|set|using|block|perform|request[A-Za-z0-9_]*|open[A-Za-z0-9_]*):[[:space:]]*[A-Za-z_][A-Za-z0-9_.]*([),]|$)' \
+    -e '(^|[^A-Za-z0-9_])on[A-Z][A-Za-z0-9_]*:[[:space:]]*[A-Za-z_][A-Za-z0-9_.]*([),]|$)' \
     -e '\.(map|compactMap|filter|forEach|sink|assign)\([[:space:]]*[A-Za-z_][A-Za-z0-9_.]*\)' \
     -e '\.(map|compactMap|filter|forEach|sink|assign)\([[:space:]]*[A-Za-z_][A-Za-z0-9_.]*\(' \
     -e '\.callAsFunction\b' \
@@ -518,6 +623,86 @@ struct ClosureCollisionHelper {
 }
 SWIFT
 
+    # 10. The two shapes that used to mask a real violation through the
+    #     forwarded-closure exemption: a comment that mentions the name with a
+    #     function type, and an unrelated closure-typed parameter whose label is
+    #     the same identifier. Both must stay violations.
+    #
+    #     The first comment pins the declaration-shape requirement (a bare
+    #     `handleToggle: () -> Void` is not a declaration) and the second, a
+    #     commented-out `let`, pins the `//` stripping: without it the commented
+    #     declaration still reads as a stored closure.
+    cat >"$tmp/Sources/MaskingProbe.swift" <<'SWIFT'
+import SwiftUI
+
+@MainActor
+final class MaskingProbe {
+    func handleToggle() {}
+    func handleSave() {}
+
+    // handleToggle: () -> Void is the callback's type, not a declaration.
+    // let handleToggle: () -> Void was the old commented-out stored form.
+
+    func configure(handleSave: @escaping (Int) -> Void) {
+        self.handleSave()
+        _ = handleSave
+    }
+
+    func body() {
+        Button(action: handleToggle) { EmptyView() }
+        Button(action: handleSave) { EmptyView() }
+    }
+}
+SWIFT
+
+    # 11. The `on[A-Z]…:` callback family judges a bare identifier on any arity:
+    #     `Slider(onEditingChanged:)` takes a `(Bool) -> Void`, so
+    #     `onEditingChanged: handleEditing` is the forbidden conversion even
+    #     though `handleEditing` takes an argument. This is the live shape at
+    #     VolumeControlsView.swift:51 that the zero-argument test used to hide,
+    #     and the value ends its line, so it also pins the end-of-line
+    #     terminator.
+    cat >"$tmp/Sources/OnFamilyArity.swift" <<'SWIFT'
+import SwiftUI
+
+@MainActor
+final class OnFamilyProbe {
+    func handleEditing(_ isEditing: Bool) {}
+}
+
+struct OnFamilyCaller: View {
+    private let probe = OnFamilyProbe()
+
+    var body: some View {
+        Slider(
+            value: 0,
+            in: 0...1,
+            onEditingChanged: handleEditing
+        )
+    }
+}
+SWIFT
+
+    # 12. The recorded crash shape: a dotted member reference in a `set:`
+    #     position. `setPreference` takes an argument, so only the dotted
+    #     any-arity rule can see it; the bare rule would call it `external`.
+    cat >"$tmp/Sources/BindingCrashShape.swift" <<'SWIFT'
+import SwiftUI
+
+@MainActor
+final class LocalizationProbe {
+    func setPreference(_ value: Int) {}
+}
+
+struct PreferenceRow: View {
+    private let loc = LocalizationProbe()
+
+    var body: some View {
+        Binding(get: { 0 }, set: loc.setPreference)
+    }
+}
+SWIFT
+
     # `name:verdict` expectations, one per fixture shape. Kept as two parallel
     # indexed arrays because /bin/bash on macOS is 3.2 and has no `declare -A`.
     local -a expect=()
@@ -532,6 +717,12 @@ SWIFT
 
     # Fail closed on overloads (fixture 8).
     expect+=("reloadWithOverload:violation")
+
+    # The masked shapes and the widened rules (fixtures 10-12).
+    expect+=("handleToggle:violation")
+    expect+=("handleSave:violation")
+    expect+=("handleEditing:violation")
+    expect+=("setPreference:violation")
 
     # The allowlist, consulted before the arity test.
     expect+=("removeObserver:allowed")
@@ -559,7 +750,7 @@ SWIFT
     expect+=("quit:external")
 
     local reported failed=0
-    local expected_violations=6
+    local expected_violations=10
 
     # `report` only prints the per-shape verdict lines in `--list` mode, so the
     # self-test drives it that way and reads the verdicts from stdout.
@@ -572,6 +763,34 @@ SWIFT
     echo "self-test: ${violations}/${expected_violations} violations detected"
     if [[ "$violations" != "$expected_violations" ]]; then
         echo "  expected ${expected_violations} synthetic methods to be flagged, got ${violations}" >&2
+        failed=1
+    fi
+
+    # The plain-scan failure text is pinned. The hint must show the compiling
+    # `self.`-qualified closure — an earlier revision printed
+    # `requestWiFiNameAccess: { handleRequestWiFiNameAccess() }`, which does not
+    # compile in the escaping closure that forwards it — and every violation
+    # must still be reported as `<path>:<line>:violation:<name>`.
+    local scan_output
+    MODE="scan"
+    scan_output="$(report "$tmp" 2>&1 >/dev/null)" || true
+    MODE="self-test"
+
+    local hint="  requestWiFiNameAccess: { self.handleRequestWiFiNameAccess() }"
+    if ! grep -qF -- "$hint" <<<"$scan_output"; then
+        echo "  the failure hint no longer prints the compiling closure form:${hint}" >&2
+        failed=1
+    fi
+    if grep -qF -- "requestWiFiNameAccess: { handleRequestWiFiNameAccess() }" <<<"$scan_output"; then
+        echo "  the failure hint regressed to the non-compiling unqualified closure" >&2
+        failed=1
+    fi
+    if ! grep -qE '^  .*/Sources/[A-Za-z0-9_]+\.swift:[0-9]+:violation:[A-Za-z0-9_.]+$' <<<"$scan_output"; then
+        echo "  no <path>:<line>:violation:<name> line in the failure block" >&2
+        failed=1
+    fi
+    if ! grep -qF -- "${expected_violations} violation(s) found" <<<"$scan_output"; then
+        echo "  the failure block's summary does not report ${expected_violations} violation(s)" >&2
         failed=1
     fi
 
