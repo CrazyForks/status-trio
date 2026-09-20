@@ -48,14 +48,45 @@ final class ForbiddenPatternGuardTests: XCTestCase {
             .deletingLastPathComponent()
     }
 
+    /// The failure raised when the guard script is not where the repository
+    /// keeps it.
+    ///
+    /// This is a hard failure, deliberately not an `XCTSkip`: a skip would turn
+    /// deleting or renaming `scripts/check-forbidden-patterns.sh` into a green
+    /// run, silently retiring the AGENTS.md rule this file enforces (the shape
+    /// that crashed the compiler in CI run `34758026894`). The script is
+    /// committed in this repository and `swift test` always runs from the
+    /// package source, so there is no legitimate checkout in which it is absent.
+    private struct GuardScriptUnavailable: Error, CustomStringConvertible, LocalizedError {
+        /// The path derived from `#filePath` that the test looked for.
+        let expectedPath: String
+
+        var description: String {
+            """
+            the forbidden-pattern guard script is missing or unreadable: \
+            \(expectedPath)
+            scripts/check-forbidden-patterns.sh is committed in this repository: \
+            it is the enforcement point for the AGENTS.md rule that an \
+            actor-isolated method must never be passed directly as a function \
+            value. A checkout without it is broken, so this test fails closed \
+            instead of skipping. Restore the script, or fix the package-root \
+            derivation in this file if the repository layout moved.
+            """
+        }
+
+        var errorDescription: String? { description }
+    }
+
     /// Runs the guard with stdout and stderr merged, so a violation block
     /// written to stderr is visible in the failure message.
     private func runGuardScript(arguments: [String]) throws -> (status: Int32, output: String) {
         let script = packageRoot.appendingPathComponent("scripts/check-forbidden-patterns.sh")
-        try XCTSkipUnless(
-            FileManager.default.fileExists(atPath: script.path),
-            "the guard script is missing from this checkout"
-        )
+        // Fail closed. Throwing from a `throws` test is itself an XCTest failure,
+        // and it prints the error's `description` verbatim, so the missing-script
+        // message names the expected path instead of reporting a bare skip.
+        guard FileManager.default.isReadableFile(atPath: script.path) else {
+            throw GuardScriptUnavailable(expectedPath: script.path)
+        }
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/bash")
         process.arguments = [script.path] + arguments
