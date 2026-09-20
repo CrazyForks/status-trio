@@ -282,3 +282,25 @@ Swift Testing 全绿；通用 release 构建的两个切片都是 `minos 15.0 / 
 Swift Testing 全绿，两个切片均为 `minos 15.0 / sdk 26.0`，DMG 与 artifact 上传成功，未发布。
 `build=12` 大于线上 appcast 的最大构建号 9，也大于 `Support/Info.plist` 当前记录的 11。
 根因与工程细节见 [fullscreen-popover-investigation.md](fullscreen-popover-investigation.md)。
+
+### 方法引用改写的预检（2026-09-20）
+
+`StatusBarController` 的 8 个弹窗回调、`SettingsDisclosureRow` 的 `toggle`、以及
+`WiFiNetworkListView` 的两处 `dismiss.callAsFunction` 原本以方法引用（而非显式闭包）的形式
+作为函数值传递，这正是 §2 的 `@MainActor` 范围，也是 `34758026894` 崩溃的同一类代码形状。
+本次在分支 `fix/class-a-hardening`（计划 `docs/superpowers/plans/2026-09-20-toolchain-method-reference-compliance.md`）
+上跑了一次非发布预检
+[`35495412938`](https://github.com/lingyired/status-trio/actions/runs/35495412938)
+（`version=1.3.0`、**`build=13`**、`publish=false`）：
+
+- `Validate appcast notes`、`Run tests`、`Build, sign, notarize, and publish`、
+  `Upload release artifacts` 全部成功；`Validate Sparkle signing secret` 与 `Prepare release notes`
+  按 `publish=false` 跳过——即未发布 Release、未改动 appcast。
+- `Run tests`：**624 个 XCTest（6 跳过，0 失败）** 与 **163 个 Swift Testing / 27 个 suite** 全绿。
+- 两个切片均为 `minos 15.0 / sdk 26.0`，即 macOS 26 SDK 断言成立。
+- `build=13` 大于线上 appcast 的最大构建号 9，也大于 `Support/Info.plist` 当前记录的 11。
+
+这次预检同时验证了新增的强制门禁：`Tests/StatusTrioCoreTests/ForbiddenPatternGuardTests.swift`
+在 `swift test` 内运行 `scripts/check-forbidden-patterns.sh` 及其 `--self-test`，因此任何重新出现的
+方法引用都会让 `Run tests` 失败，无需改动任何 workflow 文件。该守卫只覆盖 `Sources/`，且只识别
+已知的标签族与位置（脚本头部列明了这些非目标），编译层面的最终判据仍是本预检。
