@@ -422,3 +422,17 @@ RSS 134 MB、20 秒累计 240 次 idle wakeups——两次采样条件不同，�
 
 > **⏳ 仍然未完成：改动后的功耗采样（见上一节）。** 它不影响合并，但**必须在发布 1.3.0
 > 之前**补上。
+
+### 蓝牙轮询改写的预检（2026-09-20）
+
+`BluetoothDeviceController` 原本每 15 秒 spawn 两次 `/usr/sbin/system_profiler`，且在用户授权并打开过 popover 之后**永不停止**；`deinit` 也不会移除两个 `NotificationCenter` observer、不会停 IOBluetooth 事件监视器和 CoreBluetooth 状态监视器。本次在分支
+`fix/class-a-bluetooth`（计划 `docs/superpowers/plans/2026-09-20-bluetooth-polling-and-lifetime.md`）上把蓝牙改成推送驱动：每个刷新周期共用一份 profiler 报告（2 → 1 次 spawn）；单次读锁 + 一次合并的后续刷新；可见性 claim 门控的 30 秒兜底轮询；IOBluetooth 连接/断开通知 + 750 毫秒防抖；完整的 `deinit` 拆卸；以及**读队列退役 + 读看门狗**（两者必须同时存在：只加看门狗时重试会排在挂住的块后面）。
+
+这一步是 `deinit` + `nonisolated(unsafe)` + `@MainActor` hop 的形状，因此按规则跑了两次非发布预检：
+
+- [`35520306448`](https://github.com/lingyired/status-trio/actions/runs/35520306448)（`build=17`）—— 终审修复 wave **之前**的 HEAD。
+- [`35521490583`](https://github.com/lingyired/status-trio/actions/runs/35521490583)（**`build=18`**）—— 修复 wave 之后，**合并以这次为准**：`Validate appcast notes`、`Run tests`、`Build, sign, notarize, and publish`、`Upload release artifacts` 全部成功，**668 个 XCTest（6 跳过，0 失败）** 与 **168 个 Swift Testing / 27 个 suite** 全绿，两个切片均为 `minos 15.0 / sdk 26.0`，未发布 Release、未改动 appcast。
+
+终审修复 wave 修掉的一个真实缺陷值得记在这里：设备断开时 `BluetoothConnectionEventMonitor` 直接丢弃 `IOBluetoothUserNotification` token 而**没有 `unregister()`**，而 SDK 明确说明 token 在注销前一直有效——于是每一次断开都会在存活的监视器上永久泄漏一个注册，并在下次断开时多触发一次回调（注释还写着相反的话）。现已改为先 `unregister()` 再丢弃（断线与重连两条路径都覆盖），并加了通过计数 token 注销次数、可对旧代码失败（RED `[0, 0, 1, 1]`）的测试。
+
+> **⏳ 仍未完成：改动前后的 spawn 次数实测**（计划 Task 7 Step 1）。它不影响合并，但和 R-03 的功耗采样一样，**必须在发布 1.3.0 之前**由维护者用 dev bundle 采集（`pgrep -x system_profiler` 采样：面板关闭时应为 0 次，蓝牙界面可见时约每 30 秒一次），或在合并记录中明确豁免。计划里没有记录任何推断出来的数字。
