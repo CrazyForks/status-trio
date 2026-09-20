@@ -14,7 +14,9 @@ struct BluetoothPairedDeviceListTests {
               {
                 "机灵的AirPods": {
                   "device_address": "AC:90:85:C2:9C:1F",
-                  "device_minorType": "Headphones"
+                  "device_minorType": "Headphones",
+                  "device_productID": "0x200F",
+                  "device_vendorID": "0x004C"
                 }
               }
             ],
@@ -43,6 +45,71 @@ struct BluetoothPairedDeviceListTests {
         #expect(airPods.name == "机灵的AirPods")
         #expect(airPods.isConnected)
         #expect(airPods.kind == .audio)
+    }
+
+    /// The profiler reports the paired device's product ID, which is what
+    /// identifies the model when the name does not spell "AirPods". AirPods
+    /// (2nd generation, A2031/A2032) is product `0x200F` from Apple.
+    @Test func readsTheProductIDThatIdentifiesTheModel() throws {
+        let devices = try #require(
+            BluetoothPairedDeviceReader.parse(json: Data(connectedAndPaired.utf8))
+        )
+
+        let airPods = try #require(devices.first { $0.id == "AC:90:85:C2:9C:1F" })
+        #expect(airPods.airPodsModel == .airPods)
+        // The keyboard entry carries no product ID.
+        let keyboard = try #require(devices.first { $0.id == "D3:6D:6C:40:A3:2E" })
+        #expect(keyboard.airPodsModel == nil)
+    }
+
+    /// The paired list draws the AirPods glyph macOS declares for the model
+    /// instead of the generic headphone glyph it drew for every audio device.
+    @Test func airPodsRowDrawsTheDeclaredAirPodsGlyph() throws {
+        let devices = try #require(
+            BluetoothPairedDeviceReader.parse(json: Data(connectedAndPaired.utf8))
+        )
+        let airPods = try #require(devices.first { $0.id == "AC:90:85:C2:9C:1F" })
+
+        #expect(BluetoothDeviceRowIcon.symbolName(for: airPods) == "airpods")
+    }
+
+    /// A user can rename their AirPods, so the row has to keep the AirPods
+    /// glyph from the product ID rather than falling back to headphones.
+    @Test func renamedAirPodsRowKeepsTheAirPodsGlyph() {
+        let renamed = BluetoothDevice(
+            id: "AC:90:85:C2:9C:1F",
+            name: "小王的耳机",
+            kind: .audio,
+            isConnected: true,
+            airPodsModel: .airPods
+        )
+
+        #expect(BluetoothDeviceRowIcon.symbolName(for: renamed) == "airpods")
+    }
+
+    /// Audio devices that are not AirPods, and every other kind, keep the glyph
+    /// they had.
+    @Test func otherRowsKeepTheirKindGlyphs() {
+        #expect(
+            BluetoothDeviceRowIcon.symbolName(
+                for: BluetoothDevice(
+                    id: "0C:AE:BD:FE:D7:C3",
+                    name: "EDIFIER LolliPods 2022版",
+                    kind: .audio,
+                    isConnected: false
+                )
+            ) == "headphones"
+        )
+        #expect(
+            BluetoothDeviceRowIcon.symbolName(
+                for: BluetoothDevice(id: "D3:6D:6C:40:A3:2E", name: "MX Keys", kind: .peripheral, isConnected: true)
+            ) == "computermouse"
+        )
+        #expect(
+            BluetoothDeviceRowIcon.symbolName(
+                for: BluetoothDevice(id: "AA:BB:CC:DD:EE:FF", name: "Mystery Device", kind: .unknown, isConnected: false)
+            ) == "questionmark.circle"
+        )
     }
 
     @Test func keepsPairedButDisconnectedDevices() throws {

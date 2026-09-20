@@ -40,10 +40,13 @@ device eligible for a battery level.
 ## AirPods only
 
 Only connected AirPods report a battery level. The rule is
-`kind == .audio && name contains "airpods"` (`BluetoothDevice.isAirPods`); the
-audio class alone would also match speakers and other headphones, and macOS
-exposes no reliable model table for registry product IDs. Every other connected
-accessory stays name-only — its detail belongs on the device page.
+`kind == .audio && (product ID names an AirPods || name contains "airpods")`
+(`BluetoothDevice.isAirPods`); the audio class alone would also match speakers
+and other headphones, and a rename erases whatever the name said — AirPods
+(2nd generation, A2031/A2032) is product ID `0x200F`, which the profiler reports
+as `device_productID`, so the model survives the rename (`AirPodsModel`). A
+product ID the table does not carry falls back to the name. Every other
+connected accessory stays name-only — its detail belongs on the device page.
 
 Battery levels come from the same `system_profiler SPBluetoothDataType` report.
 Two surfaces share that read — the summary row (for the AirPods it reports) and
@@ -55,9 +58,10 @@ after the detail page had asked for it, so every device row showed "Unavailable"
 while the summary still showed the level it had just read. A claim count makes
 the outcome the same in either order; the read runs while any claim is held and
 stops when the last is released. The summary claims only while the setting is on
-and a connected AirPods is present — the name is the gate, not the presence of a
-readable level, so a just-connected AirPods still triggers the first read. The
-detail page claims from the setting alone. Closing the popover drops every claim.
+and a connected AirPods is present — the identification is the gate, not the
+presence of a readable level, so a just-connected AirPods still triggers the
+first read. The detail page claims from the setting alone. Closing the popover
+drops every claim.
 
 ## Activation and permission
 

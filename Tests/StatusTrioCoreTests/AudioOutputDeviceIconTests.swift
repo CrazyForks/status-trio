@@ -55,6 +55,52 @@ struct AudioOutputDeviceIconTests {
         #expect(candidates(name: "AirPods 第四代", transport: .bluetooth).first == "airpods.gen4")
     }
 
+    @Test("An AirPods keeps its glyph when the name is not an AirPods name")
+    func renamedAirPodsKeepTheirGlyph() {
+        // The report: AirPods (2nd generation, A2031/A2032) drew the generic
+        // headphone. macOS declares product ID 0x200F for it (the
+        // `com.apple.airpods-gen2` type) and CoreAudio reports "200f 4c".
+        #expect(candidates(name: "小王的耳机", transport: .bluetooth, modelUID: "200f 4c").first == "airpods")
+        #expect(candidates(name: "机灵的AirPods", transport: .bluetooth, modelUID: "200f 4c").first == "airpods")
+    }
+
+    @Test("The product ID decides the model the name only guesses at")
+    func productIDDecidesTheModel() {
+        #expect(candidates(name: "AirPods", transport: .bluetooth, modelUID: "200e 4c").first == "airpods.pro.gen1")
+        #expect(candidates(name: "AirPods", transport: .bluetooth, modelUID: "200a 4c").first == "airpodsmax")
+        #expect(candidates(name: "AirPods", transport: .bluetooth, modelUID: "2013 4c").first == "airpods.gen3")
+    }
+
+    @Test("A product ID the table does not know still falls back to the name")
+    func unknownProductIDFallsBackToTheName() {
+        #expect(candidates(name: "小王的耳机", transport: .bluetooth, modelUID: "201f 4c").first == "headphones")
+        #expect(candidates(name: "AirPods Pro", transport: .bluetooth, modelUID: "201f 4c").first == "airpods.pro")
+        #expect(candidates(name: "AirPods", transport: .bluetooth, modelUID: "Speaker").first == "airpods")
+    }
+
+    @Test("Another vendor's product ID never draws an AirPods glyph")
+    func anotherVendorsProductIDIsNotAnAirPods() {
+        #expect(
+            candidates(
+                name: "EDIFIER LolliPods 2022版",
+                transport: .bluetooth,
+                modelUID: "200f 5d6"
+            ).first == "headphones"
+        )
+    }
+
+    @Test("A built-in device ignores a Bluetooth product ID")
+    func builtInDevicesIgnoreBluetoothProductIDs() {
+        #expect(
+            candidates(
+                name: "MacBook Pro扬声器",
+                transport: .builtIn,
+                dataSource: .internalSpeaker,
+                modelUID: "200f 4c"
+            ).first == "macbook"
+        )
+    }
+
     @Test("Beats models use the symbol the system declares for their type")
     func beatsModelsUseSystemSymbol() {
         #expect(candidates(name: "Beats Pill", transport: .bluetooth).first == "beats.pill")
@@ -202,6 +248,7 @@ struct AudioOutputDeviceIconTests {
         name: String?,
         transport: AudioOutputTransport?,
         dataSource: AudioOutputDataSource? = nil,
+        modelUID: String? = nil,
         host: HostMacKind = .laptop
     ) -> [String] {
         AudioOutputDeviceIcon.symbolCandidates(
@@ -211,7 +258,8 @@ struct AudioOutputDeviceIconTests {
                     name: name,
                     isCurrent: false,
                     transport: transport,
-                    dataSource: dataSource
+                    dataSource: dataSource,
+                    modelUID: modelUID
                 )
             ),
             host: HostMacKind(deviceName: name, host: host)

@@ -289,16 +289,50 @@ struct DockIconRenderCacheTests {
         ))
     }
 
+    /// The Dock key carries the classified device icon, so identifying an
+    /// AirPods from its product ID has to invalidate the tile, not only the
+    /// popover row.
+    @Test func rendersAgainWhenTheAirPodsProductIDChangesTheGlyph() {
+        var cache = DockIconRenderCache()
+        let namedOnly = DockIconRenderKey(
+            status: outputDeviceStatus(name: "小王的耳机", transport: .bluetooth),
+            options: .standard,
+            connectionOptions: .standard,
+            bluetoothAudioOptions: BluetoothAudioIconOptions(replacesNetworkIcon: true),
+            backgroundStyle: .dark
+        )
+        let productIdentified = DockIconRenderKey(
+            status: outputDeviceStatus(
+                name: "小王的耳机",
+                transport: .bluetooth,
+                modelUID: "200f 4c"
+            ),
+            options: .standard,
+            connectionOptions: .standard,
+            bluetoothAudioOptions: BluetoothAudioIconOptions(replacesNetworkIcon: true),
+            backgroundStyle: .dark
+        )
+
+        let rendersHeadphones = cache.shouldRender(namedOnly)
+        let rendersAirPods = cache.shouldRender(productIdentified)
+        let rendersAirPodsAgain = cache.shouldRender(productIdentified)
+        #expect(rendersHeadphones)
+        #expect(rendersAirPods)
+        #expect(rendersAirPodsAgain == false)
+    }
+
     private func outputDeviceStatus(
         name: String,
-        transport: AudioOutputTransport
+        transport: AudioOutputTransport,
+        modelUID: String? = nil
     ) -> MenuBarStatus {
         let device = AudioOutputDevice(
             id: 42,
             name: name,
             isCurrent: true,
             volume: 0.5,
-            transport: transport
+            transport: transport,
+            modelUID: modelUID
         )
         return MenuBarStatus(snapshot: StatusSnapshot(
             battery: .placeholder,

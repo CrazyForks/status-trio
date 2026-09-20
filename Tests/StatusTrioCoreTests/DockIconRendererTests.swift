@@ -200,11 +200,50 @@ final class DockIconRendererTests: XCTestCase {
         XCTAssertNotNil(DockIconRenderer.image(status: .placeholder))
     }
 
+    /// The Dock tile follows the menu bar: AirPods (2nd generation,
+    /// A2031/A2032) is identified by product ID 0x200F, so a renamed device
+    /// still draws the AirPods glyph instead of a generic headphone.
+    func testDockIconUsesTheAirPodsProductID() throws {
+        let namedAirPods = try bluetoothPixels(deviceName: "AirPods", modelUID: nil)
+        let renamedAirPods = try bluetoothPixels(deviceName: "小王的耳机", modelUID: "200f 4c")
+        let renamedWithoutProductID = try bluetoothPixels(deviceName: "小王的耳机", modelUID: nil)
+
+        XCTAssertEqual(namedAirPods.bytes, renamedAirPods.bytes)
+        XCTAssertNotEqual(renamedWithoutProductID.bytes, renamedAirPods.bytes)
+    }
+
+    private func bluetoothPixels(deviceName: String, modelUID: String?) throws -> PixelBuffer {
+        let device = AudioOutputDevice(
+            id: 42,
+            name: deviceName,
+            uid: "bluetooth-output",
+            isCurrent: true,
+            volume: 0.5,
+            transport: .bluetooth,
+            modelUID: modelUID
+        )
+        return try pixels(
+            for: MenuBarStatus(snapshot: StatusSnapshot(
+                battery: .placeholder,
+                wifi: WiFiStatus(state: .connected, rssi: -55),
+                connection: .wifi,
+                volume: VolumeStatus(
+                    scalar: 0.5,
+                    isMuted: false,
+                    deviceName: deviceName,
+                    currentDevice: device
+                )
+            )),
+            bluetoothAudioOptions: BluetoothAudioIconOptions(replacesNetworkIcon: true)
+        )
+    }
+
     private func pixels(
         for status: MenuBarStatus,
         options: BatteryIconOptions = .standard,
         connectionOptions: ConnectionIconOptions = .standard,
         volumeOptions: VolumeIconOptions = .standard,
+        bluetoothAudioOptions: BluetoothAudioIconOptions = .standard,
         backgroundStyle: DockIconBackgroundStyle = .dark
     ) throws -> PixelBuffer {
         let image = try XCTUnwrap(DockIconRenderer.image(
@@ -212,6 +251,7 @@ final class DockIconRendererTests: XCTestCase {
             options: options,
             connectionOptions: connectionOptions,
             volumeOptions: volumeOptions,
+            bluetoothAudioOptions: bluetoothAudioOptions,
             backgroundStyle: backgroundStyle
         ))
         let representation = try XCTUnwrap(
