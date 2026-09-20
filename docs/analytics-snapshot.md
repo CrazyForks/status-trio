@@ -44,6 +44,12 @@ other languages".
 | `analytics/daily/<YYYY-MM-DD>.json` | One full snapshot per day: both traffic windows (per-day rows), referrers, popular paths, every release with per-asset download counts, repo counters, and an `errors` map. |
 | `analytics/series.csv` | The durable per-day series (`date, views_count, views_uniques, clones_count, clones_uniques`), rebuilt from every daily snapshot on each run. |
 
+A run that cannot read traffic never overwrites traffic data an earlier
+snapshot of the same day already captured: the sections are carried forward and
+listed in the snapshot's `carried_forward` field, while `first_fetched_at` keeps
+the time of the first capture. Without that guard a single permission-less run
+would delete rows that cannot be fetched again.
+
 Snapshots overlap by design: each one contains the whole 14-day window, so a
 missed day can often be filled in from the next run. When the same date appears
 in several snapshots, the newest value wins in `series.csv` — a day's numbers
@@ -94,5 +100,5 @@ the repository (including any future pull request workflow) can read it.
 
 | Situation | Result |
 |---|---|
-| Traffic returns 401/403/404 | `::warning::`, snapshot written with `errors`, **exit 0** |
+| Traffic returns 401/403/404 | `::warning::`, snapshot written with `errors` **and** the previous traffic data carried forward, **exit 0** |
 | Any other traffic error, a failed release or repo fetch, or no token | `::error::`, **exit 1** |

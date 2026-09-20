@@ -198,10 +198,50 @@ def collect(client: Client) -> tuple[dict, dict]:
     return snapshot, {"traffic_failure": traffic_failure}
 
 
+def merge_with_previous(existing: dict, snapshot: dict) -> dict:
+    """Keep data an earlier snapshot of the same day already captured.
+
+    A run without traffic access must not erase a window that was archived
+    while traffic was readable, because GitHub stops serving the old days after
+    14 days and the erased rows could not be recovered.
+    """
+    carried: list[str] = []
+
+    windows = snapshot.get("windows") or {}
+    previous_windows = existing.get("windows") or {}
+    for metric in ("views", "clones"):
+        if not windows.get(metric) and previous_windows.get(metric):
+            windows[metric] = previous_windows[metric]
+            carried.append(f"windows.{metric}")
+    snapshot["windows"] = windows
+
+    for section in ("referrers", "paths"):
+        if not snapshot.get(section) and existing.get(section):
+            snapshot[section] = existing[section]
+            carried.append(section)
+
+    if carried:
+        snapshot["carried_forward"] = carried
+
+    first_seen = existing.get("first_fetched_at") or existing.get("fetched_at")
+    if first_seen:
+        snapshot["first_fetched_at"] = first_seen
+
+    return snapshot
+
+
 def write_snapshot(out_dir: Path, day: str, snapshot: dict) -> Path:
     daily_dir = out_dir / "daily"
     daily_dir.mkdir(parents=True, exist_ok=True)
     path = daily_dir / f"{day}.json"
+
+    if path.exists():
+        try:
+            existing = json.loads(path.read_text(encoding="utf-8"))
+            snapshot = merge_with_previous(existing, snapshot)
+        except (OSError, json.JSONDecodeError) as error:
+            announce(f"warning: could not read the previous snapshot {path.name}: {error}")
+
     path.write_text(
         json.dumps(snapshot, indent=2, ensure_ascii=False, sort_keys=False) + "\n",
         encoding="utf-8",
