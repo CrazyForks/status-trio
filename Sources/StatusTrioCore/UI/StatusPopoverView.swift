@@ -285,7 +285,10 @@ struct StatusPopoverView: View {
                 WiFiNetworkListView(
                     controller: store.wifiNetworks,
                     wifi: store.popupSnapshot.wifi,
-                    onBack: { panel = .summary },
+                    onBack: {
+                        store.closeWiFiDetails()
+                        panel = .summary
+                    },
                     onRequestNameAccess: requestWiFiNameAccess,
                     onOpenWiFiSettings: openWiFiSettings,
                     onOpenLocationSettings: openLocationSettings,

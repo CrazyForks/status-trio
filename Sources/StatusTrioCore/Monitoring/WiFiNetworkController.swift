@@ -441,9 +441,16 @@ final class WiFiNetworkController: ObservableObject {
         pendingNetwork = nil
         passwordPromptNetwork = nil
         credentialIssue = nil
-        if state.isConnectionFlow {
+        // A scan that is in flight now has a completion that the `isActive`
+        // guard above will drop, so leaving the scan on `.scanning` would block
+        // every later `refresh`/`refreshNow` through `startScan`'s
+        // `!state.isScanning` guard. Clearing the floor timestamp as well makes
+        // the next `activate` start a clean cadence instead of inheriting this
+        // session's scan.
+        if state.isScanning || state.isConnectionFlow {
             state = .idle
         }
+        lastScanStartedAt = nil
     }
 
     /// The automatic path: the periodic loop and every Wi-Fi status yield come

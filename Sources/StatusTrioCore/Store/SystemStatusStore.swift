@@ -416,6 +416,13 @@ final class SystemStatusStore: ObservableObject {
         wifiNetworks.activate(nameAccess: popupSnapshot.wifi.nameAccess)
     }
 
+    /// Leaving the Wi-Fi page stops its scan loop. The page also holds a
+    /// 30-second periodic scan and a `networksetup` subprocess per scan, and the
+    /// popover can stay open on another page for a long time.
+    func closeWiFiDetails() {
+        wifiNetworks.deactivate()
+    }
+
     func closePopoverDetails() {
         wifiNetworks.deactivate()
         closeBluetoothDetails()

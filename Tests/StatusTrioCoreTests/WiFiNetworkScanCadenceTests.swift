@@ -183,6 +183,90 @@ final class WiFiNetworkScanCadenceTests: XCTestCase {
         controller.deactivate()
     }
 
+    /// A scan that is in flight when the page is left used to leave `state` on
+    /// `.scanning` permanently: `deactivate()` drops the completion through the
+    /// `isActive` guard, and every later `refresh`/`refreshNow` is then blocked
+    /// by the `!state.isScanning` guard in `startScan()`, with the view's refresh
+    /// button disabled. Leaving the session must end its scan state so that a
+    /// later activation starts clean.
+    func testReactivatingAfterLeavingMidScanStartsAFreshScan() async {
+        let scanner = FakeWiFiNetworkScanner()
+        scanner.holdsCompletions = true
+        let clock = ManualScanClock()
+        let controller = makeController(scanner: scanner, clock: clock)
+
+        controller.activate(nameAccess: .authorized)
+        await waitUntil { scanner.scanCount == 1 }
+        XCTAssertEqual(controller.state, .scanning)
+
+        controller.deactivate()
+        XCTAssertFalse(controller.state.isScanning, "the abandoned scan must not stick")
+
+        // The clock never moves: the fresh activation may only scan because the
+        // floor timestamp was cleared with the scan state.
+        scanner.holdsCompletions = false
+        controller.activate(nameAccess: .authorized)
+        await waitUntil { scanner.scanCount == 2 }
+        await waitUntil { controller.state == .ready }
+
+        XCTAssertFalse(controller.state.isScanning, "the page must not be stuck scanning")
+        controller.deactivate()
+    }
+
+    /// Backing out of the Wi-Fi page used to leave the controller active: the
+    /// 30-second loop kept scanning while the popover stayed open.
+    func testLeavingTheWiFiPageStopsThePeriodicScan() async {
+        let scanner = FakeWiFiNetworkScanner()
+        let clock = ManualScanClock()
+        let sleeper = ManualEventSleeper()
+        let networks = makeController(
+            scanner: scanner,
+            clock: clock,
+            periodicRefreshSleep: { duration in await sleeper.sleep(duration) }
+        )
+        let store = SystemStatusStore(
+            batteryMonitor: CadenceBatteryMonitor(),
+            wifiMonitor: CadenceWiFiMonitor(),
+            volumeMonitor: CadenceVolumeMonitor(),
+            wifiNetworks: networks
+        )
+
+        store.activateWiFiPanel()
+        await waitUntil { scanner.scanCount == 1 }
+        _ = await sleeper.waitForCallCount(1, timeout: .seconds(1))
+        XCTAssertTrue(store.hasOpenPopoverPanel)
+
+        store.closeWiFiDetails()
+
+        XCTAssertFalse(networks.isActive)
+        XCTAssertFalse(store.hasOpenPopoverPanel)
+
+        clock.advance(by: 60)
+        sleeper.releaseAll()
+        await Task.yield()
+        XCTAssertEqual(scanner.scanCount, 1, "the page was left, so nothing may scan again")
+    }
+
+    /// Closing the popover releases the controller too, which is the path
+    /// `StatusBarController.popoverDidClose` takes.
+    func testClosingThePopoverDetailsStopsTheScan() async {
+        let scanner = FakeWiFiNetworkScanner()
+        let networks = makeController(scanner: scanner)
+        let store = SystemStatusStore(
+            batteryMonitor: CadenceBatteryMonitor(),
+            wifiMonitor: CadenceWiFiMonitor(),
+            volumeMonitor: CadenceVolumeMonitor(),
+            wifiNetworks: networks
+        )
+
+        store.activateWiFiPanel()
+        await waitUntil { scanner.scanCount == 1 }
+        store.closePopoverDetails()
+
+        XCTAssertFalse(networks.isActive)
+        XCTAssertFalse(store.hasOpenPopoverPanel)
+    }
+
     private func waitUntil(_ condition: () -> Bool) async {
         for _ in 0..<1_000 {
             if condition() { return }
@@ -275,4 +359,35 @@ private final class InMemoryWiFiCredentialStore: WiFiCredentialStoring, @uncheck
     func save(_ password: String, for identity: WiFiNetworkIdentity) -> Bool {
         false
     }
+}
+
+// The store-level tests only exercise the Wi-Fi panel's lifetime, so the three
+// status monitors are inert: they publish nothing and never touch the system.
+
+@MainActor
+private final class CadenceBatteryMonitor: BatteryMonitoring {
+    let updates = AsyncStream<BatteryStatus> { $0.finish() }
+    func start() {}
+    func stop() {}
+    func refresh() {}
+    func recover() {}
+}
+
+@MainActor
+private final class CadenceWiFiMonitor: WiFiMonitoring {
+    let updates = AsyncStream<WiFiStatus> { $0.finish() }
+    func start() {}
+    func stop() {}
+    func refresh() {}
+    func recover() {}
+    func requestNameAccess() {}
+}
+
+@MainActor
+private final class CadenceVolumeMonitor: VolumeMonitoring {
+    let updates = AsyncStream<VolumeStatus> { $0.finish() }
+    func start() {}
+    func stop() {}
+    func refresh() {}
+    func recover() {}
 }
