@@ -494,7 +494,7 @@ final class WiFiNetworkController: ObservableObject {
                 guard let self, self.isActive else { return }
                 if changed {
                     self.state = .ready
-                    self.refresh()
+                    self.refreshNow()
                 } else {
                     self.state = .failed
                 }
@@ -637,7 +637,7 @@ final class WiFiNetworkController: ObservableObject {
                     }
                 }
             }
-            refresh()
+            refreshNow()
         case .networkUnavailable:
             pendingNetwork = network
             state = .networkUnavailable

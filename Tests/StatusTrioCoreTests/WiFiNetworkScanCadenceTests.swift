@@ -121,6 +121,39 @@ final class WiFiNetworkScanCadenceTests: XCTestCase {
         controller.deactivate()
     }
 
+    /// Switching the radio is a user action: the list must not sit on the cached
+    /// result from before the radio changed.
+    func testPowerToggleScansImmediately() async {
+        let scanner = FakeWiFiNetworkScanner()
+        let clock = ManualScanClock()
+        let controller = makeController(scanner: scanner, clock: clock)
+        controller.activate(nameAccess: .authorized)
+        await waitUntil { controller.state == .ready }
+
+        controller.setPower(false)
+        await waitUntil { scanner.scanCount == 2 }
+
+        XCTAssertEqual(clock.now.timeIntervalSinceReferenceDate, 0, "the clock never moved")
+        controller.deactivate()
+    }
+
+    /// The association finished, so the cached list is definitely out of date.
+    func testAssociationScansImmediatelyAfterConnecting() async {
+        let scanner = FakeWiFiNetworkScanner()
+        scanner.associates = true
+        let clock = ManualScanClock()
+        let controller = makeController(scanner: scanner, clock: clock)
+        controller.activate(nameAccess: .authorized)
+        await waitUntil { controller.state == .ready }
+
+        controller.connect(to: makeScanNetwork("Studio"), password: nil, rememberPassword: false)
+        await waitUntil { scanner.scanCount == 2 }
+
+        XCTAssertEqual(scanner.associateCount, 1)
+        XCTAssertEqual(clock.now.timeIntervalSinceReferenceDate, 0)
+        controller.deactivate()
+    }
+
     /// The 30-second periodic loop is a floor, not a second cadence: with the
     /// injected sleeper it must ask for a scan no more often than the interval.
     func testThePeriodicLoopHonoursTheInterval() async {

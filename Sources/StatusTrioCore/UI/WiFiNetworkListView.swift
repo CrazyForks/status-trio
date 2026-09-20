@@ -63,7 +63,7 @@ struct WiFiNetworkListView: View {
                 title: localization.string(.wifiTitle),
                 action: onBack
             )
-            Button(action: { controller.refresh(nameAccess: wifi.nameAccess) }) {
+            Button(action: { controller.refreshNow(nameAccess: wifi.nameAccess) }) {
                 Image(systemName: "arrow.clockwise")
             }
             .buttonStyle(.plain)
