@@ -47,25 +47,22 @@ Status Trio is a native macOS status app that combines Wi-Fi, battery, and volum
 
 ## Highlights
 
-- **One combined status icon** — battery, network, and volume in a single icon, in the menu bar, the Dock, or both. A Bluetooth audio device that is playing can take over the middle glyph with its own symbol.
-- **Bluetooth audio** — while a Bluetooth device is playing, the device's own symbol can replace the network glyph and the volume dots or arc can turn blue, so the active output is obvious at a glance.
-- **Detailed battery status** — percentage, a charging bolt or a plug while connected without charging, an optional percentage while connected, estimated time to full, status colors, a configurable critical threshold, and a Battery Settings shortcut.
-- **Battery Details page** — adapter rating, time remaining, net battery power estimates, voltage, current, cycle count, and Low Power Mode, sampled on demand.
-- **Wi-Fi awareness** — the network name as the popover title, its band and signal strength, and signal strength plus common connection states in the icon.
-- **Wi-Fi panel** — scan nearby networks, join one with a password stored in the Keychain, toggle Wi-Fi, and read full link details: BSSID, channel, width, RSSI, noise, SNR, PHY, rate, security, IPv4/IPv6, router, and DNS.
-- **Bluetooth panel** — paired devices and their connection state, with AirPods battery levels. It is off by default; enable it under Settings › Status Panel.
-- **Volume at a glance** — output level, mute state, and the current output device with the symbol macOS uses for it.
-- **Scroll to adjust volume** — choose whether scrolling anywhere in the panel or only on the volume control changes the volume, and whether scrolling up always raises it regardless of the system's natural scrolling setting.
-- **Configurable rendering** — an icon size from 16–36 pt (24 pt by default), a network and Bluetooth symbol scale from 100%–180%, volume dots or a continuous arc, and a Light, Regular, or Bold ring stroke width.
-- **Connection icon choices** — optionally use the standard Wi-Fi signal icon for Ethernet, Personal Hotspot, temporary connections, or Internet Sharing.
-- **Customizable Status Panel** — choose which sections the popover shows (Battery, Wi-Fi, Bluetooth, Volume) and drag them into order.
-- **Menu bar or Dock** — choose where the live icon lives: the menu bar, the Dock, or both, with a Dock icon that follows the system icon style or holds a pinned dark or light background.
-- **macOS-native controls** — left-click for a status popover and right-click for the standard menu, from either the menu bar icon or the Dock icon.
-- **Meet your icon** — a first-launch guide that explains each part of the icon and shows a gallery of common state combinations.
-- **Efficient updates** — event-driven monitoring with a low-frequency polling fallback.
-- **Twelve languages** — follow the system language or choose one manually; changes apply immediately.
-- **Launch at login** — optional startup with guidance when macOS requires approval.
-- **Automatic updates** — Sparkle checks the signed appcast and verifies each update with the app's EdDSA key.
+- **One icon, three signals** — battery, Wi-Fi, and volume share one icon in the menu bar, the Dock, or both. While a Bluetooth device is playing, its own symbol can take the middle spot.
+- **Bluetooth audio** — the device's icon replaces the network glyph and the volume indicator turns blue, so you can tell where the sound is coming from without opening anything.
+- **Battery** — percentage, charging or plugged in, time to full, and a color when it runs low.
+- **Battery details** — open the battery row for adapter power, time remaining, voltage, current, cycle count, and Low Power Mode, plus a shortcut to Battery settings.
+- **Wi-Fi** — the popover names the network you are on and how strong the signal is. Open it to see nearby networks, join one, or switch Wi-Fi off.
+- **Bluetooth panel** — connected and paired devices, with AirPods battery. Off by default.
+- **Volume** — level, mute, and the device it plays through, drawn as dots or an arc.
+- **Scrolling** — adjust the volume by scrolling the whole panel or just the volume control, and pick which direction turns it up.
+- **Make it yours** — icon size, symbol scale, ring thickness, status colors, and which sections the popover shows, in the order you want.
+- **Menu bar, Dock, or both** — and the Dock icon can follow the system style or stay dark or light.
+- **Native on macOS** — left-click opens the popover and right-click opens the menu; a first-launch guide explains what each part of the icon means.
+- **Connection icons** — Ethernet, a hotspot, or Internet Sharing can keep the Wi-Fi glyph if you prefer.
+- **Efficient updates** — driven by system events, with a slow poll as a fallback.
+- **Twelve languages** — follow the system or pick one; changes apply right away.
+- **Launch at login** — optional, with guidance when macOS asks for approval.
+- **Updates** — Sparkle checks a signed feed and verifies each update before it installs.
 
 ## Bluetooth audio
 
