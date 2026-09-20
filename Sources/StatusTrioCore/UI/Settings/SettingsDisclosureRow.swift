@@ -59,7 +59,7 @@ struct SettingsDisclosureRow: View {
     }
 
     var body: some View {
-        Button(action: toggle) {
+        Button(action: { toggle() }) {
             SettingsRow(symbol, tint: tint, title: title, subtitle: subtitle) {
                 Image(systemName: "chevron.down")
                     .font(.system(size: 11, weight: .medium))
