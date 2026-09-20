@@ -757,6 +757,18 @@ final class SystemStatusStoreTests: XCTestCase {
         store.stop()
     }
 
+    func testFallbackSleepToleranceCoversTheAdjustableRange() {
+        // A fifth of the interval. The fallback poll is a safety net behind the
+        // push channels, so macOS may slide it onto another timer, but the sampling
+        // cadence has to survive that.
+        XCTAssertEqual(SystemStatusStore.refreshSleepTolerance(for: .seconds(5)), .seconds(1))
+        XCTAssertEqual(SystemStatusStore.refreshSleepTolerance(for: .seconds(10)), .seconds(2))
+        XCTAssertEqual(SystemStatusStore.refreshSleepTolerance(for: .seconds(15)), .seconds(3))
+        XCTAssertEqual(SystemStatusStore.refreshSleepTolerance(for: .seconds(30)), .seconds(6))
+        XCTAssertEqual(SystemStatusStore.refreshSleepTolerance(for: .seconds(60)), .seconds(12))
+        XCTAssertEqual(SystemStatusStore.refreshSleepTolerance(for: .seconds(1)), .milliseconds(200))
+    }
+
     func testStopPreventsFurtherPeriodicRefresh() async {
         let battery = FakeBatteryMonitor()
         let wifi = FakeWiFiMonitor()

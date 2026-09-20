@@ -6,6 +6,14 @@ import Foundation
 final class SystemStatusStore: ObservableObject {
     static let popupDebounceInterval: Duration = .milliseconds(500)
 
+    /// Tolerance for the fallback poll. Without one, macOS must wake the CPU on
+    /// an exact schedule to satisfy the timer, which is exactly what an idle
+    /// menu bar app should not ask for; a fifth of the interval still samples
+    /// often enough for a value that the push channels did not report.
+    static func refreshSleepTolerance(for interval: Duration) -> Duration {
+        interval / 5
+    }
+
     @Published private(set) var snapshot: StatusSnapshot
     @Published private(set) var popupSnapshot: StatusSnapshot
     /// True while the popover is waiting for a Wi-Fi name it has not read yet.
@@ -45,8 +53,11 @@ final class SystemStatusStore: ObservableObject {
         volumeMonitor: any VolumeMonitoring,
         refreshInterval: Duration = .seconds(5),
         nameResolutionTimeout: Duration = .milliseconds(1500),
-        sleep: @escaping @Sendable (Duration) async throws -> Void = {
-            try await Task.sleep(for: $0)
+        sleep: @escaping @Sendable (Duration) async throws -> Void = { interval in
+            try await Task.sleep(
+                for: interval,
+                tolerance: SystemStatusStore.refreshSleepTolerance(for: interval)
+            )
         },
         popupDebounceSleep: @escaping @Sendable (Duration) async throws -> Void = {
             try await Task.sleep(for: $0)
