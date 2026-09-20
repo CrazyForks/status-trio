@@ -199,7 +199,7 @@ Edit `installPopoverContentIfNeeded()` so the call reads (each closure calls exa
                 // MainActor-isolated method converted to a function value
                 // generates the thunk that crashed IRGen in CI run 34758026894
                 // (docs/swift-ci-compatibility.md).
-                requestWiFiNameAccess: { handleRequestWiFiNameAccess() },
+                requestWiFiNameAccess: { self.handleRequestWiFiNameAccess() },
                 requestBluetoothAuthorization: { handleRequestBluetoothAuthorization() },
                 openBatterySettings: { handleOpenBatterySettings() },
                 openWiFiSettings: { handleOpenWiFiSettings() },
