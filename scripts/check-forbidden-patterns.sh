@@ -279,7 +279,7 @@ report() {
         {
             echo "Forbidden pattern: an actor-isolated method is passed as a function value."
             echo "AGENTS.md requires an explicit closure instead, e.g."
-            echo "  requestWiFiNameAccess: { handleRequestWiFiNameAccess() }"
+            echo "  requestWiFiNameAccess: { self.handleRequestWiFiNameAccess() }"
             echo ""
             for found in "${violations[@]}"; do
                 echo "  ${found}"
