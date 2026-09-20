@@ -180,7 +180,7 @@ branch so no commit in between leaves a red gate behind."
 
 - [ ] **Step 1: Confirm RED for this file only**
 
-Run: `bash scripts/check-forbidden-patterns.sh | grep StatusBarController`
+Run: `bash scripts/check-forbidden-patterns.sh 2>&1 | grep StatusBarController`
 Expected: exit 0 for the `grep` and eight lines for `StatusBarController.swift:208-215`.
 
 - [ ] **Step 2: Replace the eight method references with explicit closures**
@@ -223,7 +223,7 @@ Expected: eight closures, each naming one distinct handler, in the argument orde
 
 - [ ] **Step 4: Run the guard again**
 
-Run: `bash scripts/check-forbidden-patterns.sh | grep -c StatusBarController || true`
+Run: `bash scripts/check-forbidden-patterns.sh 2>&1 | grep -c StatusBarController || true`
 Expected: `0`.
 
 - [ ] **Step 5: Run the suites that build the popover**
@@ -260,7 +260,7 @@ is unchanged: it is a stored closure, not a method reference."
 
 - [ ] **Step 1: Confirm RED for this file only**
 
-Run: `bash scripts/check-forbidden-patterns.sh | grep SettingsDisclosureRow`
+Run: `bash scripts/check-forbidden-patterns.sh 2>&1 | grep SettingsDisclosureRow`
 Expected: one line, `SettingsDisclosureRow.swift:62`.
 
 - [ ] **Step 2: Rewrite the action as an explicit closure**
@@ -273,7 +273,7 @@ State the reason in the plan's review notes and keep the code comment short: `Se
 
 - [ ] **Step 3: Run the guard again**
 
-Run: `bash scripts/check-forbidden-patterns.sh | grep SettingsDisclosureRow || true`
+Run: `bash scripts/check-forbidden-patterns.sh 2>&1 | grep SettingsDisclosureRow || true`
 Expected: no output.
 
 - [ ] **Step 4: Run the disclosure-row tests**
@@ -307,7 +307,7 @@ value from it. Same fix as the popover handlers."
 
 - [ ] **Step 1: Confirm RED for this file only**
 
-Run: `bash scripts/check-forbidden-patterns.sh | grep WiFiNetworkListView`
+Run: `bash scripts/check-forbidden-patterns.sh 2>&1 | grep WiFiNetworkListView`
 Expected: two lines, `WiFiNetworkListView.swift:286` and `:294`.
 
 - [ ] **Step 2: Rewrite both actions**
@@ -324,7 +324,7 @@ Expected: two lines, `WiFiNetworkListView.swift:286` and `:294`.
 
 - [ ] **Step 3: Run the guard again**
 
-Run: `bash scripts/check-forbidden-patterns.sh | grep -c callAsFunction || true`
+Run: `bash scripts/check-forbidden-patterns.sh 2>&1 | grep -c callAsFunction || true`
 Expected: `0` — the rule has no allowlist entry for `callAsFunction` on purpose.
 
 - [ ] **Step 4: Run the Wi-Fi view suites**
