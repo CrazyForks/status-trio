@@ -433,6 +433,42 @@ final class SystemStatusStoreTests: XCTestCase {
         store.stop()
     }
 
+    func testUnchangedVolumeYieldDoesNotRepublishLiveVolume() async {
+        let volume = FakeVolumeMonitor()
+        let sleeper = ManualSleeper()
+        let store = SystemStatusStore(
+            batteryMonitor: FakeBatteryMonitor(),
+            wifiMonitor: FakeWiFiMonitor(),
+            volumeMonitor: volume,
+            refreshInterval: .seconds(60),
+            popupDebounceSleep: { _ in await sleeper.sleep() }
+        )
+
+        store.start()
+        let unchanged = VolumeStatus(scalar: 0.4, isMuted: false, deviceName: "Speaker")
+        volume.send(unchanged)
+        await waitUntil { store.liveVolume == unchanged }
+
+        var changeCount = 0
+        let cancellable = store.objectWillChange.sink { _ in changeCount += 1 }
+
+        // A fallback poll that re-reads the same scalar, followed by a real
+        // change. The stream is FIFO, so observing the second value proves the
+        // first one was applied. The changed reading publishes twice — once for
+        // `liveVolume` and once for `snapshot` — and the repeated reading must
+        // publish nothing at all, so the total is exactly two.
+        volume.send(unchanged)
+        volume.send(VolumeStatus(scalar: 0.7, isMuted: false, deviceName: "Speaker"))
+        await waitUntil { store.liveVolume.scalar == 0.7 }
+
+        XCTAssertEqual(store.snapshot.volume.scalar, 0.7)
+        XCTAssertEqual(changeCount, 2)
+
+        cancellable.cancel()
+        store.stop()
+        sleeper.releaseAll()
+    }
+
     func testLiveVolumeUsesSnapshotWhilePopupSnapshotIsDebounced() async {
         let volume = FakeVolumeMonitor()
         let sleeper = ManualSleeper()

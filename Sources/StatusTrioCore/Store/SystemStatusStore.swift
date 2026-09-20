@@ -454,7 +454,13 @@ final class SystemStatusStore: ObservableObject {
     }
 
     private func applyVolume(_ value: VolumeStatus) {
-        liveVolume = value
+        // `liveVolume` drives the popover's volume section through
+        // `objectWillChange`, and `publish` only dedupes the snapshot. Writing an
+        // unchanged reading here re-rendered every volume observer on every
+        // fallback tick, which the equality below stops.
+        if value != liveVolume {
+            liveVolume = value
+        }
         publish(snapshot.replacingVolume(value))
     }
 
