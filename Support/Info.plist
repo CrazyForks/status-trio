@@ -28,6 +28,8 @@
 	<string>Used only when you open Bluetooth details to show paired-device connection status.</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
+	<key>NSLocationUsageDescription</key>
+	<string>Used to show the current Wi-Fi network name in the popover and, when you open Wi-Fi details, to read network names, scan results, and connection information.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Used to show the current Wi-Fi network name in the popover and, when you open Wi-Fi details, to read network names, scan results, and connection information.</string>
 	<key>SUEnableInstallerLauncherService</key>

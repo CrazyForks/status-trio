@@ -620,7 +620,7 @@ private final class NoopWiFiMonitor: WiFiMonitoring {
     func stop() {}
     func refresh() {}
     func recover() {}
-    func requestNameAccess() {}
+    func requestNameAccess() -> WiFiNameAccessRequestResult { .notNeeded }
 }
 
 @MainActor

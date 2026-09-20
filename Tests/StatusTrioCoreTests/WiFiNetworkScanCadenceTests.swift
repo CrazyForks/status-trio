@@ -380,7 +380,7 @@ private final class CadenceWiFiMonitor: WiFiMonitoring {
     func stop() {}
     func refresh() {}
     func recover() {}
-    func requestNameAccess() {}
+    func requestNameAccess() -> WiFiNameAccessRequestResult { .notNeeded }
 }
 
 @MainActor

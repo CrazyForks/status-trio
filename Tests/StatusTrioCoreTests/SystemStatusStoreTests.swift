@@ -679,6 +679,7 @@ final class SystemStatusStoreTests: XCTestCase {
 
     func testRequestWiFiNameAccessForwardsToMonitor() {
         let wifi = FakeWiFiMonitor()
+        wifi.nameAccessRequestResult = .openLocationSettings
         let store = makeStore(
             battery: FakeBatteryMonitor(),
             wifi: wifi,
@@ -686,10 +687,12 @@ final class SystemStatusStoreTests: XCTestCase {
         )
 
         store.start()
-        store.requestWiFiNameAccess()
+        XCTAssertEqual(store.requestWiFiNameAccess(), .openLocationSettings)
 
         XCTAssertEqual(wifi.nameAccessRequestCount, 1)
         store.stop()
+        XCTAssertEqual(store.requestWiFiNameAccess(), .notNeeded)
+        XCTAssertEqual(wifi.nameAccessRequestCount, 1)
     }
 
     func testStopTwiceStopsEachMonitorExactlyOnce() {
@@ -1566,6 +1569,7 @@ private final class FakeWiFiMonitor: WiFiMonitoring {
     private(set) var recoverCount = 0
     private(set) var finishCount = 0
     private(set) var nameAccessRequestCount = 0
+    var nameAccessRequestResult: WiFiNameAccessRequestResult = .requested
     private(set) var detailsVisibility: [Bool] = []
     var onRecover: (() -> Void)?
     var onRefresh: (() -> Void)?
@@ -1585,8 +1589,9 @@ private final class FakeWiFiMonitor: WiFiMonitoring {
         recoverCount += 1
         onRecover?()
     }
-    func requestNameAccess() {
+    func requestNameAccess() -> WiFiNameAccessRequestResult {
         nameAccessRequestCount += 1
+        return nameAccessRequestResult
     }
 
     func setDetailsVisible(_ visible: Bool) {

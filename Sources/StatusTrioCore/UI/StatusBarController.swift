@@ -527,8 +527,11 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     }
 
     @objc private func handleRequestWiFiNameAccess() {
+        popover.performClose(nil)
         NSApp.activate()
-        store.requestWiFiNameAccess()
+        if store.requestWiFiNameAccess() == .openLocationSettings {
+            Self.openSystemSettings(Self.locationSettingsURLs)
+        }
     }
 
     @objc private func handleRequestBluetoothAuthorization() {
