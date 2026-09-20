@@ -26,7 +26,6 @@
   <a href="https://github.com/lingyired/status-trio/releases/latest"><img src="https://img.shields.io/github/v/release/lingyired/status-trio?label=release&color=blue" alt="Latest release"></a>
   <a href="https://github.com/lingyired/status-trio/actions/workflows/release.yml"><img src="https://github.com/lingyired/status-trio/actions/workflows/release.yml/badge.svg" alt="Build and Release macOS workflow status"></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/lingyired/status-trio?label=license" alt="License: Apache-2.0"></a>
-  <a href="https://deepwiki.com/lingyired/status-trio"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
 </p>
 
 <p align="center">
