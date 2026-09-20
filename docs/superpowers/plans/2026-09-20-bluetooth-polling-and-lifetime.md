@@ -1999,6 +1999,8 @@ Run: `git add Sources/StatusTrioCore/Monitoring/BluetoothDeviceController.swift 
 
 - [ ] **Step 1: Record the measurement**
 
+> **⏳ Outstanding owner action** — the before/after spawn count is a merge gate and no commit on this branch carries it. The owner must either run it or explicitly waive it before merging. The procedure is the `pgrep -x system_profiler` loop below: 12 samples 5 s apart with the popover closed, then the same again with a Bluetooth surface visible. The dev bundle needs its own run, because the sampled process must be the build under test rather than the installed 1.2.1 copy. No number is recorded here.
+
 Run the app from the previous build state for 60 seconds and record the process spawn count of the old behaviour, then the same after the change, so the commit message carries before and after numbers:
 
 ```bash
@@ -2018,7 +2020,7 @@ Expected: no spawn at all while the popover is closed; roughly one spawn per 30 
 Append to `release-notes/1.3.0/en.md`:
 
 ```markdown
-## Bluetooth stops working in the background
+## Bluetooth no longer polls in the background
 - The Bluetooth panel used to read the paired-device list every 15 seconds for as long as the app was running, even after the panel was closed. It now refreshes when a device connects or disconnects, and falls back to a slow check only while a Bluetooth view is on screen.
 - Paired devices and battery levels now come from one system report instead of two, which halves the work each refresh does.
 - The summary row and the device page are unchanged: the same names, the same levels, and the same permission behaviour — the app still asks for Bluetooth only when you open a Bluetooth view.
