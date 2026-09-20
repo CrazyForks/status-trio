@@ -8,6 +8,8 @@
 
 ---
 
+> **Paused 2026-09-20, with a handoff document:** the owner asked to stop after R-01 merged and to write the remainder down. Progress, carry-forward obligations, the twelve untouched plans, the frozen class-C set, the owner's outstanding measurements, resume commands, and every ruling made so far are in [`2026-09-20-class-a-handoff.md`](2026-09-20-class-a-handoff.md). Read that first when resuming.
+
 ## 0. Owner decision (2026-09-20): this plan set is on hold
 
 Execution has been **paused by the owner** until they have time to work through it deliberately. Three constraints survive the pause and must be honoured by whoever resumes:
