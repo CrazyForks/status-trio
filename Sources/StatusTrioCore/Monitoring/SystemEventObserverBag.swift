@@ -63,4 +63,14 @@ final class SystemEventObserverBag: @unchecked Sendable {
             registration.center.removeObserver(registration.token)
         }
     }
+
+    /// A bag released without `removeAll()` would otherwise leak the blocks its
+    /// tokens keep alive for the life of the process — the exact failure this
+    /// type exists to prevent. The registrations live in lock-guarded,
+    /// teardown-owned storage, so this stays nonisolated and is safe on
+    /// whichever thread drops the last reference. `removeAll()` is idempotent,
+    /// so a bag that was already emptied here removes nothing twice.
+    deinit {
+        removeAll()
+    }
 }

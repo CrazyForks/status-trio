@@ -790,6 +790,34 @@ final class BluetoothPollingLifetimeTests: XCTestCase {
         XCTAssertEqual(wakes.value, 1, "a removed observer still fired")
     }
 
+    /// The bag is the only owner of its tokens. Releasing one without calling
+    /// `removeAll()` used to leave both blocks registered for the life of the
+    /// process, which is the leak the type exists to prevent.
+    func testAReleasedObserverBagRemovesItsRegistrations() async {
+        let notifications = NotificationCenter()
+        let activations = CountBox()
+        let wakes = CountBox()
+        var bag: SystemEventObserverBag? = SystemEventObserverBag(
+            notificationCenter: notifications,
+            workspaceNotificationCenter: notifications
+        )
+        bag?.install(
+            applicationActivated: { activations.increment() },
+            didWake: { wakes.increment() }
+        )
+        XCTAssertFalse(bag?.isEmpty ?? true)
+
+        bag = nil
+
+        notifications.post(name: NSApplication.didBecomeActiveNotification, object: nil)
+        notifications.post(name: NSWorkspace.didWakeNotification, object: nil)
+        // The block is delivered through the main queue, so give it a real
+        // window to arrive before asserting that nothing was delivered.
+        try? await Task.sleep(for: .milliseconds(50))
+        XCTAssertEqual(activations.value, 0, "a released bag must remove its observers")
+        XCTAssertEqual(wakes.value, 0, "a released bag must remove its observers")
+    }
+
     private func waitUntil(_ condition: () -> Bool) async {
         for _ in 0..<1_000 {
             if condition() { return }

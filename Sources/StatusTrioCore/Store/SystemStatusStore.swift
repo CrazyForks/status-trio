@@ -343,10 +343,10 @@ final class SystemStatusStore: ObservableObject {
         }
     }
 
-    /// The popover is a Bluetooth surface: its summary row reports device names
-    /// while it is open. The claim is a token rather than a boolean so the
-    /// SwiftUI row and the detail page can hold their own claims independently.
-    private static let bluetoothPopoverSurface = "bluetooth.popover"
+    // The popover's Bluetooth surface claim is spelled once, next to the type
+    // that owns the gate: `BluetoothDeviceController.popoverSurfaceToken`. A
+    // second literal here would let a rename silently stop the poll forever
+    // with no compile error.
 
     /// Enables the Bluetooth monitor when the popover opens, so the row can
     /// report device names. Starting the monitor is what raises the system
@@ -359,8 +359,10 @@ final class SystemStatusStore: ObservableObject {
         ) else { return }
         setBluetoothEnabled(true)
         // The state monitor is already running for a granted app, and `activate`
-        // is then a no-op, so the popover asks for its own read: the row must
-        // never open on a list that the last connection event did not refresh.
+        // is then a no-op, so the popover asks for its own read: an extra read
+        // when the row opens. `refresh()` drops that request unless availability
+        // is `.available`, so a row that opened in another state keeps reporting
+        // that state until the system reports a usable adapter.
         bluetoothDevices.refresh()
     }
 
@@ -385,7 +387,7 @@ final class SystemStatusStore: ObservableObject {
 
         guard visible else {
             clearWiFiNameResolution()
-            bluetoothDevices.releaseVisibleSurface(Self.bluetoothPopoverSurface)
+            bluetoothDevices.releaseVisibleSurface(BluetoothDeviceController.popoverSurfaceToken)
             return
         }
         popupPublishTask?.cancel()
@@ -393,7 +395,7 @@ final class SystemStatusStore: ObservableObject {
         popupSnapshot = snapshot
         startWiFiNameResolutionIfNeeded()
         bluetoothDevices.prepareForPresentation()
-        bluetoothDevices.holdVisibleSurface(Self.bluetoothPopoverSurface)
+        bluetoothDevices.holdVisibleSurface(BluetoothDeviceController.popoverSurfaceToken)
         activateBluetoothForPopover()
         refreshAll()
         wifiNetworks.refresh(nameAccess: popupSnapshot.wifi.nameAccess)
@@ -418,7 +420,7 @@ final class SystemStatusStore: ObservableObject {
         wifiNetworks.deactivate()
         closeBluetoothDetails()
         closeBatteryDetails()
-        bluetoothDevices.releaseVisibleSurface(Self.bluetoothPopoverSurface)
+        bluetoothDevices.releaseVisibleSurface(BluetoothDeviceController.popoverSurfaceToken)
     }
 
     /// Whether a popover detail panel (Wi-Fi, Bluetooth, or battery) is
