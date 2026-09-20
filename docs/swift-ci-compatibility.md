@@ -318,3 +318,27 @@ Swift Testing 全绿，两个切片均为 `minos 15.0 / sdk 26.0`，DMG 与 arti
 - **不覆盖**：`Tests/` 下的任何代码。扫描只遍历 `$ROOT/Sources`，所以守卫通过并不代表测试目标里
   没有方法引用；编译层面的最终判据仍然是本预检
   （`swift test` + `swift build -c release` + 非发布 release workflow）。
+
+#### 加宽后的复核（`build=14`）
+
+终审发现守卫的覆盖范围小于分支的声明：`StatusPopoverView` 的三个 `store.*` 回调
+（`onVolumeChange`/`onToggleMute`/`onSelectOutputDevice`）、`VolumeControlsView` 的
+`onEditingChanged` 与 `perform: synchronizeVolume`、`IconGuideView` 的 `perform: restartPulse`
+共六处仍是方法引用，而 `34758026894` 的原始崩溃形状（`Binding.set: … setPreference`，**带一个
+参数**）当时被判为 `external` 而漏检。这六处已改为显式闭包，并按上一节所述的规则加宽守卫
+（点号成员引用不再受零参数规则限制，新增 `perform:` 与 `on[A-Z]…:`），`--self-test` 由
+6/6 + 7/7 变为 **10/10 + 7/7**。
+
+改完之后重跑非发布预检
+[`35496776064`](https://github.com/lingyired/status-trio/actions/runs/35496776064)
+（`version=1.3.0`、**`build=14`**、`publish=false`）：`Validate appcast notes`、`Run tests`、
+`Build, sign, notarize, and publish`、`Upload release artifacts` 全部成功，624 个 XCTest
+（6 跳过，0 失败）与 163 个 Swift Testing / 27 个 suite 全绿，两个切片仍为
+`minos 15.0 / sdk 26.0`，未发布 Release、未改动 appcast。
+**两次预检对应加宽前后的两个 HEAD，合并时应以 `35496776064` 为准。**
+
+守卫仍有两个已知的、当前不触发的假阳性路径，作为残留项记录而非继续扩大改动范围：一是点号分支
+先于「转发闭包」豁免判断，因此 `Button(action: self.openSettings)` 这类**点号**转发闭包，在
+`Sources/` 下恰好存在同名 `func openSettings()` 时会被误判为违规；二是转发的声明形状要求写成
+`label name: … ->`，因此省略外部标签的闭包参数（`func f(read: (…) -> …)`）不再被豁免。两者在
+当前代码树上都不产生任何输出（守卫退出 0），一旦出现按脚本头部的 `ALLOWED` 名单逐条标注即可。
