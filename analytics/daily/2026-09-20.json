@@ -1,0 +1,409 @@
+{
+  "schema": 1,
+  "repo": "lingyired/status-trio",
+  "fetched_at": "2026-09-20T05:01:53Z",
+  "window_days": 14,
+  "windows": {
+    "views": {
+      "count": 5972,
+      "uniques": 2532,
+      "views": [
+        {
+          "date": "2026-09-05",
+          "count": 0,
+          "uniques": 0
+        },
+        {
+          "date": "2026-09-06",
+          "count": 0,
+          "uniques": 0
+        },
+        {
+          "date": "2026-09-07",
+          "count": 0,
+          "uniques": 0
+        },
+        {
+          "date": "2026-09-08",
+          "count": 0,
+          "uniques": 0
+        },
+        {
+          "date": "2026-09-09",
+          "count": 0,
+          "uniques": 0
+        },
+        {
+          "date": "2026-09-10",
+          "count": 0,
+          "uniques": 0
+        },
+        {
+          "date": "2026-09-11",
+          "count": 0,
+          "uniques": 0
+        },
+        {
+          "date": "2026-09-12",
+          "count": 2,
+          "uniques": 1
+        },
+        {
+          "date": "2026-09-13",
+          "count": 77,
+          "uniques": 59
+        },
+        {
+          "date": "2026-09-14",
+          "count": 919,
+          "uniques": 502
+        },
+        {
+          "date": "2026-09-15",
+          "count": 668,
+          "uniques": 320
+        },
+        {
+          "date": "2026-09-16",
+          "count": 1654,
+          "uniques": 619
+        },
+        {
+          "date": "2026-09-17",
+          "count": 1353,
+          "uniques": 556
+        },
+        {
+          "date": "2026-09-18",
+          "count": 1299,
+          "uniques": 657
+        }
+      ]
+    },
+    "clones": {
+      "count": 2071,
+      "uniques": 613,
+      "clones": [
+        {
+          "date": "2026-09-05",
+          "count": 0,
+          "uniques": 0
+        },
+        {
+          "date": "2026-09-06",
+          "count": 0,
+          "uniques": 0
+        },
+        {
+          "date": "2026-09-07",
+          "count": 0,
+          "uniques": 0
+        },
+        {
+          "date": "2026-09-08",
+          "count": 0,
+          "uniques": 0
+        },
+        {
+          "date": "2026-09-09",
+          "count": 0,
+          "uniques": 0
+        },
+        {
+          "date": "2026-09-10",
+          "count": 0,
+          "uniques": 0
+        },
+        {
+          "date": "2026-09-11",
+          "count": 0,
+          "uniques": 0
+        },
+        {
+          "date": "2026-09-12",
+          "count": 157,
+          "uniques": 72
+        },
+        {
+          "date": "2026-09-13",
+          "count": 232,
+          "uniques": 94
+        },
+        {
+          "date": "2026-09-14",
+          "count": 266,
+          "uniques": 74
+        },
+        {
+          "date": "2026-09-15",
+          "count": 188,
+          "uniques": 84
+        },
+        {
+          "date": "2026-09-16",
+          "count": 469,
+          "uniques": 191
+        },
+        {
+          "date": "2026-09-17",
+          "count": 247,
+          "uniques": 111
+        },
+        {
+          "date": "2026-09-18",
+          "count": 512,
+          "uniques": 162
+        }
+      ]
+    }
+  },
+  "referrers": [
+    {
+      "referrer": "github.com",
+      "count": 736,
+      "uniques": 527
+    },
+    {
+      "referrer": "Google",
+      "count": 399,
+      "uniques": 291
+    },
+    {
+      "referrer": "t.co",
+      "count": 350,
+      "uniques": 249
+    },
+    {
+      "referrer": "ruanyifeng.com",
+      "count": 155,
+      "uniques": 146
+    },
+    {
+      "referrer": "v2ex.com",
+      "count": 141,
+      "uniques": 80
+    },
+    {
+      "referrer": "Bing",
+      "count": 97,
+      "uniques": 74
+    },
+    {
+      "referrer": "l.threads.com",
+      "count": 52,
+      "uniques": 39
+    },
+    {
+      "referrer": "youtube.com",
+      "count": 29,
+      "uniques": 26
+    },
+    {
+      "referrer": "meta.appinn.net",
+      "count": 13,
+      "uniques": 10
+    },
+    {
+      "referrer": "reddit.com",
+      "count": 11,
+      "uniques": 9
+    }
+  ],
+  "paths": [
+    {
+      "path": "/lingyired/status-trio",
+      "title": "Overview",
+      "count": 3184,
+      "uniques": 2299
+    },
+    {
+      "path": "/lingyired/status-trio/blob/main/README.zh-CN.md",
+      "title": "/blob/main/README.zh-CN.md",
+      "count": 644,
+      "uniques": 503
+    },
+    {
+      "path": "/lingyired/status-trio/releases",
+      "title": "/releases",
+      "count": 574,
+      "uniques": 486
+    },
+    {
+      "path": "/lingyired/status-trio/releases/tag/v1.0.4",
+      "title": "/releases/tag/v1.0.4",
+      "count": 271,
+      "uniques": 244
+    },
+    {
+      "path": "/lingyired/status-trio/releases/tag/v1.1.0",
+      "title": "/releases/tag/v1.1.0",
+      "count": 269,
+      "uniques": 230
+    },
+    {
+      "path": "/lingyired/status-trio/issues",
+      "title": "/issues",
+      "count": 192,
+      "uniques": 121
+    },
+    {
+      "path": "/lingyired/status-trio/pulls",
+      "title": "/pulls",
+      "count": 64,
+      "uniques": 44
+    },
+    {
+      "path": "/lingyired/status-trio/tree/main",
+      "title": "/tree/main",
+      "count": 53,
+      "uniques": 50
+    },
+    {
+      "path": "/lingyired/status-trio/releases/tag/v1.0.2",
+      "title": "/releases/tag/v1.0.2",
+      "count": 38,
+      "uniques": 34
+    },
+    {
+      "path": "/lingyired/status-trio/releases/tag/v1.0.3",
+      "title": "/releases/tag/v1.0.3",
+      "count": 32,
+      "uniques": 31
+    }
+  ],
+  "releases": [
+    {
+      "tag_name": "v1.2.0",
+      "name": "Status Trio v1.2.0",
+      "published_at": "2026-09-18T13:54:08Z",
+      "prerelease": false,
+      "assets": [
+        {
+          "name": "StatusTrio-1.2.0.dmg",
+          "download_count": 659,
+          "size": 4005867
+        },
+        {
+          "name": "StatusTrio-1.2.0.dmg.sha256",
+          "download_count": 13,
+          "size": 87
+        }
+      ]
+    },
+    {
+      "tag_name": "v1.1.0",
+      "name": "Status Trio v1.1.0",
+      "published_at": "2026-09-16T13:50:37Z",
+      "prerelease": false,
+      "assets": [
+        {
+          "name": "StatusTrio-1.1.0.dmg",
+          "download_count": 996,
+          "size": 3313040
+        },
+        {
+          "name": "StatusTrio-1.1.0.dmg.sha256",
+          "download_count": 43,
+          "size": 87
+        }
+      ]
+    },
+    {
+      "tag_name": "v1.0.4",
+      "name": "Status Trio v1.0.4",
+      "published_at": "2026-09-14T15:53:48Z",
+      "prerelease": false,
+      "assets": [
+        {
+          "name": "StatusTrio-1.0.4.dmg",
+          "download_count": 827,
+          "size": 2389375
+        },
+        {
+          "name": "StatusTrio-1.0.4.dmg.sha256",
+          "download_count": 78,
+          "size": 87
+        }
+      ]
+    },
+    {
+      "tag_name": "v1.0.3",
+      "name": "Status Trio v1.0.3",
+      "published_at": "2026-09-14T07:22:38Z",
+      "prerelease": false,
+      "assets": [
+        {
+          "name": "StatusTrio-1.0.3.dmg",
+          "download_count": 100,
+          "size": 2311597
+        },
+        {
+          "name": "StatusTrio-1.0.3.dmg.sha256",
+          "download_count": 2,
+          "size": 87
+        }
+      ]
+    },
+    {
+      "tag_name": "v1.0.2",
+      "name": "Status Trio v1.0.2",
+      "published_at": "2026-09-13T13:42:57Z",
+      "prerelease": false,
+      "assets": [
+        {
+          "name": "StatusTrio-1.0.2.dmg",
+          "download_count": 172,
+          "size": 2276356
+        },
+        {
+          "name": "StatusTrio-1.0.2.dmg.sha256",
+          "download_count": 6,
+          "size": 87
+        }
+      ]
+    },
+    {
+      "tag_name": "v1.0.1",
+      "name": "Status Trio v1.0.1",
+      "published_at": "2026-09-13T12:51:04Z",
+      "prerelease": false,
+      "assets": [
+        {
+          "name": "StatusTrio-1.0.1.dmg",
+          "download_count": 4,
+          "size": 2262644
+        },
+        {
+          "name": "StatusTrio-1.0.1.dmg.sha256",
+          "download_count": 1,
+          "size": 87
+        }
+      ]
+    },
+    {
+      "tag_name": "v1.0.0",
+      "name": "Status Trio v1.0.0",
+      "published_at": "2026-09-13T11:23:33Z",
+      "prerelease": false,
+      "assets": [
+        {
+          "name": "StatusTrio-1.0.0.dmg",
+          "download_count": 10,
+          "size": 2248466
+        },
+        {
+          "name": "StatusTrio-1.0.0.dmg.sha256",
+          "download_count": 1,
+          "size": 87
+        }
+      ]
+    }
+  ],
+  "errors": {},
+  "repo_stats": {
+    "stars": 418,
+    "forks": 23,
+    "watchers": 2,
+    "open_issues": 5
+  }
+}

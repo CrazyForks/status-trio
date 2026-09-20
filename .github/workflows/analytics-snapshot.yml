@@ -1,0 +1,54 @@
+name: Analytics snapshot
+
+# GitHub exposes repository traffic (views, clones, referrers, popular paths)
+# for a rolling 14-day window only and keeps no history for release download
+# counters, so this job copies both into analytics/ once a day. Repository
+# bookkeeping only: the app ships no telemetry and runs nothing on a user's
+# machine. See docs/analytics-snapshot.md.
+
+on:
+  schedule:
+    # 03:17 UTC daily, off the hour so it does not queue with cron spikes.
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: analytics-snapshot
+  cancel-in-progress: false
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Collect snapshot
+        env:
+          # Repository traffic requires the "Administration: read" permission,
+          # which the default GITHUB_TOKEN cannot be granted. Without the
+          # secret this step still archives release counters and emits a
+          # warning instead of failing.
+          TRAFFIC_TOKEN: ${{ secrets.TRAFFIC_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 scripts/snapshot-analytics.py
+
+      - name: Commit snapshot
+        run: |
+          set -euo pipefail
+
+          if [[ -z "$(git status --porcelain analytics)" ]]; then
+            echo "No analytics changes to commit."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add analytics
+          git commit -m "chore(analytics): snapshot $(date -u +%F)"
+          git push
