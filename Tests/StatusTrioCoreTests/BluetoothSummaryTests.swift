@@ -9,20 +9,58 @@ final class BluetoothSummaryTests: XCTestCase {
         id: String = "1",
         name: String,
         kind: BluetoothDeviceKind = .audio,
-        isConnected: Bool = true
+        isConnected: Bool = true,
+        airPodsModel: AirPodsModel? = nil
     ) -> BluetoothDevice {
-        BluetoothDevice(id: id, name: name, kind: kind, isConnected: isConnected)
+        BluetoothDevice(
+            id: id,
+            name: name,
+            kind: kind,
+            isConnected: isConnected,
+            airPodsModel: airPodsModel
+        )
     }
 
     /// The deciding rule is "AirPods only": it drives both the text and whether
-    /// the battery reader runs at all.
-    func testOnlyConnectedAudioDevicesNamedAirPodsCountAsAirPods() {
+    /// the battery reader runs at all. Either signal identifies the model — the
+    /// product ID the profiler reports, or the name — and either one alone is
+    /// enough.
+    func testOnlyConnectedAudioDevicesIdentifiedAsAirPodsCountAsAirPods() {
         XCTAssertTrue(device(name: "AirPods Pro").isAirPods)
         XCTAssertTrue(device(name: "airpods max").isAirPods)
+        XCTAssertTrue(device(name: "小王的耳机", airPodsModel: .airPods).isAirPods)
         XCTAssertFalse(device(name: "Sony WH-1000XM5").isAirPods)
         XCTAssertFalse(device(name: "Magic Mouse", kind: .peripheral).isAirPods)
+        // The audio class is required: another class never claims a level, even
+        // if an AirPods product ID reached it.
+        XCTAssertFalse(device(name: "Magic Mouse", kind: .peripheral, airPodsModel: .airPods).isAirPods)
         // A paired but disconnected accessory is not what the row reports.
         XCTAssertFalse(device(name: "AirPods Pro", isConnected: false).isAirPodsSummaryCandidate)
+        XCTAssertFalse(
+            device(name: "小王的耳机", isConnected: false, airPodsModel: .airPods)
+                .isAirPodsSummaryCandidate
+        )
+    }
+
+    /// A user who renamed their AirPods gets no help from the name, so the row
+    /// has to report the level the product ID identifies.
+    func testRenamedAirPodsShowTheirBatteryLevel() {
+        let summary = BluetoothSummary.presentation(
+            availability: .available,
+            devices: [device(id: "AA", name: "小王的耳机", airPodsModel: .airPods)],
+            batteryLevels: ["AA": BluetoothBatteryLevel(
+                deviceAddress: "AA", main: nil, left: 80, right: 75, caseLevel: 60)]
+        )
+
+        XCTAssertEqual(summary.deviceNames, "小王的耳机 · L 80% · R 75% · Case 60%")
+        XCTAssertTrue(summary.hasConnectedAirPods)
+    }
+
+    /// Another vendor's earbuds keep the name-only rule, and a device whose
+    /// product ID is not an AirPods never starts a level read.
+    func testAnotherVendorsAudioDeviceIsNotAnAirPods() {
+        XCTAssertFalse(device(name: "EDIFIER LolliPods 2022版").isAirPods)
+        XCTAssertFalse(device(name: "小王的耳机").isAirPodsSummaryCandidate)
     }
 
     func testUnauthorizedBluetoothAsksForPermissionInsteadOfListingDevices() {

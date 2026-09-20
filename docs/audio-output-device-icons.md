@@ -105,6 +105,11 @@ hint the name carried. AirPods (2nd generation, A2031/A2032) is the case that
 reported this: renamed to something like `小王的耳机`, it fell back to the
 generic headphones glyph.
 
+The same identification decides whether the popover's Bluetooth row claims a
+battery read, so a renamed AirPods reports its levels instead of staying silent
+about them. The name remains the fallback signal there for a device whose
+product ID is not in the table.
+
 The table handles 1st through 4th generation, the Pro family, and Max. The
 1st/2nd/3rd generation, Pro, and Max rows are the tags the shipping macOS 26
 `CoreTypes.bundle` declares; the 4th generation and Pro 3 rows follow Apple's

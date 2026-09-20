@@ -373,13 +373,14 @@ struct BluetoothDevice: Identifiable, Equatable, Sendable {
         self.airPodsModel = airPodsModel
     }
 
-    /// AirPods are identified by name. The audio class alone would also match
-    /// speakers and other headphones, and every AirPods name contains
-    /// "AirPods". `airPodsModel` carries the product ID that identifies the
-    /// model for the row icon; it is deliberately not part of this claim, so a
-    /// renamed AirPods keeps its glyph but still gets no battery level.
+    /// AirPods are identified by the product ID the Bluetooth registry reports
+    /// for the model, or by name for a device that carries no product ID. The
+    /// audio class alone would also match speakers and other headphones, so one
+    /// of the two signals has to name an AirPods. The product ID is what keeps
+    /// this working after a rename, when the name says nothing.
     var isAirPods: Bool {
-        kind == .audio && name.lowercased().contains("airpods")
+        guard kind == .audio else { return false }
+        return airPodsModel != nil || name.lowercased().contains("airpods")
     }
 
     /// Whether the popover summary may report this device's battery level.
