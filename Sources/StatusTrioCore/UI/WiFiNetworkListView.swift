@@ -283,7 +283,7 @@ private struct WiFiPasswordSheet: View {
             if network.security.isEnterprise {
                 Text(localization.string(.wifiEnterpriseUnsupported))
                     .font(.caption)
-                Button(localization.string(.wifiActionOpenSettings), action: dismiss.callAsFunction)
+                Button(localization.string(.wifiActionOpenSettings), action: { dismiss() })
             } else {
                 SecureField(localization.string(.wifiPassword), text: $password)
                 Toggle(localization.string(.wifiRememberPassword), isOn: $rememberPassword)
@@ -291,7 +291,7 @@ private struct WiFiPasswordSheet: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 HStack {
-                    Button(localization.string(.commonCancel), action: dismiss.callAsFunction)
+                    Button(localization.string(.commonCancel), action: { dismiss() })
                     Spacer()
                     Button(localization.string(.wifiJoin)) {
                         onConnect(password, rememberPassword)

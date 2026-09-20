@@ -48,7 +48,7 @@ struct VolumeControlsView: View {
                 Slider(
                     value: $draftVolume,
                     in: 0...1,
-                    onEditingChanged: handleVolumeEditing
+                    onEditingChanged: { handleVolumeEditing($0) }
                 )
                 .tint(volume.isMuted ? Color.secondary : Color.accentColor)
                 .disabled(!isEnabled)
@@ -75,7 +75,7 @@ struct VolumeControlsView: View {
                 )
             }
         }
-        .onAppear(perform: synchronizeVolume)
+        .onAppear(perform: { synchronizeVolume() })
         .onChange(of: draftVolume) { _, newValue in
             updateVolume(newValue)
         }

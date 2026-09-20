@@ -282,3 +282,63 @@ Swift Testing 全绿；通用 release 构建的两个切片都是 `minos 15.0 / 
 Swift Testing 全绿，两个切片均为 `minos 15.0 / sdk 26.0`，DMG 与 artifact 上传成功，未发布。
 `build=12` 大于线上 appcast 的最大构建号 9，也大于 `Support/Info.plist` 当前记录的 11。
 根因与工程细节见 [fullscreen-popover-investigation.md](fullscreen-popover-investigation.md)。
+
+### 方法引用改写的预检（2026-09-20）
+
+`StatusBarController` 的 8 个弹窗回调、`SettingsDisclosureRow` 的 `toggle`、以及
+`WiFiNetworkListView` 的两处 `dismiss.callAsFunction` 原本以方法引用（而非显式闭包）的形式
+作为函数值传递，这正是 §2 的 `@MainActor` 范围，也是 `34758026894` 崩溃的同一类代码形状。
+本次在分支 `fix/class-a-hardening`（计划 `docs/superpowers/plans/2026-09-20-toolchain-method-reference-compliance.md`）
+上跑了一次非发布预检
+[`35495412938`](https://github.com/lingyired/status-trio/actions/runs/35495412938)
+（`version=1.3.0`、**`build=13`**、`publish=false`）：
+
+- `Validate appcast notes`、`Run tests`、`Build, sign, notarize, and publish`、
+  `Upload release artifacts` 全部成功；`Validate Sparkle signing secret` 与 `Prepare release notes`
+  按 `publish=false` 跳过——即未发布 Release、未改动 appcast。
+- `Run tests`：**624 个 XCTest（6 跳过，0 失败）** 与 **163 个 Swift Testing / 27 个 suite** 全绿。
+- 两个切片均为 `minos 15.0 / sdk 26.0`，即 macOS 26 SDK 断言成立。
+- `build=13` 大于线上 appcast 的最大构建号 9，也大于 `Support/Info.plist` 当前记录的 11。
+
+这次预检同时验证了新增的强制门禁：`Tests/StatusTrioCoreTests/ForbiddenPatternGuardTests.swift`
+在 `swift test` 内运行 `scripts/check-forbidden-patterns.sh` 及其 `--self-test`，因此**在守卫的覆盖范围内**
+重新出现的方法引用会让 `Run tests` 失败，无需改动任何 workflow 文件。守卫当前的覆盖范围与非目标
+（脚本头部列有同一份清单）是：
+
+- 会扫描的函数值位置：参数标签 `action:`/`get:`/`set:`/`using:`/`block:`/`perform:`、
+  `request*:` 与 `open*:` 两个回调族、`on[A-Z]…:` 回调族（锚定在词边界上，因此
+  `connectionOptions:`、`iconSize:` 不会误判成 `on…:`），以及
+  `.map`/`.compactMap`/`.filter`/`.forEach`/`.sink`/`.assign` 与 `.callAsFunction`。
+- 判定规则：带接收者的**点号成员引用**（`receiver.method`）只要 `Sources/` 下存在同名 `func`
+  声明，不论参数个数都算违规——这正是 `34758026894` 的崩溃形状
+  `Binding(get: { 0 }, set: loc.setPreference)`；**裸标识符**仍要求 `Sources/` 下存在零参数
+  `func <name>()`，唯一的例外是 `on[A-Z]…:` 回调族（该族期望的闭包本身带参数，例如
+  `Slider(onEditingChanged: (Bool) -> Void)`，所以 `onEditingChanged: handleVolumeEditing`
+  算违规）。其余非目标见脚本头部。
+- **不覆盖**：`Tests/` 下的任何代码。扫描只遍历 `$ROOT/Sources`，所以守卫通过并不代表测试目标里
+  没有方法引用；编译层面的最终判据仍然是本预检
+  （`swift test` + `swift build -c release` + 非发布 release workflow）。
+
+#### 加宽后的复核（`build=14`）
+
+终审发现守卫的覆盖范围小于分支的声明：`StatusPopoverView` 的三个 `store.*` 回调
+（`onVolumeChange`/`onToggleMute`/`onSelectOutputDevice`）、`VolumeControlsView` 的
+`onEditingChanged` 与 `perform: synchronizeVolume`、`IconGuideView` 的 `perform: restartPulse`
+共六处仍是方法引用，而 `34758026894` 的原始崩溃形状（`Binding.set: … setPreference`，**带一个
+参数**）当时被判为 `external` 而漏检。这六处已改为显式闭包，并按上一节所述的规则加宽守卫
+（点号成员引用不再受零参数规则限制，新增 `perform:` 与 `on[A-Z]…:`），`--self-test` 由
+6/6 + 7/7 变为 **10/10 + 7/7**。
+
+改完之后重跑非发布预检
+[`35496776064`](https://github.com/lingyired/status-trio/actions/runs/35496776064)
+（`version=1.3.0`、**`build=14`**、`publish=false`）：`Validate appcast notes`、`Run tests`、
+`Build, sign, notarize, and publish`、`Upload release artifacts` 全部成功，624 个 XCTest
+（6 跳过，0 失败）与 163 个 Swift Testing / 27 个 suite 全绿，两个切片仍为
+`minos 15.0 / sdk 26.0`，未发布 Release、未改动 appcast。
+**两次预检对应加宽前后的两个 HEAD，合并时应以 `35496776064` 为准。**
+
+守卫仍有两个已知的、当前不触发的假阳性路径，作为残留项记录而非继续扩大改动范围：一是点号分支
+先于「转发闭包」豁免判断，因此 `Button(action: self.openSettings)` 这类**点号**转发闭包，在
+`Sources/` 下恰好存在同名 `func openSettings()` 时会被误判为违规；二是转发的声明形状要求写成
+`label name: … ->`，因此省略外部标签的闭包参数（`func f(read: (…) -> …)`）不再被豁免。两者在
+当前代码树上都不产生任何输出（守卫退出 0），一旦出现按脚本头部的 `ALLOWED` 名单逐条标注即可。

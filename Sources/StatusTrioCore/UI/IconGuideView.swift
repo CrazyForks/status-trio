@@ -410,7 +410,7 @@ struct IconGuideView: View {
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)
         }
-        .onAppear(perform: restartPulse)
+        .onAppear(perform: { restartPulse() })
         .onChange(of: selectedPart) { _, _ in
             restartPulse()
         }
