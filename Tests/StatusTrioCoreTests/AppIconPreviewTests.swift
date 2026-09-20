@@ -35,6 +35,23 @@ final class AppIconPreviewTests: XCTestCase {
         XCTAssertTrue(alphaInfo == .premultipliedLast || alphaInfo == .last)
     }
 
+    func testBundledAppIconMatchesTheApprovedBluetoothColoredPreview() throws {
+        let appIconURL = URL(fileURLWithPath: "Support/AppIcon.png")
+        let approvedPreviewURL = URL(fileURLWithPath: "screenshots/status-trio-app-icon-preview.png")
+
+        XCTAssertTrue(
+            FileManager.default.fileExists(atPath: appIconURL.path),
+            "The app bundle must be built from Support/AppIcon.png."
+        )
+        guard FileManager.default.fileExists(atPath: appIconURL.path) else { return }
+
+        XCTAssertEqual(
+            try Data(contentsOf: appIconURL),
+            try Data(contentsOf: approvedPreviewURL),
+            "The bundled App Icon must exactly match the approved Bluetooth-colored preview."
+        )
+    }
+
     func testWritesRequestedOutputWhenEnvironmentIsSet() throws {
         guard let outputPath = ProcessInfo.processInfo.environment["STATUS_TRIO_APP_ICON_PREVIEW"] else {
             throw XCTSkip("Set STATUS_TRIO_APP_ICON_PREVIEW to write the App Icon preview.")
