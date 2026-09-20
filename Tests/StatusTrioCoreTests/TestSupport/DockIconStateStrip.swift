@@ -4,8 +4,8 @@ import Foundation
 @testable import StatusTrioCore
 
 /// Renders eight representative Dock states as one text-free horizontal strip.
-/// The background style intentionally alternates dark/light so the same live
-/// glyph can be compared across both appearances at a glance.
+/// The background styles are arranged so the same live glyph can be compared
+/// across both appearances at a glance.
 @MainActor
 enum DockIconStateStrip {
     struct State {
@@ -24,6 +24,17 @@ enum DockIconStateStrip {
 
         var usesBluetoothVolumeColor: Bool {
             usesBluetoothAudio && bluetoothAudioOptions.usesVolumeColor
+        }
+
+        func withBackgroundStyle(_ backgroundStyle: DockIconBackgroundStyle) -> State {
+            State(
+                backgroundStyle: backgroundStyle,
+                status: status,
+                batteryOptions: batteryOptions,
+                connectionOptions: connectionOptions,
+                volumeOptions: volumeOptions,
+                bluetoothAudioOptions: bluetoothAudioOptions
+            )
         }
     }
 
@@ -100,17 +111,43 @@ enum DockIconStateStrip {
         )
     ]
 
-    static func pngData(scale: CGFloat = 2) throws -> Data {
+    /// Reuses the original eight states while arranging their backgrounds symmetrically.
+    /// The original `states` array remains unchanged for the previously generated strip.
+    static let symmetricStates: [State] = {
+        let backgroundStyles: [DockIconBackgroundStyle] = [.dark, .light, .dark, .light, .light, .dark, .light, .dark]
+        return states.enumerated().map { index, state in
+            state.withBackgroundStyle(backgroundStyles[index])
+        }
+    }()
+
+    static func pngData(
+        for renderStates: [State] = Self.states,
+        scale: CGFloat = 2,
+        cornerRadius: CGFloat = 0
+    ) throws -> Data {
         let canvasWidth = horizontalMargin * 2
-            + iconSize * CGFloat(states.count)
-            + gap * CGFloat(states.count - 1)
+            + iconSize * CGFloat(renderStates.count)
+            + gap * CGFloat(renderStates.count - 1)
         let context = try SheetCanvas.makeContext(width: canvasWidth, height: canvasHeight, scale: scale)
+
+        // Keep the default output square-cornered for the original reference
+        // image; the README variant opts into a subtle transparent corner.
+        if cornerRadius > 0 {
+            let bounds = CGRect(x: 0, y: 0, width: canvasWidth, height: canvasHeight)
+            context.addPath(CGPath(
+                roundedRect: bounds,
+                cornerWidth: cornerRadius,
+                cornerHeight: cornerRadius,
+                transform: nil
+            ))
+            context.clip()
+        }
 
         context.setFillColor(SheetCanvas.color(0.93, 0.93, 0.95))
         context.fill(CGRect(x: 0, y: 0, width: canvasWidth, height: canvasHeight))
 
         let y = verticalMargin
-        for (index, state) in states.enumerated() {
+        for (index, state) in renderStates.enumerated() {
             guard let image = DockIconRenderer.image(
                 status: state.status,
                 options: state.batteryOptions,
