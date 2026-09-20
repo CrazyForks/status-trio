@@ -981,6 +981,8 @@ Expected: all tests pass, the release build succeeds, no whitespace errors, and 
 
 - [ ] **Step 5: Measure, and record both numbers in the commit message**
 
+> **⏳ Outstanding owner action** — the before/after CoreWLAN scan count is a merge gate and no commit on this branch carries it. The owner must either run it or explicitly waive it before merging. The procedure is the `pgrep -x networksetup` loop below: 12 samples 5 s apart with the Wi-Fi page open, then the same again after backing out to the summary. The dev bundle needs its own run, because the sampled process must be the build under test rather than the installed copy. No number is recorded here.
+
 With the Wi-Fi page open for 60 seconds, count the CoreWLAN scans the build before the change and the build after it perform. The scan count is observable from the injected `FakeWiFiNetworkScanner` in tests and, on the running app, from the `networksetup` subprocesses each scan spawns:
 
 ```bash
