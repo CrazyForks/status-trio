@@ -43,7 +43,11 @@ final class SettingsStore: ObservableObject {
     static let ringStrokeStyleDefaultsKey = "ringStrokeStyle"
 
     static let refreshIntervalRange: ClosedRange<Double> = 5...60
-    static let defaultRefreshIntervalSeconds: Double = 5
+    /// The fallback poll sits behind push channels, so its steady-state cadence
+    /// is a watchdog rather than the primary update path. 15 seconds keeps the
+    /// icon honest without waking the CPU every 5; 5 stays available in
+    /// `refreshIntervalRange` for anyone who wants the old cadence.
+    static let defaultRefreshIntervalSeconds: Double = 15
     static let refreshIntervalDefaultsKey = "statusRefreshIntervalSeconds"
 
     static let outputDeviceLimitRange: ClosedRange<Int> = 1...20

@@ -51,7 +51,7 @@ final class SystemStatusStore: ObservableObject {
         wifiMonitor: any WiFiMonitoring,
         connectionMonitor: (any NetworkConnectionMonitoring)? = nil,
         volumeMonitor: any VolumeMonitoring,
-        refreshInterval: Duration = .seconds(5),
+        refreshInterval: Duration = .seconds(15),
         nameResolutionTimeout: Duration = .milliseconds(1500),
         sleep: @escaping @Sendable (Duration) async throws -> Void = { interval in
             try await Task.sleep(

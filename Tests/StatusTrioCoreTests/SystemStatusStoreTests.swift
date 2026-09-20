@@ -769,6 +769,23 @@ final class SystemStatusStoreTests: XCTestCase {
         XCTAssertEqual(SystemStatusStore.refreshSleepTolerance(for: .seconds(1)), .milliseconds(200))
     }
 
+    func testFallbackPollDefaultsToFifteenSeconds() async {
+        let sleeper = ManualSleeper()
+        let store = SystemStatusStore(
+            batteryMonitor: FakeBatteryMonitor(),
+            wifiMonitor: FakeWiFiMonitor(),
+            volumeMonitor: FakeVolumeMonitor(),
+            sleep: { duration in await sleeper.sleep(duration) }
+        )
+
+        store.start()
+        await sleeper.waitForCallCount(1)
+
+        XCTAssertEqual(sleeper.durations.first, .seconds(15))
+        store.stop()
+        sleeper.releaseAll()
+    }
+
     func testStopPreventsFurtherPeriodicRefresh() async {
         let battery = FakeBatteryMonitor()
         let wifi = FakeWiFiMonitor()
