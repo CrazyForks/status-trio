@@ -49,11 +49,25 @@ final class SystemStatusStore: ObservableObject {
     private var fallbackTickCount = 0
     private var popupPublishTask: Task<Void, Never>?
     private var wifiNameResolutionTask: Task<Void, Never>?
+    /// Teardown-owned notification registrations.
+    ///
+    /// `deinit` is nonisolated, so these are `nonisolated(unsafe)`: they are only
+    /// ever mutated on the main actor while the store is alive, and the one
+    /// operation the teardown performs on them —
+    /// `NotificationCenter.removeObserver(_:)` — is safe to call from any
+    /// thread. This mirrors the existing `wakeObserver` pattern and avoids
+    /// `MainActor.assumeIsolated`, which is a fatal assertion rather than a hop
+    /// if the last reference is released off the main thread.
     nonisolated(unsafe) private var wakeObserver: NSObjectProtocol?
+    nonisolated(unsafe) private var displaySleepObserver: NSObjectProtocol?
+    nonisolated(unsafe) private var displayWakeObserver: NSObjectProtocol?
     private var lastPublishedSnapshot: StatusSnapshot?
     private var hasStarted = false
     private var hasStopped = false
     @Published private(set) var isPopoverVisible = false
+    /// True while the display is asleep. The fallback poll skips its work then,
+    /// because no menu bar or Dock tile is on screen to keep fresh.
+    @Published private(set) var isDisplayAsleep = false
     private var isSettingsVisible = false
     private var isBluetoothEnabled = false
     private var isBluetoothDetailsOpen = false
@@ -102,6 +116,12 @@ final class SystemStatusStore: ObservableObject {
         if let wakeObserver {
             wakeNotificationCenter.removeObserver(wakeObserver)
         }
+        if let displaySleepObserver {
+            wakeNotificationCenter.removeObserver(displaySleepObserver)
+        }
+        if let displayWakeObserver {
+            wakeNotificationCenter.removeObserver(displayWakeObserver)
+        }
         monitorTasks.forEach { $0.cancel() }
         refreshTask?.cancel()
         popupPublishTask?.cancel()
@@ -120,6 +140,29 @@ final class SystemStatusStore: ObservableObject {
         ) { [weak self] _ in
             Task { @MainActor [weak self] in
                 guard let self else { return }
+                self.recoverAll()
+                self.refreshAll()
+            }
+        }
+
+        displaySleepObserver = wakeNotificationCenter.addObserver(
+            forName: NSWorkspace.screensDidSleepNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.isDisplayAsleep = true
+            }
+        }
+
+        displayWakeObserver = wakeNotificationCenter.addObserver(
+            forName: NSWorkspace.screensDidWakeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.isDisplayAsleep = false
                 self.recoverAll()
                 self.refreshAll()
             }
@@ -185,6 +228,14 @@ final class SystemStatusStore: ObservableObject {
         if let wakeObserver {
             wakeNotificationCenter.removeObserver(wakeObserver)
             self.wakeObserver = nil
+        }
+        if let displaySleepObserver {
+            wakeNotificationCenter.removeObserver(displaySleepObserver)
+            self.displaySleepObserver = nil
+        }
+        if let displayWakeObserver {
+            wakeNotificationCenter.removeObserver(displayWakeObserver)
+            self.displayWakeObserver = nil
         }
 
         batteryDetails.deactivate()
@@ -353,7 +404,10 @@ final class SystemStatusStore: ObservableObject {
     /// steady-state poll and only pays for what the menu bar icon and the Dock
     /// icon are currently drawing.
     private func fallbackRefreshTick() {
-        guard !hasStopped else { return }
+        // Skipping the work is enough: the timer keeps ticking, and the display
+        // wake notification is what resumes the refreshes, so a missed
+        // notification cannot leave the poll stopped.
+        guard !hasStopped, !isDisplayAsleep else { return }
         fallbackTickCount &+= 1
         batteryMonitor.refresh()
 

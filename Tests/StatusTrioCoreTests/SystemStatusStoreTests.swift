@@ -904,6 +904,48 @@ final class SystemStatusStoreTests: XCTestCase {
         sleeper.releaseAll()
     }
 
+    func testFallbackTickSkipsWhileTheDisplayIsAsleepAndRefreshesOnDisplayWake() async {
+        let battery = FakeBatteryMonitor()
+        let wifi = FakeWiFiMonitor()
+        let volume = FakeVolumeMonitor()
+        let sleeper = ManualSleeper()
+        let displayCenter = NotificationCenter()
+        let store = SystemStatusStore(
+            batteryMonitor: battery,
+            wifiMonitor: wifi,
+            volumeMonitor: volume,
+            refreshInterval: .seconds(60),
+            sleep: { _ in await sleeper.sleep() },
+            wakeNotificationCenter: displayCenter
+        )
+
+        store.start()
+        displayCenter.post(name: NSWorkspace.screensDidSleepNotification, object: nil)
+        // The observer hops through the main actor, so wait for the flag before
+        // releasing the tick that must be skipped.
+        await waitUntil { store.isDisplayAsleep }
+
+        await sleeper.waitForCallCount(1)
+        sleeper.releaseNext()
+        await sleeper.waitForCompletionCount(1)
+        await sleeper.waitForCallCount(2)
+
+        XCTAssertEqual(battery.refreshCount, 0, "a sleeping display has no menu bar to keep fresh")
+        XCTAssertEqual(wifi.refreshCount, 0)
+        XCTAssertEqual(volume.refreshCount, 0)
+
+        displayCenter.post(name: NSWorkspace.screensDidWakeNotification, object: nil)
+        await waitUntil { battery.refreshCount == 1 }
+
+        XCTAssertFalse(store.isDisplayAsleep)
+        XCTAssertEqual(wifi.refreshCount, 1)
+        XCTAssertEqual(volume.refreshCount, 1)
+        XCTAssertEqual(battery.recoverCount, 1, "the display wake resynchronizes the monitors")
+
+        store.stop()
+        sleeper.releaseAll()
+    }
+
     func testWakeNotificationRefreshesAllMonitorsExactlyOnce() async {
         let battery = FakeBatteryMonitor()
         let wifi = FakeWiFiMonitor()
@@ -969,9 +1011,9 @@ final class SystemStatusStoreTests: XCTestCase {
         battery.onRefresh = { noRefresh.fulfill() }
 
         store.start()
-        XCTAssertEqual(wakeCenter.addCount, 1)
+        XCTAssertEqual(wakeCenter.addCount, 3)
         store.stop()
-        XCTAssertEqual(wakeCenter.removeCount, 1)
+        XCTAssertEqual(wakeCenter.removeCount, 3)
         wakeCenter.post(
             name: NSWorkspace.didWakeNotification,
             object: nil
