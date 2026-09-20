@@ -342,3 +342,32 @@ Swift Testing 全绿，两个切片均为 `minos 15.0 / sdk 26.0`，DMG 与 arti
 `Sources/` 下恰好存在同名 `func openSettings()` 时会被误判为违规；二是转发的声明形状要求写成
 `label name: … ->`，因此省略外部标签的闭包参数（`func f(read: (…) -> …)`）不再被豁免。两者在
 当前代码树上都不产生任何输出（守卫退出 0），一旦出现按脚本头部的 `ALLOWED` 名单逐条标注即可。
+
+### 状态轮询调度的预检（2026-09-20）
+
+`SystemStatusStore` 的兜底轮询原本每 5 秒无条件唤醒一次，且 `Task.sleep` 没有
+`tolerance`，无论 popover 是否打开、显示器是否睡眠都照跑。本次在分支
+`fix/class-a-polling`（计划 `docs/superpowers/plans/2026-09-20-status-poll-scheduling.md`）
+上做的改动是：给兜底 sleep 加 `interval / 5` 的 tolerance；把默认间隔由 5 秒提到 15 秒
+（可调范围仍是 5...60 秒，用户选过的值仍然优先）；无可见界面时只刷新电池，Wi-Fi 与音量
+改到每第 4 个 tick；显示器睡眠时整个 tick 跳过，任一唤醒通知都会清掉该标志并先
+`recoverAll()` 再 `refreshAll()`；`applyVolume` 在值未变化时不再重复发布 `liveVolume`。
+
+这一步牵涉 `@MainActor` 状态与 `deinit`（新增两个 observer token，仅由 `deinit` 与 `stop()`
+移除），因此按规则跑了非发布预检
+[`35513133152`](https://github.com/lingyired/status-trio/actions/runs/35513133152)
+（`version=1.3.0`、**`build=15`**、`publish=false`）：`Validate appcast notes`、
+`Run tests`、`Build, sign, notarize, and publish`、`Upload release artifacts` 全部成功，
+**636 个 XCTest（6 跳过，0 失败）** 与 **163 个 Swift Testing / 27 个 suite** 全绿，
+两个切片均为 `minos 15.0 / sdk 26.0`，未发布 Release、未改动 appcast。
+
+`build=15` 是因为 `13`、`14` 已被方法引用改写的两次预检占用；它仍大于线上 appcast 的
+最大构建号 9 与 `Support/Info.plist` 记录的 11。本轮没有用户可见的行为回归：
+轮询节奏本身不是可见特性，菜单栏图标仍由推送通道更新，用户若想恢复旧节奏可在设置里选 5 秒。
+
+功耗对比只记录了**改动前**的基线（线上安装的 1.2.1/10，空闲采样 20 次：平均 CPU 0.125 %、
+RSS 25 MB、累计 idle wakeups 0；另一次在界面打开状态下的采样为平均 CPU 0.225 %、
+RSS 134 MB、20 秒累计 240 次 idle wakeups——两次采样条件不同，不能互相比较）。
+**改动后**的采样需要在开发 bundle 上运行新构建才能取得（`scripts/build-worktree.sh` 会使用
+独立的 dev bundle id），为了不在维护者的机器上多出一个菜单栏实例并触发权限弹窗，本次未执行，
+留给发布前由维护者按同样命令补测。
