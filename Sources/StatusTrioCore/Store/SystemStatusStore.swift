@@ -10,12 +10,22 @@ final class SystemStatusStore: ObservableObject {
     /// charging state are drawn into the menu bar icon and cannot go stale.
     /// Wi-Fi and volume have push channels (CoreWLAN events, the network path
     /// monitor, CoreAudio property listeners) and are drawn into the same icon,
-    /// so while no surface that shows their details is on screen they are
+    /// so while neither the popover nor the Settings window is open they are
     /// refreshed every fourth tick as a watchdog against a missed event. Four
     /// ticks are 60 seconds at the default interval, 20 at the 5-second minimum
     /// and 240 at the 60-second maximum, next to a push path that has already
     /// reported every change it saw.
     static let hiddenFallbackTickStride = 4
+
+    /// How many consecutive fallback ticks the display-asleep flag may skip
+    /// before one tick runs anyway. A display-only sleep (screen saver, the
+    /// display-sleep timer, or a Mac whose system sleep is off) is cleared only
+    /// by `screensDidWakeNotification`; if that single notification is lost, an
+    /// unbounded skip would freeze the battery reading drawn into the menu bar
+    /// icon for the rest of the session. Twenty ticks are five minutes at the
+    /// default interval, so a lost notification costs at most one refresh per
+    /// cap.
+    static let maximumDisplayAsleepSkips = 20
 
     /// Tolerance for the fallback poll. Without one, macOS must wake the CPU on
     /// an exact schedule to satisfy the timer, which is exactly what an idle
@@ -47,6 +57,11 @@ final class SystemStatusStore: ObservableObject {
     private var monitorTasks: [Task<Void, Never>] = []
     private var refreshTask: Task<Void, Never>?
     private var fallbackTickCount = 0
+    /// Consecutive fallback ticks skipped because the display was asleep. Reset
+    /// by either wake notification and whenever a tick actually runs, so
+    /// `maximumDisplayAsleepSkips` bounds how long a lost display-wake
+    /// notification can stop the poll.
+    private var displayAsleepSkipCount = 0
     private var popupPublishTask: Task<Void, Never>?
     private var wifiNameResolutionTask: Task<Void, Never>?
     /// Teardown-owned notification registrations.
@@ -148,6 +163,7 @@ final class SystemStatusStore: ObservableObject {
                 // over-polling is the safe direction, permanent staleness is
                 // not.
                 self.isDisplayAsleep = false
+                self.displayAsleepSkipCount = 0
                 self.recoverAll()
                 self.refreshAll()
             }
@@ -171,6 +187,7 @@ final class SystemStatusStore: ObservableObject {
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 self.isDisplayAsleep = false
+                self.displayAsleepSkipCount = 0
                 self.recoverAll()
                 self.refreshAll()
             }
@@ -412,12 +429,20 @@ final class SystemStatusStore: ObservableObject {
     /// steady-state poll and only pays for what the menu bar icon and the Dock
     /// icon are currently drawing.
     private func fallbackRefreshTick() {
-        // Asleep only skips this tick's work: the timer keeps ticking and
-        // neither the tick counter nor the hidden stride advances, so the
-        // watchdog cadence resumes unchanged. Both wake notifications
-        // (`didWakeNotification` and `screensDidWakeNotification`) clear the
-        // flag, so no missed notification can leave the poll skipped.
-        guard !hasStopped, !isDisplayAsleep else { return }
+        guard !hasStopped else { return }
+
+        // Asleep skips this tick's work: the timer keeps ticking, the stride
+        // counter does not advance, and either wake notification clears the flag
+        // and resumes full refreshes. The skip must still be bounded, because a
+        // display-only sleep is cleared by `screensDidWakeNotification` alone —
+        // if that one notification is lost, skipping forever would freeze the
+        // battery percentage drawn into the menu bar icon while the display is
+        // on. `maximumDisplayAsleepSkips` runs a tick anyway once per cap.
+        if isDisplayAsleep {
+            displayAsleepSkipCount &+= 1
+            guard displayAsleepSkipCount >= Self.maximumDisplayAsleepSkips else { return }
+        }
+        displayAsleepSkipCount = 0
         fallbackTickCount &+= 1
         batteryMonitor.refresh()
 

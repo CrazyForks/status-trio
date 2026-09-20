@@ -982,6 +982,71 @@ final class SystemStatusStoreTests: XCTestCase {
         sleeper.releaseAll()
     }
 
+    /// Regression: a display-only sleep — a screen saver, the display-sleep
+    /// timer, or any Mac whose system sleep is off — is cleared only by
+    /// `screensDidWakeNotification`. If that one notification is lost, the
+    /// display-asleep flag must not stop the fallback poll for the rest of the
+    /// session: the bounded skip counter runs one tick per cap, so the battery
+    /// percentage drawn into the icon cannot freeze while the display is on.
+    func testFallbackTickSelfHealsAfterTheDisplayAsleepSkipCap() async {
+        let battery = FakeBatteryMonitor()
+        let wifi = FakeWiFiMonitor()
+        let volume = FakeVolumeMonitor()
+        let sleeper = ManualSleeper()
+        let displayCenter = NotificationCenter()
+        let store = SystemStatusStore(
+            batteryMonitor: battery,
+            wifiMonitor: wifi,
+            volumeMonitor: volume,
+            refreshInterval: .seconds(60),
+            sleep: { _ in await sleeper.sleep() },
+            wakeNotificationCenter: displayCenter
+        )
+
+        store.start()
+        displayCenter.post(name: NSWorkspace.screensDidSleepNotification, object: nil)
+        await waitUntil { store.isDisplayAsleep }
+
+        // Drive exactly the cap's worth of ticks and never deliver a wake
+        // notification. Every tick but the last must skip; the last one must run
+        // the battery refresh anyway.
+        let cap = SystemStatusStore.maximumDisplayAsleepSkips
+        for tick in 1...cap {
+            await sleeper.waitForCallCount(tick)
+            sleeper.releaseNext()
+            await sleeper.waitForCompletionCount(tick)
+        }
+        await sleeper.waitForCallCount(cap + 1)
+
+        XCTAssertTrue(store.isDisplayAsleep, "no wake notification was delivered")
+        XCTAssertEqual(
+            battery.refreshCount,
+            1,
+            "the cap must refresh the battery instead of skipping for the rest of the session"
+        )
+        XCTAssertEqual(wifi.refreshCount, 0, "the forced tick is not a hidden-stride tick")
+        XCTAssertEqual(volume.refreshCount, 0)
+
+        // The counter reset with the forced tick, so the next cap's worth of
+        // ticks skips again before the one after it runs: the poll stays bounded
+        // instead of latching on.
+        for tick in (cap + 1)...(cap * 2 - 1) {
+            await sleeper.waitForCallCount(tick)
+            sleeper.releaseNext()
+            await sleeper.waitForCompletionCount(tick)
+        }
+        await sleeper.waitForCallCount(cap * 2)
+
+        XCTAssertEqual(
+            battery.refreshCount,
+            1,
+            "the cap resets the skip counter instead of refreshing on every later tick"
+        )
+
+        store.stop()
+        sleeper.releaseAll()
+    }
+
     /// Regression: the system wake must clear the display-asleep flag on its
     /// own. `screensDidWakeNotification` is the only other path that clears it,
     /// so a wake cycle that delivers only `didWakeNotification` would otherwise
@@ -1006,9 +1071,13 @@ final class SystemStatusStoreTests: XCTestCase {
         wakeCenter.post(name: NSWorkspace.screensDidSleepNotification, object: nil)
         await waitUntil { store.isDisplayAsleep }
 
-        // One tick is parked on the manual sleeper. While the flag is set it
-        // must return without refreshing anything.
+        // The first tick is parked on the manual sleeper. Release it before
+        // asserting, otherwise the tick has not run yet and the assertions below
+        // would hold no matter what the guard does.
         await sleeper.waitForCallCount(1)
+        sleeper.releaseNext()
+        await sleeper.waitForCompletionCount(1)
+        await sleeper.waitForCallCount(2)
 
         XCTAssertEqual(battery.refreshCount, 0, "a sleeping display must skip the tick")
         XCTAssertEqual(wifi.refreshCount, 0)
@@ -1025,16 +1094,25 @@ final class SystemStatusStoreTests: XCTestCase {
         )
         XCTAssertEqual(battery.recoverCount, 1, "the system wake resynchronizes the monitors")
 
-        // The wake refreshed on its own; now wake the parked tick and prove the
-        // poll resumes because the guard no longer blocks it.
+        // The wake refreshed on its own; now release the parked tick and prove
+        // the poll resumes because the guard no longer blocks it.
         sleeper.releaseNext()
         await waitUntil { battery.refreshCount == 2 }
 
         XCTAssertEqual(battery.refreshCount, 2, "the fallback tick must resume after a system wake")
+        // The two counts below come from different work: `wifi`/`volume` at 1 are
+        // the wake handler's `refreshAll()`. The resumed tick is the first tick of
+        // a new stride cycle, so it refreshes the battery only and adds nothing to
+        // Wi-Fi or volume.
+        XCTAssertEqual(
+            wifi.refreshCount,
+            1,
+            "only the wake handler's refreshAll() may refresh Wi-Fi here"
+        )
         XCTAssertEqual(
             volume.refreshCount,
             1,
-            "the resumed tick is the first stride tick, so the watchdog stride must still hold"
+            "only the wake handler's refreshAll() may refresh volume here"
         )
 
         store.stop()
