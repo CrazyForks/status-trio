@@ -55,28 +55,42 @@ struct WiFiServiceNetworkConfiguration {
     }
 }
 
-private struct WiFiScanPayload: Sendable {
+struct WiFiScanPayload: Sendable {
     let networks: [WiFiNetwork]
     let details: WiFiConnectionDetails
 }
 
-private enum WiFiScanWorkerResult: Sendable {
+enum WiFiScanWorkerResult: Sendable {
     case success(WiFiScanPayload)
     case poweredOff
     case noInterface
     case failed
 }
 
-private enum WiFiAssociationWorkerResult: Sendable {
+enum WiFiAssociationWorkerResult: Sendable {
     case success(WiFiConnectionDetails)
     case networkUnavailable
     case timedOut
     case failed
 }
 
+/// The scan, power and association calls the network list needs. CoreWLAN is
+/// synchronous and serialized on the worker's own queue; the protocol exists so
+/// a test can answer instantly and count the scans, which is how the cadence is
+/// observable without sweeping every channel.
+protocol WiFiNetworkScanning: AnyObject {
+    func scan(completion: @escaping @Sendable (WiFiScanWorkerResult) -> Void)
+    func setPower(_ isOn: Bool, completion: @escaping @Sendable (Bool) -> Void)
+    func associate(
+        to network: WiFiNetwork,
+        password: String?,
+        completion: @escaping @Sendable (WiFiAssociationWorkerResult) -> Void
+    )
+}
+
 /// CoreWLAN exposes synchronous scan and association APIs. This worker owns a
 /// serial queue so those calls never run on the main actor and cannot overlap.
-private final class CoreWLANNetworkWorker: @unchecked Sendable {
+private final class CoreWLANNetworkWorker: @unchecked Sendable, WiFiNetworkScanning {
     private let queue = DispatchQueue(label: "StatusTrio.CoreWLANNetworkWorker")
     private let knownNetworkProvider: any WiFiKnownNetworkProviding
 
@@ -372,17 +386,39 @@ final class WiFiNetworkController: ObservableObject {
     @Published private(set) var passwordPromptNetwork: WiFiNetwork?
     @Published private(set) var credentialIssue: WiFiCredentialIssue?
 
-    private let worker = CoreWLANNetworkWorker()
+    private let worker: any WiFiNetworkScanning
     private let credentialWorker: WiFiCredentialWorker
+    private let now: () -> Date
+    /// A full scan sweeps every channel, so the automatic path may not run one
+    /// more often than this. Explicit user actions bypass it.
+    private let minimumScanInterval: TimeInterval
+    private let periodicRefreshInterval: Duration
+    private let periodicRefreshSleep: @Sendable (Duration) async throws -> Void
     private var scanGate = AsyncRequestGate()
     private var connectionGate = AsyncRequestGate()
     private var pendingNetwork: WiFiNetwork?
     private(set) var isActive = false
+    /// When the last scan started, which is what the interval is measured from.
+    private var lastScanStartedAt: Date?
     private var periodicRefreshTask: Task<Void, Never>?
     private var lastNameAccess: WiFiNameAccess = .notDetermined
 
-    init(credentialStore: any WiFiCredentialStoring = KeychainWiFiPasswordStore()) {
+    init(
+        credentialStore: any WiFiCredentialStoring = KeychainWiFiPasswordStore(),
+        scanWorker: any WiFiNetworkScanning = CoreWLANNetworkWorker(),
+        now: @escaping () -> Date = Date.init,
+        minimumScanInterval: TimeInterval = 30,
+        periodicRefreshInterval: Duration = .seconds(30),
+        periodicRefreshSleep: @escaping @Sendable (Duration) async throws -> Void = {
+            try await Task.sleep(for: $0)
+        }
+    ) {
         credentialWorker = WiFiCredentialWorker(store: credentialStore)
+        self.worker = scanWorker
+        self.now = now
+        self.minimumScanInterval = minimumScanInterval
+        self.periodicRefreshInterval = periodicRefreshInterval
+        self.periodicRefreshSleep = periodicRefreshSleep
     }
     deinit {
         periodicRefreshTask?.cancel()
@@ -410,11 +446,33 @@ final class WiFiNetworkController: ObservableObject {
         }
     }
 
+    /// The automatic path: the periodic loop and every Wi-Fi status yield come
+    /// through here. Inside the interval the cached list is kept, because the
+    /// list only changes when the radio or the association changes, and those
+    /// paths call `refreshNow(nameAccess:)`.
     func refresh(nameAccess: WiFiNameAccess? = nil) {
         if let nameAccess { lastNameAccess = nameAccess }
+        guard hasScanElapsed else { return }
+        startScan()
+    }
+
+    /// The explicit path: the refresh button, the radio toggle and a completed
+    /// association. A user asked for this, so it scans even inside the interval.
+    func refreshNow(nameAccess: WiFiNameAccess? = nil) {
+        if let nameAccess { lastNameAccess = nameAccess }
+        startScan()
+    }
+
+    private var hasScanElapsed: Bool {
+        guard let lastScanStartedAt else { return true }
+        return now().timeIntervalSince(lastScanStartedAt) >= minimumScanInterval
+    }
+
+    private func startScan() {
         guard isActive, !state.isScanning, !state.isConnectionFlow else { return }
 
         let request = scanGate.advance()
+        lastScanStartedAt = now()
         state = .scanning
         worker.scan { [weak self] result in
             Task { @MainActor [weak self] in
@@ -620,10 +678,12 @@ final class WiFiNetworkController: ObservableObject {
 
     private func schedulePeriodicRefresh() {
         periodicRefreshTask?.cancel()
+        let interval = periodicRefreshInterval
+        let sleep = periodicRefreshSleep
         periodicRefreshTask = Task { @MainActor [weak self] in
             while !Task.isCancelled {
                 do {
-                    try await Task.sleep(for: .seconds(30))
+                    try await sleep(interval)
                 } catch {
                     return
                 }
