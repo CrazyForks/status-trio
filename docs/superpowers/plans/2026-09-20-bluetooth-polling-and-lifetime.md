@@ -1045,6 +1045,10 @@ git commit -m "fix: poll Bluetooth only while a Bluetooth surface is visible"
 
 ### Task 4: Drive Refreshes From Connect And Disconnect Notifications
 
+> **Riders added 2026-09-20 from the Task 3 review (required, in this task).**
+> 1. **Fix the task-reference `defer` before wiring the monitor into these two functions.** `schedulePeriodicRefresh`'s task body ends with `defer { self?.periodicRefreshTask = nil }` (`BluetoothDeviceController.swift:549`). If a stop/start pair lands in the same main-actor turn, a cancelled task's `defer` nils the reference to a *newer* task, so `isSafetyNetPolling` lies and the new task can no longer be cancelled. Add a generation counter (the same shape as `CoreWLANStatusReader`'s `queueGeneration` / `WiFiMonitor`'s `readGeneration`) so a task only clears the reference when it is still the current one, and add a test that stops and immediately restarts the poll and asserts the new task is still tracked and cancellable.
+> 2. **Fix the new compiler warning** at `BluetoothPollingLifetimeTests.swift:99` (`result of call to 'waitForCallCount(_:timeout:)' is unused`) with `_ = await …`. The repo tracks warnings deliberately and a later plan exists solely to clear them; do not leave the release build's warning set larger than the base.
+
 **Files:**
 - Create: `Sources/StatusTrioCore/Monitoring/BluetoothConnectionEventMonitor.swift`
 - Modify: `Sources/StatusTrioCore/Monitoring/BluetoothDeviceController.swift:465-478` (`schedulePeriodicRefresh` starts the monitor, `stopPeriodicRefresh` stops it), `:247-262` (`init`)
@@ -1529,6 +1533,9 @@ git commit -m "feat: refresh Bluetooth devices from connect and disconnect event
 ---
 
 ### Task 5: Release Observers, The Event Monitor And CoreBluetooth In `deinit`
+
+> **Rider added 2026-09-20 from the Task 3 review (required, in this task).**
+> **Make a leaked view claim unable to sustain the poll.** Task 3's gate is satisfied while *any* claim is held, and the two view tokens (`"bluetooth.summary.surface"`, `"bluetooth.detail.surface"` in `BluetoothDeviceListView`) are released only from SwiftUI `onDisappear`. The popover's content view controller is deliberately retained after close (`StatusBarController.swift:435-437`), so if `onDisappear` is skipped for either token the claim set never empties and the next `activate()`/`receiveSystemState(.available)` restarts a 30 s poll indefinitely — the exact failure this plan exists to remove. Change the gate so the poll requires the popover-level claim (`"bluetooth.popover"`, released on popover close by `SystemStatusStore`) and the view tokens may only *narrow* it, never sustain it on their own; add a test that holds a view token, releases the popover token, and asserts the safety-net poll stops (and that re-holding the popover token resumes it). Do not edit `StatusBarController`: it is owned by other plans in the set, and the popover token already exists.
 
 **Files:**
 - Create: `Sources/StatusTrioCore/Monitoring/SystemEventObserverBag.swift`
