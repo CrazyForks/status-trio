@@ -1874,7 +1874,108 @@ git commit -m "fix: release Bluetooth observers and CoreBluetooth in deinit"
 
 ---
 
-### Task 6: Verification, Release Notes And Preflight
+### Task 6: Retire The Reader Queue And Add A Read Watchdog
+
+Added 2026-09-20 from the Task 2 review. **This task is load-bearing and must land before Task 7.** Task 2 introduced a single-in-flight latch around `worker.read`. If that read's completion never runs, the latch stays set: every later trigger only sets `isRefreshPending`, so the device row freezes for the rest of the session. Routing: `SystemProfilerBluetoothPairedDeviceWorker` runs every read on **one fixed serial queue** (`BluetoothDeviceController.swift:35`, `:48`) and `readSystemProfilerOutput()` has no timeout (`:61-78`), so a hung `system_profiler` wedges that queue — a watchdog alone would be a no-op, because the retry would land behind the hung block on the same queue. The queue must be retired the way `CoreWLANStatusReader` does it (`WiFiStatusReader.swift:22`, `:40-47`), which is what makes `WiFiMonitor`'s watchdog (`WiFiMonitor.swift:452-454`, `:478-484`) actually work.
+
+**Files:**
+- Modify: `Sources/StatusTrioCore/Monitoring/BluetoothDeviceController.swift` (the worker's queue, and the controller's read path)
+- Test: `Tests/StatusTrioCoreTests/BluetoothPollingLifetimeTests.swift` (extend — XCTest, matching this file)
+
+**Interfaces:**
+- Consumes: `ReadWatchdog` (`Sources/StatusTrioCore/Monitoring/ReadWatchdog.swift`: `init(baseTimeout:maxTimeout:sleep:)`, `arm(onTimeout:)`, `recordSuccess()`, `cancel()`), the Task 2 latch (`isDeviceReadInFlight`, `isRefreshPending`, `invalidateDeviceRead()`), and the precedents `WiFiMonitor.refresh()` / `abandonTimedOutRead(token:)` / `CoreWLANStatusReader.read(includeSSID:completion:)`.
+- Produces: `SystemProfilerBluetoothPairedDeviceWorker` retires its queue when `read` is called while a previous read is still outstanding — the new read runs on a fresh `DispatchQueue`, and the abandoned block keeps its own retired queue alive until it eventually returns. The class gains a `queueGeneration` counter for this, mirroring `CoreWLANStatusReader`.
+- Produces: `BluetoothDeviceController` arms a `ReadWatchdog` before each `worker.read`, cancels and records success for an accepted completion, and on timeout abandons the read: bump the read token so the late completion is discarded, release the latch, and start the coalesced follow-up so the next read gets a fresh queue. Timeouts are injectable for tests (same shape as the existing `readTimeoutSleep`/`ReadWatchdog` seams): base 5 s, capped at 60 s.
+- No new public API beyond the worker's existing `read(completion:)`.
+
+- [ ] **Step 1: Write the failing tests**
+
+Add to `Tests/StatusTrioCoreTests/BluetoothPollingLifetimeTests.swift`, using the injected-sleeper style `ReadWatchdogTests.swift` uses (never a real timeout, never a fixed sleep):
+
+```swift
+func testAReadThatNeverCompletesDoesNotWedgeTheLatchForever() async {
+    let reader = StallingBluetoothDeviceReader()   // first read never calls its completion
+    let controller = makeController(reader: reader)
+    controller.activate(nameAccess: .authorized)
+
+    controller.refresh()
+    await waitUntil { reader.readCount == 1 }
+
+    // The watchdog abandons the stalled read: the latch must be released so a
+    // later trigger can start a new read instead of only setting isPending.
+    await releaseWatchdogTimeout()
+    controller.refresh()
+    await waitUntil { reader.readCount == 2 }
+    XCTAssertEqual(reader.readCount, 2, "an abandoned read must not wedge the latch")
+}
+
+func testAnAbandonedReadsLateCompletionIsIgnored() async {
+    let reader = StallingBluetoothDeviceReader()
+    let controller = makeController(reader: reader)
+    controller.activate(nameAccess: .authorized)
+    controller.refresh()
+    await waitUntil { reader.readCount == 1 }
+
+    await releaseWatchdogTimeout()
+    controller.refresh()
+    await waitUntil { reader.readCount == 2 }
+
+    reader.completeFirstRead(with: [.init(name: "Stale", isConnected: true)])  // late arrival
+    await Task.yield()
+    XCTAssertTrue(controller.devices.isEmpty, "a superseded read must not republish devices")
+}
+```
+
+The fake needs a stall switch (`stallNextRead`), a `completeFirstRead(with:)` that calls the stored first completion, and the `readCount` the file's existing fake already exposes.
+
+- [ ] **Step 2: Run the tests and verify RED**
+
+Run: `swift test --filter BluetoothPollingLifetimeTests`
+Expected: `testAReadThatNeverCompletesDoesNotWedgeTheLatchForever` fails on the `readCount == 2` wait (the latch stays set, so no second read starts). `testAnAbandonedReadsLateCompletionIsIgnored` may pass vacuously before the watchdog exists — if it does, say so in the report and keep it as a regression pin rather than claiming a RED you did not get.
+
+- [ ] **Step 3: Retire the worker's queue**
+
+Give `SystemProfilerBluetoothPairedDeviceWorker` the `CoreWLANStatusReader` shape: a `private var queue`, a `private var queueGeneration: UInt64 = 0`, and a `hasOutstandingRead` flag set before `queue.async` and cleared inside the block only when `generation == queueGeneration`. In `read`, retire the queue first when a read is still outstanding:
+
+```swift
+    func read(completion: @escaping @Sendable (BluetoothWorkerResult) -> Void) {
+        // A read that never returned would block this one behind it on the same
+        // serial queue for the lifetime of the process, so retire that queue and
+        // give this read a fresh one. The abandoned block keeps the old queue
+        // alive until it eventually returns.
+        if hasOutstandingRead {
+            queueGeneration &+= 1
+            queue = DispatchQueue(label: "StatusTrio.SystemProfilerBluetoothPairedDeviceWorker")
+        }
+        hasOutstandingRead = true
+        let generation = queueGeneration
+        let currentQueue = queue
+        currentQueue.async { [weak self] in
+            let result: BluetoothWorkerResult = ...
+            if let self, generation == self.queueGeneration { self.hasOutstandingRead = false }
+            completion(result)
+        }
+    }
+```
+
+- [ ] **Step 4: Arm the watchdog in the controller**
+
+Mirror `WiFiMonitor.refresh()`'s wiring: create the watchdog with the injected sleep seam, `arm { [weak self] in self?.abandonTimedOutRead(token: token) }` before `worker.read`, and in the accepted completion `readWatchdog.cancel()` then `readWatchdog.recordSuccess()`. `abandonTimedOutRead(token:)` must ignore a stale token, bump the token so the late completion is discarded, release the latch, and start the coalesced follow-up — the Task 2 test `testSupersededReadReleasesTheLatchAndTheNextRefreshRuns` must keep passing.
+
+- [ ] **Step 5: Run the tests**
+
+Run: `swift test --filter BluetoothPollingLifetimeTests`
+Run: `swift test --filter BluetoothBatteryControllerTests`
+Run: `swift test --filter ReadWatchdogTests`
+Expected: PASS, and the new stall test now sees the second read start.
+
+- [ ] **Step 6: Commit**
+
+Run: `git add Sources/StatusTrioCore/Monitoring/BluetoothDeviceController.swift Tests/StatusTrioCoreTests/BluetoothPollingLifetimeTests.swift && git commit -m "fix(bluetooth): retire the reader queue and watchdog a stalled read"`
+
+---
+
+### Task 7: Verification, Release Notes And Preflight
 
 **Files:**
 - Modify: `release-notes/1.3.0/en.md` (append a section at the end)
