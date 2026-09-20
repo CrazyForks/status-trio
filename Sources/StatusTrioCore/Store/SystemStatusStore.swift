@@ -6,6 +6,17 @@ import Foundation
 final class SystemStatusStore: ObservableObject {
     static let popupDebounceInterval: Duration = .milliseconds(500)
 
+    /// The fallback poll refreshes the battery on every tick: its percentage and
+    /// charging state are drawn into the menu bar icon and cannot go stale.
+    /// Wi-Fi and volume have push channels (CoreWLAN events, the network path
+    /// monitor, CoreAudio property listeners) and are drawn into the same icon,
+    /// so while no surface that shows their details is on screen they are
+    /// refreshed every fourth tick as a watchdog against a missed event. Four
+    /// ticks are 60 seconds at the default interval, 20 at the 5-second minimum
+    /// and 240 at the 60-second maximum, next to a push path that has already
+    /// reported every change it saw.
+    static let hiddenFallbackTickStride = 4
+
     /// Tolerance for the fallback poll. Without one, macOS must wake the CPU on
     /// an exact schedule to satisfy the timer, which is exactly what an idle
     /// menu bar app should not ask for; a fifth of the interval still samples
@@ -35,6 +46,7 @@ final class SystemStatusStore: ObservableObject {
     private let wakeNotificationCenter: NotificationCenter
     private var monitorTasks: [Task<Void, Never>] = []
     private var refreshTask: Task<Void, Never>?
+    private var fallbackTickCount = 0
     private var popupPublishTask: Task<Void, Never>?
     private var wifiNameResolutionTask: Task<Void, Never>?
     nonisolated(unsafe) private var wakeObserver: NSObjectProtocol?
@@ -161,7 +173,7 @@ final class SystemStatusStore: ObservableObject {
                     return
                 }
                 guard !Task.isCancelled else { return }
-                self?.refreshAll()
+                self?.fallbackRefreshTick()
             }
         }
     }
@@ -332,6 +344,21 @@ final class SystemStatusStore: ObservableObject {
     func refreshAll() {
         guard !hasStopped else { return }
         batteryMonitor.refresh()
+        wifiMonitor.refresh()
+        volumeMonitor.refresh()
+    }
+
+    /// One fallback tick. `refreshAll()` remains the unconditional refresh for
+    /// popover opening, Settings opening and wake recovery; this one is the
+    /// steady-state poll and only pays for what the menu bar icon and the Dock
+    /// icon are currently drawing.
+    private func fallbackRefreshTick() {
+        guard !hasStopped else { return }
+        fallbackTickCount &+= 1
+        batteryMonitor.refresh()
+
+        let showsStatusUI = isPopoverVisible || isSettingsVisible
+        guard showsStatusUI || fallbackTickCount % Self.hiddenFallbackTickStride == 0 else { return }
         wifiMonitor.refresh()
         volumeMonitor.refresh()
     }

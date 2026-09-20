@@ -725,9 +725,12 @@ final class SystemStatusStoreTests: XCTestCase {
         sleeper.releaseNext()
         await sleeper.waitForCallCount(2)
 
+        // The popover and the Settings window are both closed, so the battery —
+        // which is drawn into the icon — is refreshed and the two detail-level
+        // monitors wait for the watchdog tick.
         XCTAssertEqual(battery.refreshCount, 1)
-        XCTAssertEqual(wifi.refreshCount, 1)
-        XCTAssertEqual(volume.refreshCount, 1)
+        XCTAssertEqual(wifi.refreshCount, 0)
+        XCTAssertEqual(volume.refreshCount, 0)
 
         store.stop()
         sleeper.releaseAll()
@@ -800,6 +803,9 @@ final class SystemStatusStoreTests: XCTestCase {
         )
 
         store.start()
+        // Opening the popover refreshes everything, and the tick that follows
+        // refreshes everything again while it stays open.
+        store.setPopoverVisible(true)
         await sleeper.waitForCallCount(1)
         sleeper.releaseNext()
         await sleeper.waitForCallCount(2)
@@ -809,9 +815,93 @@ final class SystemStatusStoreTests: XCTestCase {
         await sleeper.waitForCompletionCount(2)
         store.refreshAll()
 
-        XCTAssertEqual(battery.refreshCount, 1)
-        XCTAssertEqual(wifi.refreshCount, 1)
-        XCTAssertEqual(volume.refreshCount, 1)
+        XCTAssertEqual(battery.refreshCount, 2)
+        XCTAssertEqual(wifi.refreshCount, 2)
+        XCTAssertEqual(volume.refreshCount, 2)
+    }
+
+    func testFallbackTickRefreshesBatteryEveryTickAndWiFiAndVolumeOnTheHiddenStride() async {
+        let battery = FakeBatteryMonitor()
+        let wifi = FakeWiFiMonitor()
+        let volume = FakeVolumeMonitor()
+        let sleeper = ManualSleeper()
+        let store = SystemStatusStore(
+            batteryMonitor: battery,
+            wifiMonitor: wifi,
+            volumeMonitor: volume,
+            refreshInterval: .seconds(60),
+            sleep: { _ in await sleeper.sleep() }
+        )
+
+        store.start()
+        for tick in 1...SystemStatusStore.hiddenFallbackTickStride {
+            await sleeper.waitForCallCount(tick)
+            sleeper.releaseNext()
+            await sleeper.waitForCompletionCount(tick)
+        }
+        await sleeper.waitForCallCount(SystemStatusStore.hiddenFallbackTickStride + 1)
+
+        XCTAssertEqual(battery.refreshCount, SystemStatusStore.hiddenFallbackTickStride)
+        XCTAssertEqual(wifi.refreshCount, 1, "one watchdog refresh against a missed CoreWLAN event")
+        XCTAssertEqual(volume.refreshCount, 1, "one watchdog refresh against a missed CoreAudio event")
+
+        store.stop()
+        sleeper.releaseAll()
+    }
+
+    func testFallbackTickRefreshesWiFiAndVolumeWhileThePopoverIsOpen() async {
+        let battery = FakeBatteryMonitor()
+        let wifi = FakeWiFiMonitor()
+        let volume = FakeVolumeMonitor()
+        let sleeper = ManualSleeper()
+        let store = SystemStatusStore(
+            batteryMonitor: battery,
+            wifiMonitor: wifi,
+            volumeMonitor: volume,
+            refreshInterval: .seconds(60),
+            sleep: { _ in await sleeper.sleep() }
+        )
+
+        store.start()
+        store.setPopoverVisible(true)
+        await sleeper.waitForCallCount(1)
+        sleeper.releaseNext()
+        await sleeper.waitForCompletionCount(1)
+        await sleeper.waitForCallCount(2)
+
+        XCTAssertEqual(battery.refreshCount, 2)
+        XCTAssertEqual(wifi.refreshCount, 2)
+        XCTAssertEqual(volume.refreshCount, 2)
+
+        store.stop()
+        sleeper.releaseAll()
+    }
+
+    func testPushedWiFiAndVolumeStillUpdateTheSnapshotWhileThePopoverIsClosed() async {
+        let wifi = FakeWiFiMonitor()
+        let volume = FakeVolumeMonitor()
+        let sleeper = ManualSleeper()
+        let store = SystemStatusStore(
+            batteryMonitor: FakeBatteryMonitor(),
+            wifiMonitor: wifi,
+            volumeMonitor: volume,
+            refreshInterval: .seconds(60),
+            sleep: { _ in await sleeper.sleep() }
+        )
+
+        store.start()
+        XCTAssertFalse(store.isPopoverVisible)
+
+        wifi.send(WiFiStatus(state: .connected, rssi: -42))
+        volume.send(VolumeStatus(scalar: 0.8, isMuted: false, deviceName: "Studio Display"))
+        await waitUntil {
+            store.snapshot.wifi.rssi == -42 && store.snapshot.volume.scalar == 0.8
+        }
+
+        XCTAssertEqual(store.snapshot.wifi.state, .connected)
+        XCTAssertEqual(store.snapshot.volume.scalar, 0.8)
+        store.stop()
+        sleeper.releaseAll()
     }
 
     func testWakeNotificationRefreshesAllMonitorsExactlyOnce() async {
