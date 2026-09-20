@@ -329,10 +329,11 @@ final class WiFiMonitor: NSObject, WiFiMonitoring, CWEventDelegate {
     private var lastValidDate: Date?
     private var lastRecoveryAttempt: Date?
     private var isPersistentReadFailure = false
-    /// Recovery attempts made while reads reported no interface at all, which is
-    /// what a Mac without Wi-Fi hardware returns on every read. Rebuilding the
-    /// CoreWLAN event stack for those is pure waste, so the attempts are bounded.
-    /// Any read that reports an interface, and `recover()`, reset it.
+    /// Rebuilds performed while reads reported no interface at all, which is what
+    /// a Mac without Wi-Fi hardware returns on every read. Rebuilding the CoreWLAN
+    /// event stack for those is pure waste, so the rebuilds are bounded. Reads the
+    /// stale-interval gate suppresses do not count; any read that reports an
+    /// interface, and `recover()`, reset it.
     private(set) var interfaceAbsentStreak = 0
     private let noInterfaceRecoveryLimit: Int
     private var lifecycle = Lifecycle.idle
@@ -659,12 +660,13 @@ final class WiFiMonitor: NSObject, WiFiMonitoring, CWEventDelegate {
     }
 
     private func recoverIfAllowed(at date: Date) {
-        // Bound the rebuilds, not the reads: one attempt is counted per absent read
-        // that reaches this path, and the attempt is still made at the limit. The
-        // stale-interval gate then absorbs the fix-up read a rebuild triggers, so a
-        // rebuild can never re-trigger itself.
+        // Bound the rebuilds, not the reads: the streak is counted only for absent
+        // reads that reach the far side of the stale-interval gate and actually
+        // rebuild, so gated reads cost nothing and the budget stays
+        // `noInterfaceRecoveryLimit` rebuilds whatever the read cadence. The gate
+        // also absorbs the fix-up read a rebuild triggers, so a rebuild can never
+        // re-trigger itself.
         guard interfaceAbsentStreak < noInterfaceRecoveryLimit else { return }
-        interfaceAbsentStreak += 1
         if
             let lastRecoveryAttempt,
             date.timeIntervalSince(lastRecoveryAttempt) < staleInterval
@@ -672,6 +674,7 @@ final class WiFiMonitor: NSObject, WiFiMonitoring, CWEventDelegate {
             return
         }
 
+        interfaceAbsentStreak += 1
         restartMonitoring()
     }
 

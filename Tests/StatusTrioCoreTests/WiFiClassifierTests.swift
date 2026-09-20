@@ -499,6 +499,58 @@ final class WiFiClassifierTests: XCTestCase {
         monitor.stop()
     }
 
+    /// The budget counts rebuilds, not reads. Production reads arrive far closer
+    /// together than the 30 s stale interval — the status-poll fallback tick and
+    /// link-quality events both refresh the monitor — so a test that spaces reads
+    /// one per interval hides how fast an absent host would otherwise spend the
+    /// budget. Here reads arrive every 5 s: five of every six are suppressed by the
+    /// gate, and none of them may consume a rebuild.
+    func testInterfaceAbsentBudgetCountsRebuildsNotReads() async {
+        let clock = ManualWiFiClock(now: Date(timeIntervalSinceReferenceDate: 6_000))
+        let reader = FakeWiFiSystemReader(result: makeReading(mode: .station, rssi: -50))
+        let eventMonitor = FakeWiFiEventMonitor()
+        let pathMonitor = FakeWiFiPathMonitor()
+        let monitor = makeMonitor(
+            reader: reader,
+            eventMonitor: eventMonitor,
+            pathMonitor: pathMonitor,
+            clock: clock
+        )
+        monitor.start()
+        var iterator = monitor.updates.makeAsyncIterator()
+        _ = await iterator.next()
+
+        // Age the last valid read past the stale interval first, so every read
+        // below reaches the recovery path instead of being served from the cache.
+        clock.advance(by: 30.001)
+        reader.result = nil
+
+        // Three reads at 5 s spacing. Only the first is past the stale-interval
+        // gate; the other two are suppressed and must leave the budget alone.
+        for _ in 0..<3 {
+            clock.advance(by: 5)
+            monitor.refresh()
+            let status = await iterator.next()
+            XCTAssertEqual(status, .placeholder)
+        }
+        XCTAssertEqual(eventMonitor.restartCount, 1, "only the ungated read may rebuild")
+        XCTAssertEqual(monitor.interfaceAbsentStreak, 1, "gated reads must not spend the budget")
+
+        // Keep reading every 5 s: one rebuild per stale interval, and no more than
+        // the limit however many suppressed reads arrive in between.
+        for _ in 0..<27 {
+            clock.advance(by: 5)
+            monitor.refresh()
+            let status = await iterator.next()
+            XCTAssertEqual(status, .placeholder)
+        }
+
+        XCTAssertEqual(eventMonitor.restartCount, 3, "the budget is three rebuilds")
+        XCTAssertEqual(pathMonitor.cancelCount, 3)
+        XCTAssertEqual(monitor.interfaceAbsentStreak, 3)
+        monitor.stop()
+    }
+
     /// A transient failure on a Mac that does have Wi-Fi is not the no-interface
     /// case, so it keeps retrying: the cap only counts attempts made while reads
     /// reported no interface at all.
