@@ -1,5 +1,20 @@
 # Class A 计划集 —— 进度、裁决与续跑手册
 
+## 更新（2026-09-20，R-02 合并后）
+
+**R-02（Wi-Fi 扫描节奏）已全部完成并合并**（`536d8d4`，最终非发布预检 [`35528756095`](https://github.com/lingyired/status-trio/actions/runs/35528756095) `build=20`：683 XCTest（6 跳过，0 失败）+ 168 Swift Testing，两切片 `minos 15.0 / sdk 26.0`，未发布）。
+
+当前状态：**已合并 4 个计划 / 27 个 task**（R-18、R-03、R-01、R-02），**12 个计划 / 61 个 task 未开始**，class C 四个计划仍冻结。
+下一个建议做 **R-04（图标预览渲染，6 task）**。
+
+R-02 的残留项（已裁定，不在本计划内修，供后续 triage）：
+
+1. **无网卡恢复上限无法区分"没有 Wi-Fi 硬件"与"有硬件但接口读卡在 nil"**：后者在旧代码里 30–60 秒自愈，现在 3 次重建后要等睡眠/唤醒或连接失效。若要恢复慢速自愈，需要一个更慢的上限后兜底（设计改动）。
+2. **返回行的接线没有测试钉住**（`StatusPopoverView` 的 Wi-Fi `onBack` 里那行 `store.closeWiFiDetails()`）：修者证明了当前测试环境**无法**驱动 SwiftUI 按钮动作（`NSApp.activationPolicy() == .prohibited`、无 key window、合成事件到不了 SwiftUI、托管视图只暴露不透明 `AXGroup`、`AXIsProcessTrusted()` 为 false），因此任何测试都只能重复覆盖 store 方法；真正的钉住需要另建 UI 测试 target，属范围外。
+3. Release notes 的措辞与行为一致；T5 的 brief 里 `--ref`/`build` 陈旧（记录为 brief 缺陷）。
+
+**发布前必须补的三项实测**（都不影响合并，但发布说明已经对外宣称效果）：R-03 功耗采样、R-01 spawn 次数、R-02 扫描次数。三者都在 `docs/swift-ci-compatibility.md` 里标为 `⏳`，并写明命令；**文档里没有任何推断出来的数字**。
+
 > **本文件是暂停点（2026-09-20）的交接文档。** 由执行 agent 在 owner 要求"收尾后暂停，把剩下的写入文档"时写下。
 > 配套文件：计划集索引（spec）`docs/superpowers/plans/2026-09-20-review-findings-index.md`；每个计划自己的 ledger 在
 > `.superpowers/sdd/<plan>/progress.md`（该目录被 gitignore，只在工作树里）。
