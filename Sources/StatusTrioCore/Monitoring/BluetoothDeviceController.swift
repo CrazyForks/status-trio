@@ -249,6 +249,10 @@ final class BluetoothDeviceController: ObservableObject {
     private(set) var isActive = false
     private var requestGate = AsyncRequestGate()
     private var batteryRequestGate = AsyncRequestGate()
+    /// One device read at a time, with at most one coalesced follow-up. Without
+    /// this, every trigger started its own `/usr/sbin/system_profiler` process.
+    private var isDeviceReadInFlight = false
+    private var isRefreshPending = false
     private var batteryLevelsEnabled = false
     private var periodicRefreshTask: Task<Void, Never>?
     private var applicationObserver: NSObjectProtocol?
@@ -310,7 +314,7 @@ final class BluetoothDeviceController: ObservableObject {
     func deactivate() {
         guard isActive else { return }
         isActive = false
-        _ = requestGate.advance()
+        invalidateDeviceRead()
         batteryLevelRequests.removeAll()
         updateBatteryLevelRequests()
         periodicRefreshTask?.cancel()
@@ -322,10 +326,19 @@ final class BluetoothDeviceController: ObservableObject {
 
     func refresh() {
         guard isActive, availability == .available else { return }
+        // Coalesce bursts: at most one read and one follow-up are retained,
+        // whatever order the triggers arrive in.
+        guard !isDeviceReadInFlight else {
+            isRefreshPending = true
+            return
+        }
+        isDeviceReadInFlight = true
         let request = requestGate.advance()
         worker.read { [weak self] result in
             Task { @MainActor [weak self] in
-                guard let self, self.isActive, self.requestGate.accepts(request) else { return }
+                guard let self, self.requestGate.accepts(request) else { return }
+                self.isDeviceReadInFlight = false
+                guard self.isActive else { return }
                 switch result {
                 case let .success(devices):
                     self.devices = devices
@@ -343,8 +356,21 @@ final class BluetoothDeviceController: ObservableObject {
                     self.availability = .failed
                     self.clearBatteryLevels()
                 }
+                if self.isRefreshPending {
+                    self.isRefreshPending = false
+                    self.refresh()
+                }
             }
         }
+    }
+
+    /// Invalidates any in-flight device read. The completion that belongs to the
+    /// invalidated read is discarded, so the latch has to be released here or no
+    /// later refresh could ever start.
+    private func invalidateDeviceRead() {
+        _ = requestGate.advance()
+        isDeviceReadInFlight = false
+        isRefreshPending = false
     }
 
     /// Surfaces that need battery levels, by token. Two of them share this need
@@ -406,7 +432,7 @@ final class BluetoothDeviceController: ObservableObject {
             schedulePeriodicRefresh()
             refresh()
         } else {
-            _ = requestGate.advance()
+            invalidateDeviceRead()
             clearBatteryLevels()
             stopPeriodicRefresh()
         }
