@@ -243,18 +243,18 @@
 "bluetooth.notConnected" = "未连接";
 "bluetooth.pairedDeviceLimit" = "仅显示 macOS 报告的已配对设备；部分仅 BLE 设备可能不会列出。";
 
-"wifi.credentialsChecking" = "Checking saved credentials…";
-"wifi.credentialAccessCancelled" = "Saved-credential access was cancelled.";
-"wifi.credentialAccessDenied" = "Saved-credential access was denied.";
-"wifi.credentialStoreLocked" = "The Keychain is locked or unavailable.";
-"wifi.credentialReadFailed" = "Saved credentials could not be read.";
-"wifi.credentialEnterPassword" = "Enter Password";
-"wifi.passwordSaveFailed" = "Connected, but the password could not be saved.";
+"wifi.credentialsChecking" = "正在检查已保存的凭据…";
+"wifi.credentialAccessCancelled" = "对已保存凭据的访问已取消。";
+"wifi.credentialAccessDenied" = "对已保存凭据的访问被拒绝。";
+"wifi.credentialStoreLocked" = "钥匙串已锁定或不可用。";
+"wifi.credentialReadFailed" = "无法读取已保存的凭据。";
+"wifi.credentialEnterPassword" = "输入密码";
+"wifi.passwordSaveFailed" = "已连接，但无法保存密码。";
 
-"bluetooth.initializing" = "Initializing Bluetooth…";
-"bluetooth.authorizationNotDetermined" = "Bluetooth permission has not been decided yet.";
-"bluetooth.authorizationDenied" = "Bluetooth permission is denied. Open Bluetooth Settings.";
-"bluetooth.authorizationRestricted" = "Bluetooth permission is restricted.";
+"bluetooth.initializing" = "正在初始化蓝牙…";
+"bluetooth.authorizationNotDetermined" = "蓝牙权限尚未确定。";
+"bluetooth.authorizationDenied" = "蓝牙权限被拒绝。打开蓝牙设置。";
+"bluetooth.authorizationRestricted" = "蓝牙权限受限。";
 
 "settings.preview.hint" = "实时预览 · 调节下方各项参数即刻在上方呈现";
 "settings.preview.dark" = "深色";
