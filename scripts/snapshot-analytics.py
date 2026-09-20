@@ -292,12 +292,22 @@ def rebuild_series(out_dir: Path) -> Path:
 
 def summarize(snapshot: dict) -> None:
     windows = snapshot.get("windows") or {}
+    errors = snapshot.get("errors") or {}
+    carried = snapshot.get("carried_forward") or []
     for metric in ("views", "clones"):
         window = windows.get(metric)
-        if window:
+        if window and errors.get(metric):
+            announce(
+                f"{metric}: {window['count']} total / {window['uniques']} uniques "
+                f"(14-day window, carried forward from an earlier snapshot; this fetch failed)"
+            )
+        elif window:
             announce(f"{metric}: {window['count']} total / {window['uniques']} uniques (14-day window)")
         else:
-            announce(f"{metric}: unavailable ({snapshot['errors'].get(metric, 'not fetched')})")
+            announce(f"{metric}: unavailable ({errors.get(metric, 'not fetched')})")
+
+    if carried:
+        announce(f"carried forward from an earlier snapshot: {', '.join(carried)}")
 
     downloads = sum(
         asset["download_count"] for release in snapshot["releases"] for asset in release["assets"]
