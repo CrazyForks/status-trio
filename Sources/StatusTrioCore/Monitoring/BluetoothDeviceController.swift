@@ -242,10 +242,17 @@ final class BluetoothDeviceController: ObservableObject {
     @Published private(set) var batteryLevels: [String: BluetoothBatteryLevel] = [:]
 
     private let worker: any BluetoothPairedDeviceReading
-    private let stateMonitor: any BluetoothStateMonitoring
+    /// The state monitor is teardown-owned storage: `deinit` is nonisolated, so
+    /// it is held `nonisolated(unsafe)` for that one read. `BluetoothStateMonitoring`
+    /// is `@MainActor`, and `stop()` runs on the main actor through the hop in
+    /// `deinit` rather than being called off the queue CoreBluetooth was created on.
+    nonisolated(unsafe) private let stateMonitor: any BluetoothStateMonitoring
     private let batteryReader: any BluetoothBatteryReading
     private let notificationCenter: NotificationCenter
     private let workspaceNotificationCenter: NotificationCenter
+    /// The AppKit and workspace registrations, kept in teardown-owned storage so
+    /// a nonisolated `deinit` can release them.
+    private let systemObservers: SystemEventObserverBag
 
     /// How often the safety net re-reads the paired-device database while a
     /// Bluetooth surface is visible. Connection notifications deliver the
@@ -279,8 +286,6 @@ final class BluetoothDeviceController: ObservableObject {
     /// stop/start pair in one main-actor turn cannot leave the new task
     /// untracked and uncancellable.
     private var periodicRefreshGeneration: UInt64 = 0
-    private var applicationObserver: NSObjectProtocol?
-    private var wakeObserver: NSObjectProtocol?
 
     init(
         worker: any BluetoothPairedDeviceReading = SystemProfilerBluetoothPairedDeviceWorker(),
@@ -292,6 +297,7 @@ final class BluetoothDeviceController: ObservableObject {
         safetyNetSleep: @escaping @Sendable (Duration) async throws -> Void = {
             try await Task.sleep(for: $0)
         },
+        systemObservers: SystemEventObserverBag? = nil,
         connectionEvents: (any BluetoothConnectionEventMonitoring)? = nil,
         connectionEventDebounceInterval: Duration = .milliseconds(750),
         connectionEventDebounceSleep: @escaping @Sendable (Duration) async throws -> Void = {
@@ -305,6 +311,12 @@ final class BluetoothDeviceController: ObservableObject {
         self.workspaceNotificationCenter = workspaceNotificationCenter
         self.safetyNetInterval = safetyNetInterval
         self.safetyNetSleep = safetyNetSleep
+        // The default bag reaches the same centers the controller was given, so
+        // an injected `NotificationCenter` keeps driving the controller.
+        self.systemObservers = systemObservers ?? SystemEventObserverBag(
+            notificationCenter: notificationCenter,
+            workspaceNotificationCenter: workspaceNotificationCenter
+        )
         self.connectionEvents = connectionEvents
         self.connectionEventDebounceInterval = connectionEventDebounceInterval
         self.connectionEventDebounceSleep = connectionEventDebounceSleep
@@ -315,6 +327,17 @@ final class BluetoothDeviceController: ObservableObject {
 
     deinit {
         periodicRefreshTask?.cancel()
+        // Releasing the registrations here is the whole point: an observer token
+        // that is never removed keeps the center's block alive for the life of
+        // the process.
+        systemObservers.removeAll()
+        connectionEvents?.stop()
+        // `CBCentralManager` retains its delegate, so the state monitor is never
+        // deallocated while it is running. `stop()` has to run on the main actor,
+        // which is the queue the manager was created with, so the reference is
+        // captured and handed over instead of `self` being used after death.
+        let stateMonitor = stateMonitor
+        Task { @MainActor in stateMonitor.stop() }
     }
 
 
@@ -355,7 +378,14 @@ final class BluetoothDeviceController: ObservableObject {
     func activate() {
         guard !isActive else { return }
         isActive = true
-        registerSystemObservers()
+        systemObservers.install(
+            applicationActivated: { [weak self] in
+                Task { @MainActor in self?.refreshAfterSystemEvent() }
+            },
+            didWake: { [weak self] in
+                Task { @MainActor in self?.refreshAfterSystemEvent() }
+            }
+        )
         stateMonitor.start()
         schedulePeriodicRefresh()
     }
@@ -367,7 +397,7 @@ final class BluetoothDeviceController: ObservableObject {
         batteryLevelRequests.removeAll()
         updateBatteryLevelRequests()
         stopPeriodicRefresh()
-        removeSystemObservers()
+        systemObservers.removeAll()
         stateMonitor.stop()
         availability = .idle
     }
@@ -465,15 +495,26 @@ final class BluetoothDeviceController: ObservableObject {
         batteryLevelsEnabled
     }
 
-    /// Surfaces that show Bluetooth device state, by token. The safety-net poll
-    /// runs only while at least one is held, so a closed popover costs nothing.
-    /// A count, not a boolean: the summary row and the detail page can appear in
-    /// either order, and the last writer must not decide for both.
+    /// Surfaces that show Bluetooth device state, by token. Every claim is
+    /// recorded so insertion and removal stay order-independent, but only the
+    /// popover-level claim sustains the safety-net poll.
     private var visibleSurfaces: Set<String> = []
 
-    /// Whether a visible surface is showing Bluetooth device state.
+    /// The popover-level claim. `SystemStatusStore` holds it while the popover is
+    /// open and releases it on close, so it is the only claim that can start the
+    /// poll. The view-level claims (`"bluetooth.summary.surface"` and
+    /// `"bluetooth.detail.surface"` in `BluetoothDeviceListView`) are released
+    /// only from SwiftUI `onDisappear`, and the popover's content view
+    /// controller is retained after close: a skipped `onDisappear` would
+    /// otherwise leave the claim set non-empty and restart a 30 s poll for the
+    /// life of the process. A view claim may only narrow this one, never
+    /// sustain the poll on its own.
+    static let popoverSurfaceToken = "bluetooth.popover"
+
+    /// Whether the popover is showing Bluetooth device state. A leaked view
+    /// claim cannot make this true.
     var hasVisibleSurface: Bool {
-        !visibleSurfaces.isEmpty
+        visibleSurfaces.contains(Self.popoverSurfaceToken)
     }
 
     /// Whether the safety-net poll is running.
@@ -487,7 +528,8 @@ final class BluetoothDeviceController: ObservableObject {
         schedulePeriodicRefresh()
     }
 
-    /// Releases a surface's claim, whatever order it arrives in.
+    /// Releases a surface's claim, whatever order it arrives in. Releasing the
+    /// popover claim stops the poll even while a view claim is still held.
     func releaseVisibleSurface(_ token: String) {
         guard visibleSurfaces.remove(token) != nil else { return }
         guard !hasVisibleSurface else { return }
@@ -535,39 +577,6 @@ final class BluetoothDeviceController: ObservableObject {
     private func clearBatteryLevels() {
         _ = batteryRequestGate.advance()
         batteryLevels = [:]
-    }
-
-    private func registerSystemObservers() {
-        guard applicationObserver == nil, wakeObserver == nil else { return }
-        applicationObserver = notificationCenter.addObserver(
-            forName: NSApplication.didBecomeActiveNotification,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            Task { @MainActor [weak self] in
-                self?.refreshAfterSystemEvent()
-            }
-        }
-        wakeObserver = workspaceNotificationCenter.addObserver(
-            forName: NSWorkspace.didWakeNotification,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            Task { @MainActor [weak self] in
-                self?.refreshAfterSystemEvent()
-            }
-        }
-    }
-
-    private func removeSystemObservers() {
-        if let applicationObserver {
-            notificationCenter.removeObserver(applicationObserver)
-        }
-        if let wakeObserver {
-            workspaceNotificationCenter.removeObserver(wakeObserver)
-        }
-        applicationObserver = nil
-        wakeObserver = nil
     }
 
     private func refreshAfterSystemEvent() {
@@ -632,7 +641,10 @@ final class BluetoothDeviceController: ObservableObject {
     private func stopConnectionEvents() {
         _ = connectionEventGate.advance()
         isConnectionEventReadScheduled = false
-        guard isMonitoringConnectionEventNotifications else { return }
+        // Unconditional: a refused registration (`start` returned `false`) can
+        // still have stored the handler, so the monitor is told to stop either
+        // way and the teardown path has one shape. `stop()` is lock-guarded and
+        // idempotent.
         isMonitoringConnectionEventNotifications = false
         connectionEvents?.stop()
     }

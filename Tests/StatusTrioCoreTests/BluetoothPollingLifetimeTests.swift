@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import XCTest
 @testable import StatusTrioCore
@@ -80,7 +81,8 @@ final class BluetoothPollingLifetimeTests: XCTestCase {
     }
 
     /// The safety net is a fallback for the connection notifications, and it may
-    /// only run while something on screen shows device state.
+    /// only run while the popover that shows device state is open. The
+    /// popover-level claim is what sustains it; a view claim never does (rider 1).
     func testSafetyNetPollRunsOnlyWhileASurfaceIsHeld() async {
         let reader = DeferredBluetoothDeviceReader()
         let sleeper = ManualEventSleeper()
@@ -95,7 +97,7 @@ final class BluetoothPollingLifetimeTests: XCTestCase {
 
         XCTAssertFalse(controller.isSafetyNetPolling, "a poll started with nothing on screen")
 
-        controller.holdVisibleSurface("bluetooth.summary")
+        controller.holdVisibleSurface("bluetooth.popover")
         _ = await sleeper.waitForCallCount(1, timeout: .seconds(1))
         XCTAssertTrue(controller.isSafetyNetPolling)
         XCTAssertEqual(sleeper.durations.first, .seconds(30))
@@ -105,7 +107,7 @@ final class BluetoothPollingLifetimeTests: XCTestCase {
         reader.complete(.success([]))
         await waitUntil { !reader.hasPendingRead }
 
-        controller.releaseVisibleSurface("bluetooth.summary")
+        controller.releaseVisibleSurface("bluetooth.popover")
         XCTAssertFalse(controller.isSafetyNetPolling)
         let callCountWhenReleased = sleeper.callCount
         sleeper.releaseAll()
@@ -116,8 +118,10 @@ final class BluetoothPollingLifetimeTests: XCTestCase {
         controller.deactivate()
     }
 
-    /// Two surfaces (the summary row and the detail page) can be on screen in
-    /// either order, so the gate is a claim count rather than a boolean.
+    /// The summary row and the detail page claim their own view tokens, and they
+    /// can appear in either order. Those claims narrow the poll but cannot
+    /// sustain it: the popover claim is the one the poll follows (rider 1), so
+    /// the poll stops when the popover closes even with a view claim leaked.
     func testTheLastReleasedSurfaceStopsThePoll() async {
         let sleeper = ManualEventSleeper()
         let controller = makeController(
@@ -125,17 +129,25 @@ final class BluetoothPollingLifetimeTests: XCTestCase {
             safetyNetSleep: { duration in await sleeper.sleep(duration) }
         )
         controller.activate()
+        await waitUntil { controller.availability == .available }
 
-        controller.holdVisibleSurface("bluetooth.summary")
-        controller.holdVisibleSurface("bluetooth.detail")
-        controller.releaseVisibleSurface("bluetooth.summary")
-
+        controller.holdVisibleSurface("bluetooth.popover")
+        controller.holdVisibleSurface("bluetooth.summary.surface")
+        controller.holdVisibleSurface("bluetooth.detail.surface")
         XCTAssertTrue(controller.isSafetyNetPolling)
-        controller.releaseVisibleSurface("bluetooth.detail")
-        XCTAssertFalse(controller.isSafetyNetPolling)
-        controller.releaseVisibleSurface("bluetooth.detail")
-        XCTAssertFalse(controller.isSafetyNetPolling)
 
+        controller.releaseVisibleSurface("bluetooth.summary.surface")
+        XCTAssertTrue(controller.isSafetyNetPolling, "a view claim may only narrow the popover poll")
+
+        // A leaked view claim must not keep the poll alive once the popover is
+        // closed: this is the failure the rider exists to remove.
+        controller.releaseVisibleSurface("bluetooth.popover")
+        XCTAssertFalse(controller.isSafetyNetPolling)
+        controller.releaseVisibleSurface("bluetooth.popover")
+        XCTAssertFalse(controller.isSafetyNetPolling)
+        XCTAssertFalse(controller.hasVisibleSurface)
+
+        controller.releaseVisibleSurface("bluetooth.detail.surface")
         controller.deactivate()
     }
 
@@ -148,7 +160,7 @@ final class BluetoothPollingLifetimeTests: XCTestCase {
             safetyNetSleep: { duration in await sleeper.sleep(duration) }
         )
         controller.activate()
-        controller.holdVisibleSurface("bluetooth.summary")
+        controller.holdVisibleSurface("bluetooth.popover")
         XCTAssertTrue(controller.isSafetyNetPolling)
 
         controller.deactivate()
@@ -181,12 +193,12 @@ final class BluetoothPollingLifetimeTests: XCTestCase {
         )
         controller.activate()
         await waitUntil { reader.readCount == 1 }
-        controller.holdVisibleSurface("bluetooth.summary")
+        controller.holdVisibleSurface("bluetooth.popover")
         _ = await sleeper.waitForCallCount(1, timeout: .seconds(1))
 
         // Stop and restart inside one turn, before the cancelled task's `defer`.
-        controller.releaseVisibleSurface("bluetooth.summary")
-        controller.holdVisibleSurface("bluetooth.summary")
+        controller.releaseVisibleSurface("bluetooth.popover")
+        controller.holdVisibleSurface("bluetooth.popover")
         XCTAssertTrue(controller.isSafetyNetPolling, "the restarted poll must be tracked")
 
         // Let the replacement reach its own sleep, then release both so the
@@ -200,9 +212,9 @@ final class BluetoothPollingLifetimeTests: XCTestCase {
             "a superseded poll's defer must not clear the replacement's reference"
         )
 
-        // The replacement must still be cancellable: letting go of the last
-        // surface has to cancel the task the restart created.
-        controller.releaseVisibleSurface("bluetooth.summary")
+        // The replacement must still be cancellable: letting go of the popover
+        // claim has to cancel the task the restart created.
+        controller.releaseVisibleSurface("bluetooth.popover")
         XCTAssertFalse(controller.isSafetyNetPolling)
         sleeper.releaseAll()
         await settle()
@@ -213,6 +225,276 @@ final class BluetoothPollingLifetimeTests: XCTestCase {
         )
 
         controller.deactivate()
+    }
+
+    /// Task 3's gate was satisfied while *any* claim was held, and the two view
+    /// tokens are released only from SwiftUI `onDisappear`. The popover's
+    /// content view controller is retained after close, so a skipped
+    /// `onDisappear` left a claim held forever and the next
+    /// `activate()`/`receiveSystemState(.available)` restarted a 30 s poll for
+    /// the life of the process. Only the popover claim sustains the poll; a
+    /// view claim may only narrow it.
+    func testALeakedViewClaimCannotSustainThePoll() async {
+        let sleeper = ManualEventSleeper()
+        let controller = makeController(
+            reader: DeferredBluetoothDeviceReader(),
+            safetyNetSleep: { duration in await sleeper.sleep(duration) }
+        )
+        controller.activate()
+        await waitUntil { controller.availability == .available }
+
+        // A view claim on its own never starts the poll.
+        controller.holdVisibleSurface("bluetooth.detail.surface")
+        await settle()
+        XCTAssertFalse(
+            controller.isSafetyNetPolling,
+            "a view claim sustained the poll on its own"
+        )
+
+        controller.holdVisibleSurface("bluetooth.popover")
+        XCTAssertTrue(controller.isSafetyNetPolling)
+
+        // The popover closes while the view token leaks: the poll must stop.
+        controller.releaseVisibleSurface("bluetooth.popover")
+        XCTAssertFalse(
+            controller.isSafetyNetPolling,
+            "a leaked view claim sustained the poll"
+        )
+        XCTAssertFalse(controller.hasVisibleSurface)
+
+        // Re-opening the popover resumes the poll, leaked view claim and all.
+        controller.holdVisibleSurface("bluetooth.popover")
+        XCTAssertTrue(controller.isSafetyNetPolling)
+
+        controller.releaseVisibleSurface("bluetooth.detail.surface")
+        controller.releaseVisibleSurface("bluetooth.popover")
+        controller.deactivate()
+    }
+
+    /// A controller that is released without `deactivate()` used to leak its
+    /// NotificationCenter observers and leave CoreBluetooth running, because
+    /// `CBCentralManager` retains its delegate and only `stop()` breaks that.
+    func testDeinitWithoutDeactivateRemovesObserversAndStopsTheStateMonitor() async {
+        let notifications = NotificationCenter()
+        let observers = SystemEventObserverBag(
+            notificationCenter: notifications,
+            workspaceNotificationCenter: notifications
+        )
+        let monitor = CountingStopBluetoothStateMonitor()
+        var controller: BluetoothDeviceController? = BluetoothDeviceController(
+            worker: DeferredBluetoothDeviceReader(),
+            stateMonitor: monitor,
+            batteryReader: SilentBluetoothBatteryReader(),
+            notificationCenter: notifications,
+            workspaceNotificationCenter: notifications,
+            systemObservers: observers
+        )
+        // A stored weak reference, not a local `weak var`: a local one that is
+        // only read draws the "never mutated" warning, and AGENTS.md bans
+        // `weak let`.
+        let reference = WeakControllerReference(controller)
+        controller?.activate()
+        await waitUntil { monitor.startCount == 1 }
+        XCTAssertFalse(observers.isEmpty)
+
+        controller = nil
+        XCTAssertNil(reference.value)
+
+        // `deinit` is nonisolated, so the CoreBluetooth teardown is handed to
+        // the main actor instead of touching the manager off its queue.
+        await waitUntil { monitor.stopCount == 1 }
+        XCTAssertTrue(observers.isEmpty, "the observers outlived the controller")
+
+        notifications.post(name: NSApplication.didBecomeActiveNotification, object: nil)
+        await Task.yield()
+        XCTAssertEqual(monitor.startCount, 1, "a removed observer must not reactivate anything")
+    }
+
+    /// `deactivate()` is the other teardown entry point and must release the
+    /// registrations too: a deactivated controller must not keep reacting to an
+    /// app activation it no longer observes.
+    func testDeactivateRemovesSystemObservers() async {
+        let notifications = NotificationCenter()
+        let observers = SystemEventObserverBag(
+            notificationCenter: notifications,
+            workspaceNotificationCenter: notifications
+        )
+        let monitor = CountingStopBluetoothStateMonitor()
+        let controller = BluetoothDeviceController(
+            worker: ImmediateBluetoothDeviceReader(),
+            stateMonitor: monitor,
+            batteryReader: SilentBluetoothBatteryReader(),
+            notificationCenter: notifications,
+            workspaceNotificationCenter: notifications,
+            systemObservers: observers
+        )
+        controller.activate()
+        await waitUntil { monitor.startCount == 1 }
+        XCTAssertFalse(observers.isEmpty)
+
+        controller.deactivate()
+        XCTAssertTrue(observers.isEmpty, "deactivate left the observers registered")
+        XCTAssertEqual(monitor.stopCount, 1)
+
+        notifications.post(name: NSApplication.didBecomeActiveNotification, object: nil)
+        notifications.post(name: NSWorkspace.didWakeNotification, object: nil)
+        // The removed blocks would be delivered through the main queue, so give
+        // them a real window to arrive before asserting nothing happened.
+        try? await Task.sleep(for: .milliseconds(50))
+        XCTAssertEqual(monitor.startCount, 1, "a removed observer fired after deactivate")
+    }
+
+    /// The connection-event registration outlives the object unless it is
+    /// released explicitly.
+    func testDeinitWithoutDeactivateStopsTheConnectionEventMonitor() async {
+        let events = StoppableBluetoothConnectionEventMonitor()
+        var controller: BluetoothDeviceController? = BluetoothDeviceController(
+            worker: DeferredBluetoothDeviceReader(),
+            stateMonitor: AvailableBluetoothStateMonitor(),
+            batteryReader: SilentBluetoothBatteryReader(),
+            notificationCenter: NotificationCenter(),
+            workspaceNotificationCenter: NotificationCenter(),
+            connectionEvents: events
+        )
+        controller?.activate()
+        // The popover claim is what starts the event registration (rider 1).
+        controller?.holdVisibleSurface("bluetooth.popover")
+        await waitUntil { events.startCount == 1 }
+
+        controller = nil
+        await waitUntil { events.stopCount == 1 }
+    }
+
+    /// A registration the system refused must still be told to stop: the
+    /// monitor can hold a stored handler even though `start` returned `false`,
+    /// and the teardown path must have one shape either way.
+    func testARefusedConnectionEventRegistrationIsStillStopped() async {
+        let events = StoppableBluetoothConnectionEventMonitor(isAccepted: false)
+        let controller = BluetoothDeviceController(
+            worker: ImmediateBluetoothDeviceReader(),
+            stateMonitor: AvailableBluetoothStateMonitor(),
+            batteryReader: SilentBluetoothBatteryReader(),
+            notificationCenter: NotificationCenter(),
+            workspaceNotificationCenter: NotificationCenter(),
+            connectionEvents: events
+        )
+        controller.activate()
+        await waitUntil { controller.availability == .available }
+        controller.holdVisibleSurface("bluetooth.popover")
+        await waitUntil { events.startCount == 1 }
+        XCTAssertFalse(controller.isMonitoringConnectionEvents)
+
+        controller.deactivate()
+        XCTAssertEqual(events.stopCount, 1, "a refused registration was never stopped")
+    }
+
+    /// The safety net is a 30 s loop, so releasing the last reference must
+    /// cancel it rather than leave it parked for one more wakeup. The task's
+    /// sleep records whether it was cancelled, because `isSafetyNetPolling` is
+    /// no longer readable once the controller is gone.
+    func testDeinitWithoutDeactivateCancelsTheSafetyNetTask() async {
+        let sleeper = ManualEventSleeper()
+        let cancellations = SleepCancellationRecorder()
+        var controller: BluetoothDeviceController? = BluetoothDeviceController(
+            worker: ImmediateBluetoothDeviceReader(),
+            stateMonitor: AvailableBluetoothStateMonitor(),
+            batteryReader: SilentBluetoothBatteryReader(),
+            notificationCenter: NotificationCenter(),
+            workspaceNotificationCenter: NotificationCenter(),
+            safetyNetSleep: { duration in
+                await sleeper.sleep(duration)
+                cancellations.record(Task.isCancelled)
+            }
+        )
+        controller?.activate()
+        controller?.holdVisibleSurface("bluetooth.popover")
+        _ = await sleeper.waitForCallCount(1, timeout: .seconds(1))
+
+        controller = nil
+        sleeper.releaseAll()
+        await settle()
+        XCTAssertEqual(
+            cancellations.resumed.last,
+            true,
+            "the safety-net task outlived the controller"
+        )
+    }
+
+    /// A connection-event debounce that is still parked when the poll stops must
+    /// be discarded: `stopConnectionEvents()` invalidates its gate, so waking it
+    /// cannot start a read for a popover that is already closed.
+    func testStoppingThePollDiscardsAPendingConnectionEventDebounce() async {
+        let reader = ImmediateBluetoothDeviceReader()
+        let events = StoppableBluetoothConnectionEventMonitor()
+        let sleeper = ManualEventSleeper()
+        let controller = BluetoothDeviceController(
+            worker: reader,
+            stateMonitor: AvailableBluetoothStateMonitor(),
+            batteryReader: SilentBluetoothBatteryReader(),
+            notificationCenter: NotificationCenter(),
+            workspaceNotificationCenter: NotificationCenter(),
+            connectionEvents: events,
+            connectionEventDebounceInterval: .milliseconds(750),
+            connectionEventDebounceSleep: { duration in await sleeper.sleep(duration) }
+        )
+        controller.activate()
+        await waitUntil { reader.readCount == 1 }
+        controller.holdVisibleSurface("bluetooth.popover")
+        await waitUntil { events.startCount == 1 }
+
+        events.emit()
+        _ = await sleeper.waitForCallCount(1, timeout: .seconds(1))
+        let readsBeforeTheDebounceFired = reader.readCount
+
+        controller.releaseVisibleSurface("bluetooth.popover")
+        XCTAssertFalse(controller.isMonitoringConnectionEvents)
+
+        sleeper.releaseAll()
+        await settle()
+        XCTAssertEqual(
+            reader.readCount,
+            readsBeforeTheDebounceFired,
+            "a debounce stopped by the teardown still started a read"
+        )
+    }
+
+    /// The bag is the piece that makes the observer leak observable.
+    func testObserverBagRemovesEveryRegistration() async {
+        let notifications = NotificationCenter()
+        let bag = SystemEventObserverBag(
+            notificationCenter: notifications,
+            workspaceNotificationCenter: notifications
+        )
+        let activations = CountBox()
+        let wakes = CountBox()
+        bag.install(
+            applicationActivated: { activations.increment() },
+            didWake: { wakes.increment() }
+        )
+
+        // Re-installing must not stack a second registration.
+        bag.install(
+            applicationActivated: { activations.increment() },
+            didWake: { wakes.increment() }
+        )
+        XCTAssertFalse(bag.isEmpty)
+
+        notifications.post(name: NSApplication.didBecomeActiveNotification, object: nil)
+        notifications.post(name: NSWorkspace.didWakeNotification, object: nil)
+        await waitUntil { activations.value > 0 && wakes.value > 0 }
+        XCTAssertEqual(activations.value, 1)
+        XCTAssertEqual(wakes.value, 1)
+
+        bag.removeAll()
+        XCTAssertTrue(bag.isEmpty)
+
+        notifications.post(name: NSApplication.didBecomeActiveNotification, object: nil)
+        notifications.post(name: NSWorkspace.didWakeNotification, object: nil)
+        // The block is delivered through the main queue, so give it a real
+        // window to arrive before asserting that nothing was delivered.
+        try? await Task.sleep(for: .milliseconds(50))
+        XCTAssertEqual(activations.value, 1, "a removed observer still fired")
+        XCTAssertEqual(wakes.value, 1, "a removed observer still fired")
     }
 
     private func waitUntil(_ condition: () -> Bool) async {
@@ -297,5 +579,75 @@ private final class AvailableBluetoothStateMonitor: BluetoothStateMonitoring {
 private final class SilentBluetoothBatteryReader: BluetoothBatteryReading {
     func read(completion: @escaping @Sendable ([String: BluetoothBatteryLevel]) -> Void) {
         completion([:])
+    }
+}
+
+@MainActor
+private final class CountingStopBluetoothStateMonitor: BluetoothStateMonitoring {
+    var onStateChange: ((BluetoothAuthorizationStatus, BluetoothManagerState) -> Void)?
+    let authorization: BluetoothAuthorizationStatus = .allowed
+    private(set) var startCount = 0
+    private(set) var stopCount = 0
+
+    func start() {
+        startCount += 1
+        onStateChange?(.allowed, .poweredOn)
+    }
+
+    func stop() { stopCount += 1 }
+}
+
+private final class StoppableBluetoothConnectionEventMonitor: BluetoothConnectionEventMonitoring, @unchecked Sendable {
+    private let lock = NSLock()
+    private let isAccepted: Bool
+    private var handler: (@Sendable () -> Void)?
+    private var starts = 0
+    private var stops = 0
+
+    init(isAccepted: Bool = true) {
+        self.isAccepted = isAccepted
+    }
+
+    var startCount: Int { lock.withLock { starts } }
+    var stopCount: Int { lock.withLock { stops } }
+
+    @discardableResult
+    func start(handler: @escaping @Sendable () -> Void) -> Bool {
+        lock.withLock {
+            self.handler = handler
+            starts += 1
+        }
+        return isAccepted
+    }
+
+    func stop() {
+        lock.withLock {
+            handler = nil
+            stops += 1
+        }
+    }
+
+    /// Delivers one connect/disconnect notification to the stored handler.
+    func emit() {
+        let handler = lock.withLock { self.handler }
+        handler?()
+    }
+}
+
+private final class CountBox: @unchecked Sendable {
+    private let lock = NSLock()
+    private var count = 0
+
+    var value: Int { lock.withLock { count } }
+    func increment() { lock.withLock { count += 1 } }
+}
+
+/// Holds the controller weakly so a test can prove `deinit` ran, without the
+/// local `weak var` the compiler warns about (or the banned `weak let`).
+private final class WeakControllerReference {
+    weak var value: BluetoothDeviceController?
+
+    init(_ value: BluetoothDeviceController?) {
+        self.value = value
     }
 }

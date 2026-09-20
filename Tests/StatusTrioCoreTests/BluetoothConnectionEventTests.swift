@@ -23,9 +23,10 @@ final class BluetoothConnectionEventTests: XCTestCase {
 
         controller.activate()
         await waitUntil { reader.readCount == 1 }
-        // The event registration lives and dies with the surface that shows
-        // device state, so the claim comes first.
-        controller.holdVisibleSurface("bluetooth.detail")
+        // The event registration lives and dies with the popover that shows
+        // device state, so the popover claim comes first: a view token only
+        // narrows the poll and never starts it (rider 1 of the lifetime task).
+        controller.holdVisibleSurface("bluetooth.popover")
         XCTAssertTrue(events.isRunning)
         XCTAssertTrue(controller.isMonitoringConnectionEvents)
 
@@ -59,7 +60,7 @@ final class BluetoothConnectionEventTests: XCTestCase {
 
         controller.activate()
         await waitUntil { reader.readCount == 1 }
-        controller.holdVisibleSurface("bluetooth.summary")
+        controller.holdVisibleSurface("bluetooth.popover")
 
         XCTAssertFalse(controller.isMonitoringConnectionEvents)
         XCTAssertTrue(controller.isSafetyNetPolling)
