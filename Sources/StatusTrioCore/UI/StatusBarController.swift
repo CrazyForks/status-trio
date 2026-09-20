@@ -205,14 +205,14 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
                 store: store,
                 settings: settings,
                 scrollTargets: popoverScrollTargets,
-                requestWiFiNameAccess: handleRequestWiFiNameAccess,
-                requestBluetoothAuthorization: handleRequestBluetoothAuthorization,
-                openBatterySettings: handleOpenBatterySettings,
-                openWiFiSettings: handleOpenWiFiSettings,
-                openLocationSettings: handleOpenLocationSettings,
-                openBluetoothSettings: handleOpenBluetoothSettings,
-                openSettings: handleOpenSettings,
-                openSoundSettings: handleOpenSoundSettings,
+                requestWiFiNameAccess: { self.handleRequestWiFiNameAccess() },
+                requestBluetoothAuthorization: { self.handleRequestBluetoothAuthorization() },
+                openBatterySettings: { self.handleOpenBatterySettings() },
+                openWiFiSettings: { self.handleOpenWiFiSettings() },
+                openLocationSettings: { self.handleOpenLocationSettings() },
+                openBluetoothSettings: { self.handleOpenBluetoothSettings() },
+                openSettings: { self.handleOpenSettings() },
+                openSoundSettings: { self.handleOpenSoundSettings() },
                 quit: quitAction
             )
         }
