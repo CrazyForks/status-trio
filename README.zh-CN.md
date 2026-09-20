@@ -2,13 +2,37 @@
   <img src="screenshots/status-trio-dock-state-strip.png" width="1000" alt="Status Trio 八种程序坞图标状态，深色与浅色背景交替，包含 Wi-Fi、蓝牙音频、电池、圆点和圆弧状态">
 </p>
 
-# Status Trio
-
 <p align="center">
   <img src="Support/AppIcon.svg" width="112" alt="Status Trio 应用图标">
 </p>
 
+<h1 align="center">Status Trio</h1>
+
+<p align="center">
+  <a href="https://trendshift.io/repositories/234371?utm_source=trendshift-badge&utm_medium=badge&utm_campaign=badge-trendshift-234371" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/234371/daily?language=Swift" alt="lingyired/status-trio | Trendshift" width="250" height="55"/></a>
+</p>
+
 <p align="center"><strong>三个系统状态，一个原生 macOS 状态图标 —— 可放在菜单栏或程序坞。</strong></p>
+
+<p align="center">
+  <a href="https://github.com/lingyired/status-trio/releases/latest"><img src="https://img.shields.io/badge/Download%20for%20macOS-Universal%20%C2%B7%20macOS%2015%2B-000000?logo=apple&logoColor=white&style=for-the-badge" alt="下载 macOS 版 —— 通用二进制，需 macOS 15 或更高版本"></a>
+</p>
+
+<p align="center">
+  想先看看实际效果？打开 <a href="https://statustrio.lingai.net/">statustrio.lingai.net</a>，即可在浏览器里模拟预览各种图标状态。
+</p>
+
+<p align="center">
+  <a href="https://github.com/lingyired/status-trio/releases/latest"><img src="https://img.shields.io/github/v/release/lingyired/status-trio?label=release&color=blue" alt="最新版本"></a>
+  <a href="https://github.com/lingyired/status-trio/actions/workflows/release.yml"><img src="https://github.com/lingyired/status-trio/actions/workflows/release.yml/badge.svg" alt="Build and Release macOS 工作流状态"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/lingyired/status-trio?label=license" alt="许可证：Apache-2.0"></a>
+  <a href="https://deepwiki.com/lingyired/status-trio"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/macOS-15%2B%20supported-blue?logo=apple&logoColor=white" alt="支持 macOS 15 或更高版本">
+  <img src="https://img.shields.io/badge/Universal-Apple%20Silicon%20%7C%20Intel-lightgrey" alt="通用二进制，支持 Apple Silicon 与 Intel">
+</p>
 
 <p align="center">
   <a href="README.md">English</a>

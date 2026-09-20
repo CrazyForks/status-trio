@@ -2,13 +2,37 @@
   <img src="screenshots/status-trio-dock-state-strip.png" width="1000" alt="Eight Status Trio Dock icon states alternating dark and light backgrounds, including Wi-Fi, Bluetooth audio, battery, dots, and arc states">
 </p>
 
-# Status Trio
-
 <p align="center">
   <img src="Support/AppIcon.svg" width="112" alt="Status Trio app icon">
 </p>
 
+<h1 align="center">Status Trio</h1>
+
+<p align="center">
+  <a href="https://trendshift.io/repositories/234371?utm_source=trendshift-badge&utm_medium=badge&utm_campaign=badge-trendshift-234371" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/234371/daily?language=Swift" alt="lingyired/status-trio | Trendshift" width="250" height="55"/></a>
+</p>
+
 <p align="center"><strong>Three system signals. One native macOS status icon — in your menu bar or the Dock.</strong></p>
+
+<p align="center">
+  <a href="https://github.com/lingyired/status-trio/releases/latest"><img src="https://img.shields.io/badge/Download%20for%20macOS-Universal%20%C2%B7%20macOS%2015%2B-000000?logo=apple&logoColor=white&style=for-the-badge" alt="Download for macOS — universal build, macOS 15 or later"></a>
+</p>
+
+<p align="center">
+  Want to see it in action first? Open <a href="https://statustrio.lingai.net/">statustrio.lingai.net</a> to simulate every icon state in your browser.
+</p>
+
+<p align="center">
+  <a href="https://github.com/lingyired/status-trio/releases/latest"><img src="https://img.shields.io/github/v/release/lingyired/status-trio?label=release&color=blue" alt="Latest release"></a>
+  <a href="https://github.com/lingyired/status-trio/actions/workflows/release.yml"><img src="https://github.com/lingyired/status-trio/actions/workflows/release.yml/badge.svg" alt="Build and Release macOS workflow status"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/lingyired/status-trio?label=license" alt="License: Apache-2.0"></a>
+  <a href="https://deepwiki.com/lingyired/status-trio"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/macOS-15%2B%20supported-blue?logo=apple&logoColor=white" alt="macOS 15 or later supported">
+  <img src="https://img.shields.io/badge/Universal-Apple%20Silicon%20%7C%20Intel-lightgrey" alt="Universal binary for Apple Silicon and Intel">
+</p>
 
 <p align="center">
   <a href="README.zh-CN.md">简体中文</a>
