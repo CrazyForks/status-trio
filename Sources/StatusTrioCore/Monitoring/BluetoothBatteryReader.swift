@@ -97,19 +97,31 @@ enum BluetoothBatteryReader {
 }
 
 final class SystemProfilerBluetoothBatteryWorker: @unchecked Sendable, BluetoothBatteryReading {
+    typealias OutputProvider = @Sendable () -> Data?
     private let queue = DispatchQueue(label: "StatusTrio.SystemProfilerBluetoothBatteryWorker")
+    private let outputProvider: OutputProvider
+    private let reportCache: BluetoothProfilerReportCache
+
+    init(
+        outputProvider: @escaping OutputProvider = SystemProfilerBluetoothBatteryWorker.readSystemProfilerOutput,
+        reportCache: BluetoothProfilerReportCache = .shared
+    ) {
+        self.outputProvider = outputProvider
+        self.reportCache = reportCache
+    }
 
     func read(completion: @escaping @Sendable ([String: BluetoothBatteryLevel]) -> Void) {
         queue.async {
-            guard let data = self.readSystemProfilerOutput() else {
+            guard let data = self.reportCache.freshData() ?? self.outputProvider() else {
                 completion([:])
                 return
             }
+            self.reportCache.store(data)
             completion(BluetoothBatteryReader.parse(json: data))
         }
     }
 
-    private func readSystemProfilerOutput() -> Data? {
+    static func readSystemProfilerOutput() -> Data? {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/sbin/system_profiler")
         process.arguments = ["-json", "SPBluetoothDataType"]

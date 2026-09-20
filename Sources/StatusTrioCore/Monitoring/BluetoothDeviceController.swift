@@ -34,11 +34,14 @@ final class SystemProfilerBluetoothPairedDeviceWorker: @unchecked Sendable, Blue
     typealias OutputProvider = @Sendable () -> Data?
     private let queue = DispatchQueue(label: "StatusTrio.SystemProfilerBluetoothPairedDeviceWorker")
     private let outputProvider: OutputProvider
+    private let reportCache: BluetoothProfilerReportCache
 
     init(
-        outputProvider: @escaping OutputProvider = SystemProfilerBluetoothPairedDeviceWorker.readSystemProfilerOutput
+        outputProvider: @escaping OutputProvider = SystemProfilerBluetoothPairedDeviceWorker.readSystemProfilerOutput,
+        reportCache: BluetoothProfilerReportCache = .shared
     ) {
         self.outputProvider = outputProvider
+        self.reportCache = reportCache
     }
 
     func read(completion: @escaping @Sendable (BluetoothWorkerResult) -> Void) {
@@ -48,6 +51,9 @@ final class SystemProfilerBluetoothPairedDeviceWorker: @unchecked Sendable, Blue
                 completion(.failed)
                 return
             }
+            // The battery reader reuses these exact bytes instead of spawning a
+            // second profiler moments later.
+            self.reportCache.store(data)
             completion(.success(devices))
         }
     }
