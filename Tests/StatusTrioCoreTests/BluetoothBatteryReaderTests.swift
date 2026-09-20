@@ -96,6 +96,12 @@ struct BluetoothBatteryReaderTests {
     }
     """
 
+    /// A report with no device and no battery level, used as the older entry a
+    /// cache read may serve.
+    private let emptyReport = """
+    {"SPBluetoothDataType": [{"device_connected": [], "device_not_connected": []}]}
+    """
+
     /// One refresh reads the paired devices and then the battery levels. Both
     /// parse the same JSON, so the second read must reuse the first report
     /// instead of running `/usr/sbin/system_profiler` again.
@@ -235,6 +241,89 @@ struct BluetoothBatteryReaderTests {
         #expect(levels.value?[address]?.main == 95)
         #expect(levels.value?[address]?.left == 85)
         #expect(levels.value?[address]?.caseLevel == 70)
+    }
+
+    /// The freshness window runs from the last `store`, and a read that only
+    /// reuses cached bytes must not store them back. Otherwise every
+    /// battery-only read slides the window forward: a report produced 12 s ago
+    /// is served because some read re-stamped it 3 s ago, which is the contract
+    /// the cache claims and the one this test pins.
+    ///
+    /// The read is served from a report produced just inside the window, and
+    /// the query afterwards is more than `defaultMaxAge` past *production*. If
+    /// the read re-stamped the entry, that query would still find it fresh.
+    @Test func cacheServedReadDoesNotExtendTheReportLifetime() async {
+        let maxAge = BluetoothProfilerReportCache.defaultMaxAge
+        let reportCache = BluetoothProfilerReportCache()
+        // Produced `maxAge - 1` seconds ago: still fresh, so the read reuses it.
+        let producedAt = Date().addingTimeInterval(-(maxAge - 1))
+        reportCache.store(Data(sharedReport.utf8), at: producedAt)
+
+        let spawnCount = ProfilerSpawnCounter()
+        let batteryWorker = SystemProfilerBluetoothBatteryWorker(
+            outputProvider: {
+                spawnCount.increment()
+                return nil
+            },
+            reportCache: reportCache
+        )
+
+        let levels = BatteryLevelResultBox()
+        batteryWorker.read { levels.set($0) }
+        await waitUntil { levels.value != nil }
+
+        #expect(spawnCount.value == 0, "the read should reuse the fresh report")
+        #expect(levels.value?[BluetoothBatteryReader.normalizedAddress("AC:90:85:C2:9C:1F")]?.main == 95)
+        #expect(
+            reportCache.freshData(now: producedAt.addingTimeInterval(maxAge + 1)) == nil,
+            "a cache-served read extended the report's life past the freshness window"
+        )
+    }
+
+    /// The cache must never go backwards: a read that took bytes from the cache
+    /// must not store them, because that store can land after a newer report the
+    /// device worker stored and roll the cache back to the older bytes. The
+    /// read-then-store pair is not atomic and the worker offers no seam between
+    /// them, so the store call site is the only place this is observable
+    /// without a test-only cache API; this pins it there.
+    @Test func cacheServedReadDoesNotRollBackANewerStoredReport() async {
+        let maxAge = BluetoothProfilerReportCache.defaultMaxAge
+        let newer = Data(sharedReport.utf8)
+        let reportCache = BluetoothProfilerReportCache()
+        let producedAt = Date().addingTimeInterval(-(maxAge - 1))
+        reportCache.store(Data(emptyReport.utf8), at: producedAt)
+
+        let spawnCount = ProfilerSpawnCounter()
+        let batteryWorker = SystemProfilerBluetoothBatteryWorker(
+            outputProvider: {
+                spawnCount.increment()
+                return nil
+            },
+            reportCache: reportCache
+        )
+
+        // The read that took the older bytes. If it stored them, the entry's
+        // window starts here instead of at `producedAt`, so the older bytes
+        // stay servable past their production time.
+        let olderRead = BatteryLevelResultBox()
+        batteryWorker.read { olderRead.set($0) }
+        await waitUntil { olderRead.value != nil }
+        #expect(spawnCount.value == 0)
+        #expect(
+            reportCache.freshData(now: producedAt.addingTimeInterval(maxAge + 1)) == nil,
+            "the read stored the older bytes it only read, making them servable again"
+        )
+
+        // The newer report the device worker stores while such a read is in
+        // flight. The older bytes must not come back on top of it.
+        reportCache.store(newer)
+        let newerRead = BatteryLevelResultBox()
+        batteryWorker.read { newerRead.set($0) }
+        await waitUntil { newerRead.value != nil }
+
+        #expect(spawnCount.value == 0)
+        #expect(newerRead.value == BluetoothBatteryReader.parse(json: newer))
+        #expect(reportCache.freshData() == newer)
     }
 
     /// The readers answer on their own serial queues.

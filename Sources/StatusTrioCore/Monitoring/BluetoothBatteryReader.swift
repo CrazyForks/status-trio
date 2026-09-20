@@ -112,11 +112,25 @@ final class SystemProfilerBluetoothBatteryWorker: @unchecked Sendable, Bluetooth
 
     func read(completion: @escaping @Sendable ([String: BluetoothBatteryLevel]) -> Void) {
         queue.async {
-            guard let data = self.reportCache.freshData() ?? self.outputProvider() else {
+            let data: Data?
+            if let cached = self.reportCache.freshData() {
+                // Bytes that were only read are never stored back: the freshness
+                // window runs from the last `store`, so re-stamping them would
+                // both extend their life and let them overwrite a newer report
+                // the device worker stored in the meantime.
+                data = cached
+            } else {
+                data = self.outputProvider()
+                if let fetched = data {
+                    // This read genuinely fetched, so it may seed the cache for
+                    // a read that happens moments later.
+                    self.reportCache.store(fetched)
+                }
+            }
+            guard let data else {
                 completion([:])
                 return
             }
-            self.reportCache.store(data)
             completion(BluetoothBatteryReader.parse(json: data))
         }
     }

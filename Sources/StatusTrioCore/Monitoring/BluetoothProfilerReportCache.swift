@@ -8,9 +8,12 @@ import Foundation
 final class BluetoothProfilerReportCache: @unchecked Sendable {
     static let shared = BluetoothProfilerReportCache()
 
-    /// A report older than this is treated as absent, so a battery read that
-    /// happens on its own still asks the system for current data instead of
-    /// reusing a level that may already be stale.
+    /// A report is treated as absent once this long has passed since the last
+    /// `store` — the moment the report was produced — rather than since some
+    /// earlier production. The workers store only the bytes they fetch, so a
+    /// read that merely reuses a report does not move the window forward: a
+    /// battery read that happens on its own still asks the system for current
+    /// data instead of reusing a level that may already be stale.
     static let defaultMaxAge: TimeInterval = 5
 
     private let lock = NSLock()
