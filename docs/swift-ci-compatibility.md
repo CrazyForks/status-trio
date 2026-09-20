@@ -388,10 +388,37 @@ RSS 134 MB、20 秒累计 240 次 idle wakeups——两次采样条件不同，�
 > 会派生出独立的 dev bundle id，不覆盖已安装的正式版）：
 >
 > ```bash
+> # 先退出已安装的正式版，保证只有一个 StatusTrio 进程（dev bundle 与正式版可同时运行，
+> # 两个 PID 会让 top -pid 报 "invalid option or syntax"）
+> osascript -e 'tell application id "com.lingsmbp.StatusTrio" to quit'
 > bash scripts/build-worktree.sh release no-open
 > open dist/StatusTrio.app
-> top -l 20 -s 1 -pid $(pgrep -x StatusTrio) | tail -5
+> top -l 20 -s 1 -pid "$(pgrep -x StatusTrio)" | tail -5
 > ```
 >
 > 本次预检未执行采样，是为了不在维护者的机器上多出一个菜单栏实例并触发权限弹窗；
 > 这个理由只解释了当时的推迟，不能替代发布前必须拿到的证据。
+
+### 有界自愈的第三次预检（`build=16`）
+
+终审指出上一版的「显示器睡眠」标志只由两个唤醒通知清除：显示器单独睡眠时若那一条
+`screensDidWakeNotification` 丢失，电池刷新会在整个会话里停住，而电池百分比是画进菜单栏
+图标的——正是本计划禁止的「轮询永久停止 / 已绘制值变陈旧」。修复方式是给跳过加一个上限：
+连续跳过 20 个 tick（默认 15 秒下约 5 分钟）后就照常刷新并清零，任一唤醒通知或任何一次真正
+执行的 tick 也会清零。这样丢失一条通知的代价是被上限约束的一次多余刷新，而不是整个会话停摆。
+
+该修复触及 `@MainActor` 状态，因此再次跑了非发布预检
+[`35514169366`](https://github.com/lingyired/status-trio/actions/runs/35514169366)
+（`version=1.3.0`、**`build=16`**、`publish=false`）：`Validate appcast notes`、`Run tests`、
+`Build, sign, notarize, and publish`、`Upload release artifacts` 全部成功，
+**637 个 XCTest（6 跳过，0 失败）** 与 **163 个 Swift Testing / 27 个 suite** 全绿，
+未发布 Release、未改动 appcast。**本分支合并时应以 `35514169366` 为准**（`35513133152`
+对应有界自愈修复之前的 HEAD）。
+
+同一次修复还按终审意见收尾了文档：发布说明改为「默认每 15 秒一次」并去掉了「watchdog /
+看门狗」这类开发者词汇、改用 `.lproj` 里的既有术语；`2026-09-12-status-trio-design.md`
+标记为 v1 设计快照；`2026-09-14-performance-optimization-design.md` 的间隔描述改为
+实际的 15 秒 / 5...60 / 步长 5。
+
+> **⏳ 仍然未完成：改动后的功耗采样（见上一节）。** 它不影响合并，但**必须在发布 1.3.0
+> 之前**补上。

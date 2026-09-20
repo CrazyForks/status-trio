@@ -585,10 +585,18 @@ Skip the work in the tick:
 
 ```swift
     private func fallbackRefreshTick() {
-        // Skipping the work is enough: the timer keeps ticking, and the display
-        // wake notification is what resumes the refreshes, so a missed
-        // notification cannot leave the poll stopped.
-        guard !hasStopped, !isDisplayAsleep else { return }
+        guard !hasStopped else { return }
+        // Asleep skips this tick's work, but the skip is bounded on purpose: the
+        // flag is cleared by two wake notifications, and a display-only sleep
+        // whose wake notification is lost would otherwise stop battery refreshes
+        // for the whole session, freezing the battery percentage drawn into the
+        // menu bar icon. `maximumDisplayAsleepSkips` runs a tick anyway once per
+        // cap, so the worst case is one extra refresh per five minutes.
+        if isDisplayAsleep {
+            displayAsleepSkipCount &+= 1
+            guard displayAsleepSkipCount >= Self.maximumDisplayAsleepSkips else { return }
+        }
+        displayAsleepSkipCount = 0
         fallbackTickCount &+= 1
         batteryMonitor.refresh()
         ...
@@ -816,9 +824,13 @@ The pre-change baseline on record was taken from the **installed 1.2.1 / build 1
 Build a dev bundle from this branch and launch it. `scripts/build-worktree.sh` derives a bundle id (`com.lingsmbp.StatusTrio.dev.<branch>`) and app name from the branch, so it does not overwrite or collide with the installed app — never install a preflight artifact into `/Applications`.
 
 ```bash
+# Quit the installed app first: the dev bundle keeps the same executable name
+# (`StatusTrio`) and only differs by bundle id, so both can run at once and a
+# two-PID expansion makes `top -pid` fail with "invalid option or syntax".
+osascript -e 'tell application id "com.lingsmbp.StatusTrio" to quit'
 bash scripts/build-worktree.sh release no-open
 open dist/StatusTrio.app
-top -l 20 -s 1 -pid $(pgrep -x StatusTrio) | tail -5
+top -l 20 -s 1 -pid "$(pgrep -x StatusTrio)" | tail -5
 ```
 
 Expected: the average CPU, RSS and idle-wakeup numbers are recorded for the after-change sample (and the on-record pre-change numbers are cited alongside them, with their build identity). The change moves the per-tick IOKit, CoreWLAN/`SCDynamicStore` and CoreAudio work from every 5 seconds to every fourth fallback tick while no detail surface is visible; put both numbers in the PR body rather than asserting a target. Quit the dev build when the sample is done.
