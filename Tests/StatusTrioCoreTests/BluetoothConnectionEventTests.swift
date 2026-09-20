@@ -91,6 +91,65 @@ final class BluetoothConnectionEventTests: XCTestCase {
         XCTAssertTrue(store.bluetoothDevices.hasConnectionEventSource)
     }
 
+    /// The SDK invalidates a device's disconnect registration only through
+    /// `unregister()`; overwriting or clearing the stored token leaves the
+    /// registration live, so every disconnect aimed one more callback at the
+    /// next one. This pins unregister-before-drop on all three paths.
+    func testEveryPerDeviceRegistrationIsUnregisteredOnDisconnectReconnectAndStop() {
+        let monitor = IOBluetoothConnectionEventMonitor()
+        var tokens: [CountingBluetoothNotificationToken] = []
+
+        func register(_ identity: String) {
+            let token = CountingBluetoothNotificationToken()
+            tokens.append(token)
+            monitor.handleDeviceConnected(identity: identity) { token }
+        }
+
+        register("AA:BB:CC:DD:EE:01")
+        monitor.handleDeviceDisconnected(identity: "AA:BB:CC:DD:EE:01")
+        XCTAssertTrue(
+            tokens[0].isUnregistered,
+            "a disconnect must unregister the device's registration, not just drop it"
+        )
+
+        // A reconnect while the old registration is still live replaces the
+        // entry; the token it displaced has to be invalidated too.
+        register("AA:BB:CC:DD:EE:02")
+        register("AA:BB:CC:DD:EE:02")
+        XCTAssertTrue(tokens[1].isUnregistered, "a replaced registration must be unregistered")
+        XCTAssertFalse(tokens[2].isUnregistered, "the replacement must stay live")
+
+        // Teardown releases whatever is still registered, including a device
+        // that never disconnected.
+        register("AA:BB:CC:DD:EE:03")
+        monitor.stop()
+        XCTAssertTrue(tokens[2].isUnregistered, "stop() must unregister the live replacement")
+        XCTAssertTrue(tokens[3].isUnregistered, "stop() must unregister every device registration")
+        XCTAssertEqual(
+            [tokens[0].unregisterCount, tokens[1].unregisterCount, tokens[2].unregisterCount, tokens[3].unregisterCount],
+            [1, 1, 1, 1],
+            "each registration must be unregistered exactly once"
+        )
+    }
+
+    /// Both callbacks route through one derivation, so a device with no address
+    /// is removed under the key it was registered with. The disconnect path used
+    /// to key it differently and left the registration behind.
+    func testTheConnectAndDisconnectPathsKeyADeviceIdentically() {
+        XCTAssertEqual(
+            IOBluetoothConnectionEventMonitor.deviceIdentity(addressString: "AA:BB:CC:DD:EE:01", name: "AirPods Pro"),
+            "AA:BB:CC:DD:EE:01"
+        )
+        XCTAssertEqual(
+            IOBluetoothConnectionEventMonitor.deviceIdentity(addressString: nil, name: "AirPods Pro"),
+            "AirPods Pro"
+        )
+        XCTAssertEqual(
+            IOBluetoothConnectionEventMonitor.deviceIdentity(addressString: nil, name: nil),
+            ""
+        )
+    }
+
     private func waitUntil(_ condition: () -> Bool) async {
         for _ in 0..<1_000 {
             if condition() { return }
@@ -160,6 +219,21 @@ private final class FakeBluetoothConnectionEventMonitor: BluetoothConnectionEven
     func emit() {
         let handler = lock.withLock { self.handler }
         handler?()
+    }
+}
+
+/// A counted stand-in for a registered IOBluetooth notification. Only
+/// `unregister()` invalidates such a registration, so counting the calls is what
+/// makes a registration that was merely dropped observable.
+private final class CountingBluetoothNotificationToken: BluetoothNotificationToken, @unchecked Sendable {
+    private let lock = NSLock()
+    private var calls = 0
+
+    var unregisterCount: Int { lock.withLock { calls } }
+    var isUnregistered: Bool { lock.withLock { calls > 0 } }
+
+    func unregister() {
+        lock.withLock { calls += 1 }
     }
 }
 
