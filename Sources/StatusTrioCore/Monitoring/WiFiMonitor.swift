@@ -329,6 +329,12 @@ final class WiFiMonitor: NSObject, WiFiMonitoring, CWEventDelegate {
     private var lastValidDate: Date?
     private var lastRecoveryAttempt: Date?
     private var isPersistentReadFailure = false
+    /// Recovery attempts made while reads reported no interface at all, which is
+    /// what a Mac without Wi-Fi hardware returns on every read. Rebuilding the
+    /// CoreWLAN event stack for those is pure waste, so the attempts are bounded.
+    /// Any read that reports an interface, and `recover()`, reset it.
+    private(set) var interfaceAbsentStreak = 0
+    private let noInterfaceRecoveryLimit: Int
     private var lifecycle = Lifecycle.idle
 
     init(
@@ -343,6 +349,7 @@ final class WiFiMonitor: NSObject, WiFiMonitoring, CWEventDelegate {
         refreshDebounceSleep: @escaping @Sendable (Duration) async throws -> Void = {
             try await Task.sleep(for: $0)
         },
+        noInterfaceRecoveryLimit: Int = 3,
         readTimeout: Duration = .seconds(5),
         readTimeoutSleep: @escaping @Sendable (Duration) async throws -> Void = {
             try await Task.sleep(for: $0)
@@ -357,6 +364,7 @@ final class WiFiMonitor: NSObject, WiFiMonitoring, CWEventDelegate {
         self.now = now
         self.refreshDebounceInterval = refreshDebounceInterval
         self.refreshDebounceSleep = refreshDebounceSleep
+        self.noInterfaceRecoveryLimit = noInterfaceRecoveryLimit
         readWatchdog = ReadWatchdog(
             baseTimeout: readTimeout,
             maxTimeout: .seconds(60),
@@ -388,14 +396,12 @@ final class WiFiMonitor: NSObject, WiFiMonitoring, CWEventDelegate {
         refresh()
     }
 
+    /// External triggers (a wake, an explicit `recover()`) start a fresh budget;
+    /// the internal retry path is the one that is bounded.
     func recover() {
         guard lifecycle == .running else { return }
-
-        readGeneration &+= 1
-        lastRecoveryAttempt = now()
-        eventMonitor.restart(delegate: self, events: Self.monitoredEvents)
-        pathMonitor.cancel()
-        startPathMonitoring()
+        interfaceAbsentStreak = 0
+        restartMonitoring()
     }
 
     func requestNameAccess() {
@@ -489,6 +495,7 @@ final class WiFiMonitor: NSObject, WiFiMonitoring, CWEventDelegate {
             return
         }
 
+        interfaceAbsentStreak = 0
         lastRecoveryAttempt = nil
         isPersistentReadFailure = false
 
@@ -652,6 +659,12 @@ final class WiFiMonitor: NSObject, WiFiMonitoring, CWEventDelegate {
     }
 
     private func recoverIfAllowed(at date: Date) {
+        // Bound the rebuilds, not the reads: one attempt is counted per absent read
+        // that reaches this path, and the attempt is still made at the limit. The
+        // stale-interval gate then absorbs the fix-up read a rebuild triggers, so a
+        // rebuild can never re-trigger itself.
+        guard interfaceAbsentStreak < noInterfaceRecoveryLimit else { return }
+        interfaceAbsentStreak += 1
         if
             let lastRecoveryAttempt,
             date.timeIntervalSince(lastRecoveryAttempt) < staleInterval
@@ -659,7 +672,15 @@ final class WiFiMonitor: NSObject, WiFiMonitoring, CWEventDelegate {
             return
         }
 
-        recover()
+        restartMonitoring()
+    }
+
+    private func restartMonitoring() {
+        readGeneration &+= 1
+        lastRecoveryAttempt = now()
+        eventMonitor.restart(delegate: self, events: Self.monitoredEvents)
+        pathMonitor.cancel()
+        startPathMonitoring()
     }
 
     private func normalizedRSSI(_ rssi: Int?) -> Int? {

@@ -459,6 +459,131 @@ final class WiFiClassifierTests: XCTestCase {
         monitor.stop()
     }
 
+    /// A Mac with no Wi-Fi interface (a Mac mini or Mac Studio on Ethernet)
+    /// reports `.unavailable` on every read. Recovery used to rebuild the whole
+    /// CoreWLAN event stack every 30 seconds for the life of the process; it now
+    /// gives up after a bounded number of attempts.
+    func testInterfaceAbsentHostGivesUpRebuildingTheEventStackAfterTheLimit() async {
+        let clock = ManualWiFiClock(now: Date(timeIntervalSinceReferenceDate: 4_000))
+        let reader = FakeWiFiSystemReader(result: makeReading(mode: .station, rssi: -50))
+        let eventMonitor = FakeWiFiEventMonitor()
+        let pathMonitor = FakeWiFiPathMonitor()
+        let monitor = makeMonitor(
+            reader: reader,
+            eventMonitor: eventMonitor,
+            pathMonitor: pathMonitor,
+            clock: clock
+        )
+        monitor.start()
+        var iterator = monitor.updates.makeAsyncIterator()
+        _ = await iterator.next()
+        XCTAssertEqual(eventMonitor.restartCount, 0)
+
+        // The interface is gone: `FakeWiFiSystemReader(result: nil)` is exactly
+        // what `CWWiFiClient.shared().interface()` returning nil looks like.
+        reader.result = nil
+        for _ in 0..<6 {
+            clock.advance(by: 30.001)
+            monitor.refresh()
+            let status = await iterator.next()
+            XCTAssertEqual(status, .placeholder)
+        }
+
+        // The limit counts rebuild attempts: the first three absent reads each
+        // rebuild the stack, and once the streak reaches the limit every later read
+        // publishes the unavailable status without rebuilding anything.
+        XCTAssertEqual(eventMonitor.restartCount, 3, "recovery must stop at the limit")
+        XCTAssertEqual(pathMonitor.cancelCount, 3)
+        XCTAssertEqual(pathMonitor.startCount, 4, "one start plus three restarts")
+        XCTAssertEqual(monitor.interfaceAbsentStreak, 3, "attempts stop at the limit")
+        monitor.stop()
+    }
+
+    /// A transient failure on a Mac that does have Wi-Fi is not the no-interface
+    /// case, so it keeps retrying: the cap only counts attempts made while reads
+    /// reported no interface at all.
+    func testInterfaceAbsentStreakResetsWhenTheInterfaceComesBack() async {
+        let clock = ManualWiFiClock(now: Date(timeIntervalSinceReferenceDate: 4_500))
+        let reader = FakeWiFiSystemReader(result: makeReading(mode: .station, rssi: -50))
+        let eventMonitor = FakeWiFiEventMonitor()
+        let monitor = makeMonitor(reader: reader, eventMonitor: eventMonitor, clock: clock)
+        monitor.start()
+        var iterator = monitor.updates.makeAsyncIterator()
+        _ = await iterator.next()
+
+        reader.result = nil
+        clock.advance(by: 30.001)
+        monitor.refresh()
+        _ = await iterator.next()
+        XCTAssertEqual(monitor.interfaceAbsentStreak, 1)
+        XCTAssertEqual(eventMonitor.restartCount, 1)
+
+        reader.result = makeReading(mode: .station, rssi: -58)
+        monitor.refresh()
+        let restored = await iterator.next()
+        XCTAssertEqual(restored, WiFiStatus(state: .connected, rssi: -58))
+        XCTAssertEqual(monitor.interfaceAbsentStreak, 0)
+
+        // The next absence starts a fresh budget instead of inheriting the old one.
+        reader.result = nil
+        clock.advance(by: 30.001)
+        monitor.refresh()
+        _ = await iterator.next()
+        XCTAssertEqual(eventMonitor.restartCount, 2)
+        monitor.stop()
+    }
+
+    /// The cap must never trap a machine whose Wi-Fi comes back later: an
+    /// explicit `recover()` — a wake, `SystemStatusStore.recoverAll()`, or a
+    /// plug-in adapter re-appearing — resets the budget, and the ordinary status
+    /// path keeps reporting the interface once reads succeed again.
+    func testInterfaceAbsentHostRecoversWhenWiFiAppearsAfterTheLimit() async {
+        let clock = ManualWiFiClock(now: Date(timeIntervalSinceReferenceDate: 5_000))
+        let reader = FakeWiFiSystemReader(result: makeReading(mode: .station, rssi: -50))
+        let eventMonitor = FakeWiFiEventMonitor()
+        let pathMonitor = FakeWiFiPathMonitor()
+        let monitor = makeMonitor(
+            reader: reader,
+            eventMonitor: eventMonitor,
+            pathMonitor: pathMonitor,
+            clock: clock
+        )
+        monitor.start()
+        var iterator = monitor.updates.makeAsyncIterator()
+        _ = await iterator.next()
+
+        reader.result = nil
+        for _ in 0..<6 {
+            clock.advance(by: 30.001)
+            monitor.refresh()
+            _ = await iterator.next()
+        }
+        XCTAssertEqual(monitor.interfaceAbsentStreak, 3)
+        XCTAssertEqual(eventMonitor.restartCount, 3, "precondition: the budget is spent")
+
+        // Wi-Fi appears later. An external recovery starts a fresh budget...
+        monitor.recover()
+        XCTAssertEqual(monitor.interfaceAbsentStreak, 0)
+        XCTAssertEqual(eventMonitor.restartCount, 4)
+
+        // ...and the status path reports the interface again without any restart.
+        reader.result = makeReading(mode: .station, rssi: -57)
+        monitor.refresh()
+        let restored = await iterator.next()
+        XCTAssertEqual(restored, WiFiStatus(state: .connected, rssi: -57))
+        XCTAssertEqual(monitor.interfaceAbsentStreak, 0)
+        XCTAssertEqual(eventMonitor.restartCount, 4)
+
+        // The fresh budget is real: the next absence may rebuild again.
+        reader.result = nil
+        clock.advance(by: 30.001)
+        monitor.refresh()
+        _ = await iterator.next()
+        XCTAssertEqual(monitor.interfaceAbsentStreak, 1)
+        XCTAssertEqual(eventMonitor.restartCount, 5, "the reset budget may rebuild again")
+        monitor.stop()
+    }
+
     func testCoreWLANModeMapping() {
         XCTAssertEqual(WiFiInterfaceMode(coreWLANMode: .none), .none)
         XCTAssertEqual(WiFiInterfaceMode(coreWLANMode: .station), .station)
@@ -1261,6 +1386,7 @@ final class WiFiClassifierTests: XCTestCase {
         staleInterval: TimeInterval = 30,
         initialPath: WiFiPathSnapshot? = nil,
         clock: ManualWiFiClock = ManualWiFiClock(),
+        noInterfaceRecoveryLimit: Int = 3,
         refreshDebounceSleep: @escaping @Sendable (Duration) async throws -> Void = {
             try await Task.sleep(for: $0)
         },
@@ -1278,6 +1404,7 @@ final class WiFiClassifierTests: XCTestCase {
             initialPath: initialPath,
             now: { clock.now },
             refreshDebounceSleep: refreshDebounceSleep,
+            noInterfaceRecoveryLimit: noInterfaceRecoveryLimit,
             readTimeout: readTimeout,
             readTimeoutSleep: readTimeoutSleep
         )
