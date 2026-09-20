@@ -436,3 +436,19 @@ RSS 134 MB、20 秒累计 240 次 idle wakeups——两次采样条件不同，�
 终审修复 wave 修掉的一个真实缺陷值得记在这里：设备断开时 `BluetoothConnectionEventMonitor` 直接丢弃 `IOBluetoothUserNotification` token 而**没有 `unregister()`**，而 SDK 明确说明 token 在注销前一直有效——于是每一次断开都会在存活的监视器上永久泄漏一个注册，并在下次断开时多触发一次回调（注释还写着相反的话）。现已改为先 `unregister()` 再丢弃（断线与重连两条路径都覆盖），并加了通过计数 token 注销次数、可对旧代码失败（RED `[0, 0, 1, 1]`）的测试。
 
 > **⏳ 仍未完成：改动前后的 spawn 次数实测**（计划 Task 7 Step 1）。它不影响合并，但和 R-03 的功耗采样一样，**必须在发布 1.3.0 之前**由维护者用 dev bundle 采集（`pgrep -x system_profiler` 采样：面板关闭时应为 0 次，蓝牙界面可见时约每 30 秒一次），或在合并记录中明确豁免。计划里没有记录任何推断出来的数字。
+
+### Wi-Fi 扫描节奏的预检（2026-09-20）
+
+Wi-Fi 页面原本在打开期间**每约 5 秒**做一次全信道 `scanForNetworks` 并 spawn 一个 `networksetup`（30 秒的周期循环只是下限，状态 yield 才是真正的驱动），返回摘要页后循环仍在跑；没有 Wi-Fi 网卡的 Mac 还会每 30 秒重建整套 CoreWLAN 事件栈。本次在分支
+`fix/class-a-wifi`（计划 `docs/superpowers/plans/2026-09-20-wifi-scan-cadence.md`）上：加入可注入的扫描 worker/时钟/`minimumScanInterval`（30 秒），把 `refresh`（自动、间隔内复用缓存）与 `refreshNow`（显式、总是扫描）分开；三个用户主动路径（刷新按钮、无线开关、连接完成）改走 `refreshNow`；新增 `closeWiFiDetails()` 并在返回时调用，同时修掉一个既有的「扫描中 deactivate 会让 `state` 永久停在 `.scanning`」冻结；把无网卡时的恢复限制为 3 次重建。
+
+这一步触及 `@MainActor` 状态，因此按规则跑了两次非发布预检：
+
+- [`35528142630`](https://github.com/lingyired/status-trio/actions/runs/35528142630)（`build=19`）—— 终审修复 wave **之前**的 HEAD。
+- [`35528756095`](https://github.com/lingyired/status-trio/actions/runs/35528756095)（**`build=20`**）—— 修复 wave 之后，**合并以这次为准**：`Validate appcast notes`、`Run tests`、`Build, sign, notarize, and publish`、`Upload release artifacts` 全部成功，**683 个 XCTest（6 跳过，0 失败）** 与 **168 个 Swift Testing / 27 个 suite** 全绿，两个切片均为 `minos 15.0 / sdk 26.0`，未发布 Release、未改动 appcast。
+
+终审修复 wave 修掉的缺陷值得记在这里：`recoverIfAllowed` 把 `interfaceAbsentStreak` 的**自增放在 staleness 门控之前**，于是被门控刻意抑制的读也在消耗恢复预算——注释、测试名与测试注释都写着"计数重建次数"，代码却在数读次数，两者只在测试刻意使用的 30.001 秒读间隔下重合。生产中间隔更密（R-03 的 15 秒兜底 tick 加链路质量事件），预算约 45 秒就耗尽，实际只换到 1–2 次重建，而不是文档承诺的 3 次。现已把自增移到门控之后，并新增一条 **5 秒读间隔**的测试独立钉住"计数的是重建"（对旧代码 RED：`streak 3 != 1`、`restartCount 1 != 3`）。
+
+> **⏳ 仍未完成：改动前后的扫描次数实测**（计划 Task 5 Step 5）。与上面两项一样不影响合并，但**必须在发布 1.3.0 之前**由维护者用 dev bundle 采集（`pgrep -x networksetup` 采样：间隔内应为 0 次，页面打开时约每 30 秒一次，返回摘要后应为 0 次），或在合并记录中明确豁免。
+
+> **记录在案的残留项（已裁定，不在本计划内修）**：无网卡恢复的 3 次上限**无法区分**"这台机器没有 Wi-Fi 硬件"与"有硬件但接口读卡在 nil"。后者在旧代码里会在 30–60 秒内自愈，现在 3 次重建后要等到睡眠/唤醒或连接失效才恢复，期间菜单栏与 Wi-Fi 页显示 `.unavailable`。计划有意收紧这项工作，发布说明也写明"尝试有限次数后等待唤醒或网络变化"；若要恢复慢速自愈，需要一个更慢的（例如每几分钟一次）上限后兜底，属后续改动的设计决定。
