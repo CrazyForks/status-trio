@@ -3,6 +3,7 @@ import SwiftUI
 
 /// Human-centered, multi-column settings window matching modern macOS standards.
 struct SettingsView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @ObservedObject var store: SettingsStore
     @ObservedObject var statusStore: SystemStatusStore
     @ObservedObject var localization: Localization
@@ -88,7 +89,7 @@ struct SettingsView: View {
 
             ForEach(Section.allCases) { section in
                 Button {
-                    withAnimation(.easeInOut(duration: 0.16)) {
+                    withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.16)) {
                         selectedSection = section
                     }
                 } label: {

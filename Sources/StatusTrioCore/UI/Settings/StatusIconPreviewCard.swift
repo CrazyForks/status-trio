@@ -11,6 +11,7 @@ struct StatusIconPreviewCard: View {
     @ObservedObject var statusStore: SystemStatusStore
     @Binding var isDarkBackground: Bool
     @EnvironmentObject private var localization: Localization
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         VStack(spacing: 8) {
@@ -25,11 +26,11 @@ struct StatusIconPreviewCard: View {
             ) {
                 appearanceToggle
             }
-            .animation(.easeInOut(duration: 0.15), value: store.iconSize)
-            .animation(.easeInOut(duration: 0.15), value: store.batteryIconOptions)
-            .animation(.easeInOut(duration: 0.15), value: store.connectionIconOptions)
-            .animation(.easeInOut(duration: 0.15), value: store.volumeIconOptions)
-            .animation(.easeInOut(duration: 0.15), value: store.bluetoothAudioIconOptions)
+            .animation(reduceMotion ? nil : .easeInOut(duration: 0.15), value: store.iconSize)
+            .animation(reduceMotion ? nil : .easeInOut(duration: 0.15), value: store.batteryIconOptions)
+            .animation(reduceMotion ? nil : .easeInOut(duration: 0.15), value: store.connectionIconOptions)
+            .animation(reduceMotion ? nil : .easeInOut(duration: 0.15), value: store.volumeIconOptions)
+            .animation(reduceMotion ? nil : .easeInOut(duration: 0.15), value: store.bluetoothAudioIconOptions)
 
             Text(localization.string(.settingsPreviewHint))
                 .font(.system(size: 11))
@@ -39,7 +40,7 @@ struct StatusIconPreviewCard: View {
 
     private var appearanceToggle: some View {
         Button {
-            withAnimation(.easeInOut(duration: 0.2)) {
+            withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) {
                 isDarkBackground.toggle()
             }
         } label: {
@@ -64,6 +65,7 @@ struct StatusIconPreviewCard: View {
 
 /// Small Dock tile preview that mirrors the live Dock icon.
 struct DockIconPreviewTile: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @ObservedObject var store: SettingsStore
     @ObservedObject var statusStore: SystemStatusStore
     var size: CGFloat = 44
@@ -79,10 +81,10 @@ struct DockIconPreviewTile: View {
             backgroundStyle: resolvedBackgroundStyle,
             size: size
         )
-        .animation(.easeInOut(duration: 0.15), value: store.batteryIconOptions)
-        .animation(.easeInOut(duration: 0.15), value: store.connectionIconOptions)
-        .animation(.easeInOut(duration: 0.15), value: store.volumeIconOptions)
-        .animation(.easeInOut(duration: 0.15), value: store.bluetoothAudioIconOptions)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.15), value: store.batteryIconOptions)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.15), value: store.connectionIconOptions)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.15), value: store.volumeIconOptions)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.15), value: store.bluetoothAudioIconOptions)
         .accessibilityHidden(true)
     }
 
