@@ -946,6 +946,107 @@ final class SystemStatusStoreTests: XCTestCase {
         sleeper.releaseAll()
     }
 
+    /// Regression: the system wake must clear the display-asleep flag on its
+    /// own. `screensDidWakeNotification` is the only other path that clears it,
+    /// so a wake cycle that delivers only `didWakeNotification` would otherwise
+    /// leave the flag set and the fallback poll disabled for the rest of the
+    /// session.
+    func testSystemWakeAloneClearsDisplayAsleepAndResumesFallbackTick() async {
+        let battery = FakeBatteryMonitor()
+        let wifi = FakeWiFiMonitor()
+        let volume = FakeVolumeMonitor()
+        let sleeper = ManualSleeper()
+        let wakeCenter = NotificationCenter()
+        let store = SystemStatusStore(
+            batteryMonitor: battery,
+            wifiMonitor: wifi,
+            volumeMonitor: volume,
+            refreshInterval: .seconds(60),
+            sleep: { _ in await sleeper.sleep() },
+            wakeNotificationCenter: wakeCenter
+        )
+
+        store.start()
+        wakeCenter.post(name: NSWorkspace.screensDidSleepNotification, object: nil)
+        await waitUntil { store.isDisplayAsleep }
+
+        // One tick is parked on the manual sleeper. While the flag is set it
+        // must return without refreshing anything.
+        await sleeper.waitForCallCount(1)
+
+        XCTAssertEqual(battery.refreshCount, 0, "a sleeping display must skip the tick")
+        XCTAssertEqual(wifi.refreshCount, 0)
+        XCTAssertEqual(volume.refreshCount, 0)
+
+        // Only the system wake, never `screensDidWakeNotification`.
+        wakeCenter.post(name: NSWorkspace.didWakeNotification, object: nil)
+        await waitUntil { !store.isDisplayAsleep }
+        await waitUntil { battery.refreshCount == 1 }
+
+        XCTAssertFalse(
+            store.isDisplayAsleep,
+            "the system wake notification must clear the display-asleep flag"
+        )
+        XCTAssertEqual(battery.recoverCount, 1, "the system wake resynchronizes the monitors")
+
+        // The wake refreshed on its own; now wake the parked tick and prove the
+        // poll resumes because the guard no longer blocks it.
+        sleeper.releaseNext()
+        await waitUntil { battery.refreshCount == 2 }
+
+        XCTAssertEqual(battery.refreshCount, 2, "the fallback tick must resume after a system wake")
+        XCTAssertEqual(
+            volume.refreshCount,
+            1,
+            "the resumed tick is the first stride tick, so the watchdog stride must still hold"
+        )
+
+        store.stop()
+        sleeper.releaseAll()
+    }
+
+    func testDisplayWakeRecoversBeforeItRefreshes() async {
+        let battery = FakeBatteryMonitor()
+        let wifi = FakeWiFiMonitor()
+        let volume = FakeVolumeMonitor()
+        let sleeper = ManualSleeper()
+        let displayCenter = NotificationCenter()
+        let store = SystemStatusStore(
+            batteryMonitor: battery,
+            wifiMonitor: wifi,
+            volumeMonitor: volume,
+            refreshInterval: .seconds(60),
+            sleep: { _ in await sleeper.sleep() },
+            wakeNotificationCenter: displayCenter
+        )
+        var recoveryAndRefreshOrder: [String] = []
+        battery.onRecover = { recoveryAndRefreshOrder.append("battery.recover") }
+        wifi.onRecover = { recoveryAndRefreshOrder.append("wifi.recover") }
+        volume.onRecover = { recoveryAndRefreshOrder.append("volume.recover") }
+        battery.onRefresh = { recoveryAndRefreshOrder.append("battery.refresh") }
+        wifi.onRefresh = { recoveryAndRefreshOrder.append("wifi.refresh") }
+        volume.onRefresh = { recoveryAndRefreshOrder.append("volume.refresh") }
+
+        store.start()
+        displayCenter.post(name: NSWorkspace.screensDidSleepNotification, object: nil)
+        await waitUntil { store.isDisplayAsleep }
+
+        displayCenter.post(name: NSWorkspace.screensDidWakeNotification, object: nil)
+        await waitUntil { !store.isDisplayAsleep && volume.refreshCount == 1 }
+
+        XCTAssertEqual(recoveryAndRefreshOrder, [
+            "battery.recover",
+            "wifi.recover",
+            "volume.recover",
+            "battery.refresh",
+            "wifi.refresh",
+            "volume.refresh"
+        ])
+
+        store.stop()
+        sleeper.releaseAll()
+    }
+
     func testWakeNotificationRefreshesAllMonitorsExactlyOnce() async {
         let battery = FakeBatteryMonitor()
         let wifi = FakeWiFiMonitor()

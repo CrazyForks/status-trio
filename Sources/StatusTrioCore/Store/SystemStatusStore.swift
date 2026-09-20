@@ -140,6 +140,14 @@ final class SystemStatusStore: ObservableObject {
         ) { [weak self] _ in
             Task { @MainActor [weak self] in
                 guard let self else { return }
+                // Either wake notification self-heals the flag: a wake cycle
+                // that delivers only this one must not leave the fallback poll
+                // disabled for the rest of the session. A dark or network wake
+                // can fire with the display still off, so the poll resumes
+                // until the next display-sleep notification; bounded
+                // over-polling is the safe direction, permanent staleness is
+                // not.
+                self.isDisplayAsleep = false
                 self.recoverAll()
                 self.refreshAll()
             }
@@ -404,9 +412,11 @@ final class SystemStatusStore: ObservableObject {
     /// steady-state poll and only pays for what the menu bar icon and the Dock
     /// icon are currently drawing.
     private func fallbackRefreshTick() {
-        // Skipping the work is enough: the timer keeps ticking, and the display
-        // wake notification is what resumes the refreshes, so a missed
-        // notification cannot leave the poll stopped.
+        // Asleep only skips this tick's work: the timer keeps ticking and
+        // neither the tick counter nor the hidden stride advances, so the
+        // watchdog cadence resumes unchanged. Both wake notifications
+        // (`didWakeNotification` and `screensDidWakeNotification`) clear the
+        // flag, so no missed notification can leave the poll skipped.
         guard !hasStopped, !isDisplayAsleep else { return }
         fallbackTickCount &+= 1
         batteryMonitor.refresh()
