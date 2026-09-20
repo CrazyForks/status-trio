@@ -114,7 +114,11 @@ gh workflow run release.yml --repo lingyired/status-trio --ref fix/class-a-wifi 
   -f version=1.3.0 -f build=19 -f publish=false
 gh run watch <run-id> --repo lingyired/status-trio --exit-status
 
-# 5. 合并（先断言当前分支，再快进 main；不要 checkout main，会打断 owner 的工作分支）
+# 5. 合并（先断言当前分支；不要 checkout main，会打断 owner 的工作分支）
+#    注意：本交接文档本身已提交到 main（b186190），因此 main 已**不是** fix/class-a-wifi 的祖先。
+#    续跑时先把分支同步到 main，再合并：
+#      git rebase main        # 或 git merge main
+#    之后 main 才能再次快进：
 cd /Users/lingsmbp/Documents/aiwork/status-trio
 [ "$(git branch --show-current)" = "main" ] && git merge --ff-only fix/class-a-wifi \
   || { git merge-base --is-ancestor main fix/class-a-wifi && git branch -f main fix/class-a-wifi; }
