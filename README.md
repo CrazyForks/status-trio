@@ -47,7 +47,7 @@ Status Trio is a native macOS status app that combines Wi-Fi, battery, and volum
 
 ## Highlights
 
-- **One combined status icon** — battery, network, and volume in a single icon, in the menu bar, the Dock, or both.
+- **One combined status icon** — battery, network, and volume in a single icon, in the menu bar, the Dock, or both. A Bluetooth audio device that is playing can take over the middle glyph with its own symbol.
 - **Bluetooth audio** — while a Bluetooth device is playing, the device's own symbol can replace the network glyph and the volume dots or arc can turn blue, so the active output is obvious at a glance.
 - **Detailed battery status** — percentage, a charging bolt or a plug while connected without charging, an optional percentage while connected, estimated time to full, status colors, a configurable critical threshold, and a Battery Settings shortcut.
 - **Battery Details page** — adapter rating, time remaining, net battery power estimates, voltage, current, cycle count, and Low Power Mode, sampled on demand.
