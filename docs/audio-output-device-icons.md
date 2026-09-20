@@ -69,30 +69,52 @@ system actually provides. That keeps macOS 15 correct instead of blank.
 
 ## How a device is classified
 
-Two public CoreAudio properties describe an output device:
+Three public CoreAudio properties describe an output device:
 
 | Property | Scope | What it reports |
 | --- | --- | --- |
 | `kAudioDevicePropertyTransportType` | global | Hardware family: `bltn` built-in, `blue`/`blea` Bluetooth, `usb `, `hdmi`, `dprt` display, `thun`, `airp`, `grup`, `virt` |
 | `kAudioDevicePropertyDataSource` | output | Live source on built-in hardware: `ispk` internal speakers, `hdpn` headphones, `espk` external speakers |
+| `kAudioDevicePropertyModelUID` | global | A Bluetooth device's product and vendor IDs (`200f 4c`); built-in and USB hardware report a name instead (`Speaker`, `Digital Mic`) |
 
 `kAudioDevicePropertyDataSource` is what lets a built-in output show the
 headphones icon while something is plugged into the headphone jack, matching the
-system menu.
+system menu. `kAudioDevicePropertyModelUID` is what lets an AirPods keep the
+glyph macOS declares for its model after the user renames it.
 
-## What stays name based
+## What the product ID identifies
 
-The system picks the Apple accessory type from a private Bluetooth product-ID
-table. `ControlCenter` contains strings such as:
+macOS declares its own accessory classes. Every `com.apple.airpods*` type in
+`CoreTypes.bundle/Contents/Info.plist` carries a
+`public.bluetooth-vendor-product-id` tag written as
+`<vendor decimal>:<product decimal>`, for example `76:8207` for
+`com.apple.airpods-gen2`, which is AirPods (2nd generation). Apple's Bluetooth
+vendor ID is 76, or `0x004C`.
 
-```
-Unable to find device class for productID: %{public}x, fallback to default headphones symbol
-```
+That pair reaches the app through two public sources:
 
-Third-party apps cannot read that product ID through a public API, so the
-AirPods, Beats, HomePod, and Apple TV model names remain name based. Bluetooth
-audio that is not recognized by name defaults to the headphones symbol, because
-Bluetooth audio is overwhelmingly headphones and earbuds.
+| Source | Property | Example |
+| --- | --- | --- |
+| CoreAudio | `kAudioDevicePropertyModelUID` | `200f 4c` |
+| `system_profiler SPBluetoothDataType` | `device_productID` / `device_vendorID` | `0x200F` / `0x004C` |
+
+`AirPodsModel` maps the product ID to the model, and refuses any ID whose vendor
+is not Apple, so another vendor's earbuds cannot borrow an AirPods glyph. The
+product ID decides the model before the name does, because a rename erases every
+hint the name carried. AirPods (2nd generation, A2031/A2032) is the case that
+reported this: renamed to something like `小王的耳机`, it fell back to the
+generic headphones glyph.
+
+The table handles 1st through 4th generation, the Pro family, and Max. The
+1st/2nd/3rd generation, Pro, and Max rows are the tags the shipping macOS 26
+`CoreTypes.bundle` declares; the 4th generation and Pro 3 rows follow Apple's
+`Device1,<decimal product ID>` identifiers, which that file does not carry yet.
+
+A product ID the table does not know falls back to the device name, which is
+usually `xxx的AirPods`. Beats, HomePod, and Apple TV stay name based; the table
+covers the AirPods family only. Bluetooth audio recognized neither way defaults
+to the headphones symbol, because Bluetooth audio is overwhelmingly headphones
+and earbuds.
 
 ## Where the mapping lives
 
@@ -101,6 +123,14 @@ and data-source value types plus `AudioOutputDeviceIcon`, which maps a device to
 an `AudioOutputDeviceKind` and then to an SF Symbol name. Both the popup output
 list (`OutputDeviceRow`) and the settings output-order list
 (`AudioSectionView`) use it so the two surfaces stay aligned.
+
+`Sources/StatusTrioCore/Audio/AirPodsModel.swift` holds the product-ID table and
+its two parsers. `AudioDeviceIdentity`, next to `AudioOutputDeviceIcon`, carries
+the signals that identify a device, so it can be classified however it was read.
+The Bluetooth paired-device list reads its devices from the system profiler
+instead of CoreAudio, and `BluetoothDeviceRowIcon` builds an identity from the
+profiler's product ID and name and resolves it through the same mapping, so a
+paired AirPods row and the popup's output row cannot drift apart.
 
 ## Center status icon size contract
 

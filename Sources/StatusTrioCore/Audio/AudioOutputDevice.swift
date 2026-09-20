@@ -14,6 +14,10 @@ struct AudioOutputDevice: Identifiable, Hashable, Sendable {
     /// The icon the driver ships for the device, read from
     /// `kAudioDevicePropertyIcon`. Built-in hardware has no icon.
     let iconURL: URL?
+    /// The device's model identifier, read from `kAudioDevicePropertyModelUID`.
+    /// A Bluetooth device reports its product and vendor IDs here ("200f 4c"),
+    /// which is what identifies an AirPods model even after a rename.
+    let modelUID: String?
 
     init(
         id: AudioDeviceID,
@@ -23,7 +27,8 @@ struct AudioOutputDevice: Identifiable, Hashable, Sendable {
         volume: Double? = nil,
         transport: AudioOutputTransport? = nil,
         dataSource: AudioOutputDataSource? = nil,
-        iconURL: URL? = nil
+        iconURL: URL? = nil,
+        modelUID: String? = nil
     ) {
         self.id = id
         self.name = name
@@ -33,9 +38,10 @@ struct AudioOutputDevice: Identifiable, Hashable, Sendable {
         self.transport = transport
         self.dataSource = dataSource
         self.iconURL = iconURL
+        self.modelUID = modelUID
     }
 
     var isBluetoothAudio: Bool {
-        transport == .bluetooth || transport == .bluetoothLowEnergy
+        transport?.isBluetooth == true
     }
 }

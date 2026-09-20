@@ -202,7 +202,7 @@ struct BluetoothDeviceListView: View {
                 .foregroundStyle(.secondary)
             ForEach(devices) { device in
                 HStack(spacing: 10) {
-                    Image(systemName: icon(for: device.kind))
+                    Image(systemName: BluetoothDeviceRowIcon.symbolName(for: device))
                         .frame(width: 16)
                         .foregroundStyle(.secondary)
                     Text(device.name)
@@ -277,14 +277,28 @@ struct BluetoothDeviceListView: View {
         return controller.batteryLevels[address]?.summary
             ?? localization.string(.bluetoothBatteryUnavailable)
     }
+}
 
-    private func icon(for kind: BluetoothDeviceKind) -> String {
-        switch kind {
-        case .computer: "laptopcomputer"
-        case .phone: "iphone"
-        case .audio: "headphones"
-        case .peripheral: "computermouse"
-        case .unknown: "questionmark.circle"
+/// The glyph each paired-device row draws.
+///
+/// The audio row resolves through the same mapping as the popup's output list,
+/// so an AirPods draws the AirPods glyph macOS declares for its product ID
+/// instead of the generic headphone one, and the two surfaces cannot drift.
+enum BluetoothDeviceRowIcon {
+    static func symbolName(for device: BluetoothDevice) -> String {
+        switch device.kind {
+        case .computer:
+            "laptopcomputer"
+        case .phone:
+            "iphone"
+        case .audio:
+            AudioOutputDeviceIcon.symbolName(
+                for: AudioDeviceIdentity(bluetooth: device.name, model: device.airPodsModel)
+            )
+        case .peripheral:
+            "computermouse"
+        case .unknown:
+            "questionmark.circle"
         }
     }
 }

@@ -341,7 +341,8 @@ final class CoreAudioVolumeReader: VolumeReadingProviding {
                 volume: scalar,
                 transport: transport(for: deviceID),
                 dataSource: dataSource(for: deviceID),
-                iconURL: iconURL(for: deviceID)
+                iconURL: iconURL(for: deviceID),
+                modelUID: modelUID(for: deviceID)
             )
         )
     }
@@ -407,6 +408,17 @@ final class CoreAudioVolumeReader: VolumeReadingProviding {
         client.readString(
             objectID: deviceID,
             selector: kAudioDevicePropertyDeviceUID,
+            scope: kAudioObjectPropertyScopeGlobal,
+            element: kAudioObjectPropertyElementMain
+        )
+    }
+
+    /// A Bluetooth device reports its product and vendor IDs here ("200f 4c"),
+    /// which is what identifies an AirPods model after a rename.
+    private func modelUID(for deviceID: AudioDeviceID) -> String? {
+        client.readString(
+            objectID: deviceID,
+            selector: kAudioDevicePropertyModelUID,
             scope: kAudioObjectPropertyScopeGlobal,
             element: kAudioObjectPropertyElementMain
         )

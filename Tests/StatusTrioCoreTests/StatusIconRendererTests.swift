@@ -1528,6 +1528,44 @@ final class StatusIconRendererTests: XCTestCase {
         )
     }
 
+    /// The menu bar has to draw the glyph macOS declares for the device's own
+    /// product ID. AirPods (2nd generation, A2031/A2032) reports 0x200F, so a
+    /// renamed device still draws the AirPods glyph instead of a headphone one.
+    func testBluetoothIconUsesTheAirPodsProductIDNotTheName() throws {
+        let namedAirPods = try bluetoothPixels(deviceName: "AirPods", modelUID: nil)
+        let renamedAirPods = try bluetoothPixels(deviceName: "小王的耳机", modelUID: "200f 4c")
+        let renamedWithoutProductID = try bluetoothPixels(deviceName: "小王的耳机", modelUID: nil)
+
+        // The product ID, not the name, decides the glyph.
+        XCTAssertEqual(namedAirPods.bytes, renamedAirPods.bytes)
+        XCTAssertNotEqual(renamedWithoutProductID.bytes, renamedAirPods.bytes)
+    }
+
+    private func bluetoothPixels(deviceName: String, modelUID: String?) throws -> PixelBuffer {
+        try PixelBuffer(
+            image: try XCTUnwrap(StatusIconRenderer.render(
+                snapshot: StatusSnapshot(
+                    battery: .placeholder,
+                    wifi: WiFiStatus(state: .connected, rssi: -55),
+                    connection: .wifi,
+                    volume: VolumeStatus(
+                        scalar: 0.5,
+                        isMuted: false,
+                        deviceName: deviceName,
+                        currentDevice: bluetoothOutputDevice(
+                            name: deviceName,
+                            modelUID: modelUID
+                        )
+                    )
+                ),
+                size: 20,
+                scale: 8,
+                foreground: CGColor(gray: 1, alpha: 1),
+                bluetoothAudioOptions: BluetoothAudioIconOptions(replacesNetworkIcon: true)
+            ))
+        )
+    }
+
     private func bluetoothAudioSnapshot(volumeScalar: Double) -> StatusSnapshot {
         StatusSnapshot(
             battery: .placeholder,
@@ -1542,14 +1580,15 @@ final class StatusIconRendererTests: XCTestCase {
         )
     }
 
-    private func bluetoothOutputDevice(name: String) -> AudioOutputDevice {
+    private func bluetoothOutputDevice(name: String, modelUID: String? = nil) -> AudioOutputDevice {
         AudioOutputDevice(
             id: 42,
             name: name,
             uid: "bluetooth-output",
             isCurrent: true,
             volume: 0.5,
-            transport: .bluetooth
+            transport: .bluetooth,
+            modelUID: modelUID
         )
     }
 

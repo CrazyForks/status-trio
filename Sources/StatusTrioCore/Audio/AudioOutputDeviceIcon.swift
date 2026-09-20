@@ -28,6 +28,11 @@ enum AudioOutputTransport: Hashable, Sendable {
             .transport ?? .other
     }
 
+    /// Whether the transport is one of CoreAudio's two Bluetooth families.
+    var isBluetooth: Bool {
+        self == .bluetooth || self == .bluetoothLowEnergy
+    }
+
     private static let transportsByCoreAudioValue: [(value: UInt32, transport: Self)] = [
         (kAudioDeviceTransportTypeBuiltIn, .builtIn),
         (kAudioDeviceTransportTypeBluetooth, .bluetooth),
@@ -185,11 +190,64 @@ enum AudioOutputDeviceIconSource: Hashable, Sendable {
     case symbol(String)
 }
 
+/// The identification signals for an output device, independent of the
+/// subsystem that reported it. CoreAudio owns the popup's output list, the
+/// Bluetooth registry owns the paired-device list, and both have to draw the
+/// same glyph for the same device.
+struct AudioDeviceIdentity: Equatable, Sendable {
+    let name: String?
+    let transport: AudioOutputTransport?
+    let dataSource: AudioOutputDataSource?
+    /// The AirPods model the device's own Bluetooth product ID names.
+    let airPodsModel: AirPodsModel?
+
+    init(_ device: AudioOutputDevice) {
+        self.init(
+            coreAudio: device.name,
+            transport: device.transport,
+            dataSource: device.dataSource,
+            modelUID: device.modelUID
+        )
+    }
+
+    init(
+        coreAudio name: String?,
+        transport: AudioOutputTransport?,
+        dataSource: AudioOutputDataSource?,
+        modelUID: String?
+    ) {
+        self.name = name
+        self.transport = transport
+        self.dataSource = dataSource
+        // The product ID pair only means something for a Bluetooth transport.
+        // Every other transport reports a free-form model name instead, or
+        // nothing at all.
+        if transport == nil || transport?.isBluetooth == true {
+            airPodsModel = AirPodsModel(modelUID: modelUID)
+        } else {
+            airPodsModel = nil
+        }
+    }
+
+    /// The Bluetooth registry reports the product and vendor IDs directly
+    /// instead of a model UID.
+    init(bluetooth name: String?, model: AirPodsModel?) {
+        self.name = name
+        transport = .bluetooth
+        dataSource = nil
+        airPodsModel = model
+    }
+}
+
 /// Picks the SF Symbol that matches an output device, using the symbol names
 /// the system volume menu resolves for the same device class.
 enum AudioOutputDeviceIcon {
     static func symbolName(for device: AudioOutputDevice) -> String {
-        symbolName(for: kind(for: device), host: HostMacKind(deviceName: device.name))
+        symbolName(for: AudioDeviceIdentity(device), host: HostMacKind(deviceName: device.name))
+    }
+
+    static func symbolName(for identity: AudioDeviceIdentity, host: HostMacKind = .current) -> String {
+        symbolName(for: kind(for: identity), host: host)
     }
 
     /// Prefers the icon the driver ships for the device, which is what the
@@ -280,9 +338,33 @@ enum AudioOutputDeviceIcon {
     }
 
     static func kind(for device: AudioOutputDevice) -> AudioOutputDeviceKind {
-        let name = (device.name ?? "").lowercased()
+        kind(for: AudioDeviceIdentity(device))
+    }
 
-        // Model families that no public CoreAudio property identifies.
+    static func kind(for identity: AudioDeviceIdentity) -> AudioOutputDeviceKind {
+        // The product ID is the signal macOS itself classifies its own
+        // accessories with, so it decides the model; the name can only guess at
+        // it, and a rename erases the guess.
+        if let airPodsModel = identity.airPodsModel {
+            return airPodsModel.kind
+        }
+        return kind(
+            forName: identity.name,
+            transport: identity.transport,
+            dataSource: identity.dataSource
+        )
+    }
+
+    private static func kind(
+        forName deviceName: String?,
+        transport: AudioOutputTransport?,
+        dataSource: AudioOutputDataSource?
+    ) -> AudioOutputDeviceKind {
+        let name = (deviceName ?? "").lowercased()
+
+        // Families no product ID describes (Beats, HomePod, Apple TV), plus the
+        // name fallback for a device whose product ID the AirPods table does not
+        // carry.
         if let family = appleOrBeatsFamily(in: name) {
             return family
         }
@@ -292,8 +374,8 @@ enum AudioOutputDeviceIcon {
         }
 
         // A built-in device reports whether its jack or its speakers are live.
-        if device.transport == .builtIn {
-            return device.dataSource == .headphones ? .headphones : .builtInSpeaker
+        if transport == .builtIn {
+            return dataSource == .headphones ? .headphones : .builtInSpeaker
         }
 
         if name.contains("airplay") {
@@ -306,7 +388,7 @@ enum AudioOutputDeviceIcon {
             return .speaker
         }
 
-        switch device.transport {
+        switch transport {
         case .hdmi, .displayPort:
             return .display
         case .airPlay:

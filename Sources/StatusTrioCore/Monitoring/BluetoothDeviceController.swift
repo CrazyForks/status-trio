@@ -110,7 +110,11 @@ enum BluetoothPairedDeviceReader {
                         id: address,
                         name: entry.name,
                         kind: kind(properties: properties),
-                        isConnected: isConnected
+                        isConnected: isConnected,
+                        airPodsModel: AirPodsModel(
+                            productIDText: properties["device_productID"] as? String,
+                            vendorIDText: properties["device_vendorID"] as? String
+                        )
                     ))
                 }
             }

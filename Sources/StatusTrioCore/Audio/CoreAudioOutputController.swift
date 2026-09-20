@@ -33,7 +33,11 @@ final class CoreAudioOutputController: AudioOutputControlling {
                     volume: volume(for: deviceID),
                     transport: transport(for: deviceID),
                     dataSource: dataSource(for: deviceID),
-                    iconURL: iconURL(for: deviceID)
+                    iconURL: iconURL(for: deviceID),
+                    modelUID: stringProperty(
+                        for: deviceID,
+                        selector: kAudioDevicePropertyModelUID
+                    )
                 )
             }
             .sorted { lhs, rhs in

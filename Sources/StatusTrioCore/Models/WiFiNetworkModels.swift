@@ -354,10 +354,30 @@ struct BluetoothDevice: Identifiable, Equatable, Sendable {
     let name: String
     let kind: BluetoothDeviceKind
     let isConnected: Bool
+    /// The AirPods model the device's own Bluetooth product ID names, read from
+    /// the profiler's `device_productID` / `device_vendorID` pair. It survives a
+    /// rename, which the name cannot.
+    let airPodsModel: AirPodsModel?
+
+    init(
+        id: String,
+        name: String,
+        kind: BluetoothDeviceKind,
+        isConnected: Bool,
+        airPodsModel: AirPodsModel? = nil
+    ) {
+        self.id = id
+        self.name = name
+        self.kind = kind
+        self.isConnected = isConnected
+        self.airPodsModel = airPodsModel
+    }
 
     /// AirPods are identified by name. The audio class alone would also match
-    /// speakers and other headphones, and macOS exposes no reliable model
-    /// table for registry product IDs; every AirPods name contains "AirPods".
+    /// speakers and other headphones, and every AirPods name contains
+    /// "AirPods". `airPodsModel` carries the product ID that identifies the
+    /// model for the row icon; it is deliberately not part of this claim, so a
+    /// renamed AirPods keeps its glyph but still gets no battery level.
     var isAirPods: Bool {
         kind == .audio && name.lowercased().contains("airpods")
     }
