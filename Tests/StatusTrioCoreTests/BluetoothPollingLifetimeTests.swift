@@ -10,14 +10,18 @@ import XCTest
 final class BluetoothPollingLifetimeTests: XCTestCase {
     private func makeController(
         reader: DeferredBluetoothDeviceReader,
-        stateMonitor: AvailableBluetoothStateMonitor = AvailableBluetoothStateMonitor()
+        stateMonitor: AvailableBluetoothStateMonitor = AvailableBluetoothStateMonitor(),
+        safetyNetSleep: @escaping @Sendable (Duration) async throws -> Void = {
+            try await Task.sleep(for: $0)
+        }
     ) -> BluetoothDeviceController {
         BluetoothDeviceController(
             worker: reader,
             stateMonitor: stateMonitor,
             batteryReader: SilentBluetoothBatteryReader(),
             notificationCenter: NotificationCenter(),
-            workspaceNotificationCenter: NotificationCenter()
+            workspaceNotificationCenter: NotificationCenter(),
+            safetyNetSleep: safetyNetSleep
         )
     }
 
@@ -73,6 +77,83 @@ final class BluetoothPollingLifetimeTests: XCTestCase {
         await waitUntil { controller.devices.map(\.id) == ["2"] }
 
         controller.deactivate()
+    }
+
+    /// The safety net is a fallback for the connection notifications, and it may
+    /// only run while something on screen shows device state.
+    func testSafetyNetPollRunsOnlyWhileASurfaceIsHeld() async {
+        let reader = DeferredBluetoothDeviceReader()
+        let sleeper = ManualEventSleeper()
+        let controller = makeController(
+            reader: reader,
+            safetyNetSleep: { duration in await sleeper.sleep(duration) }
+        )
+        controller.activate()
+        await waitUntil { reader.readCount == 1 }
+        reader.complete(.success([]))
+        await waitUntil { !reader.hasPendingRead }
+
+        XCTAssertFalse(controller.isSafetyNetPolling, "a poll started with nothing on screen")
+
+        controller.holdVisibleSurface("bluetooth.summary")
+        await sleeper.waitForCallCount(1, timeout: .seconds(1))
+        XCTAssertTrue(controller.isSafetyNetPolling)
+        XCTAssertEqual(sleeper.durations.first, .seconds(30))
+
+        sleeper.releaseAll()
+        await waitUntil { reader.readCount == 2 }
+        reader.complete(.success([]))
+        await waitUntil { !reader.hasPendingRead }
+
+        controller.releaseVisibleSurface("bluetooth.summary")
+        XCTAssertFalse(controller.isSafetyNetPolling)
+        let callCountWhenReleased = sleeper.callCount
+        sleeper.releaseAll()
+        await Task.yield()
+        XCTAssertEqual(sleeper.callCount, callCountWhenReleased, "a released surface must stop polling")
+        XCTAssertEqual(reader.readCount, 2)
+
+        controller.deactivate()
+    }
+
+    /// Two surfaces (the summary row and the detail page) can be on screen in
+    /// either order, so the gate is a claim count rather than a boolean.
+    func testTheLastReleasedSurfaceStopsThePoll() async {
+        let sleeper = ManualEventSleeper()
+        let controller = makeController(
+            reader: DeferredBluetoothDeviceReader(),
+            safetyNetSleep: { duration in await sleeper.sleep(duration) }
+        )
+        controller.activate()
+
+        controller.holdVisibleSurface("bluetooth.summary")
+        controller.holdVisibleSurface("bluetooth.detail")
+        controller.releaseVisibleSurface("bluetooth.summary")
+
+        XCTAssertTrue(controller.isSafetyNetPolling)
+        controller.releaseVisibleSurface("bluetooth.detail")
+        XCTAssertFalse(controller.isSafetyNetPolling)
+        controller.releaseVisibleSurface("bluetooth.detail")
+        XCTAssertFalse(controller.isSafetyNetPolling)
+
+        controller.deactivate()
+    }
+
+    /// Deactivating the controller keeps the surface claims (they belong to the
+    /// views) but must not leave a poll running.
+    func testDeactivateStopsThePollWithoutDroppingSurfaceClaims() async {
+        let sleeper = ManualEventSleeper()
+        let controller = makeController(
+            reader: DeferredBluetoothDeviceReader(),
+            safetyNetSleep: { duration in await sleeper.sleep(duration) }
+        )
+        controller.activate()
+        controller.holdVisibleSurface("bluetooth.summary")
+        XCTAssertTrue(controller.isSafetyNetPolling)
+
+        controller.deactivate()
+        XCTAssertTrue(controller.hasVisibleSurface)
+        XCTAssertFalse(controller.isSafetyNetPolling)
     }
 
     private func waitUntil(_ condition: () -> Bool) async {

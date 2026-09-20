@@ -39,6 +39,9 @@ struct BluetoothStatusView: View {
                 .help(localization.string(.bluetoothActionOpenSettings))
                 .frame(width: 24, height: 24)
         }
+        .onAppear {
+            controller.holdVisibleSurface(Self.summarySurfaceToken)
+        }
         .task(id: batteryReadTaskID) {
             // Reading levels launches system_profiler, so the claim is held only
             // while the summary actually reports an AirPods. A claim rather than
@@ -48,11 +51,13 @@ struct BluetoothStatusView: View {
             controller.requestBatteryLevels(Self.summaryBatteryLevelsToken)
         }
         .onDisappear {
+            controller.releaseVisibleSurface(Self.summarySurfaceToken)
             controller.releaseBatteryLevels(Self.summaryBatteryLevelsToken)
         }
     }
 
     private static let summaryBatteryLevelsToken = "bluetooth.summary"
+    private static let summarySurfaceToken = "bluetooth.summary.surface"
 
     /// The task re-runs when the level setting or one of the device names
     /// changes. The name also covers an AirPods swapping to another device at
@@ -174,16 +179,19 @@ struct BluetoothDeviceListView: View {
         .onAppear {
             updateBatteryLevelClaim()
             controller.activate()
+            controller.holdVisibleSurface(Self.detailSurfaceToken)
         }
         .onChange(of: showsBatteryLevels) { _, _ in
             updateBatteryLevelClaim()
         }
         .onDisappear {
+            controller.releaseVisibleSurface(Self.detailSurfaceToken)
             controller.releaseBatteryLevels(Self.detailBatteryLevelsToken)
         }
     }
 
     private static let detailBatteryLevelsToken = "bluetooth.detail"
+    private static let detailSurfaceToken = "bluetooth.detail.surface"
 
     /// The detail page is the only surface that reports levels for every
     /// device, so it claims the read directly from the setting.

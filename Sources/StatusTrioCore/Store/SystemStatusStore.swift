@@ -343,6 +343,11 @@ final class SystemStatusStore: ObservableObject {
         }
     }
 
+    /// The popover is a Bluetooth surface: its summary row reports device names
+    /// while it is open. The claim is a token rather than a boolean so the
+    /// SwiftUI row and the detail page can hold their own claims independently.
+    private static let bluetoothPopoverSurface = "bluetooth.popover"
+
     /// Enables the Bluetooth monitor when the popover opens, so the row can
     /// report device names. Starting the monitor is what raises the system
     /// permission prompt, so this only runs for an app that already holds the
@@ -353,6 +358,10 @@ final class SystemStatusStore: ObservableObject {
             authorization: bluetoothDevices.authorization
         ) else { return }
         setBluetoothEnabled(true)
+        // The state monitor is already running for a granted app, and `activate`
+        // is then a no-op, so the popover asks for its own read: the row must
+        // never open on a list that the last connection event did not refresh.
+        bluetoothDevices.refresh()
     }
 
     func closeBatteryDetails() {
@@ -376,6 +385,7 @@ final class SystemStatusStore: ObservableObject {
 
         guard visible else {
             clearWiFiNameResolution()
+            bluetoothDevices.releaseVisibleSurface(Self.bluetoothPopoverSurface)
             return
         }
         popupPublishTask?.cancel()
@@ -383,6 +393,7 @@ final class SystemStatusStore: ObservableObject {
         popupSnapshot = snapshot
         startWiFiNameResolutionIfNeeded()
         bluetoothDevices.prepareForPresentation()
+        bluetoothDevices.holdVisibleSurface(Self.bluetoothPopoverSurface)
         activateBluetoothForPopover()
         refreshAll()
         wifiNetworks.refresh(nameAccess: popupSnapshot.wifi.nameAccess)
@@ -407,6 +418,7 @@ final class SystemStatusStore: ObservableObject {
         wifiNetworks.deactivate()
         closeBluetoothDetails()
         closeBatteryDetails()
+        bluetoothDevices.releaseVisibleSurface(Self.bluetoothPopoverSurface)
     }
 
     /// Whether a popover detail panel (Wi-Fi, Bluetooth, or battery) is

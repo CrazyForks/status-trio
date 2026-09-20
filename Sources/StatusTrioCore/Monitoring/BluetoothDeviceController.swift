@@ -246,6 +246,12 @@ final class BluetoothDeviceController: ObservableObject {
     private let batteryReader: any BluetoothBatteryReading
     private let notificationCenter: NotificationCenter
     private let workspaceNotificationCenter: NotificationCenter
+
+    /// How often the safety net re-reads the paired-device database while a
+    /// Bluetooth surface is visible. Connection notifications deliver the
+    /// interesting changes, so this is deliberately slow.
+    private let safetyNetInterval: Duration
+    private let safetyNetSleep: @Sendable (Duration) async throws -> Void
     private(set) var isActive = false
     private var requestGate = AsyncRequestGate()
     private var batteryRequestGate = AsyncRequestGate()
@@ -263,13 +269,19 @@ final class BluetoothDeviceController: ObservableObject {
         stateMonitor: any BluetoothStateMonitoring = CoreBluetoothStateMonitor(),
         batteryReader: any BluetoothBatteryReading = SystemProfilerBluetoothBatteryWorker(),
         notificationCenter: NotificationCenter = .default,
-        workspaceNotificationCenter: NotificationCenter = NSWorkspace.shared.notificationCenter
+        workspaceNotificationCenter: NotificationCenter = NSWorkspace.shared.notificationCenter,
+        safetyNetInterval: Duration = .seconds(30),
+        safetyNetSleep: @escaping @Sendable (Duration) async throws -> Void = {
+            try await Task.sleep(for: $0)
+        }
     ) {
         self.worker = worker
         self.stateMonitor = stateMonitor
         self.batteryReader = batteryReader
         self.notificationCenter = notificationCenter
         self.workspaceNotificationCenter = workspaceNotificationCenter
+        self.safetyNetInterval = safetyNetInterval
+        self.safetyNetSleep = safetyNetSleep
         stateMonitor.onStateChange = { [weak self] authorization, managerState in
             self?.receiveSystemState(authorization: authorization, managerState: managerState)
         }
@@ -309,6 +321,7 @@ final class BluetoothDeviceController: ObservableObject {
         isActive = true
         registerSystemObservers()
         stateMonitor.start()
+        schedulePeriodicRefresh()
     }
 
     func deactivate() {
@@ -417,6 +430,35 @@ final class BluetoothDeviceController: ObservableObject {
         batteryLevelsEnabled
     }
 
+    /// Surfaces that show Bluetooth device state, by token. The safety-net poll
+    /// runs only while at least one is held, so a closed popover costs nothing.
+    /// A count, not a boolean: the summary row and the detail page can appear in
+    /// either order, and the last writer must not decide for both.
+    private var visibleSurfaces: Set<String> = []
+
+    /// Whether a visible surface is showing Bluetooth device state.
+    var hasVisibleSurface: Bool {
+        !visibleSurfaces.isEmpty
+    }
+
+    /// Whether the safety-net poll is running.
+    var isSafetyNetPolling: Bool {
+        periodicRefreshTask != nil
+    }
+
+    /// Claims the safety net for a visible Bluetooth surface.
+    func holdVisibleSurface(_ token: String) {
+        guard visibleSurfaces.insert(token).inserted else { return }
+        schedulePeriodicRefresh()
+    }
+
+    /// Releases a surface's claim, whatever order it arrives in.
+    func releaseVisibleSurface(_ token: String) {
+        guard visibleSurfaces.remove(token) != nil else { return }
+        guard !hasVisibleSurface else { return }
+        stopPeriodicRefresh()
+    }
+
     private func receiveSystemState(
         authorization: BluetoothAuthorizationStatus,
         managerState: BluetoothManagerState
@@ -499,15 +541,21 @@ final class BluetoothDeviceController: ObservableObject {
     }
 
     private func schedulePeriodicRefresh() {
+        guard isActive, hasVisibleSurface, availability == .available else { return }
         guard periodicRefreshTask == nil else { return }
+        let interval = safetyNetInterval
+        let sleep = safetyNetSleep
         periodicRefreshTask = Task { @MainActor [weak self] in
+            defer { self?.periodicRefreshTask = nil }
             while !Task.isCancelled {
                 do {
-                    try await Task.sleep(for: .seconds(15))
+                    try await sleep(interval)
                 } catch {
                     return
                 }
-                guard let self, self.isActive, self.availability == .available else { return }
+                guard let self, self.isActive, self.hasVisibleSurface, self.availability == .available else {
+                    return
+                }
                 self.refresh()
             }
         }
