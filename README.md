@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <img src="Support/AppIcon.svg" width="112" alt="Status Trio app icon">
+  <img src="Support/AppIcon.png" width="112" alt="Status Trio app icon">
 </p>
 
 <h1 align="center">Status Trio</h1>
@@ -47,22 +47,16 @@ Status Trio is a native macOS status app that combines Wi-Fi, battery, and volum
 
 ## Highlights
 
-- **One icon, three signals** — battery, Wi-Fi, and volume share one icon in the menu bar, the Dock, or both. While a Bluetooth device is playing, its own symbol can take the middle spot.
-- **Bluetooth audio** — the device's icon replaces the network glyph and the volume indicator turns blue, so you can tell where the sound is coming from without opening anything.
-- **Battery** — percentage, charging or plugged in, time to full, and a color when it runs low.
-- **Battery details** — open the battery row for adapter power, time remaining, voltage, current, cycle count, and Low Power Mode, plus a shortcut to Battery settings.
-- **Wi-Fi** — the popover names the network you are on and how strong the signal is. Open it to see nearby networks, join one, or switch Wi-Fi off.
-- **Bluetooth panel** — connected and paired devices, with AirPods battery. Off by default.
-- **Volume** — level, mute, and the device it plays through, drawn as dots or an arc.
-- **Scrolling** — adjust the volume by scrolling the whole panel or just the volume control, and pick which direction turns it up.
+- **One icon, three signals** — battery, Wi-Fi, and volume share one icon in the menu bar, the Dock, or both, and a Bluetooth device that is playing can take the middle spot with its own symbol.
+- **Bluetooth** — the volume indicator turns blue while it plays. The panel lists connected and paired devices with AirPods battery, and stays off until you enable it.
+- **Battery** — percentage, charging or plugged in, time to full, and a color when it runs low. Open the row for adapter power, voltage, current, cycle count, and Low Power Mode.
+- **Wi-Fi** — the network you are on and how strong the signal is. Open it to see nearby networks, join one, or switch Wi-Fi off.
+- **Volume** — level, mute, and the output device, drawn as dots or an arc. Scroll the whole panel or just the control, and pick which direction turns it up.
 - **Make it yours** — icon size, symbol scale, ring thickness, status colors, and which sections the popover shows, in the order you want.
 - **Menu bar, Dock, or both** — and the Dock icon can follow the system style or stay dark or light.
-- **Native on macOS** — left-click opens the popover and right-click opens the menu; a first-launch guide explains what each part of the icon means.
-- **Connection icons** — Ethernet, a hotspot, or Internet Sharing can keep the Wi-Fi glyph if you prefer.
-- **Efficient updates** — driven by system events, with a slow poll as a fallback.
-- **Twelve languages** — follow the system or pick one; changes apply right away.
-- **Launch at login** — optional, with guidance when macOS asks for approval.
-- **Updates** — Sparkle checks a signed feed and verifies each update before it installs.
+- **Native on macOS** — left-click opens the popover, right-click opens the menu, and a first-launch guide explains each part of the icon. Ethernet, a hotspot, or Internet Sharing can keep the Wi-Fi glyph if you prefer.
+- **Stays current** — status comes from system events with a slow poll as a fallback, and Sparkle updates the app through a signed feed.
+- **Also included** — twelve languages, and an optional launch at login.
 
 ## Bluetooth audio
 
@@ -173,7 +167,7 @@ Do not disable Gatekeeper globally. Subsequent Sparkle updates are authenticated
 - **Left-click** the menu bar icon or the Dock icon to open the status popover.
 - **Right-click** either icon for the native menu, including version and quit actions.
 - Select a row in the popover to open its page: Wi-Fi details with nearby networks, paired Bluetooth devices, and Battery Details.
-- Open **Settings** — App Icon, Battery, Network, Bluetooth, Audio, Status Panel, General, and About — to choose where the icon is shown (menu bar, Dock, or both) and to change the icon size, symbol scales, ring stroke width, status colors, panel sections and their order, scroll-to-adjust behavior, language, update checks, and launch-at-login behavior.
+- Open **Settings** to choose where the icon is shown (menu bar, Dock, or both) and to change its size, colors, ring thickness, the panel sections and their order, scroll-to-adjust behavior, language, update checks, and launch at login.
 - Reopen the **Meet your icon** guide any time from **Settings › App Icon › Open Guide**.
 - Enable the current Wi-Fi network name when prompted; macOS requests location access for this optional detail.
 
