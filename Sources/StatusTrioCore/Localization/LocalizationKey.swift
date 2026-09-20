@@ -243,6 +243,7 @@ enum LocalizationKey: String, CaseIterable, Hashable, Sendable {
     case wifiPermissionDenied = "wifi.permissionDenied"
     case wifiScanFailed = "wifi.scanFailed"
     case wifiConnectionFailed = "wifi.connectionFailed"
+    case wifiConnecting = "wifi.connecting"
     case wifiConnectionTimedOut = "wifi.connectionTimedOut"
     case wifiNetworkUnavailable = "wifi.networkUnavailable"
     case wifiEnterpriseUnsupported = "wifi.enterpriseUnsupported"

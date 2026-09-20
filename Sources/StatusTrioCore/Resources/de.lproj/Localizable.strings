@@ -193,6 +193,7 @@
 "wifi.noInterface" = "Keine Wi‑Fi-Schnittstelle verfügbar.";
 "wifi.permissionDenied" = "Der Standortzugriff wird benötigt, um Wi‑Fi-Namen und Scanergebnisse zu lesen. Standorteinstellungen öffnen.";
 "wifi.scanFailed" = "Die Suche nach Wi‑Fi-Netzwerken ist fehlgeschlagen.";
+"wifi.connecting" = "Verbindung mit %@ wird hergestellt…";
 "wifi.connectionFailed" = "Dem Netzwerk konnte nicht beigetreten werden. Prüfe das Passwort und versuche es erneut.";
 "wifi.connectionTimedOut" = "Zeitüberschreitung beim Verbinden mit diesem Netzwerk.";
 "wifi.networkUnavailable" = "Dieses Netzwerk ist nicht mehr verfügbar.";

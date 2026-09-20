@@ -26,6 +26,21 @@ struct WiFiNetworkListView: View {
             )
             .disabled(controller.state == .noInterface)
 
+            // Connection feedback stays visible even when the network list scrolls.
+            if case .connecting(let network) = controller.state {
+                let message = WiFiNetworkPresentation.connectingMessage(for: network, localization: localization)
+                HStack(spacing: 8) {
+                    ProgressView()
+                        .controlSize(.small)
+                        .accessibilityLabel(message)
+                    Text(message)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityHidden(true)
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+
             ScrollView {
                 VStack(alignment: .leading, spacing: 10) {
                     knownNetworksSection(grouped.known)
@@ -67,7 +82,7 @@ struct WiFiNetworkListView: View {
                 Image(systemName: "arrow.clockwise")
             }
             .buttonStyle(.plain)
-            .disabled(controller.state.isScanning)
+            .disabled(!controller.state.allowsRefresh)
             .accessibilityLabel(localization.string(.wifiRefresh))
         }
     }
@@ -171,9 +186,9 @@ struct WiFiNetworkListView: View {
             credentialAccessMessage(.wifiCredentialStoreLocked)
         case .credentialReadFailed:
             credentialAccessMessage(.wifiCredentialReadFailed)
-        case .needsPassword:
+        case .needsPassword, .connecting:
             EmptyView()
-        case .idle, .connecting(_), .ready:
+        case .idle, .ready:
             if wifi.nameAccess == .notDetermined {
                 Button(localization.string(.wifiActionRequestNameAccess), action: onRequestNameAccess)
                     .buttonStyle(.plain)

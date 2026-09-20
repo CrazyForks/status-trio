@@ -476,7 +476,7 @@ final class WiFiNetworkController: ObservableObject {
     }
 
     private func startScan() {
-        guard isActive, !state.isScanning, !state.isConnectionFlow else { return }
+        guard isActive, state.allowsRefresh else { return }
 
         let request = scanGate.advance()
         lastScanStartedAt = now()
