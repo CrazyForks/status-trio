@@ -1536,6 +1536,11 @@ git commit -m "feat: refresh Bluetooth devices from connect and disconnect event
 
 > **Rider added 2026-09-20 from the Task 3 review (required, in this task).**
 > **Make a leaked view claim unable to sustain the poll.** Task 3's gate is satisfied while *any* claim is held, and the two view tokens (`"bluetooth.summary.surface"`, `"bluetooth.detail.surface"` in `BluetoothDeviceListView`) are released only from SwiftUI `onDisappear`. The popover's content view controller is deliberately retained after close (`StatusBarController.swift:435-437`), so if `onDisappear` is skipped for either token the claim set never empties and the next `activate()`/`receiveSystemState(.available)` restarts a 30 s poll indefinitely — the exact failure this plan exists to remove. Change the gate so the poll requires the popover-level claim (`"bluetooth.popover"`, released on popover close by `SystemStatusStore`) and the view tokens may only *narrow* it, never sustain it on their own; add a test that holds a view token, releases the popover token, and asserts the safety-net poll stops (and that re-holding the popover token resumes it). Do not edit `StatusBarController`: it is owned by other plans in the set, and the popover token already exists.
+>
+> **Second rider added 2026-09-20 from the Task 4 review (required, in this task).**
+> 1. **`deinit` must stop the event monitor.** Task 4 added the injectable `connectionEvents` monitor and deliberately left `deinit` cancelling only the poll; call `connectionEvents?.stop()` from `deinit` as well as from `stopConnectionEvents()`, keeping the call nonisolated and idempotent (Task 4 verified `stop()` is lock-guarded and safe to call twice, so `deinit` may call it directly — do **not** wrap it in `MainActor.assumeIsolated`).
+> 2. **Make the monitor stop unconditional.** `stopConnectionEvents()` currently early-returns before reaching `connectionEvents?.stop()` when the registration was refused (`start` returned `false`), leaving a stored handler on a monitor that is never told to stop. Call `stop()` unconditionally so the teardown path has one shape regardless of whether registration succeeded.
+
 
 **Files:**
 - Create: `Sources/StatusTrioCore/Monitoring/SystemEventObserverBag.swift`
