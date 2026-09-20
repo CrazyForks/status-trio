@@ -18,3 +18,9 @@
 - The Bluetooth panel used to read the paired-device list every 15 seconds for as long as the app was running, even after the panel was closed. It now refreshes when a device connects or disconnects, and falls back to a slow check only while a Bluetooth view is on screen.
 - Paired devices and battery levels now come from one system report instead of two, which halves the work each refresh does.
 - The summary row and the device page are unchanged: the same names, the same levels, and the same permission behaviour — the app still asks for Bluetooth only when you open a Bluetooth view.
+
+## Wi-Fi scanning stops when you stop looking
+- The Wi-Fi page used to sweep every channel about every five seconds for as long as it was open, even after you went back to the summary. It now scans when you open the page, when you tap refresh, when you switch the radio, and when a connection finishes, and keeps the last result in between.
+- Leaving the Wi-Fi page stops its scan loop instead of leaving it running in the background.
+- On Macs without a Wi-Fi interface — a Mac mini or Mac Studio on Ethernet, for example — the app no longer rebuilds its Wi-Fi monitoring every 30 seconds; it now tries a few times and then waits for a wake or a network change.
+- Nothing about the list itself changes: the same networks, the same details, and the same manual refresh button.
