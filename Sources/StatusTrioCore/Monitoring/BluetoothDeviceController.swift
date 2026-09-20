@@ -252,6 +252,19 @@ final class BluetoothDeviceController: ObservableObject {
     /// interesting changes, so this is deliberately slow.
     private let safetyNetInterval: Duration
     private let safetyNetSleep: @Sendable (Duration) async throws -> Void
+    /// The connect/disconnect source for the safety net. Optional so a test can
+    /// build a controller that never touches the system's Bluetooth service.
+    /// Teardown-owned storage: `deinit` is nonisolated and reads it directly.
+    nonisolated(unsafe) private let connectionEvents: (any BluetoothConnectionEventMonitoring)?
+    private let connectionEventDebounceInterval: Duration
+    private let connectionEventDebounceSleep: @Sendable (Duration) async throws -> Void
+    /// Invalidates a debounce that a later stop or deactivate superseded, the
+    /// same way `AsyncRequestGate` guards the other asynchronous paths here.
+    private var connectionEventGate = AsyncRequestGate()
+    private var isConnectionEventReadScheduled = false
+    /// Set from the registration result, so "monitoring" means the system
+    /// accepted the registration rather than that it was merely attempted.
+    private var isMonitoringConnectionEventNotifications = false
     private(set) var isActive = false
     private var requestGate = AsyncRequestGate()
     private var batteryRequestGate = AsyncRequestGate()
@@ -261,6 +274,11 @@ final class BluetoothDeviceController: ObservableObject {
     private var isRefreshPending = false
     private var batteryLevelsEnabled = false
     private var periodicRefreshTask: Task<Void, Never>?
+    /// Identifies the current safety-net task. A cancelled task's `defer` only
+    /// clears the reference while it is still the current generation, so a
+    /// stop/start pair in one main-actor turn cannot leave the new task
+    /// untracked and uncancellable.
+    private var periodicRefreshGeneration: UInt64 = 0
     private var applicationObserver: NSObjectProtocol?
     private var wakeObserver: NSObjectProtocol?
 
@@ -273,6 +291,11 @@ final class BluetoothDeviceController: ObservableObject {
         safetyNetInterval: Duration = .seconds(30),
         safetyNetSleep: @escaping @Sendable (Duration) async throws -> Void = {
             try await Task.sleep(for: $0)
+        },
+        connectionEvents: (any BluetoothConnectionEventMonitoring)? = nil,
+        connectionEventDebounceInterval: Duration = .milliseconds(750),
+        connectionEventDebounceSleep: @escaping @Sendable (Duration) async throws -> Void = {
+            try await Task.sleep(for: $0)
         }
     ) {
         self.worker = worker
@@ -282,6 +305,9 @@ final class BluetoothDeviceController: ObservableObject {
         self.workspaceNotificationCenter = workspaceNotificationCenter
         self.safetyNetInterval = safetyNetInterval
         self.safetyNetSleep = safetyNetSleep
+        self.connectionEvents = connectionEvents
+        self.connectionEventDebounceInterval = connectionEventDebounceInterval
+        self.connectionEventDebounceSleep = connectionEventDebounceSleep
         stateMonitor.onStateChange = { [weak self] authorization, managerState in
             self?.receiveSystemState(authorization: authorization, managerState: managerState)
         }
@@ -294,6 +320,16 @@ final class BluetoothDeviceController: ObservableObject {
 
     var connectedDevices: [BluetoothDevice] {
         BluetoothDevicePresentation.grouped(devices).connected
+    }
+
+    /// Whether the controller has an event source at all.
+    var hasConnectionEventSource: Bool {
+        connectionEvents != nil
+    }
+
+    /// Whether connection notifications are being delivered right now.
+    var isMonitoringConnectionEvents: Bool {
+        isMonitoringConnectionEventNotifications
     }
 
     /// The app's current CoreBluetooth grant. Reading it never prompts; only
@@ -330,8 +366,7 @@ final class BluetoothDeviceController: ObservableObject {
         invalidateDeviceRead()
         batteryLevelRequests.removeAll()
         updateBatteryLevelRequests()
-        periodicRefreshTask?.cancel()
-        periodicRefreshTask = nil
+        stopPeriodicRefresh()
         removeSystemObservers()
         stateMonitor.stop()
         availability = .idle
@@ -542,11 +577,23 @@ final class BluetoothDeviceController: ObservableObject {
 
     private func schedulePeriodicRefresh() {
         guard isActive, hasVisibleSurface, availability == .available else { return }
+        startConnectionEvents()
         guard periodicRefreshTask == nil else { return }
         let interval = safetyNetInterval
         let sleep = safetyNetSleep
+        periodicRefreshGeneration &+= 1
+        let generation = periodicRefreshGeneration
         periodicRefreshTask = Task { @MainActor [weak self] in
-            defer { self?.periodicRefreshTask = nil }
+            defer {
+                // Only the task that is still current may clear the reference.
+                // A stop can cancel this task and start a replacement in the
+                // same main-actor turn, before this `defer` runs; clearing
+                // unconditionally would leave the replacement untracked and
+                // uncancellable.
+                if let self, self.periodicRefreshGeneration == generation {
+                    self.periodicRefreshTask = nil
+                }
+            }
             while !Task.isCancelled {
                 do {
                     try await sleep(interval)
@@ -562,7 +609,56 @@ final class BluetoothDeviceController: ObservableObject {
     }
 
     private func stopPeriodicRefresh() {
+        // Invalidate the running task before cancelling it, so its `defer` can
+        // tell that it has been superseded.
+        periodicRefreshGeneration &+= 1
         periodicRefreshTask?.cancel()
         periodicRefreshTask = nil
+        stopConnectionEvents()
+    }
+
+    /// Connection notifications only matter while a Bluetooth surface is on
+    /// screen: nothing else displays device state, and the registration is a
+    /// system resource the app should not hold for its whole lifetime.
+    private func startConnectionEvents() {
+        guard !isMonitoringConnectionEventNotifications, let connectionEvents else { return }
+        // The handler arrives on IOBluetooth's own thread, so it hops to the
+        // main actor before touching controller state.
+        isMonitoringConnectionEventNotifications = connectionEvents.start { [weak self] in
+            Task { @MainActor in self?.receiveConnectionEvent() }
+        }
+    }
+
+    private func stopConnectionEvents() {
+        _ = connectionEventGate.advance()
+        isConnectionEventReadScheduled = false
+        guard isMonitoringConnectionEventNotifications else { return }
+        isMonitoringConnectionEventNotifications = false
+        connectionEvents?.stop()
+    }
+
+    /// One read per burst of connect/disconnect notifications. macOS connects
+    /// several devices at once (AirPods plus a Watch, say), and each
+    /// notification would otherwise start its own profiler run.
+    private func receiveConnectionEvent() {
+        guard isActive, isMonitoringConnectionEventNotifications else { return }
+        guard !isConnectionEventReadScheduled else { return }
+        isConnectionEventReadScheduled = true
+        let request = connectionEventGate.advance()
+        let interval = connectionEventDebounceInterval
+        let sleep = connectionEventDebounceSleep
+        Task { @MainActor [weak self] in
+            do {
+                try await sleep(interval)
+            } catch {
+                guard let self, self.connectionEventGate.accepts(request) else { return }
+                self.isConnectionEventReadScheduled = false
+                return
+            }
+            guard let self, self.connectionEventGate.accepts(request) else { return }
+            self.isConnectionEventReadScheduled = false
+            guard self.isActive else { return }
+            self.refresh()
+        }
     }
 }

@@ -59,7 +59,10 @@ final class AppEnvironment {
             wifiMonitor: wifiMonitor,
             connectionMonitor: connectionMonitor,
             volumeMonitor: volumeMonitor,
-            refreshInterval: refreshInterval
+            refreshInterval: refreshInterval,
+            bluetoothDevices: BluetoothDeviceController(
+                connectionEvents: IOBluetoothConnectionEventMonitor()
+            )
         )
     }
 

@@ -96,7 +96,7 @@ final class BluetoothPollingLifetimeTests: XCTestCase {
         XCTAssertFalse(controller.isSafetyNetPolling, "a poll started with nothing on screen")
 
         controller.holdVisibleSurface("bluetooth.summary")
-        await sleeper.waitForCallCount(1, timeout: .seconds(1))
+        _ = await sleeper.waitForCallCount(1, timeout: .seconds(1))
         XCTAssertTrue(controller.isSafetyNetPolling)
         XCTAssertEqual(sleeper.durations.first, .seconds(30))
 
@@ -156,12 +156,105 @@ final class BluetoothPollingLifetimeTests: XCTestCase {
         XCTAssertFalse(controller.isSafetyNetPolling)
     }
 
+    /// A cancelled poll's `defer` must not clear the reference to the poll that
+    /// replaced it. A stop and a start can land in the same main-actor turn,
+    /// before the cancelled task has run its `defer`; an unconditional
+    /// `periodicRefreshTask = nil` then makes `isSafetyNetPolling` lie and
+    /// leaves the running task uncancellable.
+    func testARestartInTheSameTurnKeepsTheNewPollTrackedAndCancellable() async {
+        let reader = ImmediateBluetoothDeviceReader()
+        let sleeper = ManualEventSleeper()
+        // The poll's guard also stops it when the surface goes away, so
+        // cancellation is only observable from inside the sleep it was parked
+        // in: after the sleep resumes, `Task.isCancelled` is the answer.
+        let cancellations = SleepCancellationRecorder()
+        let controller = BluetoothDeviceController(
+            worker: reader,
+            stateMonitor: AvailableBluetoothStateMonitor(),
+            batteryReader: SilentBluetoothBatteryReader(),
+            notificationCenter: NotificationCenter(),
+            workspaceNotificationCenter: NotificationCenter(),
+            safetyNetSleep: { duration in
+                await sleeper.sleep(duration)
+                cancellations.record(Task.isCancelled)
+            }
+        )
+        controller.activate()
+        await waitUntil { reader.readCount == 1 }
+        controller.holdVisibleSurface("bluetooth.summary")
+        _ = await sleeper.waitForCallCount(1, timeout: .seconds(1))
+
+        // Stop and restart inside one turn, before the cancelled task's `defer`.
+        controller.releaseVisibleSurface("bluetooth.summary")
+        controller.holdVisibleSurface("bluetooth.summary")
+        XCTAssertTrue(controller.isSafetyNetPolling, "the restarted poll must be tracked")
+
+        // Let the replacement reach its own sleep, then release both so the
+        // superseded task runs through to its `defer`.
+        _ = await sleeper.waitForCallCount(2, timeout: .seconds(1))
+        sleeper.releaseAll()
+        await waitUntil { reader.readCount >= 3 }
+        await settle()
+        XCTAssertTrue(
+            controller.isSafetyNetPolling,
+            "a superseded poll's defer must not clear the replacement's reference"
+        )
+
+        // The replacement must still be cancellable: letting go of the last
+        // surface has to cancel the task the restart created.
+        controller.releaseVisibleSurface("bluetooth.summary")
+        XCTAssertFalse(controller.isSafetyNetPolling)
+        sleeper.releaseAll()
+        await settle()
+        XCTAssertEqual(
+            cancellations.resumed.last,
+            true,
+            "the restarted poll must actually be cancelled"
+        )
+
+        controller.deactivate()
+    }
+
     private func waitUntil(_ condition: () -> Bool) async {
         for _ in 0..<1_000 {
             if condition() { return }
             try? await Task.sleep(for: .milliseconds(2))
         }
         XCTFail("Timed out waiting for the Bluetooth controller")
+    }
+
+    /// Lets every main-actor task that is already runnable finish.
+    private func settle() async {
+        for _ in 0..<20 { await Task.yield() }
+        try? await Task.sleep(for: .milliseconds(20))
+        for _ in 0..<20 { await Task.yield() }
+    }
+}
+
+/// Answers every read straight away, so a test that only cares about the poll's
+/// task lifetime never has to complete a read by hand.
+private final class ImmediateBluetoothDeviceReader: BluetoothPairedDeviceReading, @unchecked Sendable {
+    private let lock = NSLock()
+    private var count = 0
+
+    var readCount: Int { lock.withLock { count } }
+
+    func read(completion: @escaping @Sendable (BluetoothWorkerResult) -> Void) {
+        lock.withLock { count += 1 }
+        completion(.success([]))
+    }
+}
+
+/// Records what each parked sleep saw when it resumed, which is how a test tells
+/// "the task was cancelled" apart from "the task's guard happened to stop it".
+private final class SleepCancellationRecorder: @unchecked Sendable {
+    private let lock = NSLock()
+    private var values: [Bool] = []
+
+    var resumed: [Bool] { lock.withLock { values } }
+
+    func record(_ cancelled: Bool) {
+        lock.withLock { values.append(cancelled) }
     }
 }
 
