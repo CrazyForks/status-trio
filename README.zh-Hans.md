@@ -34,14 +34,23 @@
 </p>
 
 <p align="center">
-  <a href="README.md">English</a>
+  <a href="README.md">English</a> ·
+  <strong>简体中文</strong> ·
+  <a href="README.zh-Hant.md">繁體中文</a> ·
+  <a href="README.ja.md">日本語</a> ·
+  <a href="README.ko.md">한국어</a> ·
+  <a href="README.es.md">Español</a> ·
+  <a href="README.fr.md">Français</a> ·
+  <a href="README.de.md">Deutsch</a> ·
+  <a href="README.pt-BR.md">Português (Brasil)</a> ·
+  <a href="README.ru.md">Русский</a>
 </p>
 
 <p align="center">
   <img src="screenshots/menu-bar-wifi.jpg" width="1000" alt="Status Trio 菜单栏图标：连接 Wi-Fi 时显示 Wi-Fi 图标，并展开状态弹层">
 </p>
 
-Status Trio 是一个原生 macOS 状态应用，将 Wi-Fi、电池和音量整合进一个紧凑、可配置的图标，可显示在菜单栏、程序坞，或两处同时显示。弹出面板比图标本身更深入：Wi-Fi 面板可加入网络并查看链路详情，蓝牙面板列出已配对设备，还有电池详情页，以及当前正在播放的音频设备。灵感源自 iPhone Duo 将 Wi-Fi、Battery 和 Cellular Data 合并展示的 status bar icon，并在 Mac 上以音量替代 Cellular Data。
+Status Trio 是一个原生 macOS 状态应用，将 Wi-Fi、电池和音量整合进一个紧凑、可配置的图标，可显示在菜单栏、程序坞，或两处同时显示。弹出面板比图标本身更深入：Wi-Fi 面板可加入网络并查看链路详情，蓝牙面板列出已配对设备，还有电池详情页，以及当前正在播放的音频设备。灵感源自 iPhone Duo 将 Wi-Fi、电池和蜂窝网络合并展示的状态栏图标，并在 Mac 上以音量替代蜂窝网络。
 
 > Status Trio 是独立项目，与 Apple 无隶属关系。
 
@@ -56,7 +65,7 @@ Status Trio 是一个原生 macOS 状态应用，将 Wi-Fi、电池和音量整�
 - **菜单栏、程序坞或两处**：程序坞图标可以跟随系统样式，也可以固定为深色或浅色。
 - **原生 macOS 操作**：左键打开面板，右键打开菜单，首次启动有引导说明图标每一部分；有线连接、热点或互联网共享也可以继续显示 Wi-Fi 图标。
 - **保持最新**：状态由系统事件驱动、低频轮询兜底，Sparkle 通过已签名的更新源更新应用。
-- **其他**：十二种语言，以及可选的登录时启动。
+- **其他**：十二种语言，以及可选的开机时启动。
 
 ## 蓝牙音频
 
@@ -166,7 +175,7 @@ open "/Applications/Status Trio.app"
 - **左键点击**菜单栏图标或程序坞图标，打开状态弹层。
 - **右键点击**图标，显示原生菜单，其中包含版本和退出操作。
 - 在弹层中点击某一行会打开对应页面：Wi-Fi 详情与附近网络、已配对的蓝牙设备、电池详情。
-- 打开**设置**可以选择图标显示位置（菜单栏 / 程序坞 / 两处），并调整图标大小、颜色、圆环粗细、面板区块及顺序、滚动调节音量行为、语言、更新检查和登录时启动。
+- 打开**设置**可以选择图标显示位置（菜单栏 / 程序坞 / 两处），并调整图标大小、颜色、圆环粗细、面板区块及顺序、滚动调节音量行为、语言、更新检查和开机时启动。
 - 可随时从**设置 › 应用图标 › 打开指引**重新查看**认识你的图标**引导。
 - 如需显示当前 Wi-Fi 网络名称，请按提示启用定位权限；这是可选功能。
 
@@ -233,3 +242,13 @@ Copyright 2026 lingyired。
 
 由 [lingyired](https://github.com/lingyired) 创建并维护。<br>
 主页：[https://statustrio.lingai.net/](https://statustrio.lingai.net/)
+
+## Star History
+
+<a href="https://www.star-history.com/?repos=lingyired%2Fstatus-trio&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=lingyired/status-trio&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=lingyired/status-trio&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=lingyired/status-trio&type=date&legend=top-left" />
+ </picture>
+</a>
