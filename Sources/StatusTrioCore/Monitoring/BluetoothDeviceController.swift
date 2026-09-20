@@ -500,6 +500,11 @@ final class BluetoothDeviceController: ObservableObject {
                 case .failed:
                     self.availability = .failed
                     self.clearBatteryLevels()
+                    // No poll can succeed while the read is failing, so the
+                    // connection-event registration goes with it: otherwise the
+                    // controller would hold a live event registration with no
+                    // poll behind it, which is a state no other branch leaves.
+                    self.stopPeriodicRefresh()
                 }
                 if self.isRefreshPending {
                     self.isRefreshPending = false
@@ -518,6 +523,11 @@ final class BluetoothDeviceController: ObservableObject {
         guard token == readToken else { return }
         readToken &+= 1
         isDeviceReadInFlight = false
+        // The follow-up started below consumes the coalesced trigger, so the
+        // flag has to be cleared here. Leaving it set made the replacement read
+        // consume an already-consumed trigger and run one extra profiler pass
+        // after every timeout.
+        isRefreshPending = false
         refresh()
     }
 
@@ -525,10 +535,13 @@ final class BluetoothDeviceController: ObservableObject {
     /// invalidated read is discarded, so the latch has to be released here or no
     /// later refresh could ever start. The watchdog is disarmed for the same
     /// reason: nothing is outstanding any more, and its timeout would otherwise
-    /// abandon a read that is already gone.
+    /// abandon a read that is already gone. Recording a success with the
+    /// cancellation resets the backoff, so a session that deactivated after a
+    /// timeout starts again from the 5 s base instead of the previous penalty.
     private func invalidateDeviceRead() {
         readToken &+= 1
         readWatchdog.cancel()
+        readWatchdog.recordSuccess()
         isDeviceReadInFlight = false
         isRefreshPending = false
     }

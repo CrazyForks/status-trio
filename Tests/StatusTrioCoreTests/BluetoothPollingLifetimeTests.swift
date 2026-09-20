@@ -12,6 +12,7 @@ final class BluetoothPollingLifetimeTests: XCTestCase {
     private func makeController(
         reader: any BluetoothPairedDeviceReading,
         stateMonitor: AvailableBluetoothStateMonitor = AvailableBluetoothStateMonitor(),
+        connectionEvents: (any BluetoothConnectionEventMonitoring)? = nil,
         safetyNetSleep: @escaping @Sendable (Duration) async throws -> Void = {
             try await Task.sleep(for: $0)
         },
@@ -26,6 +27,7 @@ final class BluetoothPollingLifetimeTests: XCTestCase {
             notificationCenter: NotificationCenter(),
             workspaceNotificationCenter: NotificationCenter(),
             safetyNetSleep: safetyNetSleep,
+            connectionEvents: connectionEvents,
             readTimeoutSleep: readTimeoutSleep
         )
     }
@@ -184,6 +186,101 @@ final class BluetoothPollingLifetimeTests: XCTestCase {
         timeoutSleeper.releaseAll()
         await settle()
         XCTAssertEqual(reader.readCount, 1, "a completed read must disarm its watchdog")
+
+        controller.deactivate()
+    }
+
+    /// An abandoned read starts the coalesced follow-up itself, so the pending
+    /// trigger is consumed by that start. If the flag stayed set, the follow-up's
+    /// own completion would consume it a second time and run one extra profiler
+    /// pass after every timeout.
+    func testAnAbandonedReadConsumesItsPendingTriggerOnce() async {
+        let reader = DeferredBluetoothDeviceReader()
+        let timeoutSleeper = ManualEventSleeper()
+        let controller = makeController(
+            reader: reader,
+            readTimeoutSleep: { duration in await timeoutSleeper.sleep(duration) }
+        )
+        controller.activate()
+        await waitUntil { reader.readCount == 1 }
+
+        // The trigger that arrives while the first read is outstanding is
+        // coalesced into the follow-up the watchdog will start.
+        controller.refresh()
+        await settle()
+
+        await releaseWatchdogTimeout(timeoutSleeper, armNumber: 1)
+        await waitUntil { reader.readCount == 2 }
+
+        // The follow-up completes: the trigger it consumed must not start a
+        // third read. The abandoned read's completion is still parked, so the
+        // first completion retires nothing and the second one belongs to the
+        // follow-up.
+        reader.complete(.success([]))
+        reader.complete(.success([]))
+        await settle()
+        XCTAssertEqual(reader.readCount, 2, "the coalesced trigger was consumed by the follow-up")
+
+        controller.deactivate()
+    }
+
+    /// Deactivating invalidates an in-flight read, and that must also clear the
+    /// watchdog's backoff: otherwise a session that timed out once starts its
+    /// next read with the previous penalty instead of the base timeout.
+    func testDeactivationResetsTheWatchdogBackoff() async {
+        let reader = StallingBluetoothDeviceReader()
+        let timeoutSleeper = ManualEventSleeper()
+        let controller = makeController(
+            reader: reader,
+            readTimeoutSleep: { duration in await timeoutSleeper.sleep(duration) }
+        )
+        controller.activate()
+        await waitUntil { reader.readCount == 1 }
+
+        // The first timeout doubles the wait for the next read.
+        await releaseWatchdogTimeout(timeoutSleeper, armNumber: 1)
+        await waitUntil { reader.readCount == 2 }
+        let secondArmed = await timeoutSleeper.waitForCallCount(2, timeout: .seconds(1))
+        XCTAssertTrue(secondArmed, "the retried read must arm the watchdog")
+        XCTAssertEqual(timeoutSleeper.durations[1], .seconds(10), "a timeout must back off")
+
+        controller.deactivate()
+        controller.activate()
+        await waitUntil { reader.readCount == 3 }
+        let thirdArmed = await timeoutSleeper.waitForCallCount(3, timeout: .seconds(1))
+        XCTAssertTrue(thirdArmed, "the new session must arm the watchdog")
+
+        XCTAssertEqual(
+            timeoutSleeper.durations[2],
+            .seconds(5),
+            "a new session must start from the base timeout, not the previous backoff"
+        )
+
+        controller.deactivate()
+    }
+
+    /// A read that failed cannot be followed by a successful poll, so the
+    /// connection-event registration has to go with the poll. Leaving it live
+    /// meant a failing controller held a system registration with no poll
+    /// behind it, a state no other branch leaves.
+    func testAFailedReadStopsThePollAndTheConnectionEvents() async {
+        let reader = DeferredBluetoothDeviceReader()
+        let events = StoppableBluetoothConnectionEventMonitor()
+        let controller = makeController(reader: reader, connectionEvents: events)
+        controller.activate()
+        await waitUntil { reader.readCount == 1 }
+
+        controller.holdVisibleSurface("bluetooth.popover")
+        XCTAssertTrue(controller.isSafetyNetPolling)
+        XCTAssertTrue(controller.isMonitoringConnectionEvents)
+
+        reader.complete(.failed)
+        await waitUntil { controller.availability == .failed }
+        await waitUntil { !controller.isMonitoringConnectionEvents }
+
+        XCTAssertFalse(controller.isSafetyNetPolling)
+        XCTAssertFalse(controller.isMonitoringConnectionEvents)
+        XCTAssertEqual(events.stopCount, 1, "the registration must be released with the poll")
 
         controller.deactivate()
     }
