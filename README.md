@@ -42,27 +42,41 @@
   <img src="screenshots/menu-bar-wifi.jpg" width="1000" alt="Status Trio menu bar icon showing the Wi-Fi glyph while connected to Wi-Fi, with its status popover open">
 </p>
 
-<p align="center">
-  <img src="screenshots/menu-bar-airpods.jpg" width="1000" alt="Status Trio menu bar icon showing the AirPods glyph while AirPods are connected, with its status popover open">
-</p>
-
-Status Trio is a native macOS status app that combines Wi-Fi, battery, and volume into one compact, configurable icon, shown in the menu bar, in the Dock, or in both. It is inspired by the iPhone Duo's combined status bar icon for Wi-Fi, Battery, and Cellular Data, adapted for Mac with Volume instead of Cellular Data.
+Status Trio is a native macOS status app that combines Wi-Fi, battery, and volume into one compact, configurable icon, shown in the menu bar, in the Dock, or in both. Its popover goes deeper than the icon: a Wi-Fi panel for joining networks and reading link details, a Bluetooth panel for paired devices, a Battery Details page, and the audio devices that are playing. It is inspired by the iPhone Duo's combined status bar icon for Wi-Fi, Battery, and Cellular Data, adapted for Mac with Volume instead of Cellular Data.
 
 > Status Trio is an independent project and is not affiliated with Apple.
 
 ## Highlights
 
-- **One combined status icon** — keeps battery, Wi-Fi, and volume in a single icon.
-- **Menu bar or Dock** — choose where the live icon lives: the menu bar, the Dock, or both, with a Dock icon that follows the macOS icon style.
-- **Configurable rendering** — choose an icon size from 16–36 pt, with 28 pt as the default.
+- **One combined status icon** — battery, network, and volume in a single icon, in the menu bar, the Dock, or both.
+- **Bluetooth audio** — while a Bluetooth device is playing, the device's own symbol can replace the network glyph and the volume dots or arc can turn blue, so the active output is obvious at a glance.
+- **Detailed battery status** — percentage, a charging bolt or a plug while connected without charging, an optional percentage while connected, estimated time to full, status colors, a configurable critical threshold, and a Battery Settings shortcut.
+- **Battery Details page** — adapter rating, time remaining, net battery power estimates, voltage, current, cycle count, and Low Power Mode, sampled on demand.
+- **Wi-Fi awareness** — the network name as the popover title, its band and signal strength, and signal strength plus common connection states in the icon.
+- **Wi-Fi panel** — scan nearby networks, join one with a password stored in the Keychain, toggle Wi-Fi, and read full link details: BSSID, channel, width, RSSI, noise, SNR, PHY, rate, security, IPv4/IPv6, router, and DNS.
+- **Bluetooth panel** — paired devices and their connection state, with AirPods battery levels. It is off by default; enable it under Settings › Status Panel.
+- **Volume at a glance** — output level, mute state, and the current output device with the symbol macOS uses for it.
+- **Scroll to adjust volume** — choose whether scrolling anywhere in the panel or only on the volume control changes the volume, and whether scrolling up always raises it regardless of the system's natural scrolling setting.
+- **Configurable rendering** — an icon size from 16–36 pt (24 pt by default), a network and Bluetooth symbol scale from 100%–180%, volume dots or a continuous arc, and a Light, Regular, or Bold ring stroke width.
 - **Connection icon choices** — optionally use the standard Wi-Fi signal icon for Ethernet, Personal Hotspot, temporary connections, or Internet Sharing.
-- **Detailed battery status** — percentage, a charging bolt or a plug while connected without charging, estimated time to full, Low Power Mode, and a Battery Settings shortcut.
-- **Wi-Fi awareness** — signal strength, current network name, and common connection states.
-- **Volume at a glance** — output level and mute state, with controls available from the popover.
+- **Customizable Status Panel** — choose which sections the popover shows (Battery, Wi-Fi, Bluetooth, Volume) and drag them into order.
+- **Menu bar or Dock** — choose where the live icon lives: the menu bar, the Dock, or both, with a Dock icon that follows the system icon style or holds a pinned dark or light background.
 - **macOS-native controls** — left-click for a status popover and right-click for the standard menu, from either the menu bar icon or the Dock icon.
+- **Meet your icon** — a first-launch guide that explains each part of the icon and shows a gallery of common state combinations.
 - **Efficient updates** — event-driven monitoring with a low-frequency polling fallback.
 - **Twelve languages** — follow the system language or choose one manually; changes apply immediately.
 - **Launch at login** — optional startup with guidance when macOS requires approval.
+- **Automatic updates** — Sparkle checks the signed appcast and verifies each update with the app's EdDSA key.
+
+## Bluetooth audio
+
+While audio plays over Bluetooth, two switches under **Settings › Bluetooth** let the middle glyph become that device's own symbol — AirPods, headphones, speakers, and other devices supply their own — and let the volume dots or arc turn blue. Both are off by default. **Let network errors take priority**, on by default, keeps the network icon while the connection itself is in trouble:
+
+<p align="center">
+  <img src="screenshots/menu-bar-airpods.jpg" width="1000" alt="Status Trio menu bar icon showing the AirPods glyph while AirPods are connected, with its status popover open">
+</p>
+
+The popover's Bluetooth row reports live state: the names of connected devices and, for AirPods, left, right, and case battery. The Bluetooth panel lists paired devices and their connection state; it is off by default, is enabled under **Settings › Status Panel**, and asks for Bluetooth permission on first use. **Settings › Bluetooth** also controls whether the battery levels are read and scales the Bluetooth icon from 100% to 180%.
 
 ## Dock icon
 
@@ -86,7 +100,7 @@ The same live icon can live in the Dock instead of the menu bar, or in both plac
   <sub>Bluetooth panel preview</sub>
 </p>
 
-The Dock icon draws the same combined icon as the menu bar, so a Bluetooth audio device takes over the middle glyph there too. Its background can follow the system icon style or be pinned to a fixed shade:
+The Dock icon draws the same combined icon as the menu bar, so with Bluetooth audio replacement enabled the device glyph takes over the middle there too. Its background can follow the system icon style or be pinned to a fixed shade:
 
 <p align="center">
   <img src="screenshots/status-trio-dock-icons.png" width="880" alt="Status Trio Dock icon in dark, light, and clear backgrounds, in two rows: the Wi-Fi state and Bluetooth audio replacing the Wi-Fi icon with blue volume dots">
@@ -94,7 +108,7 @@ The Dock icon draws the same combined icon as the menu bar, so a Bluetooth audio
 
 ## Icon states
 
-Every state the combined icon can show, drawn by the app's own renderer — battery indicators on top, Wi-Fi (or the Bluetooth audio device that replaces it) in the middle, volume dots or the arc at the bottom, tinted blue while a Bluetooth device is playing:
+Every state the combined icon can show, drawn by the app's own renderer — battery indicators on top, Wi-Fi (or the Bluetooth audio device that can replace it, when that option is on) in the middle, and volume dots or the arc at the bottom, turning blue while a Bluetooth device is playing:
 
 <p align="center">
   <img src="screenshots/status-trio-icon-states.png" width="880" alt="Status Trio icon states: charging, plugged in, percentage, low battery, and Low Power Mode at the top; Wi-Fi signal, hotspot, temporary, shared, and wired states in the middle; Bluetooth audio replacing the Wi-Fi icon, keeping Wi-Fi during a network error, and blue volume dots and arc below that; volume dots and arc styles for every level at the bottom">
@@ -162,7 +176,9 @@ Do not disable Gatekeeper globally. Subsequent Sparkle updates are authenticated
 
 - **Left-click** the menu bar icon or the Dock icon to open the status popover.
 - **Right-click** either icon for the native menu, including version and quit actions.
-- Open **Settings** to choose where the icon is shown (menu bar, Dock, or both), and to change the icon size, connection icon style, battery display options, language, update checks, and launch-at-login behavior.
+- Select a row in the popover to open its page: Wi-Fi details with nearby networks, paired Bluetooth devices, and Battery Details.
+- Open **Settings** — App Icon, Battery, Network, Bluetooth, Audio, Status Panel, General, and About — to choose where the icon is shown (menu bar, Dock, or both) and to change the icon size, symbol scales, ring stroke width, status colors, panel sections and their order, scroll-to-adjust behavior, language, update checks, and launch-at-login behavior.
+- Reopen the **Meet your icon** guide any time from **Settings › App Icon › Open Guide**.
 - Enable the current Wi-Fi network name when prompted; macOS requests location access for this optional detail.
 
 ## Languages
@@ -171,7 +187,7 @@ Status Trio follows the macOS preferred language by default and includes English
 
 ## Privacy
 
-Status Trio reads status through public macOS frameworks. It does not use App Sandbox or require a network entitlement, and it does not include telemetry or analytics. Location access is optional and requested only when you choose to display the current Wi-Fi network name.
+Status Trio reads status through public macOS frameworks. It does not use App Sandbox or require a network entitlement, and it does not include telemetry or analytics. Location access is optional and requested only when you choose to display the current Wi-Fi network name or open Wi-Fi details. Bluetooth access is requested only when you open Bluetooth details, and it exists to show paired-device connection status.
 
 ## Development
 
