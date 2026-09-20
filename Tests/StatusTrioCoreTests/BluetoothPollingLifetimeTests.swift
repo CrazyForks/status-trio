@@ -10,9 +10,12 @@ import XCTest
 @MainActor
 final class BluetoothPollingLifetimeTests: XCTestCase {
     private func makeController(
-        reader: DeferredBluetoothDeviceReader,
+        reader: any BluetoothPairedDeviceReading,
         stateMonitor: AvailableBluetoothStateMonitor = AvailableBluetoothStateMonitor(),
         safetyNetSleep: @escaping @Sendable (Duration) async throws -> Void = {
+            try await Task.sleep(for: $0)
+        },
+        readTimeoutSleep: @escaping @Sendable (Duration) async throws -> Void = {
             try await Task.sleep(for: $0)
         }
     ) -> BluetoothDeviceController {
@@ -22,8 +25,17 @@ final class BluetoothPollingLifetimeTests: XCTestCase {
             batteryReader: SilentBluetoothBatteryReader(),
             notificationCenter: NotificationCenter(),
             workspaceNotificationCenter: NotificationCenter(),
-            safetyNetSleep: safetyNetSleep
+            safetyNetSleep: safetyNetSleep,
+            readTimeoutSleep: readTimeoutSleep
         )
+    }
+
+    /// Declares the outstanding read stuck: waits for the injected watchdog
+    /// timer to be armed, then lets it fire. No test ever waits on real time.
+    private func releaseWatchdogTimeout(_ sleeper: ManualEventSleeper, armNumber: Int) async {
+        let armed = await sleeper.waitForCallCount(armNumber, timeout: .seconds(1))
+        XCTAssertTrue(armed, "the controller must arm the read watchdog")
+        sleeper.releaseAll()
     }
 
     /// A read that is in flight swallows the next request into one follow-up,
@@ -78,6 +90,190 @@ final class BluetoothPollingLifetimeTests: XCTestCase {
         await waitUntil { controller.devices.map(\.id) == ["2"] }
 
         controller.deactivate()
+    }
+
+    /// A read whose completion never runs used to set the single-in-flight latch
+    /// for the rest of the session: every later trigger only set
+    /// `isRefreshPending`, so the Bluetooth row froze. The watchdog has to
+    /// declare such a read stuck and abandon it — releasing the latch — so a
+    /// later trigger starts a new read instead of being coalesced forever.
+    func testAReadThatNeverCompletesDoesNotWedgeTheLatchForever() async {
+        let reader = StallingBluetoothDeviceReader()
+        let timeoutSleeper = ManualEventSleeper()
+        let controller = makeController(
+            reader: reader,
+            readTimeoutSleep: { duration in await timeoutSleeper.sleep(duration) }
+        )
+        controller.activate()
+        await waitUntil { reader.readCount == 1 }
+
+        // The trigger that arrives while the stalled read is outstanding is
+        // coalesced, exactly as the Task 2 latch designed.
+        controller.refresh()
+        await settle()
+        XCTAssertEqual(reader.readCount, 1, "a stalled read must still hold the latch")
+
+        // The watchdog declares the read stuck and abandons it, which releases
+        // the latch and starts the coalesced follow-up on a fresh worker queue.
+        await releaseWatchdogTimeout(timeoutSleeper, armNumber: 1)
+        await waitUntil { reader.readCount == 2 }
+        XCTAssertEqual(reader.readCount, 2, "an abandoned read must not wedge the latch")
+
+        // The second read stalls too, so a later trigger is again coalesced
+        // until the watchdog abandons this read as well. The point is that no
+        // later trigger is ever dropped for the rest of the session.
+        controller.refresh()
+        await releaseWatchdogTimeout(timeoutSleeper, armNumber: 2)
+        await waitUntil { reader.readCount == 3 }
+        XCTAssertEqual(reader.readCount, 3, "a later trigger must still reach a new read")
+
+        controller.deactivate()
+    }
+
+    /// The abandoned read's completion finally runs, long after its read token
+    /// was retired. It may not publish devices that the read replacing it never
+    /// saw, and it may not release that read's latch.
+    func testAnAbandonedReadsLateCompletionIsIgnored() async {
+        let reader = StallingBluetoothDeviceReader()
+        let timeoutSleeper = ManualEventSleeper()
+        let controller = makeController(
+            reader: reader,
+            readTimeoutSleep: { duration in await timeoutSleeper.sleep(duration) }
+        )
+        controller.activate()
+        await waitUntil { reader.readCount == 1 }
+
+        controller.refresh()
+        await releaseWatchdogTimeout(timeoutSleeper, armNumber: 1)
+        await waitUntil { reader.readCount == 2 }
+
+        // The stalled read's completion arrives late, carrying a device the
+        // follow-up read never reported. Accepting it would republish devices
+        // that the current read did not see.
+        reader.completeFirstRead(with: [
+            BluetoothDevice(id: "stale", name: "Stale", kind: .audio, isConnected: true)
+        ])
+        await settle()
+        XCTAssertTrue(controller.devices.isEmpty, "a superseded read must not republish devices")
+
+        controller.deactivate()
+    }
+
+    /// A read that returned must disarm its own watchdog. A leftover timer would
+    /// later "abandon" a read that already published, release the latch, and
+    /// start a spurious extra profiler run.
+    func testACompletedReadDisarmsTheWatchdog() async {
+        let reader = DeferredBluetoothDeviceReader()
+        let timeoutSleeper = ManualEventSleeper()
+        let controller = makeController(
+            reader: reader,
+            readTimeoutSleep: { duration in await timeoutSleeper.sleep(duration) }
+        )
+        controller.activate()
+        await waitUntil { reader.readCount == 1 }
+        let armed = await timeoutSleeper.waitForCallCount(1, timeout: .seconds(1))
+        XCTAssertTrue(armed, "the controller must arm a read watchdog")
+
+        reader.complete(.success([
+            BluetoothDevice(id: "1", name: "MX Keys", kind: .peripheral, isConnected: true)
+        ]))
+        await waitUntil { controller.devices.map(\.id) == ["1"] }
+
+        // Let the watchdog's timer resume. It was cancelled by the accepted
+        // completion, so it must not abandon the read that already published.
+        timeoutSleeper.releaseAll()
+        await settle()
+        XCTAssertEqual(reader.readCount, 1, "a completed read must disarm its watchdog")
+
+        controller.deactivate()
+    }
+
+    /// The worker runs every read on one fixed serial queue, so a read that never
+    /// returns would block every later read behind it for the lifetime of the
+    /// process. Calling `read` while a previous read is still outstanding must
+    /// retire that queue and run the new read on a fresh one — otherwise the
+    /// watchdog's retry would land behind the hung block, and the watchdog would
+    /// be a no-op.
+    func testAReadRetiresTheQueueWhenThePreviousReadIsStillOutstanding() async {
+        let firstReadStarted = expectation(description: "first read started")
+        let secondReadFinished = expectation(description: "second read completed")
+        let release = DispatchSemaphore(value: 0)
+        let calls = CountBox()
+        let worker = SystemProfilerBluetoothPairedDeviceWorker(
+            outputProvider: {
+                if calls.incrementReturning() == 1 {
+                    firstReadStarted.fulfill()
+                    // Models a `system_profiler` that stays blocked; the test
+                    // frees it only after the later read has already run.
+                    _ = release.wait(timeout: .now() + 10)
+                }
+                return nil
+            },
+            reportCache: BluetoothProfilerReportCache()
+        )
+
+        worker.read { _ in }
+        await fulfillment(of: [firstReadStarted], timeout: 5)
+
+        // The first read never returned. This one must not queue behind it.
+        worker.read { _ in secondReadFinished.fulfill() }
+        await fulfillment(of: [secondReadFinished], timeout: 5)
+        XCTAssertEqual(calls.value, 2)
+        release.signal()
+    }
+
+    /// A late completion from a retired queue must not clear the outstanding
+    /// flag that describes the read that replaced it, or the next read would be
+    /// queued behind a hung block instead of retiring the queue again.
+    func testALateCompletionFromARetiredQueueDoesNotStopTheNextRetirement() async {
+        let firstReadStarted = expectation(description: "first read started")
+        let firstReadReturned = expectation(description: "first read returned late")
+        let secondReadFinished = expectation(description: "second read completed")
+        let thirdReadStarted = expectation(description: "third read started")
+        let fourthReadFinished = expectation(description: "fourth read completed")
+        let releaseFirst = DispatchSemaphore(value: 0)
+        let releaseThird = DispatchSemaphore(value: 0)
+        let calls = CountBox()
+        let worker = SystemProfilerBluetoothPairedDeviceWorker(
+            outputProvider: {
+                switch calls.incrementReturning() {
+                case 1:
+                    firstReadStarted.fulfill()
+                    _ = releaseFirst.wait(timeout: .now() + 10)
+                case 3:
+                    thirdReadStarted.fulfill()
+                    _ = releaseThird.wait(timeout: .now() + 10)
+                default:
+                    break
+                }
+                return nil
+            },
+            reportCache: BluetoothProfilerReportCache()
+        )
+
+        // Read 1 wedges the original queue.
+        worker.read { _ in firstReadReturned.fulfill() }
+        await fulfillment(of: [firstReadStarted], timeout: 5)
+
+        // Read 2 retires that queue and completes on the replacement.
+        worker.read { _ in secondReadFinished.fulfill() }
+        await fulfillment(of: [secondReadFinished], timeout: 5)
+
+        // Read 3 wedges the replacement queue.
+        worker.read { _ in }
+        await fulfillment(of: [thirdReadStarted], timeout: 5)
+
+        // Read 1 finally returns. Its completion belongs to the retired queue,
+        // so it must not clear the flag that now describes read 3.
+        releaseFirst.signal()
+        await fulfillment(of: [firstReadReturned], timeout: 5)
+
+        // Read 4 must retire the wedged replacement rather than queue behind it.
+        worker.read { _ in fourthReadFinished.fulfill() }
+        await fulfillment(of: [fourthReadFinished], timeout: 5)
+
+        XCTAssertEqual(calls.value, 4)
+        releaseThird.signal()
     }
 
     /// The safety net is a fallback for the connection notifications, and it may
@@ -563,6 +759,31 @@ private final class DeferredBluetoothDeviceReader: BluetoothPairedDeviceReading,
     }
 }
 
+/// Never answers a read of its own accord: its completion only runs when the
+/// test asks for it, which is what makes a wedged single-in-flight latch
+/// observable. Every read stalls, so the follow-up read that the watchdog starts
+/// is also still outstanding when the first read's completion finally arrives.
+private final class StallingBluetoothDeviceReader: BluetoothPairedDeviceReading, @unchecked Sendable {
+    private let lock = NSLock()
+    private var pending: [@Sendable (BluetoothWorkerResult) -> Void] = []
+    private var count = 0
+
+    var readCount: Int { lock.withLock { count } }
+
+    func read(completion: @escaping @Sendable (BluetoothWorkerResult) -> Void) {
+        lock.withLock {
+            count += 1
+            pending.append(completion)
+        }
+    }
+
+    /// The stalled read's completion finally runs, long after it was abandoned.
+    func completeFirstRead(with devices: [BluetoothDevice]) {
+        let completion = lock.withLock { pending.isEmpty ? nil : pending.removeFirst() }
+        completion?(.success(devices))
+    }
+}
+
 @MainActor
 private final class AvailableBluetoothStateMonitor: BluetoothStateMonitoring {
     var onStateChange: ((BluetoothAuthorizationStatus, BluetoothManagerState) -> Void)?
@@ -640,6 +861,15 @@ private final class CountBox: @unchecked Sendable {
 
     var value: Int { lock.withLock { count } }
     func increment() { lock.withLock { count += 1 } }
+
+    /// Increments and reports the new value, so a fake can branch on which call
+    /// it is answering without a second round trip through the lock.
+    func incrementReturning() -> Int {
+        lock.withLock {
+            count += 1
+            return count
+        }
+    }
 }
 
 /// Holds the controller weakly so a test can prove `deinit` ran, without the

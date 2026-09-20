@@ -32,7 +32,16 @@ protocol BluetoothStateMonitoring: AnyObject {
 /// currently uses. Battery levels already come from the same report.
 final class SystemProfilerBluetoothPairedDeviceWorker: @unchecked Sendable, BluetoothPairedDeviceReading {
     typealias OutputProvider = @Sendable () -> Data?
-    private let queue = DispatchQueue(label: "StatusTrio.SystemProfilerBluetoothPairedDeviceWorker")
+    private static let queueLabel = "StatusTrio.SystemProfilerBluetoothPairedDeviceWorker"
+
+    /// Guards `queue`, `queueGeneration` and `hasOutstandingRead`. `read` is
+    /// called from the controller's main-actor context while a retired queue's
+    /// block may still be running, so the retirement state is read and written
+    /// under this lock rather than on whatever thread happens to call in.
+    private let stateLock = NSLock()
+    private var queue = DispatchQueue(label: queueLabel, qos: .utility)
+    private var queueGeneration: UInt64 = 0
+    private var hasOutstandingRead = false
     private let outputProvider: OutputProvider
     private let reportCache: BluetoothProfilerReportCache
 
@@ -45,16 +54,45 @@ final class SystemProfilerBluetoothPairedDeviceWorker: @unchecked Sendable, Blue
     }
 
     func read(completion: @escaping @Sendable (BluetoothWorkerResult) -> Void) {
-        queue.async {
-            guard let data = self.outputProvider(),
-                  let devices = BluetoothPairedDeviceReader.parse(json: data) else {
-                completion(.failed)
-                return
+        // A read that never returned would block this one behind it on the same
+        // serial queue for the lifetime of the process, so retire that queue and
+        // give this read a fresh one. The abandoned block keeps the old queue
+        // alive until it eventually returns, which is what lets the controller's
+        // watchdog retry a hung `/usr/sbin/system_profiler` at all.
+        let generation: UInt64
+        let currentQueue: DispatchQueue
+        (generation, currentQueue) = stateLock.withLock {
+            if hasOutstandingRead {
+                queueGeneration &+= 1
+                queue = DispatchQueue(label: Self.queueLabel, qos: .utility)
             }
-            // The battery reader reuses these exact bytes instead of spawning a
-            // second profiler moments later.
-            self.reportCache.store(data)
-            completion(.success(devices))
+            hasOutstandingRead = true
+            return (queueGeneration, queue)
+        }
+
+        let outputProvider = self.outputProvider
+        currentQueue.async { [weak self] in
+            let result: BluetoothWorkerResult
+            if let data = outputProvider(),
+               let devices = BluetoothPairedDeviceReader.parse(json: data) {
+                // The battery reader reuses these exact bytes instead of spawning a
+                // second profiler moments later.
+                self?.reportCache.store(data)
+                result = .success(devices)
+            } else {
+                result = .failed
+            }
+            if let self {
+                self.stateLock.withLock {
+                    // Only the read on the current queue may clear the flag; a
+                    // late completion from a retired queue must not, or the next
+                    // read would queue behind a block that is still hung.
+                    if generation == self.queueGeneration {
+                        self.hasOutstandingRead = false
+                    }
+                }
+            }
+            completion(result)
         }
     }
 
@@ -273,12 +311,22 @@ final class BluetoothDeviceController: ObservableObject {
     /// accepted the registration rather than that it was merely attempted.
     private var isMonitoringConnectionEventNotifications = false
     private(set) var isActive = false
-    private var requestGate = AsyncRequestGate()
     private var batteryRequestGate = AsyncRequestGate()
     /// One device read at a time, with at most one coalesced follow-up. Without
     /// this, every trigger started its own `/usr/sbin/system_profiler` process.
     private var isDeviceReadInFlight = false
     private var isRefreshPending = false
+    /// Identifies the current device read. A completion that belongs to a
+    /// superseded token — invalidated, or abandoned by the watchdog — is
+    /// discarded, so it can neither publish devices nor release the latch of the
+    /// read that replaced it.
+    private var readToken: UInt64 = 0
+    /// Declares a read stuck once it has been outstanding for too long, so a
+    /// hung `/usr/sbin/system_profiler` — a subprocess, so it can hang — cannot
+    /// freeze the device row for the rest of the session. The worker moves the
+    /// retry to a fresh queue, so the follow-up does not land behind the hung
+    /// block on the queue it stalled.
+    private let readWatchdog: ReadWatchdog
     private var batteryLevelsEnabled = false
     private var periodicRefreshTask: Task<Void, Never>?
     /// Identifies the current safety-net task. A cancelled task's `defer` only
@@ -302,6 +350,10 @@ final class BluetoothDeviceController: ObservableObject {
         connectionEventDebounceInterval: Duration = .milliseconds(750),
         connectionEventDebounceSleep: @escaping @Sendable (Duration) async throws -> Void = {
             try await Task.sleep(for: $0)
+        },
+        readTimeout: Duration = .seconds(5),
+        readTimeoutSleep: @escaping @Sendable (Duration) async throws -> Void = {
+            try await Task.sleep(for: $0)
         }
     ) {
         self.worker = worker
@@ -320,6 +372,11 @@ final class BluetoothDeviceController: ObservableObject {
         self.connectionEvents = connectionEvents
         self.connectionEventDebounceInterval = connectionEventDebounceInterval
         self.connectionEventDebounceSleep = connectionEventDebounceSleep
+        readWatchdog = ReadWatchdog(
+            baseTimeout: readTimeout,
+            maxTimeout: .seconds(60),
+            sleep: readTimeoutSleep
+        )
         stateMonitor.onStateChange = { [weak self] authorization, managerState in
             self?.receiveSystemState(authorization: authorization, managerState: managerState)
         }
@@ -411,10 +468,20 @@ final class BluetoothDeviceController: ObservableObject {
             return
         }
         isDeviceReadInFlight = true
-        let request = requestGate.advance()
+        readToken &+= 1
+        let token = readToken
+        readWatchdog.arm { [weak self] in
+            self?.abandonTimedOutRead(token: token)
+        }
         worker.read { [weak self] result in
             Task { @MainActor [weak self] in
-                guard let self, self.requestGate.accepts(request) else { return }
+                // A completion that arrives after the read was declared stuck,
+                // or after a later trigger superseded it, belongs to a retired
+                // token: it must not release the latch of the read that
+                // replaced it, let alone publish over it.
+                guard let self, token == self.readToken else { return }
+                self.readWatchdog.cancel()
+                self.readWatchdog.recordSuccess()
                 self.isDeviceReadInFlight = false
                 guard self.isActive else { return }
                 switch result {
@@ -442,11 +509,26 @@ final class BluetoothDeviceController: ObservableObject {
         }
     }
 
+    /// A system read never returned. Ignore its late completion, release the
+    /// single-read latch so the controller is not stuck forever, and start the
+    /// coalesced follow-up. The worker moves that retry to a fresh queue, which
+    /// is what makes this recovery actually run instead of landing behind the
+    /// block that is still hung.
+    private func abandonTimedOutRead(token: UInt64) {
+        guard token == readToken else { return }
+        readToken &+= 1
+        isDeviceReadInFlight = false
+        refresh()
+    }
+
     /// Invalidates any in-flight device read. The completion that belongs to the
     /// invalidated read is discarded, so the latch has to be released here or no
-    /// later refresh could ever start.
+    /// later refresh could ever start. The watchdog is disarmed for the same
+    /// reason: nothing is outstanding any more, and its timeout would otherwise
+    /// abandon a read that is already gone.
     private func invalidateDeviceRead() {
-        _ = requestGate.advance()
+        readToken &+= 1
+        readWatchdog.cancel()
         isDeviceReadInFlight = false
         isRefreshPending = false
     }
