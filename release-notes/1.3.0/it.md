@@ -17,7 +17,7 @@
 ## Bluetooth non interroga più in background
 - Il pannello Bluetooth in precedenza leggeva l’elenco dei dispositivi abbinati ogni 15 secondi finché l’app era in esecuzione, anche dopo la chiusura del pannello. Ora si aggiorna quando un dispositivo si connette o si disconnette, e ricorre a un controllo lento solo mentre una vista Bluetooth è sullo schermo.
 - I dispositivi abbinati e i livelli della batteria ora provengono da un unico report di sistema invece che da due, il che dimezza il lavoro di ogni aggiornamento.
-- La riga di riepilogo e la pagina del dispositivo sono invariate: gli stessi nomi, gli stessi livelli e lo stesso comportamento delle autorizzazioni. L’app chiede ancora Bluetooth solo quando apri una vista Bluetooth.
+- I nomi dei dispositivi provengono ancora dalla stessa fonte e il comportamento delle autorizzazioni è invariato: l’app chiede ancora Bluetooth solo quando apri una vista Bluetooth.
 
 ## La scansione Wi-Fi si ferma quando smetti di guardare
 - La pagina Wi-Fi in precedenza analizzava ogni canale circa ogni cinque secondi finché restava aperta, anche dopo il ritorno al riepilogo. Ora esegue la scansione quando apri la pagina, quando tocchi Aggiorna e quando attivi l’interruttore Wi-Fi, e nel frattempo mantiene l’ultimo risultato.
@@ -32,5 +32,5 @@
 - Nient’altro è cambiato nella pagina: le stesse reti, gli stessi dettagli di segnale e collegamento, lo stesso interruttore Wi-Fi e lo stesso pulsante che apre le Impostazioni di Sistema.
 
 ## I livelli batteria Bluetooth sono attivi per impostazione predefinita
-- **Mostra i livelli batteria Bluetooth** in **Impostazioni › Bluetooth** ora è attivo per impostazione predefinita, quindi un dispositivo connesso indica il suo livello senza passare dalle Impostazioni. Disattivarlo interrompe comunque la lettura.
-- La pagina dei dispositivi Bluetooth non stampa più **Non disponibile** su ogni riga: un dispositivo che non indica la batteria mostra solo il suo nome, e un report illeggibile viene segnalato una volta sotto l’elenco.
+- **Mostra i livelli batteria Bluetooth** in **Impostazioni › Bluetooth** ora è attivo per impostazione predefinita: una volta attivato il pannello Bluetooth, un dispositivo connesso indica il suo livello senza dover attivare questo interruttore a parte. Disattivarlo interrompe comunque la lettura.
+- La pagina dei dispositivi Bluetooth non mostra più **Non disponibile** su ogni riga: un dispositivo che non indica la batteria non mostra alcun testo della batteria, e un report illeggibile viene segnalato una volta sotto l’elenco.

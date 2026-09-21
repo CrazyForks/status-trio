@@ -17,7 +17,7 @@
 ## Bluetooth fragt nicht mehr im Hintergrund ab
 - Der Bluetooth-Bereich hat früher alle 15 Sekunden die Liste der gekoppelten Geräte gelesen, solange die App lief, auch nachdem der Bereich geschlossen wurde. Jetzt aktualisiert er sich, wenn sich ein Gerät verbindet oder trennt, und greift nur dann auf eine langsame Prüfung zurück, während eine Bluetooth-Ansicht auf dem Bildschirm ist.
 - Gekoppelte Geräte und Batteriestände stammen jetzt aus einem einzigen Systembericht statt aus zwei, was den Aufwand jeder Aktualisierung halbiert.
-- Die Übersichtszeile und die Geräteseite sind unverändert: dieselben Namen, dieselben Stände und dasselbe Berechtigungsverhalten. Die App fragt weiterhin nur dann nach Bluetooth, wenn du eine Bluetooth-Ansicht öffnest.
+- Die Gerätenamen stammen weiterhin aus derselben Quelle, und das Berechtigungsverhalten ist unverändert: Die App fragt weiterhin nur dann nach Bluetooth, wenn du eine Bluetooth-Ansicht öffnest.
 
 ## Wi-Fi-Suche endet, wenn du nicht mehr hinsiehst
 - Die Wi-Fi-Seite hat früher etwa alle fünf Sekunden jeden Kanal durchsucht, solange sie geöffnet war, auch nachdem du zur Übersicht zurückgekehrt bist. Jetzt sucht sie, wenn du die Seite öffnest, wenn du auf Aktualisieren tippst und wenn du den Wi-Fi-Schalter umlegst, und behält dazwischen das letzte Ergebnis.
@@ -32,5 +32,5 @@
 - Sonst hat sich an der Seite nichts geändert: dieselben Netzwerke, dieselben Signal- und Verbindungsdetails, derselbe Wi-Fi-Schalter und dieselbe Schaltfläche, die die Systemeinstellungen öffnet.
 
 ## Bluetooth-Batteriestände sind standardmäßig an
-- **Bluetooth-Batteriestände anzeigen** unter **Einstellungen › Bluetooth** ist jetzt standardmäßig aktiviert, sodass ein verbundenes Gerät seinen Stand ohne Umweg über die Einstellungen meldet. Ausschalten stoppt das Auslesen weiterhin.
-- Die Bluetooth-Geräteseite druckt nicht mehr auf jeder Zeile **Nicht verfügbar**: Ein Gerät, das keinen Stand meldet, zeigt nur seinen Namen, und ein Bericht, der nicht gelesen werden kann, wird einmal unter der Liste gemeldet.
+- **Bluetooth-Batteriestände anzeigen** unter **Einstellungen › Bluetooth** ist jetzt standardmäßig aktiviert: Sobald der Bluetooth-Bereich aktiviert ist, meldet ein verbundenes Gerät seinen Batteriestand, ohne dass dieser Schalter einzeln eingeschaltet werden muss. Ausschalten stoppt das Auslesen weiterhin.
+- Die Bluetooth-Geräteseite zeigt nicht mehr auf jeder Zeile **Nicht verfügbar**: Ein Gerät, das keinen Batteriestand meldet, zeigt gar keinen Batterietext, und ein Bericht, der nicht gelesen werden kann, wird einmal unter der Liste gemeldet.
