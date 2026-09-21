@@ -875,14 +875,15 @@ final class WiFiClassifierTests: XCTestCase {
             eventMonitor: eventMonitor,
             pathMonitor: pathMonitor
         )
-        weak var weakMonitor = monitor
+        let probe = DeinitProbe.track(monitor)
         monitor?.start()
         var iterator = monitor?.updates.makeAsyncIterator()
         _ = await iterator?.next()
 
-        monitor = nil
-
-        XCTAssertNil(weakMonitor)
+        withExtendedLifetime(probe) {
+            monitor = nil
+            XCTAssertNil(probe.value)
+        }
         XCTAssertEqual(eventMonitor.stopCount, 1)
         XCTAssertEqual(pathMonitor.cancelCount, 1)
         let finalStatus = await iterator?.next()
@@ -1322,10 +1323,12 @@ final class WiFiClassifierTests: XCTestCase {
     func testSlowReadDoesNotRetainMonitor() {
         let reader = DeferredWiFiStatusReader()
         var monitor: WiFiMonitor? = makeMonitor(statusReader: reader)
-        weak var weakMonitor = monitor
+        let probe = DeinitProbe.track(monitor)
         monitor?.start()
-        monitor = nil
-        XCTAssertNil(weakMonitor)
+        withExtendedLifetime(probe) {
+            monitor = nil
+            XCTAssertNil(probe.value)
+        }
         reader.complete(makeReading())
         XCTAssertEqual(reader.includeSSIDRequests.count, 1)
     }

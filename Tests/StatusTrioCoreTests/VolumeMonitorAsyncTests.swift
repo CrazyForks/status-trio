@@ -76,12 +76,13 @@ final class VolumeMonitorAsyncTests: XCTestCase {
         let reader = DeferredAudioStatusReader()
         let events = AsyncVolumeEvents()
         var monitor: VolumeMonitor? = makeMonitor(reader: reader, events: events)
-        weak var weakMonitor = monitor
+        let probe = DeinitProbe.track(monitor)
         let updates = monitor!.updates
         monitor?.start()
-        monitor = nil
-
-        XCTAssertNil(weakMonitor)
+        withExtendedLifetime(probe) {
+            monitor = nil
+            XCTAssertNil(probe.value)
+        }
         XCTAssertEqual(events.stopCount, 1)
         reader.complete(reading(scalar: 0.2, devices: [device]))
         var iterator = updates.makeAsyncIterator()

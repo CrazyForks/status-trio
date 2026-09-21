@@ -412,14 +412,15 @@ final class VolumeMonitorTests: XCTestCase {
             reader: FakeVolumeReader(result: makeReading(scalar: 0.5)),
             eventMonitor: eventMonitor
         )
-        weak var weakMonitor = monitor
+        let probe = DeinitProbe.track(monitor)
         monitor?.start()
         var iterator = monitor?.updates.makeAsyncIterator()
         _ = await iterator?.next()
 
-        monitor = nil
-
-        XCTAssertNil(weakMonitor)
+        withExtendedLifetime(probe) {
+            monitor = nil
+            XCTAssertNil(probe.value)
+        }
         XCTAssertEqual(eventMonitor.stopCount, 1)
         let finalStatus = await iterator?.next()
         XCTAssertNil(finalStatus)
