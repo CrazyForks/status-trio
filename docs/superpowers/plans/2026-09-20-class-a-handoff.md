@@ -2,10 +2,10 @@
 
 ## 停靠点（2026-09-20 · 最新一次收尾）
 
-- **已合并 4 个计划 / 25 个 task**：R-18（6）、R-03（7）、R-01（7）、R-02（5）。四者都通过各自的最终非发布预检，记录在 `docs/swift-ci-compatibility.md`。
-- **未开始 12 个计划 / 61 个 task**：class A 10 个 / 50 task，class B 2 个 / 11 task；class C 四个计划（29 task）按 owner 指示冻结未动。
-- `main = 48ec00a`，领先 `origin/main` **56 个提交，未推送**（owner 选择本地合并）。
-- worktree `.worktrees/class-a-hardening` 在 **`fix/class-a-icons`**（相对 main 0 提交 = 无进行中工作），构建缓存保留，可直接从 **R-04** 开工。
+- **已合并 5 个计划 / 29 个 task**：R-18（6）、R-03（7）、R-01（7）、R-02（5）、R-20 编译警告清理（4）。四者都通过各自的最终非发布预检，记录在 `docs/swift-ci-compatibility.md`。
+- **未开始 11 个计划 / 57 个 task**：class A 9 个 / 46 task，class B 2 个 / 11 task；class C 四个计划（29 task）按 owner 指示冻结未动。
+- `main = 8f3ced6`，领先 `origin/main` **62 个提交，未推送**（owner 选择本地合并）。
+- worktree `.worktrees/class-a-hardening` 在 **`fix/class-a-render`**（相对 main 0 提交 = 无进行中工作），构建缓存保留，可直接从 **R-04** 开工。
 - owner 的分支 `feature/charging-effects` 与两个未跟踪文件**全程未被触碰**。
 - **目标（goal）当前 paused / disarmed**：不会自动继续；恢复需 owner 操作（面板 resume 或说"继续"）。
 - **发布 1.3.0 前的三项实测仍未完成**：R-03 功耗、R-01 spawn 次数、R-02 扫描次数。三者都在 `docs/swift-ci-compatibility.md` 标 `⏳` 并写了命令；**文档中没有任何推断出来的数字**。
