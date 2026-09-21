@@ -18,7 +18,11 @@ final class DeinitProbeRef<T: AnyObject> {
 enum DeinitProbe {
     /// - Parameter object: the strong reference to observe. Pass the variable
     ///   itself, then set that variable to nil and read `probe.value`.
-    @discardableResult
+    /// - Returns: a probe that must outlive the read of `probe.value`. Keep the
+    ///   result bound to a local for the whole assertion; a probe that is
+    ///   released before the read leaves nothing to observe. The result is
+    ///   deliberately not `@discardableResult` so the compiler rejects a call
+    ///   site that drops the probe and its deallocation assertion with it.
     static func track<T: AnyObject>(_ object: T?) -> DeinitProbeRef<T> {
         DeinitProbeRef(object)
     }

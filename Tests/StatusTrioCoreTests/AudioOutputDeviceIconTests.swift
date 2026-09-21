@@ -44,18 +44,26 @@ struct AudioOutputDeviceIconTests {
         let unterminated: [CChar] = [77, 97, 99, 49, 53, 44, 57]
         #expect(HostMacKind.modelIdentifier(from: unterminated) == "Mac15,9")
 
-        // An empty buffer must not trap on withUnsafeMutableBytes.
         #expect(HostMacKind.modelIdentifier(from: []) == "")
     }
 
-    @Test("A shrinking hw.model size degrades to an empty identifier")
-    func modelIdentifierParserHandlesAShrinkingBuffer() {
-        // The first sysctlbyname call reports the size; the second may report a
-        // smaller one. The existing code returns "" in that case and the caller
-        // falls back to the device name for the machine family, which is what
-        // the built-in speaker symbol depends on.
+    @Test("An immediately terminated buffer decodes empty and unterminated bytes decode in full")
+    func modelIdentifierParserHandlesEmptyAndUnterminatedBuffers() {
+        // `[0]` is an empty C string; `[77, 97, 99]` carries no terminator.
         #expect(HostMacKind.modelIdentifier(from: [0]) == "")
         #expect(HostMacKind.modelIdentifier(from: [77, 97, 99]) == "Mac")
+    }
+
+    @Test("hw.model bytes decode as UTF-8 with repair, like the deprecated API")
+    func modelIdentifierParserDecodesUTF8() {
+        // `0xC3 0xA9` is U+00E9 in UTF-8; `Unicode.ASCII` would map both bytes
+        // to U+FFFD, which is why the parser decodes with `Unicode.UTF8`.
+        let accented = [CChar(bitPattern: 0xC3), CChar(bitPattern: 0xA9), 0]
+        #expect(HostMacKind.modelIdentifier(from: accented) == "\u{E9}")
+
+        // An invalid sequence is repaired to U+FFFD, as `String(cString:)` did.
+        let invalid = [CChar(bitPattern: 0xFF), 0]
+        #expect(HostMacKind.modelIdentifier(from: invalid) == "\u{FFFD}")
     }
 
     @Test("Device names identify the machine family")

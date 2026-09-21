@@ -138,19 +138,27 @@ enum HostMacKind: Equatable, Sendable {
 
     /// Decodes a NUL-terminated `hw.model` buffer.
     ///
-    /// `String(cString:)` is deprecated in favour of decoding after truncating,
-    /// which is what this does. `sysctlbyname` writes a C string, but a buffer
-    /// that is not terminated (or is shorter than the size the kernel reported
-    /// on the first call) must degrade to a value the caller can still use,
-    /// never to a read past the end.
+    /// `String(cString:)` is deprecated in favour of truncating at the NUL and
+    /// decoding the remaining bytes with UTF-8 repair, which is what this does.
+    /// Truncation is also what keeps the read inside the buffer: the terminator
+    /// search means an unterminated buffer yields every byte and nothing is
+    /// ever read past the end. The empty-buffer guard covers only the empty
+    /// buffer. A second `sysctlbyname` call that reports a smaller size than
+    /// the first is not handled here — it decodes whatever the kernel wrote —
+    /// and a failed `hw.model` read becomes an empty identifier through the
+    /// caller's own `guard sysctlbyname(...) == 0`, not through this parser.
     static func modelIdentifier(from buffer: [CChar]) -> String {
         guard !buffer.isEmpty else { return "" }
         let terminator = buffer.firstIndex(of: 0)
         let bytes = terminator.map { buffer[..<$0] } ?? buffer[...]
-        // An explicit closure: `bytes.map(UInt8.init(bitPattern:))` passes a
-        // method reference as a function value, which
-        // `scripts/check-forbidden-patterns.sh` rejects.
-        return String(decoding: bytes.map { UInt8(bitPattern: $0) }, as: Unicode.ASCII.self)
+        // The closure keeps this line out of `scripts/check-forbidden-patterns.sh`.
+        // `bytes.map(UInt8.init(bitPattern:))` trips it as `violation:map`, a
+        // known line-based false positive: passing `<Type>.init` as a function
+        // value is not itself forbidden (the guard's rule 2 exempts it), but
+        // the operator form makes the scanner read the line, and its label pass
+        // then resolves the `bytes.map` argument to an unrelated `func map(...)`
+        // declared elsewhere under Sources/.
+        return String(decoding: bytes.map { UInt8(bitPattern: $0) }, as: Unicode.UTF8.self)
     }
 
     private static func currentModelIdentifier() -> String {
