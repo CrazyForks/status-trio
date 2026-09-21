@@ -193,6 +193,7 @@
 "wifi.noInterface" = "没有可用的 Wi-Fi 网卡。";
 "wifi.permissionDenied" = "需要定位权限才能读取 Wi-Fi 名称和扫描结果。前往定位服务设置。";
 "wifi.scanFailed" = "无法扫描 Wi-Fi 网络。";
+"wifi.connecting" = "正在加入 %@…";
 "wifi.connectionFailed" = "无法加入此网络。请检查密码后重试。";
 "wifi.connectionTimedOut" = "加入此网络超时。";
 "wifi.networkUnavailable" = "此网络已不可用。";

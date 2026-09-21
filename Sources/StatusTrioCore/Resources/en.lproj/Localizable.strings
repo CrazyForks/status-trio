@@ -193,6 +193,7 @@
 "wifi.noInterface" = "No Wi-Fi interface is available.";
 "wifi.permissionDenied" = "Location access is needed to read Wi-Fi names and scan results. Open Location Settings.";
 "wifi.scanFailed" = "Could not scan for Wi-Fi networks.";
+"wifi.connecting" = "Joining %@…";
 "wifi.connectionFailed" = "Could not join this network. Check its password and try again.";
 "wifi.connectionTimedOut" = "Joining this network timed out.";
 "wifi.networkUnavailable" = "This network is no longer available.";

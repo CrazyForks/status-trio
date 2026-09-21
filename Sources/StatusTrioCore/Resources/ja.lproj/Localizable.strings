@@ -193,6 +193,7 @@
 "wifi.noInterface" = "利用可能な Wi-Fi インターフェイスがありません。";
 "wifi.permissionDenied" = "Wi-Fi 名とスキャン結果を読み取るには、位置情報へのアクセスが必要です。位置情報設定を開いてください。";
 "wifi.scanFailed" = "Wi-Fi ネットワークをスキャンできませんでした。";
+"wifi.connecting" = "%@に接続中…";
 "wifi.connectionFailed" = "このネットワークに接続できませんでした。パスワードを確認して再試行してください。";
 "wifi.connectionTimedOut" = "このネットワークへの接続がタイムアウトしました。";
 "wifi.networkUnavailable" = "このネットワークは利用できなくなりました。";

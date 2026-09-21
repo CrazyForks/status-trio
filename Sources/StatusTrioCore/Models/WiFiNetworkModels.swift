@@ -149,6 +149,12 @@ enum WiFiNetworkRowAction: Equatable, Sendable {
 }
 
 enum WiFiNetworkPresentation {
+    @MainActor
+    static func connectingMessage(for network: WiFiNetworkIdentity, localization: Localization) -> String {
+        let name = network.ssid.isEmpty ? localization.string(.wifiHiddenNetwork) : network.ssid
+        return localization.format(.wifiConnecting, name)
+    }
+
     static func grouped(
         _ networks: [WiFiNetwork]
     ) -> (known: [WiFiNetwork], other: [WiFiNetwork]) {
@@ -260,6 +266,9 @@ enum WiFiListState: Equatable, Sendable {
         if case .scanning = self { return true }
         return false
     }
+
+    /// Keep the refresh affordance in sync with the controller's scan gate.
+    var allowsRefresh: Bool { !isScanning && !isConnectionFlow }
 
     var isConnectionFlow: Bool {
         switch self {

@@ -193,6 +193,7 @@
 "wifi.noInterface" = "No hay ninguna interfaz Wi-Fi disponible.";
 "wifi.permissionDenied" = "Se necesita acceso a la ubicación para leer los nombres de las redes Wi-Fi y los resultados de búsqueda. Abrir ajustes de ubicación.";
 "wifi.scanFailed" = "No se pudieron buscar redes Wi-Fi.";
+"wifi.connecting" = "Conectando a %@…";
 "wifi.connectionFailed" = "No se pudo conectar a esta red. Comprueba la contraseña e inténtalo de nuevo.";
 "wifi.connectionTimedOut" = "Se agotó el tiempo de espera al conectar con esta red.";
 "wifi.networkUnavailable" = "Esta red ya no está disponible.";

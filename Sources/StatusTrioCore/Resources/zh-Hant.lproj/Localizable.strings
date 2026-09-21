@@ -193,6 +193,7 @@
 "wifi.noInterface" = "沒有可用的 Wi-Fi 介面。";
 "wifi.permissionDenied" = "需要定位權限才能讀取 Wi-Fi 名稱與掃描結果。請打開定位設定。";
 "wifi.scanFailed" = "無法掃描 Wi-Fi 網路。";
+"wifi.connecting" = "正在加入 %@…";
 "wifi.connectionFailed" = "無法加入此網路。請檢查密碼後再試一次。";
 "wifi.connectionTimedOut" = "加入此網路逾時。";
 "wifi.networkUnavailable" = "此網路已無法使用。";

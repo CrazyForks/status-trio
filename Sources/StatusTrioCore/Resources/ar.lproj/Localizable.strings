@@ -193,6 +193,7 @@
 "wifi.noInterface" = "لا تتوفر واجهة Wi-Fi.";
 "wifi.permissionDenied" = "يلزم إذن الموقع لقراءة أسماء شبكات Wi-Fi ونتائج البحث. افتح إعدادات الموقع.";
 "wifi.scanFailed" = "تعذّر فحص شبكات Wi-Fi.";
+"wifi.connecting" = "جارٍ الانضمام إلى %@…";
 "wifi.connectionFailed" = "تعذّر الانضمام إلى هذه الشبكة. تحقق من كلمة السر وحاول مجددًا.";
 "wifi.connectionTimedOut" = "انتهت مهلة الانضمام إلى هذه الشبكة.";
 "wifi.networkUnavailable" = "لم تعد هذه الشبكة متاحة.";

@@ -193,6 +193,7 @@
 "wifi.noInterface" = "사용 가능한 Wi-Fi 인터페이스가 없습니다.";
 "wifi.permissionDenied" = "Wi-Fi 이름과 검색 결과를 읽으려면 위치 접근이 필요합니다. 위치 설정을 여십시오.";
 "wifi.scanFailed" = "Wi-Fi 네트워크를 검색하지 못했습니다.";
+"wifi.connecting" = "%@에 연결 중…";
 "wifi.connectionFailed" = "이 네트워크에 연결하지 못했습니다. 암호를 확인하고 다시 시도하십시오.";
 "wifi.connectionTimedOut" = "이 네트워크 연결 시간이 초과되었습니다.";
 "wifi.networkUnavailable" = "이 네트워크는 더 이상 사용할 수 없습니다.";
