@@ -185,7 +185,7 @@ Não desative o Gatekeeper globalmente. As atualizações subsequentes do Sparkl
 Dois limites que o macOS e este projeto traçam de propósito. Ambos são explicados em [Limitações conhecidas](docs/known-limitations.md).
 
 - **A troca entre redes acontece nos Ajustes do Sistema.** Escolher uma rede no popover abre o painel de Wi-Fi; o Status Trio nunca lê nem armazena senhas de Wi-Fi, porque o macOS não oferece nenhuma API pública para conectar-se com uma senha salva, e todas as alternativas acabam com o app guardando essas senhas.
-- **“Carregar totalmente agora” permanece no macOS.** Quando o carregamento otimizado da bateria ou um limite de carga pausa o carregamento, o popover informa o estado de pausa e leva aos ajustes de bateria; nenhuma API pública permite que um app retome o carregamento além do limite, e o Status Trio não grava no SMC nem inclui um auxiliar privilegiado para fazer isso.
+- **“Carregar Completamente Agora” permanece no macOS.** Quando o carregamento otimizado da bateria ou um limite de carga pausa o carregamento, o popover informa o estado de pausa e leva aos ajustes de bateria; nenhuma API pública permite que um app retome o carregamento além do limite, e o Status Trio não grava no SMC nem inclui um auxiliar privilegiado para fazer isso.
 
 ## Idiomas
 
@@ -193,7 +193,7 @@ O Status Trio segue o idioma preferido do macOS por padrão e inclui English, �
 
 ## Privacidade
 
-O Status Trio lê o status por meio de frameworks públicos do macOS. Ele não usa App Sandbox nem exige uma permissão de rede, e não inclui telemetria ou análises. O acesso à localização é opcional e solicitado apenas quando você escolhe exibir o nome da rede Wi-Fi atual ou abrir os detalhes do Wi-Fi. O acesso ao Bluetooth é solicitado apenas quando você abre os detalhes do Bluetooth, e existe para mostrar o estado de conexão dos dispositivos pareados.
+O Status Trio lê o status por meio de frameworks públicos do macOS. Ele não usa App Sandbox nem exige uma permissão de rede, e não inclui telemetria ou análises. Ele não lê nem armazena senhas de Wi-Fi e nunca solicita acesso às Chaves. O acesso à localização é opcional e solicitado apenas quando você escolhe exibir o nome da rede Wi-Fi atual ou abrir os detalhes do Wi-Fi. O acesso ao Bluetooth é solicitado apenas quando você abre os detalhes do Bluetooth, e existe para mostrar o estado de conexão dos dispositivos pareados.
 
 ## Desenvolvimento
 

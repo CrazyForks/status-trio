@@ -193,7 +193,7 @@ Status Trio follows the macOS preferred language by default and includes English
 
 ## Privacy
 
-Status Trio reads status through public macOS frameworks. It does not use App Sandbox or require a network entitlement, and it does not include telemetry or analytics. Location access is optional and requested only when you choose to display the current Wi-Fi network name or open Wi-Fi details. Bluetooth access is requested only when you open Bluetooth details, and it exists to show paired-device connection status.
+Status Trio reads status through public macOS frameworks. It does not use App Sandbox or require a network entitlement, and it does not include telemetry or analytics. It does not read or store Wi-Fi passwords and never asks for Keychain access. Location access is optional and requested only when you choose to display the current Wi-Fi network name or open Wi-Fi details. Bluetooth access is requested only when you open Bluetooth details, and it exists to show paired-device connection status.
 
 ## Development
 

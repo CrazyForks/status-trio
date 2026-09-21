@@ -185,7 +185,7 @@ No desactives Gatekeeper de forma global. Las actualizaciones posteriores de Spa
 Dos límites que macOS y este proyecto trazan deliberadamente. Ambos se explican en [Limitaciones conocidas](docs/known-limitations.md).
 
 - **Cambiar de red se hace en Ajustes del Sistema.** Elegir una red en el panel emergente abre el panel de Wi-Fi; Status Trio nunca lee ni guarda las contraseñas de Wi-Fi, porque macOS no ofrece ninguna API pública para conectarse con una contraseña guardada y todas las alternativas acaban con la app guardándolas.
-- **"Cargar hasta el máximo ahora" se queda en macOS.** Cuando la carga optimizada de la batería o un límite de carga pausa la carga, el panel emergente informa del estado en pausa y enlaza con el panel de Batería; ninguna API pública permite que una app reanude la carga más allá del límite, y Status Trio no escribe en el SMC ni incluye un ayudante privilegiado para hacerlo.
+- **"Cargar completamente ahora" se queda en macOS.** Cuando la carga optimizada de la batería o un límite de carga pausa la carga, el panel emergente informa del estado en pausa y enlaza con el panel de Batería; ninguna API pública permite que una app reanude la carga más allá del límite, y Status Trio no escribe en el SMC ni incluye un ayudante privilegiado para hacerlo.
 
 ## Idiomas
 
@@ -193,7 +193,7 @@ Status Trio sigue el idioma preferido de macOS de forma predeterminada e incluye
 
 ## Privacidad
 
-Status Trio lee el estado mediante frameworks públicos de macOS. No usa App Sandbox ni requiere un permiso de red, y no incluye telemetría ni análisis. El acceso a la ubicación es opcional y solo se solicita cuando eliges mostrar el nombre de la red Wi-Fi actual o abrir los detalles de Wi-Fi. El acceso a Bluetooth solo se solicita cuando abres los detalles de Bluetooth, y existe para mostrar el estado de conexión de los dispositivos emparejados.
+Status Trio lee el estado mediante frameworks públicos de macOS. No usa App Sandbox ni requiere un permiso de red, y no incluye telemetría ni análisis. No lee ni guarda contraseñas de Wi-Fi y nunca solicita acceso al llavero. El acceso a la ubicación es opcional y solo se solicita cuando eliges mostrar el nombre de la red Wi-Fi actual o abrir los detalles de Wi-Fi. El acceso a Bluetooth solo se solicita cuando abres los detalles de Bluetooth, y existe para mostrar el estado de conexión de los dispositivos emparejados.
 
 ## Desarrollo
 

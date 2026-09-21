@@ -185,7 +185,7 @@ Ne désactivez pas Gatekeeper globalement. Les mises à jour Sparkle ultérieure
 Deux limites que macOS et ce projet tracent délibérément. Les deux sont expliquées dans [Limitations connues](docs/known-limitations.md).
 
 - **Le changement de réseau se fait dans les Réglages Système.** Choisir un réseau dans le panneau d’état ouvre le panneau Wi-Fi ; Status Trio ne lit ni ne stocke jamais les mots de passe Wi-Fi, car macOS n’offre aucune API publique pour se connecter avec un mot de passe enregistré et toutes les alternatives finissent par obliger l’app à les conserver.
-- **« Charger complètement maintenant » reste dans macOS.** Lorsque la charge optimisée de la batterie ou une limite de charge interrompt la charge, le panneau d’état indique l’état en pause et renvoie vers le panneau Batterie ; aucune API publique ne permet à une app de reprendre la charge au-delà de la limite, et Status Trio n’écrit pas dans le SMC et ne livre aucun assistant privilégié pour le faire.
+- **« Recharger complètement maintenant » reste dans macOS.** Lorsque la charge optimisée de la batterie ou une limite de charge interrompt la charge, le panneau d’état indique l’état en pause et renvoie vers le panneau Batterie ; aucune API publique ne permet à une app de reprendre la charge au-delà de la limite, et Status Trio n’écrit pas dans le SMC et ne livre aucun assistant privilégié pour le faire.
 
 ## Langues
 
@@ -193,7 +193,7 @@ Status Trio suit par défaut la langue préférée de macOS et inclut English, �
 
 ## Confidentialité
 
-Status Trio lit l’état via des frameworks macOS publics. Il n’utilise pas App Sandbox et ne requiert aucune autorisation réseau, et il n’inclut ni télémétrie ni analyse d’usage. L’accès à la localisation est facultatif et n’est demandé que lorsque vous choisissez d’afficher le nom du réseau Wi-Fi actuel ou d’ouvrir les détails Wi-Fi. L’accès Bluetooth n’est demandé que lorsque vous ouvrez les détails Bluetooth, et il sert à afficher l’état de connexion des appareils jumelés.
+Status Trio lit l’état via des frameworks macOS publics. Il n’utilise pas App Sandbox et ne requiert aucune autorisation réseau, et il n’inclut ni télémétrie ni analyse d’usage. Il ne lit ni ne stocke les mots de passe Wi-Fi et ne demande jamais l’accès au trousseau. L’accès à la localisation est facultatif et n’est demandé que lorsque vous choisissez d’afficher le nom du réseau Wi-Fi actuel ou d’ouvrir les détails Wi-Fi. L’accès Bluetooth n’est demandé que lorsque vous ouvrez les détails Bluetooth, et il sert à afficher l’état de connexion des appareils jumelés.
 
 ## Développement
 

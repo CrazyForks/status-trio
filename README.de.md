@@ -193,7 +193,7 @@ Status Trio folgt standardmäßig der bevorzugten Sprache von macOS und enthält
 
 ## Datenschutz
 
-Status Trio liest den Status über öffentliche macOS-Frameworks. Die App verwendet keine App-Sandbox und benötigt keine Netzwerk-Berechtigung; Telemetrie oder Analysen sind nicht enthalten. Der Standortzugriff ist optional und wird nur angefordert, wenn Sie den aktuellen Wi-Fi-Netzwerknamen anzeigen oder Wi-Fi-Details öffnen möchten. Der Bluetooth-Zugriff wird nur angefordert, wenn Sie Bluetooth-Details öffnen, und dient dazu, den Verbindungsstatus gekoppelter Geräte anzuzeigen.
+Status Trio liest den Status über öffentliche macOS-Frameworks. Die App verwendet keine App-Sandbox und benötigt keine Netzwerk-Berechtigung; Telemetrie oder Analysen sind nicht enthalten. Sie liest und speichert keine Wi-Fi-Passwörter und fordert niemals Zugriff auf den Schlüsselbund an. Der Standortzugriff ist optional und wird nur angefordert, wenn Sie den aktuellen Wi-Fi-Netzwerknamen anzeigen oder Wi-Fi-Details öffnen möchten. Der Bluetooth-Zugriff wird nur angefordert, wenn Sie Bluetooth-Details öffnen, und dient dazu, den Verbindungsstatus gekoppelter Geräte anzuzeigen.
 
 ## Entwicklung
 
