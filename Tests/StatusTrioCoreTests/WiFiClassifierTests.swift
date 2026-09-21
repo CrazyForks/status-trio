@@ -285,18 +285,44 @@ final class WiFiClassifierTests: XCTestCase {
         monitor.stop()
     }
 
-    func testRequestNameAccessStopsAfterPermissionIsDenied() {
+    func testRequestNameAccessReturnsSettingsWhenLivePermissionIsDenied() {
         let reader = FakeWiFiSystemReader(result: makeReading())
         let nameAuthorizer = FakeWiFiNameAuthorizer()
         let monitor = makeMonitor(reader: reader, nameAuthorizer: nameAuthorizer)
         monitor.start()
 
-        monitor.requestNameAccess()
+        XCTAssertEqual(monitor.requestNameAccess(), .requested)
         nameAuthorizer.setAccess(.denied)
-        monitor.requestNameAccess()
+        XCTAssertEqual(monitor.requestNameAccess(), .openLocationSettings)
 
-        XCTAssertEqual(nameAuthorizer.requestCount, 1)
+        XCTAssertEqual(nameAuthorizer.requestCount, 2)
         monitor.stop()
+    }
+
+    func testRequestNameAccessRefreshesWhenLivePermissionIsAlreadyAuthorized() {
+        let reader = FakeWiFiSystemReader(result: makeReading(ssid: "Home"))
+        let nameAuthorizer = FakeWiFiNameAuthorizer(access: .authorized)
+        let monitor = makeMonitor(reader: reader, nameAuthorizer: nameAuthorizer)
+        monitor.start()
+        let initialReadCount = reader.readCount
+
+        XCTAssertEqual(monitor.requestNameAccess(), .notNeeded)
+
+        XCTAssertEqual(reader.readCount, initialReadCount + 1)
+        monitor.stop()
+    }
+
+    func testRequestNameAccessDoesNothingBeforeStartOrAfterStop() {
+        let reader = FakeWiFiSystemReader(result: makeReading())
+        let nameAuthorizer = FakeWiFiNameAuthorizer()
+        let monitor = makeMonitor(reader: reader, nameAuthorizer: nameAuthorizer)
+
+        XCTAssertEqual(monitor.requestNameAccess(), .notNeeded)
+        monitor.start()
+        monitor.stop()
+        XCTAssertEqual(monitor.requestNameAccess(), .notNeeded)
+
+        XCTAssertEqual(nameAuthorizer.requestCount, 0)
     }
 
     func testAuthorizationChangeRefreshesAndPublishesSSID() async {
@@ -1590,8 +1616,13 @@ private final class FakeWiFiNameAuthorizer: WiFiNameAuthorizing {
         self.access = access
     }
 
-    func requestAccess() {
+    func requestAccess() -> WiFiNameAccessRequestResult {
         requestCount += 1
+        switch access {
+        case .notDetermined: return .requested
+        case .denied, .restricted: return .openLocationSettings
+        case .authorized: return .notNeeded
+        }
     }
 
     func setAccess(_ access: WiFiNameAccess) {

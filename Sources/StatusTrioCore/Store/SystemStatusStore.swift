@@ -310,9 +310,10 @@ final class SystemStatusStore: ObservableObject {
         volumeController?.selectOutputDevice(device.id)
     }
 
-    func requestWiFiNameAccess() {
-        guard !hasStopped else { return }
-        wifiMonitor.requestNameAccess()
+    @discardableResult
+    func requestWiFiNameAccess() -> WiFiNameAccessRequestResult {
+        guard !hasStopped else { return .notNeeded }
+        return wifiMonitor.requestNameAccess()
     }
 
     func requestBluetoothAuthorization() {

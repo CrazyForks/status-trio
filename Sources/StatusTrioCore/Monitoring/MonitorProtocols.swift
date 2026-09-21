@@ -16,7 +16,8 @@ protocol WiFiMonitoring: AnyObject {
     func stop()
     func refresh()
     func recover()
-    func requestNameAccess()
+    @discardableResult
+    func requestNameAccess() -> WiFiNameAccessRequestResult
     func setDetailsVisible(_ visible: Bool)
 }
 

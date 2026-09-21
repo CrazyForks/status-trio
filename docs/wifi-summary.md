@@ -30,3 +30,24 @@ to this lightweight status before deduplication, and neither menu-bar nor Dock
 render keys change when only the band changes. The full popover snapshot retains
 the band for display. Twelve localizations share standard GHz/dBm unit labels;
 frequency numbers use the selected locale's decimal formatting.
+
+## Location permission recovery
+
+The first explicit permission click requests macOS authorization. If a request
+was already made in this process and authorization is still undetermined, the
+next click opens Location Services in System Settings instead of repeatedly
+issuing the same request. Denied or restricted access also routes to Settings;
+if access was granted while the displayed status was stale, the click refreshes
+the Wi-Fi reading. Startup never requests permission automatically.
+
+Native macOS uses `NSLocationUsageDescription`; the app also retains its existing
+`NSLocationWhenInUseUsageDescription`. Both are present in the app plist and all localized
+`InfoPlist.strings`; packaging rejects a missing or empty value in the final
+bundle. See Apple's [authorization requirements](https://developer.apple.com/documentation/corelocation/requesting-authorization-to-use-location-services).
+
+Permission persistence across updates is separate from this recovery flow.
+Ad-hoc signatures identify a particular build, so privacy grants may not carry
+across an update. Stable signing identity is needed for reliable cross-version
+identity, with Developer ID being the distribution path outside the App Store.
+This change does not provide a signing certificate or
+reset the user's privacy database. See Apple's [code identity documentation](https://developer.apple.com/documentation/technotes/tn3127-inside-code-signing-requirements).

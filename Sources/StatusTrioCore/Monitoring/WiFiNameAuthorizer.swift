@@ -1,16 +1,24 @@
 import CoreLocation
 
+enum WiFiNameAccessRequestResult: Equatable, Sendable {
+    case requested
+    case openLocationSettings
+    case notNeeded
+}
+
 @MainActor
 protocol WiFiNameAuthorizing: AnyObject {
     var access: WiFiNameAccess { get }
     var onAccessChange: (() -> Void)? { get set }
 
-    func requestAccess()
+    @discardableResult
+    func requestAccess() -> WiFiNameAccessRequestResult
 }
 
 @MainActor
 final class CoreLocationWiFiNameAuthorizer: NSObject, WiFiNameAuthorizing {
     private let manager: CLLocationManager
+    private var hasRequestedAuthorization = false
 
     var onAccessChange: (() -> Void)?
 
@@ -24,9 +32,22 @@ final class CoreLocationWiFiNameAuthorizer: NSObject, WiFiNameAuthorizing {
         Self.map(manager.authorizationStatus)
     }
 
-    func requestAccess() {
-        guard access == .notDetermined else { return }
-        manager.requestWhenInUseAuthorization()
+    @discardableResult
+    func requestAccess() -> WiFiNameAccessRequestResult {
+        switch access {
+        case .notDetermined:
+            // Core Location does not report whether its prompt was displayed.
+            // A later explicit click must offer a way out if the first request
+            // left permission undecided, instead of silently requesting forever.
+            guard !hasRequestedAuthorization else { return .openLocationSettings }
+            hasRequestedAuthorization = true
+            manager.requestWhenInUseAuthorization()
+            return .requested
+        case .denied, .restricted:
+            return .openLocationSettings
+        case .authorized:
+            return .notNeeded
+        }
     }
 
     private static func map(_ status: CLAuthorizationStatus) -> WiFiNameAccess {

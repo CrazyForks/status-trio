@@ -405,9 +405,16 @@ final class WiFiMonitor: NSObject, WiFiMonitoring, CWEventDelegate {
         restartMonitoring()
     }
 
-    func requestNameAccess() {
-        guard lifecycle == .running, nameAuthorizer.access == .notDetermined else { return }
-        nameAuthorizer.requestAccess()
+    @discardableResult
+    func requestNameAccess() -> WiFiNameAccessRequestResult {
+        guard lifecycle == .running else { return .notNeeded }
+        let result = nameAuthorizer.requestAccess()
+        if result == .notNeeded {
+            // The displayed permission state may lag behind a grant in Settings.
+            readGeneration &+= 1
+            refresh()
+        }
+        return result
     }
 
     func setDetailsVisible(_ visible: Bool) {

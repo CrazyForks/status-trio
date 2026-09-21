@@ -159,6 +159,18 @@ while IFS= read -r source; do
     cp "$source" "$target_dir/InfoPlist.strings"
 done < <(find "$ROOT/Sources/StatusTrioCore/Resources" -name 'InfoPlist.strings' -type f | sort)
 
+# Keep the native macOS purpose and the existing When In Use declaration complete.
+# Check the shipped bundle, including translations, before signing or opening it.
+for plist in "$CONTENTS/Info.plist" "$CONTENTS/Resources/"*.lproj/InfoPlist.strings; do
+    for key in NSLocationUsageDescription NSLocationWhenInUseUsageDescription; do
+        if ! description="$(plutil -extract "$key" raw -expect string "$plist" 2>/dev/null)" ||
+            [[ -z "${description//[[:space:]]/}" ]]; then
+            echo "Error: $plist must declare a nonempty $key." >&2
+            exit 1
+        fi
+    done
+done
+
 iconutil --convert icns --output "$CONTENTS/Resources/AppIcon.icns" "$ICONSET_DIR"
 
 chmod +x "$CONTENTS/MacOS/StatusTrio"
