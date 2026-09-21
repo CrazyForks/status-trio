@@ -136,6 +136,23 @@ enum HostMacKind: Equatable, Sendable {
         }
     }
 
+    /// Decodes a NUL-terminated `hw.model` buffer.
+    ///
+    /// `String(cString:)` is deprecated in favour of decoding after truncating,
+    /// which is what this does. `sysctlbyname` writes a C string, but a buffer
+    /// that is not terminated (or is shorter than the size the kernel reported
+    /// on the first call) must degrade to a value the caller can still use,
+    /// never to a read past the end.
+    static func modelIdentifier(from buffer: [CChar]) -> String {
+        guard !buffer.isEmpty else { return "" }
+        let terminator = buffer.firstIndex(of: 0)
+        let bytes = terminator.map { buffer[..<$0] } ?? buffer[...]
+        // An explicit closure: `bytes.map(UInt8.init(bitPattern:))` passes a
+        // method reference as a function value, which
+        // `scripts/check-forbidden-patterns.sh` rejects.
+        return String(decoding: bytes.map { UInt8(bitPattern: $0) }, as: Unicode.ASCII.self)
+    }
+
     private static func currentModelIdentifier() -> String {
         var size = 0
         guard sysctlbyname("hw.model", nil, &size, nil, 0) == 0, size > 0 else {
@@ -146,7 +163,7 @@ enum HostMacKind: Equatable, Sendable {
         guard sysctlbyname("hw.model", &buffer, &size, nil, 0) == 0 else {
             return ""
         }
-        return String(cString: buffer)
+        return modelIdentifier(from: buffer)
     }
 }
 

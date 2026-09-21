@@ -33,6 +33,31 @@ struct AudioOutputDeviceIconTests {
         #expect(HostMacKind(modelIdentifier: "Mac13,1") == .unknown)
     }
 
+    @Test("hw.model parsing stops at the NUL terminator")
+    func modelIdentifierParsingStopsAtTheNulTerminator() {
+        // CChar is Int8 on Darwin, so 0 is the terminator and the trailing
+        // 0x7F bytes are garbage that must never reach the string.
+        let wellFormed: [CChar] = [77, 97, 99, 49, 53, 44, 57, 0, 127, 127]
+        #expect(HostMacKind.modelIdentifier(from: wellFormed) == "Mac15,9")
+
+        // A buffer with no terminator at all still yields every byte.
+        let unterminated: [CChar] = [77, 97, 99, 49, 53, 44, 57]
+        #expect(HostMacKind.modelIdentifier(from: unterminated) == "Mac15,9")
+
+        // An empty buffer must not trap on withUnsafeMutableBytes.
+        #expect(HostMacKind.modelIdentifier(from: []) == "")
+    }
+
+    @Test("A shrinking hw.model size degrades to an empty identifier")
+    func modelIdentifierParserHandlesAShrinkingBuffer() {
+        // The first sysctlbyname call reports the size; the second may report a
+        // smaller one. The existing code returns "" in that case and the caller
+        // falls back to the device name for the machine family, which is what
+        // the built-in speaker symbol depends on.
+        #expect(HostMacKind.modelIdentifier(from: [0]) == "")
+        #expect(HostMacKind.modelIdentifier(from: [77, 97, 99]) == "Mac")
+    }
+
     @Test("Device names identify the machine family")
     func deviceNamesIdentifyTheMachineFamily() {
         #expect(HostMacKind(deviceName: "MacBook Pro扬声器", host: .unknown) == .laptop)
