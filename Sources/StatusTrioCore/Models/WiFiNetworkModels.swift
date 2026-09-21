@@ -327,6 +327,19 @@ struct BluetoothDevice: Identifiable, Equatable, Sendable {
         self.isConnected = isConnected
         self.airPodsModel = airPodsModel
     }
+
+    /// Whether this is an AirPods, which is what decides the order: AirPods lead
+    /// the row and the list whatever they are called.
+    ///
+    /// The battery claim no longer needs this — the row reports the level the
+    /// report carries for every connected device — but the order does: a renamed
+    /// AirPods would otherwise land wherever its name happens to collate, and the
+    /// system's collation differs per language. The product ID identifies the
+    /// model after a rename; the name covers a model the table does not carry yet.
+    var isAirPods: Bool {
+        guard kind == .audio else { return false }
+        return airPodsModel != nil || name.lowercased().contains("airpods")
+    }
 }
 
 /// What the popover's Bluetooth row reports. Deriving the text from state
@@ -410,9 +423,18 @@ enum BluetoothPanelActivation {
 }
 
 enum BluetoothDevicePresentation {
+    /// Connected devices first, then the paired but disconnected ones; inside each
+    /// group AirPods lead and everything else follows in the system's name order.
+    ///
+    /// AirPods lead regardless of their name: they are the devices whose
+    /// multi-channel level the row headlines, and the order must not depend on how
+    /// a given language collates their name.
     static func grouped(_ devices: [BluetoothDevice]) -> (connected: [BluetoothDevice], disconnected: [BluetoothDevice]) {
-        let sorted = devices.sorted {
-            $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+        let sorted = devices.sorted { lhs, rhs in
+            if lhs.isAirPods != rhs.isAirPods {
+                return lhs.isAirPods
+            }
+            return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
         }
         return (
             sorted.filter(\.isConnected),

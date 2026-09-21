@@ -43,7 +43,7 @@ final class BluetoothSummaryTests: XCTestCase {
         let summary = BluetoothSummary.presentation(
             availability: .available,
             devices: [
-                device(id: "AA", name: "机灵的耳机"),
+                device(id: "AA", name: "机灵的耳机", airPodsModel: .airPods),
                 device(id: "BB", name: "MX Keys", kind: .peripheral)
             ],
             batteryLevels: ["AA": BluetoothBatteryLevel(
@@ -52,6 +52,35 @@ final class BluetoothSummaryTests: XCTestCase {
 
         XCTAssertEqual(summary.deviceNames, "机灵的耳机 · L 93%、MX Keys")
         XCTAssertTrue(summary.hasConnectedDevices)
+    }
+
+    /// AirPods lead the row whatever they are called: a name that collates last
+    /// cannot push the level they carry out of the front of the line.
+    func testAirPodsLeadTheRowRegardlessOfName() {
+        let summary = BluetoothSummary.presentation(
+            availability: .available,
+            devices: [
+                device(id: "AA", name: "AAA Mouse", kind: .peripheral),
+                device(id: "BB", name: "zzz 耳机", airPodsModel: .airPods)
+            ],
+            batteryLevels: [
+                "AA": BluetoothBatteryLevel(
+                    deviceAddress: "AA", main: 45, left: nil, right: nil, caseLevel: nil),
+                "BB": BluetoothBatteryLevel(
+                    deviceAddress: "BB", main: nil, left: 93, right: nil, caseLevel: nil)
+            ]
+        )
+
+        XCTAssertEqual(summary.deviceNames, "zzz 耳机 · L 93%、AAA Mouse · 45%")
+    }
+
+    /// Either signal marks an AirPods: the product ID the profiler reports for the
+    /// model, or the name, which covers a model the table does not carry yet.
+    func testEitherSignalIdentifiesAnAirPods() {
+        XCTAssertTrue(device(name: "AirPods Pro").isAirPods)
+        XCTAssertTrue(device(name: "机灵的耳机", airPodsModel: .airPods).isAirPods)
+        XCTAssertFalse(device(name: "Sony WH-1000XM5").isAirPods)
+        XCTAssertFalse(device(name: "Magic Mouse", kind: .peripheral, airPodsModel: .airPods).isAirPods)
     }
 
     /// A renamed AirPods is just another device here: its level comes from the

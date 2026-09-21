@@ -45,6 +45,12 @@ page already makes it, and showing it costs nothing extra, because the levels
 come from the same report as the names. A device the report has no level for
 keeps its name alone, so a row that mixes both kinds stays readable.
 
+AirPods lead the row whatever they are called, and lead each group of the detail
+list for the same reason (`BluetoothDevicePresentation.grouped`): they are the
+devices whose multi-channel level the row headlines, and the order must not
+depend on how a given language collates their name. Everything else follows in
+the system's name order.
+
 Battery levels come from the same `system_profiler SPBluetoothDataType` report.
 Two surfaces share that read — the summary row (for the levels it reports) and
 the detail page (for every device) — so the controller tracks them as *claims*
