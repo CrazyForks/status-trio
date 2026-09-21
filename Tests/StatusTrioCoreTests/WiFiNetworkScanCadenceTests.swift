@@ -267,6 +267,59 @@ final class WiFiNetworkScanCadenceTests: XCTestCase {
         XCTAssertFalse(store.hasOpenPopoverPanel)
     }
 
+    /// The refresh button used to stay enabled for the whole connection flow even
+    /// though the controller ignored it. The button and the controller now share
+    /// `allowsRefresh`, so this pins the controller half of that contract: while an
+    /// association owns the controller, neither the automatic nor the explicit
+    /// refresh path may start a scan.
+    ///
+    /// It lives in this file because the injectable scan worker lives here.
+    func testRefreshIsIgnoredWhileAConnectionFlowIsInFlight() async {
+        let scanner = FakeWiFiNetworkScanner()
+        let controller = makeController(scanner: scanner)
+        controller.activate(nameAccess: .authorized)
+        await waitUntil { controller.state == .ready }
+
+        let network = makeScanNetwork("Studio")
+        controller.connect(to: network, password: nil, rememberPassword: false)
+
+        // `connect` enters the joining state synchronously; the fake worker hops
+        // its completion onto the main actor, so it has not landed yet.
+        XCTAssertEqual(controller.state, .connecting(network.identity))
+
+        let scansBeforeTheGate = scanner.scanCount
+        controller.refresh(nameAccess: .authorized)
+        controller.refreshNow(nameAccess: .authorized)
+        await Task.yield()
+
+        XCTAssertEqual(
+            scanner.scanCount,
+            scansBeforeTheGate,
+            "both refresh paths must be ignored while the connection flow is in flight"
+        )
+        XCTAssertEqual(scanner.associateCount, 1, "the gate must not block the association itself")
+
+        controller.deactivate()
+    }
+
+    /// The gate has to be a block, not a latch: a join that ends without connecting
+    /// must leave the list refreshable, or the user is stuck with a dead button.
+    func testRefreshWorksAgainAfterAJoiningAttemptSettles() async {
+        let scanner = FakeWiFiNetworkScanner()
+        let controller = makeController(scanner: scanner)
+        controller.activate(nameAccess: .authorized)
+        await waitUntil { controller.state == .ready }
+
+        controller.connect(to: makeScanNetwork("Studio"), password: nil, rememberPassword: false)
+        await waitUntil { controller.state == .networkUnavailable }
+
+        let scansAfterTheFlow = scanner.scanCount
+        controller.refreshNow(nameAccess: .authorized)
+        await waitUntil { scanner.scanCount == scansAfterTheFlow + 1 }
+
+        controller.deactivate()
+    }
+
     private func waitUntil(_ condition: () -> Bool) async {
         for _ in 0..<1_000 {
             if condition() { return }
