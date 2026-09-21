@@ -140,6 +140,7 @@
 "wifi.action.requestNameAccess" = "Permitir localização para mostrar o nome do Wi‑Fi";
 "wifi.action.openLocationSettings" = "Permitir localização nos Ajustes";
 "wifi.action.openSettings" = "Abrir Ajustes de Wi‑Fi";
+"wifi.action.switchingHint" = "Escolher uma rede abre o painel de Wi-Fi dos Ajustes do Sistema.";
 "wifi.accessibility.withSSID" = "Wi‑Fi %@, %@";
 "ethernet.accessibility.connected" = "Ethernet conectado";
 "volume.title" = "Volume · %d%%";
@@ -193,19 +194,9 @@
 "wifi.noInterface" = "Nenhuma interface Wi-Fi está disponível.";
 "wifi.permissionDenied" = "É necessário acesso à localização para ler os nomes e os resultados de busca das redes Wi-Fi. Abrir Ajustes de Localização.";
 "wifi.scanFailed" = "Não foi possível procurar redes Wi-Fi.";
-"wifi.connecting" = "Conectando a %@…";
-"wifi.connectionFailed" = "Não foi possível conectar a esta rede. Verifique a senha e tente novamente.";
-"wifi.connectionTimedOut" = "O tempo limite de conexão com esta rede foi excedido.";
-"wifi.networkUnavailable" = "Esta rede não está mais disponível.";
-"wifi.enterpriseUnsupported" = "O Wi-Fi empresarial requer os ajustes de Wi-Fi do sistema.";
 "wifi.connected" = "Conectado";
 "wifi.notConnected" = "Não conectado";
 "wifi.hiddenNetwork" = "Rede oculta";
-"wifi.joinNetwork" = "Conectar a uma rede Wi-Fi";
-"wifi.password" = "Senha";
-"wifi.rememberPassword" = "Lembrar a senha nas Chaves";
-"wifi.passwordKeychainNote" = "As senhas são armazenadas apenas nas suas Chaves, nunca nos ajustes do app.";
-"wifi.join" = "Conectar";
 "wifi.details.show" = "Mostrar detalhes";
 "wifi.details.hide" = "Ocultar detalhes";
 "wifi.details.more" = "Mais detalhes";
@@ -243,14 +234,6 @@
 "bluetooth.connected" = "Conectado";
 "bluetooth.notConnected" = "Não conectado";
 "bluetooth.pairedDeviceLimit" = "Mostra os dispositivos emparelhados informados pelo macOS. Alguns dispositivos somente BLE podem não ser listados.";
-
-"wifi.credentialsChecking" = "Verificando credenciais salvas…";
-"wifi.credentialAccessCancelled" = "O acesso às credenciais salvas foi cancelado.";
-"wifi.credentialAccessDenied" = "O acesso às credenciais salvas foi negado.";
-"wifi.credentialStoreLocked" = "As Chaves estão bloqueadas ou indisponíveis.";
-"wifi.credentialReadFailed" = "Não foi possível ler as credenciais salvas.";
-"wifi.credentialEnterPassword" = "Digite a senha";
-"wifi.passwordSaveFailed" = "Conectado, mas não foi possível salvar a senha.";
 
 "bluetooth.initializing" = "Iniciando o Bluetooth…";
 "bluetooth.authorizationNotDetermined" = "A permissão de Bluetooth ainda não foi definida.";

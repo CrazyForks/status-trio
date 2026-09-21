@@ -140,6 +140,7 @@
 "wifi.action.requestNameAccess" = "السماح بالموقع لإظهار اسم Wi‑Fi";
 "wifi.action.openLocationSettings" = "السماح بالموقع في الإعدادات";
 "wifi.action.openSettings" = "فتح إعدادات Wi‑Fi";
+"wifi.action.switchingHint" = "اختيار شبكة يفتح لوحة Wi-Fi في إعدادات النظام.";
 "wifi.accessibility.withSSID" = "Wi‑Fi %@، %@";
 "ethernet.accessibility.connected" = "إيثرنت متصل";
 "volume.title" = "مستوى الصوت · %d%%";
@@ -193,19 +194,9 @@
 "wifi.noInterface" = "لا تتوفر واجهة Wi-Fi.";
 "wifi.permissionDenied" = "يلزم إذن الموقع لقراءة أسماء شبكات Wi-Fi ونتائج البحث. افتح إعدادات الموقع.";
 "wifi.scanFailed" = "تعذّر فحص شبكات Wi-Fi.";
-"wifi.connecting" = "جارٍ الانضمام إلى %@…";
-"wifi.connectionFailed" = "تعذّر الانضمام إلى هذه الشبكة. تحقق من كلمة السر وحاول مجددًا.";
-"wifi.connectionTimedOut" = "انتهت مهلة الانضمام إلى هذه الشبكة.";
-"wifi.networkUnavailable" = "لم تعد هذه الشبكة متاحة.";
-"wifi.enterpriseUnsupported" = "تتطلب شبكات Wi-Fi للمؤسسات استخدام إعدادات Wi-Fi في النظام.";
 "wifi.connected" = "متصل";
 "wifi.notConnected" = "غير متصل";
 "wifi.hiddenNetwork" = "شبكة مخفية";
-"wifi.joinNetwork" = "الانضمام إلى شبكة Wi-Fi";
-"wifi.password" = "كلمة السر";
-"wifi.rememberPassword" = "تذكّر كلمة السر في سلسلة المفاتيح";
-"wifi.passwordKeychainNote" = "لا تُحفظ كلمات السر إلا في سلسلة المفاتيح، ولا تُحفظ أبدًا في إعدادات التطبيق.";
-"wifi.join" = "انضمام";
 "wifi.details.show" = "إظهار التفاصيل";
 "wifi.details.hide" = "إخفاء التفاصيل";
 "wifi.details.more" = "مزيد من التفاصيل";
@@ -243,14 +234,6 @@
 "bluetooth.connected" = "متصل";
 "bluetooth.notConnected" = "غير متصل";
 "bluetooth.pairedDeviceLimit" = "يعرض الأجهزة المقترنة التي يبلّغ عنها macOS. قد لا تظهر بعض الأجهزة التي تدعم BLE فقط.";
-
-"wifi.credentialsChecking" = "جارٍ التحقق من بيانات الاعتماد المحفوظة…";
-"wifi.credentialAccessCancelled" = "تم إلغاء الوصول إلى بيانات الاعتماد المحفوظة.";
-"wifi.credentialAccessDenied" = "تم رفض الوصول إلى بيانات الاعتماد المحفوظة.";
-"wifi.credentialStoreLocked" = "سلسلة المفاتيح مقفلة أو غير متاحة.";
-"wifi.credentialReadFailed" = "تعذّرت قراءة بيانات الاعتماد المحفوظة.";
-"wifi.credentialEnterPassword" = "أدخل كلمة السر";
-"wifi.passwordSaveFailed" = "تم الاتصال، لكن تعذّر حفظ كلمة السر.";
 
 "bluetooth.initializing" = "جارٍ تهيئة Bluetooth…";
 "bluetooth.authorizationNotDetermined" = "لم يتم تحديد إذن Bluetooth بعد.";

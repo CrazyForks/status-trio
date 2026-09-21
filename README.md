@@ -50,7 +50,7 @@
   <img src="screenshots/menu-bar-wifi.jpg" width="1000" alt="Status Trio menu bar icon showing the Wi-Fi glyph while connected to Wi-Fi, with its status popover open">
 </p>
 
-Status Trio is a native macOS status app that combines Wi-Fi, battery, and volume into one compact, configurable icon, shown in the menu bar, in the Dock, or in both. Its popover goes deeper than the icon: a Wi-Fi panel for joining networks and reading link details, a Bluetooth panel for paired devices, a Battery Details page, and the audio devices that are playing. It is inspired by the iPhone Duo's combined status bar icon for Wi-Fi, Battery, and Cellular Data, adapted for Mac with Volume instead of Cellular Data.
+Status Trio is a native macOS status app that combines Wi-Fi, battery, and volume into one compact, configurable icon, shown in the menu bar, in the Dock, or in both. Its popover goes deeper than the icon: a Wi-Fi panel for nearby networks and link details, a Bluetooth panel for paired devices, a Battery Details page, and the audio devices that are playing. It is inspired by the iPhone Duo's combined status bar icon for Wi-Fi, Battery, and Cellular Data, adapted for Mac with Volume instead of Cellular Data.
 
 > Status Trio is an independent project and is not affiliated with Apple.
 
@@ -59,7 +59,7 @@ Status Trio is a native macOS status app that combines Wi-Fi, battery, and volum
 - **One icon, three signals** — battery, Wi-Fi, and volume share one icon in the menu bar, the Dock, or both, and a Bluetooth device that is playing can take the middle spot with its own symbol.
 - **Bluetooth** — the volume indicator turns blue while it plays. The panel lists connected and paired devices with AirPods battery, and stays off until you enable it.
 - **Battery** — percentage, charging or plugged in, time to full, and a color when it runs low. Open the row for adapter power, voltage, current, cycle count, and Low Power Mode.
-- **Wi-Fi** — the network you are on and how strong the signal is. Open it to see nearby networks, join one, or switch Wi-Fi off.
+- **Wi-Fi** — the network you are on and how strong the signal is. Open it to see nearby networks, check the link details, or switch Wi-Fi off. Switching between networks happens in the Wi-Fi pane of System Settings.
 - **Volume** — level, mute, and the output device, drawn as dots or an arc. Scroll the whole panel or just the control, and pick which direction turns it up.
 - **Make it yours** — icon size, symbol scale, ring thickness, status colors, and which sections the popover shows, in the order you want.
 - **Menu bar, Dock, or both** — and the Dock icon can follow the system style or stay dark or light.
@@ -180,6 +180,13 @@ Do not disable Gatekeeper globally. Subsequent Sparkle updates are authenticated
 - Reopen the **Meet your icon** guide any time from **Settings › App Icon › Open Guide**.
 - Enable the current Wi-Fi network name when prompted; macOS requests location access for this optional detail.
 
+## Known limitations
+
+Two boundaries macOS and this project draw deliberately. Both are explained in [Known limitations](docs/known-limitations.md).
+
+- **Switching networks happens in System Settings.** Choosing a network in the popover opens the Wi-Fi pane; Status Trio never reads or stores Wi-Fi passwords, because macOS offers no public API to connect with a saved password and every alternative ends with the app holding them.
+- **"Charge to Full Now" stays in macOS.** When optimized battery charging or a charge limit pauses charging, the popover reports the paused state and links to the Battery pane; no public API lets an app resume charging past the limit, and Status Trio does not write to the SMC or ship a privileged helper to do it.
+
 ## Languages
 
 Status Trio follows the macOS preferred language by default and includes English, Simplified Chinese, Traditional Chinese, Japanese, Korean, Spanish, French, German, Italian, Brazilian Portuguese, Russian, and Arabic.
@@ -228,6 +235,7 @@ The single-instance lock is scoped by bundle identifier, so differently identifi
 
 ## Documentation
 
+- [Known limitations](docs/known-limitations.md)
 - [Automated GitHub Actions releases](docs/github-actions-release.md)
 - [Status Trio design specification](docs/superpowers/specs/2026-09-12-status-trio-design.md)
 - [Menu bar icon SVG](status-menubar.svg)

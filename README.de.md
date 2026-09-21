@@ -50,7 +50,7 @@
   <img src="screenshots/menu-bar-wifi.jpg" width="1000" alt="Status Trio Menüleistensymbol mit dem Wi-Fi-Symbol bei bestehender Wi-Fi-Verbindung und geöffnetem Status-Popover">
 </p>
 
-Status Trio ist eine native macOS-Status-App, die Wi-Fi, Batterie und Lautstärke in einem einzigen kompakten, konfigurierbaren Symbol vereint, das in der Menüleiste, im Dock oder an beiden Orten angezeigt wird. Das Popover bietet mehr als das Symbol: ein Wi-Fi-Bereich zum Beitreten zu Netzwerken und Auslesen von Verbindungsdetails, ein Bluetooth-Bereich für gekoppelte Geräte, eine Seite „Batteriedetails“ und die Audiogeräte, die gerade wiedergeben. Inspiriert ist sie vom kombinierten Statusleisten-Symbol des iPhone Duo für Wi-Fi, Batterie und Mobilfunkdaten, angepasst für den Mac mit Lautstärke statt Mobilfunkdaten.
+Status Trio ist eine native macOS-Status-App, die Wi-Fi, Batterie und Lautstärke in einem einzigen kompakten, konfigurierbaren Symbol vereint, das in der Menüleiste, im Dock oder an beiden Orten angezeigt wird. Das Popover bietet mehr als das Symbol: ein Wi-Fi-Bereich für Netzwerke in der Nähe und Verbindungsdetails, ein Bluetooth-Bereich für gekoppelte Geräte, eine Seite „Batteriedetails“ und die Audiogeräte, die gerade wiedergeben. Inspiriert ist sie vom kombinierten Statusleisten-Symbol des iPhone Duo für Wi-Fi, Batterie und Mobilfunkdaten, angepasst für den Mac mit Lautstärke statt Mobilfunkdaten.
 
 > Status Trio ist ein unabhängiges Projekt und steht in keiner Verbindung zu Apple.
 
@@ -59,7 +59,7 @@ Status Trio ist eine native macOS-Status-App, die Wi-Fi, Batterie und Lautstärk
 - **Ein Symbol, drei Signale** — Batterie, Wi-Fi und Lautstärke teilen sich ein Symbol in der Menüleiste, im Dock oder an beiden Orten, und ein Bluetooth-Gerät, das gerade wiedergibt, kann mit seinem eigenen Symbol den mittleren Platz einnehmen.
 - **Bluetooth** — die Lautstärkeanzeige wird blau, während der Wiedergabe. Der Bluetooth-Bereich listet verbundene und gekoppelte Geräte mit AirPods-Batteriestand auf und bleibt aus, bis Sie ihn aktivieren.
 - **Batterie** — Prozentsatz, Laden oder Netzbetrieb, Zeit bis voll und eine Farbe, wenn der Ladestand niedrig wird. Öffnen Sie die Zeile für Netzteil-Nennleistung, Batteriespannung, Batteriestrom, Ladezyklen und Stromsparmodus.
-- **Wi-Fi** — das Netzwerk, mit dem Sie verbunden sind, und die Signalstärke. Öffnen Sie es, um Netzwerke in der Nähe zu sehen, einem beizutreten oder Wi-Fi auszuschalten.
+- **Wi-Fi** — das Netzwerk, mit dem Sie verbunden sind, und die Signalstärke. Öffnen Sie es, um Netzwerke in der Nähe zu sehen, die Verbindungsdetails zu prüfen oder Wi-Fi auszuschalten. Der Wechsel zwischen Netzwerken findet im Wi-Fi-Bereich der Systemeinstellungen statt.
 - **Lautstärke** — Pegel, Stummschaltung und das Ausgabegerät, dargestellt als Punkte oder Bogen. Scrollen Sie im ganzen Bereich oder nur im Lautstärkeregler, und wählen Sie, in welche Richtung die Lautstärke erhöht wird.
 - **Nach Ihren Wünschen** — Symbolgröße, Symbolskalierung, Stärke des äußeren Rings, Statusfarben und welche Elemente das Popover zeigt, in der Reihenfolge Ihrer Wahl.
 - **Menüleiste, Dock oder beides** — und das Dock-Symbol kann der Systemeinstellung folgen oder dunkel bzw. hell bleiben.
@@ -180,6 +180,13 @@ Deaktivieren Sie Gatekeeper nicht global. Nachfolgende Sparkle-Updates werden mi
 - Öffnen Sie die Anleitung **Dein Symbol kennenlernen** jederzeit erneut über **Einstellungen › App-Symbol › Anleitung öffnen**.
 - Aktivieren Sie auf Nachfrage den Namen des aktuellen Wi-Fi-Netzes; macOS fordert für dieses optionale Detail Zugriff auf den Standort an.
 
+## Bekannte Einschränkungen
+
+Zwei Grenzen, die macOS und dieses Projekt bewusst ziehen. Beide sind in [Bekannte Einschränkungen](docs/known-limitations.md) erklärt.
+
+- **Der Wechsel zwischen Netzwerken findet in den Systemeinstellungen statt.** Die Auswahl eines Netzwerks im Popover öffnet den Wi-Fi-Bereich; Status Trio liest oder speichert niemals Wi-Fi-Passwörter, denn macOS bietet keine öffentliche API, um sich mit einem gespeicherten Passwort zu verbinden, und jede Alternative endet damit, dass die App sie aufbewahrt.
+- **„Jetzt vollständig laden“ bleibt in macOS.** Wenn optimiertes Batterieladen oder ein Ladelimit das Laden pausiert, meldet das Popover den pausierten Zustand und verweist auf die Batterieeinstellungen; keine öffentliche API erlaubt einer App, das Laden über das Limit hinaus fortzusetzen, und Status Trio schreibt nicht in den SMC und liefert keinen privilegierten Helfer, um das zu tun.
+
 ## Sprachen
 
 Status Trio folgt standardmäßig der bevorzugten Sprache von macOS und enthält English, 简体中文, 繁體中文, 日本語, 한국어, Español, Français, Deutsch, Italiano, Português (Brasil), Русский und العربية.
@@ -228,6 +235,7 @@ Die Sperre für einzelne Instanzen richtet sich nach der Bundle-ID, sodass Build
 
 ## Dokumentation
 
+- [Bekannte Einschränkungen](docs/known-limitations.md)
 - [Automatisierte GitHub-Actions-Releases](docs/github-actions-release.md)
 - [Status Trio Design-Spezifikation](docs/superpowers/specs/2026-09-12-status-trio-design.md)
 - [Menüleistensymbol als SVG](status-menubar.svg)

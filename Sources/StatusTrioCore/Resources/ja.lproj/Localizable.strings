@@ -140,6 +140,7 @@
 "wifi.action.requestNameAccess" = "位置情報を許可してWi-Fi名を表示";
 "wifi.action.openLocationSettings" = "設定で位置情報を許可";
 "wifi.action.openSettings" = "Wi-Fi設定を開く";
+"wifi.action.switchingHint" = "ネットワークを選ぶと、システム設定の Wi-Fi パネルが開きます。";
 "wifi.accessibility.withSSID" = "Wi-Fi %@、%@";
 "ethernet.accessibility.connected" = "イーサネット接続済み";
 "volume.title" = "音量 · %d%%";
@@ -193,19 +194,9 @@
 "wifi.noInterface" = "利用可能な Wi-Fi インターフェイスがありません。";
 "wifi.permissionDenied" = "Wi-Fi 名とスキャン結果を読み取るには、位置情報へのアクセスが必要です。位置情報設定を開いてください。";
 "wifi.scanFailed" = "Wi-Fi ネットワークをスキャンできませんでした。";
-"wifi.connecting" = "%@に接続中…";
-"wifi.connectionFailed" = "このネットワークに接続できませんでした。パスワードを確認して再試行してください。";
-"wifi.connectionTimedOut" = "このネットワークへの接続がタイムアウトしました。";
-"wifi.networkUnavailable" = "このネットワークは利用できなくなりました。";
-"wifi.enterpriseUnsupported" = "エンタープライズ Wi-Fi にはシステムの Wi-Fi 設定が必要です。";
 "wifi.connected" = "接続済み";
 "wifi.notConnected" = "未接続";
 "wifi.hiddenNetwork" = "非公開ネットワーク";
-"wifi.joinNetwork" = "Wi-Fi ネットワークに接続";
-"wifi.password" = "パスワード";
-"wifi.rememberPassword" = "パスワードをキーチェーンに保存";
-"wifi.passwordKeychainNote" = "パスワードはキーチェーンにのみ保存され、アプリの設定には保存されません。";
-"wifi.join" = "接続";
 "wifi.details.show" = "詳細を表示";
 "wifi.details.hide" = "詳細を隠す";
 "wifi.details.more" = "詳細をさらに表示";
@@ -243,14 +234,6 @@
 "bluetooth.connected" = "接続済み";
 "bluetooth.notConnected" = "未接続";
 "bluetooth.pairedDeviceLimit" = "macOS が報告するペアリング済みデバイスを表示します。BLE のみのデバイスは表示されない場合があります。";
-
-"wifi.credentialsChecking" = "保存済みの認証情報を確認中…";
-"wifi.credentialAccessCancelled" = "保存済み認証情報へのアクセスがキャンセルされました。";
-"wifi.credentialAccessDenied" = "保存済み認証情報へのアクセスが拒否されました。";
-"wifi.credentialStoreLocked" = "キーチェーンがロックされているか、利用できません。";
-"wifi.credentialReadFailed" = "保存済みの認証情報を読み取れませんでした。";
-"wifi.credentialEnterPassword" = "パスワードを入力";
-"wifi.passwordSaveFailed" = "接続しましたが、パスワードを保存できませんでした。";
 
 "bluetooth.initializing" = "Bluetooth を初期化中…";
 "bluetooth.authorizationNotDetermined" = "Bluetooth の権限はまだ選択されていません。";

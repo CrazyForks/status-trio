@@ -29,15 +29,6 @@ enum WiFiSecurityKind: Int, CaseIterable, Equatable, Hashable, Sendable {
     var requiresPassword: Bool {
         self != .open && self != .owe && self != .oweTransition && self != .unknown
     }
-
-    var isEnterprise: Bool {
-        switch self {
-        case .wpaEnterprise, .wpaEnterpriseMixed, .wpa2Enterprise, .enterprise, .wpa3Enterprise:
-            true
-        default:
-            false
-        }
-    }
 }
 
 struct WiFiNetworkIdentity: Equatable, Hashable, Sendable {
@@ -144,17 +135,10 @@ struct WiFiNetwork: Identifiable, Equatable, Sendable {
 
 enum WiFiNetworkRowAction: Equatable, Sendable {
     case none
-    case connect
     case openSettings
 }
 
 enum WiFiNetworkPresentation {
-    @MainActor
-    static func connectingMessage(for network: WiFiNetworkIdentity, localization: Localization) -> String {
-        let name = network.ssid.isEmpty ? localization.string(.wifiHiddenNetwork) : network.ssid
-        return localization.format(.wifiConnecting, name)
-    }
-
     static func grouped(
         _ networks: [WiFiNetwork]
     ) -> (known: [WiFiNetwork], other: [WiFiNetwork]) {
@@ -164,9 +148,10 @@ enum WiFiNetworkPresentation {
         )
     }
 
+    /// Status Trio never joins a network itself, so every row other than the
+    /// current connection hands the job to the system Wi-Fi pane.
     static func action(for network: WiFiNetwork) -> WiFiNetworkRowAction {
-        if network.isConnected { return .none }
-        return network.isKnown ? .openSettings : .connect
+        network.isConnected ? .none : .openSettings
     }
 
     /// The details row names the action it performs, so its caption and its
@@ -223,25 +208,6 @@ struct WiFiConnectionDetails: Equatable, Sendable {
     )
 }
 
-enum WiFiCredentialSource: Equatable, Sendable {
-    case appKeychain
-    case systemKeychain
-}
-
-enum WiFiCredentialIssue: Equatable, Sendable {
-    case cancelled
-    case accessDenied
-    case keychainLocked
-    case readFailed
-    case saveFailed
-}
-
-enum WiFiCredentialResult: Equatable, Sendable {
-    case credential(String, WiFiCredentialSource)
-    case noCredential
-    case issue(WiFiCredentialIssue)
-}
-
 enum WiFiListState: Equatable, Sendable {
     case idle
     case scanning
@@ -250,17 +216,6 @@ enum WiFiListState: Equatable, Sendable {
     case noInterface
     case permissionDenied
     case failed
-    case resolvingCredentials
-    case needsPassword
-    case credentialAccessCancelled
-    case credentialAccessDenied
-    case credentialStoreLocked
-    case credentialReadFailed
-    case connecting(WiFiNetworkIdentity)
-    case connectionFailed
-    case connectionTimedOut
-    case networkUnavailable
-    case enterpriseNetwork
 
     var isScanning: Bool {
         if case .scanning = self { return true }
@@ -268,16 +223,7 @@ enum WiFiListState: Equatable, Sendable {
     }
 
     /// Keep the refresh affordance in sync with the controller's scan gate.
-    var allowsRefresh: Bool { !isScanning && !isConnectionFlow }
-
-    var isConnectionFlow: Bool {
-        switch self {
-        case .resolvingCredentials, .needsPassword, .connecting:
-            true
-        default:
-            false
-        }
-    }
+    var allowsRefresh: Bool { !isScanning }
 }
 
 struct AsyncRequestGate: Sendable {

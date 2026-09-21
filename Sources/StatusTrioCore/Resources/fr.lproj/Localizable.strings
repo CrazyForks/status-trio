@@ -140,6 +140,7 @@
 "wifi.action.requestNameAccess" = "Autoriser la localisation pour afficher le nom du Wi‑Fi";
 "wifi.action.openLocationSettings" = "Autoriser la localisation dans Réglages";
 "wifi.action.openSettings" = "Ouvrir les réglages Wi‑Fi";
+"wifi.action.switchingHint" = "Choisir un réseau ouvre le panneau Wi-Fi des Réglages Système.";
 "wifi.accessibility.withSSID" = "Wi‑Fi %@, %@";
 "ethernet.accessibility.connected" = "Ethernet connecté";
 "volume.title" = "Volume · %d%%";
@@ -193,19 +194,9 @@
 "wifi.noInterface" = "Aucune interface Wi-Fi n’est disponible.";
 "wifi.permissionDenied" = "L’accès à la localisation est nécessaire pour lire le nom des réseaux Wi-Fi et les résultats de scan. Ouvrez les réglages de localisation.";
 "wifi.scanFailed" = "Impossible de rechercher les réseaux Wi-Fi.";
-"wifi.connecting" = "Connexion à %@…";
-"wifi.connectionFailed" = "Impossible de rejoindre ce réseau. Vérifiez son mot de passe et réessayez.";
-"wifi.connectionTimedOut" = "Le délai de connexion à ce réseau a expiré.";
-"wifi.networkUnavailable" = "Ce réseau n’est plus disponible.";
-"wifi.enterpriseUnsupported" = "Le Wi-Fi d’entreprise nécessite les réglages Wi-Fi du système.";
 "wifi.connected" = "Connecté";
 "wifi.notConnected" = "Non connecté";
 "wifi.hiddenNetwork" = "Réseau masqué";
-"wifi.joinNetwork" = "Rejoindre un réseau Wi-Fi";
-"wifi.password" = "Mot de passe";
-"wifi.rememberPassword" = "Mémoriser le mot de passe dans le trousseau";
-"wifi.passwordKeychainNote" = "Les mots de passe sont stockés uniquement dans votre trousseau, jamais dans les réglages de l’app.";
-"wifi.join" = "Rejoindre";
 "wifi.details.show" = "Afficher les détails";
 "wifi.details.hide" = "Masquer les détails";
 "wifi.details.more" = "Plus de détails";
@@ -243,14 +234,6 @@
 "bluetooth.connected" = "Connecté";
 "bluetooth.notConnected" = "Non connecté";
 "bluetooth.pairedDeviceLimit" = "Affiche les périphériques jumelés signalés par macOS. Certains périphériques uniquement BLE peuvent ne pas être répertoriés.";
-
-"wifi.credentialsChecking" = "Vérification des identifiants enregistrés…";
-"wifi.credentialAccessCancelled" = "L’accès aux identifiants enregistrés a été annulé.";
-"wifi.credentialAccessDenied" = "L’accès aux identifiants enregistrés a été refusé.";
-"wifi.credentialStoreLocked" = "Le trousseau est verrouillé ou indisponible.";
-"wifi.credentialReadFailed" = "Impossible de lire les identifiants enregistrés.";
-"wifi.credentialEnterPassword" = "Saisir le mot de passe";
-"wifi.passwordSaveFailed" = "Connecté, mais le mot de passe n’a pas pu être enregistré.";
 
 "bluetooth.initializing" = "Initialisation du Bluetooth…";
 "bluetooth.authorizationNotDetermined" = "L’autorisation Bluetooth n’a pas encore été définie.";

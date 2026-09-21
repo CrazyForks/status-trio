@@ -140,6 +140,7 @@
 "wifi.action.requestNameAccess" = "允许定位以显示 Wi-Fi 名称";
 "wifi.action.openLocationSettings" = "去设置中允许定位";
 "wifi.action.openSettings" = "打开 Wi-Fi 设置";
+"wifi.action.switchingHint" = "选择网络会在系统设置中打开 Wi-Fi 面板。";
 "wifi.accessibility.withSSID" = "Wi-Fi %@，%@";
 "ethernet.accessibility.connected" = "以太网已连接";
 "volume.title" = "音量 · %d%%";
@@ -193,19 +194,9 @@
 "wifi.noInterface" = "没有可用的 Wi-Fi 网卡。";
 "wifi.permissionDenied" = "需要定位权限才能读取 Wi-Fi 名称和扫描结果。前往定位服务设置。";
 "wifi.scanFailed" = "无法扫描 Wi-Fi 网络。";
-"wifi.connecting" = "正在加入 %@…";
-"wifi.connectionFailed" = "无法加入此网络。请检查密码后重试。";
-"wifi.connectionTimedOut" = "加入此网络超时。";
-"wifi.networkUnavailable" = "此网络已不可用。";
-"wifi.enterpriseUnsupported" = "企业 Wi-Fi 需要在系统 Wi-Fi 设置中完成认证。";
 "wifi.connected" = "已连接";
 "wifi.notConnected" = "未连接";
 "wifi.hiddenNetwork" = "隐藏网络";
-"wifi.joinNetwork" = "加入 Wi-Fi 网络";
-"wifi.password" = "密码";
-"wifi.rememberPassword" = "将密码记入钥匙串";
-"wifi.passwordKeychainNote" = "密码只保存在钥匙串中，绝不会写入应用设置。";
-"wifi.join" = "加入";
 "wifi.details.show" = "显示详情";
 "wifi.details.hide" = "隐藏详情";
 "wifi.details.more" = "更多详情";
@@ -243,14 +234,6 @@
 "bluetooth.connected" = "已连接";
 "bluetooth.notConnected" = "未连接";
 "bluetooth.pairedDeviceLimit" = "仅显示 macOS 报告的已配对设备；部分仅 BLE 设备可能不会列出。";
-
-"wifi.credentialsChecking" = "正在检查已保存的凭据…";
-"wifi.credentialAccessCancelled" = "对已保存凭据的访问已取消。";
-"wifi.credentialAccessDenied" = "对已保存凭据的访问被拒绝。";
-"wifi.credentialStoreLocked" = "钥匙串已锁定或不可用。";
-"wifi.credentialReadFailed" = "无法读取已保存的凭据。";
-"wifi.credentialEnterPassword" = "输入密码";
-"wifi.passwordSaveFailed" = "已连接，但无法保存密码。";
 
 "bluetooth.initializing" = "正在初始化蓝牙…";
 "bluetooth.authorizationNotDetermined" = "蓝牙权限尚未确定。";

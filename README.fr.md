@@ -50,7 +50,7 @@
   <img src="screenshots/menu-bar-wifi.jpg" width="1000" alt="Icône de Status Trio dans la barre des menus affichant le glyphe Wi-Fi pendant une connexion Wi-Fi, avec son panneau d’état ouvert">
 </p>
 
-Status Trio est une app d’état native macOS qui réunit le Wi-Fi, la batterie et le volume dans une seule icône compacte et configurable, affichée dans la barre des menus, dans le Dock, ou dans les deux. Son panneau d’état va plus loin que l’icône : un panneau Wi-Fi pour rejoindre des réseaux et lire les détails de la liaison, un panneau Bluetooth pour les appareils jumelés, une page Détails de la batterie, et les appareils audio en cours de lecture. Elle s’inspire de l’icône combinée de la barre d’état de l’iPhone Duo pour le Wi-Fi, la batterie et les données cellulaires, adaptée au Mac avec le volume à la place des données cellulaires.
+Status Trio est une app d’état native macOS qui réunit le Wi-Fi, la batterie et le volume dans une seule icône compacte et configurable, affichée dans la barre des menus, dans le Dock, ou dans les deux. Son panneau d’état va plus loin que l’icône : un panneau Wi-Fi pour les réseaux à proximité et les détails de la liaison, un panneau Bluetooth pour les appareils jumelés, une page Détails de la batterie, et les appareils audio en cours de lecture. Elle s’inspire de l’icône combinée de la barre d’état de l’iPhone Duo pour le Wi-Fi, la batterie et les données cellulaires, adaptée au Mac avec le volume à la place des données cellulaires.
 
 > Status Trio est un projet indépendant et n’est pas affilié à Apple.
 
@@ -59,7 +59,7 @@ Status Trio est une app d’état native macOS qui réunit le Wi-Fi, la batterie
 - **Une icône, trois signaux** — la batterie, le Wi-Fi et le volume partagent une seule icône dans la barre des menus, dans le Dock ou dans les deux, et un appareil Bluetooth en cours de lecture peut occuper la place centrale avec son propre symbole.
 - **Bluetooth** — l’indicateur de volume devient bleu pendant la lecture. Le panneau répertorie les appareils connectés et jumelés avec la batterie des AirPods, et reste désactivé tant que vous ne l’activez pas.
 - **Batterie** — pourcentage, en charge ou sur secteur, temps avant charge complète, et une couleur lorsque la batterie devient faible. Ouvrez la ligne pour la puissance de l’adaptateur, la tension, le courant, le nombre de cycles et le mode économie d’énergie.
-- **Wi-Fi** — le réseau sur lequel vous êtes et la force du signal. Ouvrez-le pour voir les réseaux à proximité, en rejoindre un, ou désactiver le Wi-Fi.
+- **Wi-Fi** — le réseau sur lequel vous êtes et la force du signal. Ouvrez-le pour voir les réseaux à proximité, consulter les détails de la liaison, ou désactiver le Wi-Fi. Le changement de réseau se fait dans le panneau Wi-Fi des Réglages Système.
 - **Volume** — niveau, sourdine et périphérique de sortie, dessinés sous forme de points ou d’un arc. Faites défiler tout le panneau ou seulement le réglage du volume, et choisissez le sens qui augmente le volume.
 - **Personnalisez-le** — taille de l’icône, échelle des symboles, épaisseur de l’anneau, couleurs d’état et éléments affichés dans le panneau d’état, dans l’ordre de votre choix.
 - **Barre des menus, Dock, ou les deux** — et l’icône du Dock peut suivre le style du système ou rester sombre ou claire.
@@ -180,6 +180,13 @@ Ne désactivez pas Gatekeeper globalement. Les mises à jour Sparkle ultérieure
 - Rouvrez le guide **Découvrez votre icône** à tout moment depuis **Réglages › Icône de l’app › Ouvrir le guide**.
 - Autorisez l’affichage du nom du réseau Wi-Fi actuel lorsque vous y êtes invité ; macOS demande l’accès à la localisation pour ce détail facultatif.
 
+## Limitations connues
+
+Deux limites que macOS et ce projet tracent délibérément. Les deux sont expliquées dans [Limitations connues](docs/known-limitations.md).
+
+- **Le changement de réseau se fait dans les Réglages Système.** Choisir un réseau dans le panneau d’état ouvre le panneau Wi-Fi ; Status Trio ne lit ni ne stocke jamais les mots de passe Wi-Fi, car macOS n’offre aucune API publique pour se connecter avec un mot de passe enregistré et toutes les alternatives finissent par obliger l’app à les conserver.
+- **« Charger complètement maintenant » reste dans macOS.** Lorsque la charge optimisée de la batterie ou une limite de charge interrompt la charge, le panneau d’état indique l’état en pause et renvoie vers le panneau Batterie ; aucune API publique ne permet à une app de reprendre la charge au-delà de la limite, et Status Trio n’écrit pas dans le SMC et ne livre aucun assistant privilégié pour le faire.
+
 ## Langues
 
 Status Trio suit par défaut la langue préférée de macOS et inclut English, 简体中文, 繁體中文, 日本語, 한국어, Español, Français, Deutsch, Italiano, Português (Brasil), Русский et العربية.
@@ -228,6 +235,7 @@ Le verrou d’instance unique est propre à l’identifiant de paquet, de sorte 
 
 ## Documentation
 
+- [Limitations connues](docs/known-limitations.md)
 - [Publications automatisées avec GitHub Actions](docs/github-actions-release.md)
 - [Spécification de conception de Status Trio](docs/superpowers/specs/2026-09-12-status-trio-design.md)
 - [SVG de l’icône de la barre des menus](status-menubar.svg)

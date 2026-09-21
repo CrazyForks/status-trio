@@ -67,29 +67,17 @@ enum WiFiScanWorkerResult: Sendable {
     case failed
 }
 
-enum WiFiAssociationWorkerResult: Sendable {
-    case success(WiFiConnectionDetails)
-    case networkUnavailable
-    case timedOut
-    case failed
-}
-
-/// The scan, power and association calls the network list needs. CoreWLAN is
-/// synchronous and serialized on the worker's own queue; the protocol exists so
-/// a test can answer instantly and count the scans, which is how the cadence is
-/// observable without sweeping every channel.
+/// The scan and power calls the network list needs. CoreWLAN is synchronous and
+/// serialized on the worker's own queue; the protocol exists so a test can
+/// answer instantly and count the scans, which is how the cadence is observable
+/// without sweeping every channel.
 protocol WiFiNetworkScanning: AnyObject {
     func scan(completion: @escaping @Sendable (WiFiScanWorkerResult) -> Void)
     func setPower(_ isOn: Bool, completion: @escaping @Sendable (Bool) -> Void)
-    func associate(
-        to network: WiFiNetwork,
-        password: String?,
-        completion: @escaping @Sendable (WiFiAssociationWorkerResult) -> Void
-    )
 }
 
-/// CoreWLAN exposes synchronous scan and association APIs. This worker owns a
-/// serial queue so those calls never run on the main actor and cannot overlap.
+/// CoreWLAN exposes synchronous scan APIs. This worker owns a serial queue so
+/// those calls never run on the main actor and cannot overlap.
 private final class CoreWLANNetworkWorker: @unchecked Sendable, WiFiNetworkScanning {
     private let queue = DispatchQueue(label: "StatusTrio.CoreWLANNetworkWorker")
     private let knownNetworkProvider: any WiFiKnownNetworkProviding
@@ -124,16 +112,6 @@ private final class CoreWLANNetworkWorker: @unchecked Sendable, WiFiNetworkScann
         }
     }
 
-    func associate(
-        to network: WiFiNetwork,
-        password: String?,
-        completion: @escaping @Sendable (WiFiAssociationWorkerResult) -> Void
-    ) {
-        queue.async { [self] in
-            completion(associateSynchronously(to: network, password: password))
-        }
-    }
-
     private func scanSynchronously() -> WiFiScanWorkerResult {
         guard let interface = CWWiFiClient.shared().interface() else { return .noInterface }
         guard interface.powerOn() else { return .poweredOff }
@@ -161,73 +139,6 @@ private final class CoreWLANNetworkWorker: @unchecked Sendable, WiFiNetworkScann
         } catch {
             return .failed
         }
-    }
-
-    private func associateSynchronously(
-        to selected: WiFiNetwork,
-        password: String?
-    ) -> WiFiAssociationWorkerResult {
-        guard let interface = CWWiFiClient.shared().interface(), interface.powerOn() else {
-            return .networkUnavailable
-        }
-        guard let targetBSSID = selected.preferredCandidate?.bssid else {
-            return .networkUnavailable
-        }
-
-        do {
-            let networks = try interface.scanForNetworks(withSSID: nil)
-            guard let target = networks.first(where: {
-                $0.ssid == selected.ssid
-                    && securityKind(for: $0) == selected.security
-                    && bssid($0.bssid, matches: targetBSSID)
-            }) else {
-                return .networkUnavailable
-            }
-
-            // Do not disassociate first: CoreWLAN is asked to associate directly
-            // with the selected AP and macOS retains the prior association until
-            // it has progressed the new request.
-            try interface.associate(to: target, password: password)
-
-            let deadline = Date().addingTimeInterval(12)
-            while Date() < deadline {
-                if isAssociated(interface: interface, with: selected, targetBSSID: targetBSSID) {
-                    let actualNetwork = (try? interface.scanForNetworks(withSSID: selected.ssid.data(using: .utf8)))?
-                        .first { bssid($0.bssid, matches: interface.bssid()) }
-                    return .success(makeDetails(interface: interface, actualNetwork: actualNetwork ?? target))
-                }
-                Thread.sleep(forTimeInterval: 0.25)
-            }
-            return .timedOut
-        } catch {
-            // CoreWLAN does not provide a stable public error taxonomy for all
-            // authentication failures, so do not guess that this was a bad
-            // password. The UI presents an accurate generic failure instead.
-            return .failed
-        }
-    }
-
-    private func isAssociated(
-        interface: CWInterface,
-        with selected: WiFiNetwork,
-        targetBSSID: String
-    ) -> Bool {
-        if bssid(interface.bssid(), matches: targetBSSID) { return true }
-        guard interface.ssid() == selected.ssid else { return false }
-        return compatibleSecurity(
-            WiFiSecurityKind(coreWLANRawValue: interface.security().rawValue),
-            selected.security
-        )
-    }
-
-    private func compatibleSecurity(_ lhs: WiFiSecurityKind, _ rhs: WiFiSecurityKind) -> Bool {
-        guard lhs != .unknown, rhs != .unknown else { return false }
-        if lhs == rhs { return true }
-        let personalModes: Set<WiFiSecurityKind> = [
-            .wpaPersonal, .wpaPersonalMixed, .wpa2Personal, .personal,
-            .wpa3Personal, .wpa3Transition
-        ]
-        return personalModes.contains(lhs) && personalModes.contains(rhs)
     }
 
     private func securityKind(for network: CWNetwork) -> WiFiSecurityKind {
@@ -349,45 +260,12 @@ private final class CoreWLANNetworkWorker: @unchecked Sendable, WiFiNetworkScann
     }
 }
 
-private final class WiFiCredentialWorker: @unchecked Sendable {
-    private let queue = DispatchQueue(label: "StatusTrio.WiFiCredentialWorker")
-    private let store: any WiFiCredentialStoring
-
-    init(store: any WiFiCredentialStoring) {
-        self.store = store
-    }
-
-    func resolve(
-        _ identity: WiFiNetworkIdentity,
-        completion: @escaping @Sendable (WiFiCredentialResult) -> Void
-    ) {
-        queue.async { [self] in
-            completion(store.resolveCredential(for: identity))
-        }
-    }
-
-    func save(
-        _ password: String,
-        for identity: WiFiNetworkIdentity,
-        completion: @escaping @Sendable (Bool) -> Void
-    ) {
-        queue.async { [self] in
-            completion(store.save(password, for: identity))
-        }
-    }
-}
-
-
 @MainActor
 final class WiFiNetworkController: ObservableObject {
     @Published private(set) var networks: [WiFiNetwork] = []
     @Published private(set) var details = WiFiConnectionDetails.unavailable
     @Published private(set) var state: WiFiListState = .idle
-    @Published private(set) var passwordPromptNetwork: WiFiNetwork?
-    @Published private(set) var credentialIssue: WiFiCredentialIssue?
-
     private let worker: any WiFiNetworkScanning
-    private let credentialWorker: WiFiCredentialWorker
     private let now: () -> Date
     /// A full scan sweeps every channel, so the automatic path may not run one
     /// more often than this. Explicit user actions bypass it.
@@ -395,8 +273,6 @@ final class WiFiNetworkController: ObservableObject {
     private let periodicRefreshInterval: Duration
     private let periodicRefreshSleep: @Sendable (Duration) async throws -> Void
     private var scanGate = AsyncRequestGate()
-    private var connectionGate = AsyncRequestGate()
-    private var pendingNetwork: WiFiNetwork?
     private(set) var isActive = false
     /// When the last scan started, which is what the interval is measured from.
     private var lastScanStartedAt: Date?
@@ -404,7 +280,6 @@ final class WiFiNetworkController: ObservableObject {
     private var lastNameAccess: WiFiNameAccess = .notDetermined
 
     init(
-        credentialStore: any WiFiCredentialStoring = KeychainWiFiPasswordStore(),
         scanWorker: any WiFiNetworkScanning = CoreWLANNetworkWorker(),
         now: @escaping () -> Date = Date.init,
         minimumScanInterval: TimeInterval = 30,
@@ -413,7 +288,6 @@ final class WiFiNetworkController: ObservableObject {
             try await Task.sleep(for: $0)
         }
     ) {
-        credentialWorker = WiFiCredentialWorker(store: credentialStore)
         self.worker = scanWorker
         self.now = now
         self.minimumScanInterval = minimumScanInterval
@@ -435,19 +309,15 @@ final class WiFiNetworkController: ObservableObject {
         guard isActive else { return }
         isActive = false
         _ = scanGate.advance()
-        _ = connectionGate.advance()
         periodicRefreshTask?.cancel()
         periodicRefreshTask = nil
-        pendingNetwork = nil
-        passwordPromptNetwork = nil
-        credentialIssue = nil
         // A scan that is in flight now has a completion that the `isActive`
         // guard above will drop, so leaving the scan on `.scanning` would block
         // every later `refresh`/`refreshNow` through `startScan`'s
         // `!state.isScanning` guard. Clearing the floor timestamp as well makes
         // the next `activate` start a clean cadence instead of inheriting this
         // session's scan.
-        if state.isScanning || state.isConnectionFlow {
+        if state.isScanning {
             state = .idle
         }
         lastScanStartedAt = nil
@@ -455,16 +325,16 @@ final class WiFiNetworkController: ObservableObject {
 
     /// The automatic path: the periodic loop and every Wi-Fi status yield come
     /// through here. Inside the interval the cached list is kept, because the
-    /// list only changes when the radio or the association changes, and those
-    /// paths call `refreshNow(nameAccess:)`.
+    /// list only changes when the radio changes, and that path calls
+    /// `refreshNow(nameAccess:)`.
     func refresh(nameAccess: WiFiNameAccess? = nil) {
         if let nameAccess { lastNameAccess = nameAccess }
         guard hasScanElapsed else { return }
         startScan()
     }
 
-    /// The explicit path: the refresh button, the radio toggle and a completed
-    /// association. A user asked for this, so it scans even inside the interval.
+    /// The explicit path: the refresh button and the radio toggle. A user asked
+    /// for this, so it scans even inside the interval.
     func refreshNow(nameAccess: WiFiNameAccess? = nil) {
         if let nameAccess { lastNameAccess = nameAccess }
         startScan()
@@ -483,7 +353,7 @@ final class WiFiNetworkController: ObservableObject {
         state = .scanning
         worker.scan { [weak self] result in
             Task { @MainActor [weak self] in
-                guard let self, self.isActive, self.scanGate.accepts(request), !self.state.isConnectionFlow else { return }
+                guard let self, self.isActive, self.scanGate.accepts(request) else { return }
                 self.receiveScanResult(result)
             }
         }
@@ -492,10 +362,6 @@ final class WiFiNetworkController: ObservableObject {
         guard isActive else { return }
 
         _ = scanGate.advance()
-        _ = connectionGate.advance()
-        pendingNetwork = nil
-        passwordPromptNetwork = nil
-        credentialIssue = nil
         worker.setPower(enabled) { [weak self] changed in
             Task { @MainActor [weak self] in
                 guard let self, self.isActive else { return }
@@ -506,154 +372,6 @@ final class WiFiNetworkController: ObservableObject {
                     self.state = .failed
                 }
             }
-        }
-    }
-
-    func beginConnection(to network: WiFiNetwork) {
-        guard isActive, !state.isConnectionFlow else { return }
-
-        pendingNetwork = network
-        passwordPromptNetwork = nil
-        credentialIssue = nil
-
-        if network.security.isEnterprise {
-            state = .enterpriseNetwork
-            return
-        }
-
-        guard network.security.requiresPassword else {
-            startAssociation(to: network, password: nil, suppliedPassword: nil, rememberPassword: false)
-            return
-        }
-
-        let request = connectionGate.advance()
-        state = .resolvingCredentials
-        credentialWorker.resolve(network.identity) { [weak self] result in
-            Task { @MainActor [weak self] in
-                guard let self, self.isActive, self.connectionGate.accepts(request), self.pendingNetwork?.identity == network.identity else { return }
-                self.receiveCredentialResult(result, for: network)
-            }
-        }
-    }
-
-    func connect(to network: WiFiNetwork, password: String?, rememberPassword: Bool) {
-        guard isActive else { return }
-
-        if network.security.requiresPassword {
-            guard let password, !password.isEmpty else {
-                pendingNetwork = network
-                passwordPromptNetwork = network
-                state = .needsPassword
-                return
-            }
-        }
-
-        pendingNetwork = network
-        passwordPromptNetwork = nil
-        credentialIssue = nil
-        startAssociation(
-            to: network,
-            password: password,
-            suppliedPassword: password,
-            rememberPassword: rememberPassword
-        )
-    }
-
-    func cancelPasswordEntry() {
-        guard state.isConnectionFlow || passwordPromptNetwork != nil else { return }
-        _ = connectionGate.advance()
-        passwordPromptNetwork = nil
-        pendingNetwork = nil
-        credentialIssue = nil
-        state = .ready
-    }
-
-    func enterPasswordManually() {
-        guard let pendingNetwork else { return }
-        credentialIssue = nil
-        passwordPromptNetwork = pendingNetwork
-        state = .needsPassword
-    }
-
-    private func receiveCredentialResult(_ result: WiFiCredentialResult, for network: WiFiNetwork) {
-        switch result {
-        case let .credential(password, _):
-            startAssociation(to: network, password: password, suppliedPassword: nil, rememberPassword: false)
-        case .noCredential:
-            passwordPromptNetwork = network
-            state = .needsPassword
-        case let .issue(issue):
-            credentialIssue = issue
-            switch issue {
-            case .cancelled:
-                state = .credentialAccessCancelled
-            case .accessDenied:
-                state = .credentialAccessDenied
-            case .keychainLocked:
-                state = .credentialStoreLocked
-            case .readFailed, .saveFailed:
-                state = .credentialReadFailed
-            }
-        }
-    }
-
-    private func startAssociation(
-        to network: WiFiNetwork,
-        password: String?,
-        suppliedPassword: String?,
-        rememberPassword: Bool
-    ) {
-        let request = connectionGate.advance()
-        passwordPromptNetwork = nil
-        state = .connecting(network.identity)
-
-        worker.associate(to: network, password: password) { [weak self] result in
-            Task { @MainActor [weak self] in
-                guard let self, self.isActive, self.connectionGate.accepts(request) else { return }
-                self.receiveAssociationResult(
-                    result,
-                    for: network,
-                    suppliedPassword: suppliedPassword,
-                    rememberPassword: rememberPassword,
-                    request: request
-                )
-            }
-        }
-    }
-
-    private func receiveAssociationResult(
-        _ result: WiFiAssociationWorkerResult,
-        for network: WiFiNetwork,
-        suppliedPassword: String?,
-        rememberPassword: Bool,
-        request: UInt64
-    ) {
-        switch result {
-        case let .success(connectionDetails):
-            self.details = connectionDetails
-            state = .ready
-            pendingNetwork = nil
-            credentialIssue = nil
-            if rememberPassword, let suppliedPassword {
-                credentialWorker.save(suppliedPassword, for: network.identity) { [weak self] saved in
-                    Task { @MainActor [weak self] in
-                        guard let self, self.connectionGate.accepts(request) else { return }
-                        if !saved {
-                            self.credentialIssue = .saveFailed
-                        }
-                    }
-                }
-            }
-            refreshNow()
-        case .networkUnavailable:
-            pendingNetwork = network
-            state = .networkUnavailable
-        case .timedOut:
-            pendingNetwork = network
-            state = .connectionTimedOut
-        case .failed:
-            pendingNetwork = network
-            state = .connectionFailed
         }
     }
 

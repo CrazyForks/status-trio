@@ -18,7 +18,6 @@ final class WiFiNetworkScanCadenceTests: XCTestCase {
         }
     ) -> WiFiNetworkController {
         WiFiNetworkController(
-            credentialStore: InMemoryWiFiCredentialStore(),
             scanWorker: scanner,
             now: { clock.now },
             minimumScanInterval: minimumScanInterval,
@@ -137,23 +136,6 @@ final class WiFiNetworkScanCadenceTests: XCTestCase {
         controller.deactivate()
     }
 
-    /// The association finished, so the cached list is definitely out of date.
-    func testAssociationScansImmediatelyAfterConnecting() async {
-        let scanner = FakeWiFiNetworkScanner()
-        scanner.associates = true
-        let clock = ManualScanClock()
-        let controller = makeController(scanner: scanner, clock: clock)
-        controller.activate(nameAccess: .authorized)
-        await waitUntil { controller.state == .ready }
-
-        controller.connect(to: makeScanNetwork("Studio"), password: nil, rememberPassword: false)
-        await waitUntil { scanner.scanCount == 2 }
-
-        XCTAssertEqual(scanner.associateCount, 1)
-        XCTAssertEqual(clock.now.timeIntervalSinceReferenceDate, 0)
-        controller.deactivate()
-    }
-
     /// The 30-second periodic loop is a floor, not a second cadence: with the
     /// injected sleeper it must ask for a scan no more often than the interval.
     func testThePeriodicLoopHonoursTheInterval() async {
@@ -267,59 +249,6 @@ final class WiFiNetworkScanCadenceTests: XCTestCase {
         XCTAssertFalse(store.hasOpenPopoverPanel)
     }
 
-    /// The refresh button used to stay enabled for the whole connection flow even
-    /// though the controller ignored it. The button and the controller now share
-    /// `allowsRefresh`, so this pins the controller half of that contract: while an
-    /// association owns the controller, neither the automatic nor the explicit
-    /// refresh path may start a scan.
-    ///
-    /// It lives in this file because the injectable scan worker lives here.
-    func testRefreshIsIgnoredWhileAConnectionFlowIsInFlight() async {
-        let scanner = FakeWiFiNetworkScanner()
-        let controller = makeController(scanner: scanner)
-        controller.activate(nameAccess: .authorized)
-        await waitUntil { controller.state == .ready }
-
-        let network = makeScanNetwork("Studio")
-        controller.connect(to: network, password: nil, rememberPassword: false)
-
-        // `connect` enters the joining state synchronously; the fake worker hops
-        // its completion onto the main actor, so it has not landed yet.
-        XCTAssertEqual(controller.state, .connecting(network.identity))
-
-        let scansBeforeTheGate = scanner.scanCount
-        controller.refresh(nameAccess: .authorized)
-        controller.refreshNow(nameAccess: .authorized)
-        await Task.yield()
-
-        XCTAssertEqual(
-            scanner.scanCount,
-            scansBeforeTheGate,
-            "both refresh paths must be ignored while the connection flow is in flight"
-        )
-        XCTAssertEqual(scanner.associateCount, 1, "the gate must not block the association itself")
-
-        controller.deactivate()
-    }
-
-    /// The gate has to be a block, not a latch: a join that ends without connecting
-    /// must leave the list refreshable, or the user is stuck with a dead button.
-    func testRefreshWorksAgainAfterAJoiningAttemptSettles() async {
-        let scanner = FakeWiFiNetworkScanner()
-        let controller = makeController(scanner: scanner)
-        controller.activate(nameAccess: .authorized)
-        await waitUntil { controller.state == .ready }
-
-        controller.connect(to: makeScanNetwork("Studio"), password: nil, rememberPassword: false)
-        await waitUntil { controller.state == .networkUnavailable }
-
-        let scansAfterTheFlow = scanner.scanCount
-        controller.refreshNow(nameAccess: .authorized)
-        await waitUntil { scanner.scanCount == scansAfterTheFlow + 1 }
-
-        controller.deactivate()
-    }
-
     private func waitUntil(_ condition: () -> Bool) async {
         for _ in 0..<1_000 {
             if condition() { return }
@@ -329,8 +258,7 @@ final class WiFiNetworkScanCadenceTests: XCTestCase {
     }
 }
 
-/// The network fixtures carry an open security so `connect(to:password:)` goes
-/// straight to association instead of stopping at the password prompt.
+/// The scan fixture: an open network carrying a single candidate.
 private func makeScanNetwork(_ ssid: String, known: Bool = true) -> WiFiNetwork {
     WiFiNetwork(
         identity: WiFiNetworkIdentity(ssid: ssid, security: .open),
@@ -348,17 +276,13 @@ private final class FakeWiFiNetworkScanner: WiFiNetworkScanning, @unchecked Send
     private let lock = NSLock()
     private var pending: [@Sendable (WiFiScanWorkerResult) -> Void] = []
     private var count = 0
-    private var associations = 0
 
     var holdsCompletions = false
-    /// True when the worker should report the association as completed.
-    var associates = false
     var result: WiFiScanWorkerResult = .success(
         WiFiScanPayload(networks: [makeScanNetwork("Studio")], details: .unavailable)
     )
 
     var scanCount: Int { lock.withLock { count } }
-    var associateCount: Int { lock.withLock { associations } }
 
     func scan(completion: @escaping @Sendable (WiFiScanWorkerResult) -> Void) {
         let result = lock.withLock { () -> WiFiScanWorkerResult in
@@ -383,15 +307,6 @@ private final class FakeWiFiNetworkScanner: WiFiNetworkScanning, @unchecked Send
     func setPower(_ isOn: Bool, completion: @escaping @Sendable (Bool) -> Void) {
         completion(true)
     }
-
-    func associate(
-        to network: WiFiNetwork,
-        password: String?,
-        completion: @escaping @Sendable (WiFiAssociationWorkerResult) -> Void
-    ) {
-        lock.withLock { associations += 1 }
-        completion(associates ? .success(.unavailable) : .networkUnavailable)
-    }
 }
 
 private final class ManualScanClock {
@@ -399,18 +314,6 @@ private final class ManualScanClock {
 
     func advance(by interval: TimeInterval) {
         now = now.addingTimeInterval(interval)
-    }
-}
-
-/// The credential store is only reached for a password-protected network, and
-/// every security used by this file is open, so the answers are never read.
-private final class InMemoryWiFiCredentialStore: WiFiCredentialStoring, @unchecked Sendable {
-    func resolveCredential(for identity: WiFiNetworkIdentity) -> WiFiCredentialResult {
-        .noCredential
-    }
-
-    func save(_ password: String, for identity: WiFiNetworkIdentity) -> Bool {
-        false
     }
 }
 

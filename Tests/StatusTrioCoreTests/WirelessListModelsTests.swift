@@ -1,5 +1,4 @@
 import AppKit
-import Security
 import XCTest
 @testable import StatusTrioCore
 
@@ -79,8 +78,8 @@ final class WirelessListModelsTests: XCTestCase {
         XCTAssertEqual(grouped.other.map(\.ssid), ["Cafe"])
     }
 
-    func testKnownWiFiRowOpensSystemSettingsInsteadOfConnecting() {
-        let network = WiFiNetwork.merge(
+    func testEveryWiFiRowOpensSystemSettingsExceptTheConnectedOne() {
+        let known = WiFiNetwork.merge(
             [
                 WiFiNetworkCandidate(
                     ssid: "Home",
@@ -93,12 +92,7 @@ final class WirelessListModelsTests: XCTestCase {
             connectedBSSID: nil,
             knownSSIDs: ["Home"]
         )[0]
-
-        XCTAssertEqual(WiFiNetworkPresentation.action(for: network), .openSettings)
-    }
-
-    func testUnknownWiFiRowKeepsInAppConnection() {
-        let network = WiFiNetwork.merge(
+        let unknown = WiFiNetwork.merge(
             [
                 WiFiNetworkCandidate(
                     ssid: "Cafe",
@@ -110,8 +104,22 @@ final class WirelessListModelsTests: XCTestCase {
             ],
             connectedBSSID: nil
         )[0]
+        let connected = WiFiNetwork.merge(
+            [
+                WiFiNetworkCandidate(
+                    ssid: "Office",
+                    bssid: "01",
+                    rssi: -40,
+                    channel: 1,
+                    security: .wpa2Personal
+                )
+            ],
+            connectedBSSID: "01"
+        )[0]
 
-        XCTAssertEqual(WiFiNetworkPresentation.action(for: network), .connect)
+        XCTAssertEqual(WiFiNetworkPresentation.action(for: known), .openSettings)
+        XCTAssertEqual(WiFiNetworkPresentation.action(for: unknown), .openSettings)
+        XCTAssertEqual(WiFiNetworkPresentation.action(for: connected), .none)
     }
 
     func testDetailsToggleStatesTheActionItPerforms() {
@@ -150,12 +158,19 @@ final class WirelessListModelsTests: XCTestCase {
         XCTAssertTrue(gate.accepts(currentRequest))
     }
 
-    func testConnectionAndAvailabilityStatesRemainExplicit() {
-        let identity = WiFiNetworkIdentity(ssid: "Office", security: .wpa3Personal)
-
-        XCTAssertEqual(WiFiListState.connecting(identity), .connecting(identity))
-        XCTAssertNotEqual(WiFiListState.connectionFailed, .connectionTimedOut)
+    func testScanStatesRemainExplicit() {
+        XCTAssertNotEqual(WiFiListState.scanning, .ready)
+        XCTAssertNotEqual(WiFiListState.poweredOff, .noInterface)
+        XCTAssertNotEqual(WiFiListState.permissionDenied, .failed)
         XCTAssertNotEqual(BluetoothAvailability.poweredOff, .unavailable)
+    }
+
+    func testAllowsRefreshFollowsTheScanState() {
+        XCTAssertFalse(WiFiListState.scanning.allowsRefresh)
+        XCTAssertTrue(WiFiListState.idle.allowsRefresh)
+        XCTAssertTrue(WiFiListState.ready.allowsRefresh)
+        XCTAssertTrue(WiFiListState.poweredOff.allowsRefresh)
+        XCTAssertTrue(WiFiListState.permissionDenied.allowsRefresh)
     }
 
     func testSignalToNoiseRatioRejectsInvalidMeasurements() {
@@ -179,19 +194,6 @@ final class WirelessListModelsTests: XCTestCase {
 
         XCTAssertEqual(grouped.connected.map(\.name), ["Alpha", "Bravo"])
         XCTAssertEqual(grouped.disconnected.map(\.name), ["Zebra"])
-    }
-
-    func testWiFiCredentialFlowStatesRemainDistinct() {
-        XCTAssertTrue(WiFiListState.resolvingCredentials.isConnectionFlow)
-        XCTAssertTrue(WiFiListState.needsPassword.isConnectionFlow)
-        XCTAssertFalse(WiFiListState.credentialAccessCancelled.isConnectionFlow)
-        XCTAssertFalse(WiFiListState.credentialAccessDenied.isConnectionFlow)
-        XCTAssertFalse(WiFiListState.credentialStoreLocked.isConnectionFlow)
-        XCTAssertFalse(WiFiListState.credentialReadFailed.isConnectionFlow)
-        XCTAssertNotEqual(
-            WiFiCredentialResult.issue(.accessDenied),
-            WiFiCredentialResult.issue(.keychainLocked)
-        )
     }
 
     func testWiFiServiceResolverUsesWiFiServiceRatherThanEthernetOrVPNGlobals() {
@@ -218,23 +220,6 @@ final class WirelessListModelsTests: XCTestCase {
     ])
     XCTAssertNil(ambiguous.router)
     XCTAssertTrue(ambiguous.dnsServers.isEmpty)
-}
-
-func testKeychainPasswordStoreAddsReadsUpdatesAndCleansItsOwnItem() {
-    let service = "StatusTrioCoreTests.WiFiPassword.\(UUID().uuidString)"
-    let identity = WiFiNetworkIdentity(ssid: "Review Test Network", security: .wpa2Personal)
-    let cleanup: [String: Any] = [
-        kSecClass as String: kSecClassGenericPassword,
-        kSecAttrService as String: service,
-        kSecAttrAccount as String: "\(identity.security.rawValue):\(identity.ssid)"
-    ]
-    defer { SecItemDelete(cleanup as CFDictionary) }
-
-    let store = KeychainWiFiPasswordStore(appService: service)
-    XCTAssertTrue(store.save("first-password", for: identity))
-    XCTAssertEqual(store.resolveCredential(for: identity), .credential("first-password", .appKeychain))
-    XCTAssertTrue(store.save("second-password", for: identity))
-    XCTAssertEqual(store.resolveCredential(for: identity), .credential("second-password", .appKeychain))
 }
 
 func testBluetoothAvailabilityMappingKeepsAuthorizationAndAdapterStatesDistinct() {

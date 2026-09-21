@@ -140,6 +140,7 @@
 "wifi.action.requestNameAccess" = "Разрешить геолокацию для показа имени Wi‑Fi";
 "wifi.action.openLocationSettings" = "Разрешить геолокацию в Настройках";
 "wifi.action.openSettings" = "Открыть настройки Wi‑Fi";
+"wifi.action.switchingHint" = "Выбор сети открывает панель Wi-Fi в «Системных настройках».";
 "wifi.accessibility.withSSID" = "Wi‑Fi %@, %@";
 "ethernet.accessibility.connected" = "Ethernet подключён";
 "volume.title" = "Громкость · %d%%";
@@ -193,19 +194,9 @@
 "wifi.noInterface" = "Нет доступного интерфейса Wi-Fi.";
 "wifi.permissionDenied" = "Для чтения имён сетей Wi-Fi и результатов поиска нужен доступ к геолокации. Откройте настройки геолокации.";
 "wifi.scanFailed" = "Не удалось выполнить поиск сетей Wi-Fi.";
-"wifi.connecting" = "Подключение к %@…";
-"wifi.connectionFailed" = "Не удалось подключиться к этой сети. Проверьте пароль и повторите попытку.";
-"wifi.connectionTimedOut" = "Истекло время подключения к этой сети.";
-"wifi.networkUnavailable" = "Эта сеть больше недоступна.";
-"wifi.enterpriseUnsupported" = "Для корпоративного Wi-Fi используйте системные настройки Wi-Fi.";
 "wifi.connected" = "Подключено";
 "wifi.notConnected" = "Не подключено";
 "wifi.hiddenNetwork" = "Скрытая сеть";
-"wifi.joinNetwork" = "Подключение к сети Wi-Fi";
-"wifi.password" = "Пароль";
-"wifi.rememberPassword" = "Сохранить пароль в связке ключей";
-"wifi.passwordKeychainNote" = "Пароли хранятся только в связке ключей, а не в настройках приложения.";
-"wifi.join" = "Подключиться";
 "wifi.details.show" = "Показать сведения";
 "wifi.details.hide" = "Скрыть сведения";
 "wifi.details.more" = "Больше сведений";
@@ -243,14 +234,6 @@
 "bluetooth.connected" = "Подключено";
 "bluetooth.notConnected" = "Не подключено";
 "bluetooth.pairedDeviceLimit" = "Показаны сопряжённые устройства, о которых сообщает macOS. Некоторые устройства с поддержкой только BLE могут не отображаться.";
-
-"wifi.credentialsChecking" = "Проверка сохранённых учётных данных…";
-"wifi.credentialAccessCancelled" = "Доступ к сохранённым учётным данным отменён.";
-"wifi.credentialAccessDenied" = "В доступе к сохранённым учётным данным отказано.";
-"wifi.credentialStoreLocked" = "Связка ключей заблокирована или недоступна.";
-"wifi.credentialReadFailed" = "Не удалось прочитать сохранённые учётные данные.";
-"wifi.credentialEnterPassword" = "Введите пароль";
-"wifi.passwordSaveFailed" = "Подключено, но пароль не удалось сохранить.";
 
 "bluetooth.initializing" = "Инициализация Bluetooth…";
 "bluetooth.authorizationNotDetermined" = "Разрешение на использование Bluetooth ещё не запрошено.";

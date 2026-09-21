@@ -140,6 +140,7 @@
 "wifi.action.requestNameAccess" = "Permitir ubicación para mostrar el nombre de Wi-Fi";
 "wifi.action.openLocationSettings" = "Permitir ubicación en Ajustes";
 "wifi.action.openSettings" = "Abrir ajustes de Wi-Fi";
+"wifi.action.switchingHint" = "Elegir una red abre el panel de Wi-Fi de Ajustes del Sistema.";
 "wifi.accessibility.withSSID" = "Wi-Fi %@, %@";
 "ethernet.accessibility.connected" = "Ethernet conectado";
 "volume.title" = "Volumen · %d%%";
@@ -193,19 +194,9 @@
 "wifi.noInterface" = "No hay ninguna interfaz Wi-Fi disponible.";
 "wifi.permissionDenied" = "Se necesita acceso a la ubicación para leer los nombres de las redes Wi-Fi y los resultados de búsqueda. Abrir ajustes de ubicación.";
 "wifi.scanFailed" = "No se pudieron buscar redes Wi-Fi.";
-"wifi.connecting" = "Conectando a %@…";
-"wifi.connectionFailed" = "No se pudo conectar a esta red. Comprueba la contraseña e inténtalo de nuevo.";
-"wifi.connectionTimedOut" = "Se agotó el tiempo de espera al conectar con esta red.";
-"wifi.networkUnavailable" = "Esta red ya no está disponible.";
-"wifi.enterpriseUnsupported" = "El Wi-Fi empresarial requiere los ajustes de Wi-Fi del sistema.";
 "wifi.connected" = "Conectado";
 "wifi.notConnected" = "Sin conexión";
 "wifi.hiddenNetwork" = "Red oculta";
-"wifi.joinNetwork" = "Unirse a una red Wi-Fi";
-"wifi.password" = "Contraseña";
-"wifi.rememberPassword" = "Recordar la contraseña en el llavero";
-"wifi.passwordKeychainNote" = "Las contraseñas se guardan solo en tu llavero, nunca en los ajustes de la app.";
-"wifi.join" = "Unirse";
 "wifi.details.show" = "Mostrar detalles";
 "wifi.details.hide" = "Ocultar detalles";
 "wifi.details.more" = "Más detalles";
@@ -243,14 +234,6 @@
 "bluetooth.connected" = "Conectado";
 "bluetooth.notConnected" = "No conectado";
 "bluetooth.pairedDeviceLimit" = "Muestra los dispositivos emparejados que reporta macOS. Es posible que algunos dispositivos solo BLE no aparezcan en la lista.";
-
-"wifi.credentialsChecking" = "Comprobando credenciales guardadas…";
-"wifi.credentialAccessCancelled" = "Se canceló el acceso a las credenciales guardadas.";
-"wifi.credentialAccessDenied" = "Se denegó el acceso a las credenciales guardadas.";
-"wifi.credentialStoreLocked" = "El llavero está bloqueado o no disponible.";
-"wifi.credentialReadFailed" = "No se pudieron leer las credenciales guardadas.";
-"wifi.credentialEnterPassword" = "Introducir contraseña";
-"wifi.passwordSaveFailed" = "Conectado, pero no se pudo guardar la contraseña.";
 
 "bluetooth.initializing" = "Iniciando Bluetooth…";
 "bluetooth.authorizationNotDetermined" = "Aún no se ha decidido el permiso de Bluetooth.";

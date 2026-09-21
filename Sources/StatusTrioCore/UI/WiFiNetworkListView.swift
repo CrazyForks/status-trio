@@ -26,21 +26,6 @@ struct WiFiNetworkListView: View {
             )
             .disabled(controller.state == .noInterface)
 
-            // Connection feedback stays visible even when the network list scrolls.
-            if case .connecting(let network) = controller.state {
-                let message = WiFiNetworkPresentation.connectingMessage(for: network, localization: localization)
-                HStack(spacing: 8) {
-                    ProgressView()
-                        .controlSize(.small)
-                        .accessibilityLabel(message)
-                    Text(message)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .accessibilityHidden(true)
-                }
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            }
-
             ScrollView {
                 VStack(alignment: .leading, spacing: 10) {
                     knownNetworksSection(grouped.known)
@@ -53,6 +38,10 @@ struct WiFiNetworkListView: View {
             .frame(maxHeight: 330)
 
             Divider()
+            Text(localization.string(.wifiActionSwitchingHint))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
             Button(localization.string(.wifiActionOpenSettings), action: onOpenWiFiSettings)
                 .buttonStyle(.plain)
                 .accessibilityLabel(localization.string(.wifiActionOpenSettings))
@@ -60,14 +49,6 @@ struct WiFiNetworkListView: View {
         .onAppear {
             controller.activate(nameAccess: wifi.nameAccess)
             showsDetails = showsDetails || showsDetailsInitially
-        }
-        .sheet(item: Binding(
-            get: { controller.passwordPromptNetwork },
-            set: { if $0 == nil { controller.cancelPasswordEntry() } }
-        )) { network in
-            WiFiPasswordSheet(network: network) { password, remember in
-                controller.connect(to: network, password: password, rememberPassword: remember)
-            }
         }
     }
 
@@ -130,10 +111,6 @@ struct WiFiNetworkListView: View {
             }
             .font(.caption)
             .foregroundStyle(.secondary)
-        case .ready where controller.credentialIssue == .saveFailed:
-            Text(localization.string(.wifiPasswordSaveFailed))
-                .font(.caption)
-                .foregroundStyle(.orange)
         case .ready where !hasVisibleNetworks:
             Text(localization.string(.wifiNoNetworks))
                 .font(.caption)
@@ -155,39 +132,6 @@ struct WiFiNetworkListView: View {
             Text(localization.string(.wifiScanFailed))
                 .font(.caption)
                 .foregroundStyle(.secondary)
-        case .connectionFailed:
-            Text(localization.string(.wifiConnectionFailed))
-                .font(.caption)
-                .foregroundStyle(.red)
-        case .connectionTimedOut:
-            Text(localization.string(.wifiConnectionTimedOut))
-                .font(.caption)
-                .foregroundStyle(.red)
-        case .networkUnavailable:
-            Text(localization.string(.wifiNetworkUnavailable))
-                .font(.caption)
-                .foregroundStyle(.red)
-        case .enterpriseNetwork:
-            Button(localization.string(.wifiEnterpriseUnsupported), action: onOpenWiFiSettings)
-                .buttonStyle(.link)
-                .font(.caption)
-        case .resolvingCredentials:
-            HStack(spacing: 8) {
-                ProgressView().controlSize(.small)
-                Text(localization.string(.wifiCredentialsChecking))
-            }
-            .font(.caption)
-            .foregroundStyle(.secondary)
-        case .credentialAccessCancelled:
-            credentialAccessMessage(.wifiCredentialAccessCancelled)
-        case .credentialAccessDenied:
-            credentialAccessMessage(.wifiCredentialAccessDenied)
-        case .credentialStoreLocked:
-            credentialAccessMessage(.wifiCredentialStoreLocked)
-        case .credentialReadFailed:
-            credentialAccessMessage(.wifiCredentialReadFailed)
-        case .needsPassword, .connecting:
-            EmptyView()
         case .idle, .ready:
             if wifi.nameAccess == .notDetermined {
                 Button(localization.string(.wifiActionRequestNameAccess), action: onRequestNameAccess)
@@ -198,27 +142,9 @@ struct WiFiNetworkListView: View {
         }
     }
 
-    private func credentialAccessMessage(_ key: LocalizationKey) -> some View {
-        HStack(spacing: 8) {
-            Text(localization.string(key))
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Button(localization.string(.wifiCredentialEnterPassword)) {
-                controller.enterPasswordManually()
-            }
-            .buttonStyle(.link)
-            .font(.caption)
-        }
-    }
-
     private func networkRow(_ network: WiFiNetwork) -> some View {
         Button {
-            switch WiFiNetworkPresentation.action(for: network) {
-            case .none:
-                break
-            case .connect:
-                controller.beginConnection(to: network)
-            case .openSettings:
+            if WiFiNetworkPresentation.action(for: network) == .openSettings {
                 onOpenWiFiSettings()
             }
         } label: {
@@ -243,12 +169,7 @@ struct WiFiNetworkListView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .disabled(isConnectingAnotherNetwork && !network.isKnown)
         .accessibilityLabel(networkAccessibilityLabel(network))
-    }
-
-    private var isConnectingAnotherNetwork: Bool {
-        controller.state.isConnectionFlow
     }
 
     private func displaySSID(_ ssid: String) -> String {
@@ -274,49 +195,8 @@ struct WiFiNetworkListView: View {
         let connection = network.isConnected
             ? localization.string(.wifiConnected)
             : localization.string(.wifiNotConnected)
-        if network.isKnown, !network.isConnected {
-            return "\(name), \(connection), \(localization.string(.wifiActionOpenSettings))"
-        }
-        return "\(name), \(connection)"
-    }
-}
-
-private struct WiFiPasswordSheet: View {
-    @EnvironmentObject private var localization: Localization
-    let network: WiFiNetwork
-    let onConnect: (String?, Bool) -> Void
-    @Environment(\.dismiss) private var dismiss
-    @State private var password = ""
-    @State private var rememberPassword = false
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text(localization.string(.wifiJoinNetwork))
-                .font(.headline)
-            Text(network.ssid.isEmpty ? localization.string(.wifiHiddenNetwork) : network.ssid)
-                .lineLimit(1)
-            if network.security.isEnterprise {
-                Text(localization.string(.wifiEnterpriseUnsupported))
-                    .font(.caption)
-                Button(localization.string(.wifiActionOpenSettings), action: { dismiss() })
-            } else {
-                SecureField(localization.string(.wifiPassword), text: $password)
-                Toggle(localization.string(.wifiRememberPassword), isOn: $rememberPassword)
-                Text(localization.string(.wifiPasswordKeychainNote))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                HStack {
-                    Button(localization.string(.commonCancel), action: { dismiss() })
-                    Spacer()
-                    Button(localization.string(.wifiJoin)) {
-                        onConnect(password, rememberPassword)
-                    }
-                    .keyboardShortcut(.defaultAction)
-                }
-            }
-        }
-        .padding(20)
-        .frame(width: 320)
+        guard !network.isConnected else { return "\(name), \(connection)" }
+        return "\(name), \(connection), \(localization.string(.wifiActionOpenSettings))"
     }
 }
 

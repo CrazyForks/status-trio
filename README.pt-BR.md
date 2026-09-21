@@ -50,7 +50,7 @@
   <img src="screenshots/menu-bar-wifi.jpg" width="1000" alt="Ícone do Status Trio na barra de menus mostrando o glifo de Wi-Fi enquanto está conectado ao Wi-Fi, com o popover de status aberto">
 </p>
 
-O Status Trio é um app de status nativo do macOS que reúne Wi-Fi, bateria e volume em um único ícone compacto e configurável, exibido na barra de menus, no Dock ou em ambos. Seu popover vai além do ícone: um painel de Wi-Fi para conectar-se a redes e ler detalhes do link, um painel de Bluetooth para dispositivos pareados, uma página de Detalhes da bateria e os dispositivos de áudio que estão reproduzindo. Ele é inspirado no ícone combinado da barra de status do iPhone Duo para Wi-Fi, Bateria e Dados Celulares, adaptado para o Mac com Volume no lugar dos Dados Celulares.
+O Status Trio é um app de status nativo do macOS que reúne Wi-Fi, bateria e volume em um único ícone compacto e configurável, exibido na barra de menus, no Dock ou em ambos. Seu popover vai além do ícone: um painel de Wi-Fi para redes próximas e detalhes do link, um painel de Bluetooth para dispositivos pareados, uma página de Detalhes da bateria e os dispositivos de áudio que estão reproduzindo. Ele é inspirado no ícone combinado da barra de status do iPhone Duo para Wi-Fi, Bateria e Dados Celulares, adaptado para o Mac com Volume no lugar dos Dados Celulares.
 
 > O Status Trio é um projeto independente e não é afiliado à Apple.
 
@@ -59,7 +59,7 @@ O Status Trio é um app de status nativo do macOS que reúne Wi-Fi, bateria e vo
 - **Um ícone, três sinais** — bateria, Wi-Fi e volume compartilham um único ícone na barra de menus, no Dock ou em ambos, e um dispositivo Bluetooth que está reproduzindo pode ocupar o lugar central com seu próprio símbolo.
 - **Bluetooth** — o indicador de volume fica azul durante a reprodução. O painel lista os dispositivos conectados e pareados com a bateria dos AirPods, e permanece desativado até você ativá-lo.
 - **Bateria** — porcentagem, carregando ou conectado à energia, tempo para carga total e uma cor quando fica fraca. Abra a linha para ver potência do adaptador, tensão, corrente, contagem de ciclos e Modo de baixo consumo.
-- **Wi-Fi** — a rede em que você está e a intensidade do sinal. Abra para ver redes próximas, conectar-se a uma ou desativar o Wi-Fi.
+- **Wi-Fi** — a rede em que você está e a intensidade do sinal. Abra para ver redes próximas, conferir os detalhes do link ou desativar o Wi-Fi. A troca entre redes acontece no painel de Wi-Fi dos Ajustes do Sistema.
 - **Volume** — nível, mudo e o dispositivo de saída, desenhados como pontos ou arco. Role o painel inteiro ou apenas o controle e escolha qual direção aumenta o volume.
 - **Do seu jeito** — tamanho do ícone, escala do símbolo, espessura do anel, cores de status e quais seções o popover exibe, na ordem que você quiser.
 - **Barra de menus, Dock ou ambos** — e o ícone do Dock pode seguir o estilo do sistema ou permanecer escuro ou claro.
@@ -180,6 +180,13 @@ Não desative o Gatekeeper globalmente. As atualizações subsequentes do Sparkl
 - Reabra o guia **Conheça seu ícone** a qualquer momento em **Ajustes › Ícone do app › Abrir guia**.
 - Ative o nome da rede Wi-Fi atual quando solicitado; o macOS pede acesso à localização para esse detalhe opcional.
 
+## Limitações conhecidas
+
+Dois limites que o macOS e este projeto traçam de propósito. Ambos são explicados em [Limitações conhecidas](docs/known-limitations.md).
+
+- **A troca entre redes acontece nos Ajustes do Sistema.** Escolher uma rede no popover abre o painel de Wi-Fi; o Status Trio nunca lê nem armazena senhas de Wi-Fi, porque o macOS não oferece nenhuma API pública para conectar-se com uma senha salva, e todas as alternativas acabam com o app guardando essas senhas.
+- **“Carregar totalmente agora” permanece no macOS.** Quando o carregamento otimizado da bateria ou um limite de carga pausa o carregamento, o popover informa o estado de pausa e leva aos ajustes de bateria; nenhuma API pública permite que um app retome o carregamento além do limite, e o Status Trio não grava no SMC nem inclui um auxiliar privilegiado para fazer isso.
+
 ## Idiomas
 
 O Status Trio segue o idioma preferido do macOS por padrão e inclui English, 简体中文, 繁體中文, 日本語, 한국어, Español, Français, Deutsch, Italiano, Português (Brasil), Русский e العربية.
@@ -228,6 +235,7 @@ O bloqueio de instância única é definido pelo identificador de bundle, então
 
 ## Documentação
 
+- [Limitações conhecidas](docs/known-limitations.md)
 - [Versões automatizadas do GitHub Actions](docs/github-actions-release.md)
 - [Especificação de design do Status Trio](docs/superpowers/specs/2026-09-12-status-trio-design.md)
 - [SVG do ícone da barra de menus](status-menubar.svg)
