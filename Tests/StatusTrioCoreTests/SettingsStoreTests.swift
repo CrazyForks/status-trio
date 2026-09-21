@@ -124,7 +124,10 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertFalse(store.replacesNetworkIconWithBluetoothAudio)
         XCTAssertFalse(store.usesBluetoothAudioVolumeColor)
         XCTAssertTrue(store.prioritizesNetworkErrorsOverBluetoothAudio)
-        XCTAssertFalse(store.showsBluetoothBatteryLevels)
+        // Levels are a display-only read: a surface has to claim them, and the
+        // claim only exists while a Bluetooth surface is on screen, so the
+        // default is on.
+        XCTAssertTrue(store.showsBluetoothBatteryLevels)
         XCTAssertEqual(
             store.bluetoothSymbolScale,
             SettingsStore.defaultBluetoothSymbolScale,
@@ -186,7 +189,7 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertFalse(store.replacesNetworkIconWithBluetoothAudio)
         XCTAssertFalse(store.usesBluetoothAudioVolumeColor)
         XCTAssertTrue(store.prioritizesNetworkErrorsOverBluetoothAudio)
-        XCTAssertFalse(store.showsBluetoothBatteryLevels)
+        XCTAssertTrue(store.showsBluetoothBatteryLevels)
     }
 
     func testWiFiSymbolScaleDefaultsAndClamping() {

@@ -25,6 +25,21 @@ final class BluetoothSummaryLayoutTests: XCTestCase {
             BluetoothBatteryReader.normalizedAddress("AA"): BluetoothBatteryLevel(
                 deviceAddress: "AA", main: nil, left: 80, right: 75, caseLevel: 60)
         ]
+        // The longest state the row can draw now that every connected device
+        // reports the level the report carries for it: the line has to truncate
+        // rather than grow the two-line layout.
+        let mixedLevels: [String: BluetoothBatteryLevel] = [
+            BluetoothBatteryReader.normalizedAddress("AA"): BluetoothBatteryLevel(
+                deviceAddress: "AA", main: nil, left: 80, right: 75, caseLevel: 60),
+            BluetoothBatteryReader.normalizedAddress("BB"): BluetoothBatteryLevel(
+                deviceAddress: "BB", main: 45, left: nil, right: nil, caseLevel: nil),
+            BluetoothBatteryReader.normalizedAddress("CC"): BluetoothBatteryLevel(
+                deviceAddress: "CC", main: 90, left: nil, right: nil, caseLevel: nil)
+        ]
+        let levelsByState: [String: [String: BluetoothBatteryLevel]] = [
+            "airpods": airPodsLevels,
+            "mixed": mixedLevels
+        ]
 
         for state in states {
             for language in [AppLanguage.english, .simplifiedChinese] {
@@ -32,7 +47,7 @@ final class BluetoothSummaryLayoutTests: XCTestCase {
                     language: language,
                     authorization: state.authorization,
                     devices: state.devices,
-                    batteryLevels: state.name == "airpods" ? airPodsLevels : [:],
+                    batteryLevels: levelsByState[state.name] ?? [:],
                     named: "bluetooth-\(language.rawValue)-\(state.name)"
                 )
                 XCTAssertEqual(size.width, 330, accuracy: 0.5)
@@ -127,7 +142,7 @@ private final class SummaryBluetoothBatteryReader: BluetoothBatteryReading {
         self.result = result
     }
 
-    func read(completion: @escaping @Sendable ([String: BluetoothBatteryLevel]) -> Void) {
+    func read(completion: @escaping @Sendable ([String: BluetoothBatteryLevel]?) -> Void) {
         completion(result)
     }
 }

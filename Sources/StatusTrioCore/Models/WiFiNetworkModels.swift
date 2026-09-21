@@ -328,19 +328,17 @@ struct BluetoothDevice: Identifiable, Equatable, Sendable {
         self.airPodsModel = airPodsModel
     }
 
-    /// AirPods are identified by the product ID the Bluetooth registry reports
-    /// for the model, or by name for a device that carries no product ID. The
-    /// audio class alone would also match speakers and other headphones, so one
-    /// of the two signals has to name an AirPods. The product ID is what keeps
-    /// this working after a rename, when the name says nothing.
+    /// Whether this is an AirPods, which is what decides the order: AirPods lead
+    /// the row and the list whatever they are called.
+    ///
+    /// The battery claim no longer needs this — the row reports the level the
+    /// report carries for every connected device — but the order does: a renamed
+    /// AirPods would otherwise land wherever its name happens to collate, and the
+    /// system's collation differs per language. The product ID identifies the
+    /// model after a rename; the name covers a model the table does not carry yet.
     var isAirPods: Bool {
         guard kind == .audio else { return false }
         return airPodsModel != nil || name.lowercased().contains("airpods")
-    }
-
-    /// Whether the popover summary may report this device's battery level.
-    var isAirPodsSummaryCandidate: Bool {
-        isConnected && isAirPods
     }
 }
 
@@ -355,19 +353,19 @@ enum BluetoothSummary: Equatable, Sendable {
     case unavailable
     case readFailed
     case noConnectedDevices
-    /// The joined device names, and whether any of them is an AirPods whose
-    /// level the summary reports. Reading levels launches a `system_profiler`
-    /// subprocess, so callers gate it on that flag.
-    case devices(String, hasAirPods: Bool)
+    /// The joined device names. A connected device carries the level the report
+    /// holds for it, when it holds one.
+    case devices(String)
 
     var deviceNames: String? {
-        guard case .devices(let names, _) = self else { return nil }
+        guard case .devices(let names) = self else { return nil }
         return names
     }
 
-    var hasConnectedAirPods: Bool {
-        guard case .devices(_, let hasAirPods) = self else { return false }
-        return hasAirPods
+    /// Whether the row reports at least one connected device, which is what makes
+    /// reading levels worth a claim.
+    var hasConnectedDevices: Bool {
+        deviceNames != nil
     }
 
     static func presentation(
@@ -397,15 +395,17 @@ enum BluetoothSummary: Equatable, Sendable {
             guard !connected.isEmpty else { return .noConnectedDevices }
             let names = connected.map { entry(for: $0, batteryLevels: batteryLevels) }
                 .joined(separator: "、")
-            return .devices(names, hasAirPods: connected.contains { $0.isAirPodsSummaryCandidate })
+            return .devices(names)
         }
     }
 
+    /// One device's entry in the row: its name, plus the level the report carries
+    /// for it when there is one. A device macOS cannot read keeps its name alone,
+    /// so a row that mixes both kinds stays readable.
     private static func entry(
         for device: BluetoothDevice,
         batteryLevels: [String: BluetoothBatteryLevel]
     ) -> String {
-        guard device.isAirPodsSummaryCandidate else { return device.name }
         let address = BluetoothBatteryReader.normalizedAddress(device.id)
         guard let summary = batteryLevels[address]?.summary else { return device.name }
         // The middle dot marks the level as a property of this device, while
@@ -423,13 +423,38 @@ enum BluetoothPanelActivation {
 }
 
 enum BluetoothDevicePresentation {
+    /// Connected devices first, then the paired but disconnected ones; inside each
+    /// group AirPods lead and everything else follows in the system's name order.
+    ///
+    /// AirPods lead regardless of their name: they are the devices whose
+    /// multi-channel level the row headlines, and the order must not depend on how
+    /// a given language collates their name.
     static func grouped(_ devices: [BluetoothDevice]) -> (connected: [BluetoothDevice], disconnected: [BluetoothDevice]) {
-        let sorted = devices.sorted {
-            $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+        let sorted = devices.sorted { lhs, rhs in
+            if lhs.isAirPods != rhs.isAirPods {
+                return lhs.isAirPods
+            }
+            return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
         }
         return (
             sorted.filter(\.isConnected),
             sorted.filter { !$0.isConnected }
         )
+    }
+
+    /// The level text for one detail row, or nil when the report carries no
+    /// level for that device.
+    ///
+    /// A row without a level renders nothing at all: the page stays quiet for
+    /// the devices macOS cannot read instead of repeating a placeholder on
+    /// every line. A report that could not be read is a different state, and
+    /// `BluetoothDeviceController.batteryLevelsReadFailed` reports it once for
+    /// the whole list.
+    static func batteryLevelText(
+        for device: BluetoothDevice,
+        batteryLevels: [String: BluetoothBatteryLevel]
+    ) -> String? {
+        let address = BluetoothBatteryReader.normalizedAddress(device.id)
+        return batteryLevels[address]?.summary
     }
 }

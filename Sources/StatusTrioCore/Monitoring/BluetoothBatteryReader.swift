@@ -26,7 +26,9 @@ struct BluetoothBatteryLevel: Equatable, Sendable {
 }
 
 protocol BluetoothBatteryReading: AnyObject {
-    func read(completion: @escaping @Sendable ([String: BluetoothBatteryLevel]) -> Void)
+    /// `nil` means the report could not be read; an empty dictionary means it
+    /// was read and carries no level for any device.
+    func read(completion: @escaping @Sendable ([String: BluetoothBatteryLevel]?) -> Void)
 }
 
 enum BluetoothBatteryReader {
@@ -110,7 +112,7 @@ final class SystemProfilerBluetoothBatteryWorker: @unchecked Sendable, Bluetooth
         self.reportCache = reportCache
     }
 
-    func read(completion: @escaping @Sendable ([String: BluetoothBatteryLevel]) -> Void) {
+    func read(completion: @escaping @Sendable ([String: BluetoothBatteryLevel]?) -> Void) {
         queue.async {
             let data: Data?
             if let cached = self.reportCache.freshData() {
@@ -128,7 +130,8 @@ final class SystemProfilerBluetoothBatteryWorker: @unchecked Sendable, Bluetooth
                 }
             }
             guard let data else {
-                completion([:])
+                // A report that could not be read is not an empty report.
+                completion(nil)
                 return
             }
             completion(BluetoothBatteryReader.parse(json: data))

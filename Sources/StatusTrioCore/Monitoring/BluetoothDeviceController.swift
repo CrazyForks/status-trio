@@ -278,6 +278,11 @@ final class BluetoothDeviceController: ObservableObject {
     @Published private(set) var devices: [BluetoothDevice] = []
     @Published private(set) var availability: BluetoothAvailability = .idle
     @Published private(set) var batteryLevels: [String: BluetoothBatteryLevel] = [:]
+    /// Whether the last level read failed outright.
+    ///
+    /// `batteryLevels` cannot say it: an empty dictionary is also what a report
+    /// without any readable level looks like.
+    @Published private(set) var batteryLevelsReadFailed = false
 
     private let worker: any BluetoothPairedDeviceReading
     /// The state monitor is teardown-owned storage: `deinit` is nonisolated, so
@@ -664,13 +669,18 @@ final class BluetoothDeviceController: ObservableObject {
                       self.batteryRequestGate.accepts(request) else {
                     return
                 }
-                self.batteryLevels = levels
+                // `nil` is a report that could not be read, which is a different
+                // state from a report that carries no level for any device: the
+                // detail page reports it once instead of staying silent.
+                self.batteryLevelsReadFailed = levels == nil
+                self.batteryLevels = levels ?? [:]
             }
         }
     }
 
     private func clearBatteryLevels() {
         _ = batteryRequestGate.advance()
+        batteryLevelsReadFailed = false
         batteryLevels = [:]
     }
 

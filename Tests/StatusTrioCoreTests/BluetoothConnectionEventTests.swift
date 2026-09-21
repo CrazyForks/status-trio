@@ -174,7 +174,7 @@ private final class CountingBluetoothDeviceReader: BluetoothPairedDeviceReading,
 }
 
 private final class ConnectionEventBatteryReader: BluetoothBatteryReading {
-    func read(completion: @escaping @Sendable ([String: BluetoothBatteryLevel]) -> Void) {
+    func read(completion: @escaping @Sendable ([String: BluetoothBatteryLevel]?) -> Void) {
         completion([:])
     }
 }

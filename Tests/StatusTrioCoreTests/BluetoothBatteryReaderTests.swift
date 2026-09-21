@@ -127,7 +127,7 @@ struct BluetoothBatteryReaderTests {
 
         let levels = BatteryLevelResultBox()
         batteryWorker.read { levels.set($0) }
-        await waitUntil { levels.value != nil }
+        await waitUntil { levels.hasAnswered }
 
         #expect(spawnCount.value == 0, "the battery read spawned a second profiler")
         #expect(levels.value?[BluetoothBatteryReader.normalizedAddress("AC:90:85:C2:9C:1F")]?.main == 95)
@@ -154,7 +154,7 @@ struct BluetoothBatteryReaderTests {
 
         let levels = BatteryLevelResultBox()
         batteryWorker.read { levels.set($0) }
-        await waitUntil { levels.value != nil }
+        await waitUntil { levels.hasAnswered }
 
         #expect(spawnCount.value == 1)
         #expect(levels.value?[BluetoothBatteryReader.normalizedAddress("AC:90:85:C2:9C:1F")]?.main == 95)
@@ -222,7 +222,7 @@ struct BluetoothBatteryReaderTests {
 
         let levels = BatteryLevelResultBox()
         batteryWorker.read { levels.set($0) }
-        await waitUntil { levels.value != nil }
+        await waitUntil { levels.hasAnswered }
 
         guard case let .success(sharedDevices) = devices.value else {
             Issue.record("expected a successful shared read, got \(String(describing: devices.value))")
@@ -232,12 +232,11 @@ struct BluetoothBatteryReaderTests {
         #expect(sharedDevices == expectedDevices)
         #expect(levels.value == expectedLevels)
 
-        // The two signals the AirPods fixes depend on: the product ID that names
+        // The signals the AirPods icon fix depends on: the product ID that names
         // the model, and the level that follows it.
         let address = BluetoothBatteryReader.normalizedAddress("AC:90:85:C2:9C:1F")
         let airPods = sharedDevices.first { $0.id == "AC:90:85:C2:9C:1F" }
         #expect(airPods?.airPodsModel == .airPods)
-        #expect(airPods?.isAirPods == true)
         #expect(levels.value?[address]?.main == 95)
         #expect(levels.value?[address]?.left == 85)
         #expect(levels.value?[address]?.caseLevel == 70)
@@ -270,7 +269,7 @@ struct BluetoothBatteryReaderTests {
 
         let levels = BatteryLevelResultBox()
         batteryWorker.read { levels.set($0) }
-        await waitUntil { levels.value != nil }
+        await waitUntil { levels.hasAnswered }
 
         #expect(spawnCount.value == 0, "the read should reuse the fresh report")
         #expect(levels.value?[BluetoothBatteryReader.normalizedAddress("AC:90:85:C2:9C:1F")]?.main == 95)
@@ -307,7 +306,7 @@ struct BluetoothBatteryReaderTests {
         // stay servable past their production time.
         let olderRead = BatteryLevelResultBox()
         batteryWorker.read { olderRead.set($0) }
-        await waitUntil { olderRead.value != nil }
+        await waitUntil { olderRead.hasAnswered }
         #expect(spawnCount.value == 0)
         #expect(
             reportCache.freshData(now: producedAt.addingTimeInterval(maxAge + 1)) == nil,
@@ -319,11 +318,26 @@ struct BluetoothBatteryReaderTests {
         reportCache.store(newer)
         let newerRead = BatteryLevelResultBox()
         batteryWorker.read { newerRead.set($0) }
-        await waitUntil { newerRead.value != nil }
+        await waitUntil { newerRead.hasAnswered }
 
         #expect(spawnCount.value == 0)
         #expect(newerRead.value == BluetoothBatteryReader.parse(json: newer))
         #expect(reportCache.freshData() == newer)
+    }
+
+    /// A spawn that fails is not an empty report: the read answers with nothing
+    /// so the page can tell "could not read" from "no device has a level".
+    @Test func failedSpawnAnswersWithNothing() async {
+        let batteryWorker = SystemProfilerBluetoothBatteryWorker(
+            outputProvider: { nil },
+            reportCache: BluetoothProfilerReportCache()
+        )
+
+        let levels = BatteryLevelResultBox()
+        batteryWorker.read { levels.set($0) }
+        await waitUntil { levels.hasAnswered }
+
+        #expect(levels.value == nil)
     }
 
     /// The readers answer on their own serial queues.
@@ -357,7 +371,17 @@ private final class DeviceResultBox: @unchecked Sendable {
 private final class BatteryLevelResultBox: @unchecked Sendable {
     private let lock = NSLock()
     private var stored: [String: BluetoothBatteryLevel]?
+    private var hasResult = false
 
     var value: [String: BluetoothBatteryLevel]? { lock.withLock { stored } }
-    func set(_ levels: [String: BluetoothBatteryLevel]) { lock.withLock { stored = levels } }
+    /// A read that answered with no levels still answered, so waiting on
+    /// `value != nil` would never finish for a failed report.
+    var hasAnswered: Bool { lock.withLock { hasResult } }
+
+    func set(_ levels: [String: BluetoothBatteryLevel]?) {
+        lock.withLock {
+            stored = levels
+            hasResult = true
+        }
+    }
 }
