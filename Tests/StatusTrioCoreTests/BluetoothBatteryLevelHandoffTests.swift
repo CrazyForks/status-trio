@@ -181,7 +181,7 @@ private final class HandoffStateMonitor: BluetoothStateMonitoring {
 private final class HandoffBatteryReader: BluetoothBatteryReading {
     private(set) var readCount = 0
 
-    func read(completion: @escaping @Sendable ([String: BluetoothBatteryLevel]) -> Void) {
+    func read(completion: @escaping @Sendable ([String: BluetoothBatteryLevel]?) -> Void) {
         readCount += 1
         completion([
             BluetoothBatteryReader.normalizedAddress("AC:90:85:C2:9C:1F"): BluetoothBatteryLevel(

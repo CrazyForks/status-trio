@@ -165,6 +165,13 @@ struct BluetoothDeviceListView: View {
                         }
                     }
                     message
+                    if controller.batteryLevelsReadFailed {
+                        // One line for the whole list: a report that could not be
+                        // read is not the same as "no device has a level".
+                        Text(localization.string(.bluetoothBatteryUnavailable))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                     Text(localization.string(.bluetoothPairedDeviceLimit))
                         .font(.caption2)
                         .foregroundStyle(.secondary)
@@ -217,8 +224,11 @@ struct BluetoothDeviceListView: View {
                         .lineLimit(1)
                         .truncationMode(.tail)
                     Spacer()
-                    if showsBatteryLevels {
-                        Text(batterySummary(for: device))
+                    if let level = BluetoothDevicePresentation.batteryLevelText(
+                        for: device,
+                        batteryLevels: controller.batteryLevels
+                    ) {
+                        Text(level)
                             .font(.caption.monospacedDigit())
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
@@ -278,12 +288,6 @@ struct BluetoothDeviceListView: View {
         case .available:
             EmptyView()
         }
-    }
-
-    private func batterySummary(for device: BluetoothDevice) -> String {
-        let address = BluetoothBatteryReader.normalizedAddress(device.id)
-        return controller.batteryLevels[address]?.summary
-            ?? localization.string(.bluetoothBatteryUnavailable)
     }
 }
 

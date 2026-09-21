@@ -135,6 +135,69 @@ struct BluetoothBatteryControllerTests {
         #expect(batteryReader.readCount == 1)
     }
 
+    /// A report that could not be read is not the same as "no device has a
+    /// level": the page has to say so once, and the controller must not publish
+    /// levels it never read.
+    @Test func aFailedReportIsReportedAndPublishesNoLevels() async {
+        let batteryReader = BluetoothBatteryReaderStub(result: nil)
+        let controller = makeController(batteryReader: batteryReader)
+
+        controller.requestBatteryLevels("test")
+        controller.activate()
+        await waitUntil { controller.batteryLevelsReadFailed }
+
+        #expect(controller.batteryLevels.isEmpty)
+        #expect(controller.batteryLevelsReadFailed)
+    }
+
+    /// An empty report is a successful read, so it clears the failure rather
+    /// than standing in for one.
+    @Test func aLaterEmptyReportClearsTheFailure() async {
+        let batteryReader = BluetoothBatteryReaderStub(result: nil)
+        let controller = makeController(batteryReader: batteryReader)
+
+        controller.requestBatteryLevels("test")
+        controller.activate()
+        await waitUntil { controller.batteryLevelsReadFailed }
+
+        batteryReader.result = [:]
+        controller.requestBatteryLevels("test")
+        await waitUntil { batteryReader.readCount == 2 && !controller.batteryLevelsReadFailed }
+
+        #expect(controller.batteryLevels.isEmpty)
+        #expect(controller.batteryLevelsReadFailed == false)
+    }
+
+    /// Releasing the last claim drops the failure together with the levels it
+    /// belonged to.
+    @Test func releasingTheClaimClearsTheFailure() async {
+        let batteryReader = BluetoothBatteryReaderStub(result: nil)
+        let controller = makeController(batteryReader: batteryReader)
+
+        controller.requestBatteryLevels("test")
+        controller.activate()
+        await waitUntil { controller.batteryLevelsReadFailed }
+
+        controller.releaseBatteryLevels("test")
+
+        #expect(controller.batteryLevelsReadFailed == false)
+    }
+
+    /// Only the reader's answer differs between these cases.
+    private func makeController(
+        batteryReader: BluetoothBatteryReaderStub
+    ) -> BluetoothDeviceController {
+        BluetoothDeviceController(
+            worker: BluetoothPairedDeviceReaderStub(result: .success([
+                BluetoothDevice(id: "AC:90:85:C2:9C:1F", name: "AirPods Pro", kind: .audio, isConnected: true)
+            ])),
+            stateMonitor: BluetoothBatteryStateMonitorStub(),
+            batteryReader: batteryReader,
+            notificationCenter: NotificationCenter(),
+            workspaceNotificationCenter: NotificationCenter()
+        )
+    }
+
     private func waitUntil(_ condition: () -> Bool) async {
         for _ in 0..<1_000 {
             if condition() { return }
@@ -159,14 +222,14 @@ private final class BluetoothPairedDeviceReaderStub: BluetoothPairedDeviceReadin
 }
 
 private final class BluetoothBatteryReaderStub: BluetoothBatteryReading {
-    let result: [String: BluetoothBatteryLevel]
+    var result: [String: BluetoothBatteryLevel]?
     private(set) var readCount = 0
 
-    init(result: [String: BluetoothBatteryLevel]) {
+    init(result: [String: BluetoothBatteryLevel]?) {
         self.result = result
     }
 
-    func read(completion: @escaping @Sendable ([String: BluetoothBatteryLevel]) -> Void) {
+    func read(completion: @escaping @Sendable ([String: BluetoothBatteryLevel]?) -> Void) {
         readCount += 1
         completion(result)
     }
@@ -174,9 +237,9 @@ private final class BluetoothBatteryReaderStub: BluetoothBatteryReading {
 
 private final class BlockingBluetoothBatteryReader: BluetoothBatteryReading {
     private(set) var readCount = 0
-    private var completion: (@Sendable ([String: BluetoothBatteryLevel]) -> Void)?
+    private var completion: (@Sendable ([String: BluetoothBatteryLevel]?) -> Void)?
 
-    func read(completion: @escaping @Sendable ([String: BluetoothBatteryLevel]) -> Void) {
+    func read(completion: @escaping @Sendable ([String: BluetoothBatteryLevel]?) -> Void) {
         readCount += 1
         self.completion = completion
     }

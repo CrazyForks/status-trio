@@ -923,7 +923,7 @@ private final class AvailableBluetoothStateMonitor: BluetoothStateMonitoring {
 }
 
 private final class SilentBluetoothBatteryReader: BluetoothBatteryReading {
-    func read(completion: @escaping @Sendable ([String: BluetoothBatteryLevel]) -> Void) {
+    func read(completion: @escaping @Sendable ([String: BluetoothBatteryLevel]?) -> Void) {
         completion([:])
     }
 }

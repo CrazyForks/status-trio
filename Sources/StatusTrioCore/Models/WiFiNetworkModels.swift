@@ -432,4 +432,20 @@ enum BluetoothDevicePresentation {
             sorted.filter { !$0.isConnected }
         )
     }
+
+    /// The level text for one detail row, or nil when the report carries no
+    /// level for that device.
+    ///
+    /// A row without a level renders nothing at all: the page stays quiet for
+    /// the devices macOS cannot read instead of repeating a placeholder on
+    /// every line. A report that could not be read is a different state, and
+    /// `BluetoothDeviceController.batteryLevelsReadFailed` reports it once for
+    /// the whole list.
+    static func batteryLevelText(
+        for device: BluetoothDevice,
+        batteryLevels: [String: BluetoothBatteryLevel]
+    ) -> String? {
+        let address = BluetoothBatteryReader.normalizedAddress(device.id)
+        return batteryLevels[address]?.summary
+    }
 }

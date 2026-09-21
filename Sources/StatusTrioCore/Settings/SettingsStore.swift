@@ -556,7 +556,7 @@ final class SettingsStore: ObservableObject {
         ) as? Bool ?? true
         self.showsBluetoothBatteryLevels = defaults.object(
             forKey: Self.showsBluetoothBatteryLevelsDefaultsKey
-        ) as? Bool ?? false
+        ) as? Bool ?? true
         self.bluetoothSymbolScale = Self.clampedBluetoothSymbolScale(
             storedBluetoothSymbolScale ?? Self.defaultBluetoothSymbolScale
         )

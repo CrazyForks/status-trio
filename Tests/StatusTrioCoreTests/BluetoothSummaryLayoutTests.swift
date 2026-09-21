@@ -127,7 +127,7 @@ private final class SummaryBluetoothBatteryReader: BluetoothBatteryReading {
         self.result = result
     }
 
-    func read(completion: @escaping @Sendable ([String: BluetoothBatteryLevel]) -> Void) {
+    func read(completion: @escaping @Sendable ([String: BluetoothBatteryLevel]?) -> Void) {
         completion(result)
     }
 }

@@ -58,10 +58,30 @@ after the detail page had asked for it, so every device row showed "Unavailable"
 while the summary still showed the level it had just read. A claim count makes
 the outcome the same in either order; the read runs while any claim is held and
 stops when the last is released. The summary claims only while the setting is on
-and a connected AirPods is present — the identification is the gate, not the
-presence of a readable level, so a just-connected AirPods still triggers the
-first read. The detail page claims from the setting alone. Closing the popover
-drops every claim.
+(on by default) and a connected AirPods is present — the identification is the
+gate, not the presence of a readable level, so a just-connected AirPods still
+triggers the first read. The detail page claims from the setting alone. Closing
+the popover drops every claim.
+
+## Detail page levels
+
+The detail page lists every paired device, so it is also where a non-AirPods
+level appears. A row shows a level only when the report carries one for that
+device (`BluetoothDevicePresentation.batteryLevelText(for:batteryLevels:)`); a
+device macOS cannot read stays silent instead of repeating a placeholder on
+every line, which is what made the page look broken on a Mac without AirPods.
+
+A report that could not be read is a different state from a report without
+levels, so `BluetoothBatteryReading.read(completion:)` answers with an optional
+dictionary: `nil` is a failed read, `[:]` is a successful read that carries
+nothing. The controller publishes the difference as `batteryLevelsReadFailed`,
+the page shows it as one line under the list, and it clears wherever the levels
+are cleared: the last claim released, an availability change, or `deactivate()`.
+
+`SettingsStore.showsBluetoothBatteryLevels` defaults to on. It only decides who
+claims the read: with no claim — no Bluetooth surface on screen — nothing is
+read, and the summary row still claims only for connected AirPods, so the
+default costs nothing on a Mac that never shows a Bluetooth surface.
 
 ## Activation and permission
 
