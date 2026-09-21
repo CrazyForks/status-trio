@@ -457,3 +457,17 @@ Wi-Fi 页面原本在打开期间**每约 5 秒**做一次全信道 `scanForNetw
 > **⏳ 仍未完成：改动前后的扫描次数实测**（计划 Task 5 Step 5）。与上面两项一样不影响合并，但**必须在发布 1.3.0 之前**由维护者用 dev bundle 采集（`pgrep -x networksetup` 采样：间隔内应为 0 次，页面打开时约每 30 秒一次，返回摘要后应为 0 次），或在合并记录中明确豁免。
 
 > **记录在案的残留项（已裁定，不在本计划内修）**：无网卡恢复的 3 次上限**无法区分**"这台机器没有 Wi-Fi 硬件"与"有硬件但接口读卡在 nil"。后者在旧代码里会在 30–60 秒内自愈，现在 3 次重建后要等到睡眠/唤醒或连接失效才恢复，期间菜单栏与 Wi-Fi 页显示 `.unavailable`。计划有意收紧这项工作，发布说明也写明"尝试有限次数后等待唤醒或网络变化"；若要恢复慢速自愈，需要一个更慢的（例如每几分钟一次）上限后兜底，属后续改动的设计决定。
+
+### 编译警告清理的预检（2026-09-21）
+
+本计划清掉 7 处告警中的 5 处：把 `AudioOutputDeviceIcon.swift` 里废弃的 `String(cString:)` 换成 `String(decoding:as:)` 并把 `hw.model` 解析抽成纯函数以便测试；把三处测试文件里的 4 个 `weak variable … was never mutated` 改为通过新的 `Tests/StatusTrioCoreTests/DeinitProbe.swift` 以 `weak var` 存储属性观察释放——**没有**采用编译器建议的 `weak let`（`AGENTS.md` 禁止，且 CI run `34753843803` 记录旧工具链不接受该写法）。规则与决策已写入上表与 §3，并在 `AGENTS.md` 第 45 行加了指向 `DeinitProbe` 的括号说明（规则本身未放松）。
+
+分支 `fix/class-a-icons`（计划 `docs/superpowers/plans/2026-09-20-compiler-warning-cleanup.md`）的非发布预检
+[`35565582217`](https://github.com/lingyired/status-trio/actions/runs/35565582217)（`version=1.3.0`、**`build=21`**、`publish=false`）：
+`Validate appcast notes`、`Run tests`、`Build, sign, notarize, and publish`、`Upload release artifacts` 全部成功，
+**683 个 XCTest（6 跳过，0 失败）** 与 **170 个 Swift Testing / 27 个 suite** 全绿，未发布 Release、未改动 appcast。
+终审修复 wave 之后只改了注释、测试名、一个泛型参数（`Unicode.ASCII` → `Unicode.UTF8`，用来恢复旧 `String(cString:)` 的解码契约）与计划文本，没有触及 actor isolation / `@MainActor` / `deinit` 形状，因此按既定规则**没有再跑一次预检**。
+
+> **本计划结束时构建仍**有 2 处告警，都是 `WiFiPasswordStore.swift:108`、`:131` 的 `kSecUseAuthenticationUI*` 废弃提示，属于 **R-12（Keychain 加固，class B，尚未开始）**。上表已在"本轮，非失败记录"一行记录该决策与证据门槛：要推翻 `weak let` 规则，必须提供 CI 工具链（`macos-26` / Xcode 26.6 / Swift 6.3.3）接受该写法的运行记录。
+
+> **终审发现的测试诚实性问题也已修正**：新增的"shrinking buffer"测试曾以系统调用重采样路径命名并声称其在缩容时返回 `""`，但它只调用纯解析函数，而实测缩容时得到的是缩短后的型号（`Mac15,9`）而非空串——即套件曾声称覆盖一个它并不覆盖的可见回退。现已改名为 `modelIdentifierParserHandlesEmptyAndUnterminatedBuffers`，删掉错误注释，并在计划的风险行里明确写出 **sysctl 失败路径未被测覆盖**。
