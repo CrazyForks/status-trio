@@ -26,6 +26,7 @@
 | `35447273818` | `Run tests` | 同一根因的诊断复现（临时 dump 视图树以取得 macOS 26 上的实测尺寸与类名） | 同上 |
 | `35447521372` | `Run tests` | `AppIconControllerTests.visibleDockRendersStatusChanges`（Swift Testing）偶发失败：`renderCount → 0`，期望 `1`。上一版修复在探针里调用了进程级的 `NSApplication.shared.setActivationPolicy(.accessory)`，改变了其他测试判断 Dock 是否可见的前提 | 从 `interactiveSubViewSizes` 移除该调用，只保留窗口，并在 `defer` 里 `orderOut` 加清空 `contentView`；后续预检 `35448004467` 通过 |
 | （本轮，非失败记录） | `swift build --build-tests` | 本机 Xcode 27 / Swift 6.4 对四处测试里的 `weak var weakMonitor` 报 `weak variable ... was never mutated; consider changing to 'let' constant`。编译器的建议是 `weak let`，但 `AGENTS.md` 明令禁止该写法，且没有证据表明 CI 的 Swift 6.3.3 接受它 | 不采用 `weak let`。把这四处改成 `Tests/StatusTrioCoreTests/DeinitProbe.swift` 里的 `DeinitProbe.track(_:)`，弱引用以 `weak var` 存储属性保存（写法仍满足规则），断言内容与顺序不变 |
+| `35614298374` | `Run tests` | 新增的 `BluetoothSummaryTests.testDevicesWithoutALevelKeepTheirNameOnly` 断言了 `机灵的耳机` 与 `MX Keys` 拼接后的先后。摘要行按系统 collation 排序，而 ICU collation 与语言有关：CI runner（英文）把 `MX Keys` 排在前，开发机（中文）把中文名排在前。本地 `swift test` 与 `swift build -c release` 全绿，所以失效的是断言（对混合脚本排序的假设），不是产品缺陷 | 把排序规则改成「AirPods 无条件最前、其余按名称」（`BluetoothDevicePresentation.grouped`），断言不再依赖 collation；后续预检 `35615262052`（`build=24`）全绿 |
 
 > **本轮结束时构建不是零警告：** 上面的修复只清掉了 `weak var` 那 4 条 `WeakMutability` 和 Task 1 的 1 条 `String(cString:)`，共 5 条；剩下 **2 条**警告是 `WiFiPasswordStore.swift` 的 `kSecUseAuthenticationUIFail` / `kSecUseAuthenticationUIAllow` 弃用，属于 R-12（Keychain 加固）计划，class B，尚未开始。不要把本轮记录读成「构建已经干净」。
 
@@ -471,3 +472,19 @@ Wi-Fi 页面原本在打开期间**每约 5 秒**做一次全信道 `scanForNetw
 > **本计划结束时构建仍**有 2 处告警，都是 `WiFiPasswordStore.swift:108`、`:131` 的 `kSecUseAuthenticationUI*` 废弃提示，属于 **R-12（Keychain 加固，class B，尚未开始）**。上表已在"本轮，非失败记录"一行记录该决策与证据门槛：要推翻 `weak let` 规则，必须提供 CI 工具链（`macos-26` / Xcode 26.6 / Swift 6.3.3）接受该写法的运行记录。
 
 > **终审发现的测试诚实性问题也已修正**：新增的"shrinking buffer"测试曾以系统调用重采样路径命名并声称其在缩容时返回 `""`，但它只调用纯解析函数，而实测缩容时得到的是缩短后的型号（`Mac15,9`）而非空串——即套件曾声称覆盖一个它并不覆盖的可见回退。现已改名为 `modelIdentifierParserHandlesEmptyAndUnterminatedBuffers`，删掉错误注释，并在计划的风险行里明确写出 **sysctl 失败路径未被测覆盖**。
+
+## 35614298374：排序断言依赖了 locale（蓝牙电量默认开启，第 2 轮）
+
+分支 `fix/bluetooth-battery-level-default`（设计 `docs/superpowers/specs/2026-09-20-bluetooth-battery-level-default-design.md`）的第二次非发布预检
+[`35614298374`](https://github.com/lingyired/status-trio/actions/runs/35614298374)（`build=23`）在 `Run tests` 失败，唯一失败用例是新增的
+`BluetoothSummaryTests.testDevicesWithoutALevelKeepTheirNameOnly`：
+
+```
+XCTAssertEqual failed: ("Optional("MX Keys、机灵的耳机 · L 93%")") is not equal to ("Optional("机灵的耳机 · L 93%、MX Keys")")
+```
+
+摘要行把已连接设备交给 `BluetoothDevicePresentation.grouped` 排序，那里用的是 `name.localizedCaseInsensitiveCompare`，即 ICU collation —— 与语言有关：CI runner（英文）把 `MX Keys` 排在 `机灵的耳机` 之前，开发机（中文）相反。本机 `swift test` 与 `swift build -c release` 都是绿的，因此这是**断言**的问题，不是产品缺陷；前面那次预检 `35610292554`（`build=22`）也不含这条用例。
+
+不过它顺带暴露了一个真实取舍：AirPods 的多路电量是这一行的头条信息，不该因为名字的 collation 被挤到后面。修复把排序规则改成 **AirPods 无条件最前、其余按名称**（Connected / Not connected 两组内一致），`BluetoothDevice.isAirPods` 因此恢复，但用途只剩排序（产品 ID 命中或名字含 "airpods"；电量认领已不依赖它）。断言现在由规则决定顺序，`testAirPodsLeadTheRowRegardlessOfName` 用一个 collation 最靠后的名字钉住这条规则。
+
+验证：[`35615262052`](https://github.com/lingyired/status-trio/actions/runs/35615262052)（`build=24`）`Validate appcast notes`、`Run tests`、`Build, sign, notarize, and publish`、`Upload release artifacts` 全部成功，**690 个 XCTest（6 跳过，0 失败）** 与 **180 个 Swift Testing / 28 个 suite** 全绿，未发布 Release、未改动 appcast。
