@@ -1,5 +1,22 @@
 # Class A 计划集 —— 进度、裁决与续跑手册
 
+## 停靠点（2026-09-20 · 最新一次收尾）
+
+- **已合并 4 个计划 / 25 个 task**：R-18（6）、R-03（7）、R-01（7）、R-02（5）。四者都通过各自的最终非发布预检，记录在 `docs/swift-ci-compatibility.md`。
+- **未开始 12 个计划 / 61 个 task**：class A 10 个 / 50 task，class B 2 个 / 11 task；class C 四个计划（29 task）按 owner 指示冻结未动。
+- `main = 48ec00a`，领先 `origin/main` **56 个提交，未推送**（owner 选择本地合并）。
+- worktree `.worktrees/class-a-hardening` 在 **`fix/class-a-icons`**（相对 main 0 提交 = 无进行中工作），构建缓存保留，可直接从 **R-04** 开工。
+- owner 的分支 `feature/charging-effects` 与两个未跟踪文件**全程未被触碰**。
+- **目标（goal）当前 paused / disarmed**：不会自动继续；恢复需 owner 操作（面板 resume 或说"继续"）。
+- **发布 1.3.0 前的三项实测仍未完成**：R-03 功耗、R-01 spawn 次数、R-02 扫描次数。三者都在 `docs/swift-ci-compatibility.md` 标 `⏳` 并写了命令；**文档中没有任何推断出来的数字**。
+
+### 本次工作配置（owner 2026-09-20 同意）
+
+1. 实现者提示收紧为"只读 brief + 指定文件、不做探索"；
+2. 评审仍做全深度，但把完整报告写进 `.superpowers/sdd/<plan>/task-N-review.md`，只回短结论（spec ✅/❌、结论、严重度计数、每条 Critical/Important 一行）——深度不变，控制者上下文不再被长评审淹没；
+3. 预检原则上每计划一次（终审修复 wave 若触及 actor isolation / `@MainActor` / `deinit` 形状则需重跑，R-01/R-02 因此各跑了两次）；
+4. 每计划一个新会话是最省的做法，本文件 + ledger 就是为此写的。
+
 ## 更新（2026-09-20，R-02 合并后）
 
 **R-02（Wi-Fi 扫描节奏）已全部完成并合并**（`536d8d4`，最终非发布预检 [`35528756095`](https://github.com/lingyired/status-trio/actions/runs/35528756095) `build=20`：683 XCTest（6 跳过，0 失败）+ 168 Swift Testing，两切片 `minos 15.0 / sdk 26.0`，未发布）。
@@ -183,6 +200,36 @@ cd /Users/lingsmbp/Documents/aiwork/status-trio
 3. 保留权限契约与 `docs/wifi-status-responsiveness.md` 的响应性工作（CoreWLAN 读仍在主 actor 之外 + 读看门狗）。
 
 ---
+
+## 与并行开发（新功能 / PR）的协作规则
+
+owner 会同时开新功能、处理 PR。以下三条是**硬影响**，最后是文件撞车预报。
+
+1. **PR 需要 rebase 到新 main。** 已合并的 4 个计划改动了共享文件：`UI/StatusBarController.swift`、`Store/SystemStatusStore.swift`、`Settings/SettingsStore.swift`、`App/AppEnvironment.swift`、`UI/WiFiNetworkListView.swift`、`Monitoring/WiFiMonitor.swift`、`Monitoring/BluetoothDeviceController.swift`。
+2. **新守卫会在 CI 拦下一种写法。** `scripts/check-forbidden-patterns.sh` 由 `swift test` 执行（`ForbiddenPatternGuardTests`），任何把 actor-isolated 方法当函数值传的新代码（`Button(action: toggle)`、`store.method`）都会让 `Run tests` 失败——这是故意的（该形状历史上在 CI 上崩过编译器）。
+3. **性能/生命周期约定已变更，新代码必须遵守**：
+   - 新轮询/定时器：必须带 `tolerance`，且没有可见界面时不要跑（R-03 的 `fallbackRefreshTick` / `showsStatusUI` / `isDisplayAsleep`，R-01 的可见性 claim）；
+   - 新 observer/监视器：必须能被 `deinit` / `deactivate` 彻底拆除；`deinit` 里**禁止** `MainActor.assumeIsolated`；`nonisolated(unsafe)` 只用于 teardown-owned 存储并写注释；
+   - Wi-Fi 扫描：显式用户动作走 `refreshNow`，自动路径走带 floor 的 `refresh`；
+   - 蓝牙：不要新增 `system_profiler` 调用点，走既有的 latch / 事件路径。
+
+| 撞车风险 | 计划 | 会改的源码 |
+| --- | --- | --- |
+| 🔴 高 | R-04 | `UI/Icon/DockIconRenderer.swift`、`UI/Icon/DockIconRenderCache.swift`、`UI/IconPreviewComponents.swift`、`UI/Settings/StatusIconPreviewCard.swift`、`UI/IconGuideView.swift`（+ 新 `UI/Icon/DockIconPreviewCache.swift`） |
+| 🔴 高 | R-07 | `UI/StatusBarController.swift`、`UI/Icon/StatusBarRenderCache.swift` |
+| 🔴 高 | R-16 | `App/AppIconController.swift`、`UI/MainMenuController.swift` |
+| 🔴 高 | R-19 | `App/SystemIconAppearanceMonitor.swift`（+ 测试） |
+| 🟡 中 | R-06 | `Monitoring/VolumeMonitor.swift`、`Monitoring/WiFiMonitor.swift` |
+| 🟡 中 | R-14 | `Monitoring/BatteryMonitor.swift` |
+| 🟡 中 | R-12 | `Monitoring/WiFiPasswordStore.swift` |
+| 🟡 中 | R-13 | `App/SingleInstanceGuard.swift`、`App/AppDelegate.swift`、`Sources/StatusTrio/main.swift`、`UI/WiFiNetworkListView.swift`、12 个 `Localizable.strings` |
+| 🟡 中 | R-20 | `Audio/AudioOutputDeviceIcon.swift` |
+| 🟢 低 | R-15 | 新 `.github/workflows/ci.yml` |
+| 🟢 低 | R-17 | `scripts/release.sh`、`scripts/validate-appcast-notes.sh` |
+
+**合并协议（agent 每次合并前固定执行）**：`git fetch` → main 前移就先在自己分支 rebase → 重跑 `swift test` + `swift build -c release` → **断言主检出的当前分支**（不是 `main` 就用 `git branch -f` 快进，绝不 checkout owner 的分支）→ 合并 → 清理分支。
+
+**并行时建议的排序**：owner 若告知当前 PR / 功能涉及哪些文件，优先做不重叠的（R-15、R-17、R-20、R-14），把重叠的（R-04、R-07、R-12、R-13）排到那波合入之后。
 
 ## 9. 工程约定（续跑时必须遵守）
 
