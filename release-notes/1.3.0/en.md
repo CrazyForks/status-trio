@@ -20,7 +20,13 @@
 - The summary row and the device page are unchanged: the same names, the same levels, and the same permission behaviour — the app still asks for Bluetooth only when you open a Bluetooth view.
 
 ## Wi-Fi scanning stops when you stop looking
-- The Wi-Fi page used to sweep every channel about every five seconds for as long as it was open, even after you went back to the summary. It now scans when you open the page, when you tap refresh, when you switch the radio, and when a connection finishes, and keeps the last result in between.
+- The Wi-Fi page used to sweep every channel about every five seconds for as long as it was open, even after you went back to the summary. It now scans when you open the page, when you tap refresh, and when you switch the radio, and keeps the last result in between.
 - Leaving the Wi-Fi page stops its scan loop instead of leaving it running in the background.
 - On Macs without a Wi-Fi interface — a Mac mini or Mac Studio on Ethernet, for example — the app no longer rebuilds its Wi-Fi monitoring every 30 seconds; it now tries a few times and then waits for a wake or a network change.
 - Nothing about the list itself changes: the same networks, the same details, and the same manual refresh button.
+
+## Wi-Fi switching stays in the system
+- The popover no longer joins a network or switches between them. Choosing a network opens the Wi-Fi pane of System Settings, and the Wi-Fi page says so above the button that opens it.
+- Status Trio no longer reads or stores Wi-Fi passwords. The old behaviour could not be made dependable: macOS keeps a saved network's password to itself, and a stored copy that had gone stale ended in failed joins and repeated Keychain prompts, with no way to tell you the password was wrong.
+- If you ticked **Remember password** in an earlier version, that Keychain item is still there and is no longer used. You can delete it in Keychain Access by searching for `com.lingsmbp.StatusTrio.wifi-password`.
+- Nothing else about the page changed: the same networks, the same signal and link details, the same Wi-Fi switch, and the same button that opens System Settings.
