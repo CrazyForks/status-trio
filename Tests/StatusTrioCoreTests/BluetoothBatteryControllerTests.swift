@@ -76,9 +76,9 @@ struct BluetoothBatteryControllerTests {
         #expect(controller.batteryLevels.isEmpty)
     }
 
-    /// The summary only reports AirPods levels, so a non-AirPods session must
-    /// stay on the cached connected-device read.
-    @Test func batteryReadsStayOffWhenNoAirPodsAreConnected() async {
+    /// No claim, no read: a session that never asked for levels stays on the
+    /// connected-device read, whatever devices are paired.
+    @Test func batteryReadsStayOffWithoutAClaim() async {
         let deviceReader = BluetoothPairedDeviceReaderStub(result: .success([
             BluetoothDevice(id: "AC:90:85:C2:9C:1F", name: "MX Master 3", kind: .peripheral, isConnected: true)
         ]))

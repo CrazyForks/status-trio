@@ -28,8 +28,7 @@ final class BluetoothBatteryLevelHandoffTests: XCTestCase {
         let hosting = NSHostingView(rootView: HandoffRoot(
             controller: controller,
             localization: makeLocalization(),
-            model: model,
-            showsBatteryLevels: true
+            model: model
         ))
         hosting.frame = NSRect(x: 0, y: 0, width: 330, height: 200)
         hosting.layoutSubtreeIfNeeded()
@@ -60,6 +59,47 @@ final class BluetoothBatteryLevelHandoffTests: XCTestCase {
         // Closing the popover releases every claim.
         controller.deactivate()
         XCTAssertFalse(controller.isBatteryLevelsRequested)
+    }
+
+    /// The setting can change while the summary stays on screen, and then the
+    /// row's `onDisappear` never runs. The claim has to be dropped where the
+    /// change arrives: otherwise the read keeps running and the level the user
+    /// just switched off stays on screen until they visit another page and come
+    /// back.
+    func testTurningTheSettingOffReleasesTheSummaryClaimImmediately() async {
+        let batteryReader = HandoffBatteryReader()
+        let controller = BluetoothDeviceController(
+            worker: HandoffDeviceReader(),
+            stateMonitor: HandoffStateMonitor(),
+            batteryReader: batteryReader,
+            notificationCenter: NotificationCenter(),
+            workspaceNotificationCenter: NotificationCenter()
+        )
+        let model = HandoffModel()
+        controller.activate()
+        await settle()
+
+        let hosting = NSHostingView(rootView: HandoffRoot(
+            controller: controller,
+            localization: makeLocalization(),
+            model: model
+        ))
+        hosting.frame = NSRect(x: 0, y: 0, width: 330, height: 200)
+        hosting.layoutSubtreeIfNeeded()
+        await settle()
+        XCTAssertTrue(controller.isBatteryLevelsRequested, "the summary claims while the setting is on")
+
+        model.showsBatteryLevels = false
+        await settle()
+
+        XCTAssertFalse(
+            controller.isBatteryLevelsRequested,
+            "the row kept reading after the setting was switched off"
+        )
+        XCTAssertTrue(
+            controller.batteryLevels.isEmpty,
+            "levels outlived the claim that asked for them"
+        )
     }
 
     /// The regression test above only means something because the outgoing
@@ -102,6 +142,9 @@ final class BluetoothBatteryLevelHandoffTests: XCTestCase {
 @MainActor
 final class HandoffModel: ObservableObject {
     @Published var showsDetail = false
+    /// The setting the summary and the detail page both read. It lives here so a
+    /// test can flip it while the summary stays on screen.
+    @Published var showsBatteryLevels = true
 }
 
 /// Holds both panels, so switching between them is one SwiftUI update rather
@@ -110,21 +153,20 @@ private struct HandoffRoot: View {
     let controller: BluetoothDeviceController
     let localization: Localization
     @ObservedObject var model: HandoffModel
-    let showsBatteryLevels: Bool
 
     var body: some View {
         Group {
             if model.showsDetail {
                 BluetoothDeviceListView(
                     controller: controller,
-                    showsBatteryLevels: showsBatteryLevels,
+                    showsBatteryLevels: model.showsBatteryLevels,
                     onBack: {}, onRequestAuthorization: {}, onOpenBluetoothSettings: {}
                 )
                 .id("detail")
             } else {
                 BluetoothStatusView(
                     controller: controller,
-                    showsBatteryLevels: showsBatteryLevels,
+                    showsBatteryLevels: model.showsBatteryLevels,
                     onOpenDetails: {}, onRequestAuthorization: {}, onOpenBluetoothSettings: {}
                 )
                 .id("summary")

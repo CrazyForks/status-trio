@@ -327,21 +327,6 @@ struct BluetoothDevice: Identifiable, Equatable, Sendable {
         self.isConnected = isConnected
         self.airPodsModel = airPodsModel
     }
-
-    /// AirPods are identified by the product ID the Bluetooth registry reports
-    /// for the model, or by name for a device that carries no product ID. The
-    /// audio class alone would also match speakers and other headphones, so one
-    /// of the two signals has to name an AirPods. The product ID is what keeps
-    /// this working after a rename, when the name says nothing.
-    var isAirPods: Bool {
-        guard kind == .audio else { return false }
-        return airPodsModel != nil || name.lowercased().contains("airpods")
-    }
-
-    /// Whether the popover summary may report this device's battery level.
-    var isAirPodsSummaryCandidate: Bool {
-        isConnected && isAirPods
-    }
 }
 
 /// What the popover's Bluetooth row reports. Deriving the text from state
@@ -355,19 +340,19 @@ enum BluetoothSummary: Equatable, Sendable {
     case unavailable
     case readFailed
     case noConnectedDevices
-    /// The joined device names, and whether any of them is an AirPods whose
-    /// level the summary reports. Reading levels launches a `system_profiler`
-    /// subprocess, so callers gate it on that flag.
-    case devices(String, hasAirPods: Bool)
+    /// The joined device names. A connected device carries the level the report
+    /// holds for it, when it holds one.
+    case devices(String)
 
     var deviceNames: String? {
-        guard case .devices(let names, _) = self else { return nil }
+        guard case .devices(let names) = self else { return nil }
         return names
     }
 
-    var hasConnectedAirPods: Bool {
-        guard case .devices(_, let hasAirPods) = self else { return false }
-        return hasAirPods
+    /// Whether the row reports at least one connected device, which is what makes
+    /// reading levels worth a claim.
+    var hasConnectedDevices: Bool {
+        deviceNames != nil
     }
 
     static func presentation(
@@ -397,15 +382,17 @@ enum BluetoothSummary: Equatable, Sendable {
             guard !connected.isEmpty else { return .noConnectedDevices }
             let names = connected.map { entry(for: $0, batteryLevels: batteryLevels) }
                 .joined(separator: "、")
-            return .devices(names, hasAirPods: connected.contains { $0.isAirPodsSummaryCandidate })
+            return .devices(names)
         }
     }
 
+    /// One device's entry in the row: its name, plus the level the report carries
+    /// for it when there is one. A device macOS cannot read keeps its name alone,
+    /// so a row that mixes both kinds stays readable.
     private static func entry(
         for device: BluetoothDevice,
         batteryLevels: [String: BluetoothBatteryLevel]
     ) -> String {
-        guard device.isAirPodsSummaryCandidate else { return device.name }
         let address = BluetoothBatteryReader.normalizedAddress(device.id)
         guard let summary = batteryLevels[address]?.summary else { return device.name }
         // The middle dot marks the level as a property of this device, while

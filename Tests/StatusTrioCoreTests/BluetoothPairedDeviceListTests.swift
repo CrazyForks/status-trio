@@ -143,7 +143,7 @@ struct BluetoothPairedDeviceListTests {
         let devices = try #require(BluetoothPairedDeviceReader.parse(json: Data(json.utf8)))
 
         #expect(devices.first?.kind == .unknown)
-        #expect(devices.first?.isAirPods == false)
+        #expect(devices.first?.airPodsModel == nil)
     }
 
     @Test func majorTypeDrivesTheKindWhenTheMinorTypeIsMissing() throws {

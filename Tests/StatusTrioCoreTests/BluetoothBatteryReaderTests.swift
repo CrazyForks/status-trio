@@ -232,12 +232,11 @@ struct BluetoothBatteryReaderTests {
         #expect(sharedDevices == expectedDevices)
         #expect(levels.value == expectedLevels)
 
-        // The two signals the AirPods fixes depend on: the product ID that names
+        // The signals the AirPods icon fix depends on: the product ID that names
         // the model, and the level that follows it.
         let address = BluetoothBatteryReader.normalizedAddress("AC:90:85:C2:9C:1F")
         let airPods = sharedDevices.first { $0.id == "AC:90:85:C2:9C:1F" }
         #expect(airPods?.airPodsModel == .airPods)
-        #expect(airPods?.isAirPods == true)
         #expect(levels.value?[address]?.main == 95)
         #expect(levels.value?[address]?.left == 85)
         #expect(levels.value?[address]?.caseLevel == 70)

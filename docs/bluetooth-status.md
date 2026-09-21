@@ -16,7 +16,7 @@ devices:batteryLevels:)`, so the text is testable without rendering SwiftUI:
 Device names are joined with the ideographic comma `、`. A connected battery
 reading is joined to its device with the existing ` · ` separator, so the level
 reads as a property of that device rather than another entry in the list:
-`AirPods Pro · L 80% · R 75% · Case 60%、MX Master 3`.
+`AirPods Pro · L 80% · R 75% · Case 60%、MX Master 3 · 45%`.
 
 ## Device names come from the system profiler
 
@@ -37,19 +37,16 @@ type alone classifies every headphone, speaker, and wearable alike. Unknown
 wording stays generic rather than being guessed as audio, which would make the
 device eligible for a battery level.
 
-## AirPods only
+## Which levels the row reports
 
-Only connected AirPods report a battery level. The rule is
-`kind == .audio && (product ID names an AirPods || name contains "airpods")`
-(`BluetoothDevice.isAirPods`); the audio class alone would also match speakers
-and other headphones, and a rename erases whatever the name said — AirPods
-(2nd generation, A2031/A2032) is product ID `0x200F`, which the profiler reports
-as `device_productID`, so the model survives the rename (`AirPodsModel`). A
-product ID the table does not carry falls back to the name. Every other
-connected accessory stays name-only — its detail belongs on the device page.
+The row reports the level the report carries for every connected device, not
+only for AirPods: a keyboard or a mouse level is as useful there as the detail
+page already makes it, and showing it costs nothing extra, because the levels
+come from the same report as the names. A device the report has no level for
+keeps its name alone, so a row that mixes both kinds stays readable.
 
 Battery levels come from the same `system_profiler SPBluetoothDataType` report.
-Two surfaces share that read — the summary row (for the AirPods it reports) and
+Two surfaces share that read — the summary row (for the levels it reports) and
 the detail page (for every device) — so the controller tracks them as *claims*
 keyed by token rather than one boolean. SwiftUI may run the outgoing surface's
 disappear hook either before or after the incoming surface's appear hook, and a
@@ -58,16 +55,19 @@ after the detail page had asked for it, so every device row showed "Unavailable"
 while the summary still showed the level it had just read. A claim count makes
 the outcome the same in either order; the read runs while any claim is held and
 stops when the last is released. The summary claims only while the setting is on
-(on by default) and a connected AirPods is present — the identification is the
-gate, not the presence of a readable level, so a just-connected AirPods still
-triggers the first read. The detail page claims from the setting alone. Closing
-the popover drops every claim.
+(on by default) and at least one device is connected — the connected devices are
+the gate, not the presence of a readable level, so a just-connected device still
+triggers the first read. A claim is dropped where the change arrives and not only
+when the row disappears: switching the setting off while the row stays on screen
+stops the read and clears the level it published. The detail page claims from the
+setting alone. Closing the popover drops every claim.
 
 ## Detail page levels
 
-The detail page lists every paired device, so it is also where a non-AirPods
-level appears. A row shows a level only when the report carries one for that
-device (`BluetoothDevicePresentation.batteryLevelText(for:batteryLevels:)`); a
+The detail page lists every paired device, connected or not, and renders each
+one's level the same way the row does. A row shows a level only when the report
+carries one for that device
+(`BluetoothDevicePresentation.batteryLevelText(for:batteryLevels:)`); a
 device macOS cannot read stays silent instead of repeating a placeholder on
 every line, which is what made the page look broken on a Mac without AirPods.
 
@@ -80,8 +80,8 @@ are cleared: the last claim released, an availability change, or `deactivate()`.
 
 `SettingsStore.showsBluetoothBatteryLevels` defaults to on. It only decides who
 claims the read: with no claim — no Bluetooth surface on screen — nothing is
-read, and the summary row still claims only for connected AirPods, so the
-default costs nothing on a Mac that never shows a Bluetooth surface.
+read, so the default costs nothing on a Mac that never shows a Bluetooth
+surface.
 
 ## Activation and permission
 

@@ -1,8 +1,8 @@
 import SwiftUI
 
 /// The Bluetooth summary row. It reports live device state: a permission
-/// request while the grant is undecided, then the connected device names, with
-/// battery levels only for connected AirPods.
+/// request while the grant is undecided, then the connected device names, each
+/// with the level the report carries for it.
 struct BluetoothStatusView: View {
     @ObservedObject var controller: BluetoothDeviceController
     @EnvironmentObject private var localization: Localization
@@ -44,10 +44,17 @@ struct BluetoothStatusView: View {
         }
         .task(id: batteryReadTaskID) {
             // Reading levels launches system_profiler, so the claim is held only
-            // while the summary actually reports an AirPods. A claim rather than
-            // a toggle keeps this correct whichever order SwiftUI runs it in
-            // against the detail page's own claim.
-            guard showsBatteryLevels, summaryPresentation.hasConnectedAirPods else { return }
+            // while the summary actually wants them. The row stays on screen
+            // while the setting changes, so the release has to happen here and
+            // not only in `onDisappear`: otherwise switching the setting off
+            // leaves the read running and the level it published on screen until
+            // the row disappears and comes back. A claim rather than a toggle
+            // keeps this correct whichever order SwiftUI runs it in against the
+            // detail page's own claim.
+            guard showsBatteryLevels, summaryPresentation.hasConnectedDevices else {
+                controller.releaseBatteryLevels(Self.summaryBatteryLevelsToken)
+                return
+            }
             controller.requestBatteryLevels(Self.summaryBatteryLevelsToken)
         }
         .onDisappear {
@@ -124,7 +131,7 @@ struct BluetoothStatusView: View {
             return localization.string(.bluetoothReadFailed)
         case .noConnectedDevices:
             return localization.string(.bluetoothNoConnectedDevices)
-        case .devices(let names, _):
+        case .devices(let names):
             return names
         }
     }
