@@ -100,6 +100,14 @@ final class BluetoothBatteryLevelHandoffTests: XCTestCase {
             controller.batteryLevels.isEmpty,
             "levels outlived the claim that asked for them"
         )
+
+        // Back on: the row claims again, so the level returns without a detour
+        // through the detail page.
+        model.showsBatteryLevels = true
+        await settle()
+
+        XCTAssertTrue(controller.isBatteryLevelsRequested, "the row never claimed the read again")
+        XCTAssertFalse(controller.batteryLevels.isEmpty, "the level never came back")
     }
 
     /// The regression test above only means something because the outgoing
