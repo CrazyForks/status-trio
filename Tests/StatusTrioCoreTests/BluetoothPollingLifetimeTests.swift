@@ -584,7 +584,7 @@ final class BluetoothPollingLifetimeTests: XCTestCase {
         )
         // A stored weak reference, not a local `weak var`: a local one that is
         // only read draws the "never mutated" warning, and AGENTS.md bans
-        // `weak let`.
+        // weak `let`.
         let reference = WeakControllerReference(controller)
         controller?.activate()
         await waitUntil { monitor.startCount == 1 }
@@ -998,7 +998,7 @@ private final class CountBox: @unchecked Sendable {
 }
 
 /// Holds the controller weakly so a test can prove `deinit` ran, without the
-/// local `weak var` the compiler warns about (or the banned `weak let`).
+/// local `weak var` the compiler warns about (or the banned weak `let`).
 private final class WeakControllerReference {
     weak var value: BluetoothDeviceController?
 
