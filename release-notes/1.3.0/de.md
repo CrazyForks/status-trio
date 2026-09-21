@@ -30,3 +30,7 @@
 - Status Trio liest und speichert keine Wi-Fi-Passwörter mehr. Das frühere Verhalten ließ sich nicht zuverlässig umsetzen: macOS behält das Passwort eines gespeicherten Netzwerks für sich, und eine gespeicherte Kopie, die veraltet war, endete in fehlgeschlagenen Verbindungen und wiederholten Abfragen des Schlüsselbunds, ohne dir sagen zu können, dass das Passwort falsch war.
 - Wenn du in einer früheren Version **Passwort im Schlüsselbund merken** aktiviert hast, ist dieser Eintrag im Schlüsselbund noch vorhanden und wird nicht mehr verwendet. Du kannst ihn in der Schlüsselbundverwaltung löschen, indem du nach `com.lingsmbp.StatusTrio.wifi-password` suchst.
 - Sonst hat sich an der Seite nichts geändert: dieselben Netzwerke, dieselben Signal- und Verbindungsdetails, derselbe Wi-Fi-Schalter und dieselbe Schaltfläche, die die Systemeinstellungen öffnet.
+
+## Bluetooth-Batteriestände sind standardmäßig an
+- **Bluetooth-Batteriestände anzeigen** unter **Einstellungen › Bluetooth** ist jetzt standardmäßig aktiviert, sodass ein verbundenes Gerät seinen Stand ohne Umweg über die Einstellungen meldet. Ausschalten stoppt das Auslesen weiterhin.
+- Die Bluetooth-Geräteseite druckt nicht mehr auf jeder Zeile **Nicht verfügbar**: Ein Gerät, das keinen Stand meldet, zeigt nur seinen Namen, und ein Bericht, der nicht gelesen werden kann, wird einmal unter der Liste gemeldet.

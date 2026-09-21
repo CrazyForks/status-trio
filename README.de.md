@@ -75,7 +75,7 @@ Während Audio über Bluetooth wiedergegeben wird, lassen zwei Schalter unter **
   <img src="screenshots/menu-bar-airpods.jpg" width="1000" alt="Status Trio Menüleistensymbol mit dem AirPods-Symbol bei verbundenen AirPods und geöffnetem Status-Popover">
 </p>
 
-Die Bluetooth-Zeile des Popovers meldet den Live-Status: die Namen verbundener Geräte und bei AirPods den Batteriestand von linkem Hörer, rechtem Hörer und Ladecase. Der Bluetooth-Bereich listet gekoppelte Geräte und ihren Verbindungsstatus auf; er ist standardmäßig aus, wird unter **Einstellungen › Statusbereich** aktiviert und fragt bei der ersten Verwendung nach der Bluetooth-Berechtigung. **Einstellungen › Bluetooth** steuert außerdem, ob die Batteriestände gelesen werden, und skaliert das Bluetooth-Symbol von 100 % bis 180 %.
+Die Bluetooth-Zeile des Popovers meldet den Live-Status: die Namen verbundener Geräte und bei AirPods den Batteriestand von linkem Hörer, rechtem Hörer und Ladecase. Der Bluetooth-Bereich listet gekoppelte Geräte und ihren Verbindungsstatus auf; er ist standardmäßig aus, wird unter **Einstellungen › Statusbereich** aktiviert und fragt bei der ersten Verwendung nach der Bluetooth-Berechtigung. **Einstellungen › Bluetooth** steuert außerdem, ob die Batteriestände gelesen werden – standardmäßig an –, und skaliert das Bluetooth-Symbol von 100 % bis 180 %.
 
 ## Dock-Symbol
 

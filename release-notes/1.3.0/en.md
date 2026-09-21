@@ -30,3 +30,7 @@
 - Status Trio no longer reads or stores Wi-Fi passwords. The old behaviour could not be made dependable: macOS keeps a saved network's password to itself, and a stored copy that had gone stale ended in failed joins and repeated Keychain prompts, with no way to tell you the password was wrong.
 - If you ticked **Remember password** in an earlier version, that Keychain item is still there and is no longer used. You can delete it in Keychain Access by searching for `com.lingsmbp.StatusTrio.wifi-password`.
 - Nothing else about the page changed: the same networks, the same signal and link details, the same Wi-Fi switch, and the same button that opens System Settings.
+
+## Bluetooth battery levels are on by default
+- **Show Bluetooth battery levels** under **Settings › Bluetooth** now starts enabled, so a connected device reports its battery without a trip into Settings. Turning it off still stops the read.
+- The Bluetooth device page no longer prints **Unavailable** on every row: a device that reports no battery shows its name alone, and a report that cannot be read is reported once under the list.

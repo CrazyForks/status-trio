@@ -30,3 +30,7 @@
 - O Status Trio não lê nem armazena mais senhas de Wi-Fi. O comportamento antigo não podia ser confiável: o macOS guarda para si a senha de uma rede salva, e uma cópia armazenada que ficou desatualizada acabava em falhas de conexão e repetidas solicitações das Chaves, sem nenhuma forma de avisar que a senha estava errada.
 - Se você marcou **Lembrar a senha nas Chaves** em uma versão anterior, esse item das Chaves ainda existe e não é mais usado. Você pode excluí-lo no “Acesso às Chaves” procurando por `com.lingsmbp.StatusTrio.wifi-password`.
 - Nada mais na página mudou: as mesmas redes, os mesmos detalhes de sinal e link, o mesmo interruptor de Wi-Fi e o mesmo botão que abre os Ajustes do Sistema.
+
+## Níveis de bateria Bluetooth vêm ativados por padrão
+- **Mostrar níveis de bateria Bluetooth** em **Ajustes › Bluetooth** agora vem ativado, então um dispositivo conectado informa seu nível sem passar pelos Ajustes. Desativá-lo continua interrompendo a leitura.
+- A página de dispositivos Bluetooth não imprime mais **Indisponível** em cada linha: um dispositivo que não informa bateria mostra apenas o nome, e um relatório que não pode ser lido é avisado uma vez abaixo da lista.

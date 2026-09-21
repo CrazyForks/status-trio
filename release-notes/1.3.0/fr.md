@@ -30,3 +30,7 @@
 - Status Trio ne lit ni ne stocke plus les mots de passe Wi-Fi. L’ancien comportement ne pouvait pas être rendu fiable : macOS garde pour lui le mot de passe d’un réseau enregistré, et une copie stockée devenue obsolète aboutissait à des échecs de connexion et à des demandes répétées du trousseau, sans aucun moyen de vous signaler que le mot de passe était incorrect.
 - Si vous avez coché **Mémoriser le mot de passe dans le trousseau** dans une version antérieure, cet élément du trousseau est toujours présent et n’est plus utilisé. Vous pouvez le supprimer dans Trousseau d’accès en recherchant `com.lingsmbp.StatusTrio.wifi-password`.
 - Rien d’autre n’a changé sur cette page : les mêmes réseaux, les mêmes détails de signal et de liaison, le même interrupteur Wi-Fi et le même bouton qui ouvre les Réglages Système.
+
+## Les niveaux de batterie Bluetooth sont activés par défaut
+- **Afficher les niveaux de batterie Bluetooth** dans **Réglages › Bluetooth** est désormais activé par défaut : un appareil connecté indique son niveau sans passer par les Réglages. Le désactiver arrête toujours la lecture.
+- La page des appareils Bluetooth n’affiche plus **Indisponible** sur chaque ligne : un appareil qui n’indique pas de niveau affiche uniquement son nom, et un rapport illisible est signalé une fois sous la liste.

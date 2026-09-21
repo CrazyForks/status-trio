@@ -30,3 +30,7 @@
 - Status Trio non legge né salva più le password Wi-Fi. Il comportamento precedente non poteva essere reso affidabile: macOS tiene per sé la password di una rete salvata, e una copia memorizzata diventata obsoleta finiva in connessioni non riuscite e in richieste ripetute del Portachiavi, senza alcun modo di dirti che la password era sbagliata.
 - Se in una versione precedente hai selezionato **Ricorda la password nel Portachiavi**, quella voce del Portachiavi è ancora presente e non viene più usata. Puoi eliminarla in Accesso Portachiavi cercando `com.lingsmbp.StatusTrio.wifi-password`.
 - Nient’altro è cambiato nella pagina: le stesse reti, gli stessi dettagli di segnale e collegamento, lo stesso interruttore Wi-Fi e lo stesso pulsante che apre le Impostazioni di Sistema.
+
+## I livelli batteria Bluetooth sono attivi per impostazione predefinita
+- **Mostra i livelli batteria Bluetooth** in **Impostazioni › Bluetooth** ora è attivo per impostazione predefinita, quindi un dispositivo connesso indica il suo livello senza passare dalle Impostazioni. Disattivarlo interrompe comunque la lettura.
+- La pagina dei dispositivi Bluetooth non stampa più **Non disponibile** su ogni riga: un dispositivo che non indica la batteria mostra solo il suo nome, e un report illeggibile viene segnalato una volta sotto l’elenco.
