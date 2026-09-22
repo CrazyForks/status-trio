@@ -47,8 +47,11 @@ struct BluetoothStatusView: View {
                     devices: controller.devices,
                     batteryLevels: controller.batteryLevels,
                     actionStates: controller.deviceActionStates,
+                    confirmingAddress: controller.pendingDisconnectConfirmation,
                     options: listOptions,
-                    onPerformAction: { controller.performDeviceAction(for: $0) }
+                    onPerformAction: { controller.performDeviceAction(for: $0) },
+                    onRequestDisconnect: { controller.requestDisconnectConfirmation(for: $0) },
+                    onCancelDisconnect: { controller.cancelDisconnectConfirmation() }
                 )
             }
         }
@@ -186,8 +189,6 @@ struct BluetoothDeviceListView: View {
     let onRequestAuthorization: () -> Void
     let onOpenBluetoothSettings: () -> Void
 
-    @State private var confirmingAddress: String?
-
     var body: some View {
         let groups = BluetoothDevicePresentation.grouped(controller.devices)
         VStack(alignment: .leading, spacing: 12) {
@@ -243,11 +244,10 @@ struct BluetoothDeviceListView: View {
         }
         .onDisappear {
             // The popover retains its content view controller after a close, so
-            // this page and its `@State` outlive the close. A confirmation has to
-            // be cancelled explicitly rather than by the view being torn down, or
-            // the retained page would reopen with the prompt still open. The
-            // surface and battery claims below are released for the same reason.
-            confirmingAddress = nil
+            // the surface and battery claims have to be released explicitly. The
+            // open confirmation needs no handling here for the same reason it is
+            // not view state: the controller owns it, and the store cancels it
+            // when the popover closes.
             controller.releaseVisibleSurface(Self.detailSurfaceToken)
             controller.releaseBatteryLevels(Self.detailBatteryLevelsToken)
         }
@@ -277,14 +277,11 @@ struct BluetoothDeviceListView: View {
                     device: device,
                     batteryLevels: controller.batteryLevels,
                     actionState: controller.deviceActionStates[address],
-                    isConfirmingDisconnect: confirmingAddress == address
+                    isConfirmingDisconnect: controller.pendingDisconnectConfirmation == address
                         && BluetoothDeviceActionPolicy.requiresConfirmation(for: device),
-                    onPerformAction: {
-                        confirmingAddress = nil
-                        controller.performDeviceAction(for: device)
-                    },
-                    onRequestDisconnect: { confirmingAddress = address },
-                    onCancelDisconnect: { confirmingAddress = nil }
+                    onPerformAction: { controller.performDeviceAction(for: device) },
+                    onRequestDisconnect: { controller.requestDisconnectConfirmation(for: device) },
+                    onCancelDisconnect: { controller.cancelDisconnectConfirmation() }
                 )
             }
         }

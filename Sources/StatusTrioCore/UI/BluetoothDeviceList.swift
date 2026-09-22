@@ -11,10 +11,14 @@ struct BluetoothDeviceList: View {
     let devices: [BluetoothDevice]
     let batteryLevels: [String: BluetoothBatteryLevel]
     let actionStates: [String: BluetoothDeviceActionState]
+    /// The device whose disconnect is waiting for confirmation, by normalized
+    /// address. The controller owns it so that closing the panel cancels it even
+    /// though the popover keeps this view alive.
+    let confirmingAddress: String?
     let options: BluetoothDeviceListOptions
     let onPerformAction: (BluetoothDevice) -> Void
-
-    @State private var confirmingAddress: String?
+    let onRequestDisconnect: (BluetoothDevice) -> Void
+    let onCancelDisconnect: () -> Void
 
     @State private var isExpanded = false
 
@@ -35,12 +39,9 @@ struct BluetoothDeviceList: View {
                     actionState: actionStates[address],
                     isConfirmingDisconnect: confirmingAddress == address
                         && BluetoothDeviceActionPolicy.requiresConfirmation(for: device),
-                    onPerformAction: {
-                        confirmingAddress = nil
-                        onPerformAction(device)
-                    },
-                    onRequestDisconnect: { confirmingAddress = address },
-                    onCancelDisconnect: { confirmingAddress = nil }
+                    onPerformAction: { onPerformAction(device) },
+                    onRequestDisconnect: { onRequestDisconnect(device) },
+                    onCancelDisconnect: onCancelDisconnect
                 )
             }
 
@@ -69,17 +70,6 @@ struct BluetoothDeviceList: View {
                 }
                 .buttonStyle(.plain)
             }
-        }
-        .onDisappear {
-            // The popover's content view controller is retained after a close so
-            // a reopen is cheap, so these view objects — and this `@State` — live
-            // on past the close. A confirmation therefore has to be cancelled
-            // explicitly instead of relying on the view being torn down, or
-            // reopening the panel would show the prompt still open and one more
-            // click would send the disconnect the close was meant to cancel. This
-            // mirrors how the Bluetooth surfaces release their claims in their
-            // own `onDisappear`.
-            confirmingAddress = nil
         }
     }
 }

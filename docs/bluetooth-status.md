@@ -162,7 +162,10 @@ Disconnecting an input device — a keyboard, mouse, trackpad or gamepad — ask
 for confirmation in the row itself, because disconnecting the keyboard or mouse
 the user is holding would cut them off from their own Mac. The prompt lives in
 the row rather than in an alert: the panel is transient, so a modal would close
-it. The confirmation is view state, so closing the panel cancels it and an
-unconfirmed disconnect is never sent. The prompt carries no device name — the
+it. The controller owns the pending confirmation, and `SystemStatusStore`
+cancels it when the popover closes, so an unconfirmed disconnect is never sent:
+the popover keeps its content view controller — and therefore its SwiftUI state —
+alive for a minute after a close, which is why the cancellation cannot be left to
+a view's own disappear hook. The prompt carries no device name — the
 row already shows it — and it disappears on its own if the device stops being a
 connected input device while it is open.

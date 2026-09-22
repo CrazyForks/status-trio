@@ -344,6 +344,17 @@ final class BluetoothDeviceController: ObservableObject {
     /// address. No entry means the row reports the device's own state.
     @Published private(set) var deviceActionStates: [String: BluetoothDeviceActionState] = [:]
 
+    /// The device whose disconnect is waiting for the user to confirm it, by
+    /// normalized address.
+    ///
+    /// This belongs to the controller rather than to a view because the popover
+    /// keeps its content view controller — and so its SwiftUI state — alive for a
+    /// minute after a close, which is why a view's `onDisappear` never runs when
+    /// the panel is closed from the summary. The panel's close is what has to
+    /// cancel an unanswered confirmation, and `SystemStatusStore` already handles
+    /// exactly that event for the battery page and the surface claim.
+    @Published private(set) var pendingDisconnectConfirmation: String?
+
     private let actionPerformer: any BluetoothDeviceActionPerforming
     private let actionTimeout: Duration
     private let actionTimeoutSleep: @Sendable (Duration) async throws -> Void
@@ -791,6 +802,20 @@ final class BluetoothDeviceController: ObservableObject {
 
     // MARK: - Device actions
 
+    /// Asks for a confirmation before disconnecting a device. Only a connected
+    /// input device needs one; anything else is ignored, so a stale view cannot
+    /// put a question on screen that the policy would not ask.
+    func requestDisconnectConfirmation(for device: BluetoothDevice) {
+        guard BluetoothDeviceActionPolicy.requiresConfirmation(for: device) else { return }
+        pendingDisconnectConfirmation = BluetoothBatteryReader.normalizedAddress(device.id)
+    }
+
+    /// Drops an unanswered confirmation. The row's cancel action calls this, and
+    /// so does the panel closing.
+    func cancelDisconnectConfirmation() {
+        pendingDisconnectConfirmation = nil
+    }
+
     /// Asks the system to toggle a device. The row's state changes when the
     /// report does, never because this call returned: the request only starts a
     /// wait that ends in the report changing or in a visible failure.
@@ -809,6 +834,8 @@ final class BluetoothDeviceController: ObservableObject {
             return
         }
 
+        // Answering the question is what the tap does, so it is no longer pending.
+        pendingDisconnectConfirmation = nil
         let action = BluetoothDeviceActionPolicy.action(for: device)
         deviceActionTokenCounter &+= 1
         let token = deviceActionTokenCounter
@@ -905,6 +932,7 @@ final class BluetoothDeviceController: ObservableObject {
         failureClearTasks.removeAll()
         deviceActionTokens.removeAll()
         deviceActionStates.removeAll()
+        pendingDisconnectConfirmation = nil
     }
 
     /// One read per burst of connect/disconnect notifications. macOS connects

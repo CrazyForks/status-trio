@@ -389,6 +389,11 @@ final class SystemStatusStore: ObservableObject {
         guard visible else {
             clearWiFiNameResolution()
             bluetoothDevices.releaseVisibleSurface(BluetoothDeviceController.popoverSurfaceToken)
+            // A confirmation is answered inside the panel, so closing the panel
+            // cancels an unanswered one. The popover retains its content view
+            // controller after a close, which is why this belongs here rather
+            // than in the views: their own disappear hooks do not run.
+            bluetoothDevices.cancelDisconnectConfirmation()
             return
         }
         popupPublishTask?.cancel()

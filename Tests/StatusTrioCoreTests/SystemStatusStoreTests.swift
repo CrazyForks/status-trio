@@ -63,6 +63,39 @@ final class SystemStatusStoreTests: XCTestCase {
         store.stop()
     }
 
+    /// A confirmation is answered inside the panel, so closing the panel answers
+    /// nothing: the question has to go away with the surface that asked it. The
+    /// popover keeps its content view controller alive for a minute, so a view's
+    /// own cleanup cannot be what does this — the close event has to.
+    func testPopoverClosingCancelsAPendingBluetoothConfirmation() {
+        let bluetoothDevices = BluetoothDeviceController()
+        let store = SystemStatusStore(
+            batteryMonitor: FakeBatteryMonitor(),
+            wifiMonitor: FakeWiFiMonitor(),
+            volumeMonitor: FakeVolumeMonitor(),
+            bluetoothDevices: bluetoothDevices
+        )
+        let keyboard = BluetoothDevice(
+            id: "D3:6D:6C:40:A3:2E",
+            name: "MX Keys",
+            kind: .peripheral,
+            isConnected: true
+        )
+        bluetoothDevices.requestDisconnectConfirmation(for: keyboard)
+        XCTAssertEqual(
+            bluetoothDevices.pendingDisconnectConfirmation,
+            BluetoothBatteryReader.normalizedAddress(keyboard.id)
+        )
+
+        store.setPopoverVisible(false)
+
+        XCTAssertNil(
+            bluetoothDevices.pendingDisconnectConfirmation,
+            "Closing the popover cancels a confirmation the panel was asking"
+        )
+        store.stop()
+    }
+
     func testPopupDebounceIntervalIs500Milliseconds() {
         XCTAssertEqual(SystemStatusStore.popupDebounceInterval, .milliseconds(500))
     }

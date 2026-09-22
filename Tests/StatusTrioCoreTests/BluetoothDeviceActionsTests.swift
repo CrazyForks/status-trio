@@ -302,6 +302,77 @@ final class BluetoothDeviceActionsTests: XCTestCase {
         controller.deactivate()
     }
 
+    func testAConfirmationIsHeldUntilItIsCancelled() {
+        let device = makeDevice(isConnected: true, name: "MX Keys", kind: .peripheral)
+        let (controller, _) = makeController(
+            device: device,
+            performer: BluetoothActionPerformerStub(),
+            timeoutSleeper: ManualEventSleeper(),
+            failureSleeper: ManualEventSleeper()
+        )
+
+        controller.requestDisconnectConfirmation(for: device)
+        XCTAssertEqual(
+            controller.pendingDisconnectConfirmation,
+            BluetoothBatteryReader.normalizedAddress(airPodsAddress)
+        )
+
+        controller.cancelDisconnectConfirmation()
+        XCTAssertNil(controller.pendingDisconnectConfirmation)
+    }
+
+    func testAConfirmationIsOnlyHeldForADeviceThePolicyWouldAsk() {
+        let audio = makeDevice(isConnected: true, kind: .audio)
+        let idleKeyboard = makeDevice(isConnected: false, name: "MX Keys", kind: .peripheral)
+        let (controller, _) = makeController(
+            device: audio,
+            performer: BluetoothActionPerformerStub(),
+            timeoutSleeper: ManualEventSleeper(),
+            failureSleeper: ManualEventSleeper()
+        )
+
+        controller.requestDisconnectConfirmation(for: audio)
+        XCTAssertNil(controller.pendingDisconnectConfirmation)
+
+        controller.requestDisconnectConfirmation(for: idleKeyboard)
+        XCTAssertNil(controller.pendingDisconnectConfirmation)
+    }
+
+    func testPerformingAnActionAnswersAPendingConfirmation() async {
+        let device = makeDevice(isConnected: true, name: "MX Keys", kind: .peripheral)
+        let (controller, _) = makeController(
+            device: device,
+            performer: BluetoothActionPerformerStub(),
+            timeoutSleeper: ManualEventSleeper(),
+            failureSleeper: ManualEventSleeper()
+        )
+        controller.activate()
+        await waitUntil { controller.availability == .available }
+        controller.requestDisconnectConfirmation(for: device)
+
+        controller.performDeviceAction(for: device)
+
+        XCTAssertNil(controller.pendingDisconnectConfirmation)
+        controller.deactivate()
+    }
+
+    func testDeactivatingCancelsAPendingConfirmation() async {
+        let device = makeDevice(isConnected: true, name: "MX Keys", kind: .peripheral)
+        let (controller, _) = makeController(
+            device: device,
+            performer: BluetoothActionPerformerStub(),
+            timeoutSleeper: ManualEventSleeper(),
+            failureSleeper: ManualEventSleeper()
+        )
+        controller.activate()
+        await waitUntil { controller.availability == .available }
+        controller.requestDisconnectConfirmation(for: device)
+
+        controller.deactivate()
+
+        XCTAssertNil(controller.pendingDisconnectConfirmation)
+    }
+
     func testDeactivatingClearsEveryActionState() async {
         let device = makeDevice(isConnected: false)
         let performer = BluetoothActionPerformerStub()

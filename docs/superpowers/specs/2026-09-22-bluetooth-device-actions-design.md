@@ -136,7 +136,8 @@ requiresConfirmation(kind: BluetoothDeviceKind, isConnected: Bool) -> Bool
 
 ## 后续修订
 
-实现落地时有两处偏离本文，均已接受并随分支交付，记录在此以免只读本文的读者被误导：
+实现落地时有三处偏离本文，均已接受并随分支交付，记录在此以免只读本文的读者被误导：
 
 1. **本地化键由 7 条变为 8 条。** 除本文列出的 7 条外，额外新增了 `bluetooth.action.connect`（「连接」）。行的 tooltip 与无障碍提示需要说明「点击后会发生什么」，而 `bluetooth.state.connecting` 表达的是进行中，不能复用为动作名。
 2. **行内确认提示不带设备名。** 由 `断开「%@」？` 改为无名的 `断开？`：设备名长度不可控，带名会让 330 点的行折行，或把`[断开]` `[取消]` 两个按钮挤出可视区域。行内本身就显示着设备名，因此提示无需重复它。相应地，`bluetooth.action.confirmDisconnect` 不再需要 `Localization.format` 代入参数。
+3. **确认态由「视图内 `@State`」改为 controller 持有、在面板关闭时清除。** 真机验证发现：从摘要面板关闭弹层时，`StatusBarController` 会刻意保留内容视图 controller（`popoverContentReleaseDelay = 60` 秒）以便快速重开，视图并未离开层级，因此**该视图的 `onDisappear` 根本不会触发**，确认提示会在下次打开时仍挂着——与本文「面板关闭即视为取消」的要求相冲突。改为 `BluetoothDeviceController.pendingDisconnectConfirmation` 持有，并在 `SystemStatusStore.setPopoverVisible(false)` 里清除（与收起电池详情、释放 surface 认领同一处）；这样该规则终于可以被单测钉住（`testPopoverClosingCancelsAPendingBluetoothConfirmation`）。
