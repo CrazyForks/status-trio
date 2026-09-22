@@ -340,6 +340,18 @@ final class BluetoothDeviceController: ObservableObject {
     /// untracked and uncancellable.
     private var periodicRefreshGeneration: UInt64 = 0
 
+    /// The action in flight, or the failure still on screen, keyed by normalized
+    /// address. No entry means the row reports the device's own state.
+    @Published private(set) var deviceActionStates: [String: BluetoothDeviceActionState] = [:]
+
+    private let actionPerformer: any BluetoothDeviceActionPerforming
+    private let actionTimeout: Duration
+    private let actionTimeoutSleep: @Sendable (Duration) async throws -> Void
+    private let failureVisibleDuration: Duration
+    private let failureVisibleSleep: @Sendable (Duration) async throws -> Void
+    private var actionTimeouts: [String: Task<Void, Never>] = [:]
+    private var failureClearTasks: [String: Task<Void, Never>] = [:]
+
     init(
         worker: any BluetoothPairedDeviceReading = SystemProfilerBluetoothPairedDeviceWorker(),
         stateMonitor: any BluetoothStateMonitoring = CoreBluetoothStateMonitor(),
@@ -358,6 +370,15 @@ final class BluetoothDeviceController: ObservableObject {
         },
         readTimeout: Duration = .seconds(5),
         readTimeoutSleep: @escaping @Sendable (Duration) async throws -> Void = {
+            try await Task.sleep(for: $0)
+        },
+        actionPerformer: any BluetoothDeviceActionPerforming = IOBluetoothDeviceActionPerformer(),
+        actionTimeout: Duration = .seconds(10),
+        actionTimeoutSleep: @escaping @Sendable (Duration) async throws -> Void = {
+            try await Task.sleep(for: $0)
+        },
+        failureVisibleDuration: Duration = .seconds(4),
+        failureVisibleSleep: @escaping @Sendable (Duration) async throws -> Void = {
             try await Task.sleep(for: $0)
         }
     ) {
@@ -382,6 +403,11 @@ final class BluetoothDeviceController: ObservableObject {
             maxTimeout: .seconds(60),
             sleep: readTimeoutSleep
         )
+        self.actionPerformer = actionPerformer
+        self.actionTimeout = actionTimeout
+        self.actionTimeoutSleep = actionTimeoutSleep
+        self.failureVisibleDuration = failureVisibleDuration
+        self.failureVisibleSleep = failureVisibleSleep
         stateMonitor.onStateChange = { [weak self] authorization, managerState in
             self?.receiveSystemState(authorization: authorization, managerState: managerState)
         }
@@ -461,6 +487,7 @@ final class BluetoothDeviceController: ObservableObject {
         stopPeriodicRefresh()
         systemObservers.removeAll()
         stateMonitor.stop()
+        clearDeviceActions()
         availability = .idle
     }
 
@@ -492,6 +519,7 @@ final class BluetoothDeviceController: ObservableObject {
                 switch result {
                 case let .success(devices):
                     self.devices = devices
+                    self.reconcileDeviceActions()
                     self.availability = .available
                     self.refreshBatteryLevels()
                 case .poweredOff:
@@ -752,6 +780,103 @@ final class BluetoothDeviceController: ObservableObject {
         // idempotent.
         isMonitoringConnectionEventNotifications = false
         connectionEvents?.stop()
+    }
+
+    // MARK: - Device actions
+
+    /// Asks the system to toggle a device. The row's state changes when the
+    /// report does, never because this call returned: the request only starts a
+    /// wait that ends in the report changing or in a visible failure.
+    func performDeviceAction(for device: BluetoothDevice) {
+        guard isActive, availability == .available else { return }
+        let address = BluetoothBatteryReader.normalizedAddress(device.id)
+        switch deviceActionStates[address] {
+        case .none, .failed:
+            // Free, or a retry of a failure that is still on screen.
+            break
+        case .connecting, .disconnecting:
+            // One action per device at a time.
+            return
+        }
+
+        let action = BluetoothDeviceActionPolicy.action(for: device)
+        deviceActionStates[address] = action.inFlightState
+        armActionTimeout(for: action, address: address)
+        actionPerformer.setConnected(action == .connect, forAddress: address) { [weak self] accepted in
+            guard !accepted else { return }
+            Task { @MainActor [weak self] in
+                self?.failDeviceAction(action, address: address)
+            }
+        }
+    }
+
+    /// Clears the actions whose target state the report now shows. This is the
+    /// only way an action succeeds.
+    private func reconcileDeviceActions() {
+        guard !deviceActionStates.isEmpty else { return }
+        for device in devices {
+            let address = BluetoothBatteryReader.normalizedAddress(device.id)
+            guard let state = deviceActionStates[address] else { continue }
+            let reachedTarget = switch state {
+            case .connecting: device.isConnected
+            case .disconnecting: !device.isConnected
+            case .failed: false
+            }
+            if reachedTarget {
+                finishDeviceAction(address: address)
+            }
+        }
+    }
+
+    private func armActionTimeout(for action: BluetoothDeviceAction, address: String) {
+        actionTimeouts[address]?.cancel()
+        let timeout = actionTimeout
+        let sleep = actionTimeoutSleep
+        actionTimeouts[address] = Task { @MainActor [weak self] in
+            do {
+                try await sleep(timeout)
+            } catch {
+                return
+            }
+            guard let self, self.deviceActionStates[address] == action.inFlightState else { return }
+            self.failDeviceAction(action, address: address)
+        }
+    }
+
+    private func failDeviceAction(_ action: BluetoothDeviceAction, address: String) {
+        actionTimeouts[address]?.cancel()
+        actionTimeouts[address] = nil
+        deviceActionStates[address] = .failed(action)
+
+        failureClearTasks[address]?.cancel()
+        let visible = failureVisibleDuration
+        let sleep = failureVisibleSleep
+        failureClearTasks[address] = Task { @MainActor [weak self] in
+            do {
+                try await sleep(visible)
+            } catch {
+                return
+            }
+            guard let self, case .failed = self.deviceActionStates[address] else { return }
+            self.deviceActionStates[address] = nil
+            self.failureClearTasks[address] = nil
+        }
+    }
+
+    private func finishDeviceAction(address: String) {
+        actionTimeouts[address]?.cancel()
+        actionTimeouts[address] = nil
+        failureClearTasks[address]?.cancel()
+        failureClearTasks[address] = nil
+        deviceActionStates[address] = nil
+    }
+
+    private func clearDeviceActions() {
+        for task in actionTimeouts.values { task.cancel() }
+        for task in failureClearTasks.values { task.cancel() }
+        actionTimeouts.removeAll()
+        failureClearTasks.removeAll()
+        deviceActionStates.removeAll()
     }
 
     /// One read per burst of connect/disconnect notifications. macOS connects
