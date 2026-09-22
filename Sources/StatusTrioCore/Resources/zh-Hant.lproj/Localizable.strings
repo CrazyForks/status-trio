@@ -250,6 +250,14 @@
 "bluetooth.authorizationRestricted" = "藍牙權限受到限制。";
 "bluetooth.list.expand" = "展開";
 "bluetooth.list.collapse" = "收合";
+"bluetooth.action.connect" = "連接";
+"bluetooth.action.disconnect" = "中斷連接";
+"bluetooth.action.cancel" = "取消";
+"bluetooth.action.confirmDisconnect" = "要中斷連接嗎？";
+"bluetooth.state.connecting" = "連接中…";
+"bluetooth.state.disconnecting" = "中斷連接中…";
+"bluetooth.state.connectFailed" = "連接失敗";
+"bluetooth.state.disconnectFailed" = "中斷連接失敗";
 
 "settings.preview.hint" = "即時預覽 · 調整下方各項參數即刻在上方呈現";
 "settings.preview.dark" = "深色";

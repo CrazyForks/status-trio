@@ -250,6 +250,14 @@
 "bluetooth.authorizationRestricted" = "A permissão de Bluetooth está restrita.";
 "bluetooth.list.expand" = "Expandir";
 "bluetooth.list.collapse" = "Recolher";
+"bluetooth.action.connect" = "Conectar";
+"bluetooth.action.disconnect" = "Desconectar";
+"bluetooth.action.cancel" = "Cancelar";
+"bluetooth.action.confirmDisconnect" = "Desconectar?";
+"bluetooth.state.connecting" = "Conectando…";
+"bluetooth.state.disconnecting" = "Desconectando…";
+"bluetooth.state.connectFailed" = "Não foi possível conectar";
+"bluetooth.state.disconnectFailed" = "Não foi possível desconectar";
 
 "settings.preview.hint" = "Prévia ao vivo · Altere os ajustes abaixo para ver as alterações imediatamente";
 "settings.preview.dark" = "Escuro";

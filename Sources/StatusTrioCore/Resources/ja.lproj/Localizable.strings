@@ -250,6 +250,14 @@
 "bluetooth.authorizationRestricted" = "Bluetooth の権限が制限されています。";
 "bluetooth.list.expand" = "展開";
 "bluetooth.list.collapse" = "折りたたむ";
+"bluetooth.action.connect" = "接続";
+"bluetooth.action.disconnect" = "切断";
+"bluetooth.action.cancel" = "キャンセル";
+"bluetooth.action.confirmDisconnect" = "切断しますか？";
+"bluetooth.state.connecting" = "接続中…";
+"bluetooth.state.disconnecting" = "切断中…";
+"bluetooth.state.connectFailed" = "接続できませんでした";
+"bluetooth.state.disconnectFailed" = "切断できませんでした";
 
 "settings.preview.hint" = "リアルタイムプレビュー · 下の設定を変更するとすぐに反映されます";
 "settings.preview.dark" = "ダーク";

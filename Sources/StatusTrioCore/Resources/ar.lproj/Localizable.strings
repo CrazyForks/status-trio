@@ -250,6 +250,14 @@
 "bluetooth.authorizationRestricted" = "إذن Bluetooth مقيّد.";
 "bluetooth.list.expand" = "توسيع";
 "bluetooth.list.collapse" = "طي";
+"bluetooth.action.connect" = "توصيل";
+"bluetooth.action.disconnect" = "قطع الاتصال";
+"bluetooth.action.cancel" = "إلغاء";
+"bluetooth.action.confirmDisconnect" = "قطع الاتصال؟";
+"bluetooth.state.connecting" = "جارٍ الاتصال…";
+"bluetooth.state.disconnecting" = "جارٍ قطع الاتصال…";
+"bluetooth.state.connectFailed" = "تعذّر الاتصال";
+"bluetooth.state.disconnectFailed" = "تعذّر قطع الاتصال";
 
 "settings.preview.hint" = "معاينة مباشرة · اضبط الإعدادات أدناه لرؤية التغييرات فورًا";
 "settings.preview.dark" = "داكن";
