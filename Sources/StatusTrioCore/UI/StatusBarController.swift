@@ -211,6 +211,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
                 openWiFiSettings: { self.handleOpenWiFiSettings() },
                 openLocationSettings: { self.handleOpenLocationSettings() },
                 openBluetoothSettings: { self.handleOpenBluetoothSettings() },
+                openBluetoothPermissionSettings: { self.handleOpenBluetoothPermissionSettings() },
                 openSettings: { self.handleOpenSettings() },
                 openSoundSettings: { self.handleOpenSoundSettings() },
                 quit: quitAction
@@ -564,6 +565,14 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         Self.openSystemSettings(Self.bluetoothSettingsURLs)
     }
 
+    /// Where a refused Bluetooth grant is given back. This is not the pane the
+    /// gear opens: that one turns the radio on and off, while a refusal lives in
+    /// Privacy & Security.
+    private func handleOpenBluetoothPermissionSettings() {
+        popover.performClose(nil)
+        Self.openSystemSettings(Self.bluetoothPermissionSettingsURLs)
+    }
+
     static let batterySettingsURLs = [
         "x-apple.systempreferences:com.apple.Battery-Settings.extension",
         "x-apple.systempreferences:com.apple.preference.battery"
@@ -591,6 +600,12 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     static let bluetoothSettingsURLs = [
         "x-apple.systempreferences:com.apple.BluetoothSettings",
         "x-apple.systempreferences:com.apple.preference.bluetooth"
+    ]
+    .compactMap(URL.init(string:))
+
+    static let bluetoothPermissionSettingsURLs = [
+        "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_Bluetooth",
+        "x-apple.systempreferences:com.apple.preference.security?Privacy_Bluetooth"
     ]
     .compactMap(URL.init(string:))
 

@@ -246,7 +246,7 @@
 
 "bluetooth.initializing" = "Bluetooth 초기화 중…";
 "bluetooth.authorizationNotDetermined" = "Bluetooth 권한이 아직 결정되지 않았습니다.";
-"bluetooth.authorizationDenied" = "Bluetooth 권한이 거부되었습니다. Bluetooth 설정을 여십시오.";
+"bluetooth.action.openPermissionSettings" = "설정에서 Bluetooth 허용";
 "bluetooth.authorizationRestricted" = "Bluetooth 권한이 제한되었습니다.";
 "bluetooth.list.expand" = "펼치기";
 "bluetooth.list.collapse" = "접기";

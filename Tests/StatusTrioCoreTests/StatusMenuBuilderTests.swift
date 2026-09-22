@@ -125,6 +125,22 @@ final class StatusMenuBuilderTests: XCTestCase {
                 "x-apple.systempreferences:com.apple.preference.battery"
             ]
         )
+        // Two different panes: the gear turns the radio on and off, while the
+        // row's refused-grant action belongs in Privacy & Security.
+        XCTAssertEqual(
+            StatusBarController.bluetoothSettingsURLs.map(\.absoluteString),
+            [
+                "x-apple.systempreferences:com.apple.BluetoothSettings",
+                "x-apple.systempreferences:com.apple.preference.bluetooth"
+            ]
+        )
+        XCTAssertEqual(
+            StatusBarController.bluetoothPermissionSettingsURLs.map(\.absoluteString),
+            [
+                "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_Bluetooth",
+                "x-apple.systempreferences:com.apple.preference.security?Privacy_Bluetooth"
+            ]
+        )
     }
 
     private func makeLocalization(_ language: AppLanguage) -> Localization {

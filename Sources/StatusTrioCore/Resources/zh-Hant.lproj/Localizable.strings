@@ -246,7 +246,7 @@
 
 "bluetooth.initializing" = "正在初始化藍牙…";
 "bluetooth.authorizationNotDetermined" = "藍牙權限尚未決定。";
-"bluetooth.authorizationDenied" = "藍牙權限已被拒絕。請打開藍牙設定。";
+"bluetooth.action.openPermissionSettings" = "前往設定允許藍牙";
 "bluetooth.authorizationRestricted" = "藍牙權限受到限制。";
 "bluetooth.list.expand" = "展開";
 "bluetooth.list.collapse" = "收合";

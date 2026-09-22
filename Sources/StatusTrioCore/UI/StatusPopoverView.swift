@@ -260,6 +260,7 @@ struct StatusPopoverView: View {
     let openWiFiSettings: () -> Void
     let openLocationSettings: () -> Void
     let openBluetoothSettings: () -> Void
+    let openBluetoothPermissionSettings: () -> Void
     let openSettings: () -> Void
     let openSoundSettings: () -> Void
     let quit: () -> Void
@@ -347,7 +348,8 @@ struct StatusPopoverView: View {
                 showsBatteryLevels: settings.showsBluetoothBatteryLevels,
                 listOptions: settings.bluetoothDeviceListOptions,
                 onRequestAuthorization: requestBluetoothAuthorization,
-                onOpenBluetoothSettings: openBluetoothSettings
+                onOpenBluetoothSettings: openBluetoothSettings,
+                onOpenBluetoothPermissionSettings: openBluetoothPermissionSettings
             )
         case .volume:
             VolumeControlsView(

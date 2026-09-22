@@ -18,22 +18,12 @@ struct BluetoothStatusView: View {
     var listOptions: BluetoothDeviceListOptions = .standard
     let onRequestAuthorization: () -> Void
     let onOpenBluetoothSettings: () -> Void
+    let onOpenBluetoothPermissionSettings: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 10) {
-                HStack(spacing: BluetoothPanelMetrics.iconTextSpacing) {
-                    BluetoothIcon(size: BluetoothPanelMetrics.iconColumnWidth)
-                        .foregroundStyle(.secondary)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(localization.string(.bluetoothTitle))
-                            .font(.headline)
-                        subtitle
-                    }
-                    Spacer()
-                }
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel(rowAccessibilityLabel)
+                titleBlock
 
                 Button(action: { controller.refresh() }) {
                     // Trailing-aligned inside the button's own box: the other
@@ -107,6 +97,46 @@ struct BluetoothStatusView: View {
         }
     }
 
+    /// The title and its subtitle. It is a button only while the state has
+    /// somewhere to send the user — asking for the grant, or the pane that gives
+    /// a refused one back — which is the same rule the Wi-Fi row follows. A state
+    /// with no action stays a plain, non-focusable row.
+    @ViewBuilder
+    private var titleBlock: some View {
+        if let action = summaryPresentation.rowAction {
+            Button(action: { perform(action) }) { titleContent }
+                .buttonStyle(.plain)
+                .accessibilityLabel(rowAccessibilityLabel)
+        } else {
+            titleContent
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(rowAccessibilityLabel)
+        }
+    }
+
+    private var titleContent: some View {
+        HStack(spacing: BluetoothPanelMetrics.iconTextSpacing) {
+            BluetoothIcon(size: BluetoothPanelMetrics.iconColumnWidth)
+                .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(localization.string(.bluetoothTitle))
+                    .font(.headline)
+                subtitle
+            }
+            Spacer()
+        }
+        .contentShape(Rectangle())
+    }
+
+    private func perform(_ action: BluetoothSummaryRowAction) {
+        switch action {
+        case .requestAuthorization:
+            onRequestAuthorization()
+        case .openPermissionSettings:
+            onOpenBluetoothPermissionSettings()
+        }
+    }
+
     private static let summaryBatteryLevelsToken = "bluetooth.summary"
     private static let summarySurfaceToken = "bluetooth.summary.surface"
 
@@ -166,14 +196,16 @@ struct BluetoothStatusView: View {
     @ViewBuilder
     private var subtitle: some View {
         if case .requestAuthorization = summaryPresentation {
-            Button(
-                localization.string(.bluetoothActionRequestAuthorization),
-                action: onRequestAuthorization
+            actionLabel(.bluetoothActionRequestAuthorization, action: onRequestAuthorization)
+        } else if case .authorizationDenied = summaryPresentation {
+            // The row itself performs this, the way the Wi-Fi row's subtitle does
+            // for location; the line reads as what tapping does rather than as a
+            // statement of fact, and a refused grant is the one state the user can
+            // act on from here.
+            actionLabel(
+                .bluetoothActionOpenPermissionSettings,
+                action: onOpenBluetoothPermissionSettings
             )
-            .buttonStyle(.plain)
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            .lineLimit(1)
         } else if hidesSubtitle {
             EmptyView()
         } else {
@@ -185,6 +217,17 @@ struct BluetoothStatusView: View {
         }
     }
 
+    private func actionLabel(
+        _ key: LocalizationKey,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(localization.string(key), action: action)
+            .buttonStyle(.plain)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+    }
+
     private var summaryText: String {
         switch summaryPresentation {
         case .requestAuthorization:
@@ -192,7 +235,7 @@ struct BluetoothStatusView: View {
         case .initializing:
             return localization.string(.bluetoothInitializing)
         case .authorizationDenied:
-            return localization.string(.bluetoothAuthorizationDenied)
+            return localization.string(.bluetoothActionOpenPermissionSettings)
         case .authorizationRestricted:
             return localization.string(.bluetoothAuthorizationRestricted)
         case .poweredOff:

@@ -246,7 +246,7 @@
 
 "bluetooth.initializing" = "Iniciando o Bluetooth…";
 "bluetooth.authorizationNotDetermined" = "A permissão de Bluetooth ainda não foi definida.";
-"bluetooth.authorizationDenied" = "A permissão de Bluetooth foi negada. Abrir Ajustes de Bluetooth.";
+"bluetooth.action.openPermissionSettings" = "Permitir Bluetooth nos Ajustes";
 "bluetooth.authorizationRestricted" = "A permissão de Bluetooth está restrita.";
 "bluetooth.list.expand" = "Expandir";
 "bluetooth.list.collapse" = "Recolher";

@@ -182,7 +182,8 @@ private struct HandoffRoot: View {
                         maxVisibleDevices: 5,
                         order: []
                     ),
-                    onRequestAuthorization: {}, onOpenBluetoothSettings: {}
+                    onRequestAuthorization: {}, onOpenBluetoothSettings: {},
+                    onOpenBluetoothPermissionSettings: {}
                 )
                 .id("summary")
             }

@@ -246,7 +246,7 @@
 
 "bluetooth.initializing" = "جارٍ تهيئة Bluetooth…";
 "bluetooth.authorizationNotDetermined" = "لم يتم تحديد إذن Bluetooth بعد.";
-"bluetooth.authorizationDenied" = "إذن Bluetooth مرفوض. افتح إعدادات Bluetooth.";
+"bluetooth.action.openPermissionSettings" = "السماح بـ Bluetooth في الإعدادات";
 "bluetooth.authorizationRestricted" = "إذن Bluetooth مقيّد.";
 "bluetooth.list.expand" = "توسيع";
 "bluetooth.list.collapse" = "طي";

@@ -290,7 +290,7 @@ enum LocalizationKey: String, CaseIterable, Hashable, Sendable {
     case bluetoothReadFailed = "bluetooth.readFailed"
     case bluetoothInitializing = "bluetooth.initializing"
     case bluetoothAuthorizationNotDetermined = "bluetooth.authorizationNotDetermined"
-    case bluetoothAuthorizationDenied = "bluetooth.authorizationDenied"
+    case bluetoothActionOpenPermissionSettings = "bluetooth.action.openPermissionSettings"
     case bluetoothAuthorizationRestricted = "bluetooth.authorizationRestricted"
     case bluetoothNoConnectedDevices = "bluetooth.noConnectedDevices"
     case bluetoothNoDevices = "bluetooth.noDevices"

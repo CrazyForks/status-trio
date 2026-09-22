@@ -11,7 +11,8 @@ devices:batteryLevels:)`, so the text is testable without rendering SwiftUI:
 | `available` | The connected device names, joined with `、` |
 | `available`, nothing connected | No connected devices |
 | `poweredOff`, `unavailable`, `failed` | Their own existing messages |
-| `authorizationDenied`, `authorizationRestricted` | Their own existing messages |
+| `authorizationDenied` | A tappable **Allow Bluetooth in Settings** action, which opens Privacy & Security › Bluetooth |
+| `authorizationRestricted` | Its own existing message |
 
 Device names are joined with the ideographic comma `、`. A connected battery
 reading is joined to its device with the existing ` · ` separator, so the level
@@ -96,6 +97,14 @@ the state monitor is what raises the system prompt. So
 `BluetoothPanelActivation.shouldActivate(authorization:)` allows the popover to
 activate the monitor on its own only when the grant is already `allowed`, which
 refreshes the names the row reports. Every other grant state is only observed.
+
+A refused grant is the one state the user can act on from the row, so the row is
+a button there: it closes the popover and opens **Privacy & Security ›
+Bluetooth**, the pane that gives the grant back
+(`StatusBarController.bluetoothPermissionSettingsURLs`). That is deliberately not
+the pane the gear opens — `bluetoothSettingsURLs` turns the radio on and off —
+and a *restricted* grant gets no action at all, because a managed Mac or parental
+controls leave the user nothing to change.
 
 The popover re-evaluates this on each open, which is what replaced the previous
 "open details to view device status" placeholder: the monitor is enabled by an

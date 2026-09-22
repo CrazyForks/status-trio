@@ -357,7 +357,8 @@ final class BluetoothSummaryLayoutTests: XCTestCase {
             showsBatteryLevels: true,
             listOptions: listOptions,
             onRequestAuthorization: {},
-            onOpenBluetoothSettings: {}
+            onOpenBluetoothSettings: {},
+            onOpenBluetoothPermissionSettings: {}
         )
         .padding(14)
         .frame(width: 330)

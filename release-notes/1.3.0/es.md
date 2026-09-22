@@ -34,6 +34,7 @@
 ## Los niveles de batería Bluetooth vienen activados
 - **Mostrar niveles de batería Bluetooth** en **Ajustes › Bluetooth** ahora viene activado por defecto: una vez activado el panel de Bluetooth, un dispositivo conectado informa de su nivel sin tener que activar este interruptor por separado. Desactivarlo sigue deteniendo la lectura.
 - La lista de dispositivos Bluetooth ya no muestra **No disponible** en cada fila: un dispositivo que no informa de batería no muestra ningún texto de batería, y un informe que no se puede leer se avisa una vez bajo la lista.
+- Si se denegó el acceso a Bluetooth, la fila de Bluetooth ahora te lleva directamente al panel donde puedes permitirlo, en lugar de solo avisarte.
 
 ## Dispositivos emparejados en el panel de estado
 - **Ajustes › Bluetooth** ahora puede listar los dispositivos emparejados bajo la fila Bluetooth: los primeros siempre están visibles, el resto aparece detrás de un control Expandir, y el máximo lo eliges tú. Los dispositivos conectados aparecen siempre primero.
