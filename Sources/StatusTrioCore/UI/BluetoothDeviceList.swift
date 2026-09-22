@@ -33,7 +33,8 @@ struct BluetoothDeviceList: View {
                     device: device,
                     batteryLevels: batteryLevels,
                     actionState: actionStates[address],
-                    isConfirmingDisconnect: confirmingAddress == address,
+                    isConfirmingDisconnect: confirmingAddress == address
+                        && BluetoothDeviceActionPolicy.requiresConfirmation(for: device),
                     onPerformAction: {
                         confirmingAddress = nil
                         onPerformAction(device)
@@ -68,6 +69,17 @@ struct BluetoothDeviceList: View {
                 }
                 .buttonStyle(.plain)
             }
+        }
+        .onDisappear {
+            // The popover's content view controller is retained after a close so
+            // a reopen is cheap, so these view objects — and this `@State` — live
+            // on past the close. A confirmation therefore has to be cancelled
+            // explicitly instead of relying on the view being torn down, or
+            // reopening the panel would show the prompt still open and one more
+            // click would send the disconnect the close was meant to cancel. This
+            // mirrors how the Bluetooth surfaces release their claims in their
+            // own `onDisappear`.
+            confirmingAddress = nil
         }
     }
 }

@@ -242,6 +242,12 @@ struct BluetoothDeviceListView: View {
             updateBatteryLevelClaim()
         }
         .onDisappear {
+            // The popover retains its content view controller after a close, so
+            // this page and its `@State` outlive the close. A confirmation has to
+            // be cancelled explicitly rather than by the view being torn down, or
+            // the retained page would reopen with the prompt still open. The
+            // surface and battery claims below are released for the same reason.
+            confirmingAddress = nil
             controller.releaseVisibleSurface(Self.detailSurfaceToken)
             controller.releaseBatteryLevels(Self.detailBatteryLevelsToken)
         }
@@ -271,7 +277,8 @@ struct BluetoothDeviceListView: View {
                     device: device,
                     batteryLevels: controller.batteryLevels,
                     actionState: controller.deviceActionStates[address],
-                    isConfirmingDisconnect: confirmingAddress == address,
+                    isConfirmingDisconnect: confirmingAddress == address
+                        && BluetoothDeviceActionPolicy.requiresConfirmation(for: device),
                     onPerformAction: {
                         confirmingAddress = nil
                         controller.performDeviceAction(for: device)
