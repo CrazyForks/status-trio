@@ -547,7 +547,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
 
     @objc private func handleOpenWiFiSettings() {
         popover.performClose(nil)
-        Self.openSystemSettings(Self.wifiSettingsURLs())
+        Self.openSystemSettings(Self.wifiSettingsURLs)
     }
 
     @objc private func handleOpenLocationSettings() {
@@ -579,23 +579,28 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     ]
     .compactMap(URL.init(string:))
 
-    static func wifiSettingsURLs(
-        operatingSystemVersion: OperatingSystemVersion = ProcessInfo.processInfo.operatingSystemVersion
-    ) -> [URL] {
-        let routes: [String]
-        if operatingSystemVersion.majorVersion >= 27 {
-            routes = [
-                "x-apple.systempreferences:com.apple.wifi-settings-extension",
-                "x-apple.systempreferences:com.apple.Network-Settings.extension?Wi-Fi"
-            ]
-        } else {
-            routes = [
-                "x-apple.systempreferences:com.apple.Network-Settings.extension?Wi-Fi",
-                "x-apple.systempreferences:com.apple.preference.network?Wi-Fi"
-            ]
-        }
-        return routes.compactMap(URL.init(string:))
-    }
+    /// The Wi-Fi pane is what this button promises, and it has its own Settings
+    /// extension on every macOS version the app supports. Routing through the
+    /// Network pane instead lands on the wrong list: that pane shows services
+    /// (Wi-Fi, Ethernet, VPNs) rather than networks, and its `?Wi-Fi` anchor
+    /// does not select the Wi-Fi section on macOS 15.
+    ///
+    /// Do not reintroduce an OS-version branch here. A `majorVersion >= 27`
+    /// guard shipped in 1.2.0 and 1.3.0 and sent macOS 15 through 26 to the
+    /// Network pane; the pane identifier is not version-specific, because the
+    /// extension bundle that declares it dates from macOS 14
+    /// (`BuildMachineOSBuild 23A344017` in `Wi-Fi.appex`).
+    ///
+    /// The first route decides the destination. System Settings launches even
+    /// for an unknown pane identifier and `open` reports success — verified on
+    /// macOS 27 with a nonexistent identifier — so the later entries only cover
+    /// the URL scheme itself failing to open, not a missing pane.
+    static let wifiSettingsURLs = [
+        "x-apple.systempreferences:com.apple.wifi-settings-extension",
+        "x-apple.systempreferences:com.apple.Network-Settings.extension?Wi-Fi",
+        "x-apple.systempreferences:com.apple.preference.network?Wi-Fi"
+    ]
+    .compactMap(URL.init(string:))
 
     static let bluetoothSettingsURLs = [
         "x-apple.systempreferences:com.apple.BluetoothSettings",
