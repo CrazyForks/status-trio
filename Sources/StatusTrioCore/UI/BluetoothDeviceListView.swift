@@ -223,28 +223,7 @@ struct BluetoothDeviceListView: View {
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
             ForEach(devices) { device in
-                HStack(spacing: 10) {
-                    Image(systemName: BluetoothDeviceRowIcon.symbolName(for: device))
-                        .frame(width: 16)
-                        .foregroundStyle(.secondary)
-                    Text(device.name)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                    Spacer()
-                    if let level = BluetoothDevicePresentation.batteryLevelText(
-                        for: device,
-                        batteryLevels: controller.batteryLevels
-                    ) {
-                        Text(level)
-                            .font(.caption.monospacedDigit())
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                    }
-                    Text(device.isConnected ? localization.string(.bluetoothConnected) : localization.string(.bluetoothNotConnected))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .accessibilityElement(children: .combine)
+                BluetoothDeviceRow(device: device, batteryLevels: controller.batteryLevels)
             }
         }
     }
