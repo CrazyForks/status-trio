@@ -2,15 +2,19 @@ import SwiftUI
 
 /// The paired-device list shown inside the status panel, under the Bluetooth
 /// row. It mirrors the volume output list: the first `limit` devices are always
-/// visible and anything beyond them is revealed by an expansion control. Rows
-/// are display-only — this release does not connect or disconnect devices from
-/// the app.
+/// visible and anything beyond them is revealed by an expansion control. Each
+/// row is a control: tapping it connects or disconnects that device, and an
+/// input device's disconnect is confirmed in place first.
 struct BluetoothDeviceList: View {
     @EnvironmentObject private var localization: Localization
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let devices: [BluetoothDevice]
     let batteryLevels: [String: BluetoothBatteryLevel]
+    let actionStates: [String: BluetoothDeviceActionState]
     let options: BluetoothDeviceListOptions
+    let onPerformAction: (BluetoothDevice) -> Void
+
+    @State private var confirmingAddress: String?
 
     @State private var isExpanded = false
 
@@ -24,7 +28,19 @@ struct BluetoothDeviceList: View {
 
         VStack(spacing: 2) {
             ForEach(model.visibleDevices) { device in
-                BluetoothDeviceRow(device: device, batteryLevels: batteryLevels)
+                let address = BluetoothBatteryReader.normalizedAddress(device.id)
+                BluetoothDeviceRow(
+                    device: device,
+                    batteryLevels: batteryLevels,
+                    actionState: actionStates[address],
+                    isConfirmingDisconnect: confirmingAddress == address,
+                    onPerformAction: {
+                        confirmingAddress = nil
+                        onPerformAction(device)
+                    },
+                    onRequestDisconnect: { confirmingAddress = address },
+                    onCancelDisconnect: { confirmingAddress = nil }
+                )
             }
 
             if model.canToggleExpansion {

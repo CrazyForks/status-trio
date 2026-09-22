@@ -46,7 +46,9 @@ struct BluetoothStatusView: View {
                 BluetoothDeviceList(
                     devices: controller.devices,
                     batteryLevels: controller.batteryLevels,
-                    options: listOptions
+                    actionStates: controller.deviceActionStates,
+                    options: listOptions,
+                    onPerformAction: { controller.performDeviceAction(for: $0) }
                 )
             }
         }
@@ -184,6 +186,8 @@ struct BluetoothDeviceListView: View {
     let onRequestAuthorization: () -> Void
     let onOpenBluetoothSettings: () -> Void
 
+    @State private var confirmingAddress: String?
+
     var body: some View {
         let groups = BluetoothDevicePresentation.grouped(controller.devices)
         VStack(alignment: .leading, spacing: 12) {
@@ -262,7 +266,19 @@ struct BluetoothDeviceListView: View {
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
             ForEach(devices) { device in
-                BluetoothDeviceRow(device: device, batteryLevels: controller.batteryLevels)
+                let address = BluetoothBatteryReader.normalizedAddress(device.id)
+                BluetoothDeviceRow(
+                    device: device,
+                    batteryLevels: controller.batteryLevels,
+                    actionState: controller.deviceActionStates[address],
+                    isConfirmingDisconnect: confirmingAddress == address,
+                    onPerformAction: {
+                        confirmingAddress = nil
+                        controller.performDeviceAction(for: device)
+                    },
+                    onRequestDisconnect: { confirmingAddress = address },
+                    onCancelDisconnect: { confirmingAddress = nil }
+                )
             }
         }
     }
