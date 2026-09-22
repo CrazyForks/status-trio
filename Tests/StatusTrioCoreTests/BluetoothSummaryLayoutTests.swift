@@ -114,8 +114,7 @@ final class BluetoothSummaryLayoutTests: XCTestCase {
 
     /// No paired devices means no list: the row keeps its own message and its
     /// original height.
-    func testEmptyDeviceListDoesNotChangeTheRow() async throws {
-        let options = BluetoothDeviceListOptions(showsList: true, maxVisibleDevices: 3, order: [])
+    func testEmptyDeviceListDoesNotChangeTheRow() async throws {        let options = BluetoothDeviceListOptions(showsList: true, maxVisibleDevices: 3, order: [])
 
         let withSettingOn = try await render(
             language: .english,
@@ -127,6 +126,86 @@ final class BluetoothSummaryLayoutTests: XCTestCase {
 
         XCTAssertEqual(withSettingOn.width, 330, accuracy: 0.5)
         XCTAssertLessThan(withSettingOn.height, 120)
+    }
+
+    /// The panel has no scroll view of its own, so the rows take a bound: a list
+    /// too long for the panel scrolls inside it instead of growing the popover
+    /// past the screen, and a list that fits does not scroll at all.
+    ///
+    /// Whether the scroll view *overflows* is not visible from here — the harness
+    /// lays out a hosting view with no window, so the content rect it reports is
+    /// already clipped to the bound. What is checked instead is the bound itself:
+    /// a scroll view exists, it stops at the list's own height, and the panel
+    /// grows nothing like the 27 extra rows it is showing.
+    func testALongDeviceListScrollsInsideThePanel() async throws {
+        let options = BluetoothDeviceListOptions(showsList: true, maxVisibleDevices: 30, order: [])
+        let longDevices = (1...30).map(summaryDevice)
+        let shortDevices = (1...3).map(summaryDevice)
+
+        let longSize = try await render(
+            language: .english,
+            authorization: .allowed,
+            devices: longDevices,
+            listOptions: options,
+            named: "bluetooth-long-list"
+        )
+        let shortSize = try await render(
+            language: .english,
+            authorization: .allowed,
+            devices: shortDevices,
+            listOptions: options,
+            named: "bluetooth-short-list"
+        )
+        XCTAssertGreaterThan(
+            longSize.height,
+            shortSize.height,
+            "the rows beyond the short list still have to render"
+        )
+        XCTAssertLessThan(
+            longSize.height,
+            430,
+            "the panel has to stay within its bound however many devices it lists"
+        )
+
+        let (hosting, controller) = try await makeHosting(
+            language: .english,
+            authorization: .allowed,
+            devices: longDevices,
+            batteryLevels: [:],
+            listOptions: options
+        )
+        defer { controller.deactivate() }
+        hosting.layoutSubtreeIfNeeded()
+
+        let scrolling = try XCTUnwrap(
+            firstScrollView(in: hosting),
+            "the rows have to be scrollable: the popover cannot grow to fit them"
+        )
+        XCTAssertLessThanOrEqual(
+            scrolling.frame.height,
+            BluetoothDeviceList.maximumRowsHeight + 1,
+            "the rows have to stop at the list's own bound"
+        )
+    }
+
+    private func summaryDevice(_ index: Int) -> BluetoothDevice {
+        BluetoothDevice(
+            id: String(format: "AA:00:00:00:00:%02X", index),
+            name: "Device \(index)",
+            kind: .audio,
+            isConnected: true
+        )
+    }
+
+    /// The first `NSScrollView` under a rendered view, which is how SwiftUI backs
+    /// a `ScrollView`.
+    private func firstScrollView(in view: NSView) -> NSScrollView? {
+        var pending = view.subviews
+        while let next = pending.popLast() {
+            if let scrollView = next as? NSScrollView { return scrollView }
+            pending.append(contentsOf: next.subviews)
+        }
+        return nil
     }
 
     /// The list row must truncate a long device name, not wrap it: the popover

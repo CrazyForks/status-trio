@@ -35,6 +35,7 @@
 - **Afficher les niveaux de batterie Bluetooth** dans **Réglages › Bluetooth** est désormais activé par défaut : une fois le panneau Bluetooth activé, un appareil connecté indique son niveau sans avoir à activer ce réglage séparément. Le désactiver arrête toujours la lecture.
 - La liste des appareils Bluetooth n’affiche plus **Indisponible** sur chaque ligne : un appareil qui n’indique pas de niveau n’affiche aucun texte de batterie, et un rapport illisible est signalé une fois sous la liste.
 - Si l’accès Bluetooth a été refusé, la ligne Bluetooth vous amène maintenant directement au panneau où vous pouvez l’autoriser, au lieu de simplement vous le signaler.
+- Une longue liste d’appareils défile maintenant dans le panneau au lieu de le faire grandir au-delà de l’écran.
 
 ## Périphériques jumelés dans le panneau d’état
 - **Réglages › Bluetooth** peut désormais lister les périphériques jumelés sous la ligne Bluetooth : les premiers sont toujours visibles, les autres apparaissent derrière un bouton Développer, et le maximum est à votre choix. Les périphériques connectés figurent toujours en premier.

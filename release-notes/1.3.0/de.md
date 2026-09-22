@@ -35,6 +35,7 @@
 - **Bluetooth-Batteriestände anzeigen** unter **Einstellungen › Bluetooth** ist jetzt standardmäßig aktiviert: Sobald der Bluetooth-Bereich aktiviert ist, meldet ein verbundenes Gerät seinen Batteriestand, ohne dass dieser Schalter einzeln eingeschaltet werden muss. Ausschalten stoppt das Auslesen weiterhin.
 - Die Bluetooth-Geräteliste zeigt nicht mehr auf jeder Zeile **Nicht verfügbar**: Ein Gerät, das keinen Batteriestand meldet, zeigt gar keinen Batterietext, und ein Bericht, der nicht gelesen werden kann, wird einmal unter der Liste gemeldet.
 - Wurde der Bluetooth-Zugriff verweigert, führt die Bluetooth-Zeile jetzt direkt zu dem Bereich, in dem Sie ihn erlauben können, statt es nur zu melden.
+- Eine lange Geräteliste scrollt jetzt im Bereich, statt ihn über den Bildschirm hinaus wachsen zu lassen.
 
 ## Gekoppelte Geräte im Statusbereich
 - **Einstellungen › Bluetooth** kann jetzt gekoppelte Geräte unter der Bluetooth-Zeile auflisten: Die ersten paar sind immer sichtbar, der Rest erscheint hinter „Erweitern“, und die maximale Anzahl bestimmst du selbst. Verbundene Geräte stehen immer zuerst.

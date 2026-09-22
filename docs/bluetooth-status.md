@@ -123,6 +123,14 @@ their group. The limit is a total row count, which means a long connected
 group can push every disconnected device out of the panel — the expansion
 control holds the rest.
 
+The rows stop at 330 points and scroll inside the panel beyond that, the same
+bound the Wi-Fi list uses. The summary popover has no scroll view of its own, so
+without it an expanded list — or a limit the user raised to 20 — would keep
+growing the popover past the screen. The expansion control sits outside that
+scroll region, so collapsing a long list never needs a scroll to the bottom
+first, and the panel's scroll-wheel handling already leaves a pointer over an
+`NSScrollView` to that view rather than adjusting the volume.
+
 Rows here are actionable: tapping one asks the system to connect or disconnect
 that device (see *Acting on a device from its row* below). Nothing here starts a
 new read: the list renders the paired-device report and the level map the row
