@@ -175,7 +175,7 @@ Ne désactivez pas Gatekeeper globalement. Les mises à jour Sparkle ultérieure
 
 - **Clic gauche** sur l’icône de la barre des menus ou sur l’icône du Dock pour ouvrir le panneau d’état.
 - **Clic droit** sur l’une ou l’autre icône pour le menu natif, avec la version et l’action Quitter.
-- Sélectionnez une ligne dans le panneau d’état pour ouvrir sa page : les détails Wi-Fi avec les réseaux à proximité, les appareils Bluetooth jumelés — cliquez sur l’un d’eux pour le connecter ou le déconnecter — et les Détails de la batterie.
+- Sélectionnez la ligne Wi-Fi ou la ligne de batterie dans le panneau d’état pour ouvrir sa page : les réseaux à proximité et les détails de la liaison, ou les Détails de la batterie. La ligne Bluetooth répertorie ses appareils jumelés sur place — cliquez sur l’un d’eux pour le connecter ou le déconnecter — avec un contrôle Développer lorsqu’ils ne tiennent pas tous.
 - Ouvrez les **Réglages** pour choisir où l’icône s’affiche (barre des menus, Dock, ou les deux) et pour modifier sa taille, ses couleurs, l’épaisseur de l’anneau, les éléments du panneau d’état et leur ordre, le réglage du volume en défilant, la langue, la recherche de mises à jour et le lancement à l’ouverture de session.
 - Rouvrez le guide **Découvrez votre icône** à tout moment depuis **Réglages › Icône de l’app › Ouvrir le guide**.
 - Autorisez l’affichage du nom du réseau Wi-Fi actuel lorsque vous y êtes invité ; macOS demande l’accès à la localisation pour ce détail facultatif.

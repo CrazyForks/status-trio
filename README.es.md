@@ -175,7 +175,7 @@ No desactives Gatekeeper de forma global. Las actualizaciones posteriores de Spa
 
 - **Clic izquierdo** en el icono de la barra de menús o en el icono del Dock para abrir el panel emergente de estado.
 - **Clic derecho** en cualquiera de los dos iconos para abrir el menú nativo, que incluye la versión y la opción de salir.
-- Selecciona una fila del panel emergente para abrir su página: los detalles de Wi-Fi con las redes cercanas, los dispositivos Bluetooth emparejados —toca uno para conectarlo o desconectarlo— y los Detalles de la batería.
+- Selecciona la fila de Wi-Fi o la de batería del panel emergente para abrir su página: las redes cercanas y los detalles del enlace, o los Detalles de la batería. La fila de Bluetooth lista sus dispositivos emparejados en el propio panel —toca uno para conectarlo o desconectarlo— con un control Expandir cuando no quepan todos.
 - Abre **Ajustes** para elegir dónde se muestra el icono (barra de menús, Dock o ambos) y para cambiar su tamaño, los colores, el grosor del anillo, las secciones del panel y su orden, el comportamiento de ajuste con el desplazamiento, el idioma, la búsqueda de actualizaciones y abrir al iniciar sesión.
 - Vuelve a abrir la guía **Conoce tu icono** en cualquier momento desde **Ajustes › Icono de la app › Abrir guía**.
 - Activa el nombre de la red Wi-Fi actual cuando se te solicite; macOS pide acceso a la ubicación para este detalle opcional.

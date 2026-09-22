@@ -175,7 +175,7 @@ Não desative o Gatekeeper globalmente. As atualizações subsequentes do Sparkl
 
 - **Clique com o botão esquerdo** no ícone da barra de menus ou no ícone do Dock para abrir o popover de status.
 - **Clique com o botão direito** em qualquer um dos ícones para abrir o menu nativo, incluindo as ações de versão e de sair.
-- Selecione uma linha no popover para abrir a página correspondente: detalhes do Wi-Fi com redes próximas, dispositivos Bluetooth pareados — toque em um para conectar ou desconectar — e Detalhes da bateria.
+- Selecione a linha de Wi-Fi ou bateria no popover para abrir a página correspondente: redes próximas e detalhes do link, ou Detalhes da bateria. A linha Bluetooth lista os dispositivos pareados ali mesmo — toque em um para conectar ou desconectar — com um controle Expandir quando não couberem todos.
 - Abra os **Ajustes** para escolher onde o ícone é exibido (barra de menus, Dock ou ambos) e para alterar seu tamanho, as cores, a espessura do anel, as seções do painel e a ordem delas, o comportamento de ajuste por rolagem, o idioma, a verificação de atualizações e a opção de abrir ao iniciar sessão.
 - Reabra o guia **Conheça seu ícone** a qualquer momento em **Ajustes › Ícone do app › Abrir guia**.
 - Ative o nome da rede Wi-Fi atual quando solicitado; o macOS pede acesso à localização para esse detalhe opcional.
