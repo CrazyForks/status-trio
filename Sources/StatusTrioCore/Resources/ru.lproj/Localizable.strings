@@ -69,6 +69,15 @@
 "settings.bluetooth.showInStatusPanelDescription" = "Управляет элементом Bluetooth на панели состояния и синхронизируется с настройками панели состояния.";
 "settings.bluetooth.symbolScale" = "Размер значка Bluetooth";
 "settings.bluetooth.symbolScaleDescription" = "Масштаб значка устройства Bluetooth внутри кольца состояния от 100% до 180%.";
+"settings.bluetooth.showDeviceList" = "Показывать список устройств Bluetooth";
+"settings.bluetooth.showDeviceListDescription" = "Показывает сопряжённые устройства под пунктом Bluetooth на панели состояния. Подключённые устройства идут первыми.";
+"settings.bluetooth.deviceListGroup" = "Список на панели состояния";
+"settings.bluetooth.maximumVisible" = "Максимум видимых устройств Bluetooth";
+"settings.bluetooth.maximumVisibleDescription" = "Сколько устройств показывать до кнопки «Развернуть».";
+"settings.bluetooth.orderTitle" = "Порядок устройств Bluetooth";
+"settings.bluetooth.orderDescription" = "Перетаскивайте устройства, чтобы изменить порядок на панели состояния. Подключённые устройства всегда идут первыми, новые устройства добавляются в конец.";
+"settings.bluetooth.orderEmpty" = "Нет доступных сопряжённых устройств.";
+"settings.bluetooth.orderFootnote" = "Подключённые устройства всегда показываются первыми.";
 "bluetooth.battery.unavailable" = "Недоступно";
 "settings.audio.maximumVisible" = "Максимум видимых устройств вывода";
 "settings.audio.maximumVisibleDescription" = "Сколько устройств вывода показывать до кнопки «Развернуть».";
@@ -239,6 +248,8 @@
 "bluetooth.authorizationNotDetermined" = "Разрешение на использование Bluetooth ещё не запрошено.";
 "bluetooth.authorizationDenied" = "Разрешение на использование Bluetooth отклонено. Откройте настройки Bluetooth.";
 "bluetooth.authorizationRestricted" = "Разрешение на использование Bluetooth ограничено.";
+"bluetooth.list.expand" = "Развернуть";
+"bluetooth.list.collapse" = "Свернуть";
 
 "settings.preview.hint" = "Интерактивный просмотр · Изменяйте параметры ниже, чтобы сразу видеть результат";
 "settings.preview.dark" = "Темный";

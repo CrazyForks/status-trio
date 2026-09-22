@@ -17,7 +17,7 @@
 ## Bluetooth n’interroge plus en arrière-plan
 - Le panneau Bluetooth lisait autrefois la liste des périphériques jumelés toutes les 15 secondes tant que l’app était en cours d’exécution, même après la fermeture du panneau. Il s’actualise désormais lorsqu’un périphérique se connecte ou se déconnecte, et ne revient à une vérification lente que pendant qu’une vue Bluetooth est à l’écran.
 - Les périphériques jumelés et les niveaux de batterie proviennent désormais d’un seul rapport système au lieu de deux, ce qui divise par deux le travail de chaque actualisation.
-- La ligne de résumé et la page de l’appareil sont inchangées : les mêmes noms, les mêmes niveaux et le même comportement des autorisations. L’app ne demande toujours Bluetooth que lorsque vous ouvrez une vue Bluetooth.
+- Les noms des appareils proviennent toujours de la même source et le comportement des autorisations est inchangé : l’app ne demande toujours Bluetooth que lorsque vous ouvrez une vue Bluetooth.
 
 ## La recherche Wi-Fi s’arrête quand vous ne regardez plus
 - La page Wi-Fi balayait autrefois chaque canal environ toutes les cinq secondes tant qu’elle était ouverte, même après votre retour au résumé. Elle scanne désormais lorsque vous ouvrez la page, lorsque vous touchez Actualiser et lorsque vous basculez l’interrupteur Wi-Fi, et conserve le dernier résultat entre-temps.
@@ -30,3 +30,11 @@
 - Status Trio ne lit ni ne stocke plus les mots de passe Wi-Fi. L’ancien comportement ne pouvait pas être rendu fiable : macOS garde pour lui le mot de passe d’un réseau enregistré, et une copie stockée devenue obsolète aboutissait à des échecs de connexion et à des demandes répétées du trousseau, sans aucun moyen de vous signaler que le mot de passe était incorrect.
 - Si vous avez coché **Mémoriser le mot de passe dans le trousseau** dans une version antérieure, cet élément du trousseau est toujours présent et n’est plus utilisé. Vous pouvez le supprimer dans Trousseau d’accès en recherchant `com.lingsmbp.StatusTrio.wifi-password`.
 - Rien d’autre n’a changé sur cette page : les mêmes réseaux, les mêmes détails de signal et de liaison, le même interrupteur Wi-Fi et le même bouton qui ouvre les Réglages Système.
+
+## Les niveaux de batterie Bluetooth sont activés par défaut
+- **Afficher les niveaux de batterie Bluetooth** dans **Réglages › Bluetooth** est désormais activé par défaut : une fois le panneau Bluetooth activé, un appareil connecté indique son niveau sans avoir à activer ce réglage séparément. Le désactiver arrête toujours la lecture.
+- La page des appareils Bluetooth n’affiche plus **Indisponible** sur chaque ligne : un appareil qui n’indique pas de niveau n’affiche aucun texte de batterie, et un rapport illisible est signalé une fois sous la liste.
+
+## Périphériques jumelés dans le panneau d’état
+- **Réglages › Bluetooth** peut désormais lister les périphériques jumelés sous la ligne Bluetooth : les premiers sont toujours visibles, les autres apparaissent derrière un bouton Développer, et le maximum est à votre choix. Les périphériques connectés figurent toujours en premier.
+- Faites glisser les périphériques dans Réglages pour définir l’ordre affiché dans le panneau. Les nouveaux périphériques apparaissent à la fin.

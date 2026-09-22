@@ -52,6 +52,15 @@
 "settings.bluetooth.showInStatusPanelDescription" = "يتحكم في عنصر Bluetooth بلوحة الحالة ويبقى متزامنًا مع إعدادات لوحة الحالة.";
 "settings.bluetooth.symbolScale" = "حجم أيقونة Bluetooth";
 "settings.bluetooth.symbolScaleDescription" = "يضبط مقياس أيقونة جهاز Bluetooth داخل حلقة الحالة من 100% إلى 180%.";
+"settings.bluetooth.showDeviceList" = "إظهار قائمة أجهزة Bluetooth";
+"settings.bluetooth.showDeviceListDescription" = "يسرد الأجهزة المقترنة أسفل إدخال Bluetooth في لوحة الحالة. تظهر الأجهزة المتصلة أولًا.";
+"settings.bluetooth.deviceListGroup" = "قائمة لوحة الحالة";
+"settings.bluetooth.maximumVisible" = "الحد الأقصى لأجهزة Bluetooth الظاهرة";
+"settings.bluetooth.maximumVisibleDescription" = "عدد الأجهزة المعروضة قبل زر التوسيع.";
+"settings.bluetooth.orderTitle" = "ترتيب أجهزة Bluetooth";
+"settings.bluetooth.orderDescription" = "اسحب الأجهزة لتغيير ترتيبها في لوحة الحالة. تظهر الأجهزة المتصلة دائمًا أولًا، وتظهر الأجهزة الجديدة في النهاية.";
+"settings.bluetooth.orderEmpty" = "لا تتوفر أجهزة مقترنة.";
+"settings.bluetooth.orderFootnote" = "تظهر الأجهزة المتصلة دائمًا أولًا.";
 "bluetooth.battery.unavailable" = "غير متاح";
 "settings.audio.maximumVisible" = "الحد الأقصى لأجهزة الإخراج الظاهرة";
 "settings.audio.maximumVisibleDescription" = "عدد أجهزة الإخراج المعروضة قبل زر التوسيع.";
@@ -239,6 +248,8 @@
 "bluetooth.authorizationNotDetermined" = "لم يتم تحديد إذن Bluetooth بعد.";
 "bluetooth.authorizationDenied" = "إذن Bluetooth مرفوض. افتح إعدادات Bluetooth.";
 "bluetooth.authorizationRestricted" = "إذن Bluetooth مقيّد.";
+"bluetooth.list.expand" = "توسيع";
+"bluetooth.list.collapse" = "طي";
 
 "settings.preview.hint" = "معاينة مباشرة · اضبط الإعدادات أدناه لرؤية التغييرات فورًا";
 "settings.preview.dark" = "داكن";

@@ -69,6 +69,15 @@
 "settings.bluetooth.showInStatusPanelDescription" = "控制状态面板里的蓝牙项目，并与状态面板设置保持同步。";
 "settings.bluetooth.symbolScale" = "蓝牙图标大小";
 "settings.bluetooth.symbolScaleDescription" = "调节状态环内蓝牙设备图标的缩放比例（100% - 180%）。";
+"settings.bluetooth.showDeviceList" = "显示蓝牙设备列表";
+"settings.bluetooth.showDeviceListDescription" = "在状态面板的蓝牙行下方列出已配对设备，已连接的排在前面。";
+"settings.bluetooth.deviceListGroup" = "状态面板列表";
+"settings.bluetooth.maximumVisible" = "最多显示设备数";
+"settings.bluetooth.maximumVisibleDescription" = "超出这个数量的设备需要点击「展开」查看。";
+"settings.bluetooth.orderTitle" = "蓝牙设备顺序";
+"settings.bluetooth.orderDescription" = "拖动可以调整设备在状态面板中的顺序。已连接设备始终排在最前，新设备会出现在末尾。";
+"settings.bluetooth.orderEmpty" = "暂无可排序的已配对设备。";
+"settings.bluetooth.orderFootnote" = "已连接的设备始终排在最前。";
 "bluetooth.battery.unavailable" = "暂不可用";
 "settings.audio.maximumVisible" = "最多显示输出设备";
 "settings.audio.maximumVisibleDescription" = "超过该数量时显示“展开”按钮。";
@@ -239,6 +248,8 @@
 "bluetooth.authorizationNotDetermined" = "蓝牙权限尚未确定。";
 "bluetooth.authorizationDenied" = "蓝牙权限被拒绝。打开蓝牙设置。";
 "bluetooth.authorizationRestricted" = "蓝牙权限受限。";
+"bluetooth.list.expand" = "展开";
+"bluetooth.list.collapse" = "收起";
 
 "settings.preview.hint" = "实时预览 · 调节下方各项参数即刻在上方呈现";
 "settings.preview.dark" = "深色";

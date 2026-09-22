@@ -103,3 +103,33 @@ in-memory flag that a fresh launch does not restore, so the row used to start on
 that placeholder every time. Permission is still only requested by the user's
 tap, never by the popover appearing; that contract is covered by
 `BluetoothPermissionTimingTests`.
+
+## The device list in the status panel
+
+`Settings › Bluetooth` can list paired devices under the Bluetooth row. The
+connected group always leads; the saved order only reorders devices inside
+their own group, so a drag can never lift a disconnected device above a
+connected one, and devices with no saved rank land after the ranked ones in
+their group. The limit is a total row count, which means a long connected
+group can push every disconnected device out of the panel — the detail page
+still lists them all.
+
+The list is display-only: this release does not connect or disconnect devices
+from the app. Rows render the same shared view as the detail page, so a device
+whose report carries no level draws no battery text in either place. Nothing
+here starts a new read: the list renders the paired-device report and the level
+map the row already claims.
+
+The list is on by default, and the maximum visible count is clamped to `1...20`.
+The row's own subtitle gives way to the list while the list is visible, because
+the list already carries the connected names and repeating them reads as
+duplication — the row's accessibility label drops them for the same reason, so
+VoiceOver announces each device once. States only the row can explain keep the
+subtitle: nothing connected, no permission, powered off, or a failed read.
+
+`Settings › Bluetooth` also claims the monitor while its pane is on screen, so
+a fresh launch that opens Settings lists the paired devices instead of the empty
+state, and a read that lands after the pane appeared repaints it. The claim is
+gated by `BluetoothPanelActivation.shouldActivate(authorization:)`, so the pane
+never raises a permission prompt; releasing it stops the safety-net poll but
+does not turn the panel's enabled flag off.

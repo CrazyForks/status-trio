@@ -75,7 +75,7 @@ While audio plays over Bluetooth, two switches under **Settings › Bluetooth** 
   <img src="screenshots/menu-bar-airpods.jpg" width="1000" alt="Status Trio menu bar icon showing the AirPods glyph while AirPods are connected, with its status popover open">
 </p>
 
-The popover's Bluetooth row reports live state: the names of connected devices and, for AirPods, left, right, and case battery. The Bluetooth panel lists paired devices and their connection state; it is off by default, is enabled under **Settings › Status Panel**, and asks for Bluetooth permission on first use. **Settings › Bluetooth** also controls whether the battery levels are read and scales the Bluetooth icon from 100% to 180%.
+The popover's Bluetooth row reports live state: the names of connected devices and, for AirPods, left, right, and case battery. The Bluetooth panel lists paired devices and their connection state; it is off by default, is enabled under **Settings › Status Panel**, and asks for Bluetooth permission on first use. **Settings › Bluetooth** also controls whether the battery levels are read — on by default — and scales the Bluetooth icon from 100% to 180%.
 
 ## Dock icon
 

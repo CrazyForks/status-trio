@@ -48,6 +48,7 @@ final class BluetoothSummaryLayoutTests: XCTestCase {
                     authorization: state.authorization,
                     devices: state.devices,
                     batteryLevels: levelsByState[state.name] ?? [:],
+                    listOptions: BluetoothDeviceListOptions(showsList: false, maxVisibleDevices: 5, order: []),
                     named: "bluetooth-\(language.rawValue)-\(state.name)"
                 )
                 XCTAssertEqual(size.width, 330, accuracy: 0.5)
@@ -57,13 +58,277 @@ final class BluetoothSummaryLayoutTests: XCTestCase {
         }
     }
 
+    /// With the list on, the row grows by the visible device rows and the
+    /// expansion control — in both a narrow-glyph and a wide-glyph language.
+    func testDeviceListGrowsTheRowWithoutWideningIt() async throws {
+        let devices = (1...6).map { index in
+            BluetoothDevice(
+                id: "AA:00:00:00:00:0\(index)",
+                name: "Device \(index)",
+                kind: .audio,
+                isConnected: index <= 2
+            )
+        }
+        let options = BluetoothDeviceListOptions(showsList: true, maxVisibleDevices: 3, order: [])
+
+        for language in [AppLanguage.english, .simplifiedChinese] {
+            let withList = try await render(
+                language: language,
+                authorization: .allowed,
+                devices: devices,
+                listOptions: options,
+                named: "bluetooth-list-\(language.rawValue)"
+            )
+            let withoutList = try await render(
+                language: language,
+                authorization: .allowed,
+                devices: devices,
+                listOptions: BluetoothDeviceListOptions(showsList: false, maxVisibleDevices: 3, order: []),
+                named: "bluetooth-nolist-\(language.rawValue)"
+            )
+            // A zero limit hides every device row while keeping the expansion
+            // control, so this render isolates the rows from the control: the
+            // height difference above it can only come from the rows themselves.
+            let expandOnly = try await render(
+                language: language,
+                authorization: .allowed,
+                devices: devices,
+                listOptions: BluetoothDeviceListOptions(showsList: true, maxVisibleDevices: 0, order: []),
+                named: "bluetooth-list-expandonly-\(language.rawValue)"
+            )
+
+            XCTAssertEqual(withList.width, 330, accuracy: 0.5)
+            XCTAssertGreaterThan(
+                withList.height,
+                withoutList.height,
+                "the list must add the device rows in \(language.rawValue)"
+            )
+            XCTAssertGreaterThan(
+                withList.height,
+                expandOnly.height + 20,
+                "the device rows themselves must add height in \(language.rawValue): "
+                    + "the expansion control alone is not the list"
+            )
+        }
+    }
+
+    /// No paired devices means no list: the row keeps its own message and its
+    /// original height.
+    func testEmptyDeviceListDoesNotChangeTheRow() async throws {
+        let options = BluetoothDeviceListOptions(showsList: true, maxVisibleDevices: 3, order: [])
+
+        let withSettingOn = try await render(
+            language: .english,
+            authorization: .allowed,
+            devices: [],
+            listOptions: options,
+            named: "bluetooth-list-empty"
+        )
+
+        XCTAssertEqual(withSettingOn.width, 330, accuracy: 0.5)
+        XCTAssertLessThan(withSettingOn.height, 120)
+    }
+
+    /// The list row must truncate a long device name, not wrap it: the popover
+    /// has a fixed width, so a wrapped row would double its height and push the
+    /// panel taller. The old assertions could not catch that — the view is
+    /// built with `.frame(width: 330)`, so `fittingSize.width` is always 330 and
+    /// the height assertions are direction-only. Rendering the same list with a
+    /// short and a very long name makes the no-wrap requirement falsifiable: a
+    /// wrapped row cannot keep the same height.
+    func testLongDeviceNameTruncatesInsteadOfWrapping() async throws {
+        let shortNames = (1...3).map { index in
+            BluetoothDevice(
+                id: "AA:00:00:00:00:0\(index)",
+                name: "Device \(index)",
+                kind: .audio,
+                isConnected: index == 1
+            )
+        }
+        let longNames = (1...3).map { index in
+            BluetoothDevice(
+                id: "AA:00:00:00:00:0\(index)",
+                name: "Supercalifragilistic AirPods Max Pro Ultra Wireless Headphones \(index)",
+                kind: .audio,
+                isConnected: index == 1
+            )
+        }
+        let options = BluetoothDeviceListOptions(showsList: true, maxVisibleDevices: 3, order: [])
+
+        for language in [AppLanguage.english, .simplifiedChinese] {
+            let short = try await render(
+                language: language,
+                authorization: .allowed,
+                devices: shortNames,
+                listOptions: options,
+                named: "bluetooth-short-names-\(language.rawValue)"
+            )
+            let long = try await render(
+                language: language,
+                authorization: .allowed,
+                devices: longNames,
+                listOptions: options,
+                named: "bluetooth-long-names-\(language.rawValue)"
+            )
+
+            XCTAssertEqual(short.width, 330, accuracy: 0.5)
+            XCTAssertEqual(long.width, 330, accuracy: 0.5)
+            XCTAssertEqual(
+                short.height,
+                long.height,
+                accuracy: 1,
+                "a long device name must truncate, not wrap, in \(language.rawValue): "
+                    + "short \(short.height), long \(long.height)"
+            )
+        }
+    }
+
+    /// Exactly as many devices as the limit: everything fits, so the Expand
+    /// control must not appear. The check compares the render against the same
+    /// two rows with the expansion control forced on (a zero limit keeps the
+    /// control and drops the rows), which is only valid if the control really
+    /// adds height — so that side is pinned here too.
+    func testListAtTheLimitRendersWithoutAnExpansionControl() async throws {
+        let devices = (1...2).map { index in
+            BluetoothDevice(
+                id: "AA:00:00:00:00:0\(index)",
+                name: "Device \(index)",
+                kind: .audio,
+                isConnected: true
+            )
+        }
+        let moreDevices = (1...5).map { index in
+            BluetoothDevice(
+                id: "AA:00:00:00:00:0\(index)",
+                name: "Device \(index)",
+                kind: .audio,
+                isConnected: true
+            )
+        }
+
+        for language in [AppLanguage.english, .simplifiedChinese] {
+            let atLimit = try await render(
+                language: language,
+                authorization: .allowed,
+                devices: devices,
+                listOptions: BluetoothDeviceListOptions(showsList: true, maxVisibleDevices: 2, order: []),
+                named: "bluetooth-at-limit-\(language.rawValue)"
+            )
+            let overTheLimit = try await render(
+                language: language,
+                authorization: .allowed,
+                devices: moreDevices,
+                listOptions: BluetoothDeviceListOptions(showsList: true, maxVisibleDevices: 2, order: []),
+                named: "bluetooth-over-limit-\(language.rawValue)"
+            )
+            let controlOnly = try await render(
+                language: language,
+                authorization: .allowed,
+                devices: devices,
+                listOptions: BluetoothDeviceListOptions(showsList: true, maxVisibleDevices: 0, order: []),
+                named: "bluetooth-at-limit-control-only-\(language.rawValue)"
+            )
+
+            XCTAssertEqual(atLimit.width, 330, accuracy: 0.5)
+            XCTAssertGreaterThan(
+                overTheLimit.height,
+                atLimit.height,
+                "both renders show the same two rows, so the extra height can only be the "
+                    + "expansion control, which must appear when the list overflows the limit "
+                    + "and must be absent when it does not, in \(language.rawValue)"
+            )
+            // The same check from the other side: `maxVisibleDevices == 0` over
+            // these two devices shows no rows at all, so this height is the
+            // ordinary row plus the expansion control alone. The two fitting
+            // rows are taller than that, which is what proves no control leaked
+            // into the at-limit render.
+            XCTAssertGreaterThan(
+                atLimit.height,
+                controlOnly.height,
+                "two fitting rows must stay taller than the rows-free expansion control "
+                    + "in \(language.rawValue)"
+            )
+        }
+    }
+
+    /// The device rows must line up under the section's own icon: the row's icon
+    /// column has to match the summary row's, or every device glyph sits a few
+    /// points left of the Bluetooth glyph and every name left of the title. This
+    /// measures the rendered text leading of the title against the first row's,
+    /// which is the property the eye checks.
+    func testDeviceRowsLineUpWithTheSectionTitle() async throws {
+        let devices = [
+            BluetoothDevice(
+                id: "AA:00:00:00:00:01",
+                name: "Device 1",
+                kind: .audio,
+                isConnected: true
+            )
+        ]
+
+        for language in [AppLanguage.english, .simplifiedChinese] {
+            let leadings = try await textLineLeadings(
+                language: language,
+                authorization: .allowed,
+                devices: devices,
+                listOptions: BluetoothDeviceListOptions(
+                    showsList: true,
+                    maxVisibleDevices: 5,
+                    order: []
+                )
+            )
+
+            let title = try XCTUnwrap(leadings.first, "the title line must render")
+            let firstRow = try XCTUnwrap(
+                leadings.dropFirst().first,
+                "the first device row must render"
+            )
+            XCTAssertEqual(
+                firstRow,
+                title,
+                accuracy: 1.5,
+                "a device row's name must start where the section title starts in \(language.rawValue)"
+            )
+        }
+    }
+
     private func render(
         language: AppLanguage,
         authorization: BluetoothAuthorizationStatus,
         devices: [BluetoothDevice],
         batteryLevels: [String: BluetoothBatteryLevel] = [:],
+        listOptions: BluetoothDeviceListOptions = .standard,
         named name: String
     ) async throws -> NSSize {
+        let (hosting, controller) = try await makeHosting(
+            language: language,
+            authorization: authorization,
+            devices: devices,
+            batteryLevels: batteryLevels,
+            listOptions: listOptions
+        )
+        defer { controller.deactivate() }
+
+        if let directory = ProcessInfo.processInfo.environment["STATUS_TRIO_BLUETOOTH_SNAPSHOTS"] {
+            let bitmap = try XCTUnwrap(hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds))
+            hosting.cacheDisplay(in: hosting.bounds, to: bitmap)
+            let png = try XCTUnwrap(bitmap.representation(using: .png, properties: [:]))
+            let url = URL(fileURLWithPath: directory, isDirectory: true)
+            try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+            try png.write(to: url.appendingPathComponent("\(name).png"))
+        }
+        return hosting.fittingSize
+    }
+
+    /// Builds the panel's Bluetooth row with its layout settled, so a test can
+    /// measure what actually rendered instead of what the code intended.
+    private func makeHosting(
+        language: AppLanguage,
+        authorization: BluetoothAuthorizationStatus,
+        devices: [BluetoothDevice],
+        batteryLevels: [String: BluetoothBatteryLevel],
+        listOptions: BluetoothDeviceListOptions
+    ) async throws -> (NSView, BluetoothDeviceController) {
         let suite = "StatusTrioCoreTests.BluetoothSummary.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
         defer { defaults.removeTestSuite(named: suite) }
@@ -90,6 +355,7 @@ final class BluetoothSummaryLayoutTests: XCTestCase {
         let view = BluetoothStatusView(
             controller: controller,
             showsBatteryLevels: true,
+            listOptions: listOptions,
             onOpenDetails: {},
             onRequestAuthorization: {},
             onOpenBluetoothSettings: {}
@@ -109,17 +375,82 @@ final class BluetoothSummaryLayoutTests: XCTestCase {
         let size = hosting.fittingSize
         hosting.frame = NSRect(origin: .zero, size: size)
         hosting.layoutSubtreeIfNeeded()
+        return (hosting, controller)
+    }
 
-        if let directory = ProcessInfo.processInfo.environment["STATUS_TRIO_BLUETOOTH_SNAPSHOTS"] {
-            let bitmap = try XCTUnwrap(hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds))
-            hosting.cacheDisplay(in: hosting.bounds, to: bitmap)
-            let png = try XCTUnwrap(bitmap.representation(using: .png, properties: [:]))
-            let url = URL(fileURLWithPath: directory, isDirectory: true)
-            try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
-            try png.write(to: url.appendingPathComponent("\(name).png"))
+    /// Where each rendered text line starts, in points, skipping the section's
+    /// icon column: index 0 is the title line and the rest are the device rows.
+    /// This is how a test sees the alignment the eye sees.
+    private func textLineLeadings(
+        language: AppLanguage,
+        authorization: BluetoothAuthorizationStatus,
+        devices: [BluetoothDevice],
+        listOptions: BluetoothDeviceListOptions
+    ) async throws -> [CGFloat] {
+        let (hosting, controller) = try await makeHosting(
+            language: language,
+            authorization: authorization,
+            devices: devices,
+            batteryLevels: [:],
+            listOptions: listOptions
+        )
+        defer { controller.deactivate() }
+
+        let bitmap = try XCTUnwrap(hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds))
+        hosting.cacheDisplay(in: hosting.bounds, to: bitmap)
+        let scale = CGFloat(bitmap.pixelsWide) / hosting.bounds.width
+        // Past the icon column (the harness pads the panel by 14 points), so the
+        // scan only ever measures text.
+        let textStart = Int((14 + BluetoothPanelMetrics.iconColumnWidth) * scale) + 1
+
+        func isDark(_ x: Int, _ y: Int) -> Bool {
+            guard let color = bitmap.colorAt(x: x, y: y) else { return false }
+            let luminance = 0.299 * color.redComponent
+                + 0.587 * color.greenComponent
+                + 0.114 * color.blueComponent
+            return luminance < 0.55
         }
-        controller.deactivate()
-        return size
+
+        var bands: [[(y: Int, leftmost: Int)]] = []
+        var lineIsOpen = false
+        for y in 0..<bitmap.pixelsHigh {
+            var hasText = false
+            var probe = textStart
+            while probe < bitmap.pixelsWide {
+                if isDark(probe, y) {
+                    hasText = true
+                    break
+                }
+                probe += 4
+            }
+
+            guard hasText else {
+                lineIsOpen = false
+                continue
+            }
+
+            var leftmost = textStart
+            while leftmost < bitmap.pixelsWide, !isDark(leftmost, y) {
+                leftmost += 1
+            }
+            if lineIsOpen {
+                bands[bands.count - 1].append((y, leftmost))
+            } else {
+                bands.append([(y, leftmost)])
+                lineIsOpen = true
+            }
+        }
+
+        // The line's leading edge is the band's leftmost pixel, not its top row's:
+        // the top row only catches the tallest glyphs, whose own leading edge sits
+        // well inside the line. Bands of a row or two are antialiasing slivers,
+        // not text lines.
+        return bands
+            .filter { $0.count >= 4 }
+            .map { band in
+                let leftmost = band.map(\.leftmost).min() ?? textStart
+                return CGFloat(leftmost) / scale
+            }
     }
 }
 

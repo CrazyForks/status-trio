@@ -69,6 +69,15 @@
 "settings.bluetooth.showInStatusPanelDescription" = "Controlla l’elemento Bluetooth nel pannello di stato e resta sincronizzato con le impostazioni del pannello di stato.";
 "settings.bluetooth.symbolScale" = "Dimensione icona Bluetooth";
 "settings.bluetooth.symbolScaleDescription" = "Regola la scala dell’icona del dispositivo Bluetooth nell’anello di stato dal 100% al 180%.";
+"settings.bluetooth.showDeviceList" = "Mostra l’elenco dei dispositivi Bluetooth";
+"settings.bluetooth.showDeviceListDescription" = "Elenca i dispositivi abbinati sotto la voce Bluetooth nel pannello di stato. I dispositivi connessi vengono mostrati per primi.";
+"settings.bluetooth.deviceListGroup" = "Elenco del pannello di stato";
+"settings.bluetooth.maximumVisible" = "Numero massimo di dispositivi Bluetooth visibili";
+"settings.bluetooth.maximumVisibleDescription" = "Numero di dispositivi mostrati prima del comando Espandi.";
+"settings.bluetooth.orderTitle" = "Ordine dei dispositivi Bluetooth";
+"settings.bluetooth.orderDescription" = "Trascina i dispositivi per cambiare l’ordine nel pannello di stato. I dispositivi connessi vengono sempre mostrati per primi e i nuovi dispositivi vengono aggiunti in fondo.";
+"settings.bluetooth.orderEmpty" = "Nessun dispositivo abbinato disponibile.";
+"settings.bluetooth.orderFootnote" = "I dispositivi connessi vengono sempre elencati per primi.";
 "bluetooth.battery.unavailable" = "Non disponibile";
 "settings.audio.maximumVisible" = "Numero massimo di dispositivi visibili";
 "settings.audio.maximumVisibleDescription" = "Numero di dispositivi mostrati prima del comando Espandi.";
@@ -239,6 +248,8 @@
 "bluetooth.authorizationNotDetermined" = "L’autorizzazione Bluetooth non è ancora stata stabilita.";
 "bluetooth.authorizationDenied" = "L’autorizzazione Bluetooth è stata negata. Apri impostazioni Bluetooth.";
 "bluetooth.authorizationRestricted" = "L’autorizzazione Bluetooth è limitata.";
+"bluetooth.list.expand" = "Espandi";
+"bluetooth.list.collapse" = "Comprimi";
 
 "settings.preview.hint" = "Anteprima in tempo reale · Modifica le impostazioni sottostanti per visualizzare subito le modifiche";
 "settings.preview.dark" = "Scuro";

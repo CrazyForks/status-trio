@@ -69,6 +69,15 @@
 "settings.bluetooth.showInStatusPanelDescription" = "상태 패널의 Bluetooth 항목을 전환하며 상태 패널 설정과 동기화됩니다.";
 "settings.bluetooth.symbolScale" = "Bluetooth 아이콘 크기";
 "settings.bluetooth.symbolScaleDescription" = "상태 링 안의 Bluetooth 기기 아이콘 크기를 100% ~ 180%로 조절합니다.";
+"settings.bluetooth.showDeviceList" = "Bluetooth 기기 목록 표시";
+"settings.bluetooth.showDeviceListDescription" = "상태 패널의 Bluetooth 항목 아래에 페어링된 기기를 표시합니다. 연결된 기기가 먼저 표시됩니다.";
+"settings.bluetooth.deviceListGroup" = "상태 패널 목록";
+"settings.bluetooth.maximumVisible" = "표시할 최대 Bluetooth 기기 수";
+"settings.bluetooth.maximumVisibleDescription" = "‘펼치기’ 컨트롤 전에 표시할 기기 수입니다.";
+"settings.bluetooth.orderTitle" = "Bluetooth 기기 순서";
+"settings.bluetooth.orderDescription" = "기기를 드래그하여 상태 패널의 표시 순서를 변경합니다. 연결된 기기는 항상 먼저 표시되고 새 기기는 끝에 표시됩니다.";
+"settings.bluetooth.orderEmpty" = "정렬할 수 있는 페어링된 기기가 없습니다.";
+"settings.bluetooth.orderFootnote" = "연결된 기기는 항상 먼저 표시됩니다.";
 "bluetooth.battery.unavailable" = "사용할 수 없음";
 "settings.audio.maximumVisible" = "표시할 최대 출력 장치 수";
 "settings.audio.maximumVisibleDescription" = "‘펼치기’ 컨트롤 전에 표시할 출력 장치 수입니다.";
@@ -239,6 +248,8 @@
 "bluetooth.authorizationNotDetermined" = "Bluetooth 권한이 아직 결정되지 않았습니다.";
 "bluetooth.authorizationDenied" = "Bluetooth 권한이 거부되었습니다. Bluetooth 설정을 여십시오.";
 "bluetooth.authorizationRestricted" = "Bluetooth 권한이 제한되었습니다.";
+"bluetooth.list.expand" = "펼치기";
+"bluetooth.list.collapse" = "접기";
 
 "settings.preview.hint" = "실시간 미리보기 · 아래 설정을 변경하면 즉시 반영됩니다";
 "settings.preview.dark" = "다크";

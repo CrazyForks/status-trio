@@ -17,7 +17,7 @@
 ## Bluetooth non interroga più in background
 - Il pannello Bluetooth in precedenza leggeva l’elenco dei dispositivi abbinati ogni 15 secondi finché l’app era in esecuzione, anche dopo la chiusura del pannello. Ora si aggiorna quando un dispositivo si connette o si disconnette, e ricorre a un controllo lento solo mentre una vista Bluetooth è sullo schermo.
 - I dispositivi abbinati e i livelli della batteria ora provengono da un unico report di sistema invece che da due, il che dimezza il lavoro di ogni aggiornamento.
-- La riga di riepilogo e la pagina del dispositivo sono invariate: gli stessi nomi, gli stessi livelli e lo stesso comportamento delle autorizzazioni. L’app chiede ancora Bluetooth solo quando apri una vista Bluetooth.
+- I nomi dei dispositivi provengono ancora dalla stessa fonte e il comportamento delle autorizzazioni è invariato: l’app chiede ancora Bluetooth solo quando apri una vista Bluetooth.
 
 ## La scansione Wi-Fi si ferma quando smetti di guardare
 - La pagina Wi-Fi in precedenza analizzava ogni canale circa ogni cinque secondi finché restava aperta, anche dopo il ritorno al riepilogo. Ora esegue la scansione quando apri la pagina, quando tocchi Aggiorna e quando attivi l’interruttore Wi-Fi, e nel frattempo mantiene l’ultimo risultato.
@@ -30,3 +30,11 @@
 - Status Trio non legge né salva più le password Wi-Fi. Il comportamento precedente non poteva essere reso affidabile: macOS tiene per sé la password di una rete salvata, e una copia memorizzata diventata obsoleta finiva in connessioni non riuscite e in richieste ripetute del Portachiavi, senza alcun modo di dirti che la password era sbagliata.
 - Se in una versione precedente hai selezionato **Ricorda la password nel Portachiavi**, quella voce del Portachiavi è ancora presente e non viene più usata. Puoi eliminarla in Accesso Portachiavi cercando `com.lingsmbp.StatusTrio.wifi-password`.
 - Nient’altro è cambiato nella pagina: le stesse reti, gli stessi dettagli di segnale e collegamento, lo stesso interruttore Wi-Fi e lo stesso pulsante che apre le Impostazioni di Sistema.
+
+## I livelli batteria Bluetooth sono attivi per impostazione predefinita
+- **Mostra i livelli batteria Bluetooth** in **Impostazioni › Bluetooth** ora è attivo per impostazione predefinita: una volta attivato il pannello Bluetooth, un dispositivo connesso indica il suo livello senza dover attivare questo interruttore a parte. Disattivarlo interrompe comunque la lettura.
+- La pagina dei dispositivi Bluetooth non mostra più **Non disponibile** su ogni riga: un dispositivo che non indica la batteria non mostra alcun testo della batteria, e un report illeggibile viene segnalato una volta sotto l’elenco.
+
+## Dispositivi abbinati nel pannello di stato
+- **Impostazioni › Bluetooth** ora può elencare i dispositivi abbinati sotto la riga Bluetooth: i primi sono sempre visibili, gli altri compaiono dietro un comando Espandi e il numero massimo lo scegli tu. I dispositivi connessi sono sempre elencati per primi.
+- Trascina i dispositivi in Impostazioni per definire l’ordine mostrato nel pannello. I nuovi dispositivi compaiono alla fine.

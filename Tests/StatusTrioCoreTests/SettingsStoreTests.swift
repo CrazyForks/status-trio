@@ -438,6 +438,100 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(store.maxVisibleOutputDevices, 1)
     }
 
+    func testBluetoothDeviceListDefaults() {
+        let store = SettingsStore(defaults: makeSuite().defaults)
+
+        XCTAssertEqual(SettingsStore.bluetoothDeviceLimitRange, 1...20)
+        XCTAssertTrue(store.showsBluetoothDeviceList)
+        XCTAssertEqual(store.maxVisibleBluetoothDevices, 5)
+        XCTAssertEqual(store.bluetoothDeviceOrder, [])
+        XCTAssertEqual(
+            store.bluetoothDeviceListOptions,
+            BluetoothDeviceListOptions(showsList: true, maxVisibleDevices: 5, order: [])
+        )
+    }
+
+    func testBluetoothDeviceListSettingsPersist() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+
+        let first = SettingsStore(defaults: suite.defaults)
+        first.showsBluetoothDeviceList = false
+        first.maxVisibleBluetoothDevices = 8
+
+        let second = SettingsStore(defaults: suite.defaults)
+        XCTAssertFalse(second.showsBluetoothDeviceList)
+        XCTAssertEqual(second.maxVisibleBluetoothDevices, 8)
+    }
+
+    func testMaxVisibleBluetoothDevicesIsClamped() {
+        let store = SettingsStore(defaults: makeSuite().defaults)
+
+        store.maxVisibleBluetoothDevices = 50
+        XCTAssertEqual(store.maxVisibleBluetoothDevices, 20)
+
+        store.maxVisibleBluetoothDevices = 0
+        XCTAssertEqual(store.maxVisibleBluetoothDevices, 1)
+    }
+
+    func testMovingBluetoothDevicesPersistsNormalizedAddressOrder() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+
+        let devices = [
+            makeBluetoothDevice(address: "AC:90:85:C2:9C:1F", name: "AirPods"),
+            makeBluetoothDevice(address: "D3:6D:6C:40:A3:2E", name: "MX Keys"),
+            makeBluetoothDevice(address: "AA:BB:CC:DD:EE:FF", name: "Mouse")
+        ]
+        let store = SettingsStore(defaults: suite.defaults)
+
+        store.moveBluetoothDevices(fromOffsets: IndexSet(integer: 2), toOffset: 0, in: devices)
+
+        XCTAssertEqual(
+            store.bluetoothDeviceOrder,
+            ["AABBCCDDEEFF", "AC9085C29C1F", "D36D6C40A32E"]
+        )
+        XCTAssertEqual(
+            SettingsStore(defaults: suite.defaults).bluetoothDeviceOrder,
+            ["AABBCCDDEEFF", "AC9085C29C1F", "D36D6C40A32E"]
+        )
+    }
+
+    func testMovingBluetoothDevicesIgnoresOutOfRangeOffsets() {
+        let store = SettingsStore(defaults: makeSuite().defaults)
+        let devices = [makeBluetoothDevice(address: "AC:90:85:C2:9C:1F", name: "AirPods")]
+
+        store.moveBluetoothDevices(fromOffsets: IndexSet(integer: 5), toOffset: 0, in: devices)
+        XCTAssertEqual(store.bluetoothDeviceOrder, [])
+
+        store.moveBluetoothDevices(fromOffsets: IndexSet(), toOffset: 0, in: devices)
+        XCTAssertEqual(store.bluetoothDeviceOrder, [])
+    }
+
+    /// A destination past the last slot is rejected outright rather than
+    /// clamped, so a move SwiftUI could never produce cannot rewrite the order.
+    /// The valid destination at the end (`devices.count`) still goes through.
+    func testMovingBluetoothDevicesIgnoresAnOutOfRangeDestination() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+
+        let devices = [
+            makeBluetoothDevice(address: "AC:90:85:C2:9C:1F", name: "AirPods"),
+            makeBluetoothDevice(address: "D3:6D:6C:40:A3:2E", name: "MX Keys")
+        ]
+        let store = SettingsStore(defaults: suite.defaults)
+
+        store.moveBluetoothDevices(fromOffsets: IndexSet(integer: 0), toOffset: 3, in: devices)
+        XCTAssertEqual(store.bluetoothDeviceOrder, [], "an out-of-range destination must be ignored")
+
+        store.moveBluetoothDevices(fromOffsets: IndexSet(integer: 0), toOffset: 2, in: devices)
+        XCTAssertEqual(
+            store.bluetoothDeviceOrder,
+            ["D36D6C40A32E", "AC9085C29C1F"],
+            "the destination at the end of the list is in range and must move the device"
+        )
+    }
+
     func testMovingOutputDevicesPersistsCustomOrder() {
         let suite = makeSuite()
         defer { clear(suite) }
@@ -872,5 +966,9 @@ final class SettingsStoreTests: XCTestCase {
             uid: uid,
             isCurrent: false
         )
+    }
+
+    private func makeBluetoothDevice(address: String, name: String) -> BluetoothDevice {
+        BluetoothDevice(id: address, name: name, kind: .audio, isConnected: true)
     }
 }

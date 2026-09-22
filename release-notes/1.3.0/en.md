@@ -17,7 +17,7 @@
 ## Bluetooth no longer polls in the background
 - The Bluetooth panel used to read the paired-device list every 15 seconds for as long as the app was running, even after the panel was closed. It now refreshes when a device connects or disconnects, and falls back to a slow check only while a Bluetooth view is on screen.
 - Paired devices and battery levels now come from one system report instead of two, which halves the work each refresh does.
-- The summary row and the device page are unchanged: the same names, the same levels, and the same permission behaviour — the app still asks for Bluetooth only when you open a Bluetooth view.
+- The device names come from the same source as before, and the permission behaviour is unchanged — the app still asks for Bluetooth only when you open a Bluetooth view.
 
 ## Wi-Fi scanning stops when you stop looking
 - The Wi-Fi page used to sweep every channel about every five seconds for as long as it was open, even after you went back to the summary. It now scans when you open the page, when you tap refresh, and when you switch the radio, and keeps the last result in between.
@@ -30,3 +30,11 @@
 - Status Trio no longer reads or stores Wi-Fi passwords. The old behaviour could not be made dependable: macOS keeps a saved network's password to itself, and a stored copy that had gone stale ended in failed joins and repeated Keychain prompts, with no way to tell you the password was wrong.
 - If you ticked **Remember password** in an earlier version, that Keychain item is still there and is no longer used. You can delete it in Keychain Access by searching for `com.lingsmbp.StatusTrio.wifi-password`.
 - Nothing else about the page changed: the same networks, the same signal and link details, the same Wi-Fi switch, and the same button that opens System Settings.
+
+## Bluetooth battery levels are on by default
+- **Show Bluetooth battery levels** under **Settings › Bluetooth** is now on by default: once the Bluetooth panel is enabled, a connected device reports its battery without turning this switch on separately. Turning it off still stops the read.
+- The Bluetooth device page no longer shows **Unavailable** on every row: a device that reports no battery shows no battery text, and a report that cannot be read is reported once under the list.
+
+## Paired devices in the status panel
+- **Settings › Bluetooth** can now list paired devices under the Bluetooth row: the first few are always visible, the rest appear behind an Expand control, and the maximum is yours to set. Connected devices are always listed first.
+- Drag devices in Settings to set the order shown in the panel. New devices appear at the end.

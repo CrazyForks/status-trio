@@ -69,6 +69,15 @@
 "settings.bluetooth.showInStatusPanelDescription" = "Steuert das Bluetooth-Element im Statusbereich und bleibt mit den Einstellungen des Statusbereichs synchron.";
 "settings.bluetooth.symbolScale" = "Bluetooth-Symbolgröße";
 "settings.bluetooth.symbolScaleDescription" = "Passt die Größe des Bluetooth-Gerätesymbols im Statusring von 100 % bis 180 % an.";
+"settings.bluetooth.showDeviceList" = "Bluetooth-Geräteliste anzeigen";
+"settings.bluetooth.showDeviceListDescription" = "Listet gekoppelte Geräte unter dem Bluetooth-Eintrag im Statusbereich auf. Verbundene Geräte stehen zuerst.";
+"settings.bluetooth.deviceListGroup" = "Liste im Statusbereich";
+"settings.bluetooth.maximumVisible" = "Maximal sichtbare Bluetooth-Geräte";
+"settings.bluetooth.maximumVisibleDescription" = "Anzahl der Geräte, die vor „Erweitern“ angezeigt werden.";
+"settings.bluetooth.orderTitle" = "Reihenfolge der Bluetooth-Geräte";
+"settings.bluetooth.orderDescription" = "Geräte ziehen, um die Reihenfolge im Statusbereich zu ändern. Verbundene Geräte stehen immer zuerst, neue Geräte erscheinen am Ende.";
+"settings.bluetooth.orderEmpty" = "Keine gekoppelten Geräte verfügbar.";
+"settings.bluetooth.orderFootnote" = "Verbundene Geräte werden immer zuerst aufgelistet.";
 "bluetooth.battery.unavailable" = "Nicht verfügbar";
 "settings.audio.maximumVisible" = "Maximal sichtbare Ausgabegeräte";
 "settings.audio.maximumVisibleDescription" = "Anzahl der Ausgabegeräte, die vor „Erweitern“ angezeigt werden.";
@@ -239,6 +248,8 @@
 "bluetooth.authorizationNotDetermined" = "Die Bluetooth-Berechtigung wurde noch nicht festgelegt.";
 "bluetooth.authorizationDenied" = "Die Bluetooth-Berechtigung wurde verweigert. Bluetooth-Einstellungen öffnen.";
 "bluetooth.authorizationRestricted" = "Die Bluetooth-Berechtigung ist eingeschränkt.";
+"bluetooth.list.expand" = "Erweitern";
+"bluetooth.list.collapse" = "Reduzieren";
 
 "settings.preview.hint" = "Live-Vorschau · Passen Sie die Einstellungen unten an, um Änderungen sofort zu sehen";
 "settings.preview.dark" = "Dunkel";

@@ -357,6 +357,7 @@ struct StatusPopoverView: View {
             BluetoothStatusView(
                 controller: store.bluetoothDevices,
                 showsBatteryLevels: settings.showsBluetoothBatteryLevels,
+                listOptions: settings.bluetoothDeviceListOptions,
                 onOpenDetails: {
                     store.openBluetoothDetails()
                     panel = .bluetooth

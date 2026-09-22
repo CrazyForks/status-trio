@@ -69,6 +69,15 @@
 "settings.bluetooth.showInStatusPanelDescription" = "Controla o item Bluetooth no painel de status e permanece sincronizado com os ajustes do painel de status.";
 "settings.bluetooth.symbolScale" = "Tamanho do ícone Bluetooth";
 "settings.bluetooth.symbolScaleDescription" = "Ajusta a escala do ícone do dispositivo Bluetooth no anel de status de 100% a 180%.";
+"settings.bluetooth.showDeviceList" = "Mostrar a lista de dispositivos Bluetooth";
+"settings.bluetooth.showDeviceListDescription" = "Lista os dispositivos emparelhados sob o item Bluetooth no painel de status. Os dispositivos conectados aparecem primeiro.";
+"settings.bluetooth.deviceListGroup" = "Lista do painel de status";
+"settings.bluetooth.maximumVisible" = "Máximo de dispositivos Bluetooth visíveis";
+"settings.bluetooth.maximumVisibleDescription" = "Quantos dispositivos aparecem antes do controle Expandir.";
+"settings.bluetooth.orderTitle" = "Ordem dos dispositivos Bluetooth";
+"settings.bluetooth.orderDescription" = "Arraste os dispositivos para alterar a ordem no painel de status. Os dispositivos conectados aparecem sempre primeiro e os novos no final.";
+"settings.bluetooth.orderEmpty" = "Nenhum dispositivo emparelhado disponível.";
+"settings.bluetooth.orderFootnote" = "Os dispositivos conectados são sempre listados primeiro.";
 "bluetooth.battery.unavailable" = "Indisponível";
 "settings.audio.maximumVisible" = "Máximo de dispositivos visíveis";
 "settings.audio.maximumVisibleDescription" = "Quantos dispositivos aparecem antes do controle Expandir.";
@@ -239,6 +248,8 @@
 "bluetooth.authorizationNotDetermined" = "A permissão de Bluetooth ainda não foi definida.";
 "bluetooth.authorizationDenied" = "A permissão de Bluetooth foi negada. Abrir Ajustes de Bluetooth.";
 "bluetooth.authorizationRestricted" = "A permissão de Bluetooth está restrita.";
+"bluetooth.list.expand" = "Expandir";
+"bluetooth.list.collapse" = "Recolher";
 
 "settings.preview.hint" = "Prévia ao vivo · Altere os ajustes abaixo para ver as alterações imediatamente";
 "settings.preview.dark" = "Escuro";
