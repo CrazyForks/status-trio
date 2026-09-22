@@ -36,13 +36,19 @@ struct BluetoothStatusView: View {
                 .accessibilityLabel(rowAccessibilityLabel)
 
                 Button(action: { controller.refresh() }) {
+                    // Trailing-aligned inside the button's own box: the other
+                    // rows end on their disclosure chevron itself, so its right
+                    // edge is what sits ten points before the gear. A glyph
+                    // centred in this 24-point box would land about seven points
+                    // to the left of that column. The whole box stays clickable.
                     Image(systemName: "arrow.clockwise")
+                        .frame(width: 24, height: 24, alignment: .trailing)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(.secondary)
                 .help(localization.string(.bluetoothRefresh))
                 .accessibilityLabel(localization.string(.bluetoothRefresh))
-                .frame(width: 24, height: 24)
 
                 Button(localization.string(.bluetoothActionOpenSettings), systemImage: "gearshape", action: onOpenBluetoothSettings)
                     .labelStyle(.iconOnly)
