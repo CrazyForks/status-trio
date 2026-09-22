@@ -25,6 +25,11 @@ visibility gate, so permission prompts never announce visually hidden measuremen
 A hotspot using a Wi-Fi primary path remains eligible. The existing technical
 panel can still expose radio details separately from this primary-path summary.
 
+Suppressing them on Ethernet is not the section going blank: the row is the
+network section's single slot, and a wired primary path hands it to the wired row,
+which reports the same five technical rows with the LAN address. See
+[wired link status](ethernet-link-status.md).
+
 The optional band is omitted from `MenuBarStatus`. Both icon subscriptions project
 to this lightweight status before deduplication, and neither menu-bar nor Dock
 render keys change when only the band changes. The full popover snapshot retains
