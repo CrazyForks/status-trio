@@ -53,6 +53,11 @@ final class SettingsStore: ObservableObject {
     static let outputDeviceLimitRange: ClosedRange<Int> = 1...20
     static let defaultMaxVisibleOutputDevices = 5
     static let maxVisibleOutputDevicesDefaultsKey = "maxVisibleOutputDevices"
+    static let defaultMaxVisibleBluetoothDevices = 5
+    static let maxVisibleBluetoothDevicesDefaultsKey = "maxVisibleBluetoothDevices"
+    static let showsBluetoothDeviceListDefaultsKey = "showsBluetoothDeviceList"
+    static let bluetoothDeviceOrderDefaultsKey = "bluetoothDeviceOrder"
+    static let bluetoothDeviceLimitRange: ClosedRange<Int> = 1...20
     static let alwaysShowsAllOutputDevicesDefaultsKey = "alwaysShowsAllOutputDevices"
     static let outputDeviceOrderDefaultsKey = "outputDeviceOrder"
     static let popupSectionOrderDefaultsKey = "popupSectionOrder"
@@ -298,6 +303,32 @@ final class SettingsStore: ObservableObject {
         }
     }
 
+    @Published var showsBluetoothDeviceList: Bool {
+        didSet {
+            defaults.set(
+                showsBluetoothDeviceList,
+                forKey: Self.showsBluetoothDeviceListDefaultsKey
+            )
+        }
+    }
+
+    @Published var maxVisibleBluetoothDevices: Int {
+        didSet {
+            let clamped = Self.clampedBluetoothDeviceLimit(maxVisibleBluetoothDevices)
+            guard clamped == maxVisibleBluetoothDevices else {
+                maxVisibleBluetoothDevices = clamped
+                return
+            }
+            defaults.set(clamped, forKey: Self.maxVisibleBluetoothDevicesDefaultsKey)
+        }
+    }
+
+    @Published private(set) var bluetoothDeviceOrder: [String] {
+        didSet {
+            defaults.set(bluetoothDeviceOrder, forKey: Self.bluetoothDeviceOrderDefaultsKey)
+        }
+    }
+
     @Published private(set) var popupSectionOrder: [PopupSection] {
         didSet {
             defaults.set(
@@ -364,6 +395,14 @@ final class SettingsStore: ObservableObject {
         alwaysShowsAllOutputDevices ? nil : maxVisibleOutputDevices
     }
 
+    var bluetoothDeviceListOptions: BluetoothDeviceListOptions {
+        BluetoothDeviceListOptions(
+            showsList: showsBluetoothDeviceList,
+            maxVisibleDevices: maxVisibleBluetoothDevices,
+            order: bluetoothDeviceOrder
+        )
+    }
+
     func orderedOutputDevices(_ devices: [AudioOutputDevice]) -> [AudioOutputDevice] {
         OutputDeviceListPresentation.orderedDevices(devices, using: outputDeviceOrder)
     }
@@ -391,6 +430,33 @@ final class SettingsStore: ObservableObject {
             at: min(insertionOffset, reorderedDevices.count)
         )
         outputDeviceOrder = reorderedDevices.compactMap(\.uid)
+    }
+
+    func moveBluetoothDevices(
+        fromOffsets source: IndexSet,
+        toOffset destination: Int,
+        in devices: [BluetoothDevice]
+    ) {
+        guard !source.isEmpty,
+              source.allSatisfy({ devices.indices.contains($0) }),
+              (0...devices.count).contains(destination) else {
+            return
+        }
+
+        let movedDevices = source.map { devices[$0] }
+        let remainingDevices = devices.enumerated()
+            .filter { !source.contains($0.offset) }
+            .map(\.element)
+        let insertionOffset = destination - source.filter { $0 < destination }.count
+
+        var reorderedDevices = remainingDevices
+        reorderedDevices.insert(
+            contentsOf: movedDevices,
+            at: min(insertionOffset, reorderedDevices.count)
+        )
+        bluetoothDeviceOrder = reorderedDevices.map {
+            BluetoothBatteryReader.normalizedAddress($0.id)
+        }
     }
 
     func movePopupSections(
@@ -491,6 +557,12 @@ final class SettingsStore: ObservableObject {
         let storedCriticalThreshold = (defaults.object(forKey: Self.batteryCriticalThresholdDefaultsKey) as? NSNumber)?.doubleValue
         let storedBatterySymbolScale = (defaults.object(forKey: Self.batterySymbolScaleDefaultsKey) as? NSNumber)?.doubleValue
         let storedOutputDeviceLimit = (defaults.object(forKey: Self.maxVisibleOutputDevicesDefaultsKey) as? NSNumber)?.intValue
+        let storedBluetoothDeviceLimit = (defaults.object(
+            forKey: Self.maxVisibleBluetoothDevicesDefaultsKey
+        ) as? NSNumber)?.intValue
+        let storedBluetoothDeviceOrder = defaults.stringArray(
+            forKey: Self.bluetoothDeviceOrderDefaultsKey
+        ) ?? []
         let storedRefreshInterval = (defaults.object(forKey: Self.refreshIntervalDefaultsKey) as? NSNumber)?.doubleValue
         let storedBluetoothSymbolScale = (defaults.object(forKey: Self.bluetoothSymbolScaleDefaultsKey) as? NSNumber)?.doubleValue
         let storedWifiSymbolScale = (defaults.object(forKey: Self.wifiSymbolScaleDefaultsKey) as? NSNumber)?.doubleValue
@@ -575,6 +647,13 @@ final class SettingsStore: ObservableObject {
         self.maxVisibleOutputDevices = Self.clampedOutputDeviceLimit(
             storedOutputDeviceLimit ?? Self.defaultMaxVisibleOutputDevices
         )
+        self.showsBluetoothDeviceList = defaults.object(
+            forKey: Self.showsBluetoothDeviceListDefaultsKey
+        ) as? Bool ?? true
+        self.maxVisibleBluetoothDevices = Self.clampedBluetoothDeviceLimit(
+            storedBluetoothDeviceLimit ?? Self.defaultMaxVisibleBluetoothDevices
+        )
+        self.bluetoothDeviceOrder = storedBluetoothDeviceOrder
         self.alwaysShowsAllOutputDevices = defaults.object(
             forKey: Self.alwaysShowsAllOutputDevicesDefaultsKey
         ) as? Bool ?? false
@@ -644,6 +723,10 @@ final class SettingsStore: ObservableObject {
 
     static func clampedOutputDeviceLimit(_ value: Int) -> Int {
         min(outputDeviceLimitRange.upperBound, max(outputDeviceLimitRange.lowerBound, value))
+    }
+
+    static func clampedBluetoothDeviceLimit(_ value: Int) -> Int {
+        min(bluetoothDeviceLimitRange.upperBound, max(bluetoothDeviceLimitRange.lowerBound, value))
     }
 
     static func sanitizedPopupSectionOrder(_ rawValues: [String]) -> [PopupSection] {
