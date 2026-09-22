@@ -27,6 +27,7 @@
 | `35447521372` | `Run tests` | `AppIconControllerTests.visibleDockRendersStatusChanges`（Swift Testing）偶发失败：`renderCount → 0`，期望 `1`。上一版修复在探针里调用了进程级的 `NSApplication.shared.setActivationPolicy(.accessory)`，改变了其他测试判断 Dock 是否可见的前提 | 从 `interactiveSubViewSizes` 移除该调用，只保留窗口，并在 `defer` 里 `orderOut` 加清空 `contentView`；后续预检 `35448004467` 通过 |
 | （本轮，非失败记录） | `swift build --build-tests` | 本机 Xcode 27 / Swift 6.4 对四处测试里的 `weak var weakMonitor` 报 `weak variable ... was never mutated; consider changing to 'let' constant`。编译器的建议是 `weak let`，但 `AGENTS.md` 明令禁止该写法，且没有证据表明 CI 的 Swift 6.3.3 接受它 | 不采用 `weak let`。把这四处改成 `Tests/StatusTrioCoreTests/DeinitProbe.swift` 里的 `DeinitProbe.track(_:)`，弱引用以 `weak var` 存储属性保存（写法仍满足规则），断言内容与顺序不变 |
 | `35614298374` | `Run tests` | 新增的 `BluetoothSummaryTests.testDevicesWithoutALevelKeepTheirNameOnly` 断言了 `机灵的耳机` 与 `MX Keys` 拼接后的先后。摘要行按系统 collation 排序，而 ICU collation 与语言有关：CI runner（英文）把 `MX Keys` 排在前，开发机（中文）把中文名排在前。本地 `swift test` 与 `swift build -c release` 全绿，所以失效的是断言（对混合脚本排序的假设），不是产品缺陷 | 把排序规则改成「AirPods 无条件最前、其余按名称」（`BluetoothDevicePresentation.grouped`），断言不再依赖 collation；后续预检 `35615262052`（`build=24`）全绿 |
+| `35718713396`（1.3.0 正式发布，`build=13`） | `Build, sign, notarize, and publish` 末尾的 appcast 发布回读（`scripts/release.sh`） | 测试、构建、签名、DMG、Release 上传、appcast 提交（`8519984`）全部成功后，PUT 完成仅 2 秒即用 Contents API 回读 `appcast.xml?ref=main`，撞上 GitHub Contents API 的最终一致性窗口，读到旧 blob 而误报 `published appcast does not contain build 13`。与工具链、代码、说明文件无关 | 回读改为带退避的重试（最多 6 次、间隔 5 秒），重试全部用尽才失败；已手动回读远端 appcast 确认 build 13 条目完整（12 titles + 12 descriptions、en 首位、edSignature 与 DMG 长度 4244534 一致），1.3.0 发布四项核验通过；重试逻辑经桩测（stale→stale→fresh 通过、恒 stale 失败并退出 1）验证，详见文末专节 |
 
 > **本轮结束时构建不是零警告：** 上面的修复只清掉了 `weak var` 那 4 条 `WeakMutability` 和 Task 1 的 1 条 `String(cString:)`，共 5 条；剩下 **2 条**警告是 `WiFiPasswordStore.swift` 的 `kSecUseAuthenticationUIFail` / `kSecUseAuthenticationUIAllow` 弃用，属于 R-12（Keychain 加固）计划，class B，尚未开始。不要把本轮记录读成「构建已经干净」。
 
@@ -488,3 +489,47 @@ XCTAssertEqual failed: ("Optional("MX Keys、机灵的耳机 · L 93%")") is not
 不过它顺带暴露了一个真实取舍：AirPods 的多路电量是这一行的头条信息，不该因为名字的 collation 被挤到后面。修复把排序规则改成 **AirPods 无条件最前、其余按名称**（Connected / Not connected 两组内一致），`BluetoothDevice.isAirPods` 因此恢复，但用途只剩排序（产品 ID 命中或名字含 "airpods"；电量认领已不依赖它）。断言现在由规则决定顺序，`testAirPodsLeadTheRowRegardlessOfName` 用一个 collation 最靠后的名字钉住这条规则。
 
 验证：[`35615262052`](https://github.com/lingyired/status-trio/actions/runs/35615262052)（`build=24`）`Validate appcast notes`、`Run tests`、`Build, sign, notarize, and publish`、`Upload release artifacts` 全部成功，**690 个 XCTest（6 跳过，0 失败）** 与 **180 个 Swift Testing / 28 个 suite** 全绿，未发布 Release、未改动 appcast。
+
+## 35718713396：appcast 发布回读撞上 Contents API 最终一致性（1.3.0 正式发布）
+
+1.3.0 正式发布 run [`35718713396`](https://github.com/lingyired/status-trio/actions/runs/35718713396)
+（`version=1.3.0`、`build=13`、`publish=true`）在 `Build, sign, notarize, and publish`
+的**最后一步**失败，错误来自 `scripts/release.sh` 的发布后回读校验：
+
+```
+Error: published appcast does not contain build 13.
+```
+
+时间线（取自该 step 日志）：
+
+- 11:01:16 `Build complete!`，`LC_BUILD_VERSION` 检查通过（两架构 `minos 15.0, sdk 26.0`），
+  `codesign` 校验通过；
+- 11:01:43–47 `gh release create v1.3.0` 成功，DMG 与 sha256 随即上传为 Release 资产；
+- 11:01:47 appcast 经 Contents API `PUT` 成功提交（main 上的 `8519984`）；
+- 11:01:49 **仅 2 秒后**回读 `appcast.xml?ref=main` 做校验，读到旧内容，`exit 1`，整个 run 标红。
+
+根因：GitHub Contents API 在写入成功后存在短暂的最终一致性窗口，紧接 `PUT` 的读取
+可能拿到旧 blob。本次发布与 Swift 工具链、产品代码、说明文件均无关；除这条回读外，
+发布的每一个环节都已实际完成。该路径只在 `publish=true` 时执行（`release.sh` 在
+`PUBLISH=false` 时于第 238 行提前退出），且 `Release` 已存在时不允许复跑（第 243 行），
+所以无法通过重跑同一发布来复现或验证。
+
+修复：`scripts/release.sh` 的回读改为带退避的重试——最多 6 次、间隔 5 秒，期间读到
+含目标 build 即视为成功，重试全部用尽才保留原错误信息并失败。错误文案未变，
+`docs/superpowers/plans/2026-09-20-preflight-validator-and-appcast-sync.md` 中引用它的
+测试断言不受影响。
+
+验证：
+
+- **发布四项核验（该 run 实际结果）**：`Run tests` 成功；DMG `StatusTrio-1.3.0.dmg`
+  （4 244 534 字节）与 sha256 已在 Release 上；Release
+  [v1.3.0](https://github.com/lingyired/status-trio/releases/tag/v1.3.0) 已发布，正文为规定的
+  `# Version 1.3.0 （English + 中文， 中文在下方）` 双语格式并附首次安装命令；
+  appcast 提交 `8519984` 已在 main，Sparkle 源已含 build 13。
+- **远端 appcast 条目**：12 titles + 12 descriptions、`en` 首位、真实 `sparkle:edSignature`、
+  `length=4244534` 与 Release 资产一致、无残留 `%VERSION%/%BUILD%` 占位符。
+- **重试逻辑桩测**：用桩 `gh`（前 2 次返回旧内容、第 3 次返回含 build 13 的内容）执行
+  release.sh 中的同一段回读代码，得到 `appcast_verified=true` 且仅调用 3 次；桩恒返回旧内容时，
+  6 次用尽后打印原错误信息并以 1 退出。`bash -n scripts/release.sh` 语法检查通过。
+- 本次改动只有 shell 与 Markdown，未触碰 Swift 代码，按规则无需新的工具链预检；
+  下一次正式发布将真实行使这段重试。

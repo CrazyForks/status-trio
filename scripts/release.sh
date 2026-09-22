@@ -287,8 +287,24 @@ ruby -rjson -rbase64 -e '
         -H "Accept: application/vnd.github+json" \
         --input - >/dev/null
 
-if ! gh api "repos/$RELEASE_REPO/contents/$APPCAST_FILE?ref=$RELEASE_BRANCH" \
-    -H "Accept: application/vnd.github.raw" | grep -Fq "<sparkle:version>$BUILD</sparkle:version>"; then
+# The Contents API can serve the pre-PUT blob for a few seconds after the write
+# above, so read back with retries before declaring the publish failed (run
+# 35718713396 read the stale copy 2s after a successful PUT and failed an
+# otherwise complete 1.3.0 release).
+appcast_verified=false
+appcast_attempts=6
+for ((attempt = 1; attempt <= appcast_attempts; attempt++)); do
+    if gh api "repos/$RELEASE_REPO/contents/$APPCAST_FILE?ref=$RELEASE_BRANCH" \
+        -H "Accept: application/vnd.github.raw" | grep -Fq "<sparkle:version>$BUILD</sparkle:version>"; then
+        appcast_verified=true
+        break
+    fi
+    if ((attempt < appcast_attempts)); then
+        echo "Published appcast read-back missed build $BUILD (attempt $attempt/$appcast_attempts); retrying in 5s..." >&2
+        sleep 5
+    fi
+done
+if [[ "$appcast_verified" != true ]]; then
     echo "Error: published appcast does not contain build $BUILD." >&2
     exit 1
 fi
