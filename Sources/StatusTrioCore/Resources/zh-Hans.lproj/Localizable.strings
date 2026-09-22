@@ -71,6 +71,7 @@
 "settings.bluetooth.symbolScaleDescription" = "调节状态环内蓝牙设备图标的缩放比例（100% - 180%）。";
 "settings.bluetooth.showDeviceList" = "显示蓝牙设备列表";
 "settings.bluetooth.showDeviceListDescription" = "在状态面板的蓝牙行下方列出已配对设备，已连接的排在前面。";
+"settings.bluetooth.deviceListGroup" = "状态面板列表";
 "settings.bluetooth.maximumVisible" = "最多显示设备数";
 "settings.bluetooth.maximumVisibleDescription" = "超出这个数量的设备需要点击「展开」查看。";
 "settings.bluetooth.orderTitle" = "蓝牙设备顺序";

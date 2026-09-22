@@ -5,6 +5,11 @@ import SwiftUI
 struct BluetoothSectionView: View {
     @ObservedObject var store: SettingsStore
     @ObservedObject var statusStore: SystemStatusStore
+    /// Observed so a paired-device read that lands after the pane appeared
+    /// refreshes the order list. `SystemStatusStore` holds this controller as a
+    /// plain `let` and forwards nothing from it, so observing the store alone
+    /// would leave the pane showing whatever it read first — usually nothing.
+    @ObservedObject var bluetoothDevices: BluetoothDeviceController
     @Binding var previewIsDark: Bool
     @EnvironmentObject private var localization: Localization
 
@@ -99,10 +104,30 @@ struct BluetoothSectionView: View {
             deviceListGroup
             deviceOrderGroup
         }
+        .onAppear { claimDeviceSurface() }
+        .onDisappear { bluetoothDevices.releaseVisibleSurface(Self.orderSurfaceToken) }
+    }
+
+    private static let orderSurfaceToken = "bluetooth.settings.order.surface"
+
+    /// The pane shows paired devices, so it needs the same monitor the popover
+    /// uses — otherwise a fresh launch that opens Settings shows "No paired
+    /// devices available" while devices are paired, and drag-to-reorder is
+    /// unreachable. Only an app that already holds the grant may activate the
+    /// monitor, because starting it is what raises the system prompt; the gate
+    /// keeps this pane from ever prompting on its own. The claim stops the
+    /// safety-net poll when the pane goes away, but it never turns the enabled
+    /// flag off: the panel toggle and the popover own that.
+    private func claimDeviceSurface() {
+        guard BluetoothPanelActivation.shouldActivate(
+            authorization: bluetoothDevices.authorization
+        ) else { return }
+        bluetoothDevices.activate()
+        bluetoothDevices.holdVisibleSurface(Self.orderSurfaceToken)
     }
 
     private var deviceListGroup: some View {
-        SettingsGroup(localization.string(.settingsBluetoothShowDeviceList)) {
+        SettingsGroup(localization.string(.settingsBluetoothDeviceListGroup)) {
             SettingsToggleRow(
                 symbol: "list.bullet.rectangle",
                 tint: .purple,
@@ -192,10 +217,11 @@ struct BluetoothSectionView: View {
     }
 
     /// The order list shows the same sequence the panel renders, so dragging in
-    /// Settings moves the row the user is looking at.
+    /// Settings moves the row the user is looking at. Read from the observed
+    /// controller, not the store, so a read that lands later repaints it.
     private var orderedBluetoothDevices: [BluetoothDevice] {
         BluetoothDeviceListPresentation.orderedDevices(
-            statusStore.bluetoothDevices.devices,
+            bluetoothDevices.devices,
             using: store.bluetoothDeviceOrder
         )
     }

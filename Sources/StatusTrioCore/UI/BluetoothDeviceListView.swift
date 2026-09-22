@@ -32,7 +32,7 @@ struct BluetoothStatusView: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("\(localization.string(.bluetoothTitle)), \(accessibilitySummary)")
+                .accessibilityLabel(rowAccessibilityLabel)
 
                 Button(localization.string(.bluetoothActionOpenSettings), systemImage: "gearshape", action: onOpenBluetoothSettings)
                     .labelStyle(.iconOnly)
@@ -109,6 +109,16 @@ struct BluetoothStatusView: View {
             devices: controller.devices,
             batteryLevels: controller.batteryLevels
         )
+    }
+
+    /// The list carries the connected names, so the label that would repeat them
+    /// is dropped for the same reason the visible subtitle is: every row below is
+    /// already its own combined accessibility element, and announcing the names
+    /// twice makes VoiceOver read each device twice. The decision stays inside
+    /// the one tested rule.
+    private var rowAccessibilityLabel: String {
+        guard !hidesSubtitle else { return localization.string(.bluetoothTitle) }
+        return "\(localization.string(.bluetoothTitle)), \(accessibilitySummary)"
     }
 
     private var accessibilitySummary: String {

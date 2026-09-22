@@ -71,6 +71,7 @@
 "settings.bluetooth.symbolScaleDescription" = "Ajusta a escala do ícone do dispositivo Bluetooth no anel de status de 100% a 180%.";
 "settings.bluetooth.showDeviceList" = "Mostrar a lista de dispositivos Bluetooth";
 "settings.bluetooth.showDeviceListDescription" = "Lista os dispositivos emparelhados sob o item Bluetooth no painel de status. Os dispositivos conectados aparecem primeiro.";
+"settings.bluetooth.deviceListGroup" = "Lista do painel de status";
 "settings.bluetooth.maximumVisible" = "Máximo de dispositivos Bluetooth visíveis";
 "settings.bluetooth.maximumVisibleDescription" = "Quantos dispositivos aparecem antes do controle Expandir.";
 "settings.bluetooth.orderTitle" = "Ordem dos dispositivos Bluetooth";

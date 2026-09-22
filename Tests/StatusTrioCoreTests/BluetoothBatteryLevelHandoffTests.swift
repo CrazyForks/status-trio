@@ -175,6 +175,16 @@ private struct HandoffRoot: View {
                 BluetoothStatusView(
                     controller: controller,
                     showsBatteryLevels: model.showsBatteryLevels,
+                    // These tests pin the pre-list summary shape and the level
+                    // claim it makes, so the list is explicitly off. Leaving it
+                    // on (the `.standard` default) would render the device list
+                    // under the row and stop the summary from being the shape
+                    // these assertions were written for.
+                    listOptions: BluetoothDeviceListOptions(
+                        showsList: false,
+                        maxVisibleDevices: 5,
+                        order: []
+                    ),
                     onOpenDetails: {}, onRequestAuthorization: {}, onOpenBluetoothSettings: {}
                 )
                 .id("summary")

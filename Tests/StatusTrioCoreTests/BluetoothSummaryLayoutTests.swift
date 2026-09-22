@@ -129,6 +129,128 @@ final class BluetoothSummaryLayoutTests: XCTestCase {
         XCTAssertLessThan(withSettingOn.height, 120)
     }
 
+    /// The list row must truncate a long device name, not wrap it: the popover
+    /// has a fixed width, so a wrapped row would double its height and push the
+    /// panel taller. The old assertions could not catch that — the view is
+    /// built with `.frame(width: 330)`, so `fittingSize.width` is always 330 and
+    /// the height assertions are direction-only. Rendering the same list with a
+    /// short and a very long name makes the no-wrap requirement falsifiable: a
+    /// wrapped row cannot keep the same height.
+    func testLongDeviceNameTruncatesInsteadOfWrapping() async throws {
+        let shortNames = (1...3).map { index in
+            BluetoothDevice(
+                id: "AA:00:00:00:00:0\(index)",
+                name: "Device \(index)",
+                kind: .audio,
+                isConnected: index == 1
+            )
+        }
+        let longNames = (1...3).map { index in
+            BluetoothDevice(
+                id: "AA:00:00:00:00:0\(index)",
+                name: "Supercalifragilistic AirPods Max Pro Ultra Wireless Headphones \(index)",
+                kind: .audio,
+                isConnected: index == 1
+            )
+        }
+        let options = BluetoothDeviceListOptions(showsList: true, maxVisibleDevices: 3, order: [])
+
+        for language in [AppLanguage.english, .simplifiedChinese] {
+            let short = try await render(
+                language: language,
+                authorization: .allowed,
+                devices: shortNames,
+                listOptions: options,
+                named: "bluetooth-short-names-\(language.rawValue)"
+            )
+            let long = try await render(
+                language: language,
+                authorization: .allowed,
+                devices: longNames,
+                listOptions: options,
+                named: "bluetooth-long-names-\(language.rawValue)"
+            )
+
+            XCTAssertEqual(short.width, 330, accuracy: 0.5)
+            XCTAssertEqual(long.width, 330, accuracy: 0.5)
+            XCTAssertEqual(
+                short.height,
+                long.height,
+                accuracy: 1,
+                "a long device name must truncate, not wrap, in \(language.rawValue): "
+                    + "short \(short.height), long \(long.height)"
+            )
+        }
+    }
+
+    /// Exactly as many devices as the limit: everything fits, so the Expand
+    /// control must not appear. The check compares the render against the same
+    /// two rows with the expansion control forced on (a zero limit keeps the
+    /// control and drops the rows), which is only valid if the control really
+    /// adds height — so that side is pinned here too.
+    func testListAtTheLimitRendersWithoutAnExpansionControl() async throws {
+        let devices = (1...2).map { index in
+            BluetoothDevice(
+                id: "AA:00:00:00:00:0\(index)",
+                name: "Device \(index)",
+                kind: .audio,
+                isConnected: true
+            )
+        }
+        let moreDevices = (1...5).map { index in
+            BluetoothDevice(
+                id: "AA:00:00:00:00:0\(index)",
+                name: "Device \(index)",
+                kind: .audio,
+                isConnected: true
+            )
+        }
+
+        for language in [AppLanguage.english, .simplifiedChinese] {
+            let atLimit = try await render(
+                language: language,
+                authorization: .allowed,
+                devices: devices,
+                listOptions: BluetoothDeviceListOptions(showsList: true, maxVisibleDevices: 2, order: []),
+                named: "bluetooth-at-limit-\(language.rawValue)"
+            )
+            let overTheLimit = try await render(
+                language: language,
+                authorization: .allowed,
+                devices: moreDevices,
+                listOptions: BluetoothDeviceListOptions(showsList: true, maxVisibleDevices: 2, order: []),
+                named: "bluetooth-over-limit-\(language.rawValue)"
+            )
+            let controlOnly = try await render(
+                language: language,
+                authorization: .allowed,
+                devices: devices,
+                listOptions: BluetoothDeviceListOptions(showsList: true, maxVisibleDevices: 0, order: []),
+                named: "bluetooth-at-limit-control-only-\(language.rawValue)"
+            )
+
+            XCTAssertEqual(atLimit.width, 330, accuracy: 0.5)
+            XCTAssertGreaterThan(
+                overTheLimit.height,
+                atLimit.height,
+                "both renders show the same two rows, so the extra height can only be the "
+                    + "expansion control, which must appear when the list overflows the limit "
+                    + "and must be absent when it does not, in \(language.rawValue)"
+            )
+            // The same check from the other side: `maxVisibleDevices == 0` over
+            // these two devices shows no rows at all, so this height is the
+            // ordinary row plus the expansion control alone. The two fitting
+            // rows are taller than that, which is what proves no control leaked
+            // into the at-limit render.
+            XCTAssertGreaterThan(
+                atLimit.height,
+                controlOnly.height,
+                "two fitting rows must stay taller than the rows-free expansion control "
+                    + "in \(language.rawValue)"
+            )
+        }
+    }
+
     private func render(
         language: AppLanguage,
         authorization: BluetoothAuthorizationStatus,

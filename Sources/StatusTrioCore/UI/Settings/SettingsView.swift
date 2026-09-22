@@ -147,6 +147,7 @@ struct SettingsView: View {
             BluetoothSectionView(
                 store: store,
                 statusStore: statusStore,
+                bluetoothDevices: statusStore.bluetoothDevices,
                 previewIsDark: $previewIsDark
             )
         case .audio:

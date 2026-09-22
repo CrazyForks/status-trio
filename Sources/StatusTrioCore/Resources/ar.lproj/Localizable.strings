@@ -54,6 +54,7 @@
 "settings.bluetooth.symbolScaleDescription" = "يضبط مقياس أيقونة جهاز Bluetooth داخل حلقة الحالة من 100% إلى 180%.";
 "settings.bluetooth.showDeviceList" = "إظهار قائمة أجهزة Bluetooth";
 "settings.bluetooth.showDeviceListDescription" = "يسرد الأجهزة المقترنة أسفل إدخال Bluetooth في لوحة الحالة. تظهر الأجهزة المتصلة أولًا.";
+"settings.bluetooth.deviceListGroup" = "قائمة لوحة الحالة";
 "settings.bluetooth.maximumVisible" = "الحد الأقصى لأجهزة Bluetooth الظاهرة";
 "settings.bluetooth.maximumVisibleDescription" = "عدد الأجهزة المعروضة قبل زر التوسيع.";
 "settings.bluetooth.orderTitle" = "ترتيب أجهزة Bluetooth";

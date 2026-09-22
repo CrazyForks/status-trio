@@ -119,3 +119,17 @@ from the app. Rows render the same shared view as the detail page, so a device
 whose report carries no level draws no battery text in either place. Nothing
 here starts a new read: the list renders the paired-device report and the level
 map the row already claims.
+
+The list is on by default, and the maximum visible count is clamped to `1...20`.
+The row's own subtitle gives way to the list while the list is visible, because
+the list already carries the connected names and repeating them reads as
+duplication — the row's accessibility label drops them for the same reason, so
+VoiceOver announces each device once. States only the row can explain keep the
+subtitle: nothing connected, no permission, powered off, or a failed read.
+
+`Settings › Bluetooth` also claims the monitor while its pane is on screen, so
+a fresh launch that opens Settings lists the paired devices instead of the empty
+state, and a read that lands after the pane appeared repaints it. The claim is
+gated by `BluetoothPanelActivation.shouldActivate(authorization:)`, so the pane
+never raises a permission prompt; releasing it stops the safety-net poll but
+does not turn the panel's enabled flag off.

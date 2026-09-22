@@ -71,6 +71,7 @@
 "settings.bluetooth.symbolScaleDescription" = "Scales the Bluetooth device icon inside the status ring from 100% to 180%.";
 "settings.bluetooth.showDeviceList" = "Show the Bluetooth device list";
 "settings.bluetooth.showDeviceListDescription" = "Lists paired devices under the Bluetooth entry in the status panel. Connected devices come first.";
+"settings.bluetooth.deviceListGroup" = "Status Panel List";
 "settings.bluetooth.maximumVisible" = "Maximum visible Bluetooth devices";
 "settings.bluetooth.maximumVisibleDescription" = "How many devices appear before the Expand control.";
 "settings.bluetooth.orderTitle" = "Bluetooth Device Order";

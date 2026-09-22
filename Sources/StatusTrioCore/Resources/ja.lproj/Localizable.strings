@@ -71,6 +71,7 @@
 "settings.bluetooth.symbolScaleDescription" = "ステータスリング内の Bluetooth 機器アイコンのサイズを 100% 〜 180% で調整します。";
 "settings.bluetooth.showDeviceList" = "Bluetooth デバイス一覧を表示";
 "settings.bluetooth.showDeviceListDescription" = "ステータスパネルの Bluetooth 項目の下にペアリング済みのデバイスを一覧表示します。接続中のデバイスが先頭に表示されます。";
+"settings.bluetooth.deviceListGroup" = "ステータスパネルの一覧";
 "settings.bluetooth.maximumVisible" = "表示する Bluetooth デバイスの最大数";
 "settings.bluetooth.maximumVisibleDescription" = "「展開」を表示する前に表示するデバイス数です。";
 "settings.bluetooth.orderTitle" = "Bluetooth デバイスの順序";

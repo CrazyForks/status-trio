@@ -71,6 +71,7 @@
 "settings.bluetooth.symbolScaleDescription" = "Ajuste l’échelle de l’icône du périphérique Bluetooth dans l’anneau de statut de 100 % à 180 %.";
 "settings.bluetooth.showDeviceList" = "Afficher la liste des périphériques Bluetooth";
 "settings.bluetooth.showDeviceListDescription" = "Affiche les périphériques jumelés sous l’entrée Bluetooth du panneau d’état. Les périphériques connectés apparaissent en premier.";
+"settings.bluetooth.deviceListGroup" = "Liste du panneau d’état";
 "settings.bluetooth.maximumVisible" = "Nombre maximal de périphériques Bluetooth visibles";
 "settings.bluetooth.maximumVisibleDescription" = "Nombre de périphériques affichés avant le bouton Développer.";
 "settings.bluetooth.orderTitle" = "Ordre des périphériques Bluetooth";

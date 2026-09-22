@@ -35,6 +35,25 @@ final class BluetoothDeviceListPresentationTests: XCTestCase {
         XCTAssertEqual(ordered.map(\.name), ["Second", "First", "Third"])
     }
 
+    func testOrderEntriesAreNormalizedBeforeTheyRankDevices() {
+        // A saved entry written with separators or in lowercase has to rank the
+        // device it names. Before the order side was normalized too, these
+        // entries silently ranked nothing and the list kept the system order.
+        let devices = [
+            makeDevice(address: "AA:00:00:00:00:01", name: "First", isConnected: true),
+            makeDevice(address: "AA:00:00:00:00:02", name: "Second", isConnected: true),
+            makeDevice(address: "AA:00:00:00:00:03", name: "Third", isConnected: true)
+        ]
+
+        XCTAssertEqual(
+            BluetoothDeviceListPresentation.orderedDevices(
+                devices,
+                using: ["aa:00:00:00:00:03", "AA-00-00-00-00-01"]
+            ).map(\.name),
+            ["Third", "First", "Second"]
+        )
+    }
+
     func testEmptyOrderKeepsGroupingOrder() {
         let devices = [
             makeDevice(address: "AA:00:00:00:00:01", name: "Idle", isConnected: false),
@@ -48,9 +67,12 @@ final class BluetoothDeviceListPresentationTests: XCTestCase {
     }
 
     func testConnectedDevicesFillTheLimitFirst() {
+        // The disconnected device leads the fixture, so the expected result can
+        // only come from the connected-first rule rather than from the incoming
+        // order happening to already match it.
         let devices = [
-            makeDevice(address: "AA:00:00:00:00:01", name: "Live", isConnected: true),
             makeDevice(address: "AA:00:00:00:00:02", name: "Idle", isConnected: false),
+            makeDevice(address: "AA:00:00:00:00:01", name: "Live", isConnected: true),
             makeDevice(address: "AA:00:00:00:00:03", name: "Idle2", isConnected: false)
         ]
 

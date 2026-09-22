@@ -59,9 +59,14 @@ enum BluetoothDeviceListPresentation {
     ) -> [BluetoothDevice] {
         guard !order.isEmpty else { return devices }
 
+        // Both sides are normalized: a saved entry written with separators or in
+        // lowercase has to rank the device it names, or the order silently
+        // applies to nothing while the list looks shuffled.
         var ranks: [String: Int] = [:]
-        for (index, address) in order.enumerated() where ranks[address] == nil {
-            ranks[address] = index
+        for (index, address) in order.enumerated() {
+            let key = BluetoothBatteryReader.normalizedAddress(address)
+            guard !key.isEmpty, ranks[key] == nil else { continue }
+            ranks[key] = index
         }
 
         return devices.enumerated()

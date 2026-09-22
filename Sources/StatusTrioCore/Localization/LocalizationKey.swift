@@ -120,6 +120,7 @@ enum LocalizationKey: String, CaseIterable, Hashable, Sendable {
     case settingsBluetoothSymbolScaleDescription = "settings.bluetooth.symbolScaleDescription"
     case settingsBluetoothShowDeviceList = "settings.bluetooth.showDeviceList"
     case settingsBluetoothShowDeviceListDescription = "settings.bluetooth.showDeviceListDescription"
+    case settingsBluetoothDeviceListGroup = "settings.bluetooth.deviceListGroup"
     case settingsBluetoothMaximumVisible = "settings.bluetooth.maximumVisible"
     case settingsBluetoothMaximumVisibleDescription = "settings.bluetooth.maximumVisibleDescription"
     case settingsBluetoothOrderTitle = "settings.bluetooth.orderTitle"

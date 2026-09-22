@@ -71,6 +71,7 @@
 "settings.bluetooth.symbolScaleDescription" = "상태 링 안의 Bluetooth 기기 아이콘 크기를 100% ~ 180%로 조절합니다.";
 "settings.bluetooth.showDeviceList" = "Bluetooth 기기 목록 표시";
 "settings.bluetooth.showDeviceListDescription" = "상태 패널의 Bluetooth 항목 아래에 페어링된 기기를 표시합니다. 연결된 기기가 먼저 표시됩니다.";
+"settings.bluetooth.deviceListGroup" = "상태 패널 목록";
 "settings.bluetooth.maximumVisible" = "표시할 최대 Bluetooth 기기 수";
 "settings.bluetooth.maximumVisibleDescription" = "‘펼치기’ 컨트롤 전에 표시할 기기 수입니다.";
 "settings.bluetooth.orderTitle" = "Bluetooth 기기 순서";

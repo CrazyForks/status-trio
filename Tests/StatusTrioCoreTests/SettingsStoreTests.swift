@@ -508,6 +508,30 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(store.bluetoothDeviceOrder, [])
     }
 
+    /// A destination past the last slot is rejected outright rather than
+    /// clamped, so a move SwiftUI could never produce cannot rewrite the order.
+    /// The valid destination at the end (`devices.count`) still goes through.
+    func testMovingBluetoothDevicesIgnoresAnOutOfRangeDestination() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+
+        let devices = [
+            makeBluetoothDevice(address: "AC:90:85:C2:9C:1F", name: "AirPods"),
+            makeBluetoothDevice(address: "D3:6D:6C:40:A3:2E", name: "MX Keys")
+        ]
+        let store = SettingsStore(defaults: suite.defaults)
+
+        store.moveBluetoothDevices(fromOffsets: IndexSet(integer: 0), toOffset: 3, in: devices)
+        XCTAssertEqual(store.bluetoothDeviceOrder, [], "an out-of-range destination must be ignored")
+
+        store.moveBluetoothDevices(fromOffsets: IndexSet(integer: 0), toOffset: 2, in: devices)
+        XCTAssertEqual(
+            store.bluetoothDeviceOrder,
+            ["D36D6C40A32E", "AC9085C29C1F"],
+            "the destination at the end of the list is in range and must move the device"
+        )
+    }
+
     func testMovingOutputDevicesPersistsCustomOrder() {
         let suite = makeSuite()
         defer { clear(suite) }

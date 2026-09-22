@@ -71,6 +71,7 @@
 "settings.bluetooth.symbolScaleDescription" = "Масштаб значка устройства Bluetooth внутри кольца состояния от 100% до 180%.";
 "settings.bluetooth.showDeviceList" = "Показывать список устройств Bluetooth";
 "settings.bluetooth.showDeviceListDescription" = "Показывает сопряжённые устройства под пунктом Bluetooth на панели состояния. Подключённые устройства идут первыми.";
+"settings.bluetooth.deviceListGroup" = "Список на панели состояния";
 "settings.bluetooth.maximumVisible" = "Максимум видимых устройств Bluetooth";
 "settings.bluetooth.maximumVisibleDescription" = "Сколько устройств показывать до кнопки «Развернуть».";
 "settings.bluetooth.orderTitle" = "Порядок устройств Bluetooth";
