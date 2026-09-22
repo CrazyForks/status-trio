@@ -59,6 +59,15 @@ run ID, failed stage, root cause, fix, and verification result.
 - When adding or changing an icon option, update both paths end-to-end as applicable: `SettingsStore` option derivation, `StatusBarController` subscriptions, `AppIconController` subscriptions/state, `DockIconRenderKey` cache inputs, `DockIconRenderer` rendering, and tests covering both menu bar and Dock output.
 - If a setting is intentionally menu-bar-only, the issue or specification must say so explicitly, and the limitation must be documented and covered by a test.
 
+## System Settings Pane Routes
+
+- Every settings control must open the pane it promises, with that pane's own extension identifier first: the Wi-Fi gear goes to the Wi-Fi pane, and a wired row's gear goes to the Network pane, which is where a cable's own settings live. The Network pane lists services (Wi-Fi, Ethernet, VPNs) rather than networks, so routing the Wi-Fi gear through it lands users on the wrong list.
+- Never make a pane route depend on the running macOS version. Wi-Fi has its own Settings extension on every release the app supports, and the `majorVersion >= 27` guard that shipped in 1.2.0 and 1.3.0 sent macOS 15 through 26 to the Network pane. See [System Settings pane routes](docs/settings-pane-routes.md).
+- The first route decides the destination: System Settings launches even for an unknown pane identifier and `open` still reports success, so a wrong first route is never corrected by the entries after it — the later entries only cover the URL scheme itself failing to open.
+- Verify a route by the Settings extension it loads, not by `open`'s exit status: `pgrep -fl "ExtensionKit/Extensions"` right after opening the URL names the pane, and needs neither a screen-recording nor an accessibility grant.
+- `StatusMenuBuilderTests.testSystemSettingsURLFallbackOrder` pins the Wi-Fi route order. Update it with the route, never around it.
+- A merged fix is not a shipped fix. When a pane-route report comes in, read the route order out of the shipped binary (`strings` on the app executable) before assuming the fix is in the build.
+
 ## Release Rules
 
 - GitHub Release notes must use a top-level `# Version X.Y.Z （English + 中文， 中文在下方）` heading, followed by English notes and then Chinese notes, taken from `release-notes/<version>/en.md` and `release-notes/<version>/zh-Hans.md`; the release workflow combines them.
@@ -79,4 +88,4 @@ run ID, failed stage, root cause, fix, and verification result.
 - `npx skills update -p` skips `swiftui-pro` and `swift-testing-pro` because both upstream repositories ship two skills under the same name (`<skill>/SKILL.md` and `<skill>/skills/<skill>/SKILL.md`), which makes the target path ambiguous. Update those two by hand.
 - When re-vendoring by hand, sync each whole upstream skill folder rather than `SKILL.md` alone, and delete files the upstream removed.
 
-See [Swift toolchain CI compatibility](docs/swift-ci-compatibility.md) for the incident history and examples.
+See [Swift toolchain CI compatibility](docs/swift-ci-compatibility.md) for the incident history and examples, and [System Settings pane routes](docs/settings-pane-routes.md) for how a settings-pane route is verified.
