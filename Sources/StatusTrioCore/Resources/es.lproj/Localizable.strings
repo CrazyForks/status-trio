@@ -69,6 +69,14 @@
 "settings.bluetooth.showInStatusPanelDescription" = "Controla el elemento Bluetooth del panel de estado y se mantiene sincronizado con los ajustes del panel de estado.";
 "settings.bluetooth.symbolScale" = "Tamaño del icono de Bluetooth";
 "settings.bluetooth.symbolScaleDescription" = "Ajusta la escala del icono del dispositivo Bluetooth en el anillo de estado del 100 % al 180 %.";
+"settings.bluetooth.showDeviceList" = "Mostrar la lista de dispositivos Bluetooth";
+"settings.bluetooth.showDeviceListDescription" = "Muestra los dispositivos emparejados bajo la entrada Bluetooth del panel de estado. Los dispositivos conectados aparecen primero.";
+"settings.bluetooth.maximumVisible" = "Máximo de dispositivos Bluetooth visibles";
+"settings.bluetooth.maximumVisibleDescription" = "Cuántos dispositivos se muestran antes del control Expandir.";
+"settings.bluetooth.orderTitle" = "Orden de los dispositivos Bluetooth";
+"settings.bluetooth.orderDescription" = "Arrastra los dispositivos para cambiar el orden en el panel de estado. Los dispositivos conectados aparecen siempre primero y los nuevos al final.";
+"settings.bluetooth.orderEmpty" = "No hay dispositivos emparejados disponibles.";
+"settings.bluetooth.orderFootnote" = "Los dispositivos conectados siempre aparecen primero.";
 "bluetooth.battery.unavailable" = "No disponible";
 "settings.audio.maximumVisible" = "Máximo de dispositivos visibles";
 "settings.audio.maximumVisibleDescription" = "Cuántos dispositivos se muestran antes del control Expandir.";

@@ -69,6 +69,14 @@
 "settings.bluetooth.showInStatusPanelDescription" = "Contrôle l’élément Bluetooth du panneau d’état et reste synchronisé avec les réglages du panneau d’état.";
 "settings.bluetooth.symbolScale" = "Taille de l’icône Bluetooth";
 "settings.bluetooth.symbolScaleDescription" = "Ajuste l’échelle de l’icône du périphérique Bluetooth dans l’anneau de statut de 100 % à 180 %.";
+"settings.bluetooth.showDeviceList" = "Afficher la liste des périphériques Bluetooth";
+"settings.bluetooth.showDeviceListDescription" = "Affiche les périphériques jumelés sous l’entrée Bluetooth du panneau d’état. Les périphériques connectés apparaissent en premier.";
+"settings.bluetooth.maximumVisible" = "Nombre maximal de périphériques Bluetooth visibles";
+"settings.bluetooth.maximumVisibleDescription" = "Nombre de périphériques affichés avant le bouton Développer.";
+"settings.bluetooth.orderTitle" = "Ordre des périphériques Bluetooth";
+"settings.bluetooth.orderDescription" = "Faites glisser les périphériques pour modifier leur ordre dans le panneau d’état. Les périphériques connectés apparaissent toujours en premier et les nouveaux à la fin.";
+"settings.bluetooth.orderEmpty" = "Aucun périphérique jumelé disponible.";
+"settings.bluetooth.orderFootnote" = "Les périphériques connectés sont toujours répertoriés en premier.";
 "bluetooth.battery.unavailable" = "Indisponible";
 "settings.audio.maximumVisible" = "Nombre maximal d’appareils visibles";
 "settings.audio.maximumVisibleDescription" = "Nombre d’appareils affichés avant le bouton Développer.";

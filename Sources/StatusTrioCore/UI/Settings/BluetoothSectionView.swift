@@ -95,7 +95,113 @@ struct BluetoothSectionView: View {
                     isOn: $store.showsBluetoothBatteryLevels
                 )
             }
+
+            deviceListGroup
+            deviceOrderGroup
         }
+    }
+
+    private var deviceListGroup: some View {
+        SettingsGroup(localization.string(.settingsBluetoothShowDeviceList)) {
+            SettingsToggleRow(
+                symbol: "list.bullet.rectangle",
+                tint: .purple,
+                title: localization.string(.settingsBluetoothShowDeviceList),
+                subtitle: localization.string(.settingsBluetoothShowDeviceListDescription),
+                isOn: $store.showsBluetoothDeviceList
+            )
+
+            if store.showsBluetoothDeviceList {
+                SettingsDivider()
+
+                SettingsRow(
+                    title: localization.string(.settingsBluetoothMaximumVisible),
+                    subtitle: localization.string(.settingsBluetoothMaximumVisibleDescription),
+                    leading: { SettingsIcon(symbol: "number", tint: .teal) },
+                    trailing: {
+                        HStack(spacing: 10) {
+                            Text("\(store.maxVisibleBluetoothDevices)")
+                                .font(.system(size: 13, design: .monospaced))
+                                .frame(minWidth: 22, alignment: .trailing)
+
+                            Stepper(
+                                localization.string(.settingsBluetoothMaximumVisible),
+                                value: $store.maxVisibleBluetoothDevices,
+                                in: SettingsStore.bluetoothDeviceLimitRange
+                            )
+                            .labelsHidden()
+                        }
+                    }
+                )
+            }
+        }
+    }
+
+    private var deviceOrderGroup: some View {
+        SettingsGroup(
+            localization.string(.settingsBluetoothOrderTitle),
+            footnote: localization.string(.settingsBluetoothOrderFootnote)
+        ) {
+            SettingsCustomRow(
+                "slider.horizontal.3",
+                tint: .blue,
+                title: localization.string(.settingsBluetoothOrderTitle),
+                subtitle: localization.string(.settingsBluetoothOrderDescription)
+            ) {
+                if orderedBluetoothDevices.isEmpty {
+                    Label(
+                        localization.string(.settingsBluetoothOrderEmpty),
+                        systemImage: "questionmark.circle"
+                    )
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                    .padding(.vertical, 8)
+                } else {
+                    List {
+                        ForEach(orderedBluetoothDevices) { device in
+                            HStack(spacing: 10) {
+                                Image(systemName: BluetoothDeviceRowIcon.symbolName(for: device))
+                                    .foregroundStyle(device.isConnected ? Color.accentColor : Color.secondary)
+                                    .frame(width: 18)
+
+                                Text(device.name)
+                                    .font(.system(size: 13))
+                                    .lineLimit(1)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                                Image(systemName: "line.3.horizontal")
+                                    .font(.caption)
+                                    .foregroundStyle(.tertiary)
+                                    .accessibilityHidden(true)
+                            }
+                            .padding(.vertical, 3)
+                        }
+                        .onMove { source, destination in
+                            store.moveBluetoothDevices(
+                                fromOffsets: source,
+                                toOffset: destination,
+                                in: orderedBluetoothDevices
+                            )
+                        }
+                    }
+                    .listStyle(.inset)
+                    .frame(height: orderListHeight)
+                }
+            }
+        }
+    }
+
+    /// The order list shows the same sequence the panel renders, so dragging in
+    /// Settings moves the row the user is looking at.
+    private var orderedBluetoothDevices: [BluetoothDevice] {
+        BluetoothDeviceListPresentation.orderedDevices(
+            statusStore.bluetoothDevices.devices,
+            using: store.bluetoothDeviceOrder
+        )
+    }
+
+    private var orderListHeight: CGFloat {
+        min(max(CGFloat(orderedBluetoothDevices.count) * 32 + 12, 48), 180)
     }
 
     private var showInStatusPanelBinding: Binding<Bool> {
