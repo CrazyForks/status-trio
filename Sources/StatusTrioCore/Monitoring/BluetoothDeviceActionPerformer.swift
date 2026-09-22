@@ -33,6 +33,9 @@ enum BluetoothDeviceActionTargeting {
     }
 }
 
+/// `@unchecked Sendable` is safe: the type's only stored state is an immutable
+/// `DispatchQueue`, and device handles are found inside the queued closure and
+/// never leave it.
 final class IOBluetoothDeviceActionPerformer: @unchecked Sendable, BluetoothDeviceActionPerforming {
     private let queue = DispatchQueue(
         label: "StatusTrio.IOBluetoothDeviceActionPerformer",

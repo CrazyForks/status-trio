@@ -153,6 +153,11 @@ A request that is refused, and one that is accepted but takes longer than ten
 seconds to show up, both become a visible failure for a few seconds and then
 clear. A failed row can be tapped again to retry.
 
+Commands run in order on the performer's single queue, so two devices tapped in
+quick succession are sent one after the other, and a command queued behind a
+blocking one can have its own ten-second clock expire before it is even sent —
+a transient failure that clears itself.
+
 Disconnecting an input device — a keyboard, mouse, trackpad or gamepad — asks
 for confirmation in the row itself, because disconnecting the keyboard or mouse
 the user is holding would cut them off from their own Mac. The prompt lives in

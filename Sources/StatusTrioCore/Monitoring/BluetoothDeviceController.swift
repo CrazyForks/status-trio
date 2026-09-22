@@ -818,7 +818,15 @@ final class BluetoothDeviceController: ObservableObject {
         actionPerformer.setConnected(action == .connect, forAddress: address) { [weak self] accepted in
             guard !accepted else { return }
             Task { @MainActor [weak self] in
-                guard let self, self.deviceActionTokens[address] == token else { return }
+                // The token alone is not enough: the report can settle the
+                // action — a sleeping device reconnecting on its own — before
+                // this answer arrives, and the answer would then still match
+                // the token it was issued for. Requiring the action to still be
+                // in flight is what keeps a settled row from being failed by
+                // its own late refusal, exactly as the timeout already does.
+                guard let self,
+                      self.deviceActionTokens[address] == token,
+                      self.deviceActionStates[address] == action.inFlightState else { return }
                 self.failDeviceAction(action, address: address)
             }
         }
@@ -884,6 +892,9 @@ final class BluetoothDeviceController: ObservableObject {
         actionTimeouts[address] = nil
         failureClearTasks[address]?.cancel()
         failureClearTasks[address] = nil
+        // Dropped with the state: a settled action has no request left to
+        // answer, so its token must not survive to admit a late completion.
+        deviceActionTokens[address] = nil
         deviceActionStates[address] = nil
     }
 

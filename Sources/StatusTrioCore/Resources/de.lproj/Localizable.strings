@@ -254,8 +254,8 @@
 "bluetooth.action.disconnect" = "Trennen";
 "bluetooth.action.cancel" = "Abbrechen";
 "bluetooth.action.confirmDisconnect" = "Trennen?";
-"bluetooth.state.connecting" = "Verbindung wird hergestellt…";
-"bluetooth.state.disconnecting" = "Verbindung wird getrennt…";
+"bluetooth.state.connecting" = "Verbinden…";
+"bluetooth.state.disconnecting" = "Trennen…";
 "bluetooth.state.connectFailed" = "Verbindung fehlgeschlagen";
 "bluetooth.state.disconnectFailed" = "Trennung fehlgeschlagen";
 

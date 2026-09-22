@@ -248,6 +248,38 @@ final class BluetoothDeviceActionsTests: XCTestCase {
         controller.deactivate()
     }
 
+    func testALateRefusalAfterTheReportSettledShowsNoFailure() async {
+        let device = makeDevice(isConnected: false)
+        let performer = DeferredBluetoothActionPerformer()
+        let (controller, reader) = makeController(
+            device: device,
+            performer: performer,
+            timeoutSleeper: ManualEventSleeper(),
+            failureSleeper: ManualEventSleeper()
+        )
+        controller.activate()
+        await waitUntil { controller.availability == .available }
+        let address = BluetoothBatteryReader.normalizedAddress(airPodsAddress)
+
+        controller.performDeviceAction(for: device)
+        // The device connects on its own before the command answers.
+        reader.devices = [makeDevice(isConnected: true)]
+        controller.refresh()
+        await waitUntil { controller.deviceActionStates[address] == nil }
+
+        // The now-redundant command finally answers "refused". It belongs to an
+        // action the report already settled, so it must not paint a failure.
+        performer.answerFirst(accepted: false)
+        await Task.yield()
+        try? await Task.sleep(for: .milliseconds(50))
+
+        XCTAssertNil(
+            controller.deviceActionStates[address],
+            "a settled action must not be failed by its own late answer"
+        )
+        controller.deactivate()
+    }
+
     func testAFailedRowAcceptsARetry() async {
         let device = makeDevice(isConnected: false)
         let performer = BluetoothActionPerformerStub()

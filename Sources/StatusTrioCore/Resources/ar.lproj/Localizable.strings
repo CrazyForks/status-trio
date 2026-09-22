@@ -250,7 +250,7 @@
 "bluetooth.authorizationRestricted" = "إذن Bluetooth مقيّد.";
 "bluetooth.list.expand" = "توسيع";
 "bluetooth.list.collapse" = "طي";
-"bluetooth.action.connect" = "توصيل";
+"bluetooth.action.connect" = "اتصال";
 "bluetooth.action.disconnect" = "قطع الاتصال";
 "bluetooth.action.cancel" = "إلغاء";
 "bluetooth.action.confirmDisconnect" = "قطع الاتصال؟";
