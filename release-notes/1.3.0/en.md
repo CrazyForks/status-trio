@@ -38,3 +38,7 @@
 ## Paired devices in the status panel
 - **Settings › Bluetooth** can now list paired devices under the Bluetooth row: the first few are always visible, the rest appear behind an Expand control, and the maximum is yours to set. Connected devices are always listed first.
 - Drag devices in Settings to set the order shown in the panel. New devices appear at the end.
+
+## Connect or disconnect a device from the panel
+- Tapping a paired device in the Bluetooth list now connects it, and tapping a connected one disconnects it. The row shows the request in progress and reports a failure instead of pretending it worked.
+- Disconnecting a keyboard, mouse, trackpad or gamepad asks first, in the row itself — disconnecting the one you are holding would leave you without input.

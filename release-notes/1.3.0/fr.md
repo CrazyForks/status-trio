@@ -38,3 +38,7 @@
 ## Périphériques jumelés dans le panneau d’état
 - **Réglages › Bluetooth** peut désormais lister les périphériques jumelés sous la ligne Bluetooth : les premiers sont toujours visibles, les autres apparaissent derrière un bouton Développer, et le maximum est à votre choix. Les périphériques connectés figurent toujours en premier.
 - Faites glisser les périphériques dans Réglages pour définir l’ordre affiché dans le panneau. Les nouveaux périphériques apparaissent à la fin.
+
+## Connecter ou déconnecter un appareil depuis le panneau d’état
+- Toucher un périphérique jumelé dans la liste Bluetooth le connecte désormais, et toucher un périphérique connecté le déconnecte. La ligne affiche la demande en cours et signale un échec au lieu de prétendre que cela a fonctionné.
+- Déconnecter un clavier, une souris, un trackpad ou une manette demande d’abord confirmation, dans la ligne elle-même — déconnecter celui que vous utilisez vous priverait de toute saisie.

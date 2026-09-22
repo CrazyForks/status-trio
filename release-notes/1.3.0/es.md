@@ -38,3 +38,7 @@
 ## Dispositivos emparejados en el panel de estado
 - **Ajustes › Bluetooth** ahora puede listar los dispositivos emparejados bajo la fila Bluetooth: los primeros siempre están visibles, el resto aparece detrás de un control Expandir, y el máximo lo eliges tú. Los dispositivos conectados aparecen siempre primero.
 - Arrastra los dispositivos en Ajustes para definir el orden que se muestra en el panel. Los dispositivos nuevos aparecen al final.
+
+## Conectar o desconectar un dispositivo desde el panel de estado
+- Tocar un dispositivo emparejado en la lista de Bluetooth ahora lo conecta, y tocar uno conectado lo desconecta. La fila muestra la solicitud en curso e informa de un fallo en lugar de fingir que funcionó.
+- Desconectar un teclado, ratón, trackpad o mando pide confirmación primero, en la propia fila: desconectar el que estás usando te dejaría sin entrada.

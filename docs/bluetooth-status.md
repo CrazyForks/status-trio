@@ -114,8 +114,9 @@ their group. The limit is a total row count, which means a long connected
 group can push every disconnected device out of the panel — the detail page
 still lists them all.
 
-The list is display-only: this release does not connect or disconnect devices
-from the app. Rows render the same shared view as the detail page, so a device
+Rows here are actionable: tapping one asks the system to connect or disconnect
+that device, exactly as the detail page does (see *Acting on a device from its
+row* below). Rows render the same shared view as the detail page, so a device
 whose report carries no level draws no battery text in either place. Nothing
 here starts a new read: the list renders the paired-device report and the level
 map the row already claims.
@@ -133,3 +134,30 @@ state, and a read that lands after the pane appeared repaints it. The claim is
 gated by `BluetoothPanelActivation.shouldActivate(authorization:)`, so the pane
 never raises a permission prompt; releasing it stops the safety-net poll but
 does not turn the panel's enabled flag off.
+
+## Acting on a device from its row
+
+A device row is a button: tapping an unconnected device asks the system to
+connect it, and tapping a connected one asks it to disconnect. The request goes
+through `IOBluetoothDevice.openConnection()` / `closeConnection()` on a private
+queue — those calls are synchronous and can block until the page timeout when a
+device is out of range, so they never run on the main thread. Devices are
+matched on the normalized address: IOBluetooth keeps reporting the name a device
+had before it was renamed, while the report the UI is built from carries the
+current one, so names cannot join the two sources.
+
+Nothing here flips a row optimistically. The request only decides whether the
+system accepted the command; the row's connection state still comes from the
+device report, and the action is considered done only when that report changes.
+A request that is refused, and one that is accepted but takes longer than ten
+seconds to show up, both become a visible failure for a few seconds and then
+clear. A failed row can be tapped again to retry.
+
+Disconnecting an input device — a keyboard, mouse, trackpad or gamepad — asks
+for confirmation in the row itself, because disconnecting the keyboard or mouse
+the user is holding would cut them off from their own Mac. The prompt lives in
+the row rather than in an alert: the panel is transient, so a modal would close
+it. The confirmation is view state, so closing the panel cancels it and an
+unconfirmed disconnect is never sent. The prompt carries no device name — the
+row already shows it — and it disappears on its own if the device stops being a
+connected input device while it is open.
