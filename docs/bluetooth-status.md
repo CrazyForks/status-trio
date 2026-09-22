@@ -126,10 +126,14 @@ control holds the rest.
 The rows stop at 330 points and scroll inside the panel beyond that, the same
 bound the Wi-Fi list uses. The summary popover has no scroll view of its own, so
 without it an expanded list — or a limit the user raised to 20 — would keep
-growing the popover past the screen. The expansion control sits outside that
-scroll region, so collapsing a long list never needs a scroll to the bottom
-first, and the panel's scroll-wheel handling already leaves a pointer over an
-`NSScrollView` to that view rather than adjusting the volume.
+growing the popover past the screen. The scroll view appears only past that
+bound: a list that fits is laid out directly, because a scroll view that is not
+needed still flashes its scroller while an expansion animates through the moment
+the content is taller than the shrinking frame, which a Mac with six devices
+should never show. The expansion control sits outside the scroll region, so
+collapsing a long list never needs a scroll to the bottom first, and the panel's
+scroll-wheel handling already leaves a pointer over an `NSScrollView` to that
+view rather than adjusting the volume.
 
 Rows here are actionable: tapping one asks the system to connect or disconnect
 that device (see *Acting on a device from its row* below). Nothing here starts a

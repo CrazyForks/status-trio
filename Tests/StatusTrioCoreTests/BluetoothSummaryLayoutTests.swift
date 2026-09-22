@@ -188,8 +188,51 @@ final class BluetoothSummaryLayoutTests: XCTestCase {
         )
     }
 
-    private func summaryDevice(_ index: Int) -> BluetoothDevice {
-        BluetoothDevice(
+    /// A list that fits must not create a scroll view at all. Its scroller is
+    /// what flashed while a collapse animated, on a Mac with six devices that
+    /// never needed scrolling: the animated frame shrinks through the moment the
+    /// content is still taller than it. Below the bound there is no scroll view,
+    /// so there is nothing to flash.
+    func testAListThatFitsCreatesNoScrollView() async throws {
+        for visible in [5, 6, 12] {
+            let (hosting, controller) = try await makeHosting(
+                language: .english,
+                authorization: .allowed,
+                devices: (1...visible).map(summaryDevice),
+                batteryLevels: [:],
+                listOptions: BluetoothDeviceListOptions(
+                    showsList: true,
+                    maxVisibleDevices: visible,
+                    order: []
+                )
+            )
+            defer { controller.deactivate() }
+            hosting.layoutSubtreeIfNeeded()
+
+            XCTAssertNil(
+                firstScrollView(in: hosting),
+                "\(visible) rows fit inside the bound, so nothing should scroll"
+            )
+        }
+
+        // One row past it, and the rows do scroll.
+        let (hosting, controller) = try await makeHosting(
+            language: .english,
+            authorization: .allowed,
+            devices: (1...13).map(summaryDevice),
+            batteryLevels: [:],
+            listOptions: BluetoothDeviceListOptions(showsList: true, maxVisibleDevices: 13, order: [])
+        )
+        defer { controller.deactivate() }
+        hosting.layoutSubtreeIfNeeded()
+
+        XCTAssertNotNil(
+            firstScrollView(in: hosting),
+            "13 rows pass the bound, so they have to scroll"
+        )
+    }
+
+    private func summaryDevice(_ index: Int) -> BluetoothDevice {        BluetoothDevice(
             id: String(format: "AA:00:00:00:00:%02X", index),
             name: "Device \(index)",
             kind: .audio,
