@@ -533,3 +533,50 @@ Error: published appcast does not contain build 13.
   6 次用尽后打印原错误信息并以 1 退出。`bash -n scripts/release.sh` 语法检查通过。
 - 本次改动只有 shell 与 Markdown，未触碰 Swift 代码，按规则无需新的工具链预检；
   下一次正式发布将真实行使这段重试。
+
+## 35740301886：30 秒回读窗口仍不足，判据改到 git 层（1.3.1 正式发布）
+
+1.3.1 正式发布 run [`35740301886`](https://github.com/lingyired/status-trio/actions/runs/35740301886)
+（`version=1.3.1`、`build=14`、`publish=true`）在 `Build, sign, notarize, and publish`
+的最后一步再次失败，用的正是上一条记录留下的重试窗口：
+
+```
+Published appcast read-back missed build 14 (attempt 1/6); retrying in 5s...
+Published appcast read-back missed build 14 (attempt 5/6); retrying in 5s...
+Error: published appcast does not contain build 14.
+```
+
+时间线（取自该 step 日志）：
+
+- 14:30:20 `Build complete!`；14:30:31 `LC_BUILD_VERSION` 与 `codesign` 校验通过（两架构 `minos 15.0, sdk 26.0`）；
+- 14:30:52 `gh release create v1.3.1` 成功，DMG `StatusTrio-1.3.1.dmg`（4 243 505 字节）与 sha256 随即成为 Release 资产；
+- 14:30:52 appcast 经 Contents API `PUT` 成功提交（main 上的 `3979dc4`）；
+- 14:30:55–14:31:24 回读 `appcast.xml?ref=main` 连续 6 次（间隔 5 秒，约 30 秒）仍读到旧内容，`exit 1`，整个 run 标红。
+
+根因：**判据选错了实体，而这个滞后没有可测上界。** 上一条记录把窗口定为 6×5 秒，
+依据只是"2 秒不够"这一个数据点；本次实测把上界推高了一个量级——写入后 30 秒仍读到旧 blob，
+而此刻 `git/ref/heads/main` 已经是 `3979dc4`，约 5 分钟后 `contents` 读取才一致。所以再猜一个
+更长的秒数并不能消除假失败。写入本身是同步的：`PUT` 的响应里就带着它创建的那个 commit，
+而当时那行命令把响应丢给了 `/dev/null`。
+
+修复：`scripts/release.sh` 的回读不再丢弃 `PUT` 响应，取其中的 `commit.sha`，判据改为
+**git 层求证**——`git/ref/heads/<branch>` 指向该 commit 即视为已发布；`contents` 读取降级为
+二次确认（仅在 `PUT` 未报告 commit 时依赖它），窗口放宽到 24×10 秒。错误文案未变，
+`docs/superpowers/plans/2026-09-20-preflight-validator-and-appcast-sync.md` 中引用它的断言不受影响。
+
+验证：
+
+- **发布四项核验（该 run 实际结果）**：`Run tests` 成功；DMG `StatusTrio-1.3.1.dmg`（4 243 505 字节）
+  与 sha256 已在 Release 上；Release [v1.3.1](https://github.com/lingyired/status-trio/releases/tag/v1.3.1)
+  已发布且非 draft/prerelease，tag 指向 `568ac50`；appcast 提交 `3979dc4` 已在 main，Sparkle 源已含 build 14。
+- **远端 appcast 条目**：12 titles + 12 descriptions、`en` 首位、阿拉伯语带 `div dir="rtl"`、
+  真实 `sparkle:edSignature`、`length` 与 Release 资产一致、无残留 `%VERSION%/%BUILD%` 占位符。
+- **桩测**（真实代码块 + 桩 `gh`）：用 `awk` 从 `scripts/release.sh` 逐字抽出回读段执行，
+  三种场景全绿——① `git/ref` 首次即指向 `PUT` 的 commit：退出 0，且**完全不读 contents**；
+  ② `git/ref` 滞留、contents 第 3 次追上：退出 0，读 3 次；③ 两者都滞留：读 3 次后打印原错误
+  信息并以 1 退出。
+- **`--input -` 与 `--jq` 共存**：本次新引入的组合在 gh 2.96.0 上实测可用（对 `POST /markdown`
+  传 body 并用 `--jq` 处理响应，jq 报的是响应解析错误而非参数冲突），该接口零副作用。
+- `bash -n scripts/release.sh` 通过。本次改动只有 shell 与 Markdown，未触碰 Swift 代码，按规则
+  无需新的工具链预检。**同一 tag 不允许复跑**（`release.sh` 在 Release 已存在时拒绝），所以新判据
+  只能由下一次正式发布行使。

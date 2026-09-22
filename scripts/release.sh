@@ -275,33 +275,50 @@ if [[ -z "$APPCAST_SHA" ]]; then
     exit 1
 fi
 
-ruby -rjson -rbase64 -e '
-    puts JSON.generate(
-        message: ARGV[0],
-        content: Base64.strict_encode64(File.binread(ARGV[1])),
-        sha: ARGV[2],
-        branch: ARGV[3]
-    )
-' "Release $TAG appcast" "$APPCAST_PATH" "$APPCAST_SHA" "$RELEASE_BRANCH" \
-    | gh api --method PUT "repos/$RELEASE_REPO/contents/$APPCAST_FILE" \
-        -H "Accept: application/vnd.github+json" \
-        --input - >/dev/null
+appcast_commit="$(
+    ruby -rjson -rbase64 -e '
+        puts JSON.generate(
+            message: ARGV[0],
+            content: Base64.strict_encode64(File.binread(ARGV[1])),
+            sha: ARGV[2],
+            branch: ARGV[3]
+        )
+    ' "Release $TAG appcast" "$APPCAST_PATH" "$APPCAST_SHA" "$RELEASE_BRANCH" \
+        | gh api --method PUT "repos/$RELEASE_REPO/contents/$APPCAST_FILE" \
+            -H "Accept: application/vnd.github+json" \
+            --input - \
+            --jq '.commit.sha'
+)"
 
-# The Contents API can serve the pre-PUT blob for a few seconds after the write
-# above, so read back with retries before declaring the publish failed (run
-# 35718713396 read the stale copy 2s after a successful PUT and failed an
-# otherwise complete 1.3.0 release).
+# The write above is synchronous: the PUT reports the commit it created. The
+# `contents` read path, however, can serve the pre-PUT blob for minutes — run
+# 35718713396 read the stale copy 2s after a successful PUT, and 35740301886
+# still read it 30s after, while the commit was already on main. Waiting on that
+# copy therefore cannot be sized: the lag is at least 30s with no measured upper
+# bound. So the verdict comes from the git layer — `git/ref` must point at the
+# commit the PUT reported — and a contents read stays as a second opinion for the
+# case where the PUT response carried no commit.
 appcast_verified=false
-appcast_attempts=6
+appcast_attempts="${APPCAST_READBACK_ATTEMPTS:-24}"
+appcast_sleep="${APPCAST_READBACK_SLEEP:-10}"
 for ((attempt = 1; attempt <= appcast_attempts; attempt++)); do
+    branch_head="$(
+        gh api "repos/$RELEASE_REPO/git/ref/heads/$RELEASE_BRANCH" \
+            --jq '.object.sha' 2>/dev/null || true
+    )"
+    if [[ -n "$appcast_commit" && "$branch_head" == "$appcast_commit" ]]; then
+        appcast_verified=true
+        break
+    fi
     if gh api "repos/$RELEASE_REPO/contents/$APPCAST_FILE?ref=$RELEASE_BRANCH" \
-        -H "Accept: application/vnd.github.raw" | grep -Fq "<sparkle:version>$BUILD</sparkle:version>"; then
+        -H "Accept: application/vnd.github.raw" 2>/dev/null \
+        | grep -Fq "<sparkle:version>$BUILD</sparkle:version>"; then
         appcast_verified=true
         break
     fi
     if ((attempt < appcast_attempts)); then
-        echo "Published appcast read-back missed build $BUILD (attempt $attempt/$appcast_attempts); retrying in 5s..." >&2
-        sleep 5
+        echo "Published appcast read-back missed build $BUILD (attempt $attempt/$appcast_attempts); retrying in ${appcast_sleep}s..." >&2
+        sleep "$appcast_sleep"
     fi
 done
 if [[ "$appcast_verified" != true ]]; then
