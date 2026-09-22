@@ -209,6 +209,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
                 requestBluetoothAuthorization: { self.handleRequestBluetoothAuthorization() },
                 openBatterySettings: { self.handleOpenBatterySettings() },
                 openWiFiSettings: { self.handleOpenWiFiSettings() },
+                openNetworkSettings: { self.handleOpenNetworkSettings() },
                 openLocationSettings: { self.handleOpenLocationSettings() },
                 openBluetoothSettings: { self.handleOpenBluetoothSettings() },
                 openBluetoothPermissionSettings: { self.handleOpenBluetoothPermissionSettings() },
@@ -550,6 +551,14 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         Self.openSystemSettings(Self.wifiSettingsURLs())
     }
 
+    /// Where the wired row's gear goes. The Network pane lists every service and
+    /// is where a cable's own settings live; sending a wired user to the Wi-Fi
+    /// pane would show them a radio that is not carrying the connection.
+    @objc private func handleOpenNetworkSettings() {
+        popover.performClose(nil)
+        Self.openSystemSettings(Self.networkSettingsURLs)
+    }
+
     @objc private func handleOpenLocationSettings() {
         popover.performClose(nil)
         Self.openSystemSettings(Self.locationSettingsURLs)
@@ -596,6 +605,12 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         }
         return routes.compactMap(URL.init(string:))
     }
+
+    static let networkSettingsURLs = [
+        "x-apple.systempreferences:com.apple.Network-Settings.extension",
+        "x-apple.systempreferences:com.apple.preference.network"
+    ]
+    .compactMap(URL.init(string:))
 
     static let bluetoothSettingsURLs = [
         "x-apple.systempreferences:com.apple.BluetoothSettings",

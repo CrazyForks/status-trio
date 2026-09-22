@@ -25,6 +25,7 @@ final class PopoverScrollTargetsTests: XCTestCase {
                 requestBluetoothAuthorization: {},
                 openBatterySettings: {},
                 openWiFiSettings: {},
+                openNetworkSettings: {},
                 openLocationSettings: {},
                 openBluetoothSettings: {},
                 openBluetoothPermissionSettings: {},

@@ -125,6 +125,93 @@ final class SystemStatusStoreTests: XCTestCase {
         XCTAssertFalse(store.hasOpenPopoverPanel)
     }
 
+    func testReadsTheWiredLinkOnlyWhileThePopoverIsOpenOnEthernet() async {
+        let connection = FakeNetworkConnectionMonitor()
+        let primaryLink = makePrimaryLinkController()
+        let store = SystemStatusStore(
+            batteryMonitor: FakeBatteryMonitor(),
+            wifiMonitor: FakeWiFiMonitor(),
+            connectionMonitor: connection,
+            volumeMonitor: FakeVolumeMonitor(),
+            primaryLink: primaryLink
+        )
+
+        store.start()
+        await apply(.ethernet, from: connection, to: store)
+        // The connection is wired, but nothing is looking at it yet.
+        XCTAssertFalse(primaryLink.isActive)
+
+        store.setPopoverVisible(true)
+        XCTAssertTrue(primaryLink.isActive)
+
+        store.setPopoverVisible(false)
+        XCTAssertFalse(primaryLink.isActive, "Closing the popover drops the address a cable may have left behind")
+
+        store.stop()
+    }
+
+    func testACablePluggedInWhileThePopoverIsOpenStartsTheWiredRead() async {
+        let connection = FakeNetworkConnectionMonitor()
+        let primaryLink = makePrimaryLinkController()
+        let store = SystemStatusStore(
+            batteryMonitor: FakeBatteryMonitor(),
+            wifiMonitor: FakeWiFiMonitor(),
+            connectionMonitor: connection,
+            volumeMonitor: FakeVolumeMonitor(),
+            primaryLink: primaryLink
+        )
+
+        store.start()
+        await apply(.wifi, from: connection, to: store)
+        store.setPopoverVisible(true)
+        XCTAssertFalse(primaryLink.isActive, "A Wi-Fi primary connection has no wired link to report")
+
+        await apply(.ethernet, from: connection, to: store)
+        XCTAssertTrue(primaryLink.isActive)
+
+        await apply(.offline, from: connection, to: store)
+        XCTAssertFalse(primaryLink.isActive)
+        store.stop()
+    }
+
+    func testReportsTheWiredPanelAsAnOpenPanel() {
+        let store = SystemStatusStore(
+            batteryMonitor: FakeBatteryMonitor(),
+            wifiMonitor: FakeWiFiMonitor(),
+            volumeMonitor: FakeVolumeMonitor()
+        )
+        XCTAssertFalse(store.hasOpenPopoverPanel)
+
+        store.activatePrimaryLinkPanel()
+        XCTAssertTrue(store.hasOpenPopoverPanel)
+
+        store.closePopoverDetails()
+        XCTAssertFalse(store.hasOpenPopoverPanel)
+    }
+
+    private func makePrimaryLinkController() -> PrimaryLinkController {
+        PrimaryLinkController(
+            reader: StubPrimaryLinkReader(),
+            wiredInterfaces: StubWiredInterfaces(names: ["en0"]),
+            periodicRefreshInterval: .seconds(600)
+        )
+    }
+
+    /// Sends a connection change and waits until the store has applied it, so
+    /// the assertion that follows observes the activation rule rather than the
+    /// send.
+    private func apply(
+        _ value: NetworkConnection,
+        from monitor: FakeNetworkConnectionMonitor,
+        to store: SystemStatusStore
+    ) async {
+        monitor.send(value)
+        for _ in 0..<200 where store.snapshot.connection != value {
+            try? await Task.sleep(for: .milliseconds(2))
+        }
+        XCTAssertEqual(store.snapshot.connection, value)
+    }
+
     func testPopupSnapshotDebouncesRapidUpdates() async {
         let battery = FakeBatteryMonitor()
         let sleeper = ManualSleeper()
@@ -1554,6 +1641,21 @@ private final class FakeNetworkConnectionMonitor: NetworkConnectionMonitoring {
     func stop() { continuation.finish() }
     func recover() {}
     func send(_ value: NetworkConnection) { continuation.yield(value) }
+}
+
+/// Answers nothing: these tests observe whether the wired read runs, not what it
+/// finds. The resolution itself is covered by `PrimaryLinkTests`.
+private final class StubPrimaryLinkReader: PrimaryLinkReading {
+    func read(
+        wiredInterfaces: [String],
+        completion: @escaping @Sendable (PrimaryLinkDetails?) -> Void
+    ) {}
+}
+
+private struct StubWiredInterfaces: WiredInterfaceProviding {
+    let names: [String]
+
+    func wiredInterfaceNames() -> [String] { names }
 }
 
 @MainActor

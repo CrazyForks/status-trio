@@ -42,6 +42,10 @@ final class SystemStatusStore: ObservableObject {
     @Published private(set) var liveVolume: VolumeStatus
     let batteryDetails: BatteryDetailsController
     let wifiNetworks: WiFiNetworkController
+    /// The wired link's address configuration. Read while the popover is open on
+    /// an Ethernet connection and dropped when either stops being true, so the
+    /// row never shows the address of a link the user has left.
+    let primaryLink: PrimaryLinkController
     let bluetoothDevices: BluetoothDeviceController
 
     private let batteryMonitor: any BatteryMonitoring
@@ -85,6 +89,11 @@ final class SystemStatusStore: ObservableObject {
     @Published private(set) var isDisplayAsleep = false
     private var isSettingsVisible = false
     private var isBluetoothEnabled = false
+    /// Whether the wired link panel is the open detail panel. The controller
+    /// itself follows the connection; this only records that the panel is on
+    /// screen, which is what decides whether the built popover content can be
+    /// kept for a rapid reopen.
+    private var isPrimaryLinkPanelOpen = false
 
     init(
         batteryMonitor: any BatteryMonitoring,
@@ -105,6 +114,7 @@ final class SystemStatusStore: ObservableObject {
         wakeNotificationCenter: NotificationCenter = NSWorkspace.shared.notificationCenter,
         batteryDetails: BatteryDetailsController = BatteryDetailsController(),
         wifiNetworks: WiFiNetworkController = WiFiNetworkController(),
+        primaryLink: PrimaryLinkController = PrimaryLinkController(),
         bluetoothDevices: BluetoothDeviceController = BluetoothDeviceController(),
         initialSnapshot: StatusSnapshot = .placeholder
     ) {
@@ -120,6 +130,7 @@ final class SystemStatusStore: ObservableObject {
         self.wakeNotificationCenter = wakeNotificationCenter
         self.batteryDetails = batteryDetails
         self.wifiNetworks = wifiNetworks
+        self.primaryLink = primaryLink
         self.bluetoothDevices = bluetoothDevices
         self.snapshot = initialSnapshot
         self.popupSnapshot = initialSnapshot
@@ -275,6 +286,7 @@ final class SystemStatusStore: ObservableObject {
         popupPublishTask = nil
         clearWiFiNameResolution()
         wifiNetworks.deactivate()
+        primaryLink.deactivate()
         bluetoothDevices.deactivate()
     }
 
@@ -370,6 +382,7 @@ final class SystemStatusStore: ObservableObject {
         isPopoverVisible = visible
         if !visible { batteryDetails.deactivate() }
         updateDetailsVisibility()
+        updatePrimaryLinkActivation()
 
         guard visible else {
             clearWiFiNameResolution()
@@ -414,18 +427,32 @@ final class SystemStatusStore: ObservableObject {
         wifiNetworks.deactivate()
     }
 
+    /// Records that the popover is showing the wired link panel. Unlike the
+    /// Wi-Fi page there is nothing to start here — the wired controller follows
+    /// the popover's own visibility and the connection — but the panel still
+    /// keeps SwiftUI state that decides whether the built content can be reused.
+    func activatePrimaryLinkPanel() {
+        guard !hasStopped else { return }
+        isPrimaryLinkPanelOpen = true
+    }
+
+    func closePrimaryLinkPanel() {
+        isPrimaryLinkPanelOpen = false
+    }
+
     func closePopoverDetails() {
         wifiNetworks.deactivate()
+        closePrimaryLinkPanel()
         closeBatteryDetails()
         bluetoothDevices.releaseVisibleSurface(BluetoothDeviceController.popoverSurfaceToken)
     }
 
-    /// Whether a popover detail panel (Wi-Fi, Bluetooth, or battery) is
-    /// currently open. Query this before `setPopoverVisible(false)`: the
+    /// Whether a popover detail panel (Wi-Fi, wired link, Bluetooth, or battery)
+    /// is currently open. Query this before `setPopoverVisible(false)`: the
     /// battery page stops its collector when its view disappears, and that
     /// happens while the popover is already closing.
     var hasOpenPopoverPanel: Bool {
-        wifiNetworks.isActive || batteryDetails.isActive
+        wifiNetworks.isActive || isPrimaryLinkPanelOpen || batteryDetails.isActive
     }
 
     func refreshAll() {
@@ -476,6 +503,23 @@ final class SystemStatusStore: ObservableObject {
         volumeMonitor.setDetailsVisible(detailsVisible)
     }
 
+    /// Starts and stops the wired link read.
+    ///
+    /// It runs only while both conditions hold: the popover is open, and the
+    /// primary connection is Ethernet. Nothing draws the address in any other
+    /// state, and the read walks the system configuration store, which is not a
+    /// cost to pay on Wi-Fi. Because the second condition is sampled here rather
+    /// than in the view, plugging a cable in while the popover is open starts
+    /// the read on the connection change itself.
+    private func updatePrimaryLinkActivation() {
+        guard !hasStopped else { return }
+        if isPopoverVisible, snapshot.connection == .ethernet {
+            primaryLink.activate()
+        } else {
+            primaryLink.deactivate()
+        }
+    }
+
     private func applyBattery(_ value: BatteryStatus) {
         publish(snapshot.replacingBattery(value))
     }
@@ -487,6 +531,7 @@ final class SystemStatusStore: ObservableObject {
 
     private func applyConnection(_ value: NetworkConnection) {
         publish(snapshot.replacingConnection(value))
+        updatePrimaryLinkActivation()
     }
 
     private func applyVolume(_ value: VolumeStatus) {
