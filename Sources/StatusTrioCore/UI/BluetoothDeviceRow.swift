@@ -9,9 +9,9 @@ struct BluetoothDeviceRow: View {
     let batteryLevels: [String: BluetoothBatteryLevel]
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: BluetoothPanelMetrics.iconTextSpacing) {
             Image(systemName: BluetoothDeviceRowIcon.symbolName(for: device))
-                .frame(width: 16)
+                .frame(width: BluetoothPanelMetrics.iconColumnWidth)
                 .foregroundStyle(.secondary)
             Text(device.name)
                 .lineLimit(1)

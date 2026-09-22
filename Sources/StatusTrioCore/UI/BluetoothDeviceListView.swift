@@ -16,8 +16,8 @@ struct BluetoothStatusView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 10) {
                 Button(action: onOpenDetails) {
-                    HStack(spacing: 10) {
-                        BluetoothIcon(size: 24)
+                    HStack(spacing: BluetoothPanelMetrics.iconTextSpacing) {
+                        BluetoothIcon(size: BluetoothPanelMetrics.iconColumnWidth)
                             .foregroundStyle(.secondary)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(localization.string(.bluetoothTitle))
