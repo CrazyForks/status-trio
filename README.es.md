@@ -57,7 +57,7 @@ Status Trio es una app de estado nativa de macOS que combina Wi-Fi, batería y v
 ## Aspectos destacados
 
 - **Un icono, tres señales** — la batería, el Wi-Fi y el volumen comparten un solo icono en la barra de menús, en el Dock o en ambos, y un dispositivo Bluetooth que está reproduciendo puede ocupar la posición central con su propio símbolo.
-- **Bluetooth** — el indicador de volumen se vuelve azul mientras se reproduce. El panel muestra los dispositivos conectados y emparejados junto con la batería de los AirPods, y permanece desactivado hasta que lo actives.
+- **Bluetooth** — el indicador de volumen se vuelve azul mientras se reproduce. El panel muestra los dispositivos emparejados que puedes tocar para conectarlos o desconectarlos, muestra los niveles de batería de forma predeterminada y permanece desactivado hasta que lo actives.
 - **Batería** — porcentaje, carga o conexión a la corriente, tiempo para la carga completa y un color cuando está baja. Abre la fila para ver la potencia del adaptador, el voltaje, la corriente, el número de ciclos y el modo de bajo consumo.
 - **Wi-Fi** — la red a la que estás conectado y la intensidad de la señal. Ábrelo para ver las redes cercanas, consultar los detalles del enlace o desactivar el Wi-Fi. Cambiar de red se hace en el panel de Wi-Fi de Ajustes del Sistema.
 - **Volumen** — nivel, silencio y dispositivo de salida, dibujado como puntos o como un arco. Desplázate por todo el panel o solo por el control, y elige en qué dirección sube el volumen.
@@ -75,7 +75,7 @@ Mientras se reproduce audio por Bluetooth, dos interruptores en **Ajustes › Bl
   <img src="screenshots/menu-bar-airpods.jpg" width="1000" alt="Icono de Status Trio en la barra de menús mostrando el glifo de AirPods mientras hay AirPods conectados, con su panel emergente de estado abierto">
 </p>
 
-La fila de Bluetooth del panel emergente informa del estado en vivo: los nombres de los dispositivos conectados y, en el caso de los AirPods, la batería del izquierdo, del derecho y del estuche. El panel de Bluetooth muestra los dispositivos emparejados y su estado de conexión; está desactivado de forma predeterminada, se activa en **Ajustes › Panel de estado** y solicita permiso de Bluetooth la primera vez que se usa. **Ajustes › Bluetooth** también controla si se leen los niveles de batería y ajusta la escala del icono de Bluetooth del 100 % al 180 %.
+La fila de Bluetooth del panel emergente informa del estado en vivo: los nombres de los dispositivos conectados y, en el caso de los AirPods, la batería del izquierdo, del derecho y del estuche. El panel de Bluetooth muestra los dispositivos emparejados y su estado de conexión: toca un dispositivo para conectarlo y uno conectado para desconectarlo —los teclados, ratones, trackpads y gamepads piden primero confirmación en la propia fila—. El panel está desactivado de forma predeterminada, se activa en **Ajustes › Panel de estado** y solicita permiso de Bluetooth la primera vez que se usa. **Ajustes › Bluetooth** también controla si se leen los niveles de batería, lista los dispositivos emparejados para que puedas arrastrarlos y colocarlos en el orden que quieras, además de elegir cuántos aparecen, y ajusta la escala del icono de Bluetooth del 100 % al 180 %.
 
 ## Icono del Dock
 
@@ -175,7 +175,7 @@ No desactives Gatekeeper de forma global. Las actualizaciones posteriores de Spa
 
 - **Clic izquierdo** en el icono de la barra de menús o en el icono del Dock para abrir el panel emergente de estado.
 - **Clic derecho** en cualquiera de los dos iconos para abrir el menú nativo, que incluye la versión y la opción de salir.
-- Selecciona una fila del panel emergente para abrir su página: los detalles de Wi-Fi con las redes cercanas, los dispositivos Bluetooth emparejados y los Detalles de la batería.
+- Selecciona una fila del panel emergente para abrir su página: los detalles de Wi-Fi con las redes cercanas, los dispositivos Bluetooth emparejados —toca uno para conectarlo o desconectarlo— y los Detalles de la batería.
 - Abre **Ajustes** para elegir dónde se muestra el icono (barra de menús, Dock o ambos) y para cambiar su tamaño, los colores, el grosor del anillo, las secciones del panel y su orden, el comportamiento de ajuste con el desplazamiento, el idioma, la búsqueda de actualizaciones y abrir al iniciar sesión.
 - Vuelve a abrir la guía **Conoce tu icono** en cualquier momento desde **Ajustes › Icono de la app › Abrir guía**.
 - Activa el nombre de la red Wi-Fi actual cuando se te solicite; macOS pide acceso a la ubicación para este detalle opcional.

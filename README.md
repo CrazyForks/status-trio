@@ -57,7 +57,7 @@ Status Trio is a native macOS status app that combines Wi-Fi, battery, and volum
 ## Highlights
 
 - **One icon, three signals** — battery, Wi-Fi, and volume share one icon in the menu bar, the Dock, or both, and a Bluetooth device that is playing can take the middle spot with its own symbol.
-- **Bluetooth** — the volume indicator turns blue while it plays. The panel lists connected and paired devices with AirPods battery, and stays off until you enable it.
+- **Bluetooth** — the volume indicator turns blue while it plays. The panel lists paired devices you can tap to connect or disconnect, shows battery levels by default, and stays off until you enable it.
 - **Battery** — percentage, charging or plugged in, time to full, and a color when it runs low. Open the row for adapter power, voltage, current, cycle count, and Low Power Mode.
 - **Wi-Fi** — the network you are on and how strong the signal is. Open it to see nearby networks, check the link details, or switch Wi-Fi off. Switching between networks happens in the Wi-Fi pane of System Settings.
 - **Volume** — level, mute, and the output device, drawn as dots or an arc. Scroll the whole panel or just the control, and pick which direction turns it up.
@@ -75,7 +75,7 @@ While audio plays over Bluetooth, two switches under **Settings › Bluetooth** 
   <img src="screenshots/menu-bar-airpods.jpg" width="1000" alt="Status Trio menu bar icon showing the AirPods glyph while AirPods are connected, with its status popover open">
 </p>
 
-The popover's Bluetooth row reports live state: the names of connected devices and, for AirPods, left, right, and case battery. The Bluetooth panel lists paired devices and their connection state; it is off by default, is enabled under **Settings › Status Panel**, and asks for Bluetooth permission on first use. **Settings › Bluetooth** also controls whether the battery levels are read — on by default — and scales the Bluetooth icon from 100% to 180%.
+The popover's Bluetooth row reports live state: the names of connected devices and, for AirPods, left, right, and case battery. The Bluetooth panel lists paired devices and their connection state: tap a device to connect it, tap a connected one to disconnect — keyboards, mice, trackpads and gamepads ask for confirmation in the row first. The panel is off by default, is enabled under **Settings › Status Panel**, and asks for Bluetooth permission on first use. **Settings › Bluetooth** also controls whether the battery levels are read — on by default — lists the paired devices so you can drag them into the order the panel shows and set how many appear, and scales the Bluetooth icon from 100% to 180%.
 
 ## Dock icon
 
@@ -175,7 +175,7 @@ Do not disable Gatekeeper globally. Subsequent Sparkle updates are authenticated
 
 - **Left-click** the menu bar icon or the Dock icon to open the status popover.
 - **Right-click** either icon for the native menu, including version and quit actions.
-- Select the Wi-Fi or battery row in the popover to open its page: nearby networks and link details, or Battery Details. The Bluetooth row lists its paired devices in place, with an Expand control when they do not all fit.
+- Select the Wi-Fi or battery row in the popover to open its page: nearby networks and link details, or Battery Details. The Bluetooth row lists its paired devices in place — tap one to connect or disconnect — with an Expand control when they do not all fit.
 - Open **Settings** to choose where the icon is shown (menu bar, Dock, or both) and to change its size, colors, ring thickness, the panel sections and their order, scroll-to-adjust behavior, language, update checks, and launch at login.
 - Reopen the **Meet your icon** guide any time from **Settings › App Icon › Open Guide**.
 - Enable the current Wi-Fi network name when prompted; macOS requests location access for this optional detail.

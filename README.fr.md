@@ -57,7 +57,7 @@ Status Trio est une app d’état native macOS qui réunit le Wi-Fi, la batterie
 ## Points forts
 
 - **Une icône, trois signaux** — la batterie, le Wi-Fi et le volume partagent une seule icône dans la barre des menus, dans le Dock ou dans les deux, et un appareil Bluetooth en cours de lecture peut occuper la place centrale avec son propre symbole.
-- **Bluetooth** — l’indicateur de volume devient bleu pendant la lecture. Le panneau répertorie les appareils connectés et jumelés avec la batterie des AirPods, et reste désactivé tant que vous ne l’activez pas.
+- **Bluetooth** — l’indicateur de volume devient bleu pendant la lecture. Le panneau répertorie les appareils jumelés sur lesquels vous cliquez pour les connecter ou les déconnecter, affiche les niveaux de batterie par défaut, et reste désactivé tant que vous ne l’activez pas.
 - **Batterie** — pourcentage, en charge ou sur secteur, temps avant charge complète, et une couleur lorsque la batterie devient faible. Ouvrez la ligne pour la puissance de l’adaptateur, la tension, le courant, le nombre de cycles et le mode économie d’énergie.
 - **Wi-Fi** — le réseau sur lequel vous êtes et la force du signal. Ouvrez-le pour voir les réseaux à proximité, consulter les détails de la liaison, ou désactiver le Wi-Fi. Le changement de réseau se fait dans le panneau Wi-Fi des Réglages Système.
 - **Volume** — niveau, sourdine et périphérique de sortie, dessinés sous forme de points ou d’un arc. Faites défiler tout le panneau ou seulement le réglage du volume, et choisissez le sens qui augmente le volume.
@@ -75,7 +75,7 @@ Pendant la lecture audio en Bluetooth, deux options sous **Réglages › Bluetoo
   <img src="screenshots/menu-bar-airpods.jpg" width="1000" alt="Icône de Status Trio dans la barre des menus affichant le glyphe AirPods pendant que des AirPods sont connectés, avec son panneau d’état ouvert">
 </p>
 
-La ligne Bluetooth du panneau d’état indique l’état en direct : les noms des appareils connectés et, pour les AirPods, la batterie gauche, droite et du boîtier. Le panneau Bluetooth répertorie les appareils jumelés et leur état de connexion ; il est désactivé par défaut, s’active sous **Réglages › Panneau d’état**, et demande l’autorisation Bluetooth à la première utilisation. **Réglages › Bluetooth** contrôle aussi la lecture des niveaux de batterie et ajuste l’échelle de l’icône Bluetooth de 100 % à 180 %.
+La ligne Bluetooth du panneau d’état indique l’état en direct : les noms des appareils connectés et, pour les AirPods, la batterie gauche, droite et du boîtier. Le panneau Bluetooth répertorie les appareils jumelés et leur état de connexion : cliquez sur un appareil pour le connecter, sur un appareil connecté pour le déconnecter — les claviers, les souris, les trackpads et les manettes de jeu demandent d’abord une confirmation dans la ligne. Le panneau est désactivé par défaut, s’active sous **Réglages › Panneau d’état**, et demande l’autorisation Bluetooth à la première utilisation. **Réglages › Bluetooth** contrôle aussi la lecture des niveaux de batterie, répertorie les appareils jumelés pour que vous puissiez les faire glisser afin de modifier leur ordre et fixer combien s’affichent, et ajuste l’échelle de l’icône Bluetooth de 100 % à 180 %.
 
 ## Icône du Dock
 
@@ -175,7 +175,7 @@ Ne désactivez pas Gatekeeper globalement. Les mises à jour Sparkle ultérieure
 
 - **Clic gauche** sur l’icône de la barre des menus ou sur l’icône du Dock pour ouvrir le panneau d’état.
 - **Clic droit** sur l’une ou l’autre icône pour le menu natif, avec la version et l’action Quitter.
-- Sélectionnez une ligne dans le panneau d’état pour ouvrir sa page : les détails Wi-Fi avec les réseaux à proximité, les appareils Bluetooth jumelés et les Détails de la batterie.
+- Sélectionnez une ligne dans le panneau d’état pour ouvrir sa page : les détails Wi-Fi avec les réseaux à proximité, les appareils Bluetooth jumelés — cliquez sur l’un d’eux pour le connecter ou le déconnecter — et les Détails de la batterie.
 - Ouvrez les **Réglages** pour choisir où l’icône s’affiche (barre des menus, Dock, ou les deux) et pour modifier sa taille, ses couleurs, l’épaisseur de l’anneau, les éléments du panneau d’état et leur ordre, le réglage du volume en défilant, la langue, la recherche de mises à jour et le lancement à l’ouverture de session.
 - Rouvrez le guide **Découvrez votre icône** à tout moment depuis **Réglages › Icône de l’app › Ouvrir le guide**.
 - Autorisez l’affichage du nom du réseau Wi-Fi actuel lorsque vous y êtes invité ; macOS demande l’accès à la localisation pour ce détail facultatif.

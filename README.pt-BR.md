@@ -57,7 +57,7 @@ O Status Trio é um app de status nativo do macOS que reúne Wi-Fi, bateria e vo
 ## Destaques
 
 - **Um ícone, três sinais** — bateria, Wi-Fi e volume compartilham um único ícone na barra de menus, no Dock ou em ambos, e um dispositivo Bluetooth que está reproduzindo pode ocupar o lugar central com seu próprio símbolo.
-- **Bluetooth** — o indicador de volume fica azul durante a reprodução. O painel lista os dispositivos conectados e pareados com a bateria dos AirPods, e permanece desativado até você ativá-lo.
+- **Bluetooth** — o indicador de volume fica azul durante a reprodução. O painel lista os dispositivos pareados que você pode tocar para conectar ou desconectar, mostra os níveis de bateria por padrão e permanece desativado até você ativá-lo.
 - **Bateria** — porcentagem, carregando ou conectado à energia, tempo para carga total e uma cor quando fica fraca. Abra a linha para ver potência do adaptador, tensão, corrente, contagem de ciclos e Modo de baixo consumo.
 - **Wi-Fi** — a rede em que você está e a intensidade do sinal. Abra para ver redes próximas, conferir os detalhes do link ou desativar o Wi-Fi. A troca entre redes acontece no painel de Wi-Fi dos Ajustes do Sistema.
 - **Volume** — nível, mudo e o dispositivo de saída, desenhados como pontos ou arco. Role o painel inteiro ou apenas o controle e escolha qual direção aumenta o volume.
@@ -75,7 +75,7 @@ Enquanto o áudio é reproduzido por Bluetooth, dois interruptores em **Ajustes 
   <img src="screenshots/menu-bar-airpods.jpg" width="1000" alt="Ícone do Status Trio na barra de menus mostrando o glifo dos AirPods enquanto os AirPods estão conectados, com o popover de status aberto">
 </p>
 
-A linha Bluetooth do popover informa o estado ao vivo: os nomes dos dispositivos conectados e, no caso dos AirPods, a bateria do esquerdo, do direito e do estojo. O painel de Bluetooth lista os dispositivos pareados e o estado de conexão deles; ele fica desativado por padrão, é ativado em **Ajustes › Painel de status** e solicita permissão de Bluetooth no primeiro uso. **Ajustes › Bluetooth** também controla se os níveis de bateria são lidos e ajusta o tamanho do ícone de Bluetooth de 100% a 180%.
+A linha Bluetooth do popover informa o estado ao vivo: os nomes dos dispositivos conectados e, no caso dos AirPods, a bateria do esquerdo, do direito e do estojo. O painel de Bluetooth lista os dispositivos pareados e o estado de conexão deles: toque em um dispositivo para conectar e em um conectado para desconectar — teclados, mouses, trackpads e gamepads pedem confirmação primeiro, na própria linha. Ele fica desativado por padrão, é ativado em **Ajustes › Painel de status** e solicita permissão de Bluetooth no primeiro uso. **Ajustes › Bluetooth** também controla se os níveis de bateria são lidos, lista os dispositivos pareados para você arrastá-los na ordem que você quiser e escolher quantos aparecem, e ajusta o tamanho do ícone de Bluetooth de 100% a 180%.
 
 ## Ícone do Dock
 
@@ -175,7 +175,7 @@ Não desative o Gatekeeper globalmente. As atualizações subsequentes do Sparkl
 
 - **Clique com o botão esquerdo** no ícone da barra de menus ou no ícone do Dock para abrir o popover de status.
 - **Clique com o botão direito** em qualquer um dos ícones para abrir o menu nativo, incluindo as ações de versão e de sair.
-- Selecione uma linha no popover para abrir a página correspondente: detalhes do Wi-Fi com redes próximas, dispositivos Bluetooth pareados e Detalhes da bateria.
+- Selecione uma linha no popover para abrir a página correspondente: detalhes do Wi-Fi com redes próximas, dispositivos Bluetooth pareados — toque em um para conectar ou desconectar — e Detalhes da bateria.
 - Abra os **Ajustes** para escolher onde o ícone é exibido (barra de menus, Dock ou ambos) e para alterar seu tamanho, as cores, a espessura do anel, as seções do painel e a ordem delas, o comportamento de ajuste por rolagem, o idioma, a verificação de atualizações e a opção de abrir ao iniciar sessão.
 - Reabra o guia **Conheça seu ícone** a qualquer momento em **Ajustes › Ícone do app › Abrir guia**.
 - Ative o nome da rede Wi-Fi atual quando solicitado; o macOS pede acesso à localização para esse detalhe opcional.

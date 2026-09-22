@@ -57,7 +57,7 @@ Status Trio ist eine native macOS-Status-App, die Wi-Fi, Batterie und Lautstärk
 ## Funktionen
 
 - **Ein Symbol, drei Signale** — Batterie, Wi-Fi und Lautstärke teilen sich ein Symbol in der Menüleiste, im Dock oder an beiden Orten, und ein Bluetooth-Gerät, das gerade wiedergibt, kann mit seinem eigenen Symbol den mittleren Platz einnehmen.
-- **Bluetooth** — die Lautstärkeanzeige wird blau, während der Wiedergabe. Der Bluetooth-Bereich listet verbundene und gekoppelte Geräte mit AirPods-Batteriestand auf und bleibt aus, bis Sie ihn aktivieren.
+- **Bluetooth** — die Lautstärkeanzeige wird blau, während der Wiedergabe. Der Bluetooth-Bereich listet gekoppelte Geräte auf, die Sie antippen können, um sie zu verbinden oder zu trennen, zeigt standardmäßig die Batteriestände und bleibt aus, bis Sie ihn aktivieren.
 - **Batterie** — Prozentsatz, Laden oder Netzbetrieb, Zeit bis voll und eine Farbe, wenn der Ladestand niedrig wird. Öffnen Sie die Zeile für Netzteil-Nennleistung, Batteriespannung, Batteriestrom, Ladezyklen und Stromsparmodus.
 - **Wi-Fi** — das Netzwerk, mit dem Sie verbunden sind, und die Signalstärke. Öffnen Sie es, um Netzwerke in der Nähe zu sehen, die Verbindungsdetails zu prüfen oder Wi-Fi auszuschalten. Der Wechsel zwischen Netzwerken findet im Wi-Fi-Bereich der Systemeinstellungen statt.
 - **Lautstärke** — Pegel, Stummschaltung und das Ausgabegerät, dargestellt als Punkte oder Bogen. Scrollen Sie im ganzen Bereich oder nur im Lautstärkeregler, und wählen Sie, in welche Richtung die Lautstärke erhöht wird.
@@ -75,7 +75,7 @@ Während Audio über Bluetooth wiedergegeben wird, lassen zwei Schalter unter **
   <img src="screenshots/menu-bar-airpods.jpg" width="1000" alt="Status Trio Menüleistensymbol mit dem AirPods-Symbol bei verbundenen AirPods und geöffnetem Status-Popover">
 </p>
 
-Die Bluetooth-Zeile des Popovers meldet den Live-Status: die Namen verbundener Geräte und bei AirPods den Batteriestand von linkem Hörer, rechtem Hörer und Ladecase. Der Bluetooth-Bereich listet gekoppelte Geräte und ihren Verbindungsstatus auf; er ist standardmäßig aus, wird unter **Einstellungen › Statusbereich** aktiviert und fragt bei der ersten Verwendung nach der Bluetooth-Berechtigung. **Einstellungen › Bluetooth** steuert außerdem, ob die Batteriestände gelesen werden (standardmäßig an), und skaliert das Bluetooth-Symbol von 100 % bis 180 %.
+Die Bluetooth-Zeile des Popovers meldet den Live-Status: die Namen verbundener Geräte und bei AirPods den Batteriestand von linkem Hörer, rechtem Hörer und Ladecase. Der Bluetooth-Bereich listet gekoppelte Geräte und ihren Verbindungsstatus auf: Tippen Sie ein Gerät an, um es zu verbinden, und ein verbundenes, um es zu trennen — Tastaturen, Mäuse, Trackpads und Gamepads fragen zuerst in der Zeile nach der Bestätigung. Er ist standardmäßig aus, wird unter **Einstellungen › Statusbereich** aktiviert und fragt bei der ersten Verwendung nach der Bluetooth-Berechtigung. **Einstellungen › Bluetooth** steuert außerdem, ob die Batteriestände gelesen werden (standardmäßig an), listet die gekoppelten Geräte auf, damit Sie sie in die gewünschte Reihenfolge ziehen und die Anzahl der angezeigten Geräte festlegen können, und skaliert das Bluetooth-Symbol von 100 % bis 180 %.
 
 ## Dock-Symbol
 
@@ -175,7 +175,7 @@ Deaktivieren Sie Gatekeeper nicht global. Nachfolgende Sparkle-Updates werden mi
 
 - **Linksklick** auf das Menüleistensymbol oder das Dock-Symbol öffnet das Status-Popover.
 - **Rechtsklick** auf eines der beiden Symbole öffnet das native Menü mit Version und Beenden-Aktionen.
-- Wählen Sie die Wi-Fi- oder Batteriezeile im Popover, um ihre Seite zu öffnen: Netzwerke in der Nähe und Verbindungsdetails oder Batteriedetails. Die Bluetooth-Zeile listet ihre gekoppelten Geräte direkt darunter auf, mit einem „Erweitern“-Schalter, wenn nicht alle hineinpassen.
+- Wählen Sie die Wi-Fi- oder Batteriezeile im Popover, um ihre Seite zu öffnen: Netzwerke in der Nähe und Verbindungsdetails oder Batteriedetails. Die Bluetooth-Zeile listet ihre gekoppelten Geräte direkt darunter auf — tippen Sie eines an, um es zu verbinden oder zu trennen — mit einem „Erweitern“-Schalter, wenn nicht alle hineinpassen.
 - Öffnen Sie **Einstellungen**, um zu wählen, wo das Symbol angezeigt wird (Menüleiste, Dock oder beides), und um seine Größe, Farben, die Stärke des äußeren Rings, die angezeigten Elemente des Statusbereichs und ihre Reihenfolge, das Ändern der Lautstärke durch Scrollen, die Sprache, die Suche nach Updates und „Beim Anmelden starten“ zu ändern.
 - Öffnen Sie die Anleitung **Dein Symbol kennenlernen** jederzeit erneut über **Einstellungen › App-Symbol › Anleitung öffnen**.
 - Aktivieren Sie auf Nachfrage den Namen des aktuellen Wi-Fi-Netzes; macOS fordert für dieses optionale Detail Zugriff auf den Standort an.
