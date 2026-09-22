@@ -6,6 +6,40 @@
     <description>Most recent changes for Status Trio.</description>
     <language>en</language>
     <item>
+      <title xml:lang="en">Version 1.3.1 (Build 14)</title>
+      <title xml:lang="ar">الإصدار 1.3.1 (البنية 14)</title>
+      <title xml:lang="de">Version 1.3.1 (Build 14)</title>
+      <title xml:lang="es">Versión 1.3.1 (compilación 14)</title>
+      <title xml:lang="fr">Version 1.3.1 (build 14)</title>
+      <title xml:lang="it">Versione 1.3.1 (build 14)</title>
+      <title xml:lang="ja">バージョン 1.3.1（ビルド 14）</title>
+      <title xml:lang="ko">버전 1.3.1(빌드 14)</title>
+      <title xml:lang="pt-BR">Versão 1.3.1 (compilação 14)</title>
+      <title xml:lang="ru">Версия 1.3.1 (сборка 14)</title>
+      <title xml:lang="zh-Hans">版本 1.3.1（构建 14）</title>
+      <title xml:lang="zh-Hant">版本 1.3.1（構建 14）</title>
+      <pubDate>Tue, 22 Sep 2026 14:30:52 +0000</pubDate>
+      <sparkle:version>14</sparkle:version>
+      <sparkle:shortVersionString>1.3.1</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+      <description xml:lang="en"><![CDATA[<h2>Fixes and improvements</h2><ul><li>The Wi-Fi gear now opens the Wi-Fi pane of System Settings, as it promises. On macOS 15 through 26 it opened the Network pane — the list of network services — instead; macOS 27 was not affected.</li><li>Seeing your networks, the signal details and the Wi-Fi switch are unchanged.</li></ul>]]></description>
+      <description xml:lang="ar"><![CDATA[<div dir="rtl"><h2>الإصلاحات والتحسينات</h2><ul><li>أصبح زر Wi-Fi يفتح لوحة Wi-Fi في إعدادات النظام كما هو متوقع. في macOS 15 حتى 26 كان يفتح بدلًا من ذلك لوحة «الشبكة» (قائمة خدمات الشبكة)؛ ولم يتأثر macOS 27.</li><li>عرض شبكاتك وتفاصيل الإشارة ومفتاح Wi-Fi كما هي دون تغيير.</li></ul></div>]]></description>
+      <description xml:lang="de"><![CDATA[<h2>Fehlerbehebungen und Verbesserungen</h2><ul><li>Das Wi-Fi-Zahnrad öffnet jetzt den Wi-Fi-Bereich der Systemeinstellungen, wie es verspricht. Unter macOS 15 bis 26 öffnete es stattdessen den Bereich „Netzwerk“ (die Liste der Netzwerkdienste); macOS 27 war nicht betroffen.</li><li>Netzwerke, Signaldetails und der Wi-Fi-Schalter bleiben unverändert.</li></ul>]]></description>
+      <description xml:lang="es"><![CDATA[<h2>Correcciones y mejoras</h2><ul><li>El engranaje de Wi-Fi ahora abre el panel de Wi-Fi de Ajustes del Sistema, tal como promete. En macOS 15 a 26 abría en su lugar el panel «Red» (la lista de servicios de red); macOS 27 no se veía afectado.</li><li>Tus redes, los detalles de señal y el interruptor de Wi-Fi siguen igual.</li></ul>]]></description>
+      <description xml:lang="fr"><![CDATA[<h2>Correctifs et améliorations</h2><ul><li>L’engrenage Wi-Fi ouvre désormais le panneau Wi-Fi des Réglages Système, comme annoncé. Sous macOS 15 à 26, il ouvrait à la place le panneau « Réseau » (la liste des services réseau) ; macOS 27 n’était pas concerné.</li><li>Vos réseaux, les détails du signal et l’interrupteur Wi-Fi restent inchangés.</li></ul>]]></description>
+      <description xml:lang="it"><![CDATA[<h2>Correzioni e miglioramenti</h2><ul><li>L’ingranaggio Wi-Fi ora apre il pannello Wi-Fi delle Impostazioni di Sistema, come promesso. Su macOS da 15 a 26 apriva invece il pannello «Rete» (l’elenco dei servizi di rete); macOS 27 non era interessato.</li><li>Le tue reti, i dettagli del segnale e l’interruttore Wi-Fi restano invariati.</li></ul>]]></description>
+      <description xml:lang="ja"><![CDATA[<h2>修正と改善</h2><ul><li>Wi-Fi の歯車は、表示どおりシステム設定の Wi-Fi パネルを開くようになりました。macOS 15〜26 では、代わりに「ネットワーク」パネル（ネットワークサービスの一覧）が開いていました。macOS 27 は影響を受けません。</li><li>ネットワークの表示、電波の詳細、Wi-Fi スイッチはこれまでどおりです。</li></ul>]]></description>
+      <description xml:lang="ko"><![CDATA[<h2>수정 및 개선 사항</h2><ul><li>Wi-Fi 톱니바퀴가 이제 안내대로 시스템 설정의 Wi-Fi 패널을 엽니다. macOS 15~26에서는 대신 「네트워크」 패널(네트워크 서비스 목록)이 열렸습니다. macOS 27은 영향을 받지 않습니다.</li><li>네트워크 보기, 신호 세부 정보, Wi-Fi 스위치는 이전과 같습니다.</li></ul>]]></description>
+      <description xml:lang="pt-BR"><![CDATA[<h2>Correções e melhorias</h2><ul><li>A engrenagem de Wi-Fi agora abre o painel de Wi-Fi dos Ajustes do Sistema, como prometido. No macOS 15 a 26, ela abria o painel «Rede» (a lista de serviços de rede); o macOS 27 não era afetado.</li><li>Suas redes, os detalhes de sinal e o interruptor de Wi-Fi continuam iguais.</li></ul>]]></description>
+      <description xml:lang="ru"><![CDATA[<h2>Исправления и улучшения</h2><ul><li>Шестерёнка Wi-Fi теперь открывает панель «Wi-Fi» в «Системных настройках», как и обещает. В macOS 15–26 вместо неё открывалась панель «Сеть» (список сетевых служб); macOS 27 затронут не был.</li><li>Ваши сети, сведения о сигнале и переключатель Wi-Fi остались прежними.</li></ul>]]></description>
+      <description xml:lang="zh-Hans"><![CDATA[<h2>修复与优化</h2><ul><li>Wi-Fi 齿轮现在打开的是系统设置的 Wi-Fi 面板，和它承诺的一致。在 macOS 15 到 26 上，它此前打开的是「网络」面板（网络服务列表）；macOS 27 不受影响。</li><li>看网络、看信号、开关 Wi-Fi 都和以前一样。</li></ul>]]></description>
+      <description xml:lang="zh-Hant"><![CDATA[<h2>修正與改善</h2><ul><li>Wi-Fi 齒輪現在打開的是系統設定的 Wi-Fi 面板，和它承諾的一致。在 macOS 15 到 26 上，它此前打開的是「網路」面板（網路服務列表）；macOS 27 不受影響。</li><li>看網路、看訊號、Wi-Fi 開關都和以前一樣。</li></ul>]]></description>
+      <enclosure url="https://github.com/lingyired/status-trio/releases/download/v1.3.1/StatusTrio-1.3.1.dmg"
+                 type="application/octet-stream"
+                 sparkle:edSignature="qBh+0MgjceRsXfe2VE5CDXyFPMEft2f+TCa0wRVfuav8MB49kkEXlsz7CnqnsqGvXMtpqX2chLlBTeXHI+8CCQ=="
+                 length="4243505" />
+    </item>
+    <item>
       <title xml:lang="en">Version 1.3.0 (Build 13)</title>
       <title xml:lang="ar">الإصدار 1.3.0 (البنية 13)</title>
       <title xml:lang="de">Version 1.3.0 (Build 13)</title>
