@@ -86,12 +86,28 @@ final class BluetoothSummaryLayoutTests: XCTestCase {
                 listOptions: BluetoothDeviceListOptions(showsList: false, maxVisibleDevices: 3, order: []),
                 named: "bluetooth-nolist-\(language.rawValue)"
             )
+            // A zero limit hides every device row while keeping the expansion
+            // control, so this render isolates the rows from the control: the
+            // height difference above it can only come from the rows themselves.
+            let expandOnly = try await render(
+                language: language,
+                authorization: .allowed,
+                devices: devices,
+                listOptions: BluetoothDeviceListOptions(showsList: true, maxVisibleDevices: 0, order: []),
+                named: "bluetooth-list-expandonly-\(language.rawValue)"
+            )
 
             XCTAssertEqual(withList.width, 330, accuracy: 0.5)
             XCTAssertGreaterThan(
                 withList.height,
                 withoutList.height,
                 "the list must add the device rows in \(language.rawValue)"
+            )
+            XCTAssertGreaterThan(
+                withList.height,
+                expandOnly.height + 20,
+                "the device rows themselves must add height in \(language.rawValue): "
+                    + "the expansion control alone is not the list"
             )
         }
     }
