@@ -34,3 +34,7 @@
 ## I livelli batteria Bluetooth sono attivi per impostazione predefinita
 - **Mostra i livelli batteria Bluetooth** in **Impostazioni › Bluetooth** ora è attivo per impostazione predefinita: una volta attivato il pannello Bluetooth, un dispositivo connesso indica il suo livello senza dover attivare questo interruttore a parte. Disattivarlo interrompe comunque la lettura.
 - La pagina dei dispositivi Bluetooth non mostra più **Non disponibile** su ogni riga: un dispositivo che non indica la batteria non mostra alcun testo della batteria, e un report illeggibile viene segnalato una volta sotto l’elenco.
+
+## Dispositivi abbinati nel pannello di stato
+- **Impostazioni › Bluetooth** ora può elencare i dispositivi abbinati sotto la riga Bluetooth: i primi sono sempre visibili, gli altri compaiono dietro un comando Espandi e il numero massimo lo scegli tu. I dispositivi connessi sono sempre elencati per primi.
+- Trascina i dispositivi in Impostazioni per definire l’ordine mostrato nel pannello. I nuovi dispositivi compaiono alla fine.

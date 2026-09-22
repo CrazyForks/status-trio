@@ -103,3 +103,19 @@ in-memory flag that a fresh launch does not restore, so the row used to start on
 that placeholder every time. Permission is still only requested by the user's
 tap, never by the popover appearing; that contract is covered by
 `BluetoothPermissionTimingTests`.
+
+## The device list in the status panel
+
+`Settings › Bluetooth` can list paired devices under the Bluetooth row. The
+connected group always leads; the saved order only reorders devices inside
+their own group, so a drag can never lift a disconnected device above a
+connected one, and devices with no saved rank land after the ranked ones in
+their group. The limit is a total row count, which means a long connected
+group can push every disconnected device out of the panel — the detail page
+still lists them all.
+
+The list is display-only: this release does not connect or disconnect devices
+from the app. Rows render the same shared view as the detail page, so a device
+whose report carries no level draws no battery text in either place. Nothing
+here starts a new read: the list renders the paired-device report and the level
+map the row already claims.

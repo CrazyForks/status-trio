@@ -34,3 +34,7 @@
 ## Níveis de bateria Bluetooth vêm ativados por padrão
 - **Mostrar níveis de bateria Bluetooth** em **Ajustes › Bluetooth** agora vem ativado por padrão: com o painel de Bluetooth ativado, um dispositivo conectado informa seu nível sem precisar ativar este interruptor separadamente. Desativá-lo continua interrompendo a leitura.
 - A página de dispositivos Bluetooth não exibe mais **Indisponível** em cada linha: um dispositivo que não informa bateria não exibe nenhum texto de bateria, e um relatório que não pode ser lido é avisado uma vez abaixo da lista.
+
+## Dispositivos emparelhados no painel de status
+- **Ajustes › Bluetooth** agora pode listar os dispositivos emparelhados sob a linha Bluetooth: os primeiros ficam sempre visíveis, o restante aparece atrás do controle Expandir, e o máximo é você quem define. Os dispositivos conectados aparecem sempre primeiro.
+- Arraste os dispositivos em Ajustes para definir a ordem mostrada no painel. Dispositivos novos aparecem no final.
