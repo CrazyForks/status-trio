@@ -1,46 +1,29 @@
 # Version %VERSION% (Build %BUILD%)
 
-## Native Liquid Glass on macOS 26 and later
-- The popover now uses the system's own Liquid Glass material instead of the frosted look carried over from earlier macOS releases, so it matches the menus and panels around it.
-- This is the system appearance, not an app-specific style: it follows your system settings, including Reduce Transparency and the system glass tint.
-- macOS 15 to 25 keep the appearance they already had; the deployment target is unchanged, so no user has to update macOS to keep using Status Trio.
+## Native glass look on macOS 26
+- The popover now uses macOS 26's Liquid Glass material and blends in with the system menus; settings such as Reduce Transparency still apply.
+- macOS 15 through 25 keep the look they already have, and the minimum system requirement is unchanged — no one needs to update macOS to keep using Status Trio.
 
-## Panel opens over full-screen apps
-- Clicking the menu bar icon now opens the status panel while another app is in full screen. The panel used to open behind that app, so the click looked like it did nothing.
-
-## Cheaper background refresh
-- The fallback refresh — the timer that catches a change the system did not push to the app — now runs every 15 seconds by default instead of every 5, and macOS may slide that timer so it fires alongside other work. The icon still updates the moment the system reports a change.
-- The battery is checked on every fallback tick. Wi-Fi and volume are checked less often while the Status Panel and the Settings window are both closed, and go back to your Status refresh interval as soon as either one is on screen.
-- The Status refresh interval slider still goes down to 5 seconds for anyone who wants the old cadence.
-- The volume row no longer redraws the Status Panel when the volume reading has not changed.
-
-## Bluetooth no longer polls in the background
-- The Bluetooth panel used to read the paired-device list every 15 seconds for as long as the app was running, even after the panel was closed. It now refreshes when a device connects or disconnects, and falls back to a slow check only while a Bluetooth view is on screen.
-- Paired devices and battery levels now come from one system report instead of two, which halves the work each refresh does.
-- The device names come from the same source as before, and the permission behaviour is unchanged — the app still asks for Bluetooth only when you open a Bluetooth view.
-
-## Wi-Fi scanning stops when you stop looking
-- The Wi-Fi page used to sweep every channel about every five seconds for as long as it was open, even after you went back to the summary. It now scans when you open the page, when you tap refresh, and when you switch the radio, and keeps the last result in between.
-- Leaving the Wi-Fi page stops its scan loop instead of leaving it running in the background.
-- On Macs without a Wi-Fi interface — a Mac mini or Mac Studio on Ethernet, for example — the app no longer rebuilds its Wi-Fi monitoring every 30 seconds; it now tries a few times and then waits for a wake or a network change.
-- Nothing about the list itself changes: the same networks, the same details, and the same manual refresh button.
+## Bluetooth works better
+- The status panel now lists your paired devices right away: tap one to connect, tap it again to disconnect; disconnecting a keyboard or mouse asks you to confirm in the row first.
+- Drag devices in Settings to reorder them; connected devices always come first.
+- Bluetooth battery levels now show by default, with no switch to turn on.
 
 ## Wi-Fi switching stays in the system
-- The popover no longer joins a network or switches between them. Choosing a network opens the Wi-Fi pane of System Settings, and the Wi-Fi page says so above the button that opens it.
-- Status Trio no longer reads or stores Wi-Fi passwords. The old behaviour could not be made dependable: macOS keeps a saved network's password to itself, and a stored copy that had gone stale ended in failed joins and repeated Keychain prompts, with no way to tell you the password was wrong.
-- If you ticked **Remember password** in an earlier version, that Keychain item is still there and is no longer used. You can delete it in Keychain Access by searching for `com.lingsmbp.StatusTrio.wifi-password`.
-- Nothing else about the page changed: the same networks, the same signal and link details, the same Wi-Fi switch, and the same button that opens System Settings.
+- The app no longer joins networks for you: tapping a network opens the system's Wi-Fi settings, where you do the switching.
+- Status Trio no longer reads or stores Wi-Fi passwords.
+- A password entry saved by an earlier version may still be in your keychain, but it is no longer used.
+- Seeing your networks, the signal details and the Wi-Fi switch all work as before.
 
-## Bluetooth battery levels are on by default
-- **Show Bluetooth battery levels** under **Settings › Bluetooth** is now on by default: once the Bluetooth panel is enabled, a connected device reports its battery without turning this switch on separately. Turning it off still stops the read.
-- The Bluetooth device list no longer shows **Unavailable** on every row: a device that reports no battery shows no battery text, and a report that cannot be read is reported once under the list.
-- If Bluetooth access was refused, the Bluetooth row now takes you straight to the pane where you can allow it, instead of only saying it was refused.
-- A long device list now scrolls inside the panel instead of making it grow past the screen.
+## Uses less power
+- Far less background work: Bluetooth no longer polls devices on a timer, Wi-Fi scanning stops when you leave the page, and the fallback refresh slowed from every 5 seconds to every 15.
+- Updates still arrive the moment the system reports a change, and your refresh interval setting is unchanged.
 
-## Paired devices in the status panel
-- **Settings › Bluetooth** can now list paired devices under the Bluetooth row: the first few are always visible, the rest appear behind an Expand control, and the maximum is yours to set. Connected devices are always listed first.
-- Drag devices in Settings to set the order shown in the panel. New devices appear at the end.
+## Fixes and improvements
+- Clicking the menu bar icon now opens the panel while another app is full screen.
+- Power readings in the battery details are more accurate: "System power (estimate)" on power, "Battery discharge (estimate)" on battery.
+- A location permission refused for Wi-Fi can be requested again instead of staying stuck at network names unavailable.
+- With the system's Reduce Motion turned on, the settings interface no longer plays transition animations.
 
-## Connect or disconnect a device from the panel
-- Tapping a paired device in the Bluetooth list now connects it, and tapping a connected one disconnects it. The row shows the request in progress and reports a failure instead of pretending it worked.
-- Disconnecting a keyboard, mouse, trackpad or gamepad asks first, in the row itself — disconnecting the one you are holding would leave you without input.
+## Thanks
+- Thanks to @hhh2210 for their code contributions to this release.
