@@ -356,7 +356,6 @@ final class BluetoothSummaryLayoutTests: XCTestCase {
             controller: controller,
             showsBatteryLevels: true,
             listOptions: listOptions,
-            onOpenDetails: {},
             onRequestAuthorization: {},
             onOpenBluetoothSettings: {}
         )

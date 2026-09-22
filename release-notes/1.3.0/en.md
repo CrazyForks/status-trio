@@ -33,7 +33,7 @@
 
 ## Bluetooth battery levels are on by default
 - **Show Bluetooth battery levels** under **Settings › Bluetooth** is now on by default: once the Bluetooth panel is enabled, a connected device reports its battery without turning this switch on separately. Turning it off still stops the read.
-- The Bluetooth device page no longer shows **Unavailable** on every row: a device that reports no battery shows no battery text, and a report that cannot be read is reported once under the list.
+- The Bluetooth device list no longer shows **Unavailable** on every row: a device that reports no battery shows no battery text, and a report that cannot be read is reported once under the list.
 
 ## Paired devices in the status panel
 - **Settings › Bluetooth** can now list paired devices under the Bluetooth row: the first few are always visible, the rest appear behind an Expand control, and the maximum is yours to set. Connected devices are always listed first.

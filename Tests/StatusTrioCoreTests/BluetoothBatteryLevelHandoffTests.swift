@@ -3,16 +3,17 @@ import SwiftUI
 import XCTest
 @testable import StatusTrioCore
 
-/// The summary row and the detail list share one "read battery levels" flag.
-/// SwiftUI runs the outgoing summary's `onDisappear` *after* the incoming
-/// detail page's `onAppear`, so a summary that released the flag on disappear
-/// switched off the read the detail page had just asked for. The detail page
-/// showed "Unavailable" for every device while the summary still showed the
-/// AirPods level it had read a moment earlier. The detail page is the owner
-/// that releases the flag.
+/// Two surfaces share one "read battery levels" flag, and SwiftUI runs the
+/// outgoing surface's `onDisappear` *after* the incoming one's `onAppear`, so a
+/// surface that released the flag on disappear switched off the read the other
+/// one had just asked for.
+///
+/// The panel's inline list replaced the Bluetooth detail page, so the second
+/// surface here is a stand-in: what these tests pin is the claim mechanism's
+/// behaviour under that hook ordering, not the page that used to exercise it.
 @MainActor
 final class BluetoothBatteryLevelHandoffTests: XCTestCase {
-    func testDetailPageKeepsReadingLevelsAfterLeavingTheSummary() async {
+    func testASecondSurfaceKeepsReadingLevelsAfterTheSummaryLeaves() async {
         let batteryReader = HandoffBatteryReader()
         let controller = BluetoothDeviceController(
             worker: HandoffDeviceReader(),
@@ -165,12 +166,8 @@ private struct HandoffRoot: View {
     var body: some View {
         Group {
             if model.showsDetail {
-                BluetoothDeviceListView(
-                    controller: controller,
-                    showsBatteryLevels: model.showsBatteryLevels,
-                    onBack: {}, onRequestAuthorization: {}, onOpenBluetoothSettings: {}
-                )
-                .id("detail")
+                HandoffSecondSurface(controller: controller)
+                    .id("detail")
             } else {
                 BluetoothStatusView(
                     controller: controller,
@@ -185,12 +182,25 @@ private struct HandoffRoot: View {
                         maxVisibleDevices: 5,
                         order: []
                     ),
-                    onOpenDetails: {}, onRequestAuthorization: {}, onOpenBluetoothSettings: {}
+                    onRequestAuthorization: {}, onOpenBluetoothSettings: {}
                 )
                 .id("summary")
             }
         }
         .environmentObject(localization)
+    }
+}
+
+/// Stands in for the surface that used to sit beside the summary. It claims the
+/// same token the detail page claimed, so the ordering regression these tests
+/// exist for is still exercised now that the page itself is gone.
+private struct HandoffSecondSurface: View {
+    let controller: BluetoothDeviceController
+
+    var body: some View {
+        Text("detail")
+            .onAppear { controller.requestBatteryLevels("bluetooth.detail") }
+            .onDisappear { controller.releaseBatteryLevels("bluetooth.detail") }
     }
 }
 

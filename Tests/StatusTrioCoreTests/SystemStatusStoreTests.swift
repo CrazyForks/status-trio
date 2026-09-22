@@ -118,12 +118,6 @@ final class SystemStatusStoreTests: XCTestCase {
         store.closePopoverDetails()
         XCTAssertFalse(store.hasOpenPopoverPanel)
 
-        store.openBluetoothDetails()
-        XCTAssertTrue(store.hasOpenPopoverPanel)
-
-        store.closeBluetoothDetails()
-        XCTAssertFalse(store.hasOpenPopoverPanel)
-
         store.setBluetoothEnabled(true)
         XCTAssertFalse(store.hasOpenPopoverPanel)
 

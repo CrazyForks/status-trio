@@ -648,8 +648,8 @@ final class BluetoothDeviceController: ObservableObject {
 
     /// The popover-level claim. `SystemStatusStore` holds it while the popover is
     /// open and releases it on close, so it is the only claim that can start the
-    /// poll. The view-level claims (`"bluetooth.summary.surface"` and
-    /// `"bluetooth.detail.surface"` in `BluetoothDeviceListView`) are released
+    /// poll. The view-level claim (`"bluetooth.summary.surface"` in
+    /// `BluetoothStatusView`) is released
     /// only from SwiftUI `onDisappear`, and the popover's content view
     /// controller is retained after close: a skipped `onDisappear` would
     /// otherwise leave the claim set non-empty and restart a 30 s poll for the

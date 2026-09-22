@@ -426,7 +426,7 @@ final class BluetoothPollingLifetimeTests: XCTestCase {
 
         controller.holdVisibleSurface("bluetooth.popover")
         controller.holdVisibleSurface("bluetooth.summary.surface")
-        controller.holdVisibleSurface("bluetooth.detail.surface")
+        controller.holdVisibleSurface("bluetooth.view.surface")
         XCTAssertTrue(controller.isSafetyNetPolling)
 
         controller.releaseVisibleSurface("bluetooth.summary.surface")
@@ -440,7 +440,7 @@ final class BluetoothPollingLifetimeTests: XCTestCase {
         XCTAssertFalse(controller.isSafetyNetPolling)
         XCTAssertFalse(controller.hasVisibleSurface)
 
-        controller.releaseVisibleSurface("bluetooth.detail.surface")
+        controller.releaseVisibleSurface("bluetooth.view.surface")
         controller.deactivate()
     }
 
@@ -537,7 +537,7 @@ final class BluetoothPollingLifetimeTests: XCTestCase {
         await waitUntil { controller.availability == .available }
 
         // A view claim on its own never starts the poll.
-        controller.holdVisibleSurface("bluetooth.detail.surface")
+        controller.holdVisibleSurface("bluetooth.view.surface")
         await settle()
         XCTAssertFalse(
             controller.isSafetyNetPolling,
@@ -559,7 +559,7 @@ final class BluetoothPollingLifetimeTests: XCTestCase {
         controller.holdVisibleSurface("bluetooth.popover")
         XCTAssertTrue(controller.isSafetyNetPolling)
 
-        controller.releaseVisibleSurface("bluetooth.detail.surface")
+        controller.releaseVisibleSurface("bluetooth.view.surface")
         controller.releaseVisibleSurface("bluetooth.popover")
         controller.deactivate()
     }

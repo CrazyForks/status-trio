@@ -247,7 +247,6 @@ private enum PopoverPanel {
     case summary
     case battery
     case wifi(showDetails: Bool)
-    case bluetooth
 }
 
 struct StatusPopoverView: View {
@@ -293,17 +292,6 @@ struct StatusPopoverView: View {
                     onOpenWiFiSettings: openWiFiSettings,
                     onOpenLocationSettings: openLocationSettings,
                     showsDetailsInitially: showDetails
-                )
-            case .bluetooth:
-                BluetoothDeviceListView(
-                    controller: store.bluetoothDevices,
-                    showsBatteryLevels: settings.showsBluetoothBatteryLevels,
-                    onBack: {
-                        store.closeBluetoothDetails()
-                        panel = .summary
-                    },
-                    onRequestAuthorization: requestBluetoothAuthorization,
-                    onOpenBluetoothSettings: openBluetoothSettings
                 )
             }
         }
@@ -358,10 +346,6 @@ struct StatusPopoverView: View {
                 controller: store.bluetoothDevices,
                 showsBatteryLevels: settings.showsBluetoothBatteryLevels,
                 listOptions: settings.bluetoothDeviceListOptions,
-                onOpenDetails: {
-                    store.openBluetoothDetails()
-                    panel = .bluetooth
-                },
                 onRequestAuthorization: requestBluetoothAuthorization,
                 onOpenBluetoothSettings: openBluetoothSettings
             )

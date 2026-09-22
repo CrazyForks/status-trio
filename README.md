@@ -175,7 +175,7 @@ Do not disable Gatekeeper globally. Subsequent Sparkle updates are authenticated
 
 - **Left-click** the menu bar icon or the Dock icon to open the status popover.
 - **Right-click** either icon for the native menu, including version and quit actions.
-- Select a row in the popover to open its page: Wi-Fi details with nearby networks, paired Bluetooth devices, and Battery Details.
+- Select the Wi-Fi or battery row in the popover to open its page: nearby networks and link details, or Battery Details. The Bluetooth row lists its paired devices in place, with an Expand control when they do not all fit.
 - Open **Settings** to choose where the icon is shown (menu bar, Dock, or both) and to change its size, colors, ring thickness, the panel sections and their order, scroll-to-adjust behavior, language, update checks, and launch at login.
 - Reopen the **Meet your icon** guide any time from **Settings › App Icon › Open Guide**.
 - Enable the current Wi-Fi network name when prompted; macOS requests location access for this optional detail.
@@ -193,7 +193,7 @@ Status Trio follows the macOS preferred language by default and includes English
 
 ## Privacy
 
-Status Trio reads status through public macOS frameworks. It does not use App Sandbox or require a network entitlement, and it does not include telemetry or analytics. It does not read or store Wi-Fi passwords and never asks for Keychain access. Location access is optional and requested only when you choose to display the current Wi-Fi network name or open Wi-Fi details. Bluetooth access is requested only when you open Bluetooth details, and it exists to show paired-device connection status.
+Status Trio reads status through public macOS frameworks. It does not use App Sandbox or require a network entitlement, and it does not include telemetry or analytics. It does not read or store Wi-Fi passwords and never asks for Keychain access. Location access is optional and requested only when you choose to display the current Wi-Fi network name or open Wi-Fi details. Bluetooth access is requested only when the Bluetooth panel is shown, and it exists to show paired-device connection status.
 
 ## Development
 

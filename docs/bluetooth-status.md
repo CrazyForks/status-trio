@@ -52,36 +52,36 @@ depend on how a given language collates their name. Everything else follows in
 the system's name order.
 
 Battery levels come from the same `system_profiler SPBluetoothDataType` report.
-Two surfaces share that read — the summary row (for the levels it reports) and
-the detail page (for every device) — so the controller tracks them as *claims*
-keyed by token rather than one boolean. SwiftUI may run the outgoing surface's
-disappear hook either before or after the incoming surface's appear hook, and a
-boolean let the last writer win: leaving the summary switched the read off right
-after the detail page had asked for it, so every device row showed "Unavailable"
-while the summary still showed the level it had just read. A claim count makes
-the outcome the same in either order; the read runs while any claim is held and
-stops when the last is released. The summary claims only while the setting is on
+The summary row is the only surface that claims that read, and the controller
+tracks the claim by token rather than with a boolean — a shape the two-surface
+days proved necessary: SwiftUI may run an outgoing surface's disappear hook
+either before or after an incoming surface's appear hook, and a boolean let the
+last writer win, so leaving one surface switched the read off right after the
+other had asked for it, and every device row showed "Unavailable" while the
+level it had just read was still on screen. A claim count makes the outcome the
+same in either order; the read runs while any claim is held and stops when the
+last is released. The row claims only while the setting is on
 (on by default) and at least one device is connected — the connected devices are
 the gate, not the presence of a readable level, so a just-connected device still
 triggers the first read. A claim is dropped where the change arrives and not only
 when the row disappears: switching the setting off while the row stays on screen
-stops the read and clears the level it published. The detail page claims from the
-setting alone. Closing the popover drops every claim.
+stops the read and clears the level it published. Closing the popover drops every
+claim.
 
-## Detail page levels
+## Device levels in the list
 
-The detail page lists every paired device, connected or not, and renders each
-one's level the same way the row does. A row shows a level only when the report
-carries one for that device
+The panel's list renders one level per device the same way the row does, and
+covers every paired device, connected or not. A row shows a level only when the
+report carries one for that device
 (`BluetoothDevicePresentation.batteryLevelText(for:batteryLevels:)`); a
 device macOS cannot read stays silent instead of repeating a placeholder on
-every line, which is what made the page look broken on a Mac without AirPods.
+every line.
 
 A report that could not be read is a different state from a report without
 levels, so `BluetoothBatteryReading.read(completion:)` answers with an optional
 dictionary: `nil` is a failed read, `[:]` is a successful read that carries
 nothing. The controller publishes the difference as `batteryLevelsReadFailed`,
-the page shows it as one line under the list, and it clears wherever the levels
+the panel shows it as one line under the list, and it clears wherever the levels
 are cleared: the last claim released, an availability change, or `deactivate()`.
 
 `SettingsStore.showsBluetoothBatteryLevels` defaults to on. It only decides who
@@ -111,15 +111,19 @@ connected group always leads; the saved order only reorders devices inside
 their own group, so a drag can never lift a disconnected device above a
 connected one, and devices with no saved rank land after the ranked ones in
 their group. The limit is a total row count, which means a long connected
-group can push every disconnected device out of the panel — the detail page
-still lists them all.
+group can push every disconnected device out of the panel — the expansion
+control holds the rest.
 
 Rows here are actionable: tapping one asks the system to connect or disconnect
-that device, exactly as the detail page does (see *Acting on a device from its
-row* below). Rows render the same shared view as the detail page, so a device
-whose report carries no level draws no battery text in either place. Nothing
-here starts a new read: the list renders the paired-device report and the level
-map the row already claims.
+that device (see *Acting on a device from its row* below). Nothing here starts a
+new read: the list renders the paired-device report and the level map the row
+already claims.
+
+The row no longer opens a page. The list below it shows the same devices, with
+the expansion control covering the ones the limit hides, so a second surface only
+repeated it. What that page offered besides lives in the row now: the refresh
+button beside the gear, and the one-line report of a failed level read under the
+list.
 
 The list is on by default, and the maximum visible count is clamped to `1...20`.
 The row's own subtitle gives way to the list while the list is visible, because
