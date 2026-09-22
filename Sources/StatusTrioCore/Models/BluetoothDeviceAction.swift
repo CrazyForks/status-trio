@@ -23,7 +23,8 @@ enum BluetoothDeviceActionState: Equatable, Sendable {
     case failed(BluetoothDeviceAction)
 }
 
-/// The text a row shows where the connection state normally goes.
+/// What a row reports about a device: its connection, or what an action is doing
+/// to it. A row keeps this for its accessibility value either way.
 enum BluetoothDeviceRowStatus: Equatable, Sendable {
     case connected
     case notConnected
@@ -31,6 +32,20 @@ enum BluetoothDeviceRowStatus: Equatable, Sendable {
     case disconnecting
     case connectFailed
     case disconnectFailed
+
+    /// Whether the row writes this state out as text.
+    ///
+    /// A resting state is already told by the row's own appearance — the icon is
+    /// ringed in the accent colour and a checkmark follows the name when the
+    /// device is connected — so it is not spelled out, and the trailing space is
+    /// left to the battery level. Something the appearance cannot say, an action
+    /// in flight or a failure, is written out.
+    var drawsText: Bool {
+        switch self {
+        case .connected, .notConnected: false
+        case .connecting, .disconnecting, .connectFailed, .disconnectFailed: true
+        }
+    }
 }
 
 /// The rules a row's action follows, kept out of the views so both surfaces

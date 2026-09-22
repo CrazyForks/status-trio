@@ -442,6 +442,23 @@ final class BluetoothDeviceActionsTests: XCTestCase {
             .disconnectFailed
         )
     }
+
+    /// A connected device is drawn with a ringed icon, a semibold name and a
+    /// checkmark, so the row does not also say "connected" in words — that space
+    /// is for the battery level. Only what the appearance cannot say, an action in
+    /// flight or a failure, is written out.
+    func testOnlyATransientStateIsWrittenOut() {
+        XCTAssertFalse(BluetoothDeviceRowStatus.connected.drawsText)
+        XCTAssertFalse(BluetoothDeviceRowStatus.notConnected.drawsText)
+        for transient in [
+            BluetoothDeviceRowStatus.connecting,
+            .disconnecting,
+            .connectFailed,
+            .disconnectFailed
+        ] {
+            XCTAssertTrue(transient.drawsText, "\(transient) has to be written out")
+        }
+    }
 }
 
 private final class BluetoothActionPerformerStub: BluetoothDeviceActionPerforming {
