@@ -351,6 +351,13 @@ final class BluetoothDeviceController: ObservableObject {
     private let failureVisibleSleep: @Sendable (Duration) async throws -> Void
     private var actionTimeouts: [String: Task<Void, Never>] = [:]
     private var failureClearTasks: [String: Task<Void, Never>] = [:]
+    /// Identifies the current request per device. A late completion from a
+    /// superseded request must not decide the outcome of the one that replaced
+    /// it — an action's result comes from its own request and report pair only.
+    private var deviceActionTokens: [String: UInt64] = [:]
+    /// Monotonic across the controller, so clearing the map can never hand an old
+    /// token to a new request (a per-address gate would restart at zero).
+    private var deviceActionTokenCounter: UInt64 = 0
 
     init(
         worker: any BluetoothPairedDeviceReading = SystemProfilerBluetoothPairedDeviceWorker(),
@@ -792,20 +799,27 @@ final class BluetoothDeviceController: ObservableObject {
         let address = BluetoothBatteryReader.normalizedAddress(device.id)
         switch deviceActionStates[address] {
         case .none, .failed:
-            // Free, or a retry of a failure that is still on screen.
-            break
+            // Free, or a retry of a failure that is still on screen. The
+            // superseded failure's clear no longer has anything to clear, so it
+            // goes with the state it was armed for.
+            failureClearTasks[address]?.cancel()
+            failureClearTasks[address] = nil
         case .connecting, .disconnecting:
             // One action per device at a time.
             return
         }
 
         let action = BluetoothDeviceActionPolicy.action(for: device)
+        deviceActionTokenCounter &+= 1
+        let token = deviceActionTokenCounter
+        deviceActionTokens[address] = token
         deviceActionStates[address] = action.inFlightState
-        armActionTimeout(for: action, address: address)
+        armActionTimeout(for: action, address: address, token: token)
         actionPerformer.setConnected(action == .connect, forAddress: address) { [weak self] accepted in
             guard !accepted else { return }
             Task { @MainActor [weak self] in
-                self?.failDeviceAction(action, address: address)
+                guard let self, self.deviceActionTokens[address] == token else { return }
+                self.failDeviceAction(action, address: address)
             }
         }
     }
@@ -828,7 +842,7 @@ final class BluetoothDeviceController: ObservableObject {
         }
     }
 
-    private func armActionTimeout(for action: BluetoothDeviceAction, address: String) {
+    private func armActionTimeout(for action: BluetoothDeviceAction, address: String, token: UInt64) {
         actionTimeouts[address]?.cancel()
         let timeout = actionTimeout
         let sleep = actionTimeoutSleep
@@ -838,7 +852,9 @@ final class BluetoothDeviceController: ObservableObject {
             } catch {
                 return
             }
-            guard let self, self.deviceActionStates[address] == action.inFlightState else { return }
+            guard let self,
+                  self.deviceActionTokens[address] == token,
+                  self.deviceActionStates[address] == action.inFlightState else { return }
             self.failDeviceAction(action, address: address)
         }
     }
@@ -876,6 +892,7 @@ final class BluetoothDeviceController: ObservableObject {
         for task in failureClearTasks.values { task.cancel() }
         actionTimeouts.removeAll()
         failureClearTasks.removeAll()
+        deviceActionTokens.removeAll()
         deviceActionStates.removeAll()
     }
 

@@ -15,7 +15,7 @@ final class BluetoothDeviceActionsTests: XCTestCase {
 
     private func makeController(
         device: BluetoothDevice,
-        performer: BluetoothActionPerformerStub,
+        performer: any BluetoothDeviceActionPerforming,
         timeoutSleeper: ManualEventSleeper,
         failureSleeper: ManualEventSleeper
     ) -> (BluetoothDeviceController, MutableBluetoothDeviceReader) {
@@ -210,6 +210,44 @@ final class BluetoothDeviceActionsTests: XCTestCase {
         controller.deactivate()
     }
 
+    func testALateRefusalFromASupersededRequestDoesNotDecideTheRetry() async {
+        let device = makeDevice(isConnected: false)
+        let performer = DeferredBluetoothActionPerformer()
+        let timeoutSleeper = ManualEventSleeper()
+        let (controller, _) = makeController(
+            device: device,
+            performer: performer,
+            timeoutSleeper: timeoutSleeper,
+            failureSleeper: ManualEventSleeper()
+        )
+        controller.activate()
+        await waitUntil { controller.availability == .available }
+        let address = BluetoothBatteryReader.normalizedAddress(airPodsAddress)
+
+        // The first request never answers: it blocks past the timeout, the row
+        // reports the failure, and the user tries again.
+        controller.performDeviceAction(for: device)
+        _ = await timeoutSleeper.waitForCallCount(1, timeout: .seconds(1))
+        timeoutSleeper.releaseAll()
+        await waitUntil { controller.deviceActionStates[address] == .failed(.connect) }
+
+        controller.performDeviceAction(for: device)
+        await waitUntil { controller.deviceActionStates[address] == .connecting }
+
+        // The superseded request finally answers "refused". That answer belongs
+        // to the request the retry replaced, so the retry must be untouched.
+        performer.answerFirst(accepted: false)
+        await Task.yield()
+        try? await Task.sleep(for: .milliseconds(50))
+
+        XCTAssertEqual(
+            controller.deviceActionStates[address],
+            .connecting,
+            "a superseded request must not decide the live one"
+        )
+        controller.deactivate()
+    }
+
     func testAFailedRowAcceptsARetry() async {
         let device = makeDevice(isConnected: false)
         let performer = BluetoothActionPerformerStub()
@@ -314,6 +352,27 @@ private final class BluetoothActionPerformerStub: BluetoothDeviceActionPerformin
     ) {
         requests.append((connected, address))
         completion(accepted)
+    }
+}
+
+private final class DeferredBluetoothActionPerformer: BluetoothDeviceActionPerforming {
+    private(set) var requests: [(connected: Bool, address: String)] = []
+    private var completions: [@Sendable (Bool) -> Void] = []
+
+    func setConnected(
+        _ connected: Bool,
+        forAddress address: String,
+        completion: @escaping @Sendable (Bool) -> Void
+    ) {
+        requests.append((connected, address))
+        completions.append(completion)
+    }
+
+    func answerFirst(accepted: Bool) {
+        completions.first?(accepted)
+        if !completions.isEmpty {
+            completions.removeFirst()
+        }
     }
 }
 
