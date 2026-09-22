@@ -239,6 +239,8 @@
 "bluetooth.authorizationNotDetermined" = "Разрешение на использование Bluetooth ещё не запрошено.";
 "bluetooth.authorizationDenied" = "Разрешение на использование Bluetooth отклонено. Откройте настройки Bluetooth.";
 "bluetooth.authorizationRestricted" = "Разрешение на использование Bluetooth ограничено.";
+"bluetooth.list.expand" = "Развернуть";
+"bluetooth.list.collapse" = "Свернуть";
 
 "settings.preview.hint" = "Интерактивный просмотр · Изменяйте параметры ниже, чтобы сразу видеть результат";
 "settings.preview.dark" = "Темный";

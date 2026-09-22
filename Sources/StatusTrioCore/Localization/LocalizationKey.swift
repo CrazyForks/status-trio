@@ -289,6 +289,8 @@ enum LocalizationKey: String, CaseIterable, Hashable, Sendable {
     case bluetoothNotConnected = "bluetooth.notConnected"
     case bluetoothPairedDeviceLimit = "bluetooth.pairedDeviceLimit"
     case bluetoothBatteryUnavailable = "bluetooth.battery.unavailable"
+    case bluetoothListExpand = "bluetooth.list.expand"
+    case bluetoothListCollapse = "bluetooth.list.collapse"
 
     case volumeTitle = "volume.title"
     case volumeTitleUnavailable = "volume.titleUnavailable"

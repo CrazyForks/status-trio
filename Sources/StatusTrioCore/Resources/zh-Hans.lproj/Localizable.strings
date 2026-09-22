@@ -239,6 +239,8 @@
 "bluetooth.authorizationNotDetermined" = "蓝牙权限尚未确定。";
 "bluetooth.authorizationDenied" = "蓝牙权限被拒绝。打开蓝牙设置。";
 "bluetooth.authorizationRestricted" = "蓝牙权限受限。";
+"bluetooth.list.expand" = "展开";
+"bluetooth.list.collapse" = "收起";
 
 "settings.preview.hint" = "实时预览 · 调节下方各项参数即刻在上方呈现";
 "settings.preview.dark" = "深色";

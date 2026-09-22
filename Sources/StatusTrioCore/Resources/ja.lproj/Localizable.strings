@@ -239,6 +239,8 @@
 "bluetooth.authorizationNotDetermined" = "Bluetooth の権限はまだ選択されていません。";
 "bluetooth.authorizationDenied" = "Bluetooth の権限が拒否されています。Bluetooth 設定を開いてください。";
 "bluetooth.authorizationRestricted" = "Bluetooth の権限が制限されています。";
+"bluetooth.list.expand" = "展開";
+"bluetooth.list.collapse" = "折りたたむ";
 
 "settings.preview.hint" = "リアルタイムプレビュー · 下の設定を変更するとすぐに反映されます";
 "settings.preview.dark" = "ダーク";

@@ -7,37 +7,48 @@ struct BluetoothStatusView: View {
     @ObservedObject var controller: BluetoothDeviceController
     @EnvironmentObject private var localization: Localization
     let showsBatteryLevels: Bool
+    var listOptions: BluetoothDeviceListOptions = .standard
     let onOpenDetails: () -> Void
     let onRequestAuthorization: () -> Void
     let onOpenBluetoothSettings: () -> Void
 
     var body: some View {
-        HStack(spacing: 10) {
-            Button(action: onOpenDetails) {
-                HStack(spacing: 10) {
-                    BluetoothIcon(size: 24)
-                        .foregroundStyle(.secondary)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(localization.string(.bluetoothTitle))
-                            .font(.headline)
-                        subtitle
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 10) {
+                Button(action: onOpenDetails) {
+                    HStack(spacing: 10) {
+                        BluetoothIcon(size: 24)
+                            .foregroundStyle(.secondary)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(localization.string(.bluetoothTitle))
+                                .font(.headline)
+                            subtitle
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.tertiary)
                     }
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.tertiary)
+                    .contentShape(Rectangle())
                 }
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("\(localization.string(.bluetoothTitle)), \(accessibilitySummary)")
-
-            Button(localization.string(.bluetoothActionOpenSettings), systemImage: "gearshape", action: onOpenBluetoothSettings)
-                .labelStyle(.iconOnly)
                 .buttonStyle(.plain)
-                .foregroundStyle(.secondary)
-                .help(localization.string(.bluetoothActionOpenSettings))
-                .frame(width: 24, height: 24)
+                .accessibilityLabel("\(localization.string(.bluetoothTitle)), \(accessibilitySummary)")
+
+                Button(localization.string(.bluetoothActionOpenSettings), systemImage: "gearshape", action: onOpenBluetoothSettings)
+                    .labelStyle(.iconOnly)
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
+                    .help(localization.string(.bluetoothActionOpenSettings))
+                    .frame(width: 24, height: 24)
+            }
+
+            if showsDeviceList {
+                BluetoothDeviceList(
+                    devices: controller.devices,
+                    batteryLevels: controller.batteryLevels,
+                    options: listOptions
+                )
+            }
         }
         .onAppear {
             controller.holdVisibleSurface(Self.summarySurfaceToken)
@@ -65,6 +76,22 @@ struct BluetoothStatusView: View {
 
     private static let summaryBatteryLevelsToken = "bluetooth.summary"
     private static let summarySurfaceToken = "bluetooth.summary.surface"
+
+    private var showsDeviceList: Bool {
+        BluetoothPanelListVisibility.showsList(
+            availability: controller.availability,
+            devices: controller.devices,
+            options: listOptions
+        )
+    }
+
+    private var hidesSubtitle: Bool {
+        BluetoothPanelListVisibility.hidesRowSubtitle(
+            availability: controller.availability,
+            devices: controller.devices,
+            options: listOptions
+        )
+    }
 
     /// The task re-runs when the level setting or one of the device names
     /// changes. The name also covers an AirPods swapping to another device at
@@ -104,6 +131,8 @@ struct BluetoothStatusView: View {
             .font(.caption)
             .foregroundStyle(.secondary)
             .lineLimit(1)
+        } else if hidesSubtitle {
+            EmptyView()
         } else {
             Text(summaryText)
                 .font(.caption)

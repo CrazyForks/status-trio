@@ -48,6 +48,7 @@ final class BluetoothSummaryLayoutTests: XCTestCase {
                     authorization: state.authorization,
                     devices: state.devices,
                     batteryLevels: levelsByState[state.name] ?? [:],
+                    listOptions: BluetoothDeviceListOptions(showsList: false, maxVisibleDevices: 5, order: []),
                     named: "bluetooth-\(language.rawValue)-\(state.name)"
                 )
                 XCTAssertEqual(size.width, 330, accuracy: 0.5)
@@ -57,11 +58,67 @@ final class BluetoothSummaryLayoutTests: XCTestCase {
         }
     }
 
+    /// With the list on, the row grows by the visible device rows and the
+    /// expansion control — in both a narrow-glyph and a wide-glyph language.
+    func testDeviceListGrowsTheRowWithoutWideningIt() async throws {
+        let devices = (1...6).map { index in
+            BluetoothDevice(
+                id: "AA:00:00:00:00:0\(index)",
+                name: "Device \(index)",
+                kind: .audio,
+                isConnected: index <= 2
+            )
+        }
+        let options = BluetoothDeviceListOptions(showsList: true, maxVisibleDevices: 3, order: [])
+
+        for language in [AppLanguage.english, .simplifiedChinese] {
+            let withList = try await render(
+                language: language,
+                authorization: .allowed,
+                devices: devices,
+                listOptions: options,
+                named: "bluetooth-list-\(language.rawValue)"
+            )
+            let withoutList = try await render(
+                language: language,
+                authorization: .allowed,
+                devices: devices,
+                listOptions: BluetoothDeviceListOptions(showsList: false, maxVisibleDevices: 3, order: []),
+                named: "bluetooth-nolist-\(language.rawValue)"
+            )
+
+            XCTAssertEqual(withList.width, 330, accuracy: 0.5)
+            XCTAssertGreaterThan(
+                withList.height,
+                withoutList.height,
+                "the list must add the device rows in \(language.rawValue)"
+            )
+        }
+    }
+
+    /// No paired devices means no list: the row keeps its own message and its
+    /// original height.
+    func testEmptyDeviceListDoesNotChangeTheRow() async throws {
+        let options = BluetoothDeviceListOptions(showsList: true, maxVisibleDevices: 3, order: [])
+
+        let withSettingOn = try await render(
+            language: .english,
+            authorization: .allowed,
+            devices: [],
+            listOptions: options,
+            named: "bluetooth-list-empty"
+        )
+
+        XCTAssertEqual(withSettingOn.width, 330, accuracy: 0.5)
+        XCTAssertLessThan(withSettingOn.height, 120)
+    }
+
     private func render(
         language: AppLanguage,
         authorization: BluetoothAuthorizationStatus,
         devices: [BluetoothDevice],
         batteryLevels: [String: BluetoothBatteryLevel] = [:],
+        listOptions: BluetoothDeviceListOptions = .standard,
         named name: String
     ) async throws -> NSSize {
         let suite = "StatusTrioCoreTests.BluetoothSummary.\(UUID().uuidString)"
@@ -90,6 +147,7 @@ final class BluetoothSummaryLayoutTests: XCTestCase {
         let view = BluetoothStatusView(
             controller: controller,
             showsBatteryLevels: true,
+            listOptions: listOptions,
             onOpenDetails: {},
             onRequestAuthorization: {},
             onOpenBluetoothSettings: {}

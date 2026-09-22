@@ -239,6 +239,8 @@
 "bluetooth.authorizationNotDetermined" = "Aún no se ha decidido el permiso de Bluetooth.";
 "bluetooth.authorizationDenied" = "El permiso de Bluetooth está denegado. Abrir ajustes de Bluetooth.";
 "bluetooth.authorizationRestricted" = "El permiso de Bluetooth está restringido.";
+"bluetooth.list.expand" = "Expandir";
+"bluetooth.list.collapse" = "Contraer";
 
 "settings.preview.hint" = "Vista previa en directo · Modifique los ajustes siguientes para ver los cambios de inmediato";
 "settings.preview.dark" = "Oscuro";

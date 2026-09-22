@@ -239,6 +239,8 @@
 "bluetooth.authorizationNotDetermined" = "Bluetooth 권한이 아직 결정되지 않았습니다.";
 "bluetooth.authorizationDenied" = "Bluetooth 권한이 거부되었습니다. Bluetooth 설정을 여십시오.";
 "bluetooth.authorizationRestricted" = "Bluetooth 권한이 제한되었습니다.";
+"bluetooth.list.expand" = "펼치기";
+"bluetooth.list.collapse" = "접기";
 
 "settings.preview.hint" = "실시간 미리보기 · 아래 설정을 변경하면 즉시 반영됩니다";
 "settings.preview.dark" = "다크";

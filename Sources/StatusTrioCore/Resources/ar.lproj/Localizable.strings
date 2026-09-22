@@ -239,6 +239,8 @@
 "bluetooth.authorizationNotDetermined" = "لم يتم تحديد إذن Bluetooth بعد.";
 "bluetooth.authorizationDenied" = "إذن Bluetooth مرفوض. افتح إعدادات Bluetooth.";
 "bluetooth.authorizationRestricted" = "إذن Bluetooth مقيّد.";
+"bluetooth.list.expand" = "توسيع";
+"bluetooth.list.collapse" = "طي";
 
 "settings.preview.hint" = "معاينة مباشرة · اضبط الإعدادات أدناه لرؤية التغييرات فورًا";
 "settings.preview.dark" = "داكن";
