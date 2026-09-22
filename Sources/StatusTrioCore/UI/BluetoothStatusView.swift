@@ -46,7 +46,11 @@ struct BluetoothStatusView: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .foregroundStyle(.secondary)
+                // The same weight as the disclosure chevron the other rows end
+                // on, so the panel's trailing column reads as one thing. The gear
+                // beside it stays `secondary`, exactly as it does next to that
+                // chevron in the Wi-Fi and battery rows.
+                .foregroundStyle(.tertiary)
                 .help(localization.string(.bluetoothRefresh))
                 .accessibilityLabel(localization.string(.bluetoothRefresh))
 
