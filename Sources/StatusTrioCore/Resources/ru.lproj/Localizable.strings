@@ -246,10 +246,18 @@
 
 "bluetooth.initializing" = "Инициализация Bluetooth…";
 "bluetooth.authorizationNotDetermined" = "Разрешение на использование Bluetooth ещё не запрошено.";
-"bluetooth.authorizationDenied" = "Разрешение на использование Bluetooth отклонено. Откройте настройки Bluetooth.";
+"bluetooth.action.openPermissionSettings" = "Разрешить Bluetooth в Настройках";
 "bluetooth.authorizationRestricted" = "Разрешение на использование Bluetooth ограничено.";
 "bluetooth.list.expand" = "Развернуть";
 "bluetooth.list.collapse" = "Свернуть";
+"bluetooth.action.connect" = "Подключить";
+"bluetooth.action.disconnect" = "Отключить";
+"bluetooth.action.cancel" = "Отмена";
+"bluetooth.action.confirmDisconnect" = "Отключить?";
+"bluetooth.state.connecting" = "Подключение…";
+"bluetooth.state.disconnecting" = "Отключение…";
+"bluetooth.state.connectFailed" = "Не удалось подключиться";
+"bluetooth.state.disconnectFailed" = "Не удалось отключиться";
 
 "settings.preview.hint" = "Интерактивный просмотр · Изменяйте параметры ниже, чтобы сразу видеть результат";
 "settings.preview.dark" = "Темный";

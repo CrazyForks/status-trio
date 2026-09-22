@@ -11,7 +11,8 @@ devices:batteryLevels:)`, so the text is testable without rendering SwiftUI:
 | `available` | The connected device names, joined with `、` |
 | `available`, nothing connected | No connected devices |
 | `poweredOff`, `unavailable`, `failed` | Their own existing messages |
-| `authorizationDenied`, `authorizationRestricted` | Their own existing messages |
+| `authorizationDenied` | A tappable **Allow Bluetooth in Settings** action, which opens Privacy & Security › Bluetooth |
+| `authorizationRestricted` | Its own existing message |
 
 Device names are joined with the ideographic comma `、`. A connected battery
 reading is joined to its device with the existing ` · ` separator, so the level
@@ -52,36 +53,36 @@ depend on how a given language collates their name. Everything else follows in
 the system's name order.
 
 Battery levels come from the same `system_profiler SPBluetoothDataType` report.
-Two surfaces share that read — the summary row (for the levels it reports) and
-the detail page (for every device) — so the controller tracks them as *claims*
-keyed by token rather than one boolean. SwiftUI may run the outgoing surface's
-disappear hook either before or after the incoming surface's appear hook, and a
-boolean let the last writer win: leaving the summary switched the read off right
-after the detail page had asked for it, so every device row showed "Unavailable"
-while the summary still showed the level it had just read. A claim count makes
-the outcome the same in either order; the read runs while any claim is held and
-stops when the last is released. The summary claims only while the setting is on
+The summary row is the only surface that claims that read, and the controller
+tracks the claim by token rather than with a boolean — a shape the two-surface
+days proved necessary: SwiftUI may run an outgoing surface's disappear hook
+either before or after an incoming surface's appear hook, and a boolean let the
+last writer win, so leaving one surface switched the read off right after the
+other had asked for it, and every device row showed "Unavailable" while the
+level it had just read was still on screen. A claim count makes the outcome the
+same in either order; the read runs while any claim is held and stops when the
+last is released. The row claims only while the setting is on
 (on by default) and at least one device is connected — the connected devices are
 the gate, not the presence of a readable level, so a just-connected device still
 triggers the first read. A claim is dropped where the change arrives and not only
 when the row disappears: switching the setting off while the row stays on screen
-stops the read and clears the level it published. The detail page claims from the
-setting alone. Closing the popover drops every claim.
+stops the read and clears the level it published. Closing the popover drops every
+claim.
 
-## Detail page levels
+## Device levels in the list
 
-The detail page lists every paired device, connected or not, and renders each
-one's level the same way the row does. A row shows a level only when the report
-carries one for that device
+The panel's list renders one level per device the same way the row does, and
+covers every paired device, connected or not. A row shows a level only when the
+report carries one for that device
 (`BluetoothDevicePresentation.batteryLevelText(for:batteryLevels:)`); a
 device macOS cannot read stays silent instead of repeating a placeholder on
-every line, which is what made the page look broken on a Mac without AirPods.
+every line.
 
 A report that could not be read is a different state from a report without
 levels, so `BluetoothBatteryReading.read(completion:)` answers with an optional
 dictionary: `nil` is a failed read, `[:]` is a successful read that carries
 nothing. The controller publishes the difference as `batteryLevelsReadFailed`,
-the page shows it as one line under the list, and it clears wherever the levels
+the panel shows it as one line under the list, and it clears wherever the levels
 are cleared: the last claim released, an availability change, or `deactivate()`.
 
 `SettingsStore.showsBluetoothBatteryLevels` defaults to on. It only decides who
@@ -97,6 +98,14 @@ the state monitor is what raises the system prompt. So
 activate the monitor on its own only when the grant is already `allowed`, which
 refreshes the names the row reports. Every other grant state is only observed.
 
+A refused grant is the one state the user can act on from the row, so the row is
+a button there: it closes the popover and opens **Privacy & Security ›
+Bluetooth**, the pane that gives the grant back
+(`StatusBarController.bluetoothPermissionSettingsURLs`). That is deliberately not
+the pane the gear opens — `bluetoothSettingsURLs` turns the radio on and off —
+and a *restricted* grant gets no action at all, because a managed Mac or parental
+controls leave the user nothing to change.
+
 The popover re-evaluates this on each open, which is what replaced the previous
 "open details to view device status" placeholder: the monitor is enabled by an
 in-memory flag that a fresh launch does not restore, so the row used to start on
@@ -111,14 +120,31 @@ connected group always leads; the saved order only reorders devices inside
 their own group, so a drag can never lift a disconnected device above a
 connected one, and devices with no saved rank land after the ranked ones in
 their group. The limit is a total row count, which means a long connected
-group can push every disconnected device out of the panel — the detail page
-still lists them all.
+group can push every disconnected device out of the panel — the expansion
+control holds the rest.
 
-The list is display-only: this release does not connect or disconnect devices
-from the app. Rows render the same shared view as the detail page, so a device
-whose report carries no level draws no battery text in either place. Nothing
-here starts a new read: the list renders the paired-device report and the level
-map the row already claims.
+The rows stop at 330 points and scroll inside the panel beyond that, the same
+bound the Wi-Fi list uses. The summary popover has no scroll view of its own, so
+without it an expanded list — or a limit the user raised to 20 — would keep
+growing the popover past the screen. The scroll view appears only past that
+bound: a list that fits is laid out directly, because a scroll view that is not
+needed still flashes its scroller while an expansion animates through the moment
+the content is taller than the shrinking frame, which a Mac with six devices
+should never show. The expansion control sits outside the scroll region, so
+collapsing a long list never needs a scroll to the bottom first, and the panel's
+scroll-wheel handling already leaves a pointer over an `NSScrollView` to that
+view rather than adjusting the volume.
+
+Rows here are actionable: tapping one asks the system to connect or disconnect
+that device (see *Acting on a device from its row* below). Nothing here starts a
+new read: the list renders the paired-device report and the level map the row
+already claims.
+
+The row no longer opens a page. The list below it shows the same devices, with
+the expansion control covering the ones the limit hides, so a second surface only
+repeated it. What that page offered besides lives in the row now: the refresh
+button beside the gear, and the one-line report of a failed level read under the
+list.
 
 The list is on by default, and the maximum visible count is clamped to `1...20`.
 The row's own subtitle gives way to the list while the list is visible, because
@@ -133,3 +159,38 @@ state, and a read that lands after the pane appeared repaints it. The claim is
 gated by `BluetoothPanelActivation.shouldActivate(authorization:)`, so the pane
 never raises a permission prompt; releasing it stops the safety-net poll but
 does not turn the panel's enabled flag off.
+
+## Acting on a device from its row
+
+A device row is a button: tapping an unconnected device asks the system to
+connect it, and tapping a connected one asks it to disconnect. The request goes
+through `IOBluetoothDevice.openConnection()` / `closeConnection()` on a private
+queue — those calls are synchronous and can block until the page timeout when a
+device is out of range, so they never run on the main thread. Devices are
+matched on the normalized address: IOBluetooth keeps reporting the name a device
+had before it was renamed, while the report the UI is built from carries the
+current one, so names cannot join the two sources.
+
+Nothing here flips a row optimistically. The request only decides whether the
+system accepted the command; the row's connection state still comes from the
+device report, and the action is considered done only when that report changes.
+A request that is refused, and one that is accepted but takes longer than ten
+seconds to show up, both become a visible failure for a few seconds and then
+clear. A failed row can be tapped again to retry.
+
+Commands run in order on the performer's single queue, so two devices tapped in
+quick succession are sent one after the other, and a command queued behind a
+blocking one can have its own ten-second clock expire before it is even sent —
+a transient failure that clears itself.
+
+Disconnecting an input device — a keyboard, mouse, trackpad or gamepad — asks
+for confirmation in the row itself, because disconnecting the keyboard or mouse
+the user is holding would cut them off from their own Mac. The prompt lives in
+the row rather than in an alert: the panel is transient, so a modal would close
+it. The controller owns the pending confirmation, and `SystemStatusStore`
+cancels it when the popover closes, so an unconfirmed disconnect is never sent:
+the popover keeps its content view controller — and therefore its SwiftUI state —
+alive for a minute after a close, which is why the cancellation cannot be left to
+a view's own disappear hook. The prompt carries no device name — the
+row already shows it — and it disappears on its own if the device stops being a
+connected input device while it is open.

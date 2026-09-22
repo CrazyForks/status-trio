@@ -114,6 +114,21 @@ final class BluetoothSummaryTests: XCTestCase {
         )
     }
 
+    /// Only a state with somewhere to send the user makes the row a button. A
+    /// refused grant is one: the row takes the user to the pane that gives it
+    /// back, the way the Wi-Fi row does for location. A restriction the user
+    /// cannot lift is deliberately not.
+    func testOnlyTheStatesWithSomewhereToGoMakeTheRowTappable() {
+        XCTAssertEqual(BluetoothSummary.requestAuthorization.rowAction, .requestAuthorization)
+        XCTAssertEqual(BluetoothSummary.authorizationDenied.rowAction, .openPermissionSettings)
+        for state: BluetoothSummary in [
+            .initializing, .authorizationRestricted, .poweredOff, .unavailable,
+            .readFailed, .noConnectedDevices, .devices("AirPods Pro")
+        ] {
+            XCTAssertNil(state.rowAction, "\(state) has nowhere to send the user")
+        }
+    }
+
     func testConnectedDevicesAreJoinedWithAnIdeographicSeparator() {
         let summary = BluetoothSummary.presentation(
             availability: .available,

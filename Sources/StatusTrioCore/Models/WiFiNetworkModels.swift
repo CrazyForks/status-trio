@@ -342,6 +342,14 @@ struct BluetoothDevice: Identifiable, Equatable, Sendable {
     }
 }
 
+/// What tapping the Bluetooth row does. The Wi-Fi row has the same shape — its
+/// whole row is a button whose action comes from the state — so both rows send
+/// the user somewhere only while the state has somewhere to send them.
+enum BluetoothSummaryRowAction: Equatable, Sendable {
+    case requestAuthorization
+    case openPermissionSettings
+}
+
 /// What the popover's Bluetooth row reports. Deriving the text from state
 /// keeps the summary testable without rendering SwiftUI.
 enum BluetoothSummary: Equatable, Sendable {
@@ -366,6 +374,23 @@ enum BluetoothSummary: Equatable, Sendable {
     /// reading levels worth a claim.
     var hasConnectedDevices: Bool {
         deviceNames != nil
+    }
+
+    /// What the row does when tapped, or `nil` when tapping it does nothing.
+    ///
+    /// A refused grant is the case this exists for: the row has to take the user
+    /// to the pane where it can be given back, the way the Wi-Fi row does for
+    /// location. A grant that is *restricted* — a managed Mac or parental
+    /// controls — is deliberately left out: the user cannot lift it, so offering
+    /// to take them somewhere would be a promise the system will not keep.
+    var rowAction: BluetoothSummaryRowAction? {
+        switch self {
+        case .requestAuthorization: .requestAuthorization
+        case .authorizationDenied: .openPermissionSettings
+        case .initializing, .authorizationRestricted, .poweredOff, .unavailable,
+             .readFailed, .noConnectedDevices, .devices:
+            nil
+        }
     }
 
     static func presentation(

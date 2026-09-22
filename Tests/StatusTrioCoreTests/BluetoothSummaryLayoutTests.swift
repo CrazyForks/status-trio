@@ -114,8 +114,7 @@ final class BluetoothSummaryLayoutTests: XCTestCase {
 
     /// No paired devices means no list: the row keeps its own message and its
     /// original height.
-    func testEmptyDeviceListDoesNotChangeTheRow() async throws {
-        let options = BluetoothDeviceListOptions(showsList: true, maxVisibleDevices: 3, order: [])
+    func testEmptyDeviceListDoesNotChangeTheRow() async throws {        let options = BluetoothDeviceListOptions(showsList: true, maxVisibleDevices: 3, order: [])
 
         let withSettingOn = try await render(
             language: .english,
@@ -127,6 +126,129 @@ final class BluetoothSummaryLayoutTests: XCTestCase {
 
         XCTAssertEqual(withSettingOn.width, 330, accuracy: 0.5)
         XCTAssertLessThan(withSettingOn.height, 120)
+    }
+
+    /// The panel has no scroll view of its own, so the rows take a bound: a list
+    /// too long for the panel scrolls inside it instead of growing the popover
+    /// past the screen, and a list that fits does not scroll at all.
+    ///
+    /// Whether the scroll view *overflows* is not visible from here — the harness
+    /// lays out a hosting view with no window, so the content rect it reports is
+    /// already clipped to the bound. What is checked instead is the bound itself:
+    /// a scroll view exists, it stops at the list's own height, and the panel
+    /// grows nothing like the 27 extra rows it is showing.
+    func testALongDeviceListScrollsInsideThePanel() async throws {
+        let options = BluetoothDeviceListOptions(showsList: true, maxVisibleDevices: 30, order: [])
+        let longDevices = (1...30).map(summaryDevice)
+        let shortDevices = (1...3).map(summaryDevice)
+
+        let longSize = try await render(
+            language: .english,
+            authorization: .allowed,
+            devices: longDevices,
+            listOptions: options,
+            named: "bluetooth-long-list"
+        )
+        let shortSize = try await render(
+            language: .english,
+            authorization: .allowed,
+            devices: shortDevices,
+            listOptions: options,
+            named: "bluetooth-short-list"
+        )
+        XCTAssertGreaterThan(
+            longSize.height,
+            shortSize.height,
+            "the rows beyond the short list still have to render"
+        )
+        XCTAssertLessThan(
+            longSize.height,
+            430,
+            "the panel has to stay within its bound however many devices it lists"
+        )
+
+        let (hosting, controller) = try await makeHosting(
+            language: .english,
+            authorization: .allowed,
+            devices: longDevices,
+            batteryLevels: [:],
+            listOptions: options
+        )
+        defer { controller.deactivate() }
+        hosting.layoutSubtreeIfNeeded()
+
+        let scrolling = try XCTUnwrap(
+            firstScrollView(in: hosting),
+            "the rows have to be scrollable: the popover cannot grow to fit them"
+        )
+        XCTAssertLessThanOrEqual(
+            scrolling.frame.height,
+            BluetoothDeviceList.maximumRowsHeight + 1,
+            "the rows have to stop at the list's own bound"
+        )
+    }
+
+    /// A list that fits must not create a scroll view at all. Its scroller is
+    /// what flashed while a collapse animated, on a Mac with six devices that
+    /// never needed scrolling: the animated frame shrinks through the moment the
+    /// content is still taller than it. Below the bound there is no scroll view,
+    /// so there is nothing to flash.
+    func testAListThatFitsCreatesNoScrollView() async throws {
+        for visible in [5, 6, 12] {
+            let (hosting, controller) = try await makeHosting(
+                language: .english,
+                authorization: .allowed,
+                devices: (1...visible).map(summaryDevice),
+                batteryLevels: [:],
+                listOptions: BluetoothDeviceListOptions(
+                    showsList: true,
+                    maxVisibleDevices: visible,
+                    order: []
+                )
+            )
+            defer { controller.deactivate() }
+            hosting.layoutSubtreeIfNeeded()
+
+            XCTAssertNil(
+                firstScrollView(in: hosting),
+                "\(visible) rows fit inside the bound, so nothing should scroll"
+            )
+        }
+
+        // One row past it, and the rows do scroll.
+        let (hosting, controller) = try await makeHosting(
+            language: .english,
+            authorization: .allowed,
+            devices: (1...13).map(summaryDevice),
+            batteryLevels: [:],
+            listOptions: BluetoothDeviceListOptions(showsList: true, maxVisibleDevices: 13, order: [])
+        )
+        defer { controller.deactivate() }
+        hosting.layoutSubtreeIfNeeded()
+
+        XCTAssertNotNil(
+            firstScrollView(in: hosting),
+            "13 rows pass the bound, so they have to scroll"
+        )
+    }
+
+    private func summaryDevice(_ index: Int) -> BluetoothDevice {        BluetoothDevice(
+            id: String(format: "AA:00:00:00:00:%02X", index),
+            name: "Device \(index)",
+            kind: .audio,
+            isConnected: true
+        )
+    }
+
+    /// The first `NSScrollView` under a rendered view, which is how SwiftUI backs
+    /// a `ScrollView`.
+    private func firstScrollView(in view: NSView) -> NSScrollView? {
+        var pending = view.subviews
+        while let next = pending.popLast() {
+            if let scrollView = next as? NSScrollView { return scrollView }
+            pending.append(contentsOf: next.subviews)
+        }
+        return nil
     }
 
     /// The list row must truncate a long device name, not wrap it: the popover
@@ -356,9 +478,9 @@ final class BluetoothSummaryLayoutTests: XCTestCase {
             controller: controller,
             showsBatteryLevels: true,
             listOptions: listOptions,
-            onOpenDetails: {},
             onRequestAuthorization: {},
-            onOpenBluetoothSettings: {}
+            onOpenBluetoothSettings: {},
+            onOpenBluetoothPermissionSettings: {}
         )
         .padding(14)
         .frame(width: 330)

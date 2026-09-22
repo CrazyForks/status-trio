@@ -33,8 +33,14 @@
 
 ## I livelli batteria Bluetooth sono attivi per impostazione predefinita
 - **Mostra i livelli batteria Bluetooth** in **Impostazioni › Bluetooth** ora è attivo per impostazione predefinita: una volta attivato il pannello Bluetooth, un dispositivo connesso indica il suo livello senza dover attivare questo interruttore a parte. Disattivarlo interrompe comunque la lettura.
-- La pagina dei dispositivi Bluetooth non mostra più **Non disponibile** su ogni riga: un dispositivo che non indica la batteria non mostra alcun testo della batteria, e un report illeggibile viene segnalato una volta sotto l’elenco.
+- L’elenco dei dispositivi Bluetooth non mostra più **Non disponibile** su ogni riga: un dispositivo che non indica la batteria non mostra alcun testo della batteria, e un report illeggibile viene segnalato una volta sotto l’elenco.
+- Se l’accesso a Bluetooth è stato negato, la riga Bluetooth ora porta direttamente al pannello dove puoi consentirlo, invece di limitarsi ad avvisarti.
+- Un elenco di dispositivi lungo ora scorre all’interno del pannello invece di farlo crescere oltre lo schermo.
 
 ## Dispositivi abbinati nel pannello di stato
 - **Impostazioni › Bluetooth** ora può elencare i dispositivi abbinati sotto la riga Bluetooth: i primi sono sempre visibili, gli altri compaiono dietro un comando Espandi e il numero massimo lo scegli tu. I dispositivi connessi sono sempre elencati per primi.
 - Trascina i dispositivi in Impostazioni per definire l’ordine mostrato nel pannello. I nuovi dispositivi compaiono alla fine.
+
+## Connettere o disconnettere un dispositivo dal pannello di stato
+- Toccando un dispositivo abbinato nell’elenco Bluetooth ora lo si connette, e toccandone uno connesso lo si disconnette. La riga mostra la richiesta in corso e segnala un errore invece di far finta che abbia funzionato.
+- Disconnettere una tastiera, un mouse, un trackpad o un controller chiede prima conferma, nella riga stessa: disconnettere quello che stai usando ti lascerebbe senza input.

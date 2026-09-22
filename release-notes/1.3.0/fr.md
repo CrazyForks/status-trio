@@ -33,8 +33,14 @@
 
 ## Les niveaux de batterie Bluetooth sont activés par défaut
 - **Afficher les niveaux de batterie Bluetooth** dans **Réglages › Bluetooth** est désormais activé par défaut : une fois le panneau Bluetooth activé, un appareil connecté indique son niveau sans avoir à activer ce réglage séparément. Le désactiver arrête toujours la lecture.
-- La page des appareils Bluetooth n’affiche plus **Indisponible** sur chaque ligne : un appareil qui n’indique pas de niveau n’affiche aucun texte de batterie, et un rapport illisible est signalé une fois sous la liste.
+- La liste des appareils Bluetooth n’affiche plus **Indisponible** sur chaque ligne : un appareil qui n’indique pas de niveau n’affiche aucun texte de batterie, et un rapport illisible est signalé une fois sous la liste.
+- Si l’accès Bluetooth a été refusé, la ligne Bluetooth vous amène maintenant directement au panneau où vous pouvez l’autoriser, au lieu de simplement vous le signaler.
+- Une longue liste d’appareils défile maintenant dans le panneau au lieu de le faire grandir au-delà de l’écran.
 
 ## Périphériques jumelés dans le panneau d’état
 - **Réglages › Bluetooth** peut désormais lister les périphériques jumelés sous la ligne Bluetooth : les premiers sont toujours visibles, les autres apparaissent derrière un bouton Développer, et le maximum est à votre choix. Les périphériques connectés figurent toujours en premier.
 - Faites glisser les périphériques dans Réglages pour définir l’ordre affiché dans le panneau. Les nouveaux périphériques apparaissent à la fin.
+
+## Connecter ou déconnecter un appareil depuis le panneau d’état
+- Toucher un périphérique jumelé dans la liste Bluetooth le connecte désormais, et toucher un périphérique connecté le déconnecte. La ligne affiche la demande en cours et signale un échec au lieu de prétendre que cela a fonctionné.
+- Déconnecter un clavier, une souris, un trackpad ou une manette demande d’abord confirmation, dans la ligne elle-même — déconnecter celui que vous utilisez vous priverait de toute saisie.

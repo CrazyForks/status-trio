@@ -33,8 +33,14 @@
 
 ## Níveis de bateria Bluetooth vêm ativados por padrão
 - **Mostrar níveis de bateria Bluetooth** em **Ajustes › Bluetooth** agora vem ativado por padrão: com o painel de Bluetooth ativado, um dispositivo conectado informa seu nível sem precisar ativar este interruptor separadamente. Desativá-lo continua interrompendo a leitura.
-- A página de dispositivos Bluetooth não exibe mais **Indisponível** em cada linha: um dispositivo que não informa bateria não exibe nenhum texto de bateria, e um relatório que não pode ser lido é avisado uma vez abaixo da lista.
+- A lista de dispositivos Bluetooth não exibe mais **Indisponível** em cada linha: um dispositivo que não informa bateria não exibe nenhum texto de bateria, e um relatório que não pode ser lido é avisado uma vez abaixo da lista.
+- Se o acesso ao Bluetooth foi negado, a linha de Bluetooth agora leva você direto ao painel onde pode permiti-lo, em vez de apenas avisar.
+- Uma lista de dispositivos longa agora rola dentro do painel, em vez de fazê-lo crescer além da tela.
 
 ## Dispositivos emparelhados no painel de status
 - **Ajustes › Bluetooth** agora pode listar os dispositivos emparelhados sob a linha Bluetooth: os primeiros ficam sempre visíveis, o restante aparece atrás do controle Expandir, e o máximo é você quem define. Os dispositivos conectados aparecem sempre primeiro.
 - Arraste os dispositivos em Ajustes para definir a ordem mostrada no painel. Dispositivos novos aparecem no final.
+
+## Conectar ou desconectar um dispositivo pelo painel de status
+- Tocar em um dispositivo pareado na lista de Bluetooth agora o conecta, e tocar em um conectado o desconecta. A linha mostra a solicitação em andamento e informa uma falha em vez de fingir que funcionou.
+- Desconectar um teclado, mouse, trackpad ou controle pede confirmação primeiro, na própria linha — desconectar o que você está usando o deixaria sem entrada.

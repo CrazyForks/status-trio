@@ -246,10 +246,18 @@
 
 "bluetooth.initializing" = "Bluetooth 초기화 중…";
 "bluetooth.authorizationNotDetermined" = "Bluetooth 권한이 아직 결정되지 않았습니다.";
-"bluetooth.authorizationDenied" = "Bluetooth 권한이 거부되었습니다. Bluetooth 설정을 여십시오.";
+"bluetooth.action.openPermissionSettings" = "설정에서 Bluetooth 허용";
 "bluetooth.authorizationRestricted" = "Bluetooth 권한이 제한되었습니다.";
 "bluetooth.list.expand" = "펼치기";
 "bluetooth.list.collapse" = "접기";
+"bluetooth.action.connect" = "연결";
+"bluetooth.action.disconnect" = "연결 해제";
+"bluetooth.action.cancel" = "취소";
+"bluetooth.action.confirmDisconnect" = "연결을 해제할까요?";
+"bluetooth.state.connecting" = "연결 중…";
+"bluetooth.state.disconnecting" = "연결 해제 중…";
+"bluetooth.state.connectFailed" = "연결하지 못했습니다";
+"bluetooth.state.disconnectFailed" = "연결을 해제하지 못했습니다";
 
 "settings.preview.hint" = "실시간 미리보기 · 아래 설정을 변경하면 즉시 반영됩니다";
 "settings.preview.dark" = "다크";

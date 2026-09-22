@@ -175,7 +175,7 @@ Deaktivieren Sie Gatekeeper nicht global. Nachfolgende Sparkle-Updates werden mi
 
 - **Linksklick** auf das Menüleistensymbol oder das Dock-Symbol öffnet das Status-Popover.
 - **Rechtsklick** auf eines der beiden Symbole öffnet das native Menü mit Version und Beenden-Aktionen.
-- Wählen Sie eine Zeile im Popover, um ihre Seite zu öffnen: Wi-Fi-Details mit Netzwerken in der Nähe, gekoppelte Bluetooth-Geräte und Batteriedetails.
+- Wählen Sie die Wi-Fi- oder Batteriezeile im Popover, um ihre Seite zu öffnen: Netzwerke in der Nähe und Verbindungsdetails oder Batteriedetails. Die Bluetooth-Zeile listet ihre gekoppelten Geräte direkt darunter auf, mit einem „Erweitern“-Schalter, wenn nicht alle hineinpassen.
 - Öffnen Sie **Einstellungen**, um zu wählen, wo das Symbol angezeigt wird (Menüleiste, Dock oder beides), und um seine Größe, Farben, die Stärke des äußeren Rings, die angezeigten Elemente des Statusbereichs und ihre Reihenfolge, das Ändern der Lautstärke durch Scrollen, die Sprache, die Suche nach Updates und „Beim Anmelden starten“ zu ändern.
 - Öffnen Sie die Anleitung **Dein Symbol kennenlernen** jederzeit erneut über **Einstellungen › App-Symbol › Anleitung öffnen**.
 - Aktivieren Sie auf Nachfrage den Namen des aktuellen Wi-Fi-Netzes; macOS fordert für dieses optionale Detail Zugriff auf den Standort an.
@@ -193,7 +193,7 @@ Status Trio folgt standardmäßig der bevorzugten Sprache von macOS und enthält
 
 ## Datenschutz
 
-Status Trio liest den Status über öffentliche macOS-Frameworks. Die App verwendet keine App-Sandbox und benötigt keine Netzwerk-Berechtigung; Telemetrie oder Analysen sind nicht enthalten. Sie liest und speichert keine Wi-Fi-Passwörter und fordert niemals Zugriff auf den Schlüsselbund an. Der Standortzugriff ist optional und wird nur angefordert, wenn Sie den aktuellen Wi-Fi-Netzwerknamen anzeigen oder Wi-Fi-Details öffnen möchten. Der Bluetooth-Zugriff wird nur angefordert, wenn Sie Bluetooth-Details öffnen, und dient dazu, den Verbindungsstatus gekoppelter Geräte anzuzeigen.
+Status Trio liest den Status über öffentliche macOS-Frameworks. Die App verwendet keine App-Sandbox und benötigt keine Netzwerk-Berechtigung; Telemetrie oder Analysen sind nicht enthalten. Sie liest und speichert keine Wi-Fi-Passwörter und fordert niemals Zugriff auf den Schlüsselbund an. Der Standortzugriff ist optional und wird nur angefordert, wenn Sie den aktuellen Wi-Fi-Netzwerknamen anzeigen oder Wi-Fi-Details öffnen möchten. Der Bluetooth-Zugriff wird nur angefordert, wenn der Bluetooth-Bereich angezeigt wird, und dient dazu, den Verbindungsstatus gekoppelter Geräte anzuzeigen.
 
 ## Entwicklung
 

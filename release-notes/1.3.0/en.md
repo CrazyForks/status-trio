@@ -33,8 +33,14 @@
 
 ## Bluetooth battery levels are on by default
 - **Show Bluetooth battery levels** under **Settings › Bluetooth** is now on by default: once the Bluetooth panel is enabled, a connected device reports its battery without turning this switch on separately. Turning it off still stops the read.
-- The Bluetooth device page no longer shows **Unavailable** on every row: a device that reports no battery shows no battery text, and a report that cannot be read is reported once under the list.
+- The Bluetooth device list no longer shows **Unavailable** on every row: a device that reports no battery shows no battery text, and a report that cannot be read is reported once under the list.
+- If Bluetooth access was refused, the Bluetooth row now takes you straight to the pane where you can allow it, instead of only saying it was refused.
+- A long device list now scrolls inside the panel instead of making it grow past the screen.
 
 ## Paired devices in the status panel
 - **Settings › Bluetooth** can now list paired devices under the Bluetooth row: the first few are always visible, the rest appear behind an Expand control, and the maximum is yours to set. Connected devices are always listed first.
 - Drag devices in Settings to set the order shown in the panel. New devices appear at the end.
+
+## Connect or disconnect a device from the panel
+- Tapping a paired device in the Bluetooth list now connects it, and tapping a connected one disconnects it. The row shows the request in progress and reports a failure instead of pretending it worked.
+- Disconnecting a keyboard, mouse, trackpad or gamepad asks first, in the row itself — disconnecting the one you are holding would leave you without input.

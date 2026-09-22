@@ -246,10 +246,18 @@
 
 "bluetooth.initializing" = "Initializing Bluetooth…";
 "bluetooth.authorizationNotDetermined" = "Bluetooth permission has not been decided yet.";
-"bluetooth.authorizationDenied" = "Bluetooth permission is denied. Open Bluetooth Settings.";
+"bluetooth.action.openPermissionSettings" = "Allow Bluetooth in Settings";
 "bluetooth.authorizationRestricted" = "Bluetooth permission is restricted.";
 "bluetooth.list.expand" = "Expand";
 "bluetooth.list.collapse" = "Collapse";
+"bluetooth.action.connect" = "Connect";
+"bluetooth.action.disconnect" = "Disconnect";
+"bluetooth.action.cancel" = "Cancel";
+"bluetooth.action.confirmDisconnect" = "Disconnect?";
+"bluetooth.state.connecting" = "Connecting…";
+"bluetooth.state.disconnecting" = "Disconnecting…";
+"bluetooth.state.connectFailed" = "Could not connect";
+"bluetooth.state.disconnectFailed" = "Could not disconnect";
 
 "settings.preview.hint" = "Live Preview · Adjust settings below to see changes immediately";
 "settings.preview.dark" = "Dark";

@@ -85,7 +85,6 @@ final class SystemStatusStore: ObservableObject {
     @Published private(set) var isDisplayAsleep = false
     private var isSettingsVisible = false
     private var isBluetoothEnabled = false
-    private var isBluetoothDetailsOpen = false
 
     init(
         batteryMonitor: any BatteryMonitoring,
@@ -326,20 +325,6 @@ final class SystemStatusStore: ObservableObject {
         if enabled {
             bluetoothDevices.activate()
         } else {
-            isBluetoothDetailsOpen = false
-            bluetoothDevices.deactivate()
-        }
-    }
-
-    func openBluetoothDetails() {
-        guard !hasStopped else { return }
-        isBluetoothDetailsOpen = true
-        bluetoothDevices.activate()
-    }
-
-    func closeBluetoothDetails() {
-        isBluetoothDetailsOpen = false
-        if !isBluetoothEnabled {
             bluetoothDevices.deactivate()
         }
     }
@@ -389,6 +374,11 @@ final class SystemStatusStore: ObservableObject {
         guard visible else {
             clearWiFiNameResolution()
             bluetoothDevices.releaseVisibleSurface(BluetoothDeviceController.popoverSurfaceToken)
+            // A confirmation is answered inside the panel, so closing the panel
+            // cancels an unanswered one. The popover retains its content view
+            // controller after a close, which is why this belongs here rather
+            // than in the views: their own disappear hooks do not run.
+            bluetoothDevices.cancelDisconnectConfirmation()
             return
         }
         popupPublishTask?.cancel()
@@ -426,7 +416,6 @@ final class SystemStatusStore: ObservableObject {
 
     func closePopoverDetails() {
         wifiNetworks.deactivate()
-        closeBluetoothDetails()
         closeBatteryDetails()
         bluetoothDevices.releaseVisibleSurface(BluetoothDeviceController.popoverSurfaceToken)
     }
@@ -436,7 +425,7 @@ final class SystemStatusStore: ObservableObject {
     /// battery page stops its collector when its view disappears, and that
     /// happens while the popover is already closing.
     var hasOpenPopoverPanel: Bool {
-        wifiNetworks.isActive || isBluetoothDetailsOpen || batteryDetails.isActive
+        wifiNetworks.isActive || batteryDetails.isActive
     }
 
     func refreshAll() {

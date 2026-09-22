@@ -246,10 +246,18 @@
 
 "bluetooth.initializing" = "正在初始化蓝牙…";
 "bluetooth.authorizationNotDetermined" = "蓝牙权限尚未确定。";
-"bluetooth.authorizationDenied" = "蓝牙权限被拒绝。打开蓝牙设置。";
+"bluetooth.action.openPermissionSettings" = "去设置中允许蓝牙";
 "bluetooth.authorizationRestricted" = "蓝牙权限受限。";
 "bluetooth.list.expand" = "展开";
 "bluetooth.list.collapse" = "收起";
+"bluetooth.action.connect" = "连接";
+"bluetooth.action.disconnect" = "断开";
+"bluetooth.action.cancel" = "取消";
+"bluetooth.action.confirmDisconnect" = "要断开吗？";
+"bluetooth.state.connecting" = "连接中…";
+"bluetooth.state.disconnecting" = "断开中…";
+"bluetooth.state.connectFailed" = "连接失败";
+"bluetooth.state.disconnectFailed" = "断开失败";
 
 "settings.preview.hint" = "实时预览 · 调节下方各项参数即刻在上方呈现";
 "settings.preview.dark" = "深色";
