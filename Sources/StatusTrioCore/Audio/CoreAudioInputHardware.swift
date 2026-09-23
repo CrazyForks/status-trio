@@ -21,24 +21,23 @@ enum CoreAudioInputControlReadback {
     channelScalars: [Double?],
     channelCanSet: [Bool]
   ) -> AudioInputVolumeReadback {
-    if let mainScalar, mainScalar.isFinite, (0...1).contains(mainScalar) {
-      return AudioInputVolumeReadback(scalar: mainScalar, canSet: mainCanSet)
+    let validMain = mainScalar.flatMap(validScalar)
+    let validChannels = channelScalars.map { $0.flatMap(validScalar) }
+    let allChannelsReadable = !validChannels.isEmpty && validChannels.allSatisfy { $0 != nil }
+    let allChannelsSettable =
+      channelCanSet.count == validChannels.count && channelCanSet.allSatisfy { $0 }
+
+    if let validMain, mainCanSet {
+      return AudioInputVolumeReadback(scalar: validMain, canSet: true)
     }
-
-    guard
-      !channelScalars.isEmpty,
-      channelScalars.count == channelCanSet.count,
-      channelScalars.allSatisfy({
-        guard let scalar = $0 else { return false }
-        return scalar.isFinite && (0...1).contains(scalar)
-      })
-    else { return .unsupported }
-
-    let values = channelScalars.compactMap { $0 }
-    return AudioInputVolumeReadback(
-      scalar: values.reduce(0, +) / Double(values.count),
-      canSet: channelCanSet.allSatisfy { $0 }
-    )
+    if allChannelsReadable, allChannelsSettable {
+      return AudioInputVolumeReadback(scalar: average(validChannels), canSet: true)
+    }
+    if let validMain {
+      return AudioInputVolumeReadback(scalar: validMain, canSet: false)
+    }
+    guard allChannelsReadable else { return .unsupported }
+    return AudioInputVolumeReadback(scalar: average(validChannels), canSet: false)
   }
 
   static func mute(
@@ -47,26 +46,36 @@ enum CoreAudioInputControlReadback {
     channelValues: [Bool?],
     channelCanSet: [Bool]
   ) -> AudioInputMuteReadback {
+    let allChannelsReadable = !channelValues.isEmpty && channelValues.allSatisfy { $0 != nil }
+    let allChannelsSettable =
+      channelCanSet.count == channelValues.count && channelCanSet.allSatisfy { $0 }
+
+    if let mainValue, mainCanSet {
+      return AudioInputMuteReadback(state: mainValue ? .muted : .unmuted, canSet: true)
+    }
+    if allChannelsReadable, allChannelsSettable {
+      return AudioInputMuteReadback(state: muteState(channelValues.compactMap { $0 }), canSet: true)
+    }
     if let mainValue {
-      return AudioInputMuteReadback(state: mainValue ? .muted : .unmuted, canSet: mainCanSet)
+      return AudioInputMuteReadback(state: mainValue ? .muted : .unmuted, canSet: false)
     }
+    guard allChannelsReadable else { return .unsupported }
+    return AudioInputMuteReadback(state: muteState(channelValues.compactMap { $0 }), canSet: false)
+  }
 
-    guard
-      !channelValues.isEmpty,
-      channelValues.count == channelCanSet.count,
-      channelValues.allSatisfy({ $0 != nil })
-    else { return .unsupported }
+  private static func validScalar(_ scalar: Double) -> Double? {
+    scalar.isFinite && (0...1).contains(scalar) ? scalar : nil
+  }
 
-    let values = channelValues.compactMap { $0 }
-    let state: AudioInputMuteState
-    if values.allSatisfy({ $0 }) {
-      state = .muted
-    } else if values.allSatisfy({ !$0 }) {
-      state = .unmuted
-    } else {
-      state = .partial
-    }
-    return AudioInputMuteReadback(state: state, canSet: channelCanSet.allSatisfy { $0 })
+  private static func average(_ values: [Double?]) -> Double {
+    let scalars = values.compactMap { $0 }
+    return scalars.reduce(0, +) / Double(scalars.count)
+  }
+
+  private static func muteState(_ values: [Bool]) -> AudioInputMuteState {
+    if values.allSatisfy({ $0 }) { return .muted }
+    if values.allSatisfy({ !$0 }) { return .unmuted }
+    return .partial
   }
 }
 
@@ -117,26 +126,142 @@ struct CoreAudioInputHardware: AudioInputHardware {
       )
     }
 
-    let volume = client.volume(selectedID)
-    let mute = client.mute(selectedID)
-    let validScalar = volume.scalar.flatMap { scalar -> Double? in
-      scalar.isFinite && (0...1).contains(scalar) ? scalar : nil
-    }
-    let validMuteState: AudioInputMuteState? =
-      switch mute.state {
-      case .unmuted, .muted, .partial: mute.state
-      case nil: nil
-      }
+    let volume = readVolume(selectedID)
+    let mute = readMute(selectedID)
 
     return AudioInputReading(
       devices: devices,
       defaultDeviceID: selectedID,
       deviceName: normalized(client.name(selectedID)),
-      scalar: validScalar,
-      canSetVolume: validScalar != nil && volume.canSet,
-      muteState: validMuteState,
-      canSetMute: validMuteState != nil && mute.canSet
+      scalar: volume.scalar,
+      canSetVolume: volume.scalar != nil && volume.canSet,
+      muteState: mute.state,
+      canSetMute: mute.state != nil && mute.canSet
     )
+  }
+
+  func selectDefault(_ id: AudioDeviceID) throws {
+    guard isEligibleInput(id) else { throw AudioInputHardwareError.unavailable }
+    try client.writeDefaultInput(id)
+  }
+
+  func setScalar(_ scalar: Double, on id: AudioDeviceID) throws {
+    guard scalar.isFinite else { throw AudioInputHardwareError.invalidValue }
+    let value = Float32(min(max(scalar, 0), 1))
+    let elements = try writableElements(
+      for: id,
+      selector: kAudioDevicePropertyVolumeScalar
+    )
+    for element in elements {
+      try revalidateWritableProperty(id, selector: kAudioDevicePropertyVolumeScalar, element: element)
+      try client.writeScalar(value, on: id, element: element)
+    }
+  }
+
+  func setMuted(_ muted: Bool, on id: AudioDeviceID) throws {
+    let elements = try writableElements(for: id, selector: kAudioDevicePropertyMute)
+    for element in elements {
+      try revalidateWritableProperty(id, selector: kAudioDevicePropertyMute, element: element)
+      try client.writeMute(muted, on: id, element: element)
+    }
+  }
+
+  private func readVolume(_ id: AudioDeviceID) -> AudioInputVolumeReadback {
+    let selector = kAudioDevicePropertyVolumeScalar
+    let main = kAudioObjectPropertyElementMain
+    let mainValue = client.hasProperty(id, selector, main)
+      ? client.readScalar(id, main).map(Double.init)
+      : nil
+    let channelElements = inputChannelElements(for: id)
+    let channelValues = channelElements.map { element in
+      client.hasProperty(id, selector, element)
+        ? client.readScalar(id, element).map(Double.init)
+        : nil
+    }
+    return CoreAudioInputControlReadback.volume(
+      mainScalar: mainValue,
+      mainCanSet: isPropertySettable(id, selector: selector, element: main),
+      channelScalars: channelValues,
+      channelCanSet: channelElements.map {
+        isPropertySettable(id, selector: selector, element: $0)
+      }
+    )
+  }
+
+  private func readMute(_ id: AudioDeviceID) -> AudioInputMuteReadback {
+    let selector = kAudioDevicePropertyMute
+    let main = kAudioObjectPropertyElementMain
+    let mainValue = client.hasProperty(id, selector, main)
+      ? client.readMute(id, main)
+      : nil
+    let channelElements = inputChannelElements(for: id)
+    let channelValues = channelElements.map { element in
+      client.hasProperty(id, selector, element) ? client.readMute(id, element) : nil
+    }
+    return CoreAudioInputControlReadback.mute(
+      mainValue: mainValue,
+      mainCanSet: isPropertySettable(id, selector: selector, element: main),
+      channelValues: channelValues,
+      channelCanSet: channelElements.map {
+        isPropertySettable(id, selector: selector, element: $0)
+      }
+    )
+  }
+
+  private func writableElements(
+    for id: AudioDeviceID,
+    selector: AudioObjectPropertySelector
+  ) throws -> [AudioObjectPropertyElement] {
+    guard isEligibleInput(id) else { throw AudioInputHardwareError.unavailable }
+    let channels = inputChannelElements(for: id)
+
+    func usable(_ element: AudioObjectPropertyElement) -> Bool {
+      guard isPropertySettable(id, selector: selector, element: element) else { return false }
+      if selector == kAudioDevicePropertyVolumeScalar {
+        guard let scalar = client.readScalar(id, element) else { return false }
+        return scalar.isFinite && (0...1).contains(scalar)
+      }
+      return client.readMute(id, element) != nil
+    }
+
+    let main = kAudioObjectPropertyElementMain
+    if usable(main) { return [main] }
+    guard !channels.isEmpty, channels.allSatisfy(usable) else {
+      throw AudioInputHardwareError.unsupported
+    }
+    return channels
+  }
+
+  private func revalidateWritableProperty(
+    _ id: AudioDeviceID,
+    selector: AudioObjectPropertySelector,
+    element: AudioObjectPropertyElement
+  ) throws {
+    guard isEligibleInput(id) else { throw AudioInputHardwareError.unavailable }
+    guard isPropertySettable(id, selector: selector, element: element) else {
+      throw AudioInputHardwareError.unsupported
+    }
+    if selector == kAudioDevicePropertyVolumeScalar {
+      guard let scalar = client.readScalar(id, element), scalar.isFinite, (0...1).contains(scalar) else {
+        throw AudioInputHardwareError.unsupported
+      }
+    } else if client.readMute(id, element) == nil {
+      throw AudioInputHardwareError.unsupported
+    }
+  }
+
+  private func isPropertySettable(
+    _ id: AudioDeviceID,
+    selector: AudioObjectPropertySelector,
+    element: AudioObjectPropertyElement
+  ) -> Bool {
+    client.hasProperty(id, selector, element) && client.isSettable(id, selector, element)
+  }
+
+  private func inputChannelElements(for id: AudioDeviceID) -> [AudioObjectPropertyElement] {
+    let count = client.inputChannels(id)
+    guard count > 0 else { return [] }
+    return (1...count).map(AudioObjectPropertyElement.init)
   }
 
   private func isEligibleInput(_ id: AudioDeviceID) -> Bool {
@@ -260,66 +385,125 @@ private struct CoreAudioInputPropertyClient: AudioInputPropertyClient {
     readString(objectID: id, selector: kAudioDevicePropertyDeviceUID)
   }
 
-  func volume(_ id: AudioDeviceID) -> AudioInputVolumeReadback {
-    let mainAddress = propertyAddress(
-      selector: kAudioDevicePropertyVolumeScalar,
+  func hasProperty(
+    _ id: AudioDeviceID,
+    _ selector: AudioObjectPropertySelector,
+    _ element: AudioObjectPropertyElement
+  ) -> Bool {
+    var address = propertyAddress(
+      selector: selector,
       scope: kAudioObjectPropertyScopeInput,
-      element: kAudioObjectPropertyElementMain
+      element: element
     )
-    let mainScalar = readScalar(objectID: id, address: mainAddress)
-    if mainScalar != nil {
-      return CoreAudioInputControlReadback.volume(
-        mainScalar: mainScalar,
-        mainCanSet: isSettable(objectID: id, address: mainAddress),
-        channelScalars: [],
-        channelCanSet: []
-      )
-    }
+    return AudioObjectHasProperty(id, &address)
+  }
 
-    let channelAddresses = inputChannelElements(id).map {
-      propertyAddress(
+  func isSettable(
+    _ id: AudioDeviceID,
+    _ selector: AudioObjectPropertySelector,
+    _ element: AudioObjectPropertyElement
+  ) -> Bool {
+    var address = propertyAddress(
+      selector: selector,
+      scope: kAudioObjectPropertyScopeInput,
+      element: element
+    )
+    guard AudioObjectHasProperty(id, &address) else { return false }
+    var settable = DarwinBoolean(false)
+    return AudioObjectIsPropertySettable(id, &address, &settable) == noErr && settable.boolValue
+  }
+
+  func readScalar(_ id: AudioDeviceID, _ element: AudioObjectPropertyElement) -> Float32? {
+    guard hasProperty(id, kAudioDevicePropertyVolumeScalar, element) else { return nil }
+    return readValue(
+      objectID: id,
+      address: propertyAddress(
         selector: kAudioDevicePropertyVolumeScalar,
         scope: kAudioObjectPropertyScopeInput,
-        element: $0
+        element: element
       )
-    }
-    return CoreAudioInputControlReadback.volume(
-      mainScalar: nil,
-      mainCanSet: false,
-      channelScalars: channelAddresses.map { readScalar(objectID: id, address: $0) },
-      channelCanSet: channelAddresses.map { isSettable(objectID: id, address: $0) }
     )
   }
 
-  func mute(_ id: AudioDeviceID) -> AudioInputMuteReadback {
-    let mainAddress = propertyAddress(
+  func readMute(_ id: AudioDeviceID, _ element: AudioObjectPropertyElement) -> Bool? {
+    guard hasProperty(id, kAudioDevicePropertyMute, element),
+      let value: UInt32 = readValue(
+        objectID: id,
+        address: propertyAddress(
+          selector: kAudioDevicePropertyMute,
+          scope: kAudioObjectPropertyScopeInput,
+          element: element
+        )
+      ), value <= 1
+    else { return nil }
+    return value == 1
+  }
+
+  func writeScalar(
+    _ value: Float32,
+    on id: AudioDeviceID,
+    element: AudioObjectPropertyElement
+  ) throws {
+    guard value.isFinite, (0...1).contains(value) else {
+      throw AudioInputHardwareError.invalidValue
+    }
+    guard isSettable(id, kAudioDevicePropertyVolumeScalar, element) else {
+      throw AudioInputHardwareError.unsupported
+    }
+    var address = propertyAddress(
+      selector: kAudioDevicePropertyVolumeScalar,
+      scope: kAudioObjectPropertyScopeInput,
+      element: element
+    )
+    var mutableValue = value
+    let status = AudioObjectSetPropertyData(
+      id,
+      &address,
+      0,
+      nil,
+      UInt32(MemoryLayout<Float32>.size),
+      &mutableValue
+    )
+    guard status == noErr else { throw AudioInputHardwareError.osStatus(status) }
+  }
+
+  func writeMute(
+    _ value: Bool,
+    on id: AudioDeviceID,
+    element: AudioObjectPropertyElement
+  ) throws {
+    guard isSettable(id, kAudioDevicePropertyMute, element) else {
+      throw AudioInputHardwareError.unsupported
+    }
+    var address = propertyAddress(
       selector: kAudioDevicePropertyMute,
       scope: kAudioObjectPropertyScopeInput,
-      element: kAudioObjectPropertyElementMain
+      element: element
     )
-    let mainValue = readMute(objectID: id, address: mainAddress)
-    if mainValue != nil {
-      return CoreAudioInputControlReadback.mute(
-        mainValue: mainValue,
-        mainCanSet: isSettable(objectID: id, address: mainAddress),
-        channelValues: [],
-        channelCanSet: []
-      )
-    }
+    var mutableValue: UInt32 = value ? 1 : 0
+    let status = AudioObjectSetPropertyData(
+      id,
+      &address,
+      0,
+      nil,
+      UInt32(MemoryLayout<UInt32>.size),
+      &mutableValue
+    )
+    guard status == noErr else { throw AudioInputHardwareError.osStatus(status) }
+  }
 
-    let channelAddresses = inputChannelElements(id).map {
-      propertyAddress(
-        selector: kAudioDevicePropertyMute,
-        scope: kAudioObjectPropertyScopeInput,
-        element: $0
-      )
-    }
-    return CoreAudioInputControlReadback.mute(
-      mainValue: nil,
-      mainCanSet: false,
-      channelValues: channelAddresses.map { readMute(objectID: id, address: $0) },
-      channelCanSet: channelAddresses.map { isSettable(objectID: id, address: $0) }
+  func writeDefaultInput(_ id: AudioDeviceID) throws {
+    var address = propertyAddress(selector: kAudioHardwarePropertyDefaultInputDevice)
+    var mutableID = id
+    let status = AudioObjectSetPropertyData(
+      systemObjectID,
+      &address,
+      0,
+      nil,
+      UInt32(MemoryLayout<AudioDeviceID>.size),
+      &mutableID
     )
+    guard status == noErr else { throw AudioInputHardwareError.osStatus(status) }
   }
 
   private func readBoolean(
@@ -366,26 +550,6 @@ private struct CoreAudioInputPropertyClient: AudioInputPropertyClient {
     }
   }
 
-  private func readScalar(
-    objectID: AudioObjectID,
-    address: AudioObjectPropertyAddress
-  ) -> Double? {
-    guard let value: Float32 = readValue(objectID: objectID, address: address),
-      value.isFinite,
-      (0...1).contains(value)
-    else { return nil }
-    return Double(value)
-  }
-
-  private func readMute(
-    objectID: AudioObjectID,
-    address: AudioObjectPropertyAddress
-  ) -> Bool? {
-    guard let value: UInt32 = readValue(objectID: objectID, address: address),
-      value <= 1
-    else { return nil }
-    return value == 1
-  }
 
   private func readValue<Value>(
     objectID: AudioObjectID,
@@ -437,11 +601,6 @@ private struct CoreAudioInputPropertyClient: AudioInputPropertyClient {
       && settable.boolValue
   }
 
-  private func inputChannelElements(_ id: AudioDeviceID) -> [AudioObjectPropertyElement] {
-    let count = inputChannels(id)
-    guard count > 0 else { return [] }
-    return (1...count).map(AudioObjectPropertyElement.init)
-  }
 
   private func streamChannelCount(
     objectID: AudioObjectID,
