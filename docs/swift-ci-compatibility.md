@@ -46,6 +46,22 @@ macOS 15 / Xcode 16.4 / Swift 6.1.2 workflow：
 artifact 上传成功，未发布 Release 或更新 appcast。该次预检验证的是 Swift 代码提交
 `e22cd13`；其后只有记录 CI 历史的 Markdown 提交。
 
+同一个门槛在 2026-09-23 又踩了一次，这次是触发后才发现的：预检
+[`35837434234`](https://github.com/lingyired/status-trio/actions/runs/35837434234)
+用 `version=1.3.2` 派发，而仓库当时还没有 `release-notes/1.3.2/`。前置的
+`Validate appcast notes` 会打印「目录不存在，跳过校验」并成功，真正拦人的是稍后的
+`scripts/release.sh`——它检查 `release-notes/$VERSION` 目录的那段在 `PUBLISH` 判断之外，
+所以非发布预检照样要过这一关。该 run 在测试跑完前取消，取消不产生 Release、tag 或
+appcast 改动。
+
+现在的做法：预检一个还没发布过的版本时，先把 `release-notes/<version>/` 的 `en.md` 与
+`zh-Hans.md` 一起提交上（`publish=false` 只警告缺少其余 10 种语言，`publish=true` 才要求齐全）。
+补上文案后复跑 [`35837523924`](https://github.com/lingyired/status-trio/actions/runs/35837523924)
+（`version=1.3.2`、`build=15`、`publish=false`）：760 个 XCTest（6 跳过）、
+247 个 Swift Testing 全部通过，通用 release 构建、`StatusTrio-1.3.2.dmg` 打包和 artifact
+上传成功，appcast 校验通过（2 titles and 2 descriptions, en first），未发布 Release 或
+更新 appcast。该次预检验证的是 Swift 代码提交 `23a3d9f`。
+
 ## 失败记录规则
 
 每次 GitHub Actions 失败都必须追加到上表，至少包含：
