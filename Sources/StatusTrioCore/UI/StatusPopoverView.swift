@@ -363,7 +363,13 @@ struct StatusPopoverView: View {
                 onOpenSoundSettings: openSoundSettings
             )
         case .audioInput:
-            EmptyView()
+            AudioInputControlsView(
+                status: store.liveInput,
+                onSelect: { store.selectInputDevice($0) },
+                onScalarChange: { store.setInputScalar($0) },
+                onToggleMute: { store.toggleInputMute() },
+                onOpenSoundSettings: openSoundSettings
+            )
         }
     }
 }

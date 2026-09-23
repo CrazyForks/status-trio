@@ -83,6 +83,23 @@ final class LocalizationParityTests: XCTestCase {
         }
     }
 
+    func testAudioInputTranslationsAreNotEmpty() throws {
+        let keys = LocalizationKey.allCases.map(\.rawValue).filter {
+            $0.hasPrefix("audioInput.") || $0 == "settings.popup.order.audioInput"
+        }
+        XCTAssertFalse(keys.isEmpty)
+        XCTAssertEqual(keys.count, 21, "Expected the audio-input order key and all 20 audioInput keys")
+        for language in AppLanguage.allCases {
+            let values = Dictionary(uniqueKeysWithValues: try entries(for: language).map { ($0.key, $0.value) })
+            for key in keys {
+                XCTAssertFalse(
+                    (values[key] ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                    "\(language.rawValue).lproj: \(key) is empty"
+                )
+            }
+        }
+    }
+
     func testEveryLocalizedValueDiffersFromItsKeyPlaceholder() throws {
         for language in AppLanguage.allCases {
             for entry in try entries(for: language) {
