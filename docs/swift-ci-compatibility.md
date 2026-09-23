@@ -28,6 +28,7 @@
 | （本轮，非失败记录） | `swift build --build-tests` | 本机 Xcode 27 / Swift 6.4 对四处测试里的 `weak var weakMonitor` 报 `weak variable ... was never mutated; consider changing to 'let' constant`。编译器的建议是 `weak let`，但 `AGENTS.md` 明令禁止该写法，且没有证据表明 CI 的 Swift 6.3.3 接受它 | 不采用 `weak let`。把这四处改成 `Tests/StatusTrioCoreTests/DeinitProbe.swift` 里的 `DeinitProbe.track(_:)`，弱引用以 `weak var` 存储属性保存（写法仍满足规则），断言内容与顺序不变 |
 | `35614298374` | `Run tests` | 新增的 `BluetoothSummaryTests.testDevicesWithoutALevelKeepTheirNameOnly` 断言了 `机灵的耳机` 与 `MX Keys` 拼接后的先后。摘要行按系统 collation 排序，而 ICU collation 与语言有关：CI runner（英文）把 `MX Keys` 排在前，开发机（中文）把中文名排在前。本地 `swift test` 与 `swift build -c release` 全绿，所以失效的是断言（对混合脚本排序的假设），不是产品缺陷 | 把排序规则改成「AirPods 无条件最前、其余按名称」（`BluetoothDevicePresentation.grouped`），断言不再依赖 collation；后续预检 `35615262052`（`build=24`）全绿 |
 | `35718713396`（1.3.0 正式发布，`build=13`） | `Build, sign, notarize, and publish` 末尾的 appcast 发布回读（`scripts/release.sh`） | 测试、构建、签名、DMG、Release 上传、appcast 提交（`8519984`）全部成功后，PUT 完成仅 2 秒即用 Contents API 回读 `appcast.xml?ref=main`，撞上 GitHub Contents API 的最终一致性窗口，读到旧 blob 而误报 `published appcast does not contain build 13`。与工具链、代码、说明文件无关 | 回读改为带退避的重试（最多 6 次、间隔 5 秒），重试全部用尽才失败；已手动回读远端 appcast 确认 build 13 条目完整（12 titles + 12 descriptions、en 首位、edSignature 与 DMG 长度 4244534 一致），1.3.0 发布四项核验通过；重试逻辑经桩测（stale→stale→fresh 通过、恒 stale 失败并退出 1）验证，详见文末专节 |
+| （本地，非失败记录） | 本机 `swift test` | 新加的 `VolumeFeedbackTests.preferenceTreatsAMissingKeyAsEnabled` 想用 suites 断言「键不存在时按开启处理」，而 `UserDefaults(suiteName:)` 的搜索链在 suite 域之后仍会落到 `NSGlobalDomain`：全新 suite 读到的是本机 `com.apple.sound.beep.feedback`。开发机把这个开关关成 `0`（0 = 关）之后该测试即失败，CI runner 上（该键缺失）却一直是绿的——失效的是测试对「suite 隔离」的假设，不是产品行为 | 把判断拆成纯函数 `SystemVolumeFeedbackPreference.isEnabled(storedValue:)`，「缺失按开启」由它覆盖，suite 只留给显式写值的用例；顺带给两个未注入 feedback 播放器的既有 store 测试补上假播放器，免得在开关打开的机器上跑测试时真的出声。后续预检 `35851597428` 全绿 |
 
 > **本轮结束时构建不是零警告：** 上面的修复只清掉了 `weak var` 那 4 条 `WeakMutability` 和 Task 1 的 1 条 `String(cString:)`，共 5 条；剩下 **2 条**警告是 `WiFiPasswordStore.swift` 的 `kSecUseAuthenticationUIFail` / `kSecUseAuthenticationUIAllow` 弃用，属于 R-12（Keychain 加固）计划，class B，尚未开始。不要把本轮记录读成「构建已经干净」。
 
@@ -61,6 +62,15 @@ appcast 改动。
 247 个 Swift Testing 全部通过，通用 release 构建、`StatusTrio-1.3.2.dmg` 打包和 artifact
 上传成功，appcast 校验通过（2 titles and 2 descriptions, en first），未发布 Release 或
 更新 appcast。该次预检验证的是 Swift 代码提交 `23a3d9f`。
+
+1.3.3 的非发布预检 [`35851597428`](https://github.com/lingyired/status-trio/actions/runs/35851597428)
+（`version=1.3.3`、`build=16`、`publish=false`）在推送 `feat/volume-feedback-sound`
+分支后派发，一次通过：762 个 XCTest（6 跳过）、255 个 Swift Testing（36 个 suite）
+全部通过，通用 release 构建、`StatusTrio-1.3.3.dmg` 打包和 artifact 上传成功。
+该次预检验证的是 Swift 代码提交 `734fc3a`（音量反馈音的实现、测试清理和 1.3.3 文案），
+未发布 Release、未创建 tag、appcast 未更新。派发前先在本地跑通了 `swift test` 与
+`swift build -c release`，并把 `release-notes/1.3.3/` 的 `en.md` 与 `zh-Hans.md`
+随分支一起提交，所以这次没有再撞上上一节那个 notes 目录门槛。
 
 ## 失败记录规则
 
