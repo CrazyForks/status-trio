@@ -32,11 +32,99 @@ a second and reuses the existing refresh cadence, so it adds no timer.
 The parser separates "the report could not be read" (a read failure) from "the
 machine has no paired devices" (an empty list), so a malformed report is never
 displayed as an empty device list. It accepts the profiler's wrapped
-`SPBluetoothDataType` list and a bare section, and reads the device kind from
-`device_minorType` with `device_majorType` as the fallback, because the major
-type alone classifies every headphone, speaker, and wearable alike. Unknown
-wording stays generic rather than being guessed as audio, which would make the
-device eligible for a battery level.
+`SPBluetoothDataType` list and a bare section. How a device's class is resolved
+from the report's wording is described under *Device classes and their glyphs*
+below.
+
+## Device classes and their glyphs
+
+Every row draws a glyph for the class the report declares
+(`BluetoothDeviceRowIcon.symbolName(for:)`), and the class comes from
+`BluetoothDeviceKindResolver.kind(properties:)` — one table, unit-tested against
+the wordings macOS and the Bluetooth assigned numbers actually use, rather than
+a `switch` at the call site.
+
+Two rules that table follows, each of which the previous one broke and thereby
+hid a whole family of devices behind the generic glyph:
+
+- **A minor slot never carries a major name.** macOS reports `Laptop` or
+  `Smartphone` in the minor slot, never `Computer` or `Phone`. The previous
+  table matched the major names against that key, so nothing classified and
+  every phone and every Mac fell through to the placeholder.
+- **`device_majorType` does not exist on current releases.** A full-detail
+  report on macOS 26 carries no such key for any device, so the major table can
+  only be a fallback for the older report shapes that do carry one — never the
+  second half of the common path. The same wording is read from the
+  `device_minorClassOfDevice_string` / `device_majorClassOfDevice_string` keys
+  the older reports use.
+
+Matching is exact on normalized wording first, then a substring pass ordered so
+that `headphone`, `earphone` and `microphone` are all tested before `phone`: the
+wording is manufacturer-supplied, and a phone glyph on a headset would be the
+same class of bug as the mouse glyph on a keyboard. A major class of `Wearable`
+is deliberately not guessed — its five minor classes are a watch, a pager, a
+jacket, a helmet and glasses, so any single choice would be wrong for four
+devices out of five.
+
+A class the report does not describe — or describes with wording that names no
+device the app can draw — is `unknown`, and it excludes the device from
+anything that treats audio as special, which is what keeps an unrecognized
+device from being offered a battery level it has none of.
+
+### The glyphs
+
+Each class resolves through a list of candidate symbol names, ordered most
+faithful first, and the first name the running system actually ships is drawn
+(`NSImage(systemSymbolName:)`). The last entry is therefore the one a macOS too
+old to ship any of the others falls back to, and it must never be blank — the
+same rule the audio output list already follows in
+`AudioOutputDeviceIcon.symbolCandidates`.
+
+`unknown` draws a radio (`dot.radiowaves.left.and.right`), not a question mark.
+The question mark is what macOS reserves for a page the user has to fix, and an
+unreported class is not a fault: it is the ordinary state of a manufacturer that
+never filled the field in. Every comparable app draws a generic wireless glyph
+here.
+
+Audio devices keep resolving through `AudioOutputDeviceIcon` rather than the
+class table, so an AirPods keeps the glyph macOS declares for its product ID and
+the row and the output list cannot drift.
+
+### Correcting a class the report got wrong
+
+The declared class is a manufacturer's claim about its product, not an
+observation of what it does, and the two disagree in practice: a Logitech
+`MX Keys` reports `Mouse` in `device_minorType` while the system enumerates
+Generic Desktop keyboard for it — the interface macOS actually loads a keyboard
+driver for. Trusting the report alone draws a mouse glyph on the keyboard the
+user is typing on.
+
+So a connected device whose class the report cannot be trusted on is corrected
+from the I/O Registry (`BluetoothHIDUsageReader`, `BluetoothHIDUsageClassifier`,
+`BluetoothDeviceKindRefinement`). The classification is a documented precedence
+rather than the order the Registry happens to return interfaces in: a touch pad
+outranks the pointer interface the same trackpad also presents, and a keyboard
+outranks the pointing surface of a combination device.
+
+Three bounds keep the correction from overreaching:
+
+- **Only `peripheral` and `unknown` accept it.** An audio device, a phone or a
+  computer never declares a peripheral class, so a stray HID interface on one of
+  them must not move it into that family.
+- **Only connected devices.** A paired but disconnected device has no Registry
+  node and keeps the class the report declared.
+- **The Registry is only walked when something could use it.** A Mac whose
+  paired devices are all headphones and phones never pays for the read — the
+  same rule that keeps `pmset` from running when the report already carries
+  every battery level.
+
+The walk runs inside the process (`IOServiceGetMatchingServices` /
+`IORegistryEntryCreateCFProperties` over `IOHIDDevice`). There is no `ioreg` or
+`hidutil` subprocess to hang the way `/usr/sbin/system_profiler` can, no
+Bluetooth grant is involved, and the app is not sandboxed, so the Registry is
+readable without a permission of any kind. `IOBluetoothDevice.pairedDevices()`
+is not an alternative: a probe compiled against it aborts with `SIGABRT` in a
+plain command-line process.
 
 ## Which levels the row reports
 
@@ -247,9 +335,13 @@ quick succession are sent one after the other, and a command queued behind a
 blocking one can have its own ten-second clock expire before it is even sent —
 a transient failure that clears itself.
 
-Disconnecting an input device — a keyboard, mouse, trackpad or gamepad — asks
-for confirmation in the row itself, because disconnecting the keyboard or mouse
-the user is holding would cut them off from their own Mac. The prompt lives in
+Disconnecting an input device — a keyboard, mouse, trackpad or gamepad, and a
+peripheral whose class wording did not narrow it down — asks for confirmation in
+the row itself, because disconnecting the keyboard or mouse the user is holding
+would cut them off from their own Mac. The class the wording left unclassified
+counts too: one wasted tap costs far less than disconnecting the keyboard the
+user is typing on because its class field said something unrecognized. The
+prompt lives in
 the row rather than in an alert: the panel is transient, so a modal would close
 it. The controller owns the pending confirmation, and `SystemStatusStore`
 cancels it when the popover closes, so an unconfirmed disconnect is never sent:
