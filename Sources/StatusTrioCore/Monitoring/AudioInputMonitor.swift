@@ -100,6 +100,11 @@ final class AudioInputMonitor: AudioInputMonitoring {
     let deviceID: AudioDeviceID
   }
 
+  private struct PendingScalar {
+    let value: Double
+    let deviceID: AudioDeviceID
+  }
+
   let updates: AsyncStream<AudioInputStatus>
   private let continuation: AsyncStream<AudioInputStatus>.Continuation
   private let worker: AudioInputWorker
@@ -113,6 +118,7 @@ final class AudioInputMonitor: AudioInputMonitoring {
   private var isVisible = false
   private var isStopped = false
   private var isDirty = true
+  private var observationDegraded = false
   private var sessionGeneration: UInt64 = 0
   private var readGeneration: UInt64 = 0
   private var readInFlight = false
@@ -120,7 +126,7 @@ final class AudioInputMonitor: AudioInputMonitoring {
   private var refreshPending = false
   private var activeCommand: ActiveCommand?
   private var queuedCommands: [QueuedCommand] = []
-  private var pendingScalar: Double?
+  private var pendingScalar: PendingScalar?
   private var scalarDebounceToken: UUID?
   private var scalarDebounceReady = false
   private var scalarDebounceTask: Task<Void, Never>?
@@ -246,7 +252,7 @@ final class AudioInputMonitor: AudioInputMonitoring {
       showError(.volumeFailed)
       return
     }
-    pendingScalar = min(max(value, 0), 1)
+    pendingScalar = PendingScalar(value: min(max(value, 0), 1), deviceID: deviceID)
     scalarDebounceReady = false
     let token = UUID()
     scalarDebounceToken = token
@@ -259,7 +265,7 @@ final class AudioInputMonitor: AudioInputMonitoring {
         return
       }
       guard !Task.isCancelled else { return }
-      self.scalarDebounceElapsed(token: token, deviceID: deviceID)
+      self.scalarDebounceElapsed(token: token)
     }
   }
 
@@ -376,7 +382,7 @@ final class AudioInputMonitor: AudioInputMonitoring {
   }
 
   private func refreshCompleted(
-    _ result: Result<AudioInputReading, AudioInputHardwareError>,
+    _ result: Result<AudioInputRefreshResult, AudioInputHardwareError>,
     readID: UUID,
     sessionGeneration expectedSession: UInt64,
     readGeneration expectedRead: UInt64
@@ -394,10 +400,15 @@ final class AudioInputMonitor: AudioInputMonitoring {
     }
 
     switch result {
-    case let .success(reading):
-      apply(reading)
+    case let .success(refresh):
+      apply(refresh.reading)
       isDirty = false
-      status.error = nil
+      observationDegraded = refresh.observationError != nil
+      if observationDegraded {
+        showError(.refreshFailed)
+      } else {
+        clearError()
+      }
     case .failure:
       showError(.refreshFailed)
     }
@@ -416,7 +427,7 @@ final class AudioInputMonitor: AudioInputMonitoring {
     start(queued.command, deviceID: queued.deviceID)
   }
 
-  private func scalarDebounceElapsed(token: UUID, deviceID: AudioDeviceID) {
+  private func scalarDebounceElapsed(token: UUID) {
     guard scalarDebounceToken == token, pendingScalar != nil else { return }
     scalarDebounceReady = true
     scalarDebounceTask = nil
@@ -425,19 +436,19 @@ final class AudioInputMonitor: AudioInputMonitoring {
       return
     }
     if activeCommand == nil, readInFlight == false, queuedCommands.isEmpty {
-      startPendingScalar(deviceID: deviceID)
+      startPendingScalar()
     }
   }
 
-  private func startPendingScalar(deviceID: AudioDeviceID) {
+  private func startPendingScalar() {
     guard scalarDebounceReady, let scalar = pendingScalar else { return }
     clearPendingScalar()
-    guard status.defaultDeviceID == deviceID, status.canSetVolume else {
+    guard status.defaultDeviceID == scalar.deviceID, status.canSetVolume else {
       showError(.volumeFailed)
       startNextWorkIfPossible()
       return
     }
-    start(.scalar(scalar), deviceID: deviceID)
+    start(.scalar(scalar.value), deviceID: scalar.deviceID)
   }
 
   private func startNextWorkIfPossible() {
@@ -447,9 +458,8 @@ final class AudioInputMonitor: AudioInputMonitoring {
       start(next.command, deviceID: next.deviceID)
       return
     }
-    if scalarDebounceReady, let pendingScalar, let deviceID = status.defaultDeviceID {
-      _ = pendingScalar
-      startPendingScalar(deviceID: deviceID)
+    if scalarDebounceReady, pendingScalar != nil {
+      startPendingScalar()
       return
     }
     startPendingRefreshIfPossible()
@@ -520,6 +530,12 @@ final class AudioInputMonitor: AudioInputMonitoring {
 
     guard isEnabled, !isStopped, active.sessionGeneration == sessionGeneration else { return }
 
+    if result.observationError != nil {
+      observationDegraded = true
+    } else if result.reading != nil {
+      observationDegraded = false
+    }
+
     let isCurrent = active.readGeneration == readGeneration
       && status.defaultDeviceID == active.deviceID
     if active.timedOut {
@@ -551,13 +567,20 @@ final class AudioInputMonitor: AudioInputMonitoring {
       refreshPending = true
     }
 
-    let failure = commandFailure(active.command, result: result)
+    let commandError = commandFailure(
+      active.command,
+      expectedDeviceID: active.deviceID,
+      result: result
+    )
+    let failure = commandError ?? (observationDegraded ? .refreshFailed : nil)
     status.error = failure
     status.isBusy = false
     status.isRefreshing = refreshPending || readInFlight
     publish()
-    if let failure {
-      showError(failure)
+    if let commandError {
+      showError(commandError)
+    } else if observationDegraded {
+      showError(.refreshFailed)
     } else {
       clearError()
     }
@@ -566,6 +589,7 @@ final class AudioInputMonitor: AudioInputMonitoring {
 
   private func commandFailure(
     _ command: AudioInputMonitorCommand,
+    expectedDeviceID: AudioDeviceID,
     result: AudioInputCommandResult
   ) -> AudioInputError? {
     guard result.operationError == nil, result.readError == nil,
@@ -576,7 +600,7 @@ final class AudioInputMonitor: AudioInputMonitoring {
     case let .select(id):
       return reading.defaultDeviceID == id ? nil : .switchFailed
     case let .scalar(target):
-      guard reading.defaultDeviceID != nil,
+      guard reading.defaultDeviceID == expectedDeviceID,
         reading.canSetVolume,
         let actual = reading.scalar,
         abs(actual - target) <= 0.01
@@ -584,7 +608,7 @@ final class AudioInputMonitor: AudioInputMonitoring {
       return nil
     case let .mute(target):
       let expected: AudioInputMuteState = target ? .muted : .unmuted
-      guard reading.defaultDeviceID != nil,
+      guard reading.defaultDeviceID == expectedDeviceID,
         reading.canSetMute,
         reading.muteState == expected
       else { return .muteFailed }
@@ -627,6 +651,13 @@ final class AudioInputMonitor: AudioInputMonitoring {
     errorExpiryToken = nil
     errorExpiryTask = nil
     guard status.error != nil else { return }
+    if observationDegraded {
+      if status.error != .refreshFailed {
+        status.error = .refreshFailed
+        publish()
+      }
+      return
+    }
     status.error = nil
     publish()
   }
@@ -654,10 +685,16 @@ final class AudioInputMonitor: AudioInputMonitoring {
   }
 }
 
+private struct AudioInputRefreshResult: Sendable {
+  let reading: AudioInputReading
+  let observationError: AudioInputHardwareError?
+}
+
 private struct AudioInputCommandResult: Sendable {
   let operationError: AudioInputHardwareError?
   let reading: AudioInputReading?
   let readError: AudioInputHardwareError?
+  let observationError: AudioInputHardwareError?
 }
 
 /// All synchronous HAL reads, writes, listener changes, and listener teardown are serialized here.
@@ -695,23 +732,37 @@ private final class AudioInputWorker: @unchecked Sendable {
     sessionGate: AudioInputSessionGate,
     visibilityGate: AudioInputVisibilityGate,
     visibilitySnapshot: AudioInputVisibilitySnapshot,
-    completion: @escaping @Sendable (Result<AudioInputReading, AudioInputHardwareError>) -> Void
+    completion: @escaping @Sendable (Result<AudioInputRefreshResult, AudioInputHardwareError>) -> Void
   ) {
     queue.async {
       guard sessionGate.isActive, visibilityGate.isCurrentVisible(visibilitySnapshot) else { return }
+      let reading: AudioInputReading
       do {
-        let reading = try self.hardware.read(includeDevices: true)
+        reading = try self.hardware.read(includeDevices: true)
         guard sessionGate.isActive,
           visibilityGate.isCurrentVisible(visibilitySnapshot)
         else { return }
-        self.observation?.setCurrentDevice(reading.defaultDeviceID)
-        completion(.success(reading))
       } catch {
         guard sessionGate.isActive,
           visibilityGate.isCurrentVisible(visibilitySnapshot)
         else { return }
         completion(.failure(Self.hardwareError(error)))
+        return
       }
+
+      var observationError: AudioInputHardwareError?
+      do {
+        try self.observation?.setCurrentDevice(reading.defaultDeviceID)
+      } catch {
+        observationError = Self.hardwareError(error)
+      }
+      guard sessionGate.isActive,
+        visibilityGate.isCurrentVisible(visibilitySnapshot)
+      else { return }
+      completion(.success(AudioInputRefreshResult(
+        reading: reading,
+        observationError: observationError
+      )))
     }
   }
 
@@ -742,19 +793,27 @@ private final class AudioInputWorker: @unchecked Sendable {
       guard sessionGate.isActive else { return }
       var reading: AudioInputReading?
       var readError: AudioInputHardwareError?
+      var observationError: AudioInputHardwareError?
       do {
         reading = try self.hardware.read(includeDevices: false)
         guard sessionGate.isActive else { return }
-        self.observation?.setCurrentDevice(reading?.defaultDeviceID)
       } catch {
         guard sessionGate.isActive else { return }
         readError = Self.hardwareError(error)
+      }
+      if readError == nil, let reading {
+        do {
+          try self.observation?.setCurrentDevice(reading.defaultDeviceID)
+        } catch {
+          observationError = Self.hardwareError(error)
+        }
       }
       guard sessionGate.isActive else { return }
       completion(AudioInputCommandResult(
         operationError: operationError,
         reading: reading,
-        readError: readError
+        readError: readError,
+        observationError: observationError
       ))
     }
   }

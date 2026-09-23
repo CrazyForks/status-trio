@@ -194,12 +194,12 @@ final class AudioInputMonitorTests: XCTestCase {
     let observation = try hardware.observe { eventLog.append($0) }
 
     XCTAssertEqual(listenerClient.added.count, 2, "Only global device/default listeners start enabled")
-    observation.setCurrentDevice(11)
+    try observation.setCurrentDevice(11)
     let firstDeviceListeners = listenerClient.added.filter { $0.objectID == 11 }
     XCTAssertEqual(firstDeviceListeners.count, 6, "Main plus both input channels for volume and mute")
     XCTAssertTrue(firstDeviceListeners.allSatisfy { $0.address.mScope == kAudioObjectPropertyScopeInput })
 
-    observation.setCurrentDevice(22)
+    try observation.setCurrentDevice(22)
     XCTAssertEqual(listenerClient.removed.count, 6)
     let activeDeviceListeners = listenerClient.added.filter { $0.objectID == 22 }
     XCTAssertEqual(activeDeviceListeners.count, 6)
@@ -215,6 +215,151 @@ final class AudioInputMonitorTests: XCTestCase {
     for registration in listenerClient.added {
       XCTAssertTrue(listenerClient.removed.contains { $0.matches(registration) })
     }
+  }
+
+
+  func testCoreAudioObservationReadsChannelCountOnceDuringHotUnplugRebind() throws {
+    let propertyClient = FakeObservedAudioInputProperties(channelCounts: [1, 0])
+    let listenerClient = FakeAudioInputListenerClient()
+    let hardware = CoreAudioInputHardware(client: propertyClient, listenerClient: listenerClient)
+    let observation = try hardware.observe { _ in }
+    defer { observation.stop() }
+
+    XCTAssertNoThrow(try observation.setCurrentDevice(11))
+    XCTAssertEqual(propertyClient.channelCountReadCount, 1)
+    XCTAssertEqual(listenerClient.added.filter { $0.objectID == 11 }.count, 4)
+  }
+
+  func testRejectedControlListenerReportsDegradationAndRecoverRetriesBinding() async throws {
+    let propertyClient = FakeObservedAudioInputProperties()
+    let listenerClient = FakeAudioInputListenerClient()
+    listenerClient.rejectNextRegistration(
+      objectID: 11,
+      selector: kAudioDevicePropertyMute,
+      status: OSStatus(-1)
+    )
+    let hardware = CoreAudioInputHardware(client: propertyClient, listenerClient: listenerClient)
+    let monitor = AudioInputMonitor(hardware: hardware)
+    let log = AudioInputStatusLog(monitor.updates)
+    defer { monitor.stop() }
+
+    let degraded = log.expectStatus("listener rejection is visible while fresh reading is retained") {
+      $0.defaultDeviceID == 11 && $0.error == .refreshFailed && !$0.isRefreshing
+    }
+    monitor.setEnabled(true)
+    monitor.setVisible(true)
+    await fulfillment(of: [degraded], timeout: 5)
+
+    XCTAssertEqual(listenerClient.removed.count, 3, "Partial per-device registration must be rolled back")
+
+    let recovered = log.expectStatus("recover retries the failed device binding") {
+      $0.defaultDeviceID == 11 && $0.error == nil && !$0.isRefreshing
+    }
+    monitor.recover()
+    await fulfillment(of: [recovered], timeout: 5)
+    XCTAssertEqual(listenerClient.added.filter { $0.objectID == 11 }.count - listenerClient.removed.count, 6)
+  }
+
+  func testScalarReadbackFromNewDefaultCannotConfirmWriteToOriginalDevice() async throws {
+    let writeGate = ManualAudioGate()
+    let writeStarted = expectation(description: "scalar HAL write started")
+    writeGate.onEnter = { writeStarted.fulfill() }
+    let sleeper = ManualAudioSleeper()
+    let hardware = FakeAudioInputHardware(reading: reading(defaultID: 11, scalar: 0.1))
+    hardware.blockNextScalarWrite(with: writeGate)
+    let monitor = AudioInputMonitor(hardware: hardware, sleep: { try await sleeper.sleep(for: $0) })
+    let log = AudioInputStatusLog(monitor.updates)
+    defer {
+      monitor.stop()
+      sleeper.releaseAll()
+      writeGate.release()
+    }
+
+    let initial = log.expectStatus("initial device read") { $0.defaultDeviceID == 11 }
+    monitor.setEnabled(true)
+    monitor.setVisible(true)
+    await fulfillment(of: [initial], timeout: 5)
+
+    let rejected = log.expectStatus("matching scalar on a different device is not confirmation") {
+      $0.error == .volumeFailed
+    }
+    let coalesced = sleeper.expectCall(.milliseconds(80), count: 1)
+    monitor.setScalar(0.8)
+    await fulfillment(of: [coalesced], timeout: 5)
+    XCTAssertTrue(sleeper.releaseNext(.milliseconds(80)))
+    await fulfillment(of: [writeStarted], timeout: 5)
+
+    hardware.setReading(reading(defaultID: 22, scalar: 0.8))
+    writeGate.release()
+    await fulfillment(of: [rejected], timeout: 5)
+    XCTAssertEqual(hardware.scalarWrites, [0.8])
+  }
+
+  func testMuteReadbackFromNewDefaultCannotConfirmWriteToOriginalDevice() async throws {
+    let writeGate = ManualAudioGate()
+    let writeStarted = expectation(description: "mute HAL write started")
+    writeGate.onEnter = { writeStarted.fulfill() }
+    let hardware = FakeAudioInputHardware(reading: reading(defaultID: 11))
+    hardware.blockNextMuteWrite(with: writeGate)
+    let monitor = AudioInputMonitor(hardware: hardware)
+    let log = AudioInputStatusLog(monitor.updates)
+    defer {
+      monitor.stop()
+      writeGate.release()
+    }
+
+    let initial = log.expectStatus("initial device read") { $0.defaultDeviceID == 11 }
+    monitor.setEnabled(true)
+    monitor.setVisible(true)
+    await fulfillment(of: [initial], timeout: 5)
+
+    let rejected = log.expectStatus("matching mute state on a different device is not confirmation") {
+      $0.error == .muteFailed
+    }
+    monitor.toggleMute()
+    await fulfillment(of: [writeStarted], timeout: 5)
+
+    hardware.setReading(reading(defaultID: 22, muteState: .muted))
+    writeGate.release()
+    await fulfillment(of: [rejected], timeout: 5)
+  }
+
+  func testDebouncedScalarKeepsDeviceIdentityAcrossBlockedRefreshAndDefaultSwitch() async throws {
+    let readGate = ManualAudioGate()
+    let readStarted = expectation(description: "refresh read started")
+    readGate.onEnter = { readStarted.fulfill() }
+    let sleeper = ManualAudioSleeper()
+    let hardware = FakeAudioInputHardware(reading: reading(defaultID: 11, scalar: 0.1))
+    let monitor = AudioInputMonitor(hardware: hardware, sleep: { try await sleeper.sleep(for: $0) })
+    let log = AudioInputStatusLog(monitor.updates)
+    defer {
+      monitor.stop()
+      sleeper.releaseAll()
+      readGate.release()
+    }
+
+    let initial = log.expectStatus("initial device read") { $0.defaultDeviceID == 11 }
+    monitor.setEnabled(true)
+    monitor.setVisible(true)
+    await fulfillment(of: [initial], timeout: 5)
+    let observation = try XCTUnwrap(hardware.waitForObservation(timeout: 5))
+
+    hardware.blockNextRead(with: readGate, readAfterRelease: true)
+    observation.emit(.defaultChanged)
+    await fulfillment(of: [readStarted], timeout: 5)
+
+    let coalesced = sleeper.expectCall(.milliseconds(80), count: 1)
+    monitor.setScalar(0.9)
+    await fulfillment(of: [coalesced], timeout: 5)
+    XCTAssertTrue(sleeper.releaseNext(.milliseconds(80)))
+
+    let rejected = log.expectStatus("pending scalar for old input is rejected after device changes") {
+      $0.defaultDeviceID == 22 && $0.error == .volumeFailed
+    }
+    hardware.setReading(reading(defaultID: 22, scalar: 0.7))
+    readGate.release()
+    await fulfillment(of: [rejected], timeout: 5)
+    XCTAssertTrue(hardware.scalarWrites.isEmpty)
   }
 
   func testStaleBlockedReadCannotPublishAfterStop() async throws {
@@ -762,7 +907,7 @@ private final class FakeAudioInputObservation: AudioInputObservation, @unchecked
     return currentDeviceID
   }
 
-  func setCurrentDevice(_ id: AudioDeviceID?) {
+  func setCurrentDevice(_ id: AudioDeviceID?) throws {
     lock.lock()
     currentDeviceID = id
     lock.unlock()
@@ -815,13 +960,21 @@ private final class LockedAudioInputEvents: @unchecked Sendable {
 }
 
 private struct FakeObservedAudioInputProperties: AudioInputPropertyClient {
+  private let channelCounts: SequencedAudioInputChannelCounts
+
+  init(channelCounts: [Int] = [2]) {
+    self.channelCounts = SequencedAudioInputChannelCounts(channelCounts)
+  }
+
+  var channelCountReadCount: Int { channelCounts.readCount }
+
   func devices() throws -> [AudioDeviceID] { [11, 22] }
   func defaultInput() throws -> AudioDeviceID? { 11 }
   func isDevice(_ id: AudioDeviceID) -> Bool { id == 11 || id == 22 }
   func isAlive(_ id: AudioDeviceID) -> Bool? { isDevice(id) }
   func isHidden(_ id: AudioDeviceID) -> Bool? { false }
   func canBeDefaultInput(_ id: AudioDeviceID) -> Bool? { isDevice(id) }
-  func inputChannels(_ id: AudioDeviceID) -> Int { isDevice(id) ? 2 : 0 }
+  func inputChannels(_ id: AudioDeviceID) -> Int { isDevice(id) ? channelCounts.next() : 0 }
   func name(_ id: AudioDeviceID) -> String? { "Device \(id)" }
   func uid(_ id: AudioDeviceID) -> String? { "device-\(id)" }
   func hasProperty(
@@ -852,6 +1005,30 @@ private struct FakeObservedAudioInputProperties: AudioInputPropertyClient {
   func writeDefaultInput(_ id: AudioDeviceID) throws { throw AudioInputHardwareError.unsupported }
 }
 
+private final class SequencedAudioInputChannelCounts: @unchecked Sendable {
+  private let lock = NSLock()
+  private let values: [Int]
+  private var storedReadCount = 0
+
+  init(_ values: [Int]) {
+    self.values = values.isEmpty ? [0] : values
+  }
+
+  var readCount: Int {
+    lock.lock()
+    defer { lock.unlock() }
+    return storedReadCount
+  }
+
+  func next() -> Int {
+    lock.lock()
+    defer { lock.unlock() }
+    let index = min(storedReadCount, values.count - 1)
+    storedReadCount += 1
+    return values[index]
+  }
+}
+
 private struct FakeAudioInputListenerRegistration {
   let objectID: AudioObjectID
   let address: AudioObjectPropertyAddress
@@ -879,6 +1056,7 @@ private final class FakeAudioInputListenerClient: AudioInputPropertyListenerClie
   private var storedAdded: [FakeAudioInputListenerRegistration] = []
   private var storedRemoved: [FakeAudioInputListenerRegistration] = []
   private var failedRemovalCount = 0
+  private var rejection: (objectID: AudioObjectID, selector: AudioObjectPropertySelector, status: OSStatus)?
 
   var added: [FakeAudioInputListenerRegistration] {
     lock.lock()
@@ -898,6 +1076,16 @@ private final class FakeAudioInputListenerClient: AudioInputPropertyListenerClie
     return failedRemovalCount
   }
 
+  func rejectNextRegistration(
+    objectID: AudioObjectID,
+    selector: AudioObjectPropertySelector,
+    status: OSStatus
+  ) {
+    lock.lock()
+    rejection = (objectID, selector, status)
+    lock.unlock()
+  }
+
   func addListener(
     objectID: AudioObjectID,
     address: AudioObjectPropertyAddress,
@@ -905,6 +1093,11 @@ private final class FakeAudioInputListenerClient: AudioInputPropertyListenerClie
     block: @escaping AudioObjectPropertyListenerBlock
   ) -> OSStatus {
     lock.lock()
+    if let rejection, rejection.objectID == objectID, rejection.selector == address.mSelector {
+      self.rejection = nil
+      lock.unlock()
+      return rejection.status
+    }
     storedAdded.append(FakeAudioInputListenerRegistration(
       objectID: objectID,
       address: address,
@@ -938,14 +1131,20 @@ private final class FakeAudioInputListenerClient: AudioInputPropertyListenerClie
   }
 }
 
+private struct GatedAudioInputRead {
+  let gate: ManualAudioGate
+  let readAfterRelease: Bool
+}
+
 private final class FakeAudioInputHardware: AudioInputHardware, @unchecked Sendable {
   private let lock = NSLock()
   private var storedReading: AudioInputReading
   private var storedReadRequests: [Bool] = []
   private var observations: [FakeAudioInputObservation] = []
   private var observationGates: [ManualAudioGate] = []
-  private var readGates: [ManualAudioGate] = []
+  private var readGates: [GatedAudioInputRead] = []
   private var scalarWriteGates: [ManualAudioGate] = []
+  private var muteWriteGates: [ManualAudioGate] = []
   private var writtenScalars: [Double] = []
   private var activeWrites = 0
   private var maxConcurrentWrites = 0
@@ -1014,15 +1213,21 @@ private final class FakeAudioInputHardware: AudioInputHardware, @unchecked Senda
     lock.unlock()
   }
 
-  func blockNextRead(with gate: ManualAudioGate) {
+  func blockNextRead(with gate: ManualAudioGate, readAfterRelease: Bool = false) {
     lock.lock()
-    readGates.append(gate)
+    readGates.append(GatedAudioInputRead(gate: gate, readAfterRelease: readAfterRelease))
     lock.unlock()
   }
 
   func blockNextScalarWrite(with gate: ManualAudioGate) {
     lock.lock()
     scalarWriteGates.append(gate)
+    lock.unlock()
+  }
+
+  func blockNextMuteWrite(with gate: ManualAudioGate) {
+    lock.lock()
+    muteWriteGates.append(gate)
     lock.unlock()
   }
 
@@ -1035,10 +1240,18 @@ private final class FakeAudioInputHardware: AudioInputHardware, @unchecked Senda
   func read(includeDevices: Bool) throws -> AudioInputReading {
     lock.lock()
     storedReadRequests.append(includeDevices)
-    let gate = readGates.isEmpty ? nil : readGates.removeFirst()
-    let reading = storedReading
+    let gatedRead = readGates.isEmpty ? nil : readGates.removeFirst()
+    let initialReading = storedReading
     lock.unlock()
-    gate?.wait()
+    gatedRead?.gate.wait()
+    let reading: AudioInputReading
+    if gatedRead?.readAfterRelease == true {
+      lock.lock()
+      reading = storedReading
+      lock.unlock()
+    } else {
+      reading = initialReading
+    }
     guard !includeDevices else { return reading }
     return AudioInputReading(
       devices: nil,
@@ -1098,6 +1311,10 @@ private final class FakeAudioInputHardware: AudioInputHardware, @unchecked Senda
   }
 
   func setMuted(_ muted: Bool, on id: AudioDeviceID) throws {
+    lock.lock()
+    let gate = muteWriteGates.isEmpty ? nil : muteWriteGates.removeFirst()
+    lock.unlock()
+    gate?.wait()
     lock.lock()
     if storedReading.defaultDeviceID == id {
       let reading = storedReading

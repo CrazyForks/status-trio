@@ -59,7 +59,7 @@ enum AudioInputEvent: Sendable {
 }
 
 protocol AudioInputObservation: Sendable {
-  func setCurrentDevice(_ id: AudioDeviceID?)
+  func setCurrentDevice(_ id: AudioDeviceID?) throws
   func stop()
 }
 

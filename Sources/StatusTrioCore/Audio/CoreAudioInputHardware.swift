@@ -355,7 +355,7 @@ private final class CoreAudioInputObservation: AudioInputObservation, @unchecked
     }
   }
 
-  func setCurrentDevice(_ id: AudioDeviceID?) {
+  func setCurrentDevice(_ id: AudioDeviceID?) throws {
     stateLock.lock()
     let mayUpdate = !stopped
     let unchanged = currentDeviceID == id
@@ -379,36 +379,53 @@ private final class CoreAudioInputObservation: AudioInputObservation, @unchecked
       propertyClient.isAlive(id) == true,
       propertyClient.isHidden(id) == false,
       propertyClient.canBeDefaultInput(id) == true,
-      propertyClient.inputChannels(id) > 0,
       let newBindingToken
     else { return }
+
+    // Capture the channel count once. The device can disappear between HAL queries, and a
+    // second query used to build this range could return zero after a positive first result.
+    let channelCount = propertyClient.inputChannels(id)
+    guard channelCount > 0 else { return }
+
+    let elements = [kAudioObjectPropertyElementMain]
+      + (1...channelCount).map(AudioObjectPropertyElement.init)
+    do {
+      for selector in [kAudioDevicePropertyVolumeScalar, kAudioDevicePropertyMute] {
+        for element in elements where propertyClient.hasProperty(id, selector, element) {
+          try add(
+            objectID: id,
+            address: Self.address(
+              selector: selector,
+              scope: kAudioObjectPropertyScopeInput,
+              element: element
+            ),
+            event: .controlsChanged,
+            bindingToken: newBindingToken
+          )
+        }
+      }
+    } catch {
+      // A partially observed device is not a successful binding. Roll back registrations
+      // from this attempt, invalidate callbacks already queued by them, and leave the ID nil
+      // so a later refresh/recover retries instead of treating this device as bound.
+      stateLock.lock()
+      if activeBindingToken == newBindingToken {
+        activeBindingToken = nil
+        currentDeviceID = nil
+      }
+      stateLock.unlock()
+      removeDeviceRegistrations(for: newBindingToken)
+      throw error
+    }
 
     stateLock.lock()
     guard !stopped, activeBindingToken == newBindingToken else {
       stateLock.unlock()
+      removeDeviceRegistrations(for: newBindingToken)
       return
     }
     currentDeviceID = id
     stateLock.unlock()
-
-    let elements = [kAudioObjectPropertyElementMain]
-      + (1...propertyClient.inputChannels(id)).map(AudioObjectPropertyElement.init)
-    for selector in [kAudioDevicePropertyVolumeScalar, kAudioDevicePropertyMute] {
-      for element in elements where propertyClient.hasProperty(id, selector, element) {
-        // A device may expose one control without the other. Keep all supported listener
-        // registrations, while the system/default listeners still cover device changes.
-        try? add(
-          objectID: id,
-          address: Self.address(
-            selector: selector,
-            scope: kAudioObjectPropertyScopeInput,
-            element: element
-          ),
-          event: .controlsChanged,
-          bindingToken: newBindingToken
-        )
-      }
-    }
   }
 
   func stop() {
@@ -437,6 +454,19 @@ private final class CoreAudioInputObservation: AudioInputObservation, @unchecked
   private func removeDeviceRegistrations() {
     let removed = registrations.filter { $0.bindingToken != nil }
     registrations.removeAll { $0.bindingToken != nil }
+    for registration in removed {
+      _ = listenerClient.removeListener(
+        objectID: registration.objectID,
+        address: registration.address,
+        queue: registration.queue,
+        block: registration.block
+      )
+    }
+  }
+
+  private func removeDeviceRegistrations(for bindingToken: UUID) {
+    let removed = registrations.filter { $0.bindingToken == bindingToken }
+    registrations.removeAll { $0.bindingToken == bindingToken }
     for registration in removed {
       _ = listenerClient.removeListener(
         objectID: registration.objectID,
