@@ -123,7 +123,8 @@ final class BluetoothSummaryTests: XCTestCase {
         XCTAssertEqual(BluetoothSummary.authorizationDenied.rowAction, .openPermissionSettings)
         for state: BluetoothSummary in [
             .initializing, .authorizationRestricted, .poweredOff, .unavailable,
-            .readFailed, .noConnectedDevices, .devices("AirPods Pro")
+            .readFailed, .noConnectedDevices,
+            .devices([BluetoothSummaryEntry(name: "AirPods Pro", level: nil)])
         ] {
             XCTAssertNil(state.rowAction, "\(state) has nowhere to send the user")
         }
@@ -150,6 +151,47 @@ final class BluetoothSummaryTests: XCTestCase {
                 deviceAddress: "AA", main: nil, left: 80, right: 75, caseLevel: 60)]
         )
         XCTAssertEqual(summary.deviceNames, "AirPods Pro · L 80% · R 75% · Case 60%")
+    }
+
+    /// The row draws its devices from pieces, so the charging case is the same
+    /// glyph here as on a device row — while the text form the accessibility
+    /// label reads keeps the word, because the glyph carries no label of its own.
+    func testTheChargingCaseIsOneGlyphInTheSummaryRow() {
+        let summary = BluetoothSummary.presentation(
+            availability: .available,
+            devices: [device(id: "AA", name: "AirPods Pro")],
+            batteryLevels: ["AA": BluetoothBatteryLevel(
+                deviceAddress: "AA", main: nil, left: 80, right: 75, caseLevel: 60)]
+        )
+
+        XCTAssertEqual(summary.deviceSegments, [
+            .text("AirPods Pro"),
+            .text(" · "),
+            .text("L 80%"),
+            .text(" · "),
+            .text("R 75%"),
+            .text(" · "),
+            .symbol(name: "airpods.chargingcase", label: "Case"),
+            .text(" 60%")
+        ])
+        XCTAssertEqual(summary.deviceNames, "AirPods Pro · L 80% · R 75% · Case 60%")
+    }
+
+    /// The separators are pieces too, not something assembled beside them: the
+    /// ideographic comma between devices and the middle dot between a name and
+    /// its level are what make the drawn line read as the text form does.
+    func testTheSeparatorsBelongToThePieces() {
+        let summary = BluetoothSummary.presentation(
+            availability: .available,
+            devices: [
+                device(id: "AA", name: "AirPods Pro"),
+                device(id: "BB", name: "MX Keys", kind: .peripheral(.keyboard))
+            ],
+            batteryLevels: ["AA": BluetoothBatteryLevel(
+                deviceAddress: "AA", main: 64, left: nil, right: nil, caseLevel: nil)]
+        )
+
+        XCTAssertEqual(summary.deviceSegments?.plainText, "AirPods Pro · 64%、MX Keys")
     }
 
     func testAirPodsWithoutAReadableLevelShowOnlyTheirName() {

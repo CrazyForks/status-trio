@@ -208,6 +208,15 @@ struct BluetoothStatusView: View {
             )
         } else if hidesSubtitle {
             EmptyView()
+        } else if let segments = summaryPresentation.deviceSegments {
+            // The same pieces the device rows draw, so the charging case is one
+            // glyph on both surfaces rather than a glyph here and a word there.
+            // Every other state is one sentence of localized text.
+            BluetoothBatteryLevelText.drawn(segments)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .truncationMode(.tail)
         } else {
             Text(summaryText)
                 .font(.caption)
@@ -246,8 +255,10 @@ struct BluetoothStatusView: View {
             return localization.string(.bluetoothReadFailed)
         case .noConnectedDevices:
             return localization.string(.bluetoothNoConnectedDevices)
-        case .devices(let names):
-            return names
+        case .devices:
+            // The device line is drawn from its pieces; this is its text form,
+            // which is what the accessibility label above reads.
+            return summaryPresentation.deviceNames ?? ""
         }
     }
 }

@@ -73,6 +73,78 @@ struct BluetoothBatteryReaderTests {
         #expect(BluetoothBatteryReader.parse(json: json).isEmpty)
     }
 
+    /// A report that carries one address twice must keep the connected reading.
+    /// The collections are read connected-first, and before this the stale
+    /// `device_not_connected` entry, read second, overwrote the live level — so a
+    /// row showing the current charge silently fell back to the last value macOS
+    /// wrote down.
+    @Test func aDeviceListedTwiceKeepsTheConnectedLevel() throws {
+        let json = try #require(
+            """
+            {
+              "SPBluetoothDataType": [
+                {
+                  "device_connected": [
+                    {"AirPods Pro": {
+                      "device_address": "AC:90:85:C2:9C:1F",
+                      "device_batteryLevelMain": "95%"
+                    }}
+                  ],
+                  "device_not_connected": [
+                    {"AirPods Pro": {
+                      "device_address": "ac:90:85:c2:9c:1f",
+                      "device_batteryLevelMain": "12%"
+                    }}
+                  ]
+                }
+              ]
+            }
+            """.data(using: .utf8)
+        )
+
+        let levels = BluetoothBatteryReader.parse(json: json)
+
+        #expect(levels.count == 1)
+        #expect(
+            levels[BluetoothBatteryReader.normalizedAddress("AC:90:85:C2:9C:1F")]?.main == 95
+        )
+    }
+
+    /// Only an entry that actually yields a level takes the address: a connected
+    /// entry macOS reported no level for must not shadow the level the other
+    /// collection carries, or the row would go quiet for a device the report can
+    /// describe.
+    @Test func anEntryWithoutALevelDoesNotShadowOneThatHasIt() throws {
+        let json = try #require(
+            """
+            {
+              "SPBluetoothDataType": [
+                {
+                  "device_connected": [
+                    {"AirPods Pro": {
+                      "device_address": "AC:90:85:C2:9C:1F",
+                      "device_batteryLevelMain": "not available"
+                    }}
+                  ],
+                  "device_not_connected": [
+                    {"AirPods Pro": {
+                      "device_address": "AC:90:85:C2:9C:1F",
+                      "device_batteryLevelMain": "12%"
+                    }}
+                  ]
+                }
+              ]
+            }
+            """.data(using: .utf8)
+        )
+
+        let levels = BluetoothBatteryReader.parse(json: json)
+
+        #expect(
+            levels[BluetoothBatteryReader.normalizedAddress("AC:90:85:C2:9C:1F")]?.main == 12
+        )
+    }
+
     @Test func malformedOutputFailsClosed() {
         #expect(BluetoothBatteryReader.parse(json: Data("not json".utf8)).isEmpty)
     }

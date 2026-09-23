@@ -163,6 +163,64 @@ struct BluetoothPairedDeviceListTests {
         #expect(devices.first?.kind == .peripheral(.unclassified))
     }
 
+    /// The regression: a report that carries one address twice drew the device
+    /// twice, handed `ForEach` a duplicate id and shared one set of action state
+    /// between the two rows. The connected entry is the one that survives —
+    /// the collections are read connected-first, and it is the entry that
+    /// matches the state the device is actually in. The address is compared
+    /// normalized, so the two spellings in this report are still one device.
+    @Test func aDeviceListedInBothCollectionsIsListedOnce() throws {
+        let json = """
+        {"SPBluetoothDataType": [{
+          "device_connected": [
+            {"机灵的AirPods": {"device_address": "AC:90:85:C2:9C:1F", "device_minorType": "Headphones"}}
+          ],
+          "device_not_connected": [
+            {"小王的耳机": {"device_address": "ac:90:85:c2:9c:1f", "device_minorType": "Headphones"}}
+          ]
+        }]}
+        """
+        let devices = try #require(BluetoothPairedDeviceReader.parse(json: Data(json.utf8)))
+
+        #expect(devices.count == 1)
+        #expect(devices.first?.name == "机灵的AirPods")
+        #expect(devices.first?.isConnected == true)
+    }
+
+    /// A Mac with more than one Bluetooth controller makes the profiler report a
+    /// section per controller, and the parse reads every section: the same
+    /// device would otherwise be listed once per controller.
+    @Test func aDeviceReportedInTwoSectionsIsListedOnce() throws {
+        let json = """
+        {"SPBluetoothDataType": [
+          {"device_connected": [
+            {"MX Keys": {"device_address": "D3:6D:6C:40:A3:2E", "device_minorType": "Keyboard"}}
+          ]},
+          {"device_not_connected": [
+            {"MX Keys": {"device_address": "D3:6D:6C:40:A3:2E", "device_minorType": "Keyboard"}}
+          ]}
+        ]}
+        """
+        let devices = try #require(BluetoothPairedDeviceReader.parse(json: Data(json.utf8)))
+
+        #expect(devices.count == 1)
+        #expect(devices.first?.isConnected == true)
+    }
+
+    /// Two addresses the normalizer cannot reduce are not necessarily one device,
+    /// so they all stay listed rather than collapsing into each other.
+    @Test func addressesWithoutAnIdentityAreAllKept() throws {
+        let json = """
+        {"SPBluetoothDataType": [{"device_connected": [
+          {"One": {"device_address": "--", "device_minorType": "Keyboard"}},
+          {"Two": {"device_address": "--", "device_minorType": "Keyboard"}}
+        ]}]}
+        """
+        let devices = try #require(BluetoothPairedDeviceReader.parse(json: Data(json.utf8)))
+
+        #expect(devices.count == 2)
+    }
+
     /// No readable device database is a read failure, not "no paired devices".
     @Test func malformedOutputIsAReadFailure() {
         #expect(BluetoothPairedDeviceReader.parse(json: Data("not json".utf8)) == nil)
