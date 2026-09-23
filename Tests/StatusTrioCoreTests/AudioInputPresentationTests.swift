@@ -159,6 +159,24 @@ final class AudioInputPresentationTests: XCTestCase {
         XCTAssertEqual(unknown.volumeAccessibilityValue, "—")
     }
 
+    func testVolumeDraftReconcilesDifferingSystemReadbackWhenDragEnds() {
+        var draft = AudioInputVolumeDraft()
+        draft.receiveSystemScalar(0.2)
+        draft.setEditing(true)
+        draft.setSliderValue(0.8)
+
+        draft.receiveSystemScalar(0.4)
+        XCTAssertEqual(draft.value, 0.8, accuracy: 0.0001)
+
+        draft.setEditing(false)
+        XCTAssertFalse(draft.isEditing)
+        XCTAssertEqual(draft.value, 0.4, accuracy: 0.0001)
+
+        // A delayed slider setter after mouse-up must not restore the rejected draft.
+        draft.setSliderValue(0.8)
+        XCTAssertEqual(draft.value, 0.4, accuracy: 0.0001)
+    }
+
     private func makeStatus(
         devices: [AudioInputDevice] = [],
         defaultDeviceID: AudioDeviceID? = nil,

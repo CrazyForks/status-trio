@@ -130,6 +130,41 @@ struct AudioInputPresentation {
     }
 }
 
+/// Holds only the slider's temporary drag value; system readback remains authoritative.
+struct AudioInputVolumeDraft {
+    private(set) var value = 0.0
+    private(set) var isEditing = false
+    private var latestSystemScalar: Double?
+
+    mutating func receiveSystemScalar(_ scalar: Double?) {
+        latestSystemScalar = scalar
+        guard !isEditing else { return }
+        value = Self.displayValue(for: scalar)
+    }
+
+    mutating func setEditing(_ editing: Bool) {
+        isEditing = editing
+        if !editing {
+            value = Self.displayValue(for: latestSystemScalar)
+        }
+    }
+
+    mutating func setSliderValue(_ newValue: Double) {
+        guard isEditing, newValue.isFinite else { return }
+        value = min(1, max(0, newValue))
+    }
+
+    mutating func resetForDevice(_ scalar: Double?) {
+        isEditing = false
+        receiveSystemScalar(scalar)
+    }
+
+    private static func displayValue(for scalar: Double?) -> Double {
+        guard let scalar, scalar.isFinite else { return 0 }
+        return min(1, max(0, scalar))
+    }
+}
+
 struct AudioInputControlsView: View {
     @EnvironmentObject private var localization: Localization
 
@@ -139,8 +174,7 @@ struct AudioInputControlsView: View {
     let onToggleMute: () -> Void
     let onOpenSoundSettings: () -> Void
 
-    @State private var draftVolume = 0.0
-    @State private var isAdjustingVolume = false
+    @State private var volumeDraft = AudioInputVolumeDraft()
 
     private var presentation: AudioInputPresentation {
         AudioInputPresentation(status: status, locale: localization.resolvedLanguage.locale)
@@ -188,10 +222,10 @@ struct AudioInputControlsView: View {
     }
 
     private var sliderAccessibilityValue: String {
-        guard isAdjustingVolume, draftVolume.isFinite else {
+        guard volumeDraft.isEditing else {
             return presentation.volumeAccessibilityValue
         }
-        return min(1, max(0, draftVolume)).formatted(
+        return volumeDraft.value.formatted(
             .percent.precision(.fractionLength(0)).locale(localization.resolvedLanguage.locale)
         )
     }
@@ -221,14 +255,12 @@ struct AudioInputControlsView: View {
                 }
             }
         }
-        .onAppear(perform: { synchronizeVolume() })
+        .onAppear(perform: { volumeDraft.receiveSystemScalar(status.scalar) })
         .onChange(of: status.defaultDeviceID) { _, _ in
-            isAdjustingVolume = false
-            synchronizeVolume()
+            volumeDraft.resetForDevice(status.scalar)
         }
-        .onChange(of: status.scalar) { _, _ in
-            guard !isAdjustingVolume else { return }
-            synchronizeVolume()
+        .onChange(of: status.scalar) { _, newScalar in
+            volumeDraft.receiveSystemScalar(newScalar)
         }
     }
 
@@ -298,9 +330,14 @@ struct AudioInputControlsView: View {
             )
 
             Slider(
-                value: $draftVolume,
+                value: sliderValue,
                 in: 0...1,
-                onEditingChanged: { isAdjustingVolume = $0 }
+                onEditingChanged: { editing in
+                    if !editing {
+                        volumeDraft.receiveSystemScalar(status.scalar)
+                    }
+                    volumeDraft.setEditing(editing)
+                }
             )
             .tint(status.muteState == .muted ? Color.secondary : Color.accentColor)
             .disabled(!presentation.volumeEnabled)
@@ -314,9 +351,6 @@ struct AudioInputControlsView: View {
             Image(systemName: "waveform")
                 .foregroundStyle(.secondary)
                 .accessibilityHidden(true)
-        }
-        .onChange(of: draftVolume) { _, newValue in
-            updateVolume(newValue)
         }
     }
 
@@ -421,12 +455,14 @@ struct AudioInputControlsView: View {
         .accessibilityHint(isCurrent ? "" : help)
     }
 
-    private func synchronizeVolume() {
-        guard let scalar = status.scalar, scalar.isFinite else {
-            draftVolume = 0
-            return
-        }
-        draftVolume = min(1, max(0, scalar))
+    private var sliderValue: Binding<Double> {
+        Binding(
+            get: { volumeDraft.value },
+            set: { newValue in
+                volumeDraft.setSliderValue(newValue)
+                updateVolume(newValue)
+            }
+        )
     }
 
     private func updateVolume(_ newValue: Double) {
