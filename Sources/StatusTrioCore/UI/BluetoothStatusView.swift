@@ -252,26 +252,3 @@ struct BluetoothStatusView: View {
     }
 }
 
-/// The glyph each paired-device row draws.
-///
-/// The audio row resolves through the same mapping as the popup's output list,
-/// so an AirPods draws the AirPods glyph macOS declares for its product ID
-/// instead of the generic headphone one, and the two surfaces cannot drift.
-enum BluetoothDeviceRowIcon {
-    static func symbolName(for device: BluetoothDevice) -> String {
-        switch device.kind {
-        case .computer:
-            "laptopcomputer"
-        case .phone:
-            "iphone"
-        case .audio:
-            AudioOutputDeviceIcon.symbolName(
-                for: AudioDeviceIdentity(bluetooth: device.name, model: device.airPodsModel)
-            )
-        case .peripheral:
-            "computermouse"
-        case .unknown:
-            "questionmark.circle"
-        }
-    }
-}

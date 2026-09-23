@@ -80,7 +80,7 @@ struct BluetoothBatteryControllerTests {
     /// connected-device read, whatever devices are paired.
     @Test func batteryReadsStayOffWithoutAClaim() async {
         let deviceReader = BluetoothPairedDeviceReaderStub(result: .success([
-            BluetoothDevice(id: "AC:90:85:C2:9C:1F", name: "MX Master 3", kind: .peripheral, isConnected: true)
+            BluetoothDevice(id: "AC:90:85:C2:9C:1F", name: "MX Master 3", kind: .peripheral(.mouse), isConnected: true)
         ]))
         let batteryReader = BluetoothBatteryReaderStub(result: [:])
         let controller = BluetoothDeviceController(

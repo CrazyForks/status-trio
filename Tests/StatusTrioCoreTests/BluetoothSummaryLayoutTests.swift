@@ -15,8 +15,8 @@ final class BluetoothSummaryLayoutTests: XCTestCase {
             ]),
             ("mixed", .allowed, [
                 BluetoothDevice(id: "AA", name: "AirPods Pro", kind: .audio, isConnected: true),
-                BluetoothDevice(id: "BB", name: "MX Master 3", kind: .peripheral, isConnected: true),
-                BluetoothDevice(id: "CC", name: "Magic Keyboard", kind: .peripheral, isConnected: true)
+                BluetoothDevice(id: "BB", name: "MX Master 3", kind: .peripheral(.mouse), isConnected: true),
+                BluetoothDevice(id: "CC", name: "Magic Keyboard", kind: .peripheral(.keyboard), isConnected: true)
             ]),
             ("none", .allowed, [])
         ]

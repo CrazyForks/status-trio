@@ -91,8 +91,8 @@ final class SettingsViewTests: XCTestCase {
 
         let devices = [
             BluetoothDevice(id: "AC:90:85:C2:9C:1F", name: "AirPods Pro", kind: .audio, isConnected: true),
-            BluetoothDevice(id: "D3:6D:6C:40:A3:2E", name: "MX Keys", kind: .peripheral, isConnected: false),
-            BluetoothDevice(id: "AA:BB:CC:DD:EE:FF", name: "MX Master 3", kind: .peripheral, isConnected: false)
+            BluetoothDevice(id: "D3:6D:6C:40:A3:2E", name: "MX Keys", kind: .peripheral(.keyboard), isConnected: false),
+            BluetoothDevice(id: "AA:BB:CC:DD:EE:FF", name: "MX Master 3", kind: .peripheral(.mouse), isConnected: false)
         ]
         let controller = SettingsBluetoothTestFactory.makeController(devices: devices)
         controller.activate()

@@ -28,7 +28,7 @@ final class BluetoothSummaryTests: XCTestCase {
     func testConnectedDevicesShowTheLevelTheReportCarries() {
         let summary = BluetoothSummary.presentation(
             availability: .available,
-            devices: [device(id: "AA", name: "MX Master 3", kind: .peripheral)],
+            devices: [device(id: "AA", name: "MX Master 3", kind: .peripheral(.mouse))],
             batteryLevels: ["AA": BluetoothBatteryLevel(
                 deviceAddress: "AA", main: 45, left: nil, right: nil, caseLevel: nil)]
         )
@@ -44,7 +44,7 @@ final class BluetoothSummaryTests: XCTestCase {
             availability: .available,
             devices: [
                 device(id: "AA", name: "机灵的耳机", airPodsModel: .airPods),
-                device(id: "BB", name: "MX Keys", kind: .peripheral)
+                device(id: "BB", name: "MX Keys", kind: .peripheral(.keyboard))
             ],
             batteryLevels: ["AA": BluetoothBatteryLevel(
                 deviceAddress: "AA", main: nil, left: 93, right: nil, caseLevel: nil)]
@@ -60,7 +60,7 @@ final class BluetoothSummaryTests: XCTestCase {
         let summary = BluetoothSummary.presentation(
             availability: .available,
             devices: [
-                device(id: "AA", name: "AAA Mouse", kind: .peripheral),
+                device(id: "AA", name: "AAA Mouse", kind: .peripheral(.mouse)),
                 device(id: "BB", name: "zzz 耳机", airPodsModel: .airPods)
             ],
             batteryLevels: [
@@ -80,7 +80,7 @@ final class BluetoothSummaryTests: XCTestCase {
         XCTAssertTrue(device(name: "AirPods Pro").isAirPods)
         XCTAssertTrue(device(name: "机灵的耳机", airPodsModel: .airPods).isAirPods)
         XCTAssertFalse(device(name: "Sony WH-1000XM5").isAirPods)
-        XCTAssertFalse(device(name: "Magic Mouse", kind: .peripheral, airPodsModel: .airPods).isAirPods)
+        XCTAssertFalse(device(name: "Magic Mouse", kind: .peripheral(.mouse), airPodsModel: .airPods).isAirPods)
     }
 
     /// A renamed AirPods is just another device here: its level comes from the
@@ -133,7 +133,7 @@ final class BluetoothSummaryTests: XCTestCase {
         let summary = BluetoothSummary.presentation(
             availability: .available,
             devices: [device(id: "1", name: "AirPods Pro"),
-                      device(id: "2", name: "MX Master 3", kind: .peripheral)],
+                      device(id: "2", name: "MX Master 3", kind: .peripheral(.mouse))],
             batteryLevels: [:]
         )
         XCTAssertEqual(summary.deviceNames, "AirPods Pro、MX Master 3")
@@ -184,7 +184,7 @@ final class BluetoothSummaryTests: XCTestCase {
         XCTAssertEqual(
             BluetoothSummary.presentation(
                 availability: .available,
-                devices: [device(name: "Keyboard", kind: .peripheral, isConnected: false)],
+                devices: [device(name: "Keyboard", kind: .peripheral(.keyboard), isConnected: false)],
                 batteryLevels: [:]
             ),
             .noConnectedDevices

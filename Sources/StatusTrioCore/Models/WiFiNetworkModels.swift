@@ -296,14 +296,6 @@ enum BluetoothAvailabilityMapper {
     }
 }
 
-enum BluetoothDeviceKind: Equatable, Sendable {
-    case computer
-    case phone
-    case audio
-    case peripheral
-    case unknown
-}
-
 /// The `0x200F` / `0x004C` hexadecimal strings the system report carries for a
 /// device's vendor and product ID. The paired-device reader keeps both IDs on
 /// the device and the AirPods model table is keyed by the product ID, so the
@@ -354,6 +346,23 @@ struct BluetoothDevice: Identifiable, Equatable, Sendable {
         self.productID = productID
     }
 
+    /// A copy of the device with a class another source established.
+    ///
+    /// Only the class changes: every other field comes from the profiler report
+    /// and must keep coming from it, so a correction can never carry a name or
+    /// a connection state with it.
+    func replacingKind(with kind: BluetoothDeviceKind) -> BluetoothDevice {
+        BluetoothDevice(
+            id: id,
+            name: name,
+            kind: kind,
+            isConnected: isConnected,
+            airPodsModel: airPodsModel,
+            vendorID: vendorID,
+            productID: productID
+        )
+    }
+
     /// Whether this is an AirPods, which is what decides the order: AirPods lead
     /// the row and the list whatever they are called.
     ///
@@ -363,7 +372,7 @@ struct BluetoothDevice: Identifiable, Equatable, Sendable {
     /// system's collation differs per language. The product ID identifies the
     /// model after a rename; the name covers a model the table does not carry yet.
     var isAirPods: Bool {
-        guard kind == .audio else { return false }
+        guard kind.isAudio else { return false }
         return airPodsModel != nil || name.lowercased().contains("airpods")
     }
 }

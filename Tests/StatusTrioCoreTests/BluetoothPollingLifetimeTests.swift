@@ -87,7 +87,7 @@ final class BluetoothPollingLifetimeTests: XCTestCase {
         await waitUntil { reader.readCount == 2 }
 
         reader.complete(.success([
-            BluetoothDevice(id: "2", name: "MX Keys", kind: .peripheral, isConnected: true)
+            BluetoothDevice(id: "2", name: "MX Keys", kind: .peripheral(.keyboard), isConnected: true)
         ]))
         await waitUntil { controller.devices.map(\.id) == ["2"] }
 
@@ -177,7 +177,7 @@ final class BluetoothPollingLifetimeTests: XCTestCase {
         XCTAssertTrue(armed, "the controller must arm a read watchdog")
 
         reader.complete(.success([
-            BluetoothDevice(id: "1", name: "MX Keys", kind: .peripheral, isConnected: true)
+            BluetoothDevice(id: "1", name: "MX Keys", kind: .peripheral(.keyboard), isConnected: true)
         ]))
         await waitUntil { controller.devices.map(\.id) == ["1"] }
 

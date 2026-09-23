@@ -78,7 +78,7 @@ final class SystemStatusStoreTests: XCTestCase {
         let keyboard = BluetoothDevice(
             id: "D3:6D:6C:40:A3:2E",
             name: "MX Keys",
-            kind: .peripheral,
+            kind: .peripheral(.keyboard),
             isConnected: true
         )
         bluetoothDevices.requestDisconnectConfirmation(for: keyboard)

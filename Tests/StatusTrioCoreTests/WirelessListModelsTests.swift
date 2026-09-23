@@ -186,8 +186,8 @@ final class WirelessListModelsTests: XCTestCase {
     func testBluetoothGroupingKeepsConnectedDevicesFirst() {
         let devices = [
             BluetoothDevice(id: "1", name: "Zebra", kind: .audio, isConnected: false),
-            BluetoothDevice(id: "2", name: "Alpha", kind: .computer, isConnected: true),
-            BluetoothDevice(id: "3", name: "Bravo", kind: .phone, isConnected: true)
+            BluetoothDevice(id: "2", name: "Alpha", kind: .computer(.unclassified), isConnected: true),
+            BluetoothDevice(id: "3", name: "Bravo", kind: .mobile(.phone), isConnected: true)
         ]
 
         let grouped = BluetoothDevicePresentation.grouped(devices)
@@ -257,7 +257,7 @@ func testBluetoothAvailabilityMappingKeepsAuthorizationAndAdapterStatesDistinct(
     func testBluetoothControllerRefreshesPairedDevicesAcrossStateAndPanelLifecycle() async {
         let reader = BluetoothReaderStub(result: .success([
             BluetoothDevice(id: "connected", name: "Headphones", kind: .audio, isConnected: true),
-            BluetoothDevice(id: "paired", name: "Keyboard", kind: .peripheral, isConnected: false)
+            BluetoothDevice(id: "paired", name: "Keyboard", kind: .peripheral(.keyboard), isConnected: false)
         ]))
         let monitor = BluetoothStateMonitorStub(
             authorization: .allowed,

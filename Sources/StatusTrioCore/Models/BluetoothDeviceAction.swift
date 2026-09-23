@@ -60,8 +60,13 @@ enum BluetoothDeviceActionPolicy {
     /// keyboard or mouse, so that one action is confirmed in place first. A
     /// connect never needs confirmation, and neither does disconnecting
     /// anything else.
+    ///
+    /// A peripheral the class wording did not narrow down counts as an input
+    /// device too: one wasted tap costs far less than disconnecting the
+    /// keyboard the user is typing on because its class field said something
+    /// unrecognized.
     static func requiresConfirmation(for device: BluetoothDevice) -> Bool {
-        device.isConnected && device.kind == .peripheral
+        device.isConnected && device.kind.isPeripheral
     }
 
     /// What the row shows in place of its connection state.

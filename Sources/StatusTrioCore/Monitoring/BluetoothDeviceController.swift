@@ -32,6 +32,7 @@ protocol BluetoothStateMonitoring: AnyObject {
 /// currently uses. Battery levels already come from the same report.
 final class SystemProfilerBluetoothPairedDeviceWorker: @unchecked Sendable, BluetoothPairedDeviceReading {
     typealias OutputProvider = @Sendable () -> Data?
+    typealias HIDUsageProvider = @Sendable () -> [String: [BluetoothHIDUsage]]
     private static let queueLabel = "StatusTrio.SystemProfilerBluetoothPairedDeviceWorker"
 
     /// Guards `queue`, `queueGeneration` and `hasOutstandingRead`. `read` is
@@ -43,13 +44,16 @@ final class SystemProfilerBluetoothPairedDeviceWorker: @unchecked Sendable, Blue
     private var queueGeneration: UInt64 = 0
     private var hasOutstandingRead = false
     private let outputProvider: OutputProvider
+    private let hidUsageProvider: HIDUsageProvider
     private let reportCache: BluetoothProfilerReportCache
 
     init(
         outputProvider: @escaping OutputProvider = SystemProfilerBluetoothPairedDeviceWorker.readSystemProfilerOutput,
+        hidUsageProvider: @escaping HIDUsageProvider = BluetoothHIDUsageReader.read,
         reportCache: BluetoothProfilerReportCache = .shared
     ) {
         self.outputProvider = outputProvider
+        self.hidUsageProvider = hidUsageProvider
         self.reportCache = reportCache
     }
 
@@ -71,6 +75,7 @@ final class SystemProfilerBluetoothPairedDeviceWorker: @unchecked Sendable, Blue
         }
 
         let outputProvider = self.outputProvider
+        let hidUsageProvider = self.hidUsageProvider
         currentQueue.async { [weak self] in
             let result: BluetoothWorkerResult
             if let data = outputProvider(),
@@ -78,7 +83,7 @@ final class SystemProfilerBluetoothPairedDeviceWorker: @unchecked Sendable, Blue
                 // The battery reader reuses these exact bytes instead of spawning a
                 // second profiler moments later.
                 self?.reportCache.store(data)
-                result = .success(devices)
+                result = .success(Self.refined(devices, using: hidUsageProvider))
             } else {
                 result = .failed
             }
@@ -94,6 +99,21 @@ final class SystemProfilerBluetoothPairedDeviceWorker: @unchecked Sendable, Blue
             }
             completion(result)
         }
+    }
+
+    /// Corrects the declared class of any connected HID device, and only then.
+    ///
+    /// The Registry walk is skipped when the report carries no device the
+    /// correction could apply to — a Mac whose paired devices are all headphones
+    /// and phones never pays for it. That is the same rule that keeps `pmset`
+    /// from running when the report already carries every level: a second source
+    /// is consulted only where the first one left a question the app can answer.
+    private static func refined(
+        _ devices: [BluetoothDevice],
+        using hidUsageProvider: HIDUsageProvider
+    ) -> [BluetoothDevice] {
+        guard devices.contains(where: { $0.kind.acceptsHIDRefinement }) else { return devices }
+        return BluetoothDeviceKindRefinement.apply(to: devices, hidUsages: hidUsageProvider())
     }
 
     static func readSystemProfilerOutput() -> Data? {
@@ -189,35 +209,12 @@ enum BluetoothPairedDeviceReader {
         }
     }
 
-    /// The minor type is the precise classification; the major type is the
-    /// fallback. Unknown wording stays generic rather than being guessed as
-    /// audio, which would make the device eligible for a battery level.
+    /// The class the report declares, resolved by the shared table. The
+    /// resolution rules and the wording they cover live in
+    /// `BluetoothDeviceKindResolver`, so the mapping is unit-tested against the
+    /// strings macOS actually reports rather than against this call site.
     private static func kind(properties: [String: Any]) -> BluetoothDeviceKind {
-        switch properties["device_minorType"] as? String {
-        case "Headphones", "Headset", "Speaker":
-            return .audio
-        case "Keyboard", "Mouse", "Trackpad", "Gamepad":
-            return .peripheral
-        case "Computer":
-            return .computer
-        case "Phone":
-            return .phone
-        default:
-            break
-        }
-
-        switch properties["device_majorType"] as? String {
-        case "Audio", "Wearable":
-            return .audio
-        case "Peripheral", "Input":
-            return .peripheral
-        case "Computer":
-            return .computer
-        case "Phone":
-            return .phone
-        default:
-            return .unknown
-        }
+        BluetoothDeviceKindResolver.kind(properties: properties)
     }
 }
 
