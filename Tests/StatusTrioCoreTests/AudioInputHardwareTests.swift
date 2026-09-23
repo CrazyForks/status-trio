@@ -131,6 +131,100 @@ final class AudioInputHardwareTests: XCTestCase {
     XCTAssertFalse(reading.canSetMute)
   }
 
+  func testReadOnlyControlReadbacksRemainVisibleButCannotBeSet() throws {
+    let hardware = CoreAudioInputHardware(
+      client: makeClient(
+        defaultID: 11,
+        deviceIDs: [11],
+        overrides: [
+          11: .eligible(
+            name: "Read-only microphone",
+            uid: "read-only-mic",
+            volume: AudioInputVolumeReadback(scalar: 0.63, canSet: false),
+            mute: AudioInputMuteReadback(state: .unmuted, canSet: false)
+          )
+        ]
+      )
+    )
+
+    let reading = try hardware.read(includeDevices: true)
+
+    XCTAssertEqual(reading.scalar, 0.63)
+    XCTAssertFalse(reading.canSetVolume)
+    XCTAssertEqual(reading.muteState, .unmuted)
+    XCTAssertFalse(reading.canSetMute)
+  }
+
+  func testReadOnlyMainControlValuesRemainVisibleButCannotBeSet() {
+    let volume = CoreAudioInputControlReadback.volume(
+      mainScalar: 0.63,
+      mainCanSet: false,
+      channelScalars: [],
+      channelCanSet: []
+    )
+    let mute = CoreAudioInputControlReadback.mute(
+      mainValue: false,
+      mainCanSet: false,
+      channelValues: [],
+      channelCanSet: []
+    )
+
+    XCTAssertEqual(volume, AudioInputVolumeReadback(scalar: 0.63, canSet: false))
+    XCTAssertEqual(mute, AudioInputMuteReadback(state: .unmuted, canSet: false))
+  }
+
+  func testReadOnlyChannelControlValuesRemainVisibleButCannotBeSet() {
+    let volume = CoreAudioInputControlReadback.volume(
+      mainScalar: nil,
+      mainCanSet: false,
+      channelScalars: [0.2, 0.8],
+      channelCanSet: [true, false]
+    )
+    let mute = CoreAudioInputControlReadback.mute(
+      mainValue: nil,
+      mainCanSet: false,
+      channelValues: [true, false],
+      channelCanSet: [true, false]
+    )
+
+    XCTAssertEqual(volume, AudioInputVolumeReadback(scalar: 0.5, canSet: false))
+    XCTAssertEqual(mute, AudioInputMuteReadback(state: .partial, canSet: false))
+  }
+
+  func testCoreAudioStringReadbackValidatesBeforeConsumingTheValue() {
+    var consumeCount = 0
+
+    let failedStatus = withValidatedCoreAudioPropertyData(
+      status: OSStatus(-1),
+      returnedSize: 8,
+      expectedSize: 8
+    ) {
+      consumeCount += 1
+      return "must not be consumed"
+    }
+    let invalidLength = withValidatedCoreAudioPropertyData(
+      status: noErr,
+      returnedSize: 4,
+      expectedSize: 8
+    ) {
+      consumeCount += 1
+      return "must not be consumed"
+    }
+    let validValue = withValidatedCoreAudioPropertyData(
+      status: noErr,
+      returnedSize: 8,
+      expectedSize: 8
+    ) {
+      consumeCount += 1
+      return "Microphone"
+    }
+
+    XCTAssertNil(failedStatus)
+    XCTAssertNil(invalidLength)
+    XCTAssertEqual(validValue, "Microphone")
+    XCTAssertEqual(consumeCount, 1)
+  }
+
   private func makeClient(
     defaultID: AudioDeviceID? = 11,
     deviceIDs: [AudioDeviceID] = [11, 12, 13, 14, 15, AudioDeviceID(kAudioObjectUnknown)],

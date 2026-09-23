@@ -4,6 +4,72 @@ import CoreFoundation
 import Darwin
 import Foundation
 
+func withValidatedCoreAudioPropertyData<Value>(
+  status: OSStatus,
+  returnedSize: UInt32,
+  expectedSize: UInt32,
+  consume: () -> Value?
+) -> Value? {
+  guard status == noErr, returnedSize == expectedSize else { return nil }
+  return consume()
+}
+
+enum CoreAudioInputControlReadback {
+  static func volume(
+    mainScalar: Double?,
+    mainCanSet: Bool,
+    channelScalars: [Double?],
+    channelCanSet: [Bool]
+  ) -> AudioInputVolumeReadback {
+    if let mainScalar, mainScalar.isFinite, (0...1).contains(mainScalar) {
+      return AudioInputVolumeReadback(scalar: mainScalar, canSet: mainCanSet)
+    }
+
+    guard
+      !channelScalars.isEmpty,
+      channelScalars.count == channelCanSet.count,
+      channelScalars.allSatisfy({
+        guard let scalar = $0 else { return false }
+        return scalar.isFinite && (0...1).contains(scalar)
+      })
+    else { return .unsupported }
+
+    let values = channelScalars.compactMap { $0 }
+    return AudioInputVolumeReadback(
+      scalar: values.reduce(0, +) / Double(values.count),
+      canSet: channelCanSet.allSatisfy { $0 }
+    )
+  }
+
+  static func mute(
+    mainValue: Bool?,
+    mainCanSet: Bool,
+    channelValues: [Bool?],
+    channelCanSet: [Bool]
+  ) -> AudioInputMuteReadback {
+    if let mainValue {
+      return AudioInputMuteReadback(state: mainValue ? .muted : .unmuted, canSet: mainCanSet)
+    }
+
+    guard
+      !channelValues.isEmpty,
+      channelValues.count == channelCanSet.count,
+      channelValues.allSatisfy({ $0 != nil })
+    else { return .unsupported }
+
+    let values = channelValues.compactMap { $0 }
+    let state: AudioInputMuteState
+    if values.allSatisfy({ $0 }) {
+      state = .muted
+    } else if values.allSatisfy({ !$0 }) {
+      state = .unmuted
+    } else {
+      state = .partial
+    }
+    return AudioInputMuteReadback(state: state, canSet: channelCanSet.allSatisfy { $0 })
+  }
+}
+
 struct CoreAudioInputHardware: AudioInputHardware {
   private let client: any AudioInputPropertyClient
 
@@ -200,30 +266,28 @@ private struct CoreAudioInputPropertyClient: AudioInputPropertyClient {
       scope: kAudioObjectPropertyScopeInput,
       element: kAudioObjectPropertyElementMain
     )
-    if let scalar = readScalar(objectID: id, address: mainAddress),
-      isSettable(objectID: id, address: mainAddress)
-    {
-      return AudioInputVolumeReadback(scalar: scalar, canSet: true)
+    let mainScalar = readScalar(objectID: id, address: mainAddress)
+    if mainScalar != nil {
+      return CoreAudioInputControlReadback.volume(
+        mainScalar: mainScalar,
+        mainCanSet: isSettable(objectID: id, address: mainAddress),
+        channelScalars: [],
+        channelCanSet: []
+      )
     }
 
-    let elements = inputChannelElements(id)
-    guard !elements.isEmpty else { return .unsupported }
-    let channelAddresses = elements.map {
+    let channelAddresses = inputChannelElements(id).map {
       propertyAddress(
         selector: kAudioDevicePropertyVolumeScalar,
         scope: kAudioObjectPropertyScopeInput,
         element: $0
       )
     }
-    let values = channelAddresses.compactMap { readScalar(objectID: id, address: $0) }
-    guard values.count == channelAddresses.count,
-      channelAddresses.allSatisfy({ isSettable(objectID: id, address: $0) })
-    else {
-      return .unsupported
-    }
-    return AudioInputVolumeReadback(
-      scalar: values.reduce(0, +) / Double(values.count),
-      canSet: true
+    return CoreAudioInputControlReadback.volume(
+      mainScalar: nil,
+      mainCanSet: false,
+      channelScalars: channelAddresses.map { readScalar(objectID: id, address: $0) },
+      channelCanSet: channelAddresses.map { isSettable(objectID: id, address: $0) }
     )
   }
 
@@ -233,37 +297,29 @@ private struct CoreAudioInputPropertyClient: AudioInputPropertyClient {
       scope: kAudioObjectPropertyScopeInput,
       element: kAudioObjectPropertyElementMain
     )
-    if let muted = readMute(objectID: id, address: mainAddress),
-      isSettable(objectID: id, address: mainAddress)
-    {
-      return AudioInputMuteReadback(state: muted ? .muted : .unmuted, canSet: true)
+    let mainValue = readMute(objectID: id, address: mainAddress)
+    if mainValue != nil {
+      return CoreAudioInputControlReadback.mute(
+        mainValue: mainValue,
+        mainCanSet: isSettable(objectID: id, address: mainAddress),
+        channelValues: [],
+        channelCanSet: []
+      )
     }
 
-    let elements = inputChannelElements(id)
-    guard !elements.isEmpty else { return .unsupported }
-    let channelAddresses = elements.map {
+    let channelAddresses = inputChannelElements(id).map {
       propertyAddress(
         selector: kAudioDevicePropertyMute,
         scope: kAudioObjectPropertyScopeInput,
         element: $0
       )
     }
-    let values = channelAddresses.compactMap { readMute(objectID: id, address: $0) }
-    guard values.count == channelAddresses.count,
-      channelAddresses.allSatisfy({ isSettable(objectID: id, address: $0) })
-    else {
-      return .unsupported
-    }
-
-    let state: AudioInputMuteState
-    if values.allSatisfy({ $0 }) {
-      state = .muted
-    } else if values.allSatisfy({ !$0 }) {
-      state = .unmuted
-    } else {
-      state = .partial
-    }
-    return AudioInputMuteReadback(state: state, canSet: true)
+    return CoreAudioInputControlReadback.mute(
+      mainValue: nil,
+      mainCanSet: false,
+      channelValues: channelAddresses.map { readMute(objectID: id, address: $0) },
+      channelCanSet: channelAddresses.map { isSettable(objectID: id, address: $0) }
+    )
   }
 
   private func readBoolean(
@@ -300,10 +356,14 @@ private struct CoreAudioInputPropertyClient: AudioInputPropertyClient {
       &returnedSize,
       &value
     )
-    guard let value else { return nil }
-    let string = value.takeRetainedValue() as String
-    guard status == noErr, returnedSize == size else { return nil }
-    return string
+    return withValidatedCoreAudioPropertyData(
+      status: status,
+      returnedSize: returnedSize,
+      expectedSize: size
+    ) {
+      guard let value else { return nil }
+      return value.takeRetainedValue() as String
+    }
   }
 
   private func readScalar(
