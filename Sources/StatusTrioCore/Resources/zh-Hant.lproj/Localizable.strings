@@ -328,3 +328,11 @@
 "wifi.summary.band" = "%@ GHz";
 "wifi.summary.signal" = "%d dBm";
 "wifi.summary.bandAndSignal" = "%@ · %@";
+"settings.bluetooth.hideUnpairedDevices" = "隱藏系統設定未列出的裝置";
+"settings.bluetooth.hideUnpairedDevicesDescription" = "隱藏系統未配對、僅被掃描到的裝置；關閉則顯示全部。";
+"settings.bluetooth.notInSystemSettings" = "未在系統設定中";
+"settings.bluetooth.hideDevice" = "隱藏此裝置";
+"settings.bluetooth.showDevice" = "顯示此裝置";
+"settings.bluetooth.permissionRequired" = "需要藍牙權限";
+"settings.bluetooth.permissionNotDeterminedDescription" = "狀態列需要藍牙權限才能顯示你的裝置。點擊下面的按鈕以授予權限。";
+"settings.bluetooth.permissionDeniedDescription" = "藍牙權限已被拒絕。請在系統設定中開啟以使用此功能。";

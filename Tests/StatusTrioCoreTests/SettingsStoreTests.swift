@@ -447,7 +447,13 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(store.bluetoothDeviceOrder, [])
         XCTAssertEqual(
             store.bluetoothDeviceListOptions,
-            BluetoothDeviceListOptions(showsList: true, maxVisibleDevices: 5, order: [])
+            BluetoothDeviceListOptions(
+                showsList: true,
+                maxVisibleDevices: 5,
+                order: [],
+                hidesGhostDevices: true,
+                hiddenDeviceAddresses: []
+            )
         )
     }
 
@@ -495,6 +501,62 @@ final class SettingsStoreTests: XCTestCase {
             SettingsStore(defaults: suite.defaults).bluetoothDeviceOrder,
             ["AABBCCDDEEFF", "AC9085C29C1F", "D36D6C40A32E"]
         )
+    }
+
+    func testManuallyHiddenBluetoothDevicesPersistAndNormalize() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+
+        let store = SettingsStore(defaults: suite.defaults)
+        store.setBluetoothDeviceHidden("AC:90:85:C2:9C:1F", hidden: true)
+        XCTAssertEqual(store.hiddenBluetoothDeviceAddresses, ["AC9085C29C1F"])
+
+        // A second store reading the same suite sees the hide and feeds it into
+        // the derived panel options.
+        let reopened = SettingsStore(defaults: suite.defaults)
+        XCTAssertEqual(reopened.hiddenBluetoothDeviceAddresses, ["AC9085C29C1F"])
+        XCTAssertTrue(
+            reopened.bluetoothDeviceListOptions.hiddenDeviceAddresses.contains("AC9085C29C1F")
+        )
+
+        store.setBluetoothDeviceHidden("AC:90:85:C2:9C:1F", hidden: false)
+        XCTAssertFalse(store.hiddenBluetoothDeviceAddresses.contains("AC9085C29C1F"))
+        XCTAssertEqual(SettingsStore(defaults: suite.defaults).hiddenBluetoothDeviceAddresses, [])
+    }
+
+    func testHidesGhostBluetoothDevicesTogglesAndPersists() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+
+        let store = SettingsStore(defaults: suite.defaults)
+        XCTAssertTrue(store.hidesGhostBluetoothDevices)
+
+        store.hidesGhostBluetoothDevices = false
+        XCTAssertFalse(store.hidesGhostBluetoothDevices)
+        XCTAssertFalse(
+            SettingsStore(defaults: suite.defaults).bluetoothDeviceListOptions.hidesGhostDevices
+        )
+    }
+
+    func testRevealedGhostBluetoothDevicesPersistAndNormalize() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+
+        let store = SettingsStore(defaults: suite.defaults)
+        store.setBluetoothGhostRevealed("AC:90:85:C2:9C:1F", revealed: true)
+        XCTAssertEqual(store.revealedGhostBluetoothDeviceAddresses, ["AC9085C29C1F"])
+
+        // A second store reading the same suite sees the reveal and feeds it into
+        // the derived panel options, overriding the default ghost filter.
+        let reopened = SettingsStore(defaults: suite.defaults)
+        XCTAssertEqual(reopened.revealedGhostBluetoothDeviceAddresses, ["AC9085C29C1F"])
+        XCTAssertTrue(
+            reopened.bluetoothDeviceListOptions.revealedGhostDeviceAddresses.contains("AC9085C29C1F")
+        )
+
+        store.setBluetoothGhostRevealed("AC:90:85:C2:9C:1F", revealed: false)
+        XCTAssertFalse(store.revealedGhostBluetoothDeviceAddresses.contains("AC9085C29C1F"))
+        XCTAssertEqual(SettingsStore(defaults: suite.defaults).revealedGhostBluetoothDeviceAddresses, [])
     }
 
     func testMovingBluetoothDevicesIgnoresOutOfRangeOffsets() {

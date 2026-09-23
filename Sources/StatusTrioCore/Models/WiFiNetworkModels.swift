@@ -327,6 +327,13 @@ struct BluetoothDevice: Identifiable, Equatable, Sendable {
     /// what makes the name the fallback rather than the first choice.
     let vendorID: Int?
     let productID: Int?
+    /// Whether the profiler reported this device with no device class at all —
+    /// neither `device_minorType` nor `device_minorClassOfDevice_string`. Such a
+    /// device is a scanned-but-never-paired entry the system settings does not
+    /// list: a "ghost". The panel drops it unless the user turns the matching
+    /// option off. A device the stack has classified always carries one of those
+    /// two keys, so their joint absence is the signal.
+    let isUnpairedGhost: Bool
 
     init(
         id: String,
@@ -335,7 +342,8 @@ struct BluetoothDevice: Identifiable, Equatable, Sendable {
         isConnected: Bool,
         airPodsModel: AirPodsModel? = nil,
         vendorID: Int? = nil,
-        productID: Int? = nil
+        productID: Int? = nil,
+        isUnpairedGhost: Bool = false
     ) {
         self.id = id
         self.name = name
@@ -344,6 +352,7 @@ struct BluetoothDevice: Identifiable, Equatable, Sendable {
         self.airPodsModel = airPodsModel
         self.vendorID = vendorID
         self.productID = productID
+        self.isUnpairedGhost = isUnpairedGhost
     }
 
     /// A copy of the device with a class another source established.
@@ -359,7 +368,8 @@ struct BluetoothDevice: Identifiable, Equatable, Sendable {
             isConnected: isConnected,
             airPodsModel: airPodsModel,
             vendorID: vendorID,
-            productID: productID
+            productID: productID,
+            isUnpairedGhost: isUnpairedGhost
         )
     }
 

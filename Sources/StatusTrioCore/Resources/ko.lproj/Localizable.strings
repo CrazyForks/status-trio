@@ -328,3 +328,11 @@
 "wifi.summary.band" = "%@ GHz";
 "wifi.summary.signal" = "%d dBm";
 "wifi.summary.bandAndSignal" = "%@ · %@";
+"settings.bluetooth.hideUnpairedDevices" = "시스템 설정에 없는 기기 숨기기";
+"settings.bluetooth.hideUnpairedDevicesDescription" = "시스템에 나열되지 않은, 스캔만 된 페어링되지 않은 기기를 숨깁니다. 모두 표시하려면 끄세요.";
+"settings.bluetooth.notInSystemSettings" = "시스템 설정에 없음";
+"settings.bluetooth.hideDevice" = "기기 숨기기";
+"settings.bluetooth.showDevice" = "기기 표시";
+"settings.bluetooth.permissionRequired" = "블루투스 권한 필요";
+"settings.bluetooth.permissionNotDeterminedDescription" = "Status Trio가 기기를 표시하려면 블루투스 접근 권한이 필요합니다. 아래 버튼을 클릭하여 허용하세요.";
+"settings.bluetooth.permissionDeniedDescription" = "블루투스 접근이 거부되었습니다. 이 기능을 사용하려면 시스템 설정에서 켜세요.";

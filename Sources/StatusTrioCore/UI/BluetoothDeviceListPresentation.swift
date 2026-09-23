@@ -9,9 +9,14 @@ struct BluetoothDeviceListModel: Equatable {
         devices: [BluetoothDevice],
         order: [String],
         limit: Int,
-        isExpanded: Bool
+        isExpanded: Bool,
+        options: BluetoothDeviceListOptions
     ) -> BluetoothDeviceListModel {
-        let orderedDevices = BluetoothDeviceListPresentation.orderedDevices(devices, using: order)
+        let filteredDevices = BluetoothDeviceListPresentation.filteredDevices(
+            devices,
+            options: options
+        )
+        let orderedDevices = BluetoothDeviceListPresentation.orderedDevices(filteredDevices, using: order)
         return BluetoothDeviceListModel(
             orderedDevices: orderedDevices,
             visibleDevices: BluetoothDeviceListPresentation.visibleDevices(
@@ -38,6 +43,41 @@ enum BluetoothDeviceListPresentation {
     ) -> [BluetoothDevice] {
         let groups = BluetoothDevicePresentation.grouped(devices)
         return ranked(groups.connected, using: order) + ranked(groups.disconnected, using: order)
+    }
+
+    /// Drops devices the user cannot act on or has chosen to hide: unpaired
+    /// "ghost" devices the profiler reports but System Settings does not (when
+    /// `options.hidesGhostDevices` is on, unless the device is in
+    /// `options.revealedGhostDeviceAddresses`), and any device whose normalized
+    /// address the user has hidden. The status panel renders the result; the
+    /// Settings order list renders the raw devices so the user can still reveal
+    /// or rearrange a hidden one.
+    static func filteredDevices(
+        _ devices: [BluetoothDevice],
+        options: BluetoothDeviceListOptions
+    ) -> [BluetoothDevice] {
+        devices.filter { !isDeviceHidden($0, options: options) }
+    }
+
+    /// Whether the panel drops `device` under `options`. Ghost devices are hidden
+    /// when `hidesGhostDevices` is on and the device is not in the reveal set;
+    /// any device whose normalized address is in `hiddenDeviceAddresses` is
+    /// hidden regardless of type. Centralized so the Settings row and the panel
+    /// agree on what "hidden" means.
+    static func isDeviceHidden(
+        _ device: BluetoothDevice,
+        options: BluetoothDeviceListOptions
+    ) -> Bool {
+        let key = BluetoothBatteryReader.normalizedAddress(device.id)
+        if !key.isEmpty, options.hiddenDeviceAddresses.contains(key) {
+            return true
+        }
+        if options.hidesGhostDevices,
+           device.isUnpairedGhost,
+           !options.revealedGhostDeviceAddresses.contains(key) {
+            return true
+        }
+        return false
     }
 
     static func visibleDevices(
@@ -92,7 +132,7 @@ enum BluetoothPanelListVisibility {
         options: BluetoothDeviceListOptions
     ) -> Bool {
         guard options.showsList, availability == .available else { return false }
-        return !devices.isEmpty
+        return !BluetoothDeviceListPresentation.filteredDevices(devices, options: options).isEmpty
     }
 
     /// The list carries the connected names, so the subtitle that would repeat
@@ -106,6 +146,7 @@ enum BluetoothPanelListVisibility {
         guard showsList(availability: availability, devices: devices, options: options) else {
             return false
         }
-        return !BluetoothDevicePresentation.grouped(devices).connected.isEmpty
+        let visible = BluetoothDeviceListPresentation.filteredDevices(devices, options: options)
+        return !BluetoothDevicePresentation.grouped(visible).connected.isEmpty
     }
 }

@@ -131,7 +131,7 @@ final class StatusMenuBuilderTests: XCTestCase {
             ]
         )
         XCTAssertEqual(
-            StatusBarController.bluetoothPermissionSettingsURLs.map(\.absoluteString),
+            SystemStatusStore.bluetoothPermissionSettingsURLs.map(\.absoluteString),
             [
                 "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_Bluetooth",
                 "x-apple.systempreferences:com.apple.preference.security?Privacy_Bluetooth"

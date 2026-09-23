@@ -328,3 +328,11 @@
 "wifi.summary.band" = "%@ GHz";
 "wifi.summary.signal" = "%d dBm";
 "wifi.summary.bandAndSignal" = "%@ · %@";
+"settings.bluetooth.hideUnpairedDevices" = "إخفاء الأجهزة غير الموجودة في إعدادات النظام";
+"settings.bluetooth.hideUnpairedDevicesDescription" = "يخفي الأجهزة التي تم مسحها فقط ولم تتم مزامنتها والتي لا يسردها النظام. أوقف التشغيل لإظهار الكل.";
+"settings.bluetooth.notInSystemSettings" = "غير موجود في إعدادات النظام";
+"settings.bluetooth.hideDevice" = "إخفاء الجهاز";
+"settings.bluetooth.showDevice" = "إظهار الجهاز";
+"settings.bluetooth.permissionRequired" = "يلزم إذن Bluetooth";
+"settings.bluetooth.permissionNotDeterminedDescription" = "يحتاج Status Trio إلى الوصول إلى Bluetooth لعرض أجهزتك. انقر الزر أدناه لمنح الإذن.";
+"settings.bluetooth.permissionDeniedDescription" = "تم رفض الوصول إلى Bluetooth. قم بتفعيله في إعدادات النظام لاستخدام هذه الميزة.";

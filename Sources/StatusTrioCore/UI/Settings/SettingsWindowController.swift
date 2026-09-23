@@ -10,7 +10,12 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     private let activationPolicy: AppActivationPolicy
     private let showIconGuide: () -> Void
     private var localizationCancellable: AnyCancellable?
+    private var authorizationCancellable: AnyCancellable?
     private var ownsActivationPolicy = false
+    /// Last Bluetooth grant we saw, so we only re-surface Settings after a real
+    /// permission decision (`.notDetermined` → granted/denied), never on launch
+    /// or on a no-op refresh of an already-granted app.
+    private var lastBluetoothAuthorization: BluetoothAuthorizationStatus = .notDetermined
 
     init(
         store: SettingsStore,
@@ -30,6 +35,20 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             .removeDuplicates()
             .sink { [weak self] language in
                 self?.applyLocalization(language: language)
+            }
+
+        // A system Bluetooth permission prompt steals focus and can dismiss or
+        // background this window. Once the user decides, bring Settings back so
+        // they land where they were instead of hunting for the window.
+        authorizationCancellable = statusStore.bluetoothDevices.$authorizationStatus
+            .dropFirst()
+            .sink { [weak self] status in
+                guard let self else { return }
+                let wasUndetermined = self.lastBluetoothAuthorization == .notDetermined
+                self.lastBluetoothAuthorization = status
+                if wasUndetermined, status != .notDetermined {
+                    self.resurface()
+                }
             }
     }
 
@@ -53,6 +72,28 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         statusStore.setSettingsVisible(false)
         leaveActivationPolicyIfNeeded()
         window = nil
+    }
+
+    /// Brings Settings back to the front after a system dialog (such as the
+    /// Bluetooth permission prompt) hid or dismissed it. Re-fronts the existing
+    /// window when it survived, or rebuilds it when the dialog closed it — in
+    /// the latter case the temporary regular-mode claim is re-entered so the
+    /// rebuilt window is not hidden behind an accessory app.
+    func resurface() {
+        if let window {
+            window.makeKeyAndOrderFront(nil)
+            window.orderFrontRegardless()
+            NSApp.activate(ignoringOtherApps: true)
+        } else {
+            let window = makeWindow()
+            self.window = window
+            statusStore.setSettingsVisible(true)
+            applyLocalization()
+            enterActivationPolicyIfNeeded()
+            window.makeKeyAndOrderFront(nil)
+            window.orderFrontRegardless()
+            NSApp.activate(ignoringOtherApps: true)
+        }
     }
 
     private func makeWindow() -> NSWindow {

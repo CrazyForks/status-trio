@@ -80,7 +80,8 @@ final class BluetoothDeviceListPresentationTests: XCTestCase {
             devices: devices,
             order: [],
             limit: 2,
-            isExpanded: false
+            isExpanded: false,
+            options: .standard
         )
 
         XCTAssertEqual(model.visibleDevices.map(\.name), ["Live", "Idle"])
@@ -175,11 +176,104 @@ final class BluetoothDeviceListPresentationTests: XCTestCase {
         )
     }
 
+    func testFilteredDevicesDropsGhostsWhenTheOptionIsOn() {
+        let ghost = makeDevice(address: "AA:00:00:00:00:01", name: "Ghost", isConnected: false, isUnpairedGhost: true)
+        let paired = makeDevice(address: "AA:00:00:00:00:02", name: "Paired", isConnected: true)
+
+        let hiding = BluetoothDeviceListOptions(showsList: true, maxVisibleDevices: 5, order: [], hidesGhostDevices: true)
+        XCTAssertEqual(
+            BluetoothDeviceListPresentation.filteredDevices([ghost, paired], options: hiding).map(\.id),
+            [paired.id]
+        )
+
+        let showing = BluetoothDeviceListOptions(showsList: true, maxVisibleDevices: 5, order: [], hidesGhostDevices: false)
+        XCTAssertEqual(
+            BluetoothDeviceListPresentation.filteredDevices([ghost, paired], options: showing).map(\.id),
+            [ghost.id, paired.id]
+        )
+    }
+
+    func testFilteredDevicesDropsManuallyHiddenDevicesByNormalizedAddress() {
+        let first = makeDevice(address: "AA:00:00:00:00:01", name: "First", isConnected: false)
+        let second = makeDevice(address: "AA:00:00:00:00:02", name: "Second", isConnected: true)
+
+        let options = BluetoothDeviceListOptions(
+            showsList: true,
+            maxVisibleDevices: 5,
+            order: [],
+            hiddenDeviceAddresses: ["AA0000000001"]
+        )
+        XCTAssertEqual(
+            BluetoothDeviceListPresentation.filteredDevices([first, second], options: options).map(\.id),
+            [second.id]
+        )
+    }
+
+    func testFilteredDevicesHidesGhostAndManualHidesIndependently() {
+        let ghost = makeDevice(address: "AA:00:00:00:00:01", name: "Ghost", isConnected: false, isUnpairedGhost: true)
+        let hidden = makeDevice(address: "AA:00:00:00:00:02", name: "Hidden", isConnected: true)
+        let visible = makeDevice(address: "AA:00:00:00:00:03", name: "Visible", isConnected: true)
+
+        let options = BluetoothDeviceListOptions(
+            showsList: true,
+            maxVisibleDevices: 5,
+            order: [],
+            hidesGhostDevices: true,
+            hiddenDeviceAddresses: ["AA0000000002"]
+        )
+        XCTAssertEqual(
+            BluetoothDeviceListPresentation.filteredDevices([ghost, hidden, visible], options: options).map(\.id),
+            [visible.id]
+        )
+    }
+
+    func testFilteredDevicesRevealsIndividualGhost() {
+        let ghostA = makeDevice(address: "AA:00:00:00:00:01", name: "Ghost A", isConnected: false, isUnpairedGhost: true)
+        let ghostB = makeDevice(address: "AA:00:00:00:00:02", name: "Ghost B", isConnected: false, isUnpairedGhost: true)
+        let paired = makeDevice(address: "AA:00:00:00:00:03", name: "Paired", isConnected: true)
+
+        // The global filter hides ghosts, but a revealed ghost overrides it for
+        // that one device while the rest stay hidden.
+        let options = BluetoothDeviceListOptions(
+            showsList: true,
+            maxVisibleDevices: 5,
+            order: [],
+            hidesGhostDevices: true,
+            revealedGhostDeviceAddresses: ["AA0000000001"]
+        )
+        XCTAssertEqual(
+            BluetoothDeviceListPresentation.filteredDevices([ghostA, ghostB, paired], options: options)
+                .map(\.id),
+            [ghostA.id, paired.id]
+        )
+
+        // With the filter off, the reveal set is irrelevant: everything shows.
+        let off = BluetoothDeviceListOptions(
+            showsList: true,
+            maxVisibleDevices: 5,
+            order: [],
+            hidesGhostDevices: false,
+            revealedGhostDeviceAddresses: ["AA0000000001"]
+        )
+        XCTAssertEqual(
+            BluetoothDeviceListPresentation.filteredDevices([ghostA, ghostB, paired], options: off)
+                .map(\.id),
+            [ghostA.id, ghostB.id, paired.id]
+        )
+    }
+
     private func makeDevice(
         address: String,
         name: String,
-        isConnected: Bool
+        isConnected: Bool,
+        isUnpairedGhost: Bool = false
     ) -> BluetoothDevice {
-        BluetoothDevice(id: address, name: name, kind: .audio, isConnected: isConnected)
+        BluetoothDevice(
+            id: address,
+            name: name,
+            kind: .audio,
+            isConnected: isConnected,
+            isUnpairedGhost: isUnpairedGhost
+        )
     }
 }

@@ -328,3 +328,11 @@
 "wifi.summary.band" = "%@ GHz";
 "wifi.summary.signal" = "%d dBm";
 "wifi.summary.bandAndSignal" = "%@ · %@";
+"settings.bluetooth.hideUnpairedDevices" = "Скрывать устройства, отсутствующие в Системных настройках";
+"settings.bluetooth.hideUnpairedDevicesDescription" = "Скрывает отсканированные, но не сопряжённые устройства, которых нет в системе. Выключите, чтобы показать все.";
+"settings.bluetooth.notInSystemSettings" = "Отсутствует в Системных настройках";
+"settings.bluetooth.hideDevice" = "Скрыть устройство";
+"settings.bluetooth.showDevice" = "Показать устройство";
+"settings.bluetooth.permissionRequired" = "Требуется разрешение Bluetooth";
+"settings.bluetooth.permissionNotDeterminedDescription" = "Status Trio нужен доступ к Bluetooth, чтобы показывать ваши устройства. Нажмите кнопку ниже, чтобы разрешить.";
+"settings.bluetooth.permissionDeniedDescription" = "Доступ к Bluetooth запрещён. Включите его в системных настройках, чтобы использовать эту функцию.";
