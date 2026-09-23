@@ -139,6 +139,7 @@ final class BluetoothBatteryLevelHandoffTests: XCTestCase {
 
     private func makeLocalization() -> Localization {
         let suite = "StatusTrioCoreTests.BluetoothHandoff.\(UUID().uuidString)"
+        addTeardownBlock { TestUserDefaults.removeSuite(named: suite) }
         let defaults = UserDefaults(suiteName: suite) ?? .standard
         return Localization(defaults: defaults, preferredLanguages: ["en"])
     }
