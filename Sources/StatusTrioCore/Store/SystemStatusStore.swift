@@ -37,6 +37,10 @@ final class SystemStatusStore: ObservableObject {
 
     @Published private(set) var snapshot: StatusSnapshot
     @Published private(set) var popupSnapshot: StatusSnapshot
+    /// The VPN row's value. Deliberately not part of `StatusSnapshot`: nothing
+    /// in the menu bar or the Dock icon draws it, and folding it in would put a
+    /// third signal on the snapshot's equality path for no rendering gain.
+    @Published private(set) var vpnStatus: VPNStatus
     /// True while the popover is waiting for a Wi-Fi name it has not read yet.
     @Published private(set) var isResolvingWiFiName = false
     @Published private(set) var liveVolume: VolumeStatus
@@ -47,6 +51,7 @@ final class SystemStatusStore: ObservableObject {
     private let batteryMonitor: any BatteryMonitoring
     private let wifiMonitor: any WiFiMonitoring
     private let connectionMonitor: (any NetworkConnectionMonitoring)?
+    private let vpnMonitor: (any VPNMonitoring)?
     private let volumeMonitor: any VolumeMonitoring
     private let volumeController: (any VolumeControlling)?
     private let volumeFeedback: (any VolumeFeedbackPlaying)?
@@ -91,6 +96,7 @@ final class SystemStatusStore: ObservableObject {
         batteryMonitor: any BatteryMonitoring,
         wifiMonitor: any WiFiMonitoring,
         connectionMonitor: (any NetworkConnectionMonitoring)? = nil,
+        vpnMonitor: (any VPNMonitoring)? = nil,
         volumeMonitor: any VolumeMonitoring,
         volumeFeedback: (any VolumeFeedbackPlaying)? = VolumeFeedbackPlayer(),
         refreshInterval: Duration = .seconds(15),
@@ -113,6 +119,7 @@ final class SystemStatusStore: ObservableObject {
         self.batteryMonitor = batteryMonitor
         self.wifiMonitor = wifiMonitor
         self.connectionMonitor = connectionMonitor
+        self.vpnMonitor = vpnMonitor
         self.volumeMonitor = volumeMonitor
         self.volumeController = volumeMonitor as? any VolumeControlling
         self.volumeFeedback = volumeFeedback
@@ -126,6 +133,7 @@ final class SystemStatusStore: ObservableObject {
         self.bluetoothDevices = bluetoothDevices
         self.snapshot = initialSnapshot
         self.popupSnapshot = initialSnapshot
+        self.vpnStatus = .placeholder
         self.liveVolume = initialSnapshot.volume
     }
 
@@ -198,11 +206,13 @@ final class SystemStatusStore: ObservableObject {
         batteryMonitor.start()
         wifiMonitor.start()
         connectionMonitor?.start()
+        vpnMonitor?.start()
         volumeMonitor.start()
 
         let batteryUpdates = batteryMonitor.updates
         let wifiUpdates = wifiMonitor.updates
         let connectionUpdates = connectionMonitor?.updates
+        let vpnUpdates = vpnMonitor?.updates
         let volumeUpdates = volumeMonitor.updates
         var tasks = [
             Task { [weak self] in
@@ -229,6 +239,14 @@ final class SystemStatusStore: ObservableObject {
                 for await value in connectionUpdates {
                     guard let self else { return }
                     self.applyConnection(value)
+                }
+            })
+        }
+        if let vpnUpdates {
+            tasks.append(Task { [weak self] in
+                for await value in vpnUpdates {
+                    guard let self else { return }
+                    self.applyVPN(value)
                 }
             })
         }
@@ -269,6 +287,7 @@ final class SystemStatusStore: ObservableObject {
         batteryMonitor.stop()
         wifiMonitor.stop()
         connectionMonitor?.stop()
+        vpnMonitor?.stop()
         volumeMonitor.stop()
         monitorTasks.forEach { $0.cancel() }
         monitorTasks.removeAll()
@@ -463,6 +482,7 @@ final class SystemStatusStore: ObservableObject {
         guard !hasStopped else { return }
         batteryMonitor.refresh()
         wifiMonitor.refresh()
+        vpnMonitor?.refresh()
         volumeMonitor.refresh()
     }
 
@@ -491,6 +511,7 @@ final class SystemStatusStore: ObservableObject {
         let showsStatusUI = isPopoverVisible || isSettingsVisible
         guard showsStatusUI || fallbackTickCount % Self.hiddenFallbackTickStride == 0 else { return }
         wifiMonitor.refresh()
+        vpnMonitor?.refresh()
         volumeMonitor.refresh()
     }
 
@@ -498,6 +519,7 @@ final class SystemStatusStore: ObservableObject {
         batteryMonitor.recover()
         wifiMonitor.recover()
         connectionMonitor?.recover()
+        vpnMonitor?.recover()
         volumeMonitor.recover()
     }
 
@@ -518,6 +540,14 @@ final class SystemStatusStore: ObservableObject {
 
     private func applyConnection(_ value: NetworkConnection) {
         publish(snapshot.replacingConnection(value))
+    }
+
+    private func applyVPN(_ value: VPNStatus) {
+        // The monitor already drops repeats, and this guard keeps an unchanged
+        // value from sending `objectWillChange` to every VPN row observer.
+        if value != vpnStatus {
+            vpnStatus = value
+        }
     }
 
     private func applyVolume(_ value: VolumeStatus) {

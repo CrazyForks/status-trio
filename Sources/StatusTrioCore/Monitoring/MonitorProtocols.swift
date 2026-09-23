@@ -35,6 +35,15 @@ protocol NetworkConnectionMonitoring: AnyObject {
 }
 
 @MainActor
+protocol VPNMonitoring: AnyObject {
+    var updates: AsyncStream<VPNStatus> { get }
+    func start()
+    func stop()
+    func refresh()
+    func recover()
+}
+
+@MainActor
 protocol VolumeMonitoring: AnyObject {
     var updates: AsyncStream<VolumeStatus> { get }
     func start()

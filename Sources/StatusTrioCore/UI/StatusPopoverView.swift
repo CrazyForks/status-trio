@@ -176,6 +176,44 @@ enum StatusPresentation {
         volumeTitle(MenuBarVolumeStatus(volume: volume), localization: localization)
     }
 
+    /// The row's leading text: the VPN service name when the system has one
+    /// connected, `VPN` when only an interface was found, and the proxy label
+    /// when a proxy is the only thing up.
+    static func vpnTitle(
+        _ vpn: VPNStatus,
+        localization: Localization
+    ) -> String {
+        if let serviceName = vpn.serviceName, !serviceName.isEmpty {
+            return serviceName
+        }
+        if vpn.isTunnelConnected {
+            return localization.string(.vpnTitle)
+        }
+        if vpn.proxy != nil {
+            return localization.string(.vpnSubtitleSystemProxy)
+        }
+        return localization.string(.vpnTitle)
+    }
+
+    /// The row's detail: the tunnel verdict, the proxy endpoint, or both when a
+    /// tunnel and a proxy are up together.
+    static func vpnSubtitle(
+        _ vpn: VPNStatus,
+        localization: Localization
+    ) -> String {
+        if vpn.isTunnelConnected {
+            guard let endpoint = vpn.proxy?.endpoint else {
+                return localization.string(.vpnValueConnected)
+            }
+            return localization.format(.vpnSubtitleConnectedWithProxy, endpoint)
+        }
+        guard let proxy = vpn.proxy else {
+            return localization.string(.vpnValueDisconnected)
+        }
+        // A PAC-driven proxy has no endpoint to print, so it names its kind.
+        return proxy.endpoint ?? localization.string(.vpnSubtitleProxyAutomatic)
+    }
+
     static func volumeTitle(
         _ volume: MenuBarVolumeStatus,
         localization: Localization
@@ -342,6 +380,8 @@ struct StatusPopoverView: View {
                 onOpenWiFiSettings: openWiFiSettings,
                 onOpenLocationSettings: openLocationSettings
             )
+        case .vpn:
+            VPNStatusView(vpn: store.vpnStatus)
         case .bluetooth:
             BluetoothStatusView(
                 controller: store.bluetoothDevices,

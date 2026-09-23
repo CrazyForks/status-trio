@@ -146,6 +146,12 @@
 "wifi.subtitle.temporary" = "Временное подключение Wi‑Fi";
 "wifi.subtitle.shared" = "Интернет раздаётся";
 "wifi.subtitle.unavailable" = "Не удаётся прочитать состояние сети";
+"vpn.title" = "VPN";
+"vpn.value.connected" = "Подключено";
+"vpn.value.disconnected" = "Не подключено";
+"vpn.subtitle.systemProxy" = "Системный прокси";
+"vpn.subtitle.connectedWithProxy" = "Подключено · прокси %@";
+"vpn.subtitle.proxyAutomatic" = "Автонастройка";
 "wifi.action.requestNameAccess" = "Разрешить геолокацию для показа имени Wi‑Fi";
 "wifi.action.openLocationSettings" = "Разрешить геолокацию в Настройках";
 "wifi.action.openSettings" = "Открыть настройки Wi‑Fi";

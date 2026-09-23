@@ -645,10 +645,13 @@ final class SettingsStoreTests: XCTestCase {
         )
     }
 
-    func testPopupSectionOrderDefaultsToBatteryNetworkBluetoothVolume() {
+    func testPopupSectionOrderDefaultsToBatteryNetworkVPNBluetoothVolume() {
         let store = SettingsStore(defaults: makeSuite().defaults)
 
-        XCTAssertEqual(store.popupSectionOrder, [.battery, .network, .bluetooth, .volume])
+        XCTAssertEqual(
+            store.popupSectionOrder,
+            [.battery, .network, .vpn, .bluetooth, .volume]
+        )
     }
 
     func testPopupVolumeScrollDefaultsToEverywhereSystemDirectionAndNaturalScrollingOff() {
@@ -723,11 +726,11 @@ final class SettingsStoreTests: XCTestCase {
 
         XCTAssertEqual(
             store.enabledPopupSections,
-            Set([.battery, .network, .volume])
+            Set([.battery, .network, .vpn, .volume])
         )
         XCTAssertEqual(
             store.visiblePopupSections,
-            [.battery, .network, .volume]
+            [.battery, .network, .vpn, .volume]
         )
     }
 
@@ -741,15 +744,18 @@ final class SettingsStoreTests: XCTestCase {
 
         XCTAssertEqual(
             first.popupSectionOrder,
-            [.battery, .network, .bluetooth, .volume]
+            [.battery, .network, .vpn, .bluetooth, .volume]
         )
         XCTAssertEqual(
             first.visiblePopupSections,
-            [.battery, .bluetooth, .volume]
+            [.battery, .vpn, .bluetooth, .volume]
         )
 
         let second = SettingsStore(defaults: suite.defaults)
-        XCTAssertEqual(second.enabledPopupSections, Set([.battery, .bluetooth, .volume]))
+        XCTAssertEqual(
+            second.enabledPopupSections,
+            Set([.battery, .vpn, .bluetooth, .volume])
+        )
     }
 
     func testMovingPopupSectionsPersistsOrder() {
@@ -758,14 +764,17 @@ final class SettingsStoreTests: XCTestCase {
 
         let store = SettingsStore(defaults: suite.defaults)
         store.movePopupSections(
-            fromOffsets: IndexSet(integer: 3),
+            fromOffsets: IndexSet(integer: 4),
             toOffset: 0
         )
 
-        XCTAssertEqual(store.popupSectionOrder, [.volume, .battery, .network, .bluetooth])
+        XCTAssertEqual(
+            store.popupSectionOrder,
+            [.volume, .battery, .network, .vpn, .bluetooth]
+        )
         XCTAssertEqual(
             SettingsStore(defaults: suite.defaults).popupSectionOrder,
-            [.volume, .battery, .network, .bluetooth]
+            [.volume, .battery, .network, .vpn, .bluetooth]
         )
     }
 
@@ -780,7 +789,10 @@ final class SettingsStoreTests: XCTestCase {
 
         let store = SettingsStore(defaults: suite.defaults)
 
-        XCTAssertEqual(store.popupSectionOrder, [.volume, .network, .battery, .bluetooth])
+        XCTAssertEqual(
+            store.popupSectionOrder,
+            [.volume, .network, .battery, .vpn, .bluetooth]
+        )
     }
 
     func testStoredPopupSectionVisibilityIgnoresUnknownValues() {
@@ -791,6 +803,13 @@ final class SettingsStoreTests: XCTestCase {
             ["network", "unknown", "network"],
             forKey: SettingsStore.enabledPopupSectionsDefaultsKey
         )
+        // The one-shot VPN migration is covered by `VPNRowSettingsTests`; this
+        // test is about unknown raw values, so the marker is set to keep the
+        // stored list the only input.
+        suite.defaults.set(
+            true,
+            forKey: SettingsStore.vpnPopupSectionIntroducedDefaultsKey
+        )
 
         let store = SettingsStore(defaults: suite.defaults)
 
@@ -798,7 +817,14 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(store.visiblePopupSections, [.network])
     }
 
-    func testPopupSectionMetadataIncludesBluetooth() {
+    func testPopupSectionMetadataIncludesVPNAndBluetooth() {
+        XCTAssertEqual(PopupSection.vpn.titleKey, .vpnTitle)
+        XCTAssertNotNil(
+            NSImage(
+                systemSymbolName: PopupSection.vpn.systemImage,
+                accessibilityDescription: nil
+            )
+        )
         XCTAssertEqual(PopupSection.bluetooth.titleKey, .bluetoothTitle)
         XCTAssertNotNil(BluetoothIcon.templateImage)
         XCTAssertNotNil(
