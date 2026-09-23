@@ -596,3 +596,28 @@ Error: published appcast does not contain build 14.
 - `bash -n scripts/release.sh` 通过。本次改动只有 shell 与 Markdown，未触碰 Swift 代码，按规则
   无需新的工具链预检。**同一 tag 不允许复跑**（`release.sh` 在 Release 已存在时拒绝），所以新判据
   只能由下一次正式发布行使。
+
+## 35842269867：1.3.2 正式发布，新回读判据首次即命中（兑现上一条的留话）
+
+上一条结尾那句「新判据只能由下一次正式发布行使」在 1.3.2 兑现了。run
+[`35842269867`](https://github.com/lingyired/status-trio/actions/runs/35842269867)
+（`version=1.3.2`、`build=15`、`publish=true`、`ref=main`）5m6s 全绿：
+
+- `Validate appcast notes`：12/12 语言、`12 titles and 12 descriptions, en first`；
+- `Run tests`：XCTest **760 个（6 skipped）、0 failures**，swift-testing **247 个 / 35 suites**，0 failures；
+- `Build, sign, notarize, and publish`：`LC_BUILD_VERSION check passed`（两架构 `minos 15.0, sdk 26.0`），
+  `codesign` 报 `valid on disk` / `satisfies its Designated Requirement`；
+- **回读判据首次即命中 git 层**：`Creating GitHub Release v1.3.2...`（09:24:41）到
+  `Published …StatusTrio-1.3.2.dmg`（09:24:46）只隔 5 秒，日志里**没有任何 `retrying in` 行**——
+  即上一条设计的桩测场景①（`git/ref` 首次就指向 `PUT` 的 commit，完全不读 `contents`）在真实发布上成立，
+  1.3.1 那种「写入成功却判失败」的假失败没有复现。
+
+发布四项核验：Release [v1.3.2](https://github.com/lingyired/status-trio/releases/tag/v1.3.2)
+已发布且非 draft/prerelease，tag 指向 `2055908`；DMG 4 317 802 字节与 sha256 均已附加；appcast
+提交 `5cd8c7e` 已在 main，Sparkle 源条目为 12 titles + 12 descriptions、`en` 首位、阿拉伯语带
+`div dir="rtl"`、真实 `edSignature`（88 字符）、`length` 与 Release 资产一致、无残留占位符。
+
+一处读路径滞后值得记住：`gh api repos/…/releases/tags/v1.3.2` 的 `assets` 字段在发布后数分钟内仍返回
+空数组（`/releases/tags/…/assets` 甚至 404），而同一时刻 Release 页面的 `expanded_assets` 已列出两个
+资产、`releases/download/v1.3.2/StatusTrio-1.3.2.dmg` 直链返回 200。**核对资产不要只看 `assets` 字段**，
+用页面或直链交叉验证。
