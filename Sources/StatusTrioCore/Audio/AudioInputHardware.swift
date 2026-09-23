@@ -1,5 +1,6 @@
 import AudioToolbox
 import CoreAudio
+import Foundation
 
 protocol AudioInputPropertyClient: Sendable {
   func devices() throws -> [AudioDeviceID]
@@ -36,9 +37,37 @@ protocol AudioInputPropertyClient: Sendable {
   func writeDefaultInput(_ id: AudioDeviceID) throws
 }
 
+protocol AudioInputPropertyListenerClient: Sendable {
+  func addListener(
+    objectID: AudioObjectID,
+    address: AudioObjectPropertyAddress,
+    queue: DispatchQueue?,
+    block: @escaping AudioObjectPropertyListenerBlock
+  ) -> OSStatus
+  func removeListener(
+    objectID: AudioObjectID,
+    address: AudioObjectPropertyAddress,
+    queue: DispatchQueue?,
+    block: @escaping AudioObjectPropertyListenerBlock
+  ) -> OSStatus
+}
+
+enum AudioInputEvent: Sendable {
+  case devicesChanged
+  case defaultChanged
+  case controlsChanged
+}
+
+protocol AudioInputObservation: Sendable {
+  func setCurrentDevice(_ id: AudioDeviceID?)
+  func stop()
+}
+
 protocol AudioInputHardware: Sendable {
   func read(includeDevices: Bool) throws -> AudioInputReading
   func selectDefault(_ id: AudioDeviceID) throws
   func setScalar(_ scalar: Double, on id: AudioDeviceID) throws
   func setMuted(_ muted: Bool, on id: AudioDeviceID) throws
+  func observe(_ notify: @escaping @Sendable (AudioInputEvent) -> Void) throws
+    -> any AudioInputObservation
 }

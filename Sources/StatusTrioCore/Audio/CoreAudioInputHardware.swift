@@ -81,9 +81,27 @@ enum CoreAudioInputControlReadback {
 
 struct CoreAudioInputHardware: AudioInputHardware {
   private let client: any AudioInputPropertyClient
+  private let listenerClient: (any AudioInputPropertyListenerClient)?
 
-  init(client: any AudioInputPropertyClient = CoreAudioInputPropertyClient()) {
+  init(
+    client: any AudioInputPropertyClient = CoreAudioInputPropertyClient(),
+    listenerClient: (any AudioInputPropertyListenerClient)? = nil
+  ) {
     self.client = client
+    self.listenerClient = listenerClient ?? (client as? any AudioInputPropertyListenerClient)
+  }
+
+  func observe(_ notify: @escaping @Sendable (AudioInputEvent) -> Void) throws
+    -> any AudioInputObservation
+  {
+    guard let listenerClient else { throw AudioInputHardwareError.unavailable }
+    let observation = CoreAudioInputObservation(
+      propertyClient: client,
+      listenerClient: listenerClient,
+      notify: notify
+    )
+    try observation.start()
+    return observation
   }
 
   func read(includeDevices: Bool) throws -> AudioInputReading {
@@ -280,8 +298,218 @@ struct CoreAudioInputHardware: AudioInputHardware {
   }
 }
 
-private struct CoreAudioInputPropertyClient: AudioInputPropertyClient {
+
+/// Listener registration is owned by AudioInputWorker's serial queue. Callback threads only
+/// consult the lock-protected stop/binding token and forward a lightweight event; they never
+/// access the HAL or the listener array.
+private final class CoreAudioInputObservation: AudioInputObservation, @unchecked Sendable {
+  private struct Registration {
+    let objectID: AudioObjectID
+    let address: AudioObjectPropertyAddress
+    let queue: DispatchQueue
+    let block: AudioObjectPropertyListenerBlock
+    let bindingToken: UUID?
+  }
+
+  private let propertyClient: any AudioInputPropertyClient
+  private let listenerClient: any AudioInputPropertyListenerClient
+  private let notify: @Sendable (AudioInputEvent) -> Void
+  private let listenerQueue = DispatchQueue(
+    label: "com.status-trio.audio-input-hal-listeners",
+    qos: .utility
+  )
+  private let stateLock = NSLock()
+  private var stopped = false
+  private var activeBindingToken: UUID?
+  private var currentDeviceID: AudioDeviceID?
+  private var registrations: [Registration] = []
+
+  init(
+    propertyClient: any AudioInputPropertyClient,
+    listenerClient: any AudioInputPropertyListenerClient,
+    notify: @escaping @Sendable (AudioInputEvent) -> Void
+  ) {
+    self.propertyClient = propertyClient
+    self.listenerClient = listenerClient
+    self.notify = notify
+  }
+
+  func start() throws {
+    let systemObjectID = AudioObjectID(kAudioObjectSystemObject)
+    do {
+      try add(
+        objectID: systemObjectID,
+        address: Self.address(selector: kAudioHardwarePropertyDevices),
+        event: .devicesChanged,
+        bindingToken: nil
+      )
+      try add(
+        objectID: systemObjectID,
+        address: Self.address(selector: kAudioHardwarePropertyDefaultInputDevice),
+        event: .defaultChanged,
+        bindingToken: nil
+      )
+    } catch {
+      stop()
+      throw error
+    }
+  }
+
+  func setCurrentDevice(_ id: AudioDeviceID?) {
+    stateLock.lock()
+    let mayUpdate = !stopped
+    let unchanged = currentDeviceID == id
+    stateLock.unlock()
+    guard mayUpdate, !unchanged else { return }
+
+    // Invalidate old-device callbacks before removing their registrations.
+    let newBindingToken = id == nil ? nil : UUID()
+    stateLock.lock()
+    guard !stopped else {
+      stateLock.unlock()
+      return
+    }
+    activeBindingToken = newBindingToken
+    currentDeviceID = nil
+    stateLock.unlock()
+
+    removeDeviceRegistrations()
+    guard let id,
+      propertyClient.isDevice(id),
+      propertyClient.isAlive(id) == true,
+      propertyClient.isHidden(id) == false,
+      propertyClient.canBeDefaultInput(id) == true,
+      propertyClient.inputChannels(id) > 0,
+      let newBindingToken
+    else { return }
+
+    stateLock.lock()
+    guard !stopped, activeBindingToken == newBindingToken else {
+      stateLock.unlock()
+      return
+    }
+    currentDeviceID = id
+    stateLock.unlock()
+
+    let elements = [kAudioObjectPropertyElementMain]
+      + (1...propertyClient.inputChannels(id)).map(AudioObjectPropertyElement.init)
+    for selector in [kAudioDevicePropertyVolumeScalar, kAudioDevicePropertyMute] {
+      for element in elements where propertyClient.hasProperty(id, selector, element) {
+        // A device may expose one control without the other. Keep all supported listener
+        // registrations, while the system/default listeners still cover device changes.
+        try? add(
+          objectID: id,
+          address: Self.address(
+            selector: selector,
+            scope: kAudioObjectPropertyScopeInput,
+            element: element
+          ),
+          event: .controlsChanged,
+          bindingToken: newBindingToken
+        )
+      }
+    }
+  }
+
+  func stop() {
+    stateLock.lock()
+    guard !stopped else {
+      stateLock.unlock()
+      return
+    }
+    stopped = true
+    activeBindingToken = nil
+    currentDeviceID = nil
+    stateLock.unlock()
+
+    let pending = registrations
+    registrations.removeAll()
+    for registration in pending {
+      _ = listenerClient.removeListener(
+        objectID: registration.objectID,
+        address: registration.address,
+        queue: registration.queue,
+        block: registration.block
+      )
+    }
+  }
+
+  private func removeDeviceRegistrations() {
+    let removed = registrations.filter { $0.bindingToken != nil }
+    registrations.removeAll { $0.bindingToken != nil }
+    for registration in removed {
+      _ = listenerClient.removeListener(
+        objectID: registration.objectID,
+        address: registration.address,
+        queue: registration.queue,
+        block: registration.block
+      )
+    }
+  }
+
+  private func add(
+    objectID: AudioObjectID,
+    address: AudioObjectPropertyAddress,
+    event: AudioInputEvent,
+    bindingToken: UUID?
+  ) throws {
+    let block: AudioObjectPropertyListenerBlock = { [weak self] _, _ in
+      self?.forward(event, bindingToken: bindingToken)
+    }
+    let status = listenerClient.addListener(
+      objectID: objectID,
+      address: address,
+      queue: listenerQueue,
+      block: block
+    )
+    guard status == noErr else { throw AudioInputHardwareError.osStatus(status) }
+    registrations.append(Registration(
+      objectID: objectID,
+      address: address,
+      queue: listenerQueue,
+      block: block,
+      bindingToken: bindingToken
+    ))
+  }
+
+  private func forward(_ event: AudioInputEvent, bindingToken: UUID?) {
+    stateLock.lock()
+    let isCurrent = !stopped && (bindingToken == nil || activeBindingToken == bindingToken)
+    stateLock.unlock()
+    if isCurrent { notify(event) }
+  }
+
+  private static func address(
+    selector: AudioObjectPropertySelector,
+    scope: AudioObjectPropertyScope = kAudioObjectPropertyScopeGlobal,
+    element: AudioObjectPropertyElement = kAudioObjectPropertyElementMain
+  ) -> AudioObjectPropertyAddress {
+    AudioObjectPropertyAddress(mSelector: selector, mScope: scope, mElement: element)
+  }
+}
+
+private struct CoreAudioInputPropertyClient: AudioInputPropertyClient, AudioInputPropertyListenerClient {
   private let systemObjectID = AudioObjectID(kAudioObjectSystemObject)
+
+  func addListener(
+    objectID: AudioObjectID,
+    address: AudioObjectPropertyAddress,
+    queue: DispatchQueue?,
+    block: @escaping AudioObjectPropertyListenerBlock
+  ) -> OSStatus {
+    var mutableAddress = address
+    return AudioObjectAddPropertyListenerBlock(objectID, &mutableAddress, queue, block)
+  }
+
+  func removeListener(
+    objectID: AudioObjectID,
+    address: AudioObjectPropertyAddress,
+    queue: DispatchQueue?,
+    block: @escaping AudioObjectPropertyListenerBlock
+  ) -> OSStatus {
+    var mutableAddress = address
+    return AudioObjectRemovePropertyListenerBlock(objectID, &mutableAddress, queue, block)
+  }
 
   func devices() throws -> [AudioDeviceID] {
     var address = propertyAddress(selector: kAudioHardwarePropertyDevices)
