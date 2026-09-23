@@ -16,12 +16,21 @@ enum TestUserDefaults {
 
     /// Removes an isolated test suite.
     ///
-    /// `removePersistentDomain(forName:)` empties the domain but leaves the
-    /// backing `~/Library/Preferences/<name>.plist` on disk, so a test run used
-    /// to leave one dead plist per suite behind forever. Removing the file as
-    /// well is what keeps the user's preferences directory clean.
+    /// The backing `~/Library/Preferences/<name>.plist` is what has to go:
+    /// `removePersistentDomain(forName:)` leaves the domain alive inside
+    /// cfprefsd, which then flushes it back to disk as an empty 42-byte plist a
+    /// second or two later. Deleting the file after that write-back loses the
+    /// race, and every run used to leave one dead plist per suite behind
+    /// forever — 53 051 of them had piled up in `~/Library/Preferences` by the
+    /// time this was measured. Deleting the file without touching the domain is
+    /// what fixes it: a full test run went from about one file per suite to
+    /// about a hundred files (measured 103), because cfprefsd's flush of a
+    /// domain it had already queued can still land after the removal.
+    ///
+    /// Closing that last gap needs a sweep after the run, or an isolation
+    /// mechanism other than a `UserDefaults` suite; both are broader changes
+    /// than this teardown.
     static func removeSuite(named name: String) {
-        UserDefaults().removePersistentDomain(forName: name)
         try? FileManager.default.removeItem(at: fileURL(forSuite: name))
     }
 }

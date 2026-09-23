@@ -399,10 +399,14 @@ final class SystemStatusStoreTests: XCTestCase {
     func testSetVolumeUpdatesVisibleVolumeImmediately() async {
         let volume = FakeVolumeMonitor()
         let sleeper = ManualSleeper()
+        // The feedback player is injected so this run stays silent: the store's
+        // own default plays the bundled tick for a real volume change, which on
+        // a Mac whose system switch is on would sound during the tests.
         let store = SystemStatusStore(
             batteryMonitor: FakeBatteryMonitor(),
             wifiMonitor: FakeWiFiMonitor(),
             volumeMonitor: volume,
+            volumeFeedback: FakeVolumeFeedbackPlayer(),
             refreshInterval: .seconds(60),
             popupDebounceSleep: { _ in await sleeper.sleep() }
         )
@@ -427,12 +431,81 @@ final class SystemStatusStoreTests: XCTestCase {
         store.stop()
     }
 
+    func testVolumeChangePlaysTheFeedbackOncePerRealChange() async {
+        let volume = FakeVolumeMonitor()
+        let feedback = FakeVolumeFeedbackPlayer()
+        let store = SystemStatusStore(
+            batteryMonitor: FakeBatteryMonitor(),
+            wifiMonitor: FakeWiFiMonitor(),
+            volumeMonitor: volume,
+            volumeFeedback: feedback,
+            refreshInterval: .seconds(60)
+        )
+
+        store.start()
+        volume.send(
+            VolumeStatus(
+                scalar: 0.4,
+                isMuted: false,
+                deviceName: "Speaker"
+            )
+        )
+        await waitUntil { store.liveVolume.scalar == 0.4 }
+
+        store.setVolume(0.7)
+        XCTAssertEqual(feedback.playCount, 1)
+
+        store.setVolume(0.7)
+        XCTAssertEqual(feedback.playCount, 1, "An unchanged scalar must stay silent.")
+
+        store.setVolume(2)
+        XCTAssertEqual(store.liveVolume.scalar, 1)
+        XCTAssertEqual(feedback.playCount, 2)
+
+        store.setVolume(2)
+        XCTAssertEqual(
+            feedback.playCount,
+            2,
+            "Scrolling past either end repeats the clamped scalar, which must stay silent."
+        )
+
+        store.stop()
+    }
+
+    func testMuteToggleDoesNotPlayTheVolumeFeedback() async {
+        let volume = FakeVolumeMonitor()
+        let feedback = FakeVolumeFeedbackPlayer()
+        let store = SystemStatusStore(
+            batteryMonitor: FakeBatteryMonitor(),
+            wifiMonitor: FakeWiFiMonitor(),
+            volumeMonitor: volume,
+            volumeFeedback: feedback,
+            refreshInterval: .seconds(60)
+        )
+
+        store.start()
+        volume.send(
+            VolumeStatus(
+                scalar: 0.4,
+                isMuted: false,
+                deviceName: "Speaker"
+            )
+        )
+        await waitUntil { store.liveVolume.scalar == 0.4 }
+
+        store.toggleMute()
+
+        XCTAssertEqual(feedback.playCount, 0)
+        store.stop()
+    }
+
     func testSetVolumePreservesCurrentOutputDevice() async {
         let volume = FakeVolumeMonitor()
         let store = SystemStatusStore(
             batteryMonitor: FakeBatteryMonitor(),
             wifiMonitor: FakeWiFiMonitor(),
             volumeMonitor: volume,
+            volumeFeedback: FakeVolumeFeedbackPlayer(),
             refreshInterval: .seconds(60)
         )
         let currentDevice = AudioOutputDevice(

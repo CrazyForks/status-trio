@@ -49,6 +49,7 @@ final class SystemStatusStore: ObservableObject {
     private let connectionMonitor: (any NetworkConnectionMonitoring)?
     private let volumeMonitor: any VolumeMonitoring
     private let volumeController: (any VolumeControlling)?
+    private let volumeFeedback: (any VolumeFeedbackPlaying)?
     private var refreshInterval: Duration
     private let nameResolutionTimeout: Duration
     private let sleep: @Sendable (Duration) async throws -> Void
@@ -91,6 +92,7 @@ final class SystemStatusStore: ObservableObject {
         wifiMonitor: any WiFiMonitoring,
         connectionMonitor: (any NetworkConnectionMonitoring)? = nil,
         volumeMonitor: any VolumeMonitoring,
+        volumeFeedback: (any VolumeFeedbackPlaying)? = VolumeFeedbackPlayer(),
         refreshInterval: Duration = .seconds(15),
         nameResolutionTimeout: Duration = .milliseconds(1500),
         sleep: @escaping @Sendable (Duration) async throws -> Void = { interval in
@@ -113,6 +115,7 @@ final class SystemStatusStore: ObservableObject {
         self.connectionMonitor = connectionMonitor
         self.volumeMonitor = volumeMonitor
         self.volumeController = volumeMonitor as? any VolumeControlling
+        self.volumeFeedback = volumeFeedback
         self.refreshInterval = refreshInterval
         self.nameResolutionTimeout = nameResolutionTimeout
         self.sleep = sleep
@@ -288,9 +291,18 @@ final class SystemStatusStore: ObservableObject {
               scalar.isFinite else {
             return
         }
+        let previousScalar = liveVolume.scalar
         liveVolume = liveVolume.replacingScalar(min(1, max(0, scalar)))
         publish(snapshot.replacingVolume(liveVolume))
         volumeController?.setVolume(liveVolume.scalar ?? 0)
+
+        // The system plays its own feedback only for the volume changes it
+        // mediates; a CoreAudio write is not one of them, so the tick comes
+        // from here. Clamping makes a scroll past either end ask for the same
+        // scalar again, and that repeat must stay silent.
+        if previousScalar != liveVolume.scalar {
+            volumeFeedback?.playVolumeChangeFeedback()
+        }
     }
 
     func toggleMute() {
