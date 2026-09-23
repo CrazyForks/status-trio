@@ -645,10 +645,13 @@ final class SettingsStoreTests: XCTestCase {
         )
     }
 
-    func testPopupSectionOrderDefaultsToBatteryNetworkBluetoothVolume() {
+    func testPopupSectionOrderDefaultsToBatteryNetworkBluetoothVolumeAudioInput() {
         let store = SettingsStore(defaults: makeSuite().defaults)
 
-        XCTAssertEqual(store.popupSectionOrder, [.battery, .network, .bluetooth, .volume])
+        XCTAssertEqual(
+            store.popupSectionOrder,
+            [.battery, .network, .bluetooth, .volume, .audioInput]
+        )
     }
 
     func testPopupVolumeScrollDefaultsToEverywhereSystemDirectionAndNaturalScrollingOff() {
@@ -718,6 +721,35 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertFalse(PopupVolumeScrollDirection.down.increasesWithScrollUp)
     }
 
+    func testInputSectionAppendsToOldOrderButDefaultsOff() {
+        let freshSuite = makeSuite()
+        defer { clear(freshSuite) }
+        XCTAssertFalse(
+            SettingsStore(defaults: freshSuite.defaults).enabledPopupSections.contains(.audioInput)
+        )
+
+        let suite = makeSuite()
+        defer { clear(suite) }
+        suite.defaults.set(
+            ["volume", "battery"],
+            forKey: SettingsStore.popupSectionOrderDefaultsKey
+        )
+        suite.defaults.set(
+            ["volume", "battery"],
+            forKey: SettingsStore.enabledPopupSectionsDefaultsKey
+        )
+        let store = SettingsStore(defaults: suite.defaults)
+        XCTAssertEqual(
+            store.popupSectionOrder,
+            [.volume, .battery, .network, .bluetooth, .audioInput]
+        )
+        XCTAssertFalse(store.enabledPopupSections.contains(.audioInput))
+        store.setPopupSection(.audioInput, enabled: true)
+        XCTAssertTrue(
+            SettingsStore(defaults: suite.defaults).visiblePopupSections.contains(.audioInput)
+        )
+    }
+
     func testPopupSectionVisibilityDefaultsToEverythingExceptBluetooth() {
         let store = SettingsStore(defaults: makeSuite().defaults)
 
@@ -741,7 +773,7 @@ final class SettingsStoreTests: XCTestCase {
 
         XCTAssertEqual(
             first.popupSectionOrder,
-            [.battery, .network, .bluetooth, .volume]
+            [.battery, .network, .bluetooth, .volume, .audioInput]
         )
         XCTAssertEqual(
             first.visiblePopupSections,
@@ -762,10 +794,13 @@ final class SettingsStoreTests: XCTestCase {
             toOffset: 0
         )
 
-        XCTAssertEqual(store.popupSectionOrder, [.volume, .battery, .network, .bluetooth])
+        XCTAssertEqual(
+            store.popupSectionOrder,
+            [.volume, .battery, .network, .bluetooth, .audioInput]
+        )
         XCTAssertEqual(
             SettingsStore(defaults: suite.defaults).popupSectionOrder,
-            [.volume, .battery, .network, .bluetooth]
+            [.volume, .battery, .network, .bluetooth, .audioInput]
         )
     }
 
@@ -780,7 +815,10 @@ final class SettingsStoreTests: XCTestCase {
 
         let store = SettingsStore(defaults: suite.defaults)
 
-        XCTAssertEqual(store.popupSectionOrder, [.volume, .network, .battery, .bluetooth])
+        XCTAssertEqual(
+            store.popupSectionOrder,
+            [.volume, .network, .battery, .bluetooth, .audioInput]
+        )
     }
 
     func testStoredPopupSectionVisibilityIgnoresUnknownValues() {
@@ -804,6 +842,17 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertNotNil(
             NSImage(
                 systemSymbolName: PopupSection.bluetooth.systemImage,
+                accessibilityDescription: nil
+            )
+        )
+    }
+
+    func testAudioInputPopupSectionMetadata() {
+        XCTAssertEqual(PopupSection.audioInput.titleKey, .settingsPopupOrderAudioInput)
+        XCTAssertEqual(PopupSection.audioInput.systemImage, "mic")
+        XCTAssertNotNil(
+            NSImage(
+                systemSymbolName: PopupSection.audioInput.systemImage,
                 accessibilityDescription: nil
             )
         )

@@ -177,6 +177,7 @@
 "settings.popup.order.description" = "選擇狀態面板顯示的項目，並拖曳調整順序。";
 "settings.popup.order.battery" = "電池";
 "settings.popup.order.volume" = "音量";
+"settings.popup.order.audioInput" = "聲音輸入";
 "settings.popup.volumeScroll.group" = "面板滾動";
 "settings.popup.volumeScroll" = "捲動調節音量";
 "settings.popup.volumeScroll.description" = "在狀態面板內滾動即可調節輸出音量。";

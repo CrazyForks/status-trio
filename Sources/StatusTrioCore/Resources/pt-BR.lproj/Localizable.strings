@@ -177,6 +177,7 @@
 "settings.popup.order.description" = "Escolha quais itens aparecem no painel de status e arraste para alterar a ordem.";
 "settings.popup.order.battery" = "Bateria";
 "settings.popup.order.volume" = "Volume";
+"settings.popup.order.audioInput" = "Entrada de áudio";
 "settings.popup.volumeScroll.group" = "Rolagem do painel";
 "settings.popup.volumeScroll" = "Ajustar o volume com a rolagem";
 "settings.popup.volumeScroll.description" = "Role dentro do painel de status para alterar o volume de saída.";

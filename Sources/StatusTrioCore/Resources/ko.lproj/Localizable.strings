@@ -177,6 +177,7 @@
 "settings.popup.order.description" = "상태 패널에 표시할 항목을 선택하고 드래그하여 순서를 변경하십시오.";
 "settings.popup.order.battery" = "배터리";
 "settings.popup.order.volume" = "볼륨";
+"settings.popup.order.audioInput" = "오디오 입력";
 "settings.popup.volumeScroll.group" = "패널 스크롤";
 "settings.popup.volumeScroll" = "스크롤로 볼륨 조절";
 "settings.popup.volumeScroll.description" = "상태 패널 안에서 스크롤하면 출력 볼륨이 바뀝니다.";

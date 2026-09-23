@@ -177,6 +177,7 @@
 "settings.popup.order.description" = "Выберите элементы, отображаемые на панели состояния, и перетаскивайте их, чтобы изменить порядок.";
 "settings.popup.order.battery" = "Аккумулятор";
 "settings.popup.order.volume" = "Громкость";
+"settings.popup.order.audioInput" = "Звуковой вход";
 "settings.popup.volumeScroll.group" = "Прокрутка панели";
 "settings.popup.volumeScroll" = "Регулировать громкость прокруткой";
 "settings.popup.volumeScroll.description" = "Прокручивайте внутри панели состояния, чтобы изменить громкость вывода.";

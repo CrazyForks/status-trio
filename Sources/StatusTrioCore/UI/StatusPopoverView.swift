@@ -362,6 +362,8 @@ struct StatusPopoverView: View {
                 onSelectOutputDevice: { store.selectOutputDevice($0) },
                 onOpenSoundSettings: openSoundSettings
             )
+        case .audioInput:
+            EmptyView()
         }
     }
 }

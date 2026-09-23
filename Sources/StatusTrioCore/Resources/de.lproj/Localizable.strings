@@ -177,6 +177,7 @@
 "settings.popup.order.description" = "Wähle aus, welche Elemente im Statusbereich erscheinen, und ziehe sie, um die Reihenfolge zu ändern.";
 "settings.popup.order.battery" = "Batterie";
 "settings.popup.order.volume" = "Lautstärke";
+"settings.popup.order.audioInput" = "Audioeingang";
 "settings.popup.volumeScroll.group" = "Panel-Scrollen";
 "settings.popup.volumeScroll" = "Lautstärke durch Scrollen ändern";
 "settings.popup.volumeScroll.description" = "Im Statusbereich scrollen, um die Ausgabelautstärke zu ändern.";

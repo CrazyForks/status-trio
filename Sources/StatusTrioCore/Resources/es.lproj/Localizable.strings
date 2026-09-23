@@ -177,6 +177,7 @@
 "settings.popup.order.description" = "Elige qué elementos aparecen en el panel de estado y arrástralos para cambiar su orden.";
 "settings.popup.order.battery" = "Batería";
 "settings.popup.order.volume" = "Volumen";
+"settings.popup.order.audioInput" = "Entrada de audio";
 "settings.popup.volumeScroll.group" = "Desplazamiento del panel";
 "settings.popup.volumeScroll" = "Ajustar el volumen desplazándose";
 "settings.popup.volumeScroll.description" = "Desplázate dentro del panel de estado para cambiar el volumen de salida.";

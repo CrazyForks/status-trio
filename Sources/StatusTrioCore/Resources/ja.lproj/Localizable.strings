@@ -177,6 +177,7 @@
 "settings.popup.order.description" = "ステータスパネルに表示する項目を選択し、ドラッグして順序を変更します。";
 "settings.popup.order.battery" = "バッテリー";
 "settings.popup.order.volume" = "音量";
+"settings.popup.order.audioInput" = "オーディオ入力";
 "settings.popup.volumeScroll.group" = "パネルのスクロール";
 "settings.popup.volumeScroll" = "スクロールで音量を調整";
 "settings.popup.volumeScroll.description" = "ステータスパネル内をスクロールすると出力音量を変更できます。";

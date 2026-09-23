@@ -177,6 +177,7 @@
 "settings.popup.order.description" = "Choisissez les éléments affichés dans le panneau d’état, puis faites-les glisser pour modifier leur ordre.";
 "settings.popup.order.battery" = "Batterie";
 "settings.popup.order.volume" = "Volume";
+"settings.popup.order.audioInput" = "Entrée audio";
 "settings.popup.volumeScroll.group" = "Défilement du panneau";
 "settings.popup.volumeScroll" = "Régler le volume en défilant";
 "settings.popup.volumeScroll.description" = "Faites défiler dans le panneau d’état pour changer le volume de sortie.";
