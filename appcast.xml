@@ -6,6 +6,40 @@
     <description>Most recent changes for Status Trio.</description>
     <language>en</language>
     <item>
+      <title xml:lang="en">Version 1.3.2 (Build 15)</title>
+      <title xml:lang="ar">الإصدار 1.3.2 (البنية 15)</title>
+      <title xml:lang="de">Version 1.3.2 (Build 15)</title>
+      <title xml:lang="es">Versión 1.3.2 (compilación 15)</title>
+      <title xml:lang="fr">Version 1.3.2 (build 15)</title>
+      <title xml:lang="it">Versione 1.3.2 (build 15)</title>
+      <title xml:lang="ja">バージョン 1.3.2（ビルド 15）</title>
+      <title xml:lang="ko">버전 1.3.2(빌드 15)</title>
+      <title xml:lang="pt-BR">Versão 1.3.2 (compilação 15)</title>
+      <title xml:lang="ru">Версия 1.3.2 (сборка 15)</title>
+      <title xml:lang="zh-Hans">版本 1.3.2（构建 15）</title>
+      <title xml:lang="zh-Hant">版本 1.3.2（構建 15）</title>
+      <pubDate>Wed, 23 Sep 2026 09:24:45 +0000</pubDate>
+      <sparkle:version>15</sparkle:version>
+      <sparkle:shortVersionString>1.3.2</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+      <description xml:lang="en"><![CDATA[<ul><li>Fixed some Bluetooth devices showing no battery level</li><li>Improved the icons shown for Bluetooth devices</li><li>Improved the AirPods charging case battery display</li><li>Fixed a Bluetooth device possibly appearing twice</li></ul>]]></description>
+      <description xml:lang="ar"><![CDATA[<div dir="rtl"><ul><li>إصلاح: بعض أجهزة Bluetooth لم تُظهر مستوى البطارية.</li><li>تحسين: عرض أيقونات أجهزة Bluetooth.</li><li>تحسين: عرض بطارية علبة شحن AirPods.</li><li>إصلاح: قد يظهر جهاز Bluetooth مرتين.</li></ul></div>]]></description>
+      <description xml:lang="de"><![CDATA[<ul><li>Behoben: Bei einigen Bluetooth-Geräten fehlte der Batteriestand.</li><li>Verbessert: Die Symbolanzeige für Bluetooth-Geräte.</li><li>Verbessert: Die Batteriestands-Anzeige für das AirPods-Ladecase.</li><li>Behoben: Ein Bluetooth-Gerät konnte doppelt angezeigt werden.</li></ul>]]></description>
+      <description xml:lang="es"><![CDATA[<ul><li>Corregido: algunos dispositivos Bluetooth no mostraban el nivel de batería.</li><li>Mejorada: la visualización de los iconos de los dispositivos Bluetooth.</li><li>Mejorada: la visualización de la batería del estuche de carga de los AirPods.</li><li>Corregido: un dispositivo Bluetooth podía aparecer dos veces.</li></ul>]]></description>
+      <description xml:lang="fr"><![CDATA[<ul><li>Corrigé : certains périphériques Bluetooth n’affichaient pas leur niveau de batterie.</li><li>Amélioré : l’affichage des icônes des périphériques Bluetooth.</li><li>Amélioré : l’affichage de la batterie du boîtier de charge des AirPods.</li><li>Corrigé : un périphérique Bluetooth pouvait apparaître deux fois.</li></ul>]]></description>
+      <description xml:lang="it"><![CDATA[<ul><li>Corretto: alcuni dispositivi Bluetooth non mostravano il livello della batteria.</li><li>Migliorata: la visualizzazione delle icone dei dispositivi Bluetooth.</li><li>Migliorata: la visualizzazione della batteria della custodia di ricarica degli AirPods.</li><li>Corretto: un dispositivo Bluetooth poteva apparire due volte.</li></ul>]]></description>
+      <description xml:lang="ja"><![CDATA[<ul><li>一部の Bluetooth デバイスでバッテリー残量が表示されない問題を修正しました。</li><li>Bluetooth デバイスのアイコン表示を改善しました。</li><li>AirPods の充電ケースのバッテリー表示を改善しました。</li><li>Bluetooth デバイスが二重に表示されることがある問題を修正しました。</li></ul>]]></description>
+      <description xml:lang="ko"><![CDATA[<ul><li>일부 Bluetooth 기기에서 배터리 잔량이 표시되지 않던 문제를 수정했습니다.</li><li>Bluetooth 기기의 아이콘 표시를 개선했습니다.</li><li>AirPods 충전 케이스의 배터리 표시를 개선했습니다.</li><li>Bluetooth 기기가 두 번 표시될 수 있던 문제를 수정했습니다.</li></ul>]]></description>
+      <description xml:lang="pt-BR"><![CDATA[<ul><li>Corrigido: alguns dispositivos Bluetooth não mostravam o nível de bateria.</li><li>Melhorada: a exibição dos ícones dos dispositivos Bluetooth.</li><li>Melhorada: a exibição da bateria do estojo de recarga dos AirPods.</li><li>Corrigido: um dispositivo Bluetooth podia aparecer duas vezes.</li></ul>]]></description>
+      <description xml:lang="ru"><![CDATA[<ul><li>Исправлено: у некоторых устройств Bluetooth не отображался уровень заряда.</li><li>Улучшено: отображение значков устройств Bluetooth.</li><li>Улучшено: отображение заряда зарядного кейса AirPods.</li><li>Исправлено: устройство Bluetooth могло отображаться дважды.</li></ul>]]></description>
+      <description xml:lang="zh-Hans"><![CDATA[<ul><li>修复部分蓝牙设备不显示电量的问题</li><li>优化蓝牙设备的图标显示</li><li>优化 AirPods 充电盒的电量显示</li><li>修复蓝牙设备可能重复显示的问题</li></ul>]]></description>
+      <description xml:lang="zh-Hant"><![CDATA[<ul><li>修復部分藍牙裝置不顯示電量的問題</li><li>優化藍牙裝置的圖示顯示</li><li>優化 AirPods 充電盒的電量顯示</li><li>修復藍牙裝置可能重複顯示的問題</li></ul>]]></description>
+      <enclosure url="https://github.com/lingyired/status-trio/releases/download/v1.3.2/StatusTrio-1.3.2.dmg"
+                 type="application/octet-stream"
+                 sparkle:edSignature="tPd5lTgu9BzyYRpC0FTfZtnMRPzQit4Jj4nUlb5q0NO0OIdzNfnZ9MWy4MgmD5h1+PHgt5pFmWFdRha8T7RqAQ=="
+                 length="4317802" />
+    </item>
+    <item>
       <title xml:lang="en">Version 1.3.1 (Build 14)</title>
       <title xml:lang="ar">الإصدار 1.3.1 (البنية 14)</title>
       <title xml:lang="de">Version 1.3.1 (Build 14)</title>
