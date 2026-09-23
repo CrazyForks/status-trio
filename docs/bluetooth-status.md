@@ -90,6 +90,17 @@ Audio devices keep resolving through `AudioOutputDeviceIcon` rather than the
 class table, so an AirPods keeps the glyph macOS declares for its product ID and
 the row and the output list cannot drift.
 
+The device's own name can narrow the glyph further, ahead of the class list
+(`namedCandidates`). The Bluetooth class stops at the family — a Mac mini, an
+iMac and a Mac Pro all declare `Desktop` and nothing in the class tells them
+apart — but Apple's products name themselves after the model, so `Mac mini`
+draws `macmini`, `Mac Studio` draws `macstudio`, a `MacBook` draws the laptop
+glyph and an `iPhone` draws `iphone`. The refinement is bounded on purpose: it
+only runs inside the class the report already declared, so a mouse that happens
+to be named like a Mac can never be drawn as one, and a name the app has no
+model glyph for — an iMac or a Mac Pro, which Apple ships no symbol for —
+changes nothing. The class list stays behind the named one as the fallback.
+
 ### Correcting a class the report got wrong
 
 The declared class is a manufacturer's claim about its product, not an
