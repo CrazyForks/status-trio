@@ -149,9 +149,18 @@ struct AudioInputVolumeDraft {
         }
     }
 
-    mutating func setSliderValue(_ newValue: Double) {
+    mutating func setSliderValue(
+        _ newValue: Double,
+        systemScalar: Double?,
+        onScalarChange: (Double) -> Void
+    ) {
         guard isEditing, newValue.isFinite else { return }
         value = min(1, max(0, newValue))
+        guard let systemScalar, systemScalar.isFinite,
+              abs(value - Self.displayValue(for: systemScalar)) >= 0.0005 else {
+            return
+        }
+        onScalarChange(value)
     }
 
     mutating func resetForDevice(_ scalar: Double?) {
@@ -459,19 +468,10 @@ struct AudioInputControlsView: View {
         Binding(
             get: { volumeDraft.value },
             set: { newValue in
-                volumeDraft.setSliderValue(newValue)
-                updateVolume(newValue)
+                volumeDraft.setSliderValue(newValue, systemScalar: status.scalar) {
+                    onScalarChange($0)
+                }
             }
         )
-    }
-
-    private func updateVolume(_ newValue: Double) {
-        guard newValue.isFinite,
-              let scalar = status.scalar,
-              scalar.isFinite,
-              abs(newValue - min(1, max(0, scalar))) >= 0.0005 else {
-            return
-        }
-        onScalarChange(min(1, max(0, newValue)))
     }
 }

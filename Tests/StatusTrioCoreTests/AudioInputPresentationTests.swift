@@ -163,7 +163,7 @@ final class AudioInputPresentationTests: XCTestCase {
         var draft = AudioInputVolumeDraft()
         draft.receiveSystemScalar(0.2)
         draft.setEditing(true)
-        draft.setSliderValue(0.8)
+        draft.setSliderValue(0.8, systemScalar: 0.2) { _ in }
 
         draft.receiveSystemScalar(0.4)
         XCTAssertEqual(draft.value, 0.8, accuracy: 0.0001)
@@ -173,8 +173,27 @@ final class AudioInputPresentationTests: XCTestCase {
         XCTAssertEqual(draft.value, 0.4, accuracy: 0.0001)
 
         // A delayed slider setter after mouse-up must not restore the rejected draft.
-        draft.setSliderValue(0.8)
+        draft.setSliderValue(0.8, systemScalar: 0.4) { _ in }
         XCTAssertEqual(draft.value, 0.4, accuracy: 0.0001)
+    }
+
+    func testVolumeDraftDispatchesOnlyAcceptedEditsThroughSliderCallback() {
+        var draft = AudioInputVolumeDraft()
+        var requests: [Double] = []
+        draft.receiveSystemScalar(0.2)
+        draft.setEditing(true)
+
+        draft.setSliderValue(0.8, systemScalar: 0.2) { requests.append($0) }
+        XCTAssertEqual(requests, [0.8])
+
+        draft.receiveSystemScalar(0.4)
+        draft.setEditing(false)
+        XCTAssertEqual(draft.value, 0.4, accuracy: 0.0001)
+
+        // The same callback path used by the Binding must not re-submit a stale value.
+        draft.setSliderValue(0.8, systemScalar: 0.4) { requests.append($0) }
+        XCTAssertEqual(draft.value, 0.4, accuracy: 0.0001)
+        XCTAssertEqual(requests, [0.8])
     }
 
     private func makeStatus(
