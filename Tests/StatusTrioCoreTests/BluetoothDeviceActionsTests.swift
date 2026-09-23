@@ -303,7 +303,7 @@ final class BluetoothDeviceActionsTests: XCTestCase {
     }
 
     func testAConfirmationIsHeldUntilItIsCancelled() {
-        let device = makeDevice(isConnected: true, name: "MX Keys", kind: .peripheral)
+        let device = makeDevice(isConnected: true, name: "MX Keys", kind: .peripheral(.keyboard))
         let (controller, _) = makeController(
             device: device,
             performer: BluetoothActionPerformerStub(),
@@ -323,7 +323,7 @@ final class BluetoothDeviceActionsTests: XCTestCase {
 
     func testAConfirmationIsOnlyHeldForADeviceThePolicyWouldAsk() {
         let audio = makeDevice(isConnected: true, kind: .audio)
-        let idleKeyboard = makeDevice(isConnected: false, name: "MX Keys", kind: .peripheral)
+        let idleKeyboard = makeDevice(isConnected: false, name: "MX Keys", kind: .peripheral(.keyboard))
         let (controller, _) = makeController(
             device: audio,
             performer: BluetoothActionPerformerStub(),
@@ -339,7 +339,7 @@ final class BluetoothDeviceActionsTests: XCTestCase {
     }
 
     func testPerformingAnActionAnswersAPendingConfirmation() async {
-        let device = makeDevice(isConnected: true, name: "MX Keys", kind: .peripheral)
+        let device = makeDevice(isConnected: true, name: "MX Keys", kind: .peripheral(.keyboard))
         let (controller, _) = makeController(
             device: device,
             performer: BluetoothActionPerformerStub(),
@@ -357,7 +357,7 @@ final class BluetoothDeviceActionsTests: XCTestCase {
     }
 
     func testDeactivatingCancelsAPendingConfirmation() async {
-        let device = makeDevice(isConnected: true, name: "MX Keys", kind: .peripheral)
+        let device = makeDevice(isConnected: true, name: "MX Keys", kind: .peripheral(.keyboard))
         let (controller, _) = makeController(
             device: device,
             performer: BluetoothActionPerformerStub(),
@@ -394,15 +394,15 @@ final class BluetoothDeviceActionsTests: XCTestCase {
     func testOnlyDisconnectingAnInputDeviceNeedsConfirmation() {
         XCTAssertTrue(
             BluetoothDeviceActionPolicy.requiresConfirmation(
-                for: makeDevice(isConnected: true, name: "MX Keys", kind: .peripheral)
+                for: makeDevice(isConnected: true, name: "MX Keys", kind: .peripheral(.keyboard))
             )
         )
         XCTAssertFalse(
             BluetoothDeviceActionPolicy.requiresConfirmation(
-                for: makeDevice(isConnected: false, name: "MX Keys", kind: .peripheral)
+                for: makeDevice(isConnected: false, name: "MX Keys", kind: .peripheral(.keyboard))
             )
         )
-        for kind in [BluetoothDeviceKind.audio, .computer, .phone, .unknown] {
+        for kind in [BluetoothDeviceKind.audio, .computer(.unclassified), .mobile(.phone), .unknown] {
             XCTAssertFalse(
                 BluetoothDeviceActionPolicy.requiresConfirmation(
                     for: makeDevice(isConnected: true, kind: kind)

@@ -22,7 +22,7 @@ final class BluetoothDeviceRowLayoutTests: XCTestCase {
         let device = BluetoothDevice(
             id: "AA:00:00:00:00:01",
             name: "EDIFIER LolliPods 2022版",
-            kind: .peripheral,
+            kind: .peripheral(.unclassified),
             isConnected: true
         )
         // The phrase is asserted on a short name: the leading block only grows
@@ -31,7 +31,7 @@ final class BluetoothDeviceRowLayoutTests: XCTestCase {
         let shortNamedDevice = BluetoothDevice(
             id: device.id,
             name: "MX Master 3",
-            kind: .peripheral,
+            kind: .peripheral(.mouse),
             isConnected: true
         )
 

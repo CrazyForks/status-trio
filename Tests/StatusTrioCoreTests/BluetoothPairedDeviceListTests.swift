@@ -24,7 +24,7 @@ struct BluetoothPairedDeviceListTests {
               {
                 "MX Keys": {
                   "device_address": "D3:6D:6C:40:A3:2E",
-                  "device_minorType": "Keyboard"
+                  "device_minorType": "Mouse"
                 }
               }
             ]
@@ -87,9 +87,10 @@ struct BluetoothPairedDeviceListTests {
         #expect(BluetoothDeviceRowIcon.symbolName(for: renamed) == "airpods")
     }
 
-    /// Audio devices that are not AirPods, and every other kind, keep the glyph
-    /// they had.
-    @Test func otherRowsKeepTheirKindGlyphs() {
+    /// Audio devices that are not AirPods keep the generic headphone glyph, a
+    /// peripheral is drawn as the form it declares, and a class the report did
+    /// not describe draws the generic radio rather than a question mark.
+    @Test func otherRowsDrawTheGlyphTheirClassCallsFor() {
         #expect(
             BluetoothDeviceRowIcon.symbolName(
                 for: BluetoothDevice(
@@ -102,16 +103,21 @@ struct BluetoothPairedDeviceListTests {
         )
         #expect(
             BluetoothDeviceRowIcon.symbolName(
-                for: BluetoothDevice(id: "D3:6D:6C:40:A3:2E", name: "MX Keys", kind: .peripheral, isConnected: true)
-            ) == "computermouse"
+                for: BluetoothDevice(id: "D3:6D:6C:40:A3:2E", name: "MX Keys", kind: .peripheral(.keyboard), isConnected: true)
+            ) == "keyboard"
         )
         #expect(
             BluetoothDeviceRowIcon.symbolName(
                 for: BluetoothDevice(id: "AA:BB:CC:DD:EE:FF", name: "Mystery Device", kind: .unknown, isConnected: false)
-            ) == "questionmark.circle"
+            ) == BluetoothDeviceRowIcon.genericSymbol
         )
     }
 
+    /// A device that is paired but not connected keeps the class the report
+    /// declared, even when that class is wrong. `MX Keys` is a keyboard and
+    /// this report calls it a mouse, which is what the real machine reports for
+    /// it; only the Registry can tell, and a disconnected device has no node
+    /// there, so the declared class is the honest answer.
     @Test func keepsPairedButDisconnectedDevices() throws {
         let devices = try #require(
             BluetoothPairedDeviceReader.parse(json: Data(connectedAndPaired.utf8))
@@ -120,7 +126,7 @@ struct BluetoothPairedDeviceListTests {
         let keyboard = try #require(devices.first { $0.id == "D3:6D:6C:40:A3:2E" })
         #expect(keyboard.name == "MX Keys")
         #expect(keyboard.isConnected == false)
-        #expect(keyboard.kind == .peripheral)
+        #expect(keyboard.kind == .peripheral(.mouse))
     }
 
     @Test func normalizesTheAddressToMatchTheBatteryReader() throws {
@@ -154,7 +160,7 @@ struct BluetoothPairedDeviceListTests {
         """
         let devices = try #require(BluetoothPairedDeviceReader.parse(json: Data(json.utf8)))
 
-        #expect(devices.first?.kind == .peripheral)
+        #expect(devices.first?.kind == .peripheral(.unclassified))
     }
 
     /// No readable device database is a read failure, not "no paired devices".
