@@ -19,12 +19,16 @@ enum BluetoothDeviceRowIcon {
                 for: AudioDeviceIdentity(bluetooth: device.name, model: device.airPodsModel)
             )
         default:
-            symbolName(for: device.kind)
+            symbolName(for: device.kind, name: device.name)
         }
     }
 
     static func symbolName(for kind: BluetoothDeviceKind) -> String {
-        let candidates = candidateSymbols(for: kind)
+        symbolName(for: kind, name: "")
+    }
+
+    static func symbolName(for kind: BluetoothDeviceKind, name: String) -> String {
+        let candidates = candidateSymbols(for: kind, name: name)
         return candidates.first {
             NSImage(systemSymbolName: $0, accessibilityDescription: nil) != nil
         } ?? candidates.last ?? genericSymbol
@@ -44,6 +48,43 @@ enum BluetoothDeviceRowIcon {
     /// the strings, rather than on whichever symbols the machine running the
     /// tests happens to ship.
     static func candidateSymbols(for kind: BluetoothDeviceKind) -> [String] {
+        candidateSymbols(for: kind, name: "")
+    }
+
+    static func candidateSymbols(for kind: BluetoothDeviceKind, name: String) -> [String] {
+        namedCandidates(for: kind, name: name) ?? classCandidates(for: kind)
+    }
+
+    /// What the device's own name narrows the glyph to, ahead of its class's
+    /// list.
+    ///
+    /// The Bluetooth class stops at the family — a Mac mini, an iMac and a Mac
+    /// Pro all declare `Desktop`, and nothing in the class tells them apart —
+    /// but Apple's products name themselves after the model, so the name can
+    /// pick the model's glyph. The rule is bounded on purpose: it only runs
+    /// inside the class the report already declared, so a mouse that happens to
+    /// be named like a Mac can never be drawn as one, and the class list stays
+    /// the fallback when the name names no model the app has a glyph for.
+    private static func namedCandidates(for kind: BluetoothDeviceKind, name: String) -> [String]? {
+        // Lowercased with the punctuation dropped, so `Mac mini`, `MacMini` and
+        // `Mac mini (书桌)` land on one key.
+        let key = name.lowercased().filter { $0.isLetter || $0.isNumber }
+        switch kind {
+        case .computer(.desktop), .computer(.unclassified):
+            if key.contains("macmini") { return ["macmini", "desktopcomputer"] }
+            if key.contains("macstudio") { return ["macstudio", "desktopcomputer"] }
+            if key.contains("macbook") { return ["laptopcomputer"] }
+            // An iMac and a Mac Pro have no symbol of their own; the desktop
+            // glyph is already the honest one for both.
+            return nil
+        case .mobile(.phone):
+            return key.contains("iphone") ? ["iphone", "smartphone"] : nil
+        default:
+            return nil
+        }
+    }
+
+    private static func classCandidates(for kind: BluetoothDeviceKind) -> [String] {
         switch kind {
         case .computer(.laptop):
             ["laptopcomputer"]

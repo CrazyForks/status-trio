@@ -85,6 +85,73 @@ struct BluetoothDeviceRowIconTests {
         }
     }
 
+    /// The name narrows the glyph inside the class the report declared. The
+    /// Bluetooth class stops at the family — every desktop Mac declares
+    /// `Desktop` — and Apple's products name themselves after the model.
+    @Test(arguments: [
+        ("Mac mini", BluetoothDeviceKind.computer(.desktop), "macmini"),
+        ("Mac mini (书桌)", BluetoothDeviceKind.computer(.desktop), "macmini"),
+        ("MacMini", BluetoothDeviceKind.computer(.desktop), "macmini"),
+        ("Mac Studio", BluetoothDeviceKind.computer(.desktop), "macstudio"),
+        ("Mac Studio", BluetoothDeviceKind.computer(.unclassified), "macstudio"),
+        ("MacBook Pro", BluetoothDeviceKind.computer(.desktop), "laptopcomputer"),
+        ("iPhone 15 Pro", BluetoothDeviceKind.mobile(.phone), "iphone"),
+    ])
+    func appleNamesPickTheModelGlyph(name: String, kind: BluetoothDeviceKind, expected: String) {
+        #expect(BluetoothDeviceRowIcon.symbolName(for: kind, name: name) == expected)
+    }
+
+    /// The refinement is bounded: a name runs only inside the class the report
+    /// declared, and a name the app has no model glyph for changes nothing.
+    @Test func theNameNeverCrossesTheDeclaredClass() {
+        // A mouse that mentions a Mac stays a mouse.
+        #expect(
+            BluetoothDeviceRowIcon.symbolName(for: .peripheral(.mouse), name: "Mac mini Mouse")
+                == "computermouse"
+        )
+        // A phone that is not an iPhone keeps the generic phone glyph.
+        #expect(
+            BluetoothDeviceRowIcon.symbolName(for: .mobile(.phone), name: "Pixel 9 Pro")
+                == "smartphone"
+        )
+        // An iMac and a Mac Pro have no symbol of their own; the desktop glyph
+        // is already the honest one for both.
+        #expect(
+            BluetoothDeviceRowIcon.symbolName(for: .computer(.desktop), name: "iMac")
+                == "desktopcomputer"
+        )
+        #expect(
+            BluetoothDeviceRowIcon.symbolName(for: .computer(.desktop), name: "Mac Pro")
+                == "desktopcomputer"
+        )
+        // A laptop already drew the laptop glyph; the name changes nothing.
+        #expect(
+            BluetoothDeviceRowIcon.symbolName(for: .computer(.laptop), name: "MacBook Air")
+                == "laptopcomputer"
+        )
+    }
+
+    /// The named lists end on the same class fallback, so a macOS without the
+    /// model glyph still resolves to a symbol it ships.
+    @Test func everyNamedListEndsOnASymbolThisMachineShips() {
+        let named: [(BluetoothDeviceKind, String)] = [
+            (.computer(.desktop), "Mac mini"),
+            (.computer(.desktop), "Mac Studio"),
+            (.computer(.unclassified), "MacBook Pro"),
+            (.mobile(.phone), "iPhone 15"),
+        ]
+        for (kind, name) in named {
+            guard let last = BluetoothDeviceRowIcon.candidateSymbols(for: kind, name: name).last else {
+                Issue.record("\(name) produced no candidates at all")
+                continue
+            }
+            #expect(
+                NSImage(systemSymbolName: last, accessibilityDescription: nil) != nil,
+                "the fallback glyph \(last) for \(name) does not exist on this macOS"
+            )
+        }
+    }
+
     /// An audio row still resolves through the output list's table, so an
     /// AirPods keeps the glyph macOS declares for its product ID.
     @Test func audioRowsResolveThroughTheOutputListTable() {
