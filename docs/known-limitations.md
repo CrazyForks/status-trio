@@ -64,3 +64,30 @@ own charge-to-full action.
 macOS 26.4 and later add a native charge limit from 80% through 100% on Apple
 silicon Macs, with its own charge-to-full action, so on those versions the limit and
 the override live in the same system place, and this app duplicates neither.
+
+## One Bluetooth battery source is undocumented
+
+Bluetooth battery levels come from `system_profiler -json SPBluetoothDataType`, a
+documented report. A connected device that report carries no level for is also
+looked up in the accessory power sources — the data macOS draws its own accessory
+battery display from — and their only command-line form is `pmset -g accps`. That
+subcommand is undocumented: it appears nowhere in `man pmset`, and only
+`-g accps -xml` produces the structured form the app needs, because the text form
+prints an accessory it cannot resolve without a name.
+
+The dependency is written so that losing it costs coverage and nothing else. A read
+that fails reports no accessory rather than an error, the report stays the only
+source, and nothing on screen changes. The public API cannot reach these numbers at
+all: `IOPSCopyPowerSourcesInfo()` returns the internal battery alone, and the
+private `IOPSCopyPowerSourcesByType(kIOPSSourceForAccessories)` that does return
+them is deliberately not linked, so no private symbol and no entitlement is
+involved. AirPods part levels do reach the app — including their left and right
+buds — because macOS obtains them over its own private accessory protocol and
+writes the result into that documented report; the app reads the outcome, not the
+protocol.
+
+The accessory battery notifications the levels refresh on are `notify(3)` keys
+(`com.apple.system.accpowersources.*`). Registering for a notification key is the
+public half of the mechanism; the key names belong to `powerd`, and a key that goes
+away only means those notifications stop arriving, which leaves the safety-net poll
+as the only trigger, exactly as before.

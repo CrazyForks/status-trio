@@ -304,6 +304,21 @@ enum BluetoothDeviceKind: Equatable, Sendable {
     case unknown
 }
 
+/// The `0x200F` / `0x004C` hexadecimal strings the system report carries for a
+/// device's vendor and product ID. The paired-device reader keeps both IDs on
+/// the device and the AirPods model table is keyed by the product ID, so the
+/// parse of that text lives in one place rather than in each of them.
+enum BluetoothHexIdentifier {
+    static func value(from text: String?) -> Int? {
+        var digits = (text ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if digits.hasPrefix("0x") {
+            digits.removeFirst(2)
+        }
+        guard !digits.isEmpty, digits.allSatisfy(\.isHexDigit) else { return nil }
+        return Int(digits, radix: 16)
+    }
+}
+
 struct BluetoothDevice: Identifiable, Equatable, Sendable {
     let id: String
     let name: String
@@ -313,19 +328,30 @@ struct BluetoothDevice: Identifiable, Equatable, Sendable {
     /// the profiler's `device_productID` / `device_vendorID` pair. It survives a
     /// rename, which the name cannot.
     let airPodsModel: AirPodsModel?
+    /// The `device_vendorID` / `device_productID` pair the report carries, kept
+    /// as numbers because they are the identity a reading from another source is
+    /// matched to this device by: the pair survives a rename, and unlike the name
+    /// it names one model. A report entry without the pair stays `nil`, which is
+    /// what makes the name the fallback rather than the first choice.
+    let vendorID: Int?
+    let productID: Int?
 
     init(
         id: String,
         name: String,
         kind: BluetoothDeviceKind,
         isConnected: Bool,
-        airPodsModel: AirPodsModel? = nil
+        airPodsModel: AirPodsModel? = nil,
+        vendorID: Int? = nil,
+        productID: Int? = nil
     ) {
         self.id = id
         self.name = name
         self.kind = kind
         self.isConnected = isConnected
         self.airPodsModel = airPodsModel
+        self.vendorID = vendorID
+        self.productID = productID
     }
 
     /// Whether this is an AirPods, which is what decides the order: AirPods lead

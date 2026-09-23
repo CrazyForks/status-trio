@@ -69,6 +69,70 @@ when the row disappears: switching the setting off while the row stays on screen
 stops the read and clears the level it published. Closing the popover drops every
 claim.
 
+## A second source for levels the report omits
+
+The report stays the only source of every level the panel shows, and no second
+source may change one. macOS also exposes the same accessory batteries through
+the power manager, whose only command-line form is `pmset -g accps`, and that
+view is consulted for exactly one purpose: a connected device the report carries
+no level for. It can never take a level away and never overwrite one, because the
+merge copies the report's levels through untouched and only adds an entry for an
+address that has none. A device macOS can already read is therefore never
+described by the other source.
+
+The XML form is asked for rather than the plain-text one, because the text form
+prints an accessory it cannot resolve with an empty name — the Mac this was
+written on shows its AirPods as `- (id=…) 97%` — and the name is one of the two
+things a reading is joined to a device by. `Vendor ID`/`Product ID` are the
+identity when both sides carry the pair, so a rename cannot re-join a reading to
+whichever device now happens to share its wording. The name is the fallback for a
+report entry that carries no pair, and that comparison is exact rather than a
+substring match, which would join an accessory to any device whose name happens
+to contain it.
+
+A reading is written to the channel its part names, and a part never writes the
+device-wide level: `Part Identifier = Left` fills `left`, and only a reading with
+no part can fill the device-wide slot. Without that rule one bud's charge could be
+reported as the whole device's, and a merge would be less accurate than the report
+it was meant to complete.
+
+The subcommand is undocumented, so a macOS that stops answering it must cost
+coverage and nothing else: a failed read reports no accessory, which leaves the
+report as the only source, exactly as before. On a Mac where both sources agree —
+measured here, byte for byte — the second source costs nothing at all, because it
+is never consulted: with a level present for every connected device, no `pmset`
+process is started. A failed read of the report keeps its line under the list
+unless the second source actually supplied a level, so a report that failed
+outright is never quietly replaced by a partial answer.
+
+## Levels refresh on the system's own notifications
+
+The safety-net poll stays, and is still deliberately slow, but a level that changes
+is now re-read within a few seconds. While a surface is showing levels the
+controller registers for the power manager's accessory notifications — `notify(3)`,
+a public libSystem mechanism whose only Apple-specific part is the key names — and
+one burst of them re-reads the report through the same coalescing path a connection
+notification uses. The notification says the system's reading changed, which is
+exactly what a cached report cannot show, so the read that follows re-fetches
+rather than reuses.
+
+Two details differ from the connection registration. The burst is held longer
+(three seconds, against 750 ms for a connect), because an accessory discharging
+posts these often and each event would otherwise start its own read. And the
+registration follows the battery claim as well as the visible surface, where the
+connect registration follows the surface alone: a panel that is on screen with
+levels switched off has nothing to update, so it should not hold the registration.
+Closing the panel discards a debounced read that has not run yet rather than
+letting it fire against a surface that is gone.
+
+A refused registration is not a failure. The keys can disappear in a future macOS,
+and when they do the poll carries the levels on its own, which is the behaviour the
+app shipped with. Worth knowing when verifying by hand: these notifications cannot
+be simulated. The keys live in the `com.apple.system` namespace, which an ordinary
+process may register for but may not post — `notifyutil -p` reports success and
+delivers nothing, while `powerd` posts them for real. `notifyutil -1` (register and
+wait for one) does observe them, so only a real accessory event exercises this path.
+
 ## Device levels in the list
 
 The panel's list renders one level per device the same way the row does, and

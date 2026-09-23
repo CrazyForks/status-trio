@@ -150,15 +150,20 @@ enum BluetoothPairedDeviceReader {
                           !entry.name.isEmpty else {
                         continue
                     }
+                    let productID = BluetoothHexIdentifier.value(
+                        from: properties["device_productID"] as? String
+                    )
+                    let vendorID = BluetoothHexIdentifier.value(
+                        from: properties["device_vendorID"] as? String
+                    )
                     devices.append(BluetoothDevice(
                         id: address,
                         name: entry.name,
                         kind: kind(properties: properties),
                         isConnected: isConnected,
-                        airPodsModel: AirPodsModel(
-                            productIDText: properties["device_productID"] as? String,
-                            vendorIDText: properties["device_vendorID"] as? String
-                        )
+                        airPodsModel: AirPodsModel(productID: productID, vendorID: vendorID),
+                        vendorID: vendorID,
+                        productID: productID
                     ))
                 }
             }
@@ -291,6 +296,10 @@ final class BluetoothDeviceController: ObservableObject {
     /// `deinit` rather than being called off the queue CoreBluetooth was created on.
     nonisolated(unsafe) private let stateMonitor: any BluetoothStateMonitoring
     private let batteryReader: any BluetoothBatteryReading
+    /// The second battery source, read only for the devices the paired-device
+    /// report carries no level for. Optional so a test can build a controller
+    /// that never spawns `/usr/bin/pmset`.
+    private let accessoryBatteryReader: (any BluetoothAccessoryBatteryReading)?
     private let notificationCenter: NotificationCenter
     private let workspaceNotificationCenter: NotificationCenter
     /// The AppKit and workspace registrations, kept in teardown-owned storage so
@@ -305,9 +314,20 @@ final class BluetoothDeviceController: ObservableObject {
     /// The connect/disconnect source for the safety net. Optional so a test can
     /// build a controller that never touches the system's Bluetooth service.
     /// Teardown-owned storage: `deinit` is nonisolated and reads it directly.
-    nonisolated(unsafe) private let connectionEvents: (any BluetoothConnectionEventMonitoring)?
+    nonisolated(unsafe)    private let connectionEvents: (any BluetoothConnectionEventMonitoring)?
+    /// The accessory battery-change source. Optional so a test can build a
+    /// controller that never touches the system's notification centre, and
+    /// teardown-owned storage for the same reason the connect source is:
+    /// `deinit` is nonisolated and reads it directly.
+    nonisolated(unsafe) private let accessoryBatteryEvents: (any BluetoothAccessoryBatteryEventMonitoring)?
     private let connectionEventDebounceInterval: Duration
     private let connectionEventDebounceSleep: @Sendable (Duration) async throws -> Void
+    /// The accessory battery debounce. It is longer than the connect/disconnect
+    /// one on purpose: the power manager posts an accessory notification fairly
+    /// often while that accessory discharges, and the safety-net poll still runs
+    /// behind this as the source that catches whatever no notification delivered.
+    private let accessoryBatteryEventDebounceInterval: Duration
+    private let accessoryBatteryEventDebounceSleep: @Sendable (Duration) async throws -> Void
     /// Invalidates a debounce that a later stop or deactivate superseded, the
     /// same way `AsyncRequestGate` guards the other asynchronous paths here.
     private var connectionEventGate = AsyncRequestGate()
@@ -315,6 +335,15 @@ final class BluetoothDeviceController: ObservableObject {
     /// Set from the registration result, so "monitoring" means the system
     /// accepted the registration rather than that it was merely attempted.
     private var isMonitoringConnectionEventNotifications = false
+    /// The accessory battery debounce latch and gate, shaped exactly like the
+    /// connect-event pair above: one read per burst, and a late completion from a
+    /// superseded debounce cannot start a read the next registration did not ask
+    /// for.
+    private var accessoryBatteryEventGate = AsyncRequestGate()
+    private var isAccessoryBatteryEventReadScheduled = false
+    /// Set from the registration result, so "monitoring" means the system
+    /// accepted the registration rather than that it was merely attempted.
+    private var isMonitoringAccessoryBatteryNotifications = false
     private(set) var isActive = false
     private var batteryRequestGate = AsyncRequestGate()
     /// One device read at a time, with at most one coalesced follow-up. Without
@@ -374,6 +403,7 @@ final class BluetoothDeviceController: ObservableObject {
         worker: any BluetoothPairedDeviceReading = SystemProfilerBluetoothPairedDeviceWorker(),
         stateMonitor: any BluetoothStateMonitoring = CoreBluetoothStateMonitor(),
         batteryReader: any BluetoothBatteryReading = SystemProfilerBluetoothBatteryWorker(),
+        accessoryBatteryReader: (any BluetoothAccessoryBatteryReading)? = nil,
         notificationCenter: NotificationCenter = .default,
         workspaceNotificationCenter: NotificationCenter = NSWorkspace.shared.notificationCenter,
         safetyNetInterval: Duration = .seconds(30),
@@ -382,8 +412,13 @@ final class BluetoothDeviceController: ObservableObject {
         },
         systemObservers: SystemEventObserverBag? = nil,
         connectionEvents: (any BluetoothConnectionEventMonitoring)? = nil,
+        accessoryBatteryEvents: (any BluetoothAccessoryBatteryEventMonitoring)? = nil,
         connectionEventDebounceInterval: Duration = .milliseconds(750),
         connectionEventDebounceSleep: @escaping @Sendable (Duration) async throws -> Void = {
+            try await Task.sleep(for: $0)
+        },
+        accessoryBatteryEventDebounceInterval: Duration = .seconds(3),
+        accessoryBatteryEventDebounceSleep: @escaping @Sendable (Duration) async throws -> Void = {
             try await Task.sleep(for: $0)
         },
         readTimeout: Duration = .seconds(5),
@@ -403,6 +438,7 @@ final class BluetoothDeviceController: ObservableObject {
         self.worker = worker
         self.stateMonitor = stateMonitor
         self.batteryReader = batteryReader
+        self.accessoryBatteryReader = accessoryBatteryReader
         self.notificationCenter = notificationCenter
         self.workspaceNotificationCenter = workspaceNotificationCenter
         self.safetyNetInterval = safetyNetInterval
@@ -414,8 +450,11 @@ final class BluetoothDeviceController: ObservableObject {
             workspaceNotificationCenter: workspaceNotificationCenter
         )
         self.connectionEvents = connectionEvents
+        self.accessoryBatteryEvents = accessoryBatteryEvents
         self.connectionEventDebounceInterval = connectionEventDebounceInterval
         self.connectionEventDebounceSleep = connectionEventDebounceSleep
+        self.accessoryBatteryEventDebounceInterval = accessoryBatteryEventDebounceInterval
+        self.accessoryBatteryEventDebounceSleep = accessoryBatteryEventDebounceSleep
         readWatchdog = ReadWatchdog(
             baseTimeout: readTimeout,
             maxTimeout: .seconds(60),
@@ -438,6 +477,7 @@ final class BluetoothDeviceController: ObservableObject {
         // the process.
         systemObservers.removeAll()
         connectionEvents?.stop()
+        accessoryBatteryEvents?.stop()
         // `CBCentralManager` retains its delegate, so the state monitor is never
         // deallocated while it is running. `stop()` has to run on the main actor,
         // which is the queue the manager was created with, so the reference is
@@ -459,6 +499,16 @@ final class BluetoothDeviceController: ObservableObject {
     /// Whether connection notifications are being delivered right now.
     var isMonitoringConnectionEvents: Bool {
         isMonitoringConnectionEventNotifications
+    }
+
+    /// Whether the controller has an accessory battery-change source at all.
+    var hasAccessoryBatteryEventSource: Bool {
+        accessoryBatteryEvents != nil
+    }
+
+    /// Whether accessory battery notifications are being delivered right now.
+    var isMonitoringAccessoryBatteryEvents: Bool {
+        isMonitoringAccessoryBatteryNotifications
     }
 
     /// The app's current CoreBluetooth grant. Reading it never prompts; only
@@ -502,6 +552,7 @@ final class BluetoothDeviceController: ObservableObject {
         invalidateDeviceRead()
         batteryLevelRequests.removeAll()
         updateBatteryLevelRequests()
+        stopAccessoryBatteryEvents()
         stopPeriodicRefresh()
         systemObservers.removeAll()
         stateMonitor.stop()
@@ -625,12 +676,18 @@ final class BluetoothDeviceController: ObservableObject {
     private func updateBatteryLevelRequests() {
         let enabled = !batteryLevelRequests.isEmpty
         guard batteryLevelsEnabled != enabled else {
-            if enabled { refreshBatteryLevels() }
+            if enabled {
+                refreshBatteryLevels()
+                updateAccessoryBatteryEvents()
+            }
             return
         }
         batteryLevelsEnabled = enabled
         // Levels read for a released claim must not outlive it.
         clearBatteryLevels()
+        // The registration follows the claim: it is only worth holding while a
+        // surface is actually showing levels.
+        updateAccessoryBatteryEvents()
         if enabled {
             refreshBatteryLevels()
         }
@@ -717,9 +774,60 @@ final class BluetoothDeviceController: ObservableObject {
                 }
                 // `nil` is a report that could not be read, which is a different
                 // state from a report that carries no level for any device: the
-                // detail page reports it once instead of staying silent.
+                // panel reports it once instead of staying silent.
                 self.batteryLevelsReadFailed = levels == nil
                 self.batteryLevels = levels ?? [:]
+                // The primary source is published first and on its own. The
+                // second source is an addition to it, never a precondition for
+                // it, so a read that never answers cannot hold the list back.
+                self.readAccessoryLevelsIfNeeded(request: request, levels: levels)
+            }
+        }
+    }
+
+    /// Reads the accessory power sources for the devices the paired-device
+    /// report carried no level for, and adds what they supply.
+    ///
+    /// The primary levels stay published while this read is in flight, and the
+    /// merge copies them through untouched: this can add a level for a device the
+    /// report cannot describe, and cannot change or remove one it can. The gate
+    /// is the same request token, so a merge that lands after a newer read
+    /// superseded this one is dropped rather than published over it.
+    private func readAccessoryLevelsIfNeeded(
+        request: UInt64,
+        levels: [String: BluetoothBatteryLevel]?
+    ) {
+        guard let accessoryBatteryReader else { return }
+        guard BluetoothBatteryLevelFallback.isNeeded(levels: levels, devices: devices) else {
+            return
+        }
+        let devices = devices
+        accessoryBatteryReader.read { [weak self] accessories in
+            Task { @MainActor [weak self] in
+                guard let self,
+                      self.isActive,
+                      self.batteryLevelsEnabled,
+                      self.availability == .available,
+                      self.batteryRequestGate.accepts(request) else {
+                    return
+                }
+                // A source that could not be read adds no failure of its own:
+                // the primary read's verdict stands, and a second line saying the
+                // same thing would only repeat it.
+                guard let accessories else { return }
+                let merged = BluetoothBatteryLevelFallback.merged(
+                    levels: self.batteryLevels,
+                    accessories: accessories,
+                    devices: devices
+                )
+                self.batteryLevels = merged
+                // The report's failure is cleared exactly when the second source
+                // gave the list something to show. A failed report that still
+                // leaves every row silent keeps its line, so the panel never goes
+                // quiet about a read that failed outright.
+                if !merged.isEmpty {
+                    self.batteryLevelsReadFailed = false
+                }
             }
         }
     }
@@ -738,6 +846,7 @@ final class BluetoothDeviceController: ObservableObject {
     private func schedulePeriodicRefresh() {
         guard isActive, hasVisibleSurface, availability == .available else { return }
         startConnectionEvents()
+        updateAccessoryBatteryEvents()
         guard periodicRefreshTask == nil else { return }
         let interval = safetyNetInterval
         let sleep = safetyNetSleep
@@ -775,6 +884,7 @@ final class BluetoothDeviceController: ObservableObject {
         periodicRefreshTask?.cancel()
         periodicRefreshTask = nil
         stopConnectionEvents()
+        stopAccessoryBatteryEvents()
     }
 
     /// Connection notifications only matter while a Bluetooth surface is on
@@ -798,6 +908,65 @@ final class BluetoothDeviceController: ObservableObject {
         // idempotent.
         isMonitoringConnectionEventNotifications = false
         connectionEvents?.stop()
+    }
+
+    /// Accessory battery notifications only matter while a surface is showing
+    /// levels: nothing else displays them, and the registration is a system
+    /// resource the app should not hold for its lifetime. So the registration
+    /// follows the battery claim and the visible surface together, where the
+    /// connect registration follows the surface alone.
+    private func updateAccessoryBatteryEvents() {
+        guard isActive, batteryLevelsEnabled, hasVisibleSurface, availability == .available else {
+            stopAccessoryBatteryEvents()
+            return
+        }
+        startAccessoryBatteryEvents()
+    }
+
+    private func startAccessoryBatteryEvents() {
+        guard !isMonitoringAccessoryBatteryNotifications, let accessoryBatteryEvents else { return }
+        // The handler arrives on the monitor's own queue, so it hops to the main
+        // actor before touching controller state.
+        isMonitoringAccessoryBatteryNotifications = accessoryBatteryEvents.start { [weak self] in
+            Task { @MainActor in self?.receiveAccessoryBatteryEvent() }
+        }
+    }
+
+    private func stopAccessoryBatteryEvents() {
+        _ = accessoryBatteryEventGate.advance()
+        isAccessoryBatteryEventReadScheduled = false
+        // Unconditional, for the same reason the connect registration is: a
+        // refused registration can still have stored the handler, so the monitor
+        // is told to stop either way and teardown has one shape.
+        isMonitoringAccessoryBatteryNotifications = false
+        accessoryBatteryEvents?.stop()
+    }
+
+    /// One read per burst of accessory notifications. An accessory discharging
+    /// posts these fairly often, so the burst is held for the longer interval and
+    /// the read that follows re-fetches the report: the notification says the
+    /// system's reading changed, which is exactly what a cached report cannot
+    /// show.
+    private func receiveAccessoryBatteryEvent() {
+        guard isActive, isMonitoringAccessoryBatteryNotifications else { return }
+        guard !isAccessoryBatteryEventReadScheduled else { return }
+        isAccessoryBatteryEventReadScheduled = true
+        let request = accessoryBatteryEventGate.advance()
+        let interval = accessoryBatteryEventDebounceInterval
+        let sleep = accessoryBatteryEventDebounceSleep
+        Task { @MainActor [weak self] in
+            do {
+                try await sleep(interval)
+            } catch {
+                guard let self, self.accessoryBatteryEventGate.accepts(request) else { return }
+                self.isAccessoryBatteryEventReadScheduled = false
+                return
+            }
+            guard let self, self.accessoryBatteryEventGate.accepts(request) else { return }
+            self.isAccessoryBatteryEventReadScheduled = false
+            guard self.isActive else { return }
+            self.refresh()
+        }
     }
 
     // MARK: - Device actions
