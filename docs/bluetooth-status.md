@@ -17,7 +17,9 @@ devices:batteryLevels:)`, so the text is testable without rendering SwiftUI:
 Device names are joined with the ideographic comma `、`. A connected battery
 reading is joined to its device with the existing ` · ` separator, so the level
 reads as a property of that device rather than another entry in the list:
-`AirPods Pro · L 80% · R 75% · Case 60%、MX Master 3 · 45%`.
+`AirPods Pro · L 80% · R 75% · Case 60%、MX Master 3 · 45%`. The `Case` in that
+example is the text-only rendering of the level — on screen the case is a glyph
+(see *The charging case is a glyph* below).
 
 ## Device names come from the system profiler
 
@@ -35,6 +37,27 @@ displayed as an empty device list. It accepts the profiler's wrapped
 `SPBluetoothDataType` list and a bare section. How a device's class is resolved
 from the report's wording is described under *Device classes and their glyphs*
 below.
+
+One address names one device, so the parser keeps one entry per address. Every
+consumer treats the address as the identity — the list's `Identifiable.id`, the
+battery-level lookup, the action state and the pending disconnect confirmation —
+so a report that carries one address twice used to draw that device twice, with
+both rows sharing a single set of state, and hand `ForEach` a duplicate id,
+which SwiftUI leaves undefined. Three report shapes can do it: a connect or a
+disconnect caught between the two collections, a Mac whose controllers the
+profiler reports as separate sections, and a paired-device database that itself
+holds a duplicate. The collections are read connected-first, which makes that the
+precedence: the entry that survives is the one whose state the device is
+actually in.
+
+An address the normalizer cannot reduce names no device, so entries like it are
+never merged — two of them are not necessarily the same device, and the merge
+would cost a real one its row.
+
+The level map reads in the same order and keeps the same precedence, and it
+needed it more: its keys are addresses, so the disconnected copy of an address —
+read second — overwrote the connected reading, and a row showing the current
+charge fell back to the last value macOS had written down.
 
 ## Device classes and their glyphs
 
@@ -168,6 +191,34 @@ when the row disappears: switching the setting off while the row stays on screen
 stops the read and clears the level it published. Closing the popover drops every
 claim.
 
+### The charging case is a glyph
+
+A device's level is built as pieces (`BluetoothBatterySegment`) rather than as a
+finished sentence, and one piece of an AirPods level is drawn instead of spelled
+out: the charging case is `airpods.chargingcase`, with its percentage still text
+beside it. The word it replaces — `Case` — was hard-coded English that none of
+the twelve localizations carried, and a word is the part with no room in that
+slot at the row's caption size anyway. The outline form is deliberate: at 10 to
+11 points the filled variant is a solid blob that reads as nothing in particular.
+
+Pieces also keep the text-only surfaces honest. `BluetoothBatteryLevel.summary`
+is the pieces with every glyph spelled out by its label, so the wording its
+tests pin, the appcast and the accessibility values are unchanged character for
+character, and only the drawing differs. `BluetoothBatteryLevelText.drawn`
+concatenates the pieces into one `Text` run — a `Text` and a
+`Text(Image(systemName:))` add up to a single `Text` — so a row keeps one line,
+one font and one truncation behaviour while one piece of it is a glyph. The
+device rows and the popover's summary line draw the same pieces, which is what
+stops the case from being a glyph on one surface and a word on the other. A
+symbol a later macOS drops falls back to drawing its label, the same rule the
+class glyph list follows rather than drawing a blank.
+
+An inline image carries no label of its own, so the row's level run is hidden
+from accessibility and the level is appended to the row's accessibility value
+instead (`rowAccessibilityValue`): a combined element would otherwise announce
+the case's percentage with nothing saying what it belongs to. The summary line
+already overrides its label and needs no change.
+
 ## A second source for levels the report omits
 
 The report stays the only source of every level the panel shows, and no second
@@ -237,7 +288,7 @@ wait for one) does observe them, so only a real accessory event exercises this p
 The panel's list renders one level per device the same way the row does, and
 covers every paired device, connected or not. A row shows a level only when the
 report carries one for that device
-(`BluetoothDevicePresentation.batteryLevelText(for:batteryLevels:)`); a
+(`BluetoothDevicePresentation.batteryLevelSegments(for:batteryLevels:)`); a
 device macOS cannot read stays silent instead of repeating a placeholder on
 every line.
 
