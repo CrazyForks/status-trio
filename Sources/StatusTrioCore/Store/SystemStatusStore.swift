@@ -1,4 +1,5 @@
 import AppKit
+import AudioToolbox
 import Combine
 import Foundation
 
@@ -40,6 +41,7 @@ final class SystemStatusStore: ObservableObject {
     /// True while the popover is waiting for a Wi-Fi name it has not read yet.
     @Published private(set) var isResolvingWiFiName = false
     @Published private(set) var liveVolume: VolumeStatus
+    @Published private(set) var liveInput = AudioInputStatus.empty
     let batteryDetails: BatteryDetailsController
     let wifiNetworks: WiFiNetworkController
     let bluetoothDevices: BluetoothDeviceController
@@ -48,6 +50,7 @@ final class SystemStatusStore: ObservableObject {
     private let wifiMonitor: any WiFiMonitoring
     private let connectionMonitor: (any NetworkConnectionMonitoring)?
     private let volumeMonitor: any VolumeMonitoring
+    private let inputMonitor: (any AudioInputMonitoring)?
     private let volumeController: (any VolumeControlling)?
     private let volumeFeedback: (any VolumeFeedbackPlaying)?
     private var refreshInterval: Duration
@@ -56,6 +59,10 @@ final class SystemStatusStore: ObservableObject {
     private let popupDebounceSleep: @Sendable (Duration) async throws -> Void
     private let wakeNotificationCenter: NotificationCenter
     private var monitorTasks: [Task<Void, Never>] = []
+    private var inputUpdateTask: Task<Void, Never>?
+    private var inputSettingsCancellable: AnyCancellable?
+    private var inputSettingEnabled = false
+    private var isInputEnabled = false
     private var refreshTask: Task<Void, Never>?
     private var fallbackTickCount = 0
     /// Consecutive fallback ticks skipped because the display was asleep. Reset
@@ -92,6 +99,7 @@ final class SystemStatusStore: ObservableObject {
         wifiMonitor: any WiFiMonitoring,
         connectionMonitor: (any NetworkConnectionMonitoring)? = nil,
         volumeMonitor: any VolumeMonitoring,
+        inputMonitor: (any AudioInputMonitoring)? = nil,
         volumeFeedback: (any VolumeFeedbackPlaying)? = VolumeFeedbackPlayer(),
         refreshInterval: Duration = .seconds(15),
         nameResolutionTimeout: Duration = .milliseconds(1500),
@@ -114,6 +122,7 @@ final class SystemStatusStore: ObservableObject {
         self.wifiMonitor = wifiMonitor
         self.connectionMonitor = connectionMonitor
         self.volumeMonitor = volumeMonitor
+        self.inputMonitor = inputMonitor
         self.volumeController = volumeMonitor as? any VolumeControlling
         self.volumeFeedback = volumeFeedback
         self.refreshInterval = refreshInterval
@@ -140,6 +149,7 @@ final class SystemStatusStore: ObservableObject {
             wakeNotificationCenter.removeObserver(displayWakeObserver)
         }
         monitorTasks.forEach { $0.cancel() }
+        inputUpdateTask?.cancel()
         refreshTask?.cancel()
         popupPublishTask?.cancel()
     }
@@ -200,6 +210,21 @@ final class SystemStatusStore: ObservableObject {
         connectionMonitor?.start()
         volumeMonitor.start()
 
+        if let inputMonitor {
+            let inputUpdates = inputMonitor.updates
+            inputUpdateTask = Task { [weak self] in
+                for await value in inputUpdates {
+                    guard let self else { return }
+                    self.applyInput(value)
+                }
+            }
+            inputMonitor.setEnabled(inputSettingEnabled)
+            isInputEnabled = inputSettingEnabled
+            if inputSettingEnabled {
+                inputMonitor.setVisible(isPopoverVisible)
+            }
+        }
+
         let batteryUpdates = batteryMonitor.updates
         let wifiUpdates = wifiMonitor.updates
         let connectionUpdates = connectionMonitor?.updates
@@ -251,6 +276,12 @@ final class SystemStatusStore: ObservableObject {
     func stop() {
         guard !hasStopped else { return }
         hasStopped = true
+        isInputEnabled = false
+        inputSettingsCancellable?.cancel()
+        inputSettingsCancellable = nil
+        inputUpdateTask?.cancel()
+        inputUpdateTask = nil
+        inputMonitor?.stop()
 
         if let wakeObserver {
             wakeNotificationCenter.removeObserver(wakeObserver)
@@ -399,6 +430,7 @@ final class SystemStatusStore: ObservableObject {
     func setPopoverVisible(_ visible: Bool) {
         guard !hasStopped else { return }
         isPopoverVisible = visible
+        inputMonitor?.setVisible(visible)
         if !visible { batteryDetails.deactivate() }
         updateDetailsVisibility()
 
@@ -499,12 +531,55 @@ final class SystemStatusStore: ObservableObject {
         wifiMonitor.recover()
         connectionMonitor?.recover()
         volumeMonitor.recover()
+        inputMonitor?.recover()
     }
 
     private func updateDetailsVisibility() {
         let detailsVisible = isPopoverVisible || isSettingsVisible
         wifiMonitor.setDetailsVisible(isPopoverVisible)
         volumeMonitor.setDetailsVisible(detailsVisible)
+    }
+
+    func bindInputSettings(_ settings: SettingsStore) {
+        guard !hasStopped else { return }
+        inputSettingsCancellable = settings.$enabledPopupSections
+            .map { $0.contains(.audioInput) }
+            .removeDuplicates()
+            .sink { [weak self] enabled in
+                self?.setInputEnabled(enabled)
+            }
+    }
+
+    func selectInputDevice(_ id: AudioDeviceID) {
+        guard !hasStopped else { return }
+        inputMonitor?.select(id)
+    }
+
+    func setInputScalar(_ value: Double) {
+        guard !hasStopped else { return }
+        inputMonitor?.setScalar(value)
+    }
+
+    func toggleInputMute() {
+        guard !hasStopped else { return }
+        inputMonitor?.toggleMute()
+    }
+
+    private func setInputEnabled(_ enabled: Bool) {
+        guard !hasStopped else { return }
+        inputSettingEnabled = enabled
+        guard hasStarted else { return }
+
+        isInputEnabled = enabled
+        inputMonitor?.setEnabled(enabled)
+        if enabled {
+            inputMonitor?.setVisible(isPopoverVisible)
+        }
+    }
+
+    private func applyInput(_ value: AudioInputStatus) {
+        guard !hasStopped, isInputEnabled else { return }
+        liveInput = value
     }
 
     private func applyBattery(_ value: BatteryStatus) {

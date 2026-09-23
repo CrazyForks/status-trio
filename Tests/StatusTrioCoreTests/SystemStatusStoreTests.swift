@@ -42,6 +42,189 @@ final class SystemStatusStoreTests: XCTestCase {
         store.stop()
     }
 
+    func testInputMonitorFollowsOptInSettingAndPopoverVisibility() async {
+        let battery = FakeBatteryMonitor()
+        let wifi = FakeWiFiMonitor()
+        let volume = FakeVolumeMonitor()
+        let input = FakeAudioInputMonitor()
+        let wakeCenter = NotificationCenter()
+        let suite = makeSuite()
+        defer { suite.defaults.removeTestSuite(named: suite.name) }
+        let settings = SettingsStore(defaults: suite.defaults)
+        let store = SystemStatusStore(
+            batteryMonitor: battery,
+            wifiMonitor: wifi,
+            volumeMonitor: volume,
+            inputMonitor: input,
+            refreshInterval: .seconds(60),
+            wakeNotificationCenter: wakeCenter
+        )
+
+        store.bindInputSettings(settings)
+        store.start()
+
+        XCTAssertEqual(input.enabledValues.last, false)
+        store.setPopoverVisible(true)
+        XCTAssertEqual(input.visibleValues, [true])
+
+        settings.setPopupSection(.audioInput, enabled: true)
+        XCTAssertEqual(input.enabledValues.last, true)
+        XCTAssertEqual(input.visibleValues, [true, true])
+
+        store.setPopoverVisible(false)
+        XCTAssertEqual(input.visibleValues.last, false)
+        store.setPopoverVisible(true)
+        settings.setPopupSection(.audioInput, enabled: false)
+        XCTAssertEqual(input.enabledValues.last, false)
+
+        store.stop()
+        XCTAssertEqual(input.stopCount, 1)
+    }
+
+    func testInputUpdatesDoNotChangeOutputOrIconProjections() async {
+        let battery = FakeBatteryMonitor()
+        let wifi = FakeWiFiMonitor()
+        let volume = FakeVolumeMonitor()
+        let input = FakeAudioInputMonitor()
+        let suite = makeSuite()
+        defer { suite.defaults.removeTestSuite(named: suite.name) }
+        let settings = SettingsStore(defaults: suite.defaults)
+        let outputStatus = VolumeStatus(scalar: 0.6, isMuted: false, deviceName: "Speakers")
+        volume.send(outputStatus)
+        let store = AppEnvironment.makeStore(
+            batteryMonitor: battery,
+            wifiMonitor: wifi,
+            volumeMonitor: volume,
+            inputMonitor: input
+        )
+        store.bindInputSettings(settings)
+        store.start()
+        settings.setPopupSection(.audioInput, enabled: true)
+        await waitUntil { store.snapshot.volume == outputStatus }
+        store.setPopoverVisible(true)
+
+        let menuBarProjection = MenuBarStatus(snapshot: store.snapshot)
+        let dockProjection = makeDockIconKey(for: menuBarProjection)
+        let inputStatus = AudioInputStatus(
+            devices: [AudioInputDevice(id: AudioDeviceID(42), uid: "input-42", name: "USB Mic")],
+            defaultDeviceID: AudioDeviceID(42),
+            deviceName: "USB Mic",
+            scalar: 0.37,
+            canSetVolume: true,
+            muteState: .unmuted,
+            canSetMute: true,
+            isRefreshing: false,
+            isBusy: false,
+            error: nil
+        )
+        input.send(inputStatus)
+        await waitUntil { store.liveInput == inputStatus }
+
+        XCTAssertEqual(store.snapshot.volume, outputStatus)
+        XCTAssertEqual(store.popupSnapshot.volume, outputStatus)
+        XCTAssertEqual(MenuBarStatus(snapshot: store.snapshot), menuBarProjection)
+        XCTAssertEqual(makeDockIconKey(for: MenuBarStatus(snapshot: store.snapshot)), dockProjection)
+
+        store.stop()
+    }
+
+    func testInputCommandsForwardToMonitor() {
+        let battery = FakeBatteryMonitor()
+        let wifi = FakeWiFiMonitor()
+        let volume = FakeVolumeMonitor()
+        let input = FakeAudioInputMonitor()
+        let store = makeStore(
+            battery: battery,
+            wifi: wifi,
+            volume: volume,
+            inputMonitor: input
+        )
+
+        store.selectInputDevice(AudioDeviceID(42))
+        store.setInputScalar(0.45)
+        store.toggleInputMute()
+
+        XCTAssertEqual(input.selectedDeviceIDs, [AudioDeviceID(42)])
+        XCTAssertEqual(input.scalarValues, [0.45])
+        XCTAssertEqual(input.toggleMuteCount, 1)
+        store.stop()
+    }
+
+    func testWakeNotificationRecoversInputMonitor() async {
+        let battery = FakeBatteryMonitor()
+        let wifi = FakeWiFiMonitor()
+        let volume = FakeVolumeMonitor()
+        let input = FakeAudioInputMonitor()
+        let wakeCenter = NotificationCenter()
+        let store = makeStore(
+            battery: battery,
+            wifi: wifi,
+            volume: volume,
+            inputMonitor: input,
+            wakeNotificationCenter: wakeCenter
+        )
+        let suite = makeSuite()
+        defer { suite.defaults.removeTestSuite(named: suite.name) }
+        let settings = SettingsStore(defaults: suite.defaults)
+        store.bindInputSettings(settings)
+        store.start()
+        settings.setPopupSection(.audioInput, enabled: true)
+
+        wakeCenter.post(name: NSWorkspace.didWakeNotification, object: nil)
+        await waitUntil { input.recoverCount == 1 }
+
+        XCTAssertEqual(input.recoverCount, 1)
+        store.stop()
+    }
+
+    func testInputUpdatesAfterDisableAndStopAreIgnored() async {
+        let battery = FakeBatteryMonitor()
+        let wifi = FakeWiFiMonitor()
+        let volume = FakeVolumeMonitor()
+        let input = FakeAudioInputMonitor()
+        let suite = makeSuite()
+        defer { suite.defaults.removeTestSuite(named: suite.name) }
+        let settings = SettingsStore(defaults: suite.defaults)
+        let store = makeStore(
+            battery: battery,
+            wifi: wifi,
+            volume: volume,
+            inputMonitor: input
+        )
+        store.bindInputSettings(settings)
+        store.start()
+        settings.setPopupSection(.audioInput, enabled: true)
+        let accepted = AudioInputStatus(
+            devices: [], defaultDeviceID: nil, deviceName: "accepted", scalar: 0.2,
+            canSetVolume: false, muteState: nil, canSetMute: false,
+            isRefreshing: false, isBusy: false, error: nil
+        )
+        input.send(accepted)
+        await waitUntil { store.liveInput == accepted }
+
+        settings.setPopupSection(.audioInput, enabled: false)
+        let disabledValue = AudioInputStatus(
+            devices: [], defaultDeviceID: nil, deviceName: "disabled", scalar: 0.8,
+            canSetVolume: false, muteState: nil, canSetMute: false,
+            isRefreshing: false, isBusy: false, error: nil
+        )
+        input.send(disabledValue)
+        try? await Task.sleep(for: .milliseconds(10))
+        XCTAssertEqual(store.liveInput, accepted)
+
+        store.stop()
+        let stoppedValue = AudioInputStatus(
+            devices: [], defaultDeviceID: nil, deviceName: "stopped", scalar: 0.9,
+            canSetVolume: false, muteState: nil, canSetMute: false,
+            isRefreshing: false, isBusy: false, error: nil
+        )
+        input.send(stoppedValue)
+        try? await Task.sleep(for: .milliseconds(10))
+
+        XCTAssertEqual(store.liveInput, accepted)
+        XCTAssertEqual(input.stopCount, 1)
+    }
+
     func testPopoverClosingExplicitlyDeactivatesBatteryDetails() async {
         let details = BatteryDetailsController { _, _ in BatteryDetails(cycleCount: 43) }
         let store = SystemStatusStore(
@@ -1464,6 +1647,7 @@ final class SystemStatusStoreTests: XCTestCase {
         wifi: FakeWiFiMonitor,
         volume: FakeVolumeMonitor,
         connection: FakeNetworkConnectionMonitor? = nil,
+        inputMonitor: FakeAudioInputMonitor? = nil,
         wakeNotificationCenter: NotificationCenter = NSWorkspace.shared.notificationCenter
     ) -> SystemStatusStore {
         if let connection {
@@ -1472,6 +1656,7 @@ final class SystemStatusStoreTests: XCTestCase {
                 wifiMonitor: wifi,
                 connectionMonitor: connection,
                 volumeMonitor: volume,
+                inputMonitor: inputMonitor,
                 refreshInterval: .seconds(60),
                 wakeNotificationCenter: wakeNotificationCenter
             )
@@ -1480,8 +1665,28 @@ final class SystemStatusStoreTests: XCTestCase {
             batteryMonitor: battery,
             wifiMonitor: wifi,
             volumeMonitor: volume,
+            inputMonitor: inputMonitor,
             refreshInterval: .seconds(60),
             wakeNotificationCenter: wakeNotificationCenter
+        )
+    }
+
+    private func makeSuite() -> (defaults: UserDefaults, name: String) {
+        let name = "StatusTrioCoreTests.SystemStatusStore.\(UUID().uuidString)"
+        guard let defaults = UserDefaults(suiteName: name) else {
+            fatalError("could not create isolated user defaults suite")
+        }
+        defaults.removeTestSuite(named: name)
+        return (defaults, name)
+    }
+
+    private func makeDockIconKey(for status: MenuBarStatus) -> DockIconRenderKey {
+        DockIconRenderKey(
+            status: status,
+            options: .standard,
+            connectionOptions: .standard,
+            volumeOptions: VolumeIconOptions(displayStyle: .arc),
+            backgroundStyle: .light
         )
     }
 
@@ -1702,6 +1907,32 @@ private final class FakeWiFiMonitor: WiFiMonitoring {
         finishCount += 1
         continuation.finish()
     }
+}
+
+@MainActor
+private final class FakeAudioInputMonitor: AudioInputMonitoring {
+    let updates: AsyncStream<AudioInputStatus>
+    private let continuation: AsyncStream<AudioInputStatus>.Continuation
+    private(set) var enabledValues: [Bool] = []
+    private(set) var visibleValues: [Bool] = []
+    private(set) var recoverCount = 0
+    private(set) var stopCount = 0
+    private(set) var selectedDeviceIDs: [AudioDeviceID] = []
+    private(set) var scalarValues: [Double] = []
+    private(set) var toggleMuteCount = 0
+
+    init() {
+        (updates, continuation) = AsyncStream.makeStream()
+    }
+
+    func setEnabled(_ enabled: Bool) { enabledValues.append(enabled) }
+    func setVisible(_ visible: Bool) { visibleValues.append(visible) }
+    func recover() { recoverCount += 1 }
+    func select(_ id: AudioDeviceID) { selectedDeviceIDs.append(id) }
+    func setScalar(_ value: Double) { scalarValues.append(value) }
+    func toggleMute() { toggleMuteCount += 1 }
+    func stop() { stopCount += 1 }
+    func send(_ value: AudioInputStatus) { continuation.yield(value) }
 }
 
 @MainActor

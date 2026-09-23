@@ -38,6 +38,7 @@ final class AppEnvironment {
         onboardingWindowController.showIfNeeded()
         mainMenuController.start()
         appIconController.start()
+        store.bindInputSettings(settings)
         store.start()
     }
 
@@ -52,6 +53,7 @@ final class AppEnvironment {
         wifiMonitor: any WiFiMonitoring,
         connectionMonitor: (any NetworkConnectionMonitoring)? = nil,
         volumeMonitor: any VolumeMonitoring,
+        inputMonitor: (any AudioInputMonitoring)? = nil,
         refreshInterval: Duration = .seconds(15)
     ) -> SystemStatusStore {
         SystemStatusStore(
@@ -59,6 +61,7 @@ final class AppEnvironment {
             wifiMonitor: wifiMonitor,
             connectionMonitor: connectionMonitor,
             volumeMonitor: volumeMonitor,
+            inputMonitor: inputMonitor,
             refreshInterval: refreshInterval,
             bluetoothDevices: BluetoothDeviceController(
                 // The accessory power sources are the second battery source, read
@@ -79,6 +82,7 @@ final class AppEnvironment {
             wifiMonitor: WiFiMonitor(),
             connectionMonitor: NetworkConnectionMonitor(),
             volumeMonitor: VolumeMonitor(outputController: CoreAudioOutputController()),
+            inputMonitor: AudioInputMonitor(hardware: CoreAudioInputHardware()),
             refreshInterval: settings.refreshInterval
         )
         let localization = Localization()
