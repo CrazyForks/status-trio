@@ -179,6 +179,7 @@
 "settings.popup.order" = "عناصر لوحة الحالة";
 "settings.popup.order.description" = "اختر العناصر التي تظهر في لوحة الحالة واسحب لتغيير ترتيبها.";
 "settings.popup.order.battery" = "البطارية";
+"settings.popup.order.network" = "الشبكة";
 "settings.popup.order.volume" = "مستوى الصوت";
 "settings.popup.volumeScroll.group" = "تمرير اللوحة";
 "settings.popup.volumeScroll" = "ضبط مستوى الصوت بالتمرير";

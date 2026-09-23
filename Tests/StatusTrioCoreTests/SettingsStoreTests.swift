@@ -747,6 +747,25 @@ final class SettingsStoreTests: XCTestCase {
         )
     }
 
+    func testPopupSectionMetadataNamesTheNetworkRowForBothLinks() {
+        // The row is the Wi-Fi row while Wi-Fi is primary and the wired row
+        // while a cable is, so the settings list may not call it Wi-Fi.
+        XCTAssertEqual(PopupSection.network.titleKey, .settingsPopupOrderNetwork)
+        XCTAssertNotNil(
+            NSImage(
+                systemSymbolName: PopupSection.network.systemImage,
+                accessibilityDescription: nil
+            )
+        )
+    }
+
+    func testIconGuideCallsTheCentreOfTheIconNetwork() {
+        // The guide labels the same part of the icon the popup section does, and
+        // its own explanation already says the symbol follows the connection
+        // type. A label reading Wi-Fi above that text contradicts it.
+        XCTAssertEqual(IconGuidePart.network.titleKey, .settingsPopupOrderNetwork)
+    }
+
 
     func testEveryConfigurableSizeRendersAtThatSize() throws {
 

@@ -47,7 +47,7 @@ final class PrimaryLinkResolverTests: XCTestCase {
             ]
         )
 
-        let resolved = PrimaryLinkResolver.resolve(wiredInterfaces: ["en0"], snapshot: snapshot)
+        let resolved = PrimaryLinkResolver.resolve(wiredInterfaces: [WiredInterface(name: "en0")], snapshot: snapshot)
 
         XCTAssertEqual(resolved?.interfaceName, "en0")
         XCTAssertEqual(resolved?.ipv4Addresses, ["192.168.1.20"])
@@ -65,7 +65,7 @@ final class PrimaryLinkResolverTests: XCTestCase {
             ]
         )
 
-        let resolved = PrimaryLinkResolver.resolve(wiredInterfaces: ["en0"], snapshot: snapshot)
+        let resolved = PrimaryLinkResolver.resolve(wiredInterfaces: [WiredInterface(name: "en0")], snapshot: snapshot)
 
         XCTAssertEqual(resolved?.interfaceName, "en0")
         XCTAssertEqual(resolved?.ipv4Addresses, ["192.168.1.20"])
@@ -81,7 +81,7 @@ final class PrimaryLinkResolverTests: XCTestCase {
             ]
         )
 
-        let resolved = PrimaryLinkResolver.resolve(wiredInterfaces: ["en0"], snapshot: snapshot)
+        let resolved = PrimaryLinkResolver.resolve(wiredInterfaces: [WiredInterface(name: "en0")], snapshot: snapshot)
 
         XCTAssertEqual(resolved?.interfaceName, "en0")
         XCTAssertEqual(resolved?.ipv4Addresses, ["192.168.1.20"])
@@ -96,7 +96,7 @@ final class PrimaryLinkResolverTests: XCTestCase {
             ]
         )
 
-        let resolved = PrimaryLinkResolver.resolve(wiredInterfaces: ["en5", "en7"], snapshot: snapshot)
+        let resolved = PrimaryLinkResolver.resolve(wiredInterfaces: [WiredInterface(name: "en5"), WiredInterface(name: "en7")], snapshot: snapshot)
 
         XCTAssertEqual(resolved?.interfaceName, "en7")
         XCTAssertEqual(resolved?.ipv4Addresses, ["10.0.0.8"])
@@ -108,7 +108,7 @@ final class PrimaryLinkResolverTests: XCTestCase {
             services: [("wifi", Service(device: "en1", ipv4: ["10.42.0.2"]))]
         )
 
-        XCTAssertNil(PrimaryLinkResolver.resolve(wiredInterfaces: ["en0"], snapshot: snapshot))
+        XCTAssertNil(PrimaryLinkResolver.resolve(wiredInterfaces: [WiredInterface(name: "en0")], snapshot: snapshot))
     }
 
     func testAmbiguousWiredServiceResolvesNothingRatherThanGuessing() {
@@ -121,7 +121,7 @@ final class PrimaryLinkResolverTests: XCTestCase {
             ]
         )
 
-        XCTAssertNil(PrimaryLinkResolver.resolve(wiredInterfaces: ["en0"], snapshot: snapshot))
+        XCTAssertNil(PrimaryLinkResolver.resolve(wiredInterfaces: [WiredInterface(name: "en0")], snapshot: snapshot))
     }
 
     func testWiredLinkWithoutAnInterfaceNameIsNotMistakenForThePrimaryService() {
@@ -134,7 +134,7 @@ final class PrimaryLinkResolverTests: XCTestCase {
         )
         snapshot["State:/Network/Service/ethernet/IPv4"] = ["Addresses": ["192.168.1.20"]]
 
-        XCTAssertNil(PrimaryLinkResolver.resolve(wiredInterfaces: ["en0"], snapshot: snapshot))
+        XCTAssertNil(PrimaryLinkResolver.resolve(wiredInterfaces: [WiredInterface(name: "en0")], snapshot: snapshot))
     }
 
     func testServiceNameIsReadFromTheAddressDictionary() {
@@ -148,7 +148,7 @@ final class PrimaryLinkResolverTests: XCTestCase {
         )
         XCTAssertNil(snapshot["State:/Network/Service/ethernet/Interface"])
 
-        let resolved = PrimaryLinkResolver.resolve(wiredInterfaces: ["en5"], snapshot: snapshot)
+        let resolved = PrimaryLinkResolver.resolve(wiredInterfaces: [WiredInterface(name: "en5")], snapshot: snapshot)
 
         XCTAssertEqual(resolved?.interfaceName, "en5")
         XCTAssertEqual(resolved?.ipv4Addresses, ["192.168.1.20"])
@@ -173,33 +173,58 @@ final class PrimaryLinkResolverTests: XCTestCase {
         XCTAssertEqual(resolved?.ipv4Addresses, ["192.168.1.20"])
     }
 
-    func testDisplayAddressPrefersIPv4ThenIPv6() {
-        let ipv4 = PrimaryLinkDetails(
-            interfaceName: "en0",
-            ipv4Addresses: ["192.168.1.20"],
-            ipv6Addresses: ["fe80::1"],
-            router: "192.168.1.1",
-            dnsServers: []
+    func testThePortNameTravelsWithTheResolvedLink() {
+        let snapshot = makeSnapshot(
+            primaryService: "ethernet",
+            services: [("ethernet", Service(device: "en9", ipv4: ["172.20.10.8"]))]
         )
-        XCTAssertEqual(ipv4.displayAddress, "192.168.1.20")
 
-        let ipv6Only = PrimaryLinkDetails(
-            interfaceName: "en0",
-            ipv4Addresses: [],
-            ipv6Addresses: ["fe80::1"],
-            router: nil,
-            dnsServers: []
+        let resolved = PrimaryLinkResolver.resolve(
+            wiredInterfaces: [WiredInterface(name: "en9", displayName: "iPhone USB")],
+            snapshot: snapshot
         )
-        XCTAssertEqual(ipv6Only.displayAddress, "fe80::1")
 
-        let addressless = PrimaryLinkDetails(
-            interfaceName: "en0",
-            ipv4Addresses: [],
-            ipv6Addresses: [],
-            router: nil,
-            dnsServers: []
+        XCTAssertEqual(resolved?.interfaceName, "en9")
+        XCTAssertEqual(resolved?.interfaceDisplayName, "iPhone USB")
+    }
+
+    func testThePortNameTravelsWithTheFallbackBranchToo() {
+        // The VPN branch and the wireless fallback reach the same details, so a
+        // name that only survived the primary-service branch would leave the row
+        // titled Ethernet exactly when the user is looking at it.
+        let snapshot = makeSnapshot(
+            primaryService: "vpn",
+            services: [
+                ("ethernet", Service(device: "en5", ipv4: ["192.168.1.20"])),
+                ("vpn", Service(device: "utun4", ipv4: ["10.8.0.6"]))
+            ]
         )
-        XCTAssertNil(addressless.displayAddress)
+
+        let resolved = PrimaryLinkResolver.resolve(
+            wiredInterfaces: [WiredInterface(name: "en5", displayName: "USB 10/100/1000 LAN")],
+            snapshot: snapshot
+        )
+
+        XCTAssertEqual(resolved?.interfaceName, "en5")
+        XCTAssertEqual(resolved?.interfaceDisplayName, "USB 10/100/1000 LAN")
+    }
+
+    func testAnInterfaceWithoutAPortNameCarriesNone() {
+        // macOS names most interfaces, but not all of them. The absence has to
+        // survive the resolver as an absence, so the row's own fallback — the
+        // generic wired label — is what decides what to show.
+        let snapshot = makeSnapshot(
+            primaryService: "ethernet",
+            services: [("ethernet", Service(device: "en0", ipv4: ["192.168.1.20"]))]
+        )
+
+        let resolved = PrimaryLinkResolver.resolve(
+            wiredInterfaces: [WiredInterface(name: "en0")],
+            snapshot: snapshot
+        )
+
+        XCTAssertEqual(resolved?.interfaceName, "en0")
+        XCTAssertNil(resolved?.interfaceDisplayName)
     }
 }
 
@@ -217,16 +242,32 @@ final class PrimaryLinkControllerTests: XCTestCase {
 
     func testActivateReadsTheWiredInterfacesAndPublishesDetails() async {
         let reader = FakePrimaryLinkReader()
-        let controller = makeController(reader: reader, wiredInterfaces: ["en0"])
+        let controller = makeController(reader: reader, wiredInterfaces: [WiredInterface(name: "en0")])
 
         controller.activate()
-        XCTAssertEqual(reader.requestedInterfaces, [["en0"]])
+        XCTAssertEqual(reader.requestedInterfaces, [[WiredInterface(name: "en0")]])
 
         reader.complete(with: makeDetails(interface: "en0", ipv4: ["192.168.1.20"]))
         await waitUntil { controller.details != nil }
 
         XCTAssertEqual(controller.details?.interfaceName, "en0")
-        XCTAssertEqual(controller.details?.displayAddress, "192.168.1.20")
+        XCTAssertEqual(controller.details?.ipv4Addresses, ["192.168.1.20"])
+        controller.deactivate()
+    }
+
+    func testThePortNameReachesTheReader() {
+        let reader = FakePrimaryLinkReader()
+        let controller = makeController(
+            reader: reader,
+            wiredInterfaces: [WiredInterface(name: "en9", displayName: "iPhone USB")]
+        )
+
+        controller.activate()
+
+        XCTAssertEqual(
+            reader.requestedInterfaces,
+            [[WiredInterface(name: "en9", displayName: "iPhone USB")]]
+        )
         controller.deactivate()
     }
 
@@ -249,12 +290,19 @@ final class PrimaryLinkControllerTests: XCTestCase {
 
     func testRefreshUsesTheCurrentWiredInterfaces() {
         let reader = FakePrimaryLinkReader()
-        let controller = makeController(reader: reader, wiredInterfaces: ["en5", "en7"])
+        let controller = makeController(
+            reader: reader,
+            wiredInterfaces: [WiredInterface(name: "en5"), WiredInterface(name: "en7")]
+        )
 
         controller.activate()
         controller.refresh()
 
-        XCTAssertEqual(reader.requestedInterfaces, [["en5", "en7"], ["en5", "en7"]])
+        let expected = [
+            [WiredInterface(name: "en5"), WiredInterface(name: "en7")],
+            [WiredInterface(name: "en5"), WiredInterface(name: "en7")]
+        ]
+        XCTAssertEqual(reader.requestedInterfaces, expected)
         controller.deactivate()
     }
 
@@ -271,11 +319,11 @@ final class PrimaryLinkControllerTests: XCTestCase {
 
     private func makeController(
         reader: FakePrimaryLinkReader,
-        wiredInterfaces: [String] = ["en0"]
+        wiredInterfaces: [WiredInterface] = [WiredInterface(name: "en0")]
     ) -> PrimaryLinkController {
         PrimaryLinkController(
             reader: reader,
-            wiredInterfaces: FakeWiredInterfaces(names: wiredInterfaces),
+            wiredInterfaces: FakeWiredInterfaces(interfaces: wiredInterfaces),
             periodicRefreshInterval: .seconds(600)
         )
     }
@@ -302,17 +350,17 @@ final class PrimaryLinkControllerTests: XCTestCase {
 }
 
 private struct FakeWiredInterfaces: WiredInterfaceProviding {
-    let names: [String]
+    let interfaces: [WiredInterface]
 
-    func wiredInterfaceNames() -> [String] { names }
+    func wiredInterfaces() -> [WiredInterface] { interfaces }
 }
 
 private final class FakePrimaryLinkReader: PrimaryLinkReading {
-    private(set) var requestedInterfaces: [[String]] = []
+    private(set) var requestedInterfaces: [[WiredInterface]] = []
     private var completions: [@Sendable (PrimaryLinkDetails?) -> Void] = []
 
     func read(
-        wiredInterfaces: [String],
+        wiredInterfaces: [WiredInterface],
         completion: @escaping @Sendable (PrimaryLinkDetails?) -> Void
     ) {
         requestedInterfaces.append(wiredInterfaces)

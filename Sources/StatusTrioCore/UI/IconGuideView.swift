@@ -8,7 +8,10 @@ enum IconGuidePart: CaseIterable, Identifiable {
     var titleKey: LocalizationKey {
         switch self {
         case .battery: .settingsPopupOrderBattery
-        case .network: .wifiTitle
+        // The same name the popup section carries, and the one its own
+        // explanation already uses: this part of the icon shows network status,
+        // and its symbol changes with the connection type.
+        case .network: .settingsPopupOrderNetwork
         case .volume: .settingsPopupOrderVolume
         }
     }

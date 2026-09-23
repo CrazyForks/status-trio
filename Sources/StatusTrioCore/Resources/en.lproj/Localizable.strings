@@ -179,6 +179,7 @@
 "settings.popup.order" = "Displayed Items";
 "settings.popup.order.description" = "Choose which items appear in the status panel and drag to change their order.";
 "settings.popup.order.battery" = "Battery";
+"settings.popup.order.network" = "Network";
 "settings.popup.order.volume" = "Volume";
 "settings.popup.volumeScroll.group" = "Panel Scrolling";
 "settings.popup.volumeScroll" = "Adjust Volume by Scrolling";

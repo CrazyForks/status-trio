@@ -179,6 +179,7 @@
 "settings.popup.order" = "显示项目";
 "settings.popup.order.description" = "选择状态面板显示的项目，并拖动调整顺序。";
 "settings.popup.order.battery" = "电池";
+"settings.popup.order.network" = "网络";
 "settings.popup.order.volume" = "音量";
 "settings.popup.volumeScroll.group" = "面板滚动";
 "settings.popup.volumeScroll" = "滚动调节音量";

@@ -179,6 +179,7 @@
 "settings.popup.order" = "Itens exibidos";
 "settings.popup.order.description" = "Escolha quais itens aparecem no painel de status e arraste para alterar a ordem.";
 "settings.popup.order.battery" = "Bateria";
+"settings.popup.order.network" = "Rede";
 "settings.popup.order.volume" = "Volume";
 "settings.popup.volumeScroll.group" = "Rolagem do painel";
 "settings.popup.volumeScroll" = "Ajustar o volume com a rolagem";

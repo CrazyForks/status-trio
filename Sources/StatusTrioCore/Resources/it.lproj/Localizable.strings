@@ -179,6 +179,7 @@
 "settings.popup.order" = "Elementi mostrati";
 "settings.popup.order.description" = "Scegli quali elementi appaiono nel pannello di stato e trascinali per cambiarne l’ordine.";
 "settings.popup.order.battery" = "Batteria";
+"settings.popup.order.network" = "Rete";
 "settings.popup.order.volume" = "Volume";
 "settings.popup.volumeScroll.group" = "Scorrimento del pannello";
 "settings.popup.volumeScroll" = "Regola il volume scorrendo";

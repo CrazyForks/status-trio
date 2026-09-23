@@ -3,7 +3,10 @@ import SwiftUI
 /// The network row while the primary connection is a cable.
 ///
 /// The wired counterpart of `WiFiStatusView`: same slot, same affordances, and
-/// the subtitle is the LAN address instead of a network name and signal.
+/// the same shape of heading — what the link is on top, the technical
+/// particular underneath. The port's name heads it and the BSD name follows,
+/// because the address this row used to show is the reader's own business and
+/// belongs in the panel.
 struct EthernetStatusView: View {
     @EnvironmentObject private var localization: Localization
     @ObservedObject var primaryLink: PrimaryLinkController
@@ -18,9 +21,10 @@ struct EthernetStatusView: View {
                 HStack(spacing: 10) {
                     EthernetStatusIcon()
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(localization.string(.ethernetTitle))
+                        Text(title)
                             .font(.headline)
                             .lineLimit(1)
+                            .truncationMode(.tail)
                         Text(subtitle)
                             .font(.caption)
                             .foregroundStyle(.secondary)
@@ -35,7 +39,7 @@ struct EthernetStatusView: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(localization.string(.ethernetTitle))
+            .accessibilityLabel(title)
             .accessibilityValue(subtitle)
 
             Button(
@@ -51,12 +55,16 @@ struct EthernetStatusView: View {
         }
     }
 
-    /// The address is the answer this row exists to give. Until the store has
-    /// one — a cable that is up before DHCP answers — it falls back to the
-    /// state, never to an address it does not have.
+    private var title: String {
+        WiredLinkPresentation.title(primaryLink.details, localization: localization)
+    }
+
+    /// Never the address: the row says which port is up, and the panel says with
+    /// which address. Until the read names the interface — a cable that is up
+    /// before DHCP answers has no service yet, so nothing names it — the row
+    /// falls back to the state rather than to an address it does not have.
     private var subtitle: String {
-        primaryLink.details?.displayAddress
-            ?? localization.string(.ethernetSubtitleConnected)
+        WiredLinkPresentation.subtitle(primaryLink.details, localization: localization)
     }
 }
 

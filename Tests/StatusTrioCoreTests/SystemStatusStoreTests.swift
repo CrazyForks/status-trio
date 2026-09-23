@@ -1647,7 +1647,7 @@ private final class FakeNetworkConnectionMonitor: NetworkConnectionMonitoring {
 /// finds. The resolution itself is covered by `PrimaryLinkTests`.
 private final class StubPrimaryLinkReader: PrimaryLinkReading {
     func read(
-        wiredInterfaces: [String],
+        wiredInterfaces: [WiredInterface],
         completion: @escaping @Sendable (PrimaryLinkDetails?) -> Void
     ) {}
 }
@@ -1655,7 +1655,7 @@ private final class StubPrimaryLinkReader: PrimaryLinkReading {
 private struct StubWiredInterfaces: WiredInterfaceProviding {
     let names: [String]
 
-    func wiredInterfaceNames() -> [String] { names }
+    func wiredInterfaces() -> [WiredInterface] { names.map { WiredInterface(name: $0) } }
 }
 
 @MainActor

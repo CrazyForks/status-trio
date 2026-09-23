@@ -6,9 +6,14 @@ import Foundation
 /// whatever holds the primary service, so a VPN tunnel claiming the primary
 /// service does not turn the row into the tunnel's address. Every field may be
 /// absent: a cable that is up before DHCP answers has an interface and no
-/// address, and the row says so instead of inventing one.
+/// address, and the panel says so per row instead of inventing one.
 struct PrimaryLinkDetails: Equatable, Sendable {
     let interfaceName: String?
+    /// What macOS calls the port — "iPhone USB", "USB 10/100/1000 LAN" — read
+    /// off the interface, not off the service: the service is keyed by a BSD
+    /// name, and a BSD name is not a heading. Absent on a system that reports
+    /// only the BSD name, and the row falls back to the generic wired label.
+    let interfaceDisplayName: String?
     let ipv4Addresses: [String]
     let ipv6Addresses: [String]
     let router: String?
@@ -16,21 +21,24 @@ struct PrimaryLinkDetails: Equatable, Sendable {
 
     init(
         interfaceName: String?,
+        interfaceDisplayName: String? = nil,
         ipv4Addresses: [String],
         ipv6Addresses: [String],
         router: String?,
         dnsServers: [String]
     ) {
         self.interfaceName = interfaceName
+        self.interfaceDisplayName = interfaceDisplayName
         self.ipv4Addresses = ipv4Addresses
         self.ipv6Addresses = ipv6Addresses
         self.router = router
         self.dnsServers = dnsServers
     }
 
-    init(configuration: NetworkServiceConfiguration) {
+    init(configuration: NetworkServiceConfiguration, interfaceDisplayName: String?) {
         self.init(
             interfaceName: configuration.interfaceName,
+            interfaceDisplayName: interfaceDisplayName,
             ipv4Addresses: configuration.ipv4Addresses,
             ipv6Addresses: configuration.ipv6Addresses,
             router: configuration.router,
@@ -48,14 +56,6 @@ struct PrimaryLinkDetails: Equatable, Sendable {
         router: nil,
         dnsServers: []
     )
-
-    /// The address the row shows while the link is up. IPv4 first, because the
-    /// question the row answers is the LAN address, and a link that has only an
-    /// IPv6 address is still worth showing.
-    var displayAddress: String? {
-        if let ipv4 = ipv4Addresses.first, !ipv4.isEmpty { return ipv4 }
-        return ipv6Addresses.first
-    }
 }
 
 /// Picks the wired link out of a system configuration snapshot.
@@ -66,27 +66,34 @@ struct PrimaryLinkDetails: Equatable, Sendable {
 /// all reachable in a test only if the system is behind a dictionary.
 enum PrimaryLinkResolver {
     static func resolve(
-        wiredInterfaces: [String],
+        wiredInterfaces: [WiredInterface],
         snapshot: [String: [String: Any]]
     ) -> PrimaryLinkDetails? {
         if let primary = NetworkServiceResolver.resolvePrimary(snapshot: snapshot),
            let name = primary.interfaceName,
-           wiredInterfaces.contains(name) {
-            return PrimaryLinkDetails(configuration: primary)
+           let matched = wiredInterfaces.first(where: { $0.name == name }) {
+            return PrimaryLinkDetails(
+                configuration: primary,
+                interfaceDisplayName: matched.displayName
+            )
         }
 
         // The primary service is not the wired link. That is the ordinary case
         // while a VPN tunnel is up, and the momentary case right after a cable
         // comes up while Wi-Fi is still primary. Report the wired service.
-        let wired = wiredInterfaces.compactMap { interface in
-            NetworkServiceResolver.resolve(interface: interface, snapshot: snapshot)
+        let wired = wiredInterfaces.compactMap { interface -> PrimaryLinkDetails? in
+            guard let configuration = NetworkServiceResolver.resolve(
+                interface: interface.name,
+                snapshot: snapshot
+            ) else { return nil }
+            return PrimaryLinkDetails(
+                configuration: configuration,
+                interfaceDisplayName: interface.displayName
+            )
         }
-        guard let configuration = wired.first else {
-            // Nothing in the snapshot belongs to an interface this Mac reports
-            // as Ethernet. An address from another link would be worse than no
-            // address, so the row goes without one.
-            return nil
-        }
-        return PrimaryLinkDetails(configuration: configuration)
+        // Nothing in the snapshot belongs to an interface this Mac reports as
+        // Ethernet. An address from another link would be worse than no
+        // address, so the row goes without one.
+        return wired.first
     }
 }

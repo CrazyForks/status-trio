@@ -179,6 +179,7 @@
 "settings.popup.order" = "表示項目";
 "settings.popup.order.description" = "ステータスパネルに表示する項目を選択し、ドラッグして順序を変更します。";
 "settings.popup.order.battery" = "バッテリー";
+"settings.popup.order.network" = "ネットワーク";
 "settings.popup.order.volume" = "音量";
 "settings.popup.volumeScroll.group" = "パネルのスクロール";
 "settings.popup.volumeScroll" = "スクロールで音量を調整";

@@ -2,8 +2,44 @@
 
 The popover's network section is one row whose subject is whatever carries the
 primary connection. While Wi-Fi is primary it is the Wi-Fi row; while a cable is
-it is the wired row, with the LAN address under the title. Either row opens a
-panel with the same five technical rows.
+it is the wired row, titled with the port's own name and subtitled with its BSD
+name. Either row opens a panel with the same five technical rows.
+
+## What the row says, and what it does not
+
+The row names the link:
+
+| | source | example |
+|---|---|---|
+| title | the interface's localized display name | `iPhone USB` |
+| subtitle | the interface's BSD name | `en9` |
+
+It deliberately says nothing about the address. The popover is a panel that can
+be read over the reader's shoulder, and a LAN address — let alone the router and
+the DNS servers beside it — is the reader's own business. The addresses live in
+the panel, one deliberate tap away, where the five rows have always put them.
+`WiredLinkPresentation` is the single place that decides this, so the row and the
+panel's back row cannot drift apart, and `WiredLinkPresentationTests` asserts the
+address never appears in either line.
+
+The title falls back to the generic localized "Ethernet" when macOS reports no
+display name for the interface, and the subtitle falls back to the connected
+state when the read has not named the interface yet. A blank heading is never
+drawn.
+
+## What the section is called in Settings
+
+The popup section was Wi-Fi only, so it was named for the radio — in the
+settings list, and in the icon guide that labels the middle of the menu bar
+icon. It now covers whichever link carries the connection, so both name it
+`settings.popup.order.network` ("Network") rather than `wifi.title`. The new key
+reuses the wording every language already uses for the Network settings tab, so
+the terms stay consistent without inventing a translation.
+
+The section's icon stays `wifi`. That is now the last Wi-Fi-only thing about this
+row: the menu bar draws a distinct Ethernet glyph for a cable, so the settings
+list shows a Wi-Fi symbol against a row that may be reporting one. Changing the
+icon is a visual decision of its own and is left out of this change.
 
 ## Which interface is reported
 
@@ -15,12 +51,16 @@ a cable, not *which* interface carries it or what address it has, so the address
 comes from the system configuration store instead:
 
 1. `SystemWiredInterfaceProvider` asks `SCNetworkInterfaceCopyAll()` which
-   interfaces this Mac reports as `kSCNetworkInterfaceTypeEthernet`, by BSD name.
+   interfaces this Mac reports as `kSCNetworkInterfaceTypeEthernet`. Each one
+   arrives as a `WiredInterface`: the BSD name the store is keyed by, plus the
+   display name `SCNetworkInterfaceGetLocalizedDisplayName` gives it — the
+   driver's own name for the port, localized by the system.
 2. `SystemPrimaryLinkReader` reads one `SCDynamicStore` snapshot — `State:/Network/Global/IPv4`
    plus every `State:/Network/Service/*` — on its own serial queue.
 3. [`PrimaryLinkResolver`](../Sources/StatusTrioCore/Models/PrimaryLinkDetails.swift)
    picks the wired service out of it: the primary service when it is one of the
-   wired interfaces, otherwise the first wired interface that has a service.
+   wired interfaces, otherwise the first wired interface that has a service. The
+   display name of whichever interface it resolved travels with the result.
 
 The third step is what keeps a VPN honest. A tunnel claims the primary service
 while it is up, so reading "whatever is primary" would print the tunnel's address
@@ -32,7 +72,7 @@ Two cases resolve to nothing on purpose:
 - the interface is wired but the snapshot holds no service for it, and
 - several services carry it and none of them is the primary one.
 
-In both the row shows its state without an address. A wrong address is worse than
+In both the panel reports its rows as Unavailable. A wrong address is worse than
 no address, and the ambiguity is real: it is what a stale service looks like
 between a cable moving networks and macOS cleaning up.
 
@@ -52,6 +92,13 @@ silently broken on macOS 27: the wired panel's Interface row read Unavailable, a
 `PrimaryLinkResolver`'s "is the primary service the wired link" branch could never
 match, so the tunnel case and the stale-primary case collapsed into the same
 fallback.
+
+The **display name** does not come from the store at all, which is why the row's
+title survived that incident untouched: it is read off the `SCNetworkInterface`
+the resolver already had to enumerate. On the machine this was built on, the same
+call reports `en9` as `iPhone USB`, `en5` as `USB 10/100/1000 LAN`, and `en4` as
+`Ethernet Adapter (en4)` — the system's own name for each port, not the service's
+`UserDefinedName`.
 
 [`scripts/probe-network-link.swift`](../scripts/probe-network-link.swift) walks this
 whole path against the live system — the `NWPath` interface types, the
@@ -104,6 +151,9 @@ The localization keys split along the same line:
 
 ## What it deliberately does not do
 
+- **No address in the row.** The row names the port; the panel reports the
+  addresses. An address is private and the popover is not, so it is never on
+  screen until the reader asks for it.
 - **No public address.** Resolving one needs a request to a server the app does
   not run, which is outside a status app's remit.
 - **No reachability probe.** The row reports the address the system has, never
@@ -113,12 +163,16 @@ The localization keys split along the same line:
   macOS has to be told about lives in the Network pane, which the row's gear and
   the panel's button open.
 - **No icon change.** The menu bar and Dock already draw the Ethernet glyph; this
-  feature adds the address to the popover only.
+  feature adds the port's name to the popover only.
 
 ## Tests
 
 - `PrimaryLinkTests` — service selection, the primary-service rule, the VPN and
   wireless fallbacks, the ambiguous and missing-service cases, where the interface
-  name is read from, and the controller's activation and late-answer behaviour.
+  name is read from, how the port's display name travels with it, and the
+  controller's activation and late-answer behaviour.
+- `WiredLinkPresentationTests` — what the row and the panel call the link, the
+  fallbacks when macOS names nothing, and the assertion that the address never
+  reaches either line.
 - `LinkDetailPresentationTests` — the row sets of both links.
 - `SystemStatusStoreTests` — when the read starts and stops.

@@ -6,6 +6,9 @@ import SwiftUI
 /// network a cable reaches is a cabling job and, for anything macOS has to be
 /// told about, a System Settings one. The panel is therefore the link's
 /// addresses and the way to the Network pane, and nothing else.
+///
+/// It is also the only place the addresses appear. The row above it names the
+/// port instead, so the address is not on screen until the reader asks for it.
 struct EthernetLinkView: View {
     @EnvironmentObject private var localization: Localization
     @ObservedObject var primaryLink: PrimaryLinkController
@@ -16,7 +19,7 @@ struct EthernetLinkView: View {
         VStack(alignment: .leading, spacing: 12) {
             NavigationBackRow(
                 accessibilityLabel: localization.string(.commonBack),
-                title: localization.string(.ethernetTitle),
+                title: WiredLinkPresentation.title(primaryLink.details, localization: localization),
                 action: onBack
             )
 

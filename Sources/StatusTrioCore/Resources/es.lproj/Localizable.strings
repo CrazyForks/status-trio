@@ -179,6 +179,7 @@
 "settings.popup.order" = "Elementos mostrados";
 "settings.popup.order.description" = "Elige qué elementos aparecen en el panel de estado y arrástralos para cambiar su orden.";
 "settings.popup.order.battery" = "Batería";
+"settings.popup.order.network" = "Red";
 "settings.popup.order.volume" = "Volumen";
 "settings.popup.volumeScroll.group" = "Desplazamiento del panel";
 "settings.popup.volumeScroll" = "Ajustar el volumen desplazándose";

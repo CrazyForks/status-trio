@@ -10,7 +10,8 @@
 //
 // Run it before and after plugging a cable (or tethering a phone over USB) and
 // compare. Section 1 answers whether the feature will appear at all, section 2
-// which interface it will read, sections 3 and 4 what the panel will show.
+// which interface it will read and what the row will be headed with, sections 3
+// and 4 what the panel will show.
 
 import Foundation
 import Network
@@ -66,12 +67,18 @@ section("2. SCNetworkInterfaceCopyAll — which interfaces count as wired")
 let ethernetType = kSCNetworkInterfaceTypeEthernet as String
 let interfaces = SCNetworkInterfaceCopyAll() as? [SCNetworkInterface] ?? []
 var wiredNames: [String] = []
+/// What the row is headed with, keyed by BSD name. This is the half of the row
+/// that does not come from the store, so it is worth printing on its own.
+var wiredDisplayNames: [String: String] = [:]
 for interface in interfaces {
     let name = (SCNetworkInterfaceGetBSDName(interface) as String?) ?? "-"
     let type = (SCNetworkInterfaceGetInterfaceType(interface) as String?) ?? "-"
     let display = (SCNetworkInterfaceGetLocalizedDisplayName(interface) as String?) ?? "-"
     let isWired = type == ethernetType
-    if isWired { wiredNames.append(name) }
+    if isWired {
+        wiredNames.append(name)
+        wiredDisplayNames[name] = display
+    }
     print("  \(pad(name, 7)) \(pad(type, 11)) \(isWired ? "WIRED" : "  -  ")  \(display)")
 }
 print("\n  -> wiredInterfaces = \(wiredNames)")
@@ -201,7 +208,14 @@ if let details = resolved {
     print("      IPv6      = \(details.ipv6.isEmpty ? "unavailable" : details.ipv6.joined(separator: ", "))")
     print("      router    = \(details.router ?? "unavailable")")
     print("      DNS       = \(details.dns.isEmpty ? "unavailable" : details.dns.joined(separator: ", "))")
-    print("\n  -> row title = Ethernet, row subtitle = \(details.ipv4.first ?? details.ipv6.first ?? "\"Connected\" (no address)")")
+    // WiredLinkPresentation, mirrored: the row names the port and says nothing
+    // about the address. If this block ever prints an address as part of the
+    // row, the privacy rule has been broken — the panel is where addresses go.
+    let rowTitle = details.name.flatMap { wiredDisplayNames[$0] } ?? "\"Ethernet\" (localized)"
+    let rowSubtitle = details.name ?? "\"Connected\" (localized)"
+    print("\n  -> row title    = \(rowTitle)")
+    print("     row subtitle = \(rowSubtitle)   <- the BSD name, never the address")
+    print("     the addresses above appear in the panel only")
 } else {
     print("  PrimaryLinkDetails = nil")
     print("     -> no wired service in the snapshot; the panel would show Unavailable per row.")

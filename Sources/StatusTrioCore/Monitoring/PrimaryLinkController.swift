@@ -8,31 +8,52 @@ import SystemConfiguration
 /// on the primary service, a link with no address yet — deterministically.
 protocol PrimaryLinkReading: AnyObject {
     func read(
-        wiredInterfaces: [String],
+        wiredInterfaces: [WiredInterface],
         completion: @escaping @Sendable (PrimaryLinkDetails?) -> Void
     )
 }
 
-/// The Ethernet interfaces this Mac has, by BSD name.
+/// One Ethernet interface this Mac reports.
+///
+/// The two names answer different questions and the row uses both: the BSD name
+/// (`en9`) is what the system configuration is keyed by and what the subtitle
+/// shows, while the display name (`iPhone USB`) is what the reader recognises
+/// and what the title shows. macOS derives the display name from the driver, so
+/// it is localized and absent only for an interface the system does not
+/// describe.
+struct WiredInterface: Equatable, Sendable {
+    let name: String
+    let displayName: String?
+
+    init(name: String, displayName: String? = nil) {
+        self.name = name
+        self.displayName = displayName
+    }
+}
+
+/// The Ethernet interfaces this Mac has.
 ///
 /// Separate from `PrimaryLinkReading` because it is a different question with a
 /// different failure mode: this one answers "which interfaces could the wired
 /// link be on", and the store then answers what is configured on them.
 protocol WiredInterfaceProviding: Sendable {
-    func wiredInterfaceNames() -> [String]
+    func wiredInterfaces() -> [WiredInterface]
 }
 
 struct SystemWiredInterfaceProvider: WiredInterfaceProviding {
-    func wiredInterfaceNames() -> [String] {
+    func wiredInterfaces() -> [WiredInterface] {
         let interfaces = SCNetworkInterfaceCopyAll() as? [SCNetworkInterface] ?? []
         let ethernetType = kSCNetworkInterfaceTypeEthernet as String
-        return interfaces.compactMap { interface -> String? in
+        return interfaces.compactMap { interface -> WiredInterface? in
             guard let type = SCNetworkInterfaceGetInterfaceType(interface) as String?,
                   type == ethernetType,
                   let name = SCNetworkInterfaceGetBSDName(interface) else {
                 return nil
             }
-            return name as String
+            return WiredInterface(
+                name: name as String,
+                displayName: SCNetworkInterfaceGetLocalizedDisplayName(interface) as String?
+            )
         }
     }
 }
@@ -53,7 +74,7 @@ private final class SystemPrimaryLinkReader: @unchecked Sendable, PrimaryLinkRea
     }
 
     func read(
-        wiredInterfaces: [String],
+        wiredInterfaces: [WiredInterface],
         completion: @escaping @Sendable (PrimaryLinkDetails?) -> Void
     ) {
         let snapshot = self.snapshot
@@ -144,7 +165,7 @@ final class PrimaryLinkController: ObservableObject {
     func refresh() {
         guard isActive else { return }
         let request = refreshGate.advance()
-        reader.read(wiredInterfaces: wiredInterfaces.wiredInterfaceNames()) { [weak self] value in
+        reader.read(wiredInterfaces: wiredInterfaces.wiredInterfaces()) { [weak self] value in
             Task { @MainActor [weak self] in
                 guard let self, self.isActive, self.refreshGate.accepts(request) else { return }
                 if self.details != value {
