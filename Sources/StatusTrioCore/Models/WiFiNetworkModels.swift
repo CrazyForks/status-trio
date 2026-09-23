@@ -385,6 +385,15 @@ enum BluetoothSummaryRowAction: Equatable, Sendable {
     case openPermissionSettings
 }
 
+/// One device's entry in the popover's Bluetooth row: the name, and the level
+/// the report holds for it when it holds one.
+struct BluetoothSummaryEntry: Equatable, Sendable {
+    let name: String
+    /// The level as the pieces the row draws, or `nil` for a device macOS can
+    /// read no level for — the entry is then its name alone.
+    let level: [BluetoothBatterySegment]?
+}
+
 /// What the popover's Bluetooth row reports. Deriving the text from state
 /// keeps the summary testable without rendering SwiftUI.
 enum BluetoothSummary: Equatable, Sendable {
@@ -396,20 +405,46 @@ enum BluetoothSummary: Equatable, Sendable {
     case unavailable
     case readFailed
     case noConnectedDevices
-    /// The joined device names. A connected device carries the level the report
-    /// holds for it, when it holds one.
-    case devices(String)
+    /// The connected devices, in the order the row lists them. Each carries the
+    /// level the report holds for it, when it holds one.
+    case devices([BluetoothSummaryEntry])
+
+    /// The entries as one run of drawing pieces, separators included, or `nil`
+    /// when the row is not listing devices.
+    ///
+    /// The row draws this, and `deviceNames` is its text-only rendering: the
+    /// visible line and the value a screen reader reads are one derivation
+    /// rather than two that could drift.
+    var deviceSegments: [BluetoothBatterySegment]? {
+        guard case .devices(let entries) = self else { return nil }
+        var pieces: [BluetoothBatterySegment] = []
+        for entry in entries {
+            if !pieces.isEmpty {
+                pieces.append(.text(Self.deviceSeparator))
+            }
+            pieces.append(.text(entry.name))
+            guard let level = entry.level else { continue }
+            pieces.append(.text(Self.nameLevelSeparator))
+            pieces.append(contentsOf: level)
+        }
+        return pieces
+    }
 
     var deviceNames: String? {
-        guard case .devices(let names) = self else { return nil }
-        return names
+        deviceSegments?.plainText
     }
 
     /// Whether the row reports at least one connected device, which is what makes
     /// reading levels worth a claim.
     var hasConnectedDevices: Bool {
-        deviceNames != nil
+        deviceSegments != nil
     }
+
+    /// Between two devices, matching the name lists the panel's other rows use.
+    private static let deviceSeparator = "、"
+    /// Between a device's name and its level. The middle dot marks the level as
+    /// a property of that device rather than another device in the list.
+    private static let nameLevelSeparator = " · "
 
     /// What the row does when tapped, or `nil` when tapping it does nothing.
     ///
@@ -453,9 +488,7 @@ enum BluetoothSummary: Equatable, Sendable {
         case .available:
             let connected = BluetoothDevicePresentation.grouped(devices).connected
             guard !connected.isEmpty else { return .noConnectedDevices }
-            let names = connected.map { entry(for: $0, batteryLevels: batteryLevels) }
-                .joined(separator: "、")
-            return .devices(names)
+            return .devices(connected.map { entry(for: $0, batteryLevels: batteryLevels) })
         }
     }
 
@@ -465,12 +498,14 @@ enum BluetoothSummary: Equatable, Sendable {
     private static func entry(
         for device: BluetoothDevice,
         batteryLevels: [String: BluetoothBatteryLevel]
-    ) -> String {
-        let address = BluetoothBatteryReader.normalizedAddress(device.id)
-        guard let summary = batteryLevels[address]?.summary else { return device.name }
-        // The middle dot marks the level as a property of this device, while
-        // the ideographic comma above separates devices from each other.
-        return "\(device.name) · \(summary)"
+    ) -> BluetoothSummaryEntry {
+        BluetoothSummaryEntry(
+            name: device.name,
+            level: BluetoothDevicePresentation.batteryLevelSegments(
+                for: device,
+                batteryLevels: batteryLevels
+            )
+        )
     }
 }
 
@@ -502,19 +537,19 @@ enum BluetoothDevicePresentation {
         )
     }
 
-    /// The level text for one detail row, or nil when the report carries no
-    /// level for that device.
+    /// The level for one detail row as the pieces the row draws, or nil when the
+    /// report carries no level for that device.
     ///
     /// A row without a level renders nothing at all: the page stays quiet for
     /// the devices macOS cannot read instead of repeating a placeholder on
     /// every line. A report that could not be read is a different state, and
     /// `BluetoothDeviceController.batteryLevelsReadFailed` reports it once for
     /// the whole list.
-    static func batteryLevelText(
+    static func batteryLevelSegments(
         for device: BluetoothDevice,
         batteryLevels: [String: BluetoothBatteryLevel]
-    ) -> String? {
+    ) -> [BluetoothBatterySegment]? {
         let address = BluetoothBatteryReader.normalizedAddress(device.id)
-        return batteryLevels[address]?.summary
+        return batteryLevels[address]?.segments
     }
 }

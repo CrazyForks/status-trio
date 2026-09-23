@@ -68,7 +68,7 @@ struct BluetoothDeviceRow: View {
             .accessibilityElement(children: .combine)
             // The word is gone from the row, so the state lives here instead: a
             // screen reader still hears whether the device is connected.
-            .accessibilityValue(stateAccessibilityValue)
+            .accessibilityValue(rowAccessibilityValue)
             .accessibilityHint(actionHelp)
         }
     }
@@ -111,16 +111,23 @@ struct BluetoothDeviceRow: View {
             .accessibilityHidden(true)
     }
 
+    /// The level as the report's pieces. The charging case is drawn as its glyph
+    /// rather than spelled out, so the row is not carrying a word no localization
+    /// translates.
     @ViewBuilder
     private var batteryText: some View {
-        if let level = BluetoothDevicePresentation.batteryLevelText(
+        if let segments = BluetoothDevicePresentation.batteryLevelSegments(
             for: device,
             batteryLevels: batteryLevels
         ) {
-            Text(level)
+            BluetoothBatteryLevelText.drawn(segments)
                 .font(.caption.monospacedDigit())
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
+                // The glyph is drawn inside the text run and carries no label of
+                // its own, so the run is taken out of the combined element and
+                // read back from its text form, in `rowAccessibilityValue`.
+                .accessibilityHidden(true)
         }
     }
 
@@ -140,6 +147,24 @@ struct BluetoothDeviceRow: View {
         case .connected, .notConnected:
             EmptyView()
         }
+    }
+
+    /// What the row says about itself beyond the text a screen reader can read on
+    /// its own: the connection state the glyph and the checkmark carry visually,
+    /// and the level.
+    ///
+    /// The level belongs here because its charging-case glyph is drawn inside a
+    /// `Text` run and has no label of its own: a combined element would otherwise
+    /// announce the case's percentage with nothing saying what it belongs to.
+    private var rowAccessibilityValue: String {
+        let state = stateAccessibilityValue
+        guard let level = BluetoothDevicePresentation.batteryLevelSegments(
+            for: device,
+            batteryLevels: batteryLevels
+        )?.plainText else {
+            return state
+        }
+        return "\(state), \(level)"
     }
 
     /// What this row's status says, for the accessibility value that replaced the

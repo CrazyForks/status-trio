@@ -158,6 +158,20 @@ enum BluetoothPairedDeviceReader {
         }
 
         var devices: [BluetoothDevice] = []
+        // The addresses already listed, so one device draws one row.
+        //
+        // Every consumer treats the address as the device's identity:
+        // `Identifiable.id` in the list, the battery-level lookup, the action
+        // state and the pending disconnect confirmation. Two entries for one
+        // address therefore draw the device twice, hand `ForEach` a duplicate id
+        // — which SwiftUI leaves undefined — and share one set of state between
+        // the two rows. The report can carry an address twice when a connect or
+        // a disconnect is caught mid-flight, when a Mac has more than one
+        // controller and the profiler reports a section per controller, or when
+        // the paired-device database itself holds a duplicate. Reading the
+        // collections connected-first makes that the precedence, so the entry
+        // that survives is the one matching the state the device is in.
+        var listedAddresses: Set<String> = []
         for section in sections {
             for (collectionKey, isConnected) in [
                 ("device_connected", true),
@@ -169,6 +183,13 @@ enum BluetoothPairedDeviceReader {
                           !address.isEmpty,
                           !entry.name.isEmpty else {
                         continue
+                    }
+                    let key = BluetoothBatteryReader.normalizedAddress(address)
+                    // An address the normalizer cannot reduce names no device,
+                    // so two of them are not necessarily the same one and both
+                    // stay.
+                    if !key.isEmpty {
+                        guard listedAddresses.insert(key).inserted else { continue }
                     }
                     let productID = BluetoothHexIdentifier.value(
                         from: properties["device_productID"] as? String

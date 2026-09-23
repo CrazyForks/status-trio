@@ -58,6 +58,49 @@ final class BluetoothSummaryLayoutTests: XCTestCase {
         }
     }
 
+    /// A device row draws the level from the same pieces the summary line does,
+    /// so the charging case is one glyph wherever it appears — and it stays
+    /// inside the row's single line. The same list with no level to draw is the
+    /// control: a glyph that grew the line box, or a word that wrapped, would
+    /// make the two renders different heights.
+    func testDeviceRowsDrawTheChargingCaseAsAGlyphOnOneLine() async throws {
+        let devices = [
+            BluetoothDevice(id: "AA", name: "AirPods Pro", kind: .audio, isConnected: true),
+            BluetoothDevice(id: "BB", name: "MX Master 3", kind: .peripheral(.mouse), isConnected: true)
+        ]
+        let levels: [String: BluetoothBatteryLevel] = [
+            BluetoothBatteryReader.normalizedAddress("AA"): BluetoothBatteryLevel(
+                deviceAddress: "AA", main: nil, left: 80, right: 75, caseLevel: 60),
+            BluetoothBatteryReader.normalizedAddress("BB"): BluetoothBatteryLevel(
+                deviceAddress: "BB", main: 45, left: nil, right: nil, caseLevel: nil)
+        ]
+        let options = BluetoothDeviceListOptions(showsList: true, maxVisibleDevices: 5, order: [])
+
+        let levelsShown = try await render(
+            language: .english,
+            authorization: .allowed,
+            devices: devices,
+            batteryLevels: levels,
+            listOptions: options,
+            named: "bluetooth-list-levels"
+        )
+        let levelsHidden = try await render(
+            language: .english,
+            authorization: .allowed,
+            devices: devices,
+            listOptions: options,
+            named: "bluetooth-list-no-levels"
+        )
+
+        XCTAssertEqual(levelsShown.width, 330, accuracy: 0.5)
+        XCTAssertEqual(
+            levelsShown.height,
+            levelsHidden.height,
+            accuracy: 1,
+            "the charging-case glyph has to stay inside the row's one line"
+        )
+    }
+
     /// With the list on, the row grows by the visible device rows and the
     /// expansion control — in both a narrow-glyph and a wide-glyph language.
     func testDeviceListGrowsTheRowWithoutWideningIt() async throws {
