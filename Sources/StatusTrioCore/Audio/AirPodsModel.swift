@@ -48,10 +48,10 @@ enum AirPodsModel: Equatable, Sendable {
     /// not parse.
     init?(modelUID: String?) {
         let tokens = (modelUID ?? "").split(whereSeparator: \.isWhitespace)
-        guard let product = tokens.first.flatMap({ Self.hexValue(String($0)) }) else {
+        guard let product = tokens.first.flatMap({ BluetoothHexIdentifier.value(from: String($0)) }) else {
             return nil
         }
-        let vendor = tokens.dropFirst().first.flatMap { Self.hexValue(String($0)) }
+        let vendor = tokens.dropFirst().first.flatMap { BluetoothHexIdentifier.value(from: String($0)) }
         self.init(productID: product, vendorID: vendor)
     }
 
@@ -60,8 +60,8 @@ enum AirPodsModel: Equatable, Sendable {
     /// space belongs to the vendor that declares it.
     init?(productIDText: String?, vendorIDText: String? = nil) {
         self.init(
-            productID: productIDText.flatMap { Self.hexValue($0) },
-            vendorID: vendorIDText.flatMap { Self.hexValue($0) }
+            productID: BluetoothHexIdentifier.value(from: productIDText),
+            vendorID: BluetoothHexIdentifier.value(from: vendorIDText)
         )
     }
 
@@ -109,13 +109,7 @@ enum AirPodsModel: Equatable, Sendable {
 
     /// Reads one hexadecimal token, with or without the `0x` prefix the
     /// profiler uses. Anything that is not hexadecimal does not parse, which is
-    /// what keeps a device name out of the table.
-    private static func hexValue(_ text: String) -> Int? {
-        var digits = text.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        if digits.hasPrefix("0x") {
-            digits.removeFirst(2)
-        }
-        guard !digits.isEmpty, digits.allSatisfy(\.isHexDigit) else { return nil }
-        return Int(digits, radix: 16)
-    }
+    /// what keeps a device name out of the table. The parse itself lives in
+    /// `BluetoothHexIdentifier`, because the paired-device reader has to keep the
+    /// same IDs on the device.
 }

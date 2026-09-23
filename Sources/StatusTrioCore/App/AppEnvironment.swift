@@ -61,7 +61,13 @@ final class AppEnvironment {
             volumeMonitor: volumeMonitor,
             refreshInterval: refreshInterval,
             bluetoothDevices: BluetoothDeviceController(
-                connectionEvents: IOBluetoothConnectionEventMonitor()
+                // The accessory power sources are the second battery source, read
+                // only for the devices the paired-device report carries no level
+                // for; accessory notifications are what make a level refresh
+                // between the safety-net polls.
+                accessoryBatteryReader: PmsetAccessoryBatteryWorker(),
+                connectionEvents: IOBluetoothConnectionEventMonitor(),
+                accessoryBatteryEvents: AccessoryPowerNotifyEventMonitor()
             )
         )
     }

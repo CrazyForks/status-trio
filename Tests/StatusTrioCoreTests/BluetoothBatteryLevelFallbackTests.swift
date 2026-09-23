@@ -1,0 +1,246 @@
+import Testing
+@testable import StatusTrioCore
+
+/// The accessory sources may only ever add a level. These pin the two rules that
+/// make that true: when the second source is worth reading at all, and which
+/// channel a reading is allowed to write.
+struct BluetoothBatteryLevelFallbackTests {
+    private func device(
+        address: String = "AC:90:85:C2:9C:1F",
+        name: String = "AirPods Pro",
+        isConnected: Bool = true,
+        vendorID: Int? = nil,
+        productID: Int? = nil
+    ) -> BluetoothDevice {
+        BluetoothDevice(
+            id: address,
+            name: name,
+            kind: .audio,
+            isConnected: isConnected,
+            vendorID: vendorID,
+            productID: productID
+        )
+    }
+
+    private func accessory(
+        name: String = "AirPods Pro",
+        vendorID: Int? = nil,
+        productID: Int? = nil,
+        part: BluetoothAccessoryPart? = nil,
+        percentage: Int = 93
+    ) -> BluetoothAccessoryBatteryLevel {
+        BluetoothAccessoryBatteryLevel(
+            name: name,
+            vendorID: vendorID,
+            productID: productID,
+            part: part,
+            percentage: percentage
+        )
+    }
+
+    private func level(main: Int? = nil, left: Int? = nil) -> BluetoothBatteryLevel {
+        BluetoothBatteryLevel(
+            deviceAddress: "AC:90:85:C2:9C:1F",
+            main: main,
+            left: left,
+            right: nil,
+            caseLevel: nil
+        )
+    }
+
+    // MARK: - When the second source is read
+
+    /// A read that could not answer is the one case where the second source is
+    /// the only way to show anything.
+    @Test("A failed primary read is worth asking the second source about")
+    func aFailedPrimaryReadNeedsTheSecondSource() {
+        #expect(BluetoothBatteryLevelFallback.isNeeded(levels: nil, devices: [device()]))
+    }
+
+    /// The whole point of the second source: a connected device the report
+    /// carries no level for.
+    @Test("A connected device with no level is worth asking about")
+    func aConnectedDeviceWithoutALevelNeedsTheSecondSource() {
+        let devices = [device(address: "AC:90:85:C2:9C:1F"), device(address: "D3:6D:6C:40:A3:2E", name: "MX Keys")]
+
+        #expect(BluetoothBatteryLevelFallback.isNeeded(
+            levels: [BluetoothBatteryReader.normalizedAddress("AC:90:85:C2:9C:1F"): level(main: 100)],
+            devices: devices
+        ))
+    }
+
+    /// The common case must not cost a second subprocess.
+    @Test("A report that covers every connected device needs nothing more")
+    func aCompleteReportNeedsNothingMore() {
+        #expect(!BluetoothBatteryLevelFallback.isNeeded(
+            levels: [BluetoothBatteryReader.normalizedAddress("AC:90:85:C2:9C:1F"): level(main: 100)],
+            devices: [device()]
+        ))
+    }
+
+    /// The panel lists paired devices too, but only a connected one is worth a
+    /// read. Counting a disconnected one would answer "yes" on every refresh, and
+    /// cost a `pmset` process each time, because neither source ever reports a
+    /// level for it.
+    @Test("A disconnected device without a level does not trigger the read")
+    func aDisconnectedDeviceDoesNotTriggerTheRead() {
+        #expect(!BluetoothBatteryLevelFallback.isNeeded(
+            levels: [:],
+            devices: [device(isConnected: false)]
+        ))
+        #expect(!BluetoothBatteryLevelFallback.isNeeded(
+            levels: nil,
+            devices: [device(isConnected: false)]
+        ))
+        #expect(BluetoothBatteryLevelFallback.isNeeded(
+            levels: [:],
+            devices: [device(isConnected: false), device(address: "D3:6D:6C:40:A3:2E", name: "MX Keys")]
+        ))
+    }
+
+    // MARK: - Merging
+
+    /// This is the guarantee the whole fallback rests on: a level the report
+    /// already carries is copied through untouched.
+    @Test("A level the report carries is never changed by the second source")
+    func thePrimarySourceAlwaysWins() {
+        let merged = BluetoothBatteryLevelFallback.merged(
+            levels: [BluetoothBatteryReader.normalizedAddress("AC:90:85:C2:9C:1F"): level(main: 88)],
+            accessories: [accessory(percentage: 12)],
+            devices: [device()]
+        )
+
+        #expect(merged[BluetoothBatteryReader.normalizedAddress("AC:90:85:C2:9C:1F")]?.main == 88)
+    }
+
+    @Test("A device the report has no level for takes the accessory's")
+    func aMissingDeviceTakesTheAccessoryLevel() {
+        let merged = BluetoothBatteryLevelFallback.merged(
+            levels: [:],
+            accessories: [accessory(percentage: 93)],
+            devices: [device()]
+        )
+
+        #expect(merged[BluetoothBatteryReader.normalizedAddress("AC:90:85:C2:9C:1F")]?.main == 93)
+    }
+
+    @Test("An accessory that matches no device adds nothing")
+    func anUnmatchedAccessoryAddsNothing() {
+        let merged = BluetoothBatteryLevelFallback.merged(
+            levels: [:],
+            accessories: [accessory(name: "Some Other Headset")],
+            devices: [device()]
+        )
+
+        #expect(merged.isEmpty)
+    }
+
+    // MARK: - Which channel a reading may write
+
+    /// A bud is not the device, and the distinction is the whole reason the part
+    /// is carried through the parse.
+    @Test("A part writes its own channel and never the device-wide level")
+    func aPartNeverWritesTheDeviceWideLevel() {
+        let merged = BluetoothBatteryLevelFallback.merged(
+            levels: [:],
+            accessories: [accessory(part: .left, percentage: 93)],
+            devices: [device()]
+        )
+
+        let level = merged[BluetoothBatteryReader.normalizedAddress("AC:90:85:C2:9C:1F")]
+        #expect(level?.left == 93)
+        #expect(level?.main == nil)
+        #expect(level?.summary == "L 93%")
+    }
+
+    /// A reading with no part is the only kind allowed to describe the device as
+    /// a whole.
+    @Test("A reading with no part supplies the device-wide level")
+    func aReadingWithNoPartSuppliesTheDeviceWideLevel() {
+        let merged = BluetoothBatteryLevelFallback.merged(
+            levels: [:],
+            accessories: [accessory(part: nil, percentage: 64)],
+            devices: [device()]
+        )
+
+        #expect(merged[BluetoothBatteryReader.normalizedAddress("AC:90:85:C2:9C:1F")]?.summary == "64%")
+    }
+
+    /// A set of earbuds publishes one source per part, so both buds and the case
+    /// arrive as separate readings and have to land in one device's channels.
+    @Test("Separate readings for one device fill their own channels")
+    func separateReadingsFillTheirOwnChannels() {
+        let merged = BluetoothBatteryLevelFallback.merged(
+            levels: [:],
+            accessories: [
+                accessory(part: .left, percentage: 93),
+                accessory(part: .right, percentage: 91),
+                accessory(part: .caseLevel, percentage: 60)
+            ],
+            devices: [device()]
+        )
+
+        #expect(
+            merged[BluetoothBatteryReader.normalizedAddress("AC:90:85:C2:9C:1F")]?.summary
+                == "L 93% · R 91% · Case 60%"
+        )
+    }
+
+    // MARK: - Matching
+
+    /// The pair identifies one model, and it is what survives a rename. When both
+    /// sides carry it, it decides on its own — including when the pair says the
+    /// two are the same device under different names.
+    @Test("A matching vendor and product pair identifies the device")
+    func theIdentifierPairIdentifiesTheDevice() {
+        #expect(BluetoothBatteryLevelFallback.matches(
+            accessory(name: "Renamed Since", vendorID: 76, productID: 8207),
+            device(name: "AirPods Pro", vendorID: 76, productID: 8207)
+        ))
+    }
+
+    /// A pair that disagrees is a different model, and the name must not
+    /// re-join it: two accessories can share a default name while being
+    /// different hardware.
+    @Test("A disagreeing identifier pair is not rescued by a matching name")
+    func aDisagreeingPairIsNotRescuedByTheName() {
+        #expect(!BluetoothBatteryLevelFallback.matches(
+            accessory(name: "AirPods Pro", vendorID: 1133, productID: 45915),
+            device(name: "AirPods Pro", vendorID: 76, productID: 8207)
+        ))
+    }
+
+    /// The name is what is left when a source carries no pair at all.
+    @Test("The name matches when either side carries no identifier pair")
+    func theNameMatchesWhenAPairIsMissing() {
+        #expect(BluetoothBatteryLevelFallback.matches(
+            accessory(name: "MX Keys"),
+            device(name: "mx keys")
+        ))
+        #expect(BluetoothBatteryLevelFallback.matches(
+            accessory(name: "MX Keys"),
+            device(name: "MX Keys", vendorID: 1133, productID: 45915)
+        ))
+    }
+
+    /// A substring match would join an accessory to any device whose name
+    /// happens to contain it, so the comparison is exact.
+    @Test("A name that merely contains another does not match")
+    func aNameThatMerelyContainsAnotherDoesNotMatch() {
+        #expect(!BluetoothBatteryLevelFallback.matches(
+            accessory(name: "MX Keys"),
+            device(name: "MX Keys for Mac")
+        ))
+    }
+
+    /// An accessory the power manager could not name can still be identified by
+    /// its pair, but must never match a device by an empty name.
+    @Test("An unnamed accessory never matches by name")
+    func anUnnamedAccessoryNeverMatchesByName() {
+        #expect(!BluetoothBatteryLevelFallback.matches(accessory(name: ""), device(name: "")))
+        #expect(!BluetoothBatteryLevelFallback.matches(
+            accessory(name: " "),
+            device(name: "AirPods Pro")
+        ))
+    }
+}
