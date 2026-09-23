@@ -146,6 +146,12 @@
 "wifi.subtitle.temporary" = "临时 Wi-Fi 连接";
 "wifi.subtitle.shared" = "正在共享互联网";
 "wifi.subtitle.unavailable" = "无法读取网络状态";
+"vpn.title" = "VPN";
+"vpn.value.connected" = "已连接";
+"vpn.value.disconnected" = "未连接";
+"vpn.subtitle.systemProxy" = "系统代理";
+"vpn.subtitle.connectedWithProxy" = "已连接 · 代理 %@";
+"vpn.subtitle.proxyAutomatic" = "自动配置";
 "wifi.action.requestNameAccess" = "允许定位以显示 Wi-Fi 名称";
 "wifi.action.openLocationSettings" = "去设置中允许定位";
 "wifi.action.openSettings" = "打开 Wi-Fi 设置";

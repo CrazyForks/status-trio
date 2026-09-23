@@ -51,6 +51,7 @@ final class AppEnvironment {
         batteryMonitor: any BatteryMonitoring,
         wifiMonitor: any WiFiMonitoring,
         connectionMonitor: (any NetworkConnectionMonitoring)? = nil,
+        vpnMonitor: (any VPNMonitoring)? = nil,
         volumeMonitor: any VolumeMonitoring,
         refreshInterval: Duration = .seconds(15)
     ) -> SystemStatusStore {
@@ -58,6 +59,7 @@ final class AppEnvironment {
             batteryMonitor: batteryMonitor,
             wifiMonitor: wifiMonitor,
             connectionMonitor: connectionMonitor,
+            vpnMonitor: vpnMonitor,
             volumeMonitor: volumeMonitor,
             refreshInterval: refreshInterval,
             bluetoothDevices: BluetoothDeviceController(
@@ -78,6 +80,7 @@ final class AppEnvironment {
             batteryMonitor: BatteryMonitor(),
             wifiMonitor: WiFiMonitor(),
             connectionMonitor: NetworkConnectionMonitor(),
+            vpnMonitor: VPNMonitor(),
             volumeMonitor: VolumeMonitor(outputController: CoreAudioOutputController()),
             refreshInterval: settings.refreshInterval
         )

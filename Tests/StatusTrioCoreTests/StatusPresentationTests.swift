@@ -390,6 +390,112 @@ final class StatusPresentationTests: XCTestCase {
         )
     }
 
+    /// The VPN row leads with the service name when the system has one, falls
+    /// back to the generic label for a bare tunnel, and names the kind when a
+    /// proxy is all that is up.
+    func testVPNRowLeadsWithTheServiceName() {
+        let localization = makeLocalization(.simplifiedChinese)
+
+        let named = VPNStatus(
+            tunnelInterfaces: ["utun4"],
+            serviceName: "工作 VPN",
+            proxy: nil
+        )
+        XCTAssertEqual(
+            StatusPresentation.vpnTitle(named, localization: localization),
+            "工作 VPN"
+        )
+        XCTAssertEqual(
+            StatusPresentation.vpnSubtitle(named, localization: localization),
+            "已连接"
+        )
+
+        let bareTunnel = VPNStatus(
+            tunnelInterfaces: ["utun4"],
+            serviceName: nil,
+            proxy: nil
+        )
+        XCTAssertEqual(
+            StatusPresentation.vpnTitle(bareTunnel, localization: localization),
+            "VPN"
+        )
+        XCTAssertEqual(
+            StatusPresentation.vpnSubtitle(bareTunnel, localization: localization),
+            "已连接"
+        )
+    }
+
+    func testVPNRowReportsAProxyWithoutATunnel() {
+        let localization = makeLocalization(.simplifiedChinese)
+
+        let proxyOnly = VPNStatus(
+            tunnelInterfaces: [],
+            serviceName: nil,
+            proxy: VPNProxyStatus(kind: .http, host: "127.0.0.1", port: 10808)
+        )
+        XCTAssertEqual(
+            StatusPresentation.vpnTitle(proxyOnly, localization: localization),
+            "系统代理"
+        )
+        XCTAssertEqual(
+            StatusPresentation.vpnSubtitle(proxyOnly, localization: localization),
+            "127.0.0.1:10808"
+        )
+    }
+
+    func testVPNRowAppendsTheProxyToAConnectedTunnel() {
+        let localization = makeLocalization(.simplifiedChinese)
+
+        let both = VPNStatus(
+            tunnelInterfaces: ["utun4"],
+            serviceName: nil,
+            proxy: VPNProxyStatus(kind: .socks, host: "127.0.0.1", port: 7891)
+        )
+
+        XCTAssertEqual(
+            StatusPresentation.vpnSubtitle(both, localization: localization),
+            "已连接 · 代理 127.0.0.1:7891"
+        )
+    }
+
+    func testVPNRowWithoutAnythingUpReadsAsDisconnected() {
+        let localization = makeLocalization(.simplifiedChinese)
+        let off = VPNStatus(tunnelInterfaces: [], serviceName: nil, proxy: nil)
+
+        XCTAssertEqual(
+            StatusPresentation.vpnTitle(off, localization: localization),
+            "VPN"
+        )
+        XCTAssertEqual(
+            StatusPresentation.vpnSubtitle(off, localization: localization),
+            "未连接"
+        )
+    }
+
+    /// A PAC script has no endpoint to print, so the row names its kind.
+    func testVPNRowNamesAnAutomaticConfiguration() {
+        let localization = makeLocalization(.simplifiedChinese)
+
+        let pac = VPNStatus(
+            tunnelInterfaces: [],
+            serviceName: nil,
+            proxy: VPNProxyStatus(
+                kind: .automaticConfiguration,
+                host: "http://example.invalid/proxy.pac",
+                port: nil
+            )
+        )
+
+        XCTAssertEqual(
+            StatusPresentation.vpnTitle(pac, localization: localization),
+            "系统代理"
+        )
+        XCTAssertEqual(
+            StatusPresentation.vpnSubtitle(pac, localization: localization),
+            "自动配置"
+        )
+    }
+
     private func makeLocalization(_ language: AppLanguage) -> Localization {
         let suiteName = "StatusTrioCoreTests.StatusPresentation.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!

@@ -146,6 +146,12 @@
 "wifi.subtitle.temporary" = "Connexion Wi-Fi temporaire";
 "wifi.subtitle.shared" = "Partage d’internet";
 "wifi.subtitle.unavailable" = "Impossible de lire l’état du réseau";
+"vpn.title" = "VPN";
+"vpn.value.connected" = "Connecté";
+"vpn.value.disconnected" = "Non connecté";
+"vpn.subtitle.systemProxy" = "Proxy système";
+"vpn.subtitle.connectedWithProxy" = "Connecté · proxy %@";
+"vpn.subtitle.proxyAutomatic" = "Configuration automatique";
 "wifi.action.requestNameAccess" = "Autoriser la localisation pour afficher le nom du Wi‑Fi";
 "wifi.action.openLocationSettings" = "Autoriser la localisation dans Réglages";
 "wifi.action.openSettings" = "Ouvrir les réglages Wi‑Fi";
