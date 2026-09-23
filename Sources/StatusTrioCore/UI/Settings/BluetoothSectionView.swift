@@ -21,6 +21,11 @@ struct BluetoothSectionView: View {
                 isDarkBackground: $previewIsDark
             )
         }) {
+            if bluetoothDevices.authorization != .allowed {
+                bluetoothPermissionBanner
+                SettingsDivider()
+            }
+
             SettingsGroup(localization.string(.settingsBluetoothTitle)) {
                 SettingsToggleRow(
                     symbol: "list.bullet.rectangle",
@@ -158,6 +163,16 @@ struct BluetoothSectionView: View {
                         }
                     }
                 )
+
+                SettingsDivider()
+
+                SettingsToggleRow(
+                    symbol: "eye.slash",
+                    tint: .indigo,
+                    title: localization.string(.settingsBluetoothHideUnpairedDevices),
+                    subtitle: localization.string(.settingsBluetoothHideUnpairedDevicesDescription),
+                    isOn: $store.hidesGhostBluetoothDevices
+                )
             }
         }
     }
@@ -184,6 +199,17 @@ struct BluetoothSectionView: View {
                 } else {
                     List {
                         ForEach(orderedBluetoothDevices) { device in
+                            let key = BluetoothBatteryReader.normalizedAddress(device.id)
+                            let ghostHiddenByFilter = device.isUnpairedGhost
+                                && store.hidesGhostBluetoothDevices
+                                && !store.revealedGhostBluetoothDeviceAddresses.contains(key)
+                            let isHidden = ghostHiddenByFilter
+                                || store.hiddenBluetoothDeviceAddresses.contains(key)
+                            // Ghost devices: a per-row eye only makes sense while the
+                            // global filter is on — it reveals one ghost without showing
+                            // all. With the filter off every ghost already shows, so there
+                            // is nothing to toggle individually.
+                            let showsEyeButton = !device.isUnpairedGhost || store.hidesGhostBluetoothDevices
                             HStack(spacing: 10) {
                                 Image(systemName: BluetoothDeviceRowIcon.symbolName(for: device))
                                     .foregroundStyle(device.isConnected ? Color.accentColor : Color.secondary)
@@ -194,12 +220,46 @@ struct BluetoothSectionView: View {
                                     .lineLimit(1)
                                     .frame(maxWidth: .infinity, alignment: .leading)
 
+                                if device.isUnpairedGhost {
+                                    Text(localization.string(.settingsBluetoothNotInSystemSettings))
+                                        .font(.system(size: 10))
+                                        .padding(.horizontal, 6)
+                                        .padding(.vertical, 2)
+                                        .background(Capsule().fill(Color.secondary.opacity(0.18)))
+                                        .foregroundStyle(.secondary)
+                                        .accessibilityHidden(true)
+                                }
+
+                                if showsEyeButton {
+                                    Button {
+                                        if device.isUnpairedGhost {
+                                            store.setBluetoothGhostRevealed(
+                                                device.id,
+                                                revealed: !store.revealedGhostBluetoothDeviceAddresses.contains(key)
+                                            )
+                                        } else {
+                                            store.setBluetoothDeviceHidden(device.id, hidden: !isHidden)
+                                        }
+                                    } label: {
+                                        Image(systemName: isHidden ? "eye.slash" : "eye")
+                                            .font(.system(size: 13))
+                                    }
+                                    .buttonStyle(.plain)
+                                    .help(isHidden
+                                          ? localization.string(.settingsBluetoothShowDevice)
+                                          : localization.string(.settingsBluetoothHideDevice))
+                                    .accessibilityLabel(isHidden
+                                          ? localization.string(.settingsBluetoothShowDevice)
+                                          : localization.string(.settingsBluetoothHideDevice))
+                                }
+
                                 Image(systemName: "line.3.horizontal")
                                     .font(.caption)
                                     .foregroundStyle(.tertiary)
                                     .accessibilityHidden(true)
                             }
                             .padding(.vertical, 3)
+                            .opacity(isHidden ? 0.45 : 1)
                         }
                         .onMove { source, destination in
                             store.moveBluetoothDevices(
@@ -212,6 +272,49 @@ struct BluetoothSectionView: View {
                     .listStyle(.inset)
                     .frame(height: orderListHeight)
                 }
+            }
+        }
+    }
+
+    /// Shown at the top of the pane whenever Bluetooth access is not granted, so
+    /// the user sees why the device list is empty and can resolve it from here
+    /// instead of hunting for a prompt. `.notDetermined` offers to raise the
+    /// system prompt; `.denied`/`.restricted` send the user to the pane that
+    /// gives a refused grant back. Hidden once `.allowed`.
+    @ViewBuilder
+    private var bluetoothPermissionBanner: some View {
+        switch bluetoothDevices.authorization {
+        case .allowed:
+            EmptyView()
+        case .notDetermined:
+            permissionNotice(
+                description: .settingsBluetoothPermissionNotDeterminedDescription,
+                buttonKey: .bluetoothActionRequestAuthorization,
+                action: { statusStore.requestBluetoothAuthorization() }
+            )
+        case .denied, .restricted:
+            permissionNotice(
+                description: .settingsBluetoothPermissionDeniedDescription,
+                buttonKey: .bluetoothActionOpenPermissionSettings,
+                action: { statusStore.openBluetoothPermissionSettings() }
+            )
+        }
+    }
+
+    private func permissionNotice(
+        description: LocalizationKey,
+        buttonKey: LocalizationKey,
+        action: @escaping () -> Void
+    ) -> some View {
+        SettingsGroup {
+            SettingsRow(
+                "exclamationmark.triangle.fill",
+                tint: .orange,
+                title: localization.string(.settingsBluetoothPermissionRequired),
+                subtitle: localization.string(description)
+            ) {
+                Button(localization.string(buttonKey), action: action)
+                    .controlSize(.small)
             }
         }
     }

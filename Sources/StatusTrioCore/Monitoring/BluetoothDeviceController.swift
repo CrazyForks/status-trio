@@ -197,6 +197,7 @@ enum BluetoothPairedDeviceReader {
                     let vendorID = BluetoothHexIdentifier.value(
                         from: properties["device_vendorID"] as? String
                     )
+                    let isUnpairedGhost = Self.isGhost(properties: properties)
                     devices.append(BluetoothDevice(
                         id: address,
                         name: entry.name,
@@ -204,7 +205,8 @@ enum BluetoothPairedDeviceReader {
                         isConnected: isConnected,
                         airPodsModel: AirPodsModel(productID: productID, vendorID: vendorID),
                         vendorID: vendorID,
-                        productID: productID
+                        productID: productID,
+                        isUnpairedGhost: isUnpairedGhost
                     ))
                 }
             }
@@ -236,6 +238,17 @@ enum BluetoothPairedDeviceReader {
     /// strings macOS actually reports rather than against this call site.
     private static func kind(properties: [String: Any]) -> BluetoothDeviceKind {
         BluetoothDeviceKindResolver.kind(properties: properties)
+    }
+
+    /// A device the profiler could not classify: it carries neither
+    /// `device_minorType` nor `device_minorClassOfDevice_string`. The system
+    /// settings "My Devices" list shows only paired devices, and a
+    /// never-paired scan entry is exactly the kind it omits, so this drives the
+    /// panel's "hide devices not in System Settings" option. A device the stack
+    /// has classified always carries one of those two keys.
+    private static func isGhost(properties: [String: Any]) -> Bool {
+        properties["device_minorType"] == nil
+            && properties["device_minorClassOfDevice_string"] == nil
     }
 }
 
@@ -535,6 +548,12 @@ final class BluetoothDeviceController: ObservableObject {
         stateMonitor.authorization
     }
 
+    /// A published mirror of `authorization` that changes only while the state
+    /// monitor is active, so UI that needs to react to a permission decision
+    /// (such as re-surfacing the Settings window after a system prompt) can
+    /// subscribe without polling `CBManager.authorization` directly.
+    @Published private(set) var authorizationStatus: BluetoothAuthorizationStatus = .notDetermined
+
     func prepareForPresentation() {
         guard !isActive else { return }
         switch stateMonitor.authorization {
@@ -547,6 +566,7 @@ final class BluetoothDeviceController: ObservableObject {
         case .allowed:
             availability = .idle
         }
+        authorizationStatus = stateMonitor.authorization
     }
 
     func activate() {
@@ -767,6 +787,7 @@ final class BluetoothDeviceController: ObservableObject {
             managerState: managerState
         )
         availability = mappedAvailability
+        authorizationStatus = authorization
 
         if mappedAvailability == .available {
             schedulePeriodicRefresh()

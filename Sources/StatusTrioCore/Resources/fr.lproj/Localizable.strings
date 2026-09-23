@@ -328,3 +328,11 @@
 "wifi.summary.band" = "%@ GHz";
 "wifi.summary.signal" = "%d dBm";
 "wifi.summary.bandAndSignal" = "%@ · %@";
+"settings.bluetooth.hideUnpairedDevices" = "Masquer les appareils absents des Réglages";
+"settings.bluetooth.hideUnpairedDevicesDescription" = "Masque les appareils détectés mais non appairés que le système ne liste pas. Désactivez pour tout afficher.";
+"settings.bluetooth.notInSystemSettings" = "Absent des Réglages";
+"settings.bluetooth.hideDevice" = "Masquer l’appareil";
+"settings.bluetooth.showDevice" = "Afficher l’appareil";
+"settings.bluetooth.permissionRequired" = "Autorisation Bluetooth requise";
+"settings.bluetooth.permissionNotDeterminedDescription" = "Status Trio a besoin de l'accès Bluetooth pour afficher vos appareils. Cliquez sur le bouton ci-dessous pour l'accorder.";
+"settings.bluetooth.permissionDeniedDescription" = "L'accès Bluetooth a été refusé. Activez-le dans les Réglages Système pour utiliser cette fonctionnalité.";

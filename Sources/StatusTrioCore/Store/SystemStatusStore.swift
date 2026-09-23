@@ -331,6 +331,25 @@ final class SystemStatusStore: ObservableObject {
         setBluetoothEnabled(true)
     }
 
+    /// The route where a refused Bluetooth grant is restored. This is not the
+    /// Bluetooth pane the gear opens — that one toggles the radio, while a refusal
+    /// lives under Privacy & Security. First entry decides the destination; the
+    /// second covers the URL scheme itself failing to open.
+    static let bluetoothPermissionSettingsURLs: [URL] = [
+        "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_Bluetooth",
+        "x-apple.systempreferences:com.apple.preference.security?Privacy_Bluetooth"
+    ]
+    .compactMap(URL.init(string:))
+
+    /// Opens the Privacy & Security pane where a refused Bluetooth grant is
+    /// restored. This is not the Bluetooth pane the gear opens — that one toggles
+    /// the radio, while a refusal lives under Privacy & Security.
+    func openBluetoothPermissionSettings() {
+        for url in Self.bluetoothPermissionSettingsURLs where NSWorkspace.shared.open(url) {
+            return
+        }
+    }
+
     func setBluetoothEnabled(_ enabled: Bool) {
         guard !hasStopped else { return }
         isBluetoothEnabled = enabled

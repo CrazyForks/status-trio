@@ -38,7 +38,8 @@ struct BluetoothDeviceList: View {
             devices: devices,
             order: options.order,
             limit: options.maxVisibleDevices,
-            isExpanded: isExpanded
+            isExpanded: isExpanded,
+            options: options
         )
 
         VStack(spacing: Self.rowSpacing) {

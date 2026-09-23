@@ -57,6 +57,9 @@ final class SettingsStore: ObservableObject {
     static let maxVisibleBluetoothDevicesDefaultsKey = "maxVisibleBluetoothDevices"
     static let showsBluetoothDeviceListDefaultsKey = "showsBluetoothDeviceList"
     static let bluetoothDeviceOrderDefaultsKey = "bluetoothDeviceOrder"
+    static let hidesGhostBluetoothDevicesDefaultsKey = "hidesGhostBluetoothDevices"
+    static let hiddenBluetoothDeviceAddressesDefaultsKey = "hiddenBluetoothDeviceAddresses"
+    static let revealedGhostBluetoothDeviceAddressesDefaultsKey = "revealedGhostBluetoothDeviceAddresses"
     static let bluetoothDeviceLimitRange: ClosedRange<Int> = 1...20
     static let alwaysShowsAllOutputDevicesDefaultsKey = "alwaysShowsAllOutputDevices"
     static let outputDeviceOrderDefaultsKey = "outputDeviceOrder"
@@ -329,6 +332,31 @@ final class SettingsStore: ObservableObject {
         }
     }
 
+    @Published var hidesGhostBluetoothDevices: Bool {
+        didSet {
+            defaults.set(hidesGhostBluetoothDevices, forKey: Self.hidesGhostBluetoothDevicesDefaultsKey)
+        }
+    }
+
+    @Published var hiddenBluetoothDeviceAddresses: Set<String> {
+        didSet {
+            defaults.set(Array(hiddenBluetoothDeviceAddresses), forKey: Self.hiddenBluetoothDeviceAddressesDefaultsKey)
+        }
+    }
+
+    /// Normalized addresses of ghost devices the user has explicitly revealed,
+    /// overriding the automatic ghost filter for those devices. Ghost devices are
+    /// hidden by default, so this set starts empty; the user opens individual
+    /// ones from Settings without showing every unpaired device at once.
+    @Published var revealedGhostBluetoothDeviceAddresses: Set<String> {
+        didSet {
+            defaults.set(
+                Array(revealedGhostBluetoothDeviceAddresses),
+                forKey: Self.revealedGhostBluetoothDeviceAddressesDefaultsKey
+            )
+        }
+    }
+
     @Published private(set) var popupSectionOrder: [PopupSection] {
         didSet {
             defaults.set(
@@ -399,7 +427,10 @@ final class SettingsStore: ObservableObject {
         BluetoothDeviceListOptions(
             showsList: showsBluetoothDeviceList,
             maxVisibleDevices: maxVisibleBluetoothDevices,
-            order: bluetoothDeviceOrder
+            order: bluetoothDeviceOrder,
+            hidesGhostDevices: hidesGhostBluetoothDevices,
+            hiddenDeviceAddresses: hiddenBluetoothDeviceAddresses,
+            revealedGhostDeviceAddresses: revealedGhostBluetoothDeviceAddresses
         )
     }
 
@@ -456,6 +487,35 @@ final class SettingsStore: ObservableObject {
         )
         bluetoothDeviceOrder = reorderedDevices.map {
             BluetoothBatteryReader.normalizedAddress($0.id)
+        }
+    }
+
+    /// Hides or reveals a single device in the status-panel list, by its
+    /// normalized address. Manual hides are independent of the automatic
+    /// "hide devices not in System Settings" filter, so a device the user hides
+    /// stays hidden whatever the profiler reports next.
+    func setBluetoothDeviceHidden(_ address: String, hidden: Bool) {
+        let key = BluetoothBatteryReader.normalizedAddress(address)
+        guard !key.isEmpty else { return }
+        if hidden {
+            hiddenBluetoothDeviceAddresses.insert(key)
+        } else {
+            hiddenBluetoothDeviceAddresses.remove(key)
+        }
+    }
+
+    /// Reveals or re-hides a single ghost device from the automatic
+    /// "hide devices not in System Settings" filter, by its normalized address.
+    /// Ghost devices are hidden by default; the user opens individual ones here
+    /// without turning the global filter off (which would reveal every unpaired
+    /// device at once). Revealing is a no-op for non-ghost devices.
+    func setBluetoothGhostRevealed(_ address: String, revealed: Bool) {
+        let key = BluetoothBatteryReader.normalizedAddress(address)
+        guard !key.isEmpty else { return }
+        if revealed {
+            revealedGhostBluetoothDeviceAddresses.insert(key)
+        } else {
+            revealedGhostBluetoothDeviceAddresses.remove(key)
         }
     }
 
@@ -563,6 +623,15 @@ final class SettingsStore: ObservableObject {
         let storedBluetoothDeviceOrder = defaults.stringArray(
             forKey: Self.bluetoothDeviceOrderDefaultsKey
         ) ?? []
+        let storedHidesGhostBluetoothDevices = defaults.object(
+            forKey: Self.hidesGhostBluetoothDevicesDefaultsKey
+        ) as? Bool
+        let storedHiddenBluetoothDeviceAddresses = Set(
+            defaults.stringArray(forKey: Self.hiddenBluetoothDeviceAddressesDefaultsKey) ?? []
+        )
+        let storedRevealedGhostBluetoothDeviceAddresses = Set(
+            defaults.stringArray(forKey: Self.revealedGhostBluetoothDeviceAddressesDefaultsKey) ?? []
+        )
         let storedRefreshInterval = (defaults.object(forKey: Self.refreshIntervalDefaultsKey) as? NSNumber)?.doubleValue
         let storedBluetoothSymbolScale = (defaults.object(forKey: Self.bluetoothSymbolScaleDefaultsKey) as? NSNumber)?.doubleValue
         let storedWifiSymbolScale = (defaults.object(forKey: Self.wifiSymbolScaleDefaultsKey) as? NSNumber)?.doubleValue
@@ -654,6 +723,9 @@ final class SettingsStore: ObservableObject {
             storedBluetoothDeviceLimit ?? Self.defaultMaxVisibleBluetoothDevices
         )
         self.bluetoothDeviceOrder = storedBluetoothDeviceOrder
+        self.hidesGhostBluetoothDevices = storedHidesGhostBluetoothDevices ?? true
+        self.hiddenBluetoothDeviceAddresses = storedHiddenBluetoothDeviceAddresses
+        self.revealedGhostBluetoothDeviceAddresses = storedRevealedGhostBluetoothDeviceAddresses
         self.alwaysShowsAllOutputDevices = defaults.object(
             forKey: Self.alwaysShowsAllOutputDevicesDefaultsKey
         ) as? Bool ?? false

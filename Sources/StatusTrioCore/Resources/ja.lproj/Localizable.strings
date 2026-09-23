@@ -328,3 +328,11 @@
 "wifi.summary.band" = "%@ GHz";
 "wifi.summary.signal" = "%d dBm";
 "wifi.summary.bandAndSignal" = "%@ · %@";
+"settings.bluetooth.hideUnpairedDevices" = "システム設定にないデバイスを非表示";
+"settings.bluetooth.hideUnpairedDevicesDescription" = "システムに表示されない、スキャンされただけでペアリングされていないデバイスを非表示にします。すべて表示するにはオフにします。";
+"settings.bluetooth.notInSystemSettings" = "システム設定にありません";
+"settings.bluetooth.hideDevice" = "デバイスを非表示";
+"settings.bluetooth.showDevice" = "デバイスを表示";
+"settings.bluetooth.permissionRequired" = "Bluetooth の権限が必要です";
+"settings.bluetooth.permissionNotDeterminedDescription" = "Status Trio がデバイスを表示するには Bluetooth へのアクセス権限が必要です。下のボタンをクリックして許可してください。";
+"settings.bluetooth.permissionDeniedDescription" = "Bluetooth へのアクセスが拒否されています。この機能を使用するには「システム設定」で有効にしてください。";
