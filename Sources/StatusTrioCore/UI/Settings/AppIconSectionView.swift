@@ -59,7 +59,7 @@ struct AppIconSectionView: View {
                 subtitle: localization.string(.settingsAppIconPlacementDescription),
                 selection: $store.appIconPlacement,
                 options: [AppIconPlacement.menuBar, .dock, .both],
-                previewSize: CGSize(width: 62, height: 42),
+                previewSize: SettingsMetrics.appIconPictureOptionPreviewSize,
                 caption: { placement in
                     switch placement {
                     case .menuBar: return localization.string(.settingsAppIconPlacementMenuBar)
@@ -75,18 +75,9 @@ struct AppIconSectionView: View {
             if !store.appIconPlacement.showsDockIcon {
                 SettingsDivider()
 
-                HStack(spacing: 6) {
-                    Image(systemName: "info.circle")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-                        .accessibilityHidden(true)
-                    Text(localization.string(.settingsAppIconDockExitHint))
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                }
-                .padding(.horizontal, SettingsMetrics.rowPaddingH)
-                .padding(.vertical, 8)
+                SettingsHintRow(
+                    text: localization.string(.settingsAppIconDockExitHint)
+                )
                 .transition(reduceMotion ? .opacity : .opacity.combined(with: .move(edge: .top)))
             }
         }
@@ -140,7 +131,7 @@ struct AppIconSectionView: View {
                 subtitle: localization.string(.settingsRingStrokeStyleDescription),
                 selection: $store.ringStrokeStyle,
                 options: [RingStrokeStyle.light, .regular, .bold],
-                previewSize: CGSize(width: 68, height: 44),
+                previewSize: SettingsMetrics.appIconPictureOptionPreviewSize,
                 caption: { style in
                     switch style {
                     case .light: return localization.string(.settingsRingStrokeStyleLight)
@@ -165,11 +156,13 @@ struct AppIconSectionView: View {
     private var dockGroup: some View {
         SettingsGroup(localization.string(.settingsAppIconDockGroup)) {
             SettingsPictureRow(
+                "dock.rectangle",
+                tint: .indigo,
                 title: localization.string(.settingsDockIconBackground),
-                subtitle: localization.string(.settingsDockIconBackgroundDescription),
+                optionSymbol: { $0.settingsSymbol },
                 selection: $store.dockIconBackgroundPreference,
                 options: [DockIconBackgroundPreference.system, .dark, .light],
-                previewSize: CGSize(width: 58, height: 42),
+                previewSize: SettingsMetrics.appIconPictureOptionPreviewSize,
                 caption: { pref in
                     switch pref {
                     case .system: return localization.string(.settingsDockIconBackgroundSystem)
@@ -184,6 +177,11 @@ struct AppIconSectionView: View {
                         statusStore: statusStore
                     )
                 }
+            )
+
+            SettingsDivider()
+            SettingsHintRow(
+                text: localization.string(.settingsDockIconBackgroundDescription)
             )
         }
     }
