@@ -212,10 +212,16 @@ if let details = resolved {
     // about the address. If this block ever prints an address as part of the
     // row, the privacy rule has been broken — the panel is where addresses go.
     let rowTitle = details.name.flatMap { wiredDisplayNames[$0] } ?? "\"Ethernet\" (localized)"
-    let rowSubtitle = details.name ?? "\"Connected\" (localized)"
+    let port = details.name ?? "\"Connected\" (localized)"
+    // The restriction rides along with the port name when the path carries one
+    // (`NWPath.isConstrained`, printed in section 1), so a probe that stopped at
+    // the port would not match what the row draws.
+    let restriction = pathBox.get()?.isConstrained == true
+        ? " · \"Restricted network\" (localized)"
+        : ""
     print("\n  -> row title    = \(rowTitle)")
-    print("     row subtitle = \(rowSubtitle)   <- the BSD name, never the address")
-    print("     the addresses above appear in the panel only")
+    print("     row subtitle = \(port)\(restriction)")
+    print("     the row names the port; the addresses above appear in the panel only")
 } else {
     print("  PrimaryLinkDetails = nil")
     print("     -> no wired service in the snapshot; the panel would show Unavailable per row.")

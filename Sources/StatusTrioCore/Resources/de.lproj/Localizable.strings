@@ -154,6 +154,7 @@
 "ethernet.accessibility.connected" = "Ethernet verbunden";
 "ethernet.title" = "Ethernet";
 "ethernet.subtitle.connected" = "Verbunden";
+"ethernet.subtitle.constrained" = "Eingeschränktes Netzwerk";
 "ethernet.action.openSettings" = "Netzwerkeinstellungen öffnen";
 "volume.title" = "Lautstärke · %d%%";
 "volume.titleUnavailable" = "Lautstärke · —";

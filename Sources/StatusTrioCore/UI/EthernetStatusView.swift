@@ -6,10 +6,14 @@ import SwiftUI
 /// the same shape of heading — what the link is on top, the technical
 /// particular underneath. The port's name heads it and the BSD name follows,
 /// because the address this row used to show is the reader's own business and
-/// belongs in the panel.
+/// belongs in the panel. A restricted path adds one clause to the subtitle and
+/// nothing else.
 struct EthernetStatusView: View {
     @EnvironmentObject private var localization: Localization
     @ObservedObject var primaryLink: PrimaryLinkController
+    /// A property of the path rather than of the port, so it is passed in from
+    /// the store instead of read off the link controller.
+    let isConstrained: Bool
     let onOpenDetails: () -> Void
     let onOpenNetworkSettings: () -> Void
 
@@ -64,7 +68,11 @@ struct EthernetStatusView: View {
     /// before DHCP answers has no service yet, so nothing names it — the row
     /// falls back to the state rather than to an address it does not have.
     private var subtitle: String {
-        WiredLinkPresentation.subtitle(primaryLink.details, localization: localization)
+        WiredLinkPresentation.subtitle(
+            primaryLink.details,
+            isConstrained: isConstrained,
+            localization: localization
+        )
     }
 }
 

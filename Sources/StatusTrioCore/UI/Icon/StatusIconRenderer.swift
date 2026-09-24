@@ -273,7 +273,11 @@ enum StatusIconRenderer {
             )
         } else if menuBarStatus.connection == .ethernet {
             if connectionOptions.showsWiFiIconForEthernet {
-                drawStandardWiFi(menuBarStatus.wifi, wifiScale: connectionOptions.wifiScale, in: context, foreground: foreground)
+                drawFullWiFi(
+                    wifiScale: connectionOptions.wifiScale,
+                    in: context,
+                    foreground: foreground
+                )
             } else {
                 drawEthernet(in: context, foreground: foreground)
             }
@@ -762,6 +766,27 @@ enum StatusIconRenderer {
         context.translateBy(x: pivot.x, y: pivot.y)
         context.scaleBy(x: scale, y: scale)
         context.translateBy(x: -pivot.x, y: -pivot.y)
+    }
+
+    /// A Wi-Fi icon at full strength.
+    ///
+    /// "Use Wi-Fi icon for Ethernet" is a look, not a reading: the link is a
+    /// cable, so there is no signal for the icon to report. Borrowing the Wi-Fi
+    /// radio's RSSI anyway made the icon answer a question nobody asked — it
+    /// went flat and grey with Wi-Fi off, and moved with the Wi-Fi signal beside
+    /// a row that was on a cable.
+    private static func drawFullWiFi(
+        wifiScale: Double,
+        in context: CGContext,
+        foreground: CGColor
+    ) {
+        drawOfficialSymbol(
+            name: "wifi",
+            variableValue: 1.0,
+            pointSize: centerSymbolPointSize(for: wifiScale),
+            foreground: foreground,
+            in: context
+        )
     }
 
     private static func drawStandardWiFi(

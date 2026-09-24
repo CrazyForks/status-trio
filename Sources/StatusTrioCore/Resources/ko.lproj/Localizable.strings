@@ -154,6 +154,7 @@
 "ethernet.accessibility.connected" = "이더넷 연결됨";
 "ethernet.title" = "이더넷";
 "ethernet.subtitle.connected" = "연결됨";
+"ethernet.subtitle.constrained" = "제한된 네트워크";
 "ethernet.action.openSettings" = "네트워크 설정 열기";
 "volume.title" = "볼륨 · %d%%";
 "volume.titleUnavailable" = "볼륨 · —";

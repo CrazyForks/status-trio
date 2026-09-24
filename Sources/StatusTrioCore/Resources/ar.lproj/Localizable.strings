@@ -154,6 +154,7 @@
 "ethernet.accessibility.connected" = "إيثرنت متصل";
 "ethernet.title" = "إيثرنت";
 "ethernet.subtitle.connected" = "متصل";
+"ethernet.subtitle.constrained" = "شبكة مقيّدة";
 "ethernet.action.openSettings" = "فتح إعدادات الشبكة";
 "volume.title" = "مستوى الصوت · %d%%";
 "volume.titleUnavailable" = "مستوى الصوت · —";

@@ -203,13 +203,37 @@ final class SystemStatusStoreTests: XCTestCase {
     private func apply(
         _ value: NetworkConnection,
         from monitor: FakeNetworkConnectionMonitor,
-        to store: SystemStatusStore
+        to store: SystemStatusStore,
+        constrained: Bool = false
     ) async {
-        monitor.send(value)
-        for _ in 0..<200 where store.snapshot.connection != value {
+        monitor.send(value, constrained: constrained)
+        for _ in 0..<200 where store.snapshot.connection != value
+            || store.isNetworkConstrained != constrained {
             try? await Task.sleep(for: .milliseconds(2))
         }
         XCTAssertEqual(store.snapshot.connection, value)
+        XCTAssertEqual(store.isNetworkConstrained, constrained)
+    }
+
+    func testARestrictedPathReachesTheStore() async {
+        let connection = FakeNetworkConnectionMonitor()
+        let store = SystemStatusStore(
+            batteryMonitor: FakeBatteryMonitor(),
+            wifiMonitor: FakeWiFiMonitor(),
+            connectionMonitor: connection,
+            volumeMonitor: FakeVolumeMonitor()
+        )
+
+        store.start()
+        XCTAssertFalse(store.isNetworkConstrained)
+
+        await apply(.ethernet, from: connection, to: store, constrained: true)
+        XCTAssertTrue(store.isNetworkConstrained)
+
+        await apply(.ethernet, from: connection, to: store, constrained: false)
+        XCTAssertFalse(store.isNetworkConstrained)
+
+        store.stop()
     }
 
     func testPopupSnapshotDebouncesRapidUpdates() async {
@@ -1633,14 +1657,28 @@ private final class SpyWakeNotificationCenter: NotificationCenter, @unchecked Se
 
 @MainActor
 private final class FakeNetworkConnectionMonitor: NetworkConnectionMonitoring {
-    let updates: AsyncStream<NetworkConnection>
-    private let continuation: AsyncStream<NetworkConnection>.Continuation
+    let updates: AsyncStream<NetworkPathSnapshot>
+    private let continuation: AsyncStream<NetworkPathSnapshot>.Continuation
 
     init() { (updates, continuation) = AsyncStream.makeStream() }
     func start() {}
     func stop() { continuation.finish() }
     func recover() {}
-    func send(_ value: NetworkConnection) { continuation.yield(value) }
+
+    /// These tests are about the store, not about `NWPath`, so they name the
+    /// connection they mean and the snapshot is spelled out here once.
+    func send(_ value: NetworkConnection, constrained: Bool = false) {
+        continuation.yield(
+            NetworkPathSnapshot(
+                connected: value != .offline,
+                wired: value == .ethernet,
+                wireless: value == .wifi,
+                constrained: constrained
+            )
+        )
+    }
+
+    func send(_ path: NetworkPathSnapshot) { continuation.yield(path) }
 }
 
 /// Answers nothing: these tests observe whether the wired read runs, not what it

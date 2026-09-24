@@ -13,6 +13,7 @@ The row names the link:
 |---|---|---|
 | title | the interface's localized display name | `iPhone USB` |
 | subtitle | the interface's BSD name | `en9` |
+| subtitle, restricted path | the BSD name, then the path's restriction | `en9 · Restricted network` |
 
 It deliberately says nothing about the address. The popover is a panel that can
 be read over the reader's shoulder, and a LAN address — let alone the router and
@@ -26,6 +27,31 @@ The title falls back to the generic localized "Ethernet" when macOS reports no
 display name for the interface, and the subtitle falls back to the connected
 state when the read has not named the interface yet. A blank heading is never
 drawn.
+
+## A restricted path says so
+
+The subtitle gains a second clause when the system marks the path as
+bandwidth-restricted — `NWPath.isConstrained`, which is Low Data Mode and what
+some tethered links report.
+
+The restriction is a property of the **path**, not of the port, so it travels on
+`NetworkPathSnapshot` alongside `connection` and lands in its own
+`SystemStatusStore.isNetworkConstrained`. It is deliberately not part of
+`StatusSnapshot`: nothing draws it, so `StatusBarRenderKey` and
+`DockIconRenderKey` gain no signal for a label that only the popover shows. The
+store writes it through a guarded assignment, the way it guards the volume
+reading, because `NWPathMonitor` reports often enough that a naive write would
+re-render every observer on each update.
+
+The two clauses are joined with `·`, the separator `volume.value` already uses,
+and the wording reuses each language's term for the Network settings tab rather
+than inventing one. `WiredLinkPresentation.subtitle` remains the single place
+that builds the line, so all four combinations — port or no port, restricted or
+not — come out of one function and are covered by one test.
+
+The restriction is the only thing on this row that is a *state* rather than an
+identifier, which is what earns it the space. Everything else on the row names
+what the link is; this says something about it that the reader can act on.
 
 ## What the section is called in Settings
 
@@ -149,6 +175,21 @@ The localization keys split along the same line:
 - `wifi.detail.*` — the rows only a radio has (SSID, BSSID, band, channel, RSSI,
   PHY, transmit rate, security, country code).
 
+## The port's icon is a look, not a reading
+
+"Use Wi-Fi icon for Ethernet" replaces the Ethernet glyph in the menu bar and
+Dock with the Wi-Fi one. That Wi-Fi icon is now always drawn full.
+
+It used to borrow the Wi-Fi radio's RSSI, so it went flat and grey whenever Wi-Fi
+was off, and moved whenever the Wi-Fi signal moved — on a row whose connection
+was a cable. The setting is a preference about appearance, so the icon answers
+the question it can: on, full, steady. `StatusIconRenderer` draws it through
+`drawFullWiFi` instead of `drawStandardWiFi`, and `StatusIconRendererTests` pins
+the result against three Wi-Fi readings — hotspot, weak, and unassociated.
+
+The Dock icon runs the same renderer, so both surfaces change together and
+nothing has to be mirrored by hand.
+
 ## What it deliberately does not do
 
 - **No address in the row.** The row names the port; the panel reports the
@@ -162,8 +203,22 @@ The localization keys split along the same line:
 - **No switching.** Which wired network a cable reaches is a cabling job; anything
   macOS has to be told about lives in the Network pane, which the row's gear and
   the panel's button open.
-- **No icon change.** The menu bar and Dock already draw the Ethernet glyph; this
-  feature adds the port's name to the popover only.
+- **No negotiated rate.** The row reports what the path *is*, not how fast it
+  negotiated, and on macOS 27 there is no cheap source for the rate anyway:
+  `SCNetworkInterfaceGetExtendedConfiguration` returns `nil` for both the
+  `Ethernet` and `IPv4` keys, and `ifconfig`'s `media:` value would need
+  `ioctl(SIOCGIFMEDIA)` with a hand-mirrored `ifmediareq`, a struct Swift does not
+  import. iPhone USB reports no rate at all — `autoselect <full-duplex>`, no
+  number — so a working reader would still print nothing on the link this was
+  built against.
+- **No MAC address.** It sits one line away in `ifconfig` and stays there: a
+  hardware address tracks a device across networks and its OUI names the vendor,
+  which makes it a worse thing to put on a shoulder-readable panel than the LAN
+  address this feature already keeps out.
+- **No icon change for the row itself.** The menu bar and Dock draw an Ethernet
+  glyph for a cable, and this feature adds the port's name and the path's
+  restriction to the popover only. The one icon change nearby — a full Wi-Fi
+  glyph when that Ethernet glyph is swapped for one — is described above.
 
 ## Tests
 
@@ -171,8 +226,13 @@ The localization keys split along the same line:
   wireless fallbacks, the ambiguous and missing-service cases, where the interface
   name is read from, how the port's display name travels with it, and the
   controller's activation and late-answer behaviour.
-- `WiredLinkPresentationTests` — what the row and the panel call the link, the
-  fallbacks when macOS names nothing, and the assertion that the address never
-  reaches either line.
+- `WiredLinkPresentationTests` — what the row and the panel call the link, all
+  four subtitle combinations, the fallbacks when macOS names nothing, and the
+  assertion that the address never reaches either line — restricted or not.
 - `LinkDetailPresentationTests` — the row sets of both links.
-- `SystemStatusStoreTests` — when the read starts and stops.
+- `SystemStatusStoreTests` — when the read starts and stops, and that a restricted
+  path reaches `isNetworkConstrained`.
+- `NetworkConnectionMonitorTests` — that the whole `NWPathSnapshot` is forwarded,
+  not just the connection derived from it.
+- `StatusIconRendererTests` — that the Ethernet row's Wi-Fi icon is full whatever
+  the Wi-Fi radio reports.

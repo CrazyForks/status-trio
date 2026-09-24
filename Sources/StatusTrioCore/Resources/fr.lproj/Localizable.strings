@@ -154,6 +154,7 @@
 "ethernet.accessibility.connected" = "Ethernet connecté";
 "ethernet.title" = "Ethernet";
 "ethernet.subtitle.connected" = "Connecté";
+"ethernet.subtitle.constrained" = "Réseau limité";
 "ethernet.action.openSettings" = "Ouvrir les réglages Réseau";
 "volume.title" = "Volume · %d%%";
 "volume.titleUnavailable" = "Volume · —";

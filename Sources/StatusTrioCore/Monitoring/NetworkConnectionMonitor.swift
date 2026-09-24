@@ -5,6 +5,24 @@ struct NetworkPathSnapshot: Equatable, Sendable {
     let connected: Bool
     let wired: Bool
     let wireless: Bool
+    /// `NWPath.isConstrained`: the system has marked this path as
+    /// bandwidth-restricted — Low Data Mode, and some tethered links. It
+    /// describes the path rather than the interface carrying it, so it sits
+    /// beside `connection` instead of being folded into it, and the popover
+    /// reads it only for the row it is describing.
+    let constrained: Bool
+
+    init(
+        connected: Bool,
+        wired: Bool,
+        wireless: Bool,
+        constrained: Bool = false
+    ) {
+        self.connected = connected
+        self.wired = wired
+        self.wireless = wireless
+        self.constrained = constrained
+    }
 
     var connection: NetworkConnection {
         NetworkConnection.resolve(
@@ -47,7 +65,8 @@ final class NWPathConnectionMonitor: @unchecked Sendable, NetworkPathMonitoring 
             let snapshot = NetworkPathSnapshot(
                 connected: path.status == .satisfied,
                 wired: path.usesInterfaceType(.wiredEthernet),
-                wireless: path.usesInterfaceType(.wifi)
+                wireless: path.usesInterfaceType(.wifi),
+                constrained: path.isConstrained
             )
             let handler = self.lock.withLock { self.handler }
             handler?(snapshot)
@@ -74,16 +93,16 @@ final class NetworkConnectionMonitor: NetworkConnectionMonitoring {
         case stopped
     }
 
-    let updates: AsyncStream<NetworkConnection>
+    let updates: AsyncStream<NetworkPathSnapshot>
 
     nonisolated(unsafe) private let pathMonitor: any NetworkPathMonitoring
     private let queue = DispatchQueue(label: "StatusTrio.NetworkConnection")
-    private let continuation: AsyncStream<NetworkConnection>.Continuation
+    private let continuation: AsyncStream<NetworkPathSnapshot>.Continuation
     private var lifecycle = Lifecycle.idle
 
     init(pathMonitor: any NetworkPathMonitoring = NWPathConnectionMonitor()) {
         self.pathMonitor = pathMonitor
-        (updates, continuation) = MonitorStream.make(of: NetworkConnection.self)
+        (updates, continuation) = MonitorStream.make(of: NetworkPathSnapshot.self)
     }
 
     deinit {
@@ -116,7 +135,7 @@ final class NetworkConnectionMonitor: NetworkConnectionMonitoring {
         pathMonitor.start(queue: queue) { [weak self] snapshot in
             Task { @MainActor [weak self] in
                 guard let self, self.lifecycle == .running else { return }
-                self.continuation.yield(snapshot.connection)
+                self.continuation.yield(snapshot)
             }
         }
     }

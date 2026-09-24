@@ -39,6 +39,11 @@ final class SystemStatusStore: ObservableObject {
     @Published private(set) var popupSnapshot: StatusSnapshot
     /// True while the popover is waiting for a Wi-Fi name it has not read yet.
     @Published private(set) var isResolvingWiFiName = false
+    /// Whether the system marks the current path as bandwidth-restricted.
+    /// Read from `NWPath.isConstrained` and shown on the network row. It stays
+    /// out of `StatusSnapshot` on purpose: nothing draws it, so the icon render
+    /// keys should not gain a signal for a popover-only label.
+    @Published private(set) var isNetworkConstrained = false
     @Published private(set) var liveVolume: VolumeStatus
     let batteryDetails: BatteryDetailsController
     let wifiNetworks: WiFiNetworkController
@@ -529,8 +534,14 @@ final class SystemStatusStore: ObservableObject {
         wifiNetworks.refresh(nameAccess: value.nameAccess)
     }
 
-    private func applyConnection(_ value: NetworkConnection) {
-        publish(snapshot.replacingConnection(value))
+    private func applyConnection(_ path: NetworkPathSnapshot) {
+        // Guarded the way `applyVolume` guards its reading: an unchanged value
+        // would re-render every observer of this `@Published` on every path
+        // update, and `NWPathMonitor` reports often enough for that to matter.
+        if isNetworkConstrained != path.constrained {
+            isNetworkConstrained = path.constrained
+        }
+        publish(snapshot.replacingConnection(path.connection))
         updatePrimaryLinkActivation()
     }
 

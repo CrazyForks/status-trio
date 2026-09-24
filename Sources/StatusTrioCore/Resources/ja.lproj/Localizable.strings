@@ -154,6 +154,7 @@
 "ethernet.accessibility.connected" = "イーサネット接続済み";
 "ethernet.title" = "イーサネット";
 "ethernet.subtitle.connected" = "接続済み";
+"ethernet.subtitle.constrained" = "制限付きネットワーク";
 "ethernet.action.openSettings" = "ネットワーク設定を開く";
 "volume.title" = "音量 · %d%%";
 "volume.titleUnavailable" = "音量 · —";

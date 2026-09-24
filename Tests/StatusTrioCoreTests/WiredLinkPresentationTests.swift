@@ -45,9 +45,64 @@ final class WiredLinkPresentationTests: XCTestCase {
         privateValues.append(contentsOf: details.dnsServers)
         if let router = details.router { privateValues.append(router) }
         XCTAssertFalse(privateValues.isEmpty)
+        let restricted = WiredLinkPresentation.subtitle(
+            details,
+            isConstrained: true,
+            localization: localization
+        )
         for value in privateValues {
             XCTAssertFalse(title.contains(value), "\(title) leaks \(value)")
             XCTAssertFalse(subtitle.contains(value), "\(subtitle) leaks \(value)")
+            XCTAssertFalse(restricted.contains(value), "\(restricted) leaks \(value)")
+        }
+    }
+
+    func testARestrictedPathAddsTheRestrictionBesideThePortName() {
+        let details = PrimaryLinkDetails(
+            interfaceName: "en9",
+            interfaceDisplayName: "iPhone USB",
+            ipv4Addresses: [],
+            ipv6Addresses: [],
+            router: nil,
+            dnsServers: []
+        )
+        let localization = makeLocalization()
+
+        XCTAssertEqual(
+            WiredLinkPresentation.subtitle(
+                details,
+                isConstrained: true,
+                localization: localization
+            ),
+            "en9 · \(localization.string(.ethernetSubtitleConstrained))"
+        )
+        // An unrestricted link is exactly what it was: the port name on its own.
+        XCTAssertEqual(
+            WiredLinkPresentation.subtitle(
+                details,
+                isConstrained: false,
+                localization: localization
+            ),
+            "en9"
+        )
+    }
+
+    func testARestrictedPathWithoutAPortStillSaysWhatItIs() {
+        // A cable that is up before DHCP answers has no service, so nothing
+        // names it. The restriction is still worth the line: it is the only
+        // state this row has, and the reason this case is not just the generic
+        // connected label.
+        let localization = makeLocalization()
+
+        for details in [nil, PrimaryLinkDetails.unavailable] {
+            XCTAssertEqual(
+                WiredLinkPresentation.subtitle(
+                    details,
+                    isConstrained: true,
+                    localization: localization
+                ),
+                localization.string(.ethernetSubtitleConstrained)
+            )
         }
     }
 

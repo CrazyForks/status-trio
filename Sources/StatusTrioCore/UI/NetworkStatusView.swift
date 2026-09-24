@@ -10,6 +10,9 @@ import SwiftUI
 struct NetworkStatusView: View {
     @ObservedObject var primaryLink: PrimaryLinkController
     let connection: NetworkConnection
+    /// A property of the path rather than of either port, and currently only the
+    /// wired row has a place to put it.
+    let isConstrained: Bool
     let wifi: WiFiStatus
     let isResolvingName: Bool
     let onOpenWiFiDetails: (Bool) -> Void
@@ -23,6 +26,7 @@ struct NetworkStatusView: View {
         if connection == .ethernet {
             EthernetStatusView(
                 primaryLink: primaryLink,
+                isConstrained: isConstrained,
                 onOpenDetails: onOpenWiredDetails,
                 onOpenNetworkSettings: onOpenNetworkSettings
             )

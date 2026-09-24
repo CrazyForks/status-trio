@@ -344,6 +344,7 @@ struct StatusPopoverView: View {
             NetworkStatusView(
                 primaryLink: store.primaryLink,
                 connection: store.popupSnapshot.connection,
+                isConstrained: store.isNetworkConstrained,
                 wifi: store.popupSnapshot.wifi,
                 isResolvingName: store.isResolvingWiFiName,
                 onOpenWiFiDetails: { showDetails in

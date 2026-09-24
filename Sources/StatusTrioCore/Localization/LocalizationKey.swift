@@ -216,6 +216,7 @@ enum LocalizationKey: String, CaseIterable, Hashable, Sendable {
     case ethernetAccessibilityConnected = "ethernet.accessibility.connected"
     case ethernetTitle = "ethernet.title"
     case ethernetSubtitleConnected = "ethernet.subtitle.connected"
+    case ethernetSubtitleConstrained = "ethernet.subtitle.constrained"
     case ethernetActionOpenSettings = "ethernet.action.openSettings"
 
     case wifiSummaryBand = "wifi.summary.band"

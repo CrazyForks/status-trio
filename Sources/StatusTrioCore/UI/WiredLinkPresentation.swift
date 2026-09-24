@@ -14,12 +14,24 @@ enum WiredLinkPresentation {
             ?? localization.string(.ethernetTitle)
     }
 
-    /// The BSD name of the port — "en9". It is the name a reader matches
-    /// against `ifconfig`, and it is not an address. Until the read names the
-    /// interface, the row falls back to the state rather than to a blank line.
-    static func subtitle(_ details: PrimaryLinkDetails?, localization: Localization) -> String {
-        nonEmpty(details?.interfaceName)
-            ?? localization.string(.ethernetSubtitleConnected)
+    /// The BSD name of the port — "en9" — and, when the system has marked the
+    /// path as bandwidth-restricted, what the path is. The port name is what a
+    /// reader matches against `ifconfig`; the restriction is the only thing on
+    /// this row that is a state rather than an identifier, which is what earns
+    /// it the second clause. Until the read names the interface, the row falls
+    /// back to the state rather than to a blank line.
+    static func subtitle(
+        _ details: PrimaryLinkDetails?,
+        isConstrained: Bool = false,
+        localization: Localization
+    ) -> String {
+        let port = nonEmpty(details?.interfaceName)
+        guard isConstrained else {
+            return port ?? localization.string(.ethernetSubtitleConnected)
+        }
+        let restriction = localization.string(.ethernetSubtitleConstrained)
+        guard let port else { return restriction }
+        return "\(port) · \(restriction)"
     }
 
     private static func nonEmpty(_ value: String?) -> String? {

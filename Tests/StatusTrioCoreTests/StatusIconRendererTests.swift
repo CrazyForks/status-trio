@@ -795,27 +795,42 @@ final class StatusIconRendererTests: XCTestCase {
         }
     }
 
-    func testEthernetConnectionUsesStandardWiFiSignalWhenEnabled() throws {
-        let ethernetSnapshot = StatusSnapshot(
+    func testEthernetConnectionDrawsAFullWiFiIconWhateverTheWiFiSignalIs() throws {
+        // "Use Wi-Fi icon for Ethernet" is a look, not a reading: the link is a
+        // cable, so there is no signal for the icon to report. Borrowing the
+        // Wi-Fi radio's bar count used to make this icon go flat and grey with
+        // Wi-Fi off, and move whenever the Wi-Fi signal did.
+        let fullWiFiSnapshot = StatusSnapshot(
             battery: .placeholder,
-            wifi: WiFiStatus(state: .hotspot, rssi: -55),
-            connection: .ethernet,
+            wifi: WiFiStatus(state: .connected, rssi: -50),
             volume: .placeholder
         )
-        let standardWiFiSnapshot = StatusSnapshot(
-            battery: .placeholder,
-            wifi: WiFiStatus(state: .connected, rssi: -55),
-            volume: .placeholder
-        )
-        let ethernetPixels = try renderPixels(
-            ethernetSnapshot,
-            connectionOptions: ConnectionIconOptions(
-                showsWiFiIconForEthernet: true
-            )
-        )
-        let standardWiFiPixels = try renderPixels(standardWiFiSnapshot)
+        let fullWiFiPixels = try renderPixels(fullWiFiSnapshot)
 
-        XCTAssertEqual(ethernetPixels.bytes, standardWiFiPixels.bytes)
+        let signals: [WiFiStatus] = [
+            WiFiStatus(state: .hotspot, rssi: -55),
+            WiFiStatus(state: .connected, rssi: -75),
+            WiFiStatus(state: .notAssociated, rssi: nil)
+        ]
+        for wifi in signals {
+            let ethernetPixels = try renderPixels(
+                StatusSnapshot(
+                    battery: .placeholder,
+                    wifi: wifi,
+                    connection: .ethernet,
+                    volume: .placeholder
+                ),
+                connectionOptions: ConnectionIconOptions(
+                    showsWiFiIconForEthernet: true
+                )
+            )
+
+            XCTAssertEqual(
+                ethernetPixels.bytes,
+                fullWiFiPixels.bytes,
+                "\(wifi.state) should still draw a full Wi-Fi icon on a cable"
+            )
+        }
     }
 
     func testWiFiIconOptionsReplaceEachSpecialConnectionMark() throws {

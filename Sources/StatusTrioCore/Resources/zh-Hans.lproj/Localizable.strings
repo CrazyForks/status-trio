@@ -154,6 +154,7 @@
 "ethernet.accessibility.connected" = "以太网已连接";
 "ethernet.title" = "以太网";
 "ethernet.subtitle.connected" = "已连接";
+"ethernet.subtitle.constrained" = "受限网络";
 "ethernet.action.openSettings" = "打开网络设置";
 "volume.title" = "音量 · %d%%";
 "volume.titleUnavailable" = "音量 · —";

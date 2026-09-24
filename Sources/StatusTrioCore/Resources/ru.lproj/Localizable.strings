@@ -154,6 +154,7 @@
 "ethernet.accessibility.connected" = "Ethernet подключён";
 "ethernet.title" = "Ethernet";
 "ethernet.subtitle.connected" = "Подключено";
+"ethernet.subtitle.constrained" = "Ограниченная сеть";
 "ethernet.action.openSettings" = "Открыть настройки сети";
 "volume.title" = "Громкость · %d%%";
 "volume.titleUnavailable" = "Громкость · —";
