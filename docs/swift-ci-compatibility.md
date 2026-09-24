@@ -663,4 +663,19 @@ Release workflow run [`35997423299`](https://github.com/lingyired/status-trio/ac
 
 修复：测试允许两个已观测的静态哈希（macOS 26 CI 与 macOS 27 本机），其他输出仍须精确匹配其中一个基准；这样保留像素回归检测，同时避免跨 OS 抗锯齿差异造成假失败。
 
-验证：修改后的 `swift test --filter ChargingEffectRenderingTests`（7 项）通过；全量 `swift test` 通过（349 项 / 59 suites）；`swift build -c release` 通过；第三次 `publish=false` 预检待完成，结果随后补记。
+验证：修改后的 `swift test --filter ChargingEffectRenderingTests`（7 项）通过；全量 `swift test` 通过（349 项 / 59 suites）；`swift build -c release` 通过。第三次预检结果见下节。
+
+## 35998888434：内存优化变更通过 macOS 26 发布预检
+
+第三次 `publish=false` workflow run [`35998888434`](https://github.com/lingyired/status-trio/actions/runs/35998888434)
+（`version=1.3.3`、`build=16`）于 2026-09-24 全绿，耗时 5m2s。该预检覆盖前两次 CI 失败的修复：
+状态更新测试使用有界轮询，静态图标像素基准允许 macOS 26 与 macOS 27 两个已观测哈希。
+
+- `Validate appcast notes`：12/12 语言，12 titles + 12 descriptions，`en` 首位。
+- `Run tests`：成功；swift-testing 全量 349 项 / 59 suites 通过。
+- `Build, sign, notarize, and publish`：成功（`publish=false`，没有创建 Release 或发布 appcast）；
+  `LC_BUILD_VERSION` 检查通过，x86_64 与 arm64 均为 `minos 15.0, sdk 26.0`，`codesign` 验证为
+  `valid on disk` 且满足 Designated Requirement。
+- `Upload release artifacts`：成功。
+
+根因与修复记录分别见上面两节；此次全绿完成对这两项修复的 CI 验证。工作流只构建并上传预检产物，没有发布正式版本。
