@@ -741,7 +741,7 @@ final class SettingsStoreTests: XCTestCase {
         let store = SettingsStore(defaults: suite.defaults)
         XCTAssertEqual(
             store.popupSectionOrder,
-            [.volume, .battery, .network, .bluetooth, .audioInput]
+            [.volume, .battery, .network, .vpn, .bluetooth, .audioInput]
         )
         XCTAssertFalse(store.enabledPopupSections.contains(.audioInput))
         store.setPopupSection(.audioInput, enabled: true)
