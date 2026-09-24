@@ -122,7 +122,19 @@ final class SettingsStore: ObservableObject {
     @Published var showsChargingEffect: Bool {
         didSet {
             defaults.set(showsChargingEffect, forKey: Self.showsChargingEffectDefaultsKey)
+            if !showsChargingEffect {
+                testsChargingEffect = false
+            }
         }
+    }
+
+    @Published private(set) var testsChargingEffect = false
+
+    func setChargingEffectTestEnabled(_ enabled: Bool) {
+        if enabled {
+            showsChargingEffect = true
+        }
+        testsChargingEffect = enabled
     }
 
     @Published var showsPercentageWhenConnected: Bool {

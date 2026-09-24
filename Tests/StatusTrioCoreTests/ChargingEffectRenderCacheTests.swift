@@ -27,30 +27,15 @@ struct ChargingEffectRenderCacheTests {
         #expect(suppressesDuplicateStaticKey == false)
     }
 
-    @Test func dockCacheIgnoresEverySteadyPhase() {
+    @Test func dockCacheDeduplicatesStaticState() {
         var cache = DockIconRenderCache()
-        let first = dockKey(phase: .init(step: 2, stepsPerCycle: 36, kind: .steady))
-        let second = dockKey(phase: .init(step: 3, stepsPerCycle: 36, kind: .steady))
+        let first = dockKey()
+        let second = dockKey()
 
-        let rendersSteadyKey = cache.shouldRender(first)
-        let suppressesDifferentSteadyPhase = cache.shouldRender(second)
-        #expect(first == second)
-        #expect(rendersSteadyKey)
-        #expect(suppressesDifferentSteadyPhase == false)
-    }
-
-    @Test func dockCacheRetainsPlugInBurstFrames() {
-        let first = dockKey(phase: .init(step: 0, stepsPerCycle: 12, kind: .burst))
-        let second = dockKey(phase: .init(step: 2, stepsPerCycle: 12, kind: .burst))
-
-        #expect(first != second)
-    }
-
-    @Test func dockCacheRetainsLevelAdvanceBurstFrames() {
-        let first = dockKey(phase: .init(step: 0, stepsPerCycle: 6, kind: .burst))
-        let second = dockKey(phase: .init(step: 2, stepsPerCycle: 6, kind: .burst))
-
-        #expect(first != second)
+        let rendersFirst = cache.shouldRender(first)
+        let suppressesDuplicate = cache.shouldRender(second)
+        #expect(rendersFirst)
+        #expect(!suppressesDuplicate)
     }
 
     private func menuBarKey(phase: ChargingEffectPhase? = nil) -> StatusBarRenderKey {
@@ -64,13 +49,12 @@ struct ChargingEffectRenderCacheTests {
         )
     }
 
-    private func dockKey(phase: ChargingEffectPhase? = nil) -> DockIconRenderKey {
+    private func dockKey() -> DockIconRenderKey {
         DockIconRenderKey(
             status: .placeholder,
             options: .standard,
             connectionOptions: .standard,
-            backgroundStyle: .dark,
-            phase: phase
+            backgroundStyle: .dark
         )
     }
 }

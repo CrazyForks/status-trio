@@ -6,7 +6,9 @@ struct ChargingEffectLocalizationTests {
     @Test func everyLocaleHasChargingEffectTitleAndMotionDescription() throws {
         let keys: [LocalizationKey] = [
             .settingsBatteryChargingEffect,
-            .settingsBatteryChargingEffectDescription
+            .settingsBatteryChargingEffectDescription,
+            .settingsBatteryChargingEffectTest,
+            .settingsBatteryChargingEffectTestDescription
         ]
 
         for language in AppLanguage.allCases {

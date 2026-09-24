@@ -11,7 +11,6 @@ final class ChargingEffectClock: ObservableObject {
     private static let heartbeatDuration: TimeInterval = 0.25
 
     @Published private(set) var phase: ChargingEffectPhase?
-    @Published private(set) var dockPhase: ChargingEffectPhase?
     @Published private(set) var isRunning = false
 
     private let now: () -> Date
@@ -23,8 +22,6 @@ final class ChargingEffectClock: ObservableObject {
     private var reduceMotion = false
     private var displayAsleep = false
     private var menuPlugInBurstStartedAt: Date?
-    private var dockBurstStartedAt: Date?
-    private var dockBurstEvent: ChargingEffectEvent?
     private var steadyStartedAt: Date?
     private var boostedHeartbeatCycle: Int?
 
@@ -81,14 +78,11 @@ final class ChargingEffectClock: ObservableObject {
             beginTimeline(for: .pluggedIn, at: eventDate)
         case .levelAdvanced:
             scheduleHeartbeatBoost(at: eventDate)
-            dockBurstStartedAt = eventDate
-            dockBurstEvent = .levelAdvanced
         case nil:
             break
         }
         let phaseDate = now()
         phase = phase(at: phaseDate)
-        dockPhase = dockPhase(at: phaseDate)
     }
 
     func start() {
@@ -108,7 +102,6 @@ final class ChargingEffectClock: ObservableObject {
         isRunning = true
         let phaseDate = now()
         phase = phase(at: phaseDate)
-        dockPhase = dockPhase(at: phaseDate)
 
         let sleep = self.sleep
         task = Task { @MainActor [weak self] in
@@ -121,7 +114,6 @@ final class ChargingEffectClock: ObservableObject {
                 guard !Task.isCancelled, let self else { return }
                 let phaseDate = self.now()
                 self.phase = self.phase(at: phaseDate)
-                self.dockPhase = self.dockPhase(at: phaseDate)
             }
         }
     }
@@ -131,10 +123,7 @@ final class ChargingEffectClock: ObservableObject {
         task = nil
         isRunning = false
         phase = nil
-        dockPhase = nil
         menuPlugInBurstStartedAt = nil
-        dockBurstStartedAt = nil
-        dockBurstEvent = nil
         steadyStartedAt = nil
         boostedHeartbeatCycle = nil
     }
@@ -144,18 +133,12 @@ final class ChargingEffectClock: ObservableObject {
         switch event {
         case .pluggedIn:
             menuPlugInBurstStartedAt = date
-            dockBurstStartedAt = date
-            dockBurstEvent = .pluggedIn
             steadyStartedAt = date.addingTimeInterval(ChargingEffectTimeline.burstDuration)
         case .levelAdvanced:
             menuPlugInBurstStartedAt = nil
-            dockBurstStartedAt = date
-            dockBurstEvent = .levelAdvanced
             steadyStartedAt = date
         case nil:
             menuPlugInBurstStartedAt = nil
-            dockBurstStartedAt = nil
-            dockBurstEvent = nil
             steadyStartedAt = date
         }
     }
@@ -195,11 +178,6 @@ final class ChargingEffectClock: ObservableObject {
             kind: .steady,
             heartbeatMultiplier: multiplier
         )
-    }
-
-    private func dockPhase(at date: Date) -> ChargingEffectPhase? {
-        guard let dockBurstStartedAt, let dockBurstEvent else { return nil }
-        return burstPhase(event: dockBurstEvent, startedAt: dockBurstStartedAt, at: date)
     }
 
     private func burstPhase(

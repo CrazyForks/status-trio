@@ -23,4 +23,28 @@ struct ChargingEffectSettingsTests {
         restored.showsChargingEffect = true
         #expect(SettingsStore(defaults: defaults).batteryIconOptions.showsChargingEffect)
     }
+
+    @Test func testAnimationSwitchStartsTheEffectWithoutPersistingTestMode() throws {
+        let domain = "ChargingEffectTestMode.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: domain))
+        defer { defaults.removePersistentDomain(forName: domain) }
+        defaults.set(false, forKey: SettingsStore.showsChargingEffectDefaultsKey)
+
+        let settings = SettingsStore(defaults: defaults)
+        #expect(!settings.testsChargingEffect)
+        settings.setChargingEffectTestEnabled(true)
+        #expect(settings.testsChargingEffect)
+        #expect(settings.showsChargingEffect)
+
+        let reopened = SettingsStore(defaults: defaults)
+        #expect(!reopened.testsChargingEffect)
+        #expect(reopened.showsChargingEffect)
+
+        settings.setChargingEffectTestEnabled(false)
+        #expect(!settings.testsChargingEffect)
+
+        settings.setChargingEffectTestEnabled(true)
+        settings.showsChargingEffect = false
+        #expect(!settings.testsChargingEffect)
+    }
 }

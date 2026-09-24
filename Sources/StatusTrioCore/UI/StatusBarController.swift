@@ -33,6 +33,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     private var appearanceCancellable: AnyCancellable?
     private var chargingEffectCancellable: AnyCancellable?
     private var currentChargingEffectPhase: ChargingEffectPhase?
+    private var testsChargingEffect: Bool
+    private var chargingEffectTestCancellable: AnyCancellable?
     private var screenParametersCancellable: AnyCancellable?
     private var refreshIntervalCancellable: AnyCancellable?
     private let openSettings: () -> Void
@@ -76,6 +78,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         self.openSettings = openSettings
         self.quitAction = quitAction
         self.isStatusItemVisible = isVisible
+        self.testsChargingEffect = settings.testsChargingEffect
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         super.init()
 
@@ -119,6 +122,15 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             .removeDuplicates()
             .sink { [weak self] phase in
                 self?.renderAnimationPhase(phase)
+            }
+
+        chargingEffectTestCancellable = settings.$testsChargingEffect
+            .removeDuplicates()
+            .dropFirst()
+            .sink { [weak self] enabled in
+                guard let self else { return }
+                testsChargingEffect = enabled
+                renderLatestSnapshot()
             }
 
         localizationCancellable = localization.$resolvedLanguage
@@ -481,6 +493,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         phase: ChargingEffectPhase?
     ) {
         guard isStatusItemVisible, let button = statusItem.button else { return }
+
+        let status = ChargingEffectTestMode.status(status, enabled: testsChargingEffect)
 
         if phase == nil {
             clearAnimationPresentation()

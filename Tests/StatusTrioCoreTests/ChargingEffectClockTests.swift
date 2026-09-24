@@ -118,7 +118,7 @@ struct ChargingEffectClockTests {
         #expect(sleeper.callCount == 13)
     }
 
-    @Test func levelAdvanceDuringPlugInKeepsMenuBurstAndStartsDockLevelBurst() async {
+    @Test func levelAdvanceDuringPlugInKeepsMenuBarBurst() async {
         let time = ManualDateProvider()
         let sleeper = ManualEventSleeper()
         let clock = makeClock(time: time, sleeper: sleeper)
@@ -136,15 +136,11 @@ struct ChargingEffectClockTests {
 
         #expect(clock.phase?.kind == .burst)
         #expect(clock.phase?.step == 5)
-        #expect(clock.dockPhase?.kind == .burst)
-        #expect(clock.dockPhase?.stepsPerCycle == 6)
-        #expect(clock.dockPhase?.step == 0)
 
         time.setElapsed(0.3)
         clock.update(battery: increased, enabled: true, reduceMotion: false, displayAsleep: false)
         #expect(clock.phase?.kind == .burst)
         #expect(clock.phase?.step == 6)
-        #expect(clock.dockPhase?.step == 1)
 
         clock.stop()
         sleeper.releaseAll()

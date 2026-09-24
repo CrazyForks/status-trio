@@ -434,7 +434,6 @@ final class AppIconControllerHarness {
     let settings: SettingsStore
     let store: SystemStatusStore
     let controller: AppIconController
-    let chargingEffectClock: ChargingEffectClock
 
     private let suiteName: String
     private let defaults: UserDefaults
@@ -446,7 +445,6 @@ final class AppIconControllerHarness {
         systemTheme: @escaping () -> SystemIconAppearanceTheme = { .default },
         isDarkAppearance: Bool = false,
         notificationCenter: NotificationCenter = .default,
-        chargingEffectClock: ChargingEffectClock = ChargingEffectClock(),
         initialBattery: BatteryStatus = .placeholder,
         initialShowsChargingEffect: Bool = true
     ) throws {
@@ -456,7 +454,6 @@ final class AppIconControllerHarness {
         }
         defaults.removeTestSuite(named: suiteName)
         self.defaults = defaults
-        self.chargingEffectClock = chargingEffectClock
 
         let log = self.log
         let application = AppIconApplicationSpy(
@@ -497,15 +494,14 @@ final class AppIconControllerHarness {
                 log.events.append(isVisible ? "menu:true" : "menu:false")
             },
             renderDockIcon: {
-                _,
+                status,
                 batteryOptions,
                 connectionOptions,
                 volumeOptions,
                 bluetoothAudioOptions,
-                backgroundStyle,
-                phase in
+                backgroundStyle in
                 log.renderCount += 1
-                log.renderedPhases.append(phase)
+                log.renderedBatteries.append(status.battery)
                 log.backgroundStyles.append(backgroundStyle)
                 log.batteryOptions.append(batteryOptions)
                 log.connectionOptions.append(connectionOptions)
@@ -515,8 +511,7 @@ final class AppIconControllerHarness {
             },
             theme: systemTheme,
             isDarkAppearance: { isDarkAppearance },
-            notificationCenter: notificationCenter,
-            chargingEffectClock: chargingEffectClock
+            notificationCenter: notificationCenter
         )
 
         store.start()
@@ -555,7 +550,7 @@ final class AppIconEventLog {
     var connectionOptions: [ConnectionIconOptions] = []
     var volumeOptions: [VolumeIconOptions] = []
     var bluetoothAudioOptions: [BluetoothAudioIconOptions] = []
-    var renderedPhases: [ChargingEffectPhase?] = []
+    var renderedBatteries: [BatteryStatus] = []
 
     func reset() {
         events.removeAll()
@@ -565,7 +560,7 @@ final class AppIconEventLog {
         connectionOptions.removeAll()
         volumeOptions.removeAll()
         bluetoothAudioOptions.removeAll()
-        renderedPhases.removeAll()
+        renderedBatteries.removeAll()
     }
 }
 

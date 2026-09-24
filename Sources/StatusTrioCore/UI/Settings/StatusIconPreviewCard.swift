@@ -74,12 +74,18 @@ struct StatusIconPreviewCard: View {
     }
 
     private var currentStatus: MenuBarStatus {
-        MenuBarStatus(snapshot: statusStore.snapshot)
+        ChargingEffectTestMode.status(
+            MenuBarStatus(snapshot: statusStore.snapshot),
+            enabled: store.testsChargingEffect
+        )
     }
 
     private var liveChargingPhase: ChargingEffectPhase? {
         Self.livePhase(
-            battery: statusStore.snapshot.battery,
+            battery: ChargingEffectTestMode.battery(
+                statusStore.snapshot.battery,
+                enabled: store.testsChargingEffect
+            ),
             enabled: store.showsChargingEffect,
             reduceMotion: reduceMotion,
             phase: chargingEffectClock.phase

@@ -1,0 +1,793 @@
+Processes: 1214 total, 9 running, 1205 sleeping, 7934 threads 
+2026/09/24 16:21:46
+Load Avg: 5.31, 6.52, 6.93 
+CPU usage: 21.71% user, 22.20% sys, 56.8% idle 
+SharedLibs: 1499M resident, 260M data, 848M linkedit.
+MemRegions: 1292805 total, 27G resident, 1857M private, 20G shared.
+PhysMem: 104G used (8689M wired, 437M compressor), 23G unused.
+VM: 641T vsize, 57G framework vsize, 0(0) swapins, 0(0) swapouts.
+Networks: packets: 261257975/170G in, 168834878/113G out.
+Disks: 25523066/773G read, 69927263/1416G written.
+
+PID    COMMAND %CPU MEM
+79986  Dock    0.0  63M
+Processes: 1214 total, 8 running, 1206 sleeping, 7937 threads 
+2026/09/24 16:21:47
+Load Avg: 5.31, 6.52, 6.93 
+CPU usage: 20.83% user, 12.76% sys, 66.40% idle 
+SharedLibs: 1499M resident, 260M data, 848M linkedit.
+MemRegions: 12138 total, 38M resident, 1857M private, 20G shared.
+PhysMem: 104G used (8455M wired, 437M compressor), 23G unused.
+VM: 641T vsize, 57G framework vsize, 0(0) swapins, 0(0) swapouts.
+Networks: packets: 261258934/170G in, 168835514/113G out.
+Disks: 25523068/773G read, 69927512/1416G written.
+
+PID    COMMAND %CPU MEM
+79986  Dock    0.0  63M
+Processes: 1214 total, 5 running, 1209 sleeping, 7906 threads 
+2026/09/24 16:21:48
+Load Avg: 5.31, 6.52, 6.93 
+CPU usage: 22.71% user, 12.39% sys, 64.88% idle 
+SharedLibs: 1499M resident, 260M data, 848M linkedit.
+MemRegions: 0 total, 0B resident, 1857M private, 20G shared.
+PhysMem: 104G used (8395M wired, 437M compressor), 23G unused.
+VM: 641T vsize, 57G framework vsize, 0(0) swapins, 0(0) swapouts.
+Networks: packets: 261259448/170G in, 168836264/113G out.
+Disks: 25523068/773G read, 69927530/1416G written.
+
+PID    COMMAND %CPU MEM
+79986  Dock    0.0  63M
+Processes: 1214 total, 6 running, 1208 sleeping, 7776 threads 
+2026/09/24 16:21:49
+Load Avg: 5.12, 6.46, 6.90 
+CPU usage: 15.65% user, 11.37% sys, 72.97% idle 
+SharedLibs: 1499M resident, 260M data, 848M linkedit.
+MemRegions: 0 total, 0B resident, 1857M private, 20G shared.
+PhysMem: 104G used (8606M wired, 437M compressor), 23G unused.
+VM: 641T vsize, 57G framework vsize, 0(0) swapins, 0(0) swapouts.
+Networks: packets: 261259789/170G in, 168836482/113G out.
+Disks: 25523068/773G read, 69927561/1416G written.
+
+PID    COMMAND %CPU MEM 
+79986  Dock    0.0  63M-
+Processes: 1214 total, 9 running, 1205 sleeping, 7910 threads 
+2026/09/24 16:21:50
+Load Avg: 5.12, 6.46, 6.90 
+CPU usage: 21.78% user, 13.43% sys, 64.77% idle 
+SharedLibs: 1499M resident, 260M data, 848M linkedit.
+MemRegions: 0 total, 0B resident, 1857M private, 20G shared.
+PhysMem: 104G used (8571M wired, 437M compressor), 23G unused.
+VM: 641T vsize, 57G framework vsize, 0(0) swapins, 0(0) swapouts.
+Networks: packets: 261260560/170G in, 168836947/113G out.
+Disks: 25523068/773G read, 69927639/1416G written.
+
+PID    COMMAND %CPU MEM 
+79986  Dock    0.0  63M+
+Processes: 1214 total, 9 running, 1205 sleeping, 7902 threads 
+2026/09/24 16:21:52
+Load Avg: 5.12, 6.46, 6.90 
+CPU usage: 15.86% user, 11.55% sys, 72.58% idle 
+SharedLibs: 1499M resident, 260M data, 848M linkedit.
+MemRegions: 0 total, 0B resident, 1857M private, 20G shared.
+PhysMem: 104G used (8245M wired, 437M compressor), 23G unused.
+VM: 641T vsize, 57G framework vsize, 0(0) swapins, 0(0) swapouts.
+Networks: packets: 261261203/170G in, 168837683/113G out.
+Disks: 25523068/773G read, 69927658/1416G written.
+
+PID    COMMAND %CPU MEM 
+79986  Dock    0.0  63M 
+Processes: 1214 total, 8 running, 1206 sleeping, 7894 threads 
+2026/09/24 16:21:53
+Load Avg: 5.12, 6.46, 6.90 
+CPU usage: 15.23% user, 12.71% sys, 72.4% idle 
+SharedLibs: 1499M resident, 260M data, 848M linkedit.
+MemRegions: 0 total, 0B resident, 1857M private, 20G shared.
+PhysMem: 104G used (8452M wired, 437M compressor), 23G unused.
+VM: 641T vsize, 57G framework vsize, 0(0) swapins, 0(0) swapouts.
+Networks: packets: 261261581/170G in, 168837980/113G out.
+Disks: 25523068/773G read, 69928416/1416G written.
+
+PID    COMMAND %CPU MEM 
+79986  Dock    0.0  63M 
+Processes: 1214 total, 8 running, 1206 sleeping, 7881 threads 
+2026/09/24 16:21:54
+Load Avg: 5.03, 6.42, 6.89 
+CPU usage: 15.50% user, 11.80% sys, 72.69% idle 
+SharedLibs: 1499M resident, 260M data, 848M linkedit.
+MemRegions: 0 total, 0B resident, 1857M private, 20G shared.
+PhysMem: 104G used (8457M wired, 437M compressor), 23G unused.
+VM: 641T vsize, 57G framework vsize, 0(0) swapins, 0(0) swapouts.
+Networks: packets: 261262070/170G in, 168838243/113G out.
+Disks: 25523068/773G read, 69928421/1416G written.
+
+PID    COMMAND %CPU MEM 
+79986  Dock    0.0  63M 
+Processes: 1214 total, 8 running, 1 stuck, 1205 sleeping, 7851 threads 
+2026/09/24 16:21:55
+Load Avg: 5.03, 6.42, 6.89 
+CPU usage: 21.55% user, 11.56% sys, 66.88% idle 
+SharedLibs: 1499M resident, 260M data, 848M linkedit.
+MemRegions: 0 total, 0B resident, 1857M private, 20G shared.
+PhysMem: 104G used (8230M wired, 437M compressor), 23G unused.
+VM: 641T vsize, 57G framework vsize, 0(0) swapins, 0(0) swapouts.
+Networks: packets: 261263213/170G in, 168838906/113G out.
+Disks: 25523068/773G read, 69928703/1416G written.
+
+PID    COMMAND %CPU MEM 
+79986  Dock    0.0  63M-
+Processes: 1214 total, 8 running, 1206 sleeping, 7825 threads 
+2026/09/24 16:21:57
+Load Avg: 5.03, 6.42, 6.89 
+CPU usage: 17.29% user, 12.30% sys, 70.39% idle 
+SharedLibs: 1499M resident, 260M data, 848M linkedit.
+MemRegions: 0 total, 0B resident, 1857M private, 20G shared.
+PhysMem: 104G used (8472M wired, 437M compressor), 23G unused.
+VM: 641T vsize, 57G framework vsize, 0(0) swapins, 0(0) swapouts.
+Networks: packets: 261263878/170G in, 168839730/113G out.
+Disks: 25523068/773G read, 69928737/1416G written.
+
+PID    COMMAND %CPU MEM 
+79986  Dock    0.0  63M 
+Processes: 1214 total, 6 running, 1 stuck, 1207 sleeping, 7815 threads 
+2026/09/24 16:21:58
+Load Avg: 5.03, 6.42, 6.89 
+CPU usage: 16.53% user, 11.63% sys, 71.83% idle 
+SharedLibs: 1499M resident, 260M data, 848M linkedit.
+MemRegions: 0 total, 0B resident, 0B private, 20G shared.
+PhysMem: 104G used (8482M wired, 437M compressor), 23G unused.
+VM: 641T vsize, 57G framework vsize, 0(0) swapins, 0(0) swapouts.
+Networks: packets: 261264431/170G in, 168839989/113G out.
+Disks: 25523068/773G read, 69928774/1416G written.
+
+PID    COMMAND %CPU MEM 
+79986  Dock    0.0  63M 
+Processes: 1214 total, 6 running, 1 stuck, 1207 sleeping, 7804 threads 
+2026/09/24 16:21:59
+Load Avg: 4.87, 6.37, 6.86 
+CPU usage: 18.26% user, 12.72% sys, 69.1% idle 
+SharedLibs: 1499M resident, 260M data, 848M linkedit.
+MemRegions: 0 total, 0B resident, 0B private, 20G shared.
+PhysMem: 104G used (8198M wired, 437M compressor), 23G unused.
+VM: 641T vsize, 57G framework vsize, 0(0) swapins, 0(0) swapouts.
+Networks: packets: 261265640/170G in, 168840639/113G out.
+Disks: 25523068/773G read, 69929369/1416G written.
+
+PID    COMMAND %CPU MEM 
+79986  Dock    0.7  63M+
+Processes: 1214 total, 4 running, 1210 sleeping, 7806 threads 
+2026/09/24 16:22:00
+Load Avg: 4.87, 6.37, 6.86 
+CPU usage: 16.35% user, 11.60% sys, 72.3% idle 
+SharedLibs: 1499M resident, 260M data, 848M linkedit.
+MemRegions: 0 total, 0B resident, 0B private, 20G shared.
+PhysMem: 104G used (8243M wired, 437M compressor), 23G unused.
+VM: 641T vsize, 57G framework vsize, 0(0) swapins, 0(0) swapouts.
+Networks: packets: 261266582/170G in, 168841596/113G out.
+Disks: 25523070/773G read, 69929476/1416G written.
+
+PID    COMMAND %CPU MEM 
+79986  Dock    0.5  63M+
+Processes: 1214 total, 6 running, 1208 sleeping, 7827 threads 
+2026/09/24 16:22:02
+Load Avg: 4.87, 6.37, 6.86 
+CPU usage: 16.40% user, 12.50% sys, 71.10% idle 
+SharedLibs: 1499M resident, 260M data, 848M linkedit.
+MemRegions: 0 total, 0B resident, 0B private, 20G shared.
+PhysMem: 104G used (8282M wired, 437M compressor), 23G unused.
+VM: 641T vsize, 57G framework vsize, 0(0) swapins, 0(0) swapouts.
+Networks: packets: 261267124/170G in, 168841864/113G out.
+Disks: 25523070/773G read, 69929486/1416G written.
+
+PID    COMMAND %CPU MEM 
+79986  Dock    0.1  63M 
+Processes: 1214 total, 6 running, 1208 sleeping, 7829 threads 
+2026/09/24 16:22:03
+Load Avg: 4.87, 6.37, 6.86 
+CPU usage: 19.16% user, 11.91% sys, 68.91% idle 
+SharedLibs: 1499M resident, 260M data, 848M linkedit.
+MemRegions: 0 total, 0B resident, 0B private, 20G shared.
+PhysMem: 104G used (8214M wired, 437M compressor), 23G unused.
+VM: 641T vsize, 57G framework vsize, 0(0) swapins, 0(0) swapouts.
+Networks: packets: 261268140/170G in, 168842326/113G out.
+Disks: 25523070/773G read, 69929536/1416G written.
+
+PID    COMMAND %CPU MEM 
+79986  Dock    0.0  63M 
+Processes: 1214 total, 9 running, 1205 sleeping, 7820 threads 
+2026/09/24 16:22:04
+Load Avg: 4.80, 6.33, 6.85 
+CPU usage: 19.90% user, 11.32% sys, 68.76% idle 
+SharedLibs: 1499M resident, 260M data, 848M linkedit.
+MemRegions: 0 total, 0B resident, 0B private, 20G shared.
+PhysMem: 104G used (8201M wired, 437M compressor), 23G unused.
+VM: 641T vsize, 57G framework vsize, 0(0) swapins, 0(0) swapouts.
+Networks: packets: 261269183/170G in, 168842808/113G out.
+Disks: 25523070/773G read, 69929871/1416G written.
+
+PID    COMMAND %CPU MEM 
+79986  Dock    0.0  63M 
+Processes: 1214 total, 20 running, 1194 sleeping, 7943 threads 
+2026/09/24 16:22:05
+Load Avg: 4.80, 6.33, 6.85 
+CPU usage: 21.33% user, 13.16% sys, 65.50% idle 
+SharedLibs: 1499M resident, 260M data, 848M linkedit.
+MemRegions: 0 total, 0B resident, 0B private, 20G shared.
+PhysMem: 104G used (8458M wired, 437M compressor), 23G unused.
+VM: 641T vsize, 57G framework vsize, 0(0) swapins, 0(0) swapouts.
+Networks: packets: 261269886/170G in, 168843649/113G out.
+Disks: 25523071/773G read, 69929896/1416G written.
+
+PID    COMMAND %CPU MEM 
+79986  Dock    0.0  63M 
+Processes: 1214 total, 7 running, 1 stuck, 1206 sleeping, 7947 threads 
+2026/09/24 16:22:07
+Load Avg: 4.80, 6.33, 6.85 
+CPU usage: 17.3% user, 12.39% sys, 70.57% idle 
+SharedLibs: 1499M resident, 260M data, 848M linkedit.
+MemRegions: 0 total, 0B resident, 0B private, 20G shared.
+PhysMem: 104G used (8206M wired, 437M compressor), 23G unused.
+VM: 641T vsize, 57G framework vsize, 0(0) swapins, 0(0) swapouts.
+Networks: packets: 261270599/170G in, 168843954/113G out.
+Disks: 25523072/773G read, 69929901/1416G written.
+
+PID    COMMAND %CPU MEM 
+79986  Dock    0.0  63M 
+Processes: 1197 total, 7 running, 1190 sleeping, 7741 threads 
+2026/09/24 16:22:08
+Load Avg: 4.80, 6.33, 6.85 
+CPU usage: 27.1% user, 15.79% sys, 57.18% idle 
+SharedLibs: 1499M resident, 260M data, 848M linkedit.
+MemRegions: 0 total, 0B resident, 0B private, 20G shared.
+PhysMem: 102G used (8201M wired, 437M compressor), 25G unused.
+VM: 638T vsize, 57G framework vsize, 0(0) swapins, 0(0) swapouts.
+Networks: packets: 261271739/170G in, 168844634/113G out.
+Disks: 25523073/773G read, 69930272/1416G written.
+
+PID    COMMAND %CPU MEM 
+79986  Dock    6.6  61M-
+Processes: 1197 total, 9 running, 1188 sleeping, 7773 threads 
+2026/09/24 16:22:09
+Load Avg: 5.13, 6.37, 6.86 
+CPU usage: 22.82% user, 13.30% sys, 63.87% idle 
+SharedLibs: 1499M resident, 260M data, 848M linkedit.
+MemRegions: 0 total, 0B resident, 0B private, 20G shared.
+PhysMem: 102G used (8452M wired, 437M compressor), 25G unused.
+VM: 638T vsize, 57G framework vsize, 0(0) swapins, 0(0) swapouts.
+Networks: packets: 261272104/170G in, 168845372/113G out.
+Disks: 25523073/773G read, 69930544/1416G written.
+
+PID    COMMAND %CPU MEM 
+79986  Dock    2.7  60M-
+Processes: 1197 total, 9 running, 1 stuck, 1187 sleeping, 7765 threads 
+2026/09/24 16:22:10
+Load Avg: 5.13, 6.37, 6.86 
+CPU usage: 16.28% user, 12.60% sys, 71.10% idle 
+SharedLibs: 1499M resident, 260M data, 848M linkedit.
+MemRegions: 0 total, 0B resident, 0B private, 20G shared.
+PhysMem: 102G used (8441M wired, 437M compressor), 25G unused.
+VM: 638T vsize, 57G framework vsize, 0(0) swapins, 0(0) swapouts.
+Networks: packets: 261272386/170G in, 168845547/113G out.
+Disks: 25523073/773G read, 69930572/1416G written.
+
+PID    COMMAND %CPU MEM 
+79986  Dock    0.0  60M 
+Processes: 1190 total, 8 running, 1182 sleeping, 7658 threads 
+2026/09/24 16:22:12
+Load Avg: 5.13, 6.37, 6.86 
+CPU usage: 21.13% user, 13.17% sys, 65.68% idle 
+SharedLibs: 1499M resident, 260M data, 848M linkedit.
+MemRegions: 0 total, 0B resident, 0B private, 20G shared.
+PhysMem: 102G used (8595M wired, 437M compressor), 25G unused.
+VM: 635T vsize, 57G framework vsize, 0(0) swapins, 0(0) swapouts.
+Networks: packets: 261273139/170G in, 168846290/113G out.
+Disks: 25523073/773G read, 69930643/1416G written.
+
+PID    COMMAND %CPU MEM 
+79986  Dock    0.3  60M 
+Processes: 1190 total, 4 running, 1186 sleeping, 7643 threads 
+2026/09/24 16:22:13
+Load Avg: 5.13, 6.37, 6.86 
+CPU usage: 12.43% user, 10.17% sys, 77.38% idle 
+SharedLibs: 1499M resident, 260M data, 848M linkedit.
+MemRegions: 0 total, 0B resident, 0B private, 20G shared.
+PhysMem: 102G used (8218M wired, 437M compressor), 25G unused.
+VM: 635T vsize, 57G framework vsize, 0(0) swapins, 0(0) swapouts.
+Networks: packets: 261273420/170G in, 168846763/113G out.
+Disks: 25523073/773G read, 69930650/1416G written.
+
+PID    COMMAND %CPU MEM 
+79986  Dock    0.0  60M 
+Processes: 1191 total, 9 running, 1182 sleeping, 7613 threads 
+2026/09/24 16:22:14
+Load Avg: 5.20, 6.36, 6.85 
+CPU usage: 20.43% user, 11.52% sys, 68.4% idle 
+SharedLibs: 1499M resident, 260M data, 848M linkedit.
+MemRegions: 45 total, 1824K resident, 0B private, 20G shared.
+PhysMem: 102G used (8508M wired, 437M compressor), 25G unused.
+VM: 635T vsize, 57G framework vsize, 0(0) swapins, 0(0) swapouts.
+Networks: packets: 261273813/170G in, 168847016/113G out.
+Disks: 25523073/773G read, 69931087/1416G written.
+
+PID    COMMAND %CPU MEM 
+79986  Dock    0.0  60M-
+Processes: 1191 total, 3 running, 1 stuck, 1187 sleeping, 7605 threads 
+2026/09/24 16:22:15
+Load Avg: 5.20, 6.36, 6.85 
+CPU usage: 16.85% user, 11.94% sys, 71.19% idle 
+SharedLibs: 1499M resident, 260M data, 848M linkedit.
+MemRegions: 12138 total, 38M resident, 0B private, 20G shared.
+PhysMem: 102G used (8261M wired, 437M compressor), 25G unused.
+VM: 635T vsize, 57G framework vsize, 0(0) swapins, 0(0) swapouts.
+Networks: packets: 261274716/170G in, 168847525/113G out.
+Disks: 25523074/773G read, 69931257/1416G written.
+
+PID    COMMAND %CPU MEM 
+79986  Dock    0.0  60M 
+Processes: 1191 total, 5 running, 1186 sleeping, 7593 threads 
+2026/09/24 16:22:17
+Load Avg: 5.20, 6.36, 6.85 
+CPU usage: 18.0% user, 12.37% sys, 69.61% idle 
+SharedLibs: 1499M resident, 260M data, 848M linkedit.
+MemRegions: 0 total, 0B resident, 0B private, 20G shared.
+PhysMem: 102G used (8400M wired, 437M compressor), 25G unused.
+VM: 635T vsize, 57G framework vsize, 0(0) swapins, 0(0) swapouts.
+Networks: packets: 261275733/170G in, 168848089/113G out.
+Disks: 25523074/773G read, 69931434/1416G written.
+
+PID    COMMAND %CPU MEM 
+79986  Dock    0.2  60M 
+Processes: 1192 total, 9 running, 1183 sleeping, 7598 threads 
+2026/09/24 16:22:18
+Load Avg: 5.20, 6.36, 6.85 
+CPU usage: 18.72% user, 11.0% sys, 70.26% idle 
+SharedLibs: 1499M resident, 260M data, 848M linkedit.
+MemRegions: 12028 total, 31M resident, 0B private, 20G shared.
+PhysMem: 102G used (8646M wired, 437M compressor), 25G unused.
+VM: 637T vsize, 57G framework vsize, 0(0) swapins, 0(0) swapouts.
+Networks: packets: 261276224/170G in, 168848717/113G out.
+Disks: 25523076/773G read, 69931480/1416G written.
+
+PID    COMMAND %CPU MEM 
+79986  Dock    0.0  60M 
+Processes: 1192 total, 6 running, 1186 sleeping, 7592 threads 
+2026/09/24 16:22:19
+Load Avg: 5.03, 6.31, 6.83 
+CPU usage: 16.30% user, 10.63% sys, 73.6% idle 
+SharedLibs: 1499M resident, 260M data, 848M linkedit.
+MemRegions: 0 total, 0B resident, 0B private, 20G shared.
+PhysMem: 102G used (8126M wired, 437M compressor), 25G unused.
+VM: 637T vsize, 57G framework vsize, 0(0) swapins, 0(0) swapouts.
+Networks: packets: 261276385/170G in, 168849000/113G out.
+Disks: 25523076/773G read, 69931498/1416G written.
+
+PID    COMMAND %CPU MEM 
+79986  Dock    0.0  60M 
+Processes: 1192 total, 5 running, 1187 sleeping, 7571 threads 
+2026/09/24 16:22:20
+Load Avg: 5.03, 6.31, 6.83 
+CPU usage: 19.50% user, 10.43% sys, 70.6% idle 
+SharedLibs: 1499M resident, 260M data, 848M linkedit.
+MemRegions: 0 total, 0B resident, 0B private, 20G shared.
+PhysMem: 102G used (8314M wired, 437M compressor), 25G unused.
+VM: 637T vsize, 57G framework vsize, 0(0) swapins, 0(0) swapouts.
+Networks: packets: 261276930/170G in, 168849304/113G out.
+Disks: 25523076/773G read, 69931527/1416G written.
+
+PID    COMMAND %CPU MEM 
+79986  Dock    0.0  60M-
+Processes: 1192 total, 6 running, 1186 sleeping, 7458 threads 
+2026/09/24 16:22:21
+Load Avg: 5.03, 6.31, 6.83 
+CPU usage: 21.98% user, 13.59% sys, 64.42% idle 
+SharedLibs: 1499M resident, 260M data, 848M linkedit.
+MemRegions: 0 total, 0B resident, 0B private, 20G shared.
+PhysMem: 102G used (8600M wired, 437M compressor), 25G unused.
+VM: 637T vsize, 57G framework vsize, 0(0) swapins, 0(0) swapouts.
+Networks: packets: 261277339/170G in, 168850028/113G out.
+Disks: 25523208/773G read, 69931554/1416G written.
+
+PID    COMMAND %CPU MEM 
+79986  Dock    0.0  60M 
+Processes: 1192 total, 7 running, 1 stuck, 1184 sleeping, 7463 threads 
+2026/09/24 16:22:23
+Load Avg: 5.03, 6.31, 6.83 
+CPU usage: 16.56% user, 11.53% sys, 71.90% idle 
+SharedLibs: 1499M resident, 260M data, 848M linkedit.
+MemRegions: 0 total, 0B resident, 0B private, 20G shared.
+PhysMem: 102G used (8390M wired, 437M compressor), 25G unused.
+VM: 637T vsize, 57G framework vsize, 0(0) swapins, 0(0) swapouts.
+Networks: packets: 261277396/170G in, 168850082/113G out.
+Disks: 25523208/773G read, 69932161/1416G written.
+
+PID    COMMAND %CPU MEM 
+79986  Dock    0.0  60M 
+Processes: 1192 total, 5 running, 1 stuck, 1186 sleeping, 7571 threads 
+2026/09/24 16:22:24
+Load Avg: 5.02, 6.29, 6.82 
+CPU usage: 20.63% user, 12.89% sys, 66.46% idle 
+SharedLibs: 1499M resident, 260M data, 848M linkedit.
+MemRegions: 0 total, 0B resident, 0B private, 20G shared.
+PhysMem: 102G used (8390M wired, 437M compressor), 25G unused.
+VM: 637T vsize, 57G framework vsize, 0(0) swapins, 0(0) swapouts.
+Networks: packets: 261277796/170G in, 168850524/113G out.
+Disks: 25523209/773G read, 69932350/1416G written.
+
+PID    COMMAND %CPU MEM 
+79986  Dock    0.1  60M 
+Processes: 1192 total, 8 running, 1184 sleeping, 7626 threads 
+2026/09/24 16:22:25
+Load Avg: 5.02, 6.29, 6.82 
+CPU usage: 26.27% user, 14.68% sys, 59.4% idle 
+SharedLibs: 1499M resident, 260M data, 848M linkedit.
+MemRegions: 0 total, 0B resident, 0B private, 20G shared.
+PhysMem: 104G used (10G wired, 437M compressor), 23G unused.
+VM: 637T vsize, 57G framework vsize, 0(0) swapins, 0(0) swapouts.
+Networks: packets: 261278273/170G in, 168851261/113G out.
+Disks: 25523214/773G read, 69932584/1416G written.
+
+PID    COMMAND %CPU MEM 
+79986  Dock    0.0  60M 
+Processes: 1192 total, 8 running, 1184 sleeping, 7643 threads 
+2026/09/24 16:22:26
+Load Avg: 5.02, 6.29, 6.82 
+CPU usage: 26.40% user, 12.79% sys, 60.79% idle 
+SharedLibs: 1499M resident, 260M data, 848M linkedit.
+MemRegions: 0 total, 0B resident, 0B private, 20G shared.
+PhysMem: 104G used (9223M wired, 437M compressor), 23G unused.
+VM: 637T vsize, 57G framework vsize, 0(0) swapins, 0(0) swapouts.
+Networks: packets: 261278673/170G in, 168851825/113G out.
+Disks: 25523274/773G read, 69932613/1416G written.
+
+PID    COMMAND %CPU MEM 
+79986  Dock    0.0  60M 
+Processes: 1193 total, 9 running, 1184 sleeping, 7673 threads 
+2026/09/24 16:22:28
+Load Avg: 5.02, 6.29, 6.82 
+CPU usage: 25.85% user, 13.0% sys, 61.13% idle 
+SharedLibs: 1499M resident, 260M data, 848M linkedit.
+MemRegions: 52 total, 1920K resident, 0B private, 20G shared.
+PhysMem: 103G used (9171M wired, 437M compressor), 24G unused.
+VM: 638T vsize, 57G framework vsize, 0(0) swapins, 0(0) swapouts.
+Networks: packets: 261279281/170G in, 168852769/113G out.
+Disks: 25523410/773G read, 69932924/1416G written.
+
+PID    COMMAND %CPU MEM 
+79986  Dock    0.0  60M 
+Processes: 1195 total, 6 running, 1189 sleeping, 7646 threads 
+2026/09/24 16:22:29
+Load Avg: 6.38, 6.55, 6.91 
+CPU usage: 21.52% user, 12.55% sys, 65.92% idle 
+SharedLibs: 1499M resident, 260M data, 848M linkedit.
+MemRegions: 108 total, 4256K resident, 0B private, 20G shared.
+PhysMem: 103G used (9171M wired, 437M compressor), 24G unused.
+VM: 639T vsize, 57G framework vsize, 0(0) swapins, 0(0) swapouts.
+Networks: packets: 261284020/170G in, 168855903/113G out.
+Disks: 25523473/773G read, 69932949/1416G written.
+
+PID    COMMAND %CPU MEM 
+79986  Dock    0.0  60M 
+Processes: 1196 total, 17 running, 1179 sleeping, 7645 threads 
+2026/09/24 16:22:30
+Load Avg: 6.38, 6.55, 6.91 
+CPU usage: 32.59% user, 14.5% sys, 53.35% idle 
+SharedLibs: 1499M resident, 260M data, 848M linkedit.
+MemRegions: 325 total, 12M resident, 0B private, 20G shared.
+PhysMem: 103G used (9514M wired, 437M compressor), 24G unused.
+VM: 639T vsize, 57G framework vsize, 0(0) swapins, 0(0) swapouts.
+Networks: packets: 261284951/170G in, 168856435/113G out.
+Disks: 25523548/773G read, 69933468/1416G written.
+
+PID    COMMAND %CPU MEM 
+79986  Dock    0.0  60M 
+Processes: 1196 total, 5 running, 1 stuck, 1190 sleeping, 7610 threads 
+2026/09/24 16:22:31
+Load Avg: 6.38, 6.55, 6.91 
+CPU usage: 31.27% user, 13.46% sys, 55.26% idle 
+SharedLibs: 1499M resident, 260M data, 848M linkedit.
+MemRegions: 0 total, 0B resident, 0B private, 20G shared.
+PhysMem: 103G used (9201M wired, 437M compressor), 24G unused.
+VM: 639T vsize, 57G framework vsize, 0(0) swapins, 0(0) swapouts.
+Networks: packets: 261286779/170G in, 168857642/113G out.
+Disks: 25523625/773G read, 69934299/1416G written.
+
+PID    COMMAND %CPU MEM 
+79986  Dock    0.1  60M 
+Processes: 1201 total, 8 running, 1193 sleeping, 7632 threads 
+2026/09/24 16:22:33
+Load Avg: 6.38, 6.55, 6.91 
+CPU usage: 26.22% user, 12.90% sys, 60.86% idle 
+SharedLibs: 1499M resident, 260M data, 848M linkedit.
+MemRegions: 227 total, 9376K resident, 0B private, 20G shared.
+PhysMem: 103G used (9379M wired, 437M compressor), 24G unused.
+VM: 641T vsize, 57G framework vsize, 0(0) swapins, 0(0) swapouts.
+Networks: packets: 261287449/170G in, 168858054/113G out.
+Disks: 25523633/773G read, 69934617/1416G written.
+
+PID    COMMAND %CPU MEM 
+79986  Dock    0.0  60M 
+Processes: 1201 total, 6 running, 1195 sleeping, 7629 threads 
+2026/09/24 16:22:34
+Load Avg: 6.51, 6.57, 6.92 
+CPU usage: 24.34% user, 11.6% sys, 64.59% idle 
+SharedLibs: 1499M resident, 260M data, 848M linkedit.
+MemRegions: 0 total, 0B resident, 0B private, 20G shared.
+PhysMem: 103G used (9413M wired, 437M compressor), 24G unused.
+VM: 641T vsize, 57G framework vsize, 0(0) swapins, 0(0) swapouts.
+Networks: packets: 261287777/170G in, 168858725/113G out.
+Disks: 25523634/773G read, 69934835/1416G written.
+
+PID    COMMAND %CPU MEM 
+79986  Dock    0.0  60M 
+Processes: 1201 total, 5 running, 1 stuck, 1195 sleeping, 7618 threads 
+2026/09/24 16:22:35
+Load Avg: 6.51, 6.57, 6.92 
+CPU usage: 23.3% user, 12.40% sys, 64.55% idle 
+SharedLibs: 1499M resident, 260M data, 848M linkedit.
+MemRegions: 0 total, 0B resident, 0B private, 20G shared.
+PhysMem: 103G used (9203M wired, 437M compressor), 24G unused.
+VM: 641T vsize, 57G framework vsize, 0(0) swapins, 0(0) swapouts.
+Networks: packets: 261288289/170G in, 168859103/113G out.
+Disks: 25523634/773G read, 69934897/1416G written.
+
+PID    COMMAND %CPU MEM 
+79986  Dock    0.0  60M-
+Processes: 1202 total, 14 running, 1188 sleeping, 7646 threads 
+2026/09/24 16:22:37
+Load Avg: 6.51, 6.57, 6.92 
+CPU usage: 28.69% user, 14.25% sys, 57.5% idle 
+SharedLibs: 1499M resident, 260M data, 848M linkedit.
+MemRegions: 11955 total, 27M resident, 0B private, 20G shared.
+PhysMem: 103G used (9378M wired, 437M compressor), 24G unused.
+VM: 643T vsize, 57G framework vsize, 0(0) swapins, 0(0) swapouts.
+Networks: packets: 261289771/170G in, 168859975/113G out.
+Disks: 25523764/773G read, 69935320/1416G written.
+
+PID    COMMAND %CPU MEM 
+79986  Dock    0.0  60M+
+Processes: 1204 total, 5 running, 1199 sleeping, 7706 threads 
+2026/09/24 16:22:38
+Load Avg: 6.51, 6.57, 6.92 
+CPU usage: 26.92% user, 14.17% sys, 58.90% idle 
+SharedLibs: 1499M resident, 260M data, 848M linkedit.
+MemRegions: 24075 total, 63M resident, 0B private, 20G shared.
+PhysMem: 103G used (9372M wired, 437M compressor), 24G unused.
+VM: 647T vsize, 57G framework vsize, 0(0) swapins, 0(0) swapouts.
+Networks: packets: 261290793/170G in, 168860847/113G out.
+Disks: 25523909/773G read, 69935822/1416G written.
+
+PID    COMMAND %CPU MEM 
+79986  Dock    0.2  60M+
+Processes: 1204 total, 9 running, 1 stuck, 1194 sleeping, 7707 threads 
+2026/09/24 16:22:39
+Load Avg: 6.39, 6.54, 6.90 
+CPU usage: 22.23% user, 12.32% sys, 65.44% idle 
+SharedLibs: 1499M resident, 260M data, 848M linkedit.
+MemRegions: 0 total, 0B resident, 0B private, 20G shared.
+PhysMem: 103G used (8992M wired, 437M compressor), 24G unused.
+VM: 647T vsize, 57G framework vsize, 0(0) swapins, 0(0) swapouts.
+Networks: packets: 261291147/170G in, 168861367/113G out.
+Disks: 25523973/773G read, 69935976/1416G written.
+
+PID    COMMAND %CPU MEM 
+79986  Dock    0.2  60M+
+Processes: 1205 total, 5 running, 1 stuck, 1199 sleeping, 7726 threads 
+2026/09/24 16:22:40
+Load Avg: 6.39, 6.54, 6.90 
+CPU usage: 20.76% user, 11.84% sys, 67.38% idle 
+SharedLibs: 1499M resident, 260M data, 848M linkedit.
+MemRegions: 12022 total, 30M resident, 0B private, 20G shared.
+PhysMem: 103G used (8422M wired, 437M compressor), 24G unused.
+VM: 649T vsize, 57G framework vsize, 0(0) swapins, 0(0) swapouts.
+Networks: packets: 261291701/170G in, 168861724/113G out.
+Disks: 25523990/773G read, 69936001/1416G written.
+
+PID    COMMAND %CPU MEM 
+79986  Dock    0.1  60M 
+Processes: 1205 total, 11 running, 1194 sleeping, 7710 threads 
+2026/09/24 16:22:42
+Load Avg: 6.39, 6.54, 6.90 
+CPU usage: 23.37% user, 11.50% sys, 65.12% idle 
+SharedLibs: 1499M resident, 260M data, 848M linkedit.
+MemRegions: 0 total, 0B resident, 0B private, 20G shared.
+PhysMem: 103G used (8978M wired, 437M compressor), 24G unused.
+VM: 649T vsize, 57G framework vsize, 0(0) swapins, 0(0) swapouts.
+Networks: packets: 261292271/170G in, 168862245/113G out.
+Disks: 25523990/773G read, 69936290/1416G written.
+
+PID    COMMAND %CPU MEM 
+79986  Dock    0.0  60M 
+Processes: 1205 total, 5 running, 1 stuck, 1199 sleeping, 7698 threads 
+2026/09/24 16:22:43
+Load Avg: 6.39, 6.54, 6.90 
+CPU usage: 18.29% user, 10.87% sys, 70.83% idle 
+SharedLibs: 1499M resident, 260M data, 848M linkedit.
+MemRegions: 0 total, 0B resident, 0B private, 20G shared.
+PhysMem: 103G used (8544M wired, 437M compressor), 24G unused.
+VM: 649T vsize, 57G framework vsize, 0(0) swapins, 0(0) swapouts.
+Networks: packets: 261292687/170G in, 168862899/113G out.
+Disks: 25523990/773G read, 69936297/1416G written.
+
+PID    COMMAND %CPU MEM 
+79986  Dock    0.0  60M 
+Processes: 1205 total, 4 running, 1 stuck, 1200 sleeping, 7689 threads 
+2026/09/24 16:22:44
+Load Avg: 6.12, 6.49, 6.88 
+CPU usage: 18.56% user, 10.99% sys, 70.43% idle 
+SharedLibs: 1499M resident, 260M data, 848M linkedit.
+MemRegions: 0 total, 0B resident, 0B private, 20G shared.
+PhysMem: 103G used (8583M wired, 437M compressor), 24G unused.
+VM: 649T vsize, 57G framework vsize, 0(0) swapins, 0(0) swapouts.
+Networks: packets: 261293209/170G in, 168863199/113G out.
+Disks: 25523990/773G read, 69936596/1416G written.
+
+PID    COMMAND %CPU MEM 
+79986  Dock    0.0  60M 
+Processes: 1205 total, 5 running, 1 stuck, 1199 sleeping, 7683 threads 
+2026/09/24 16:22:45
+Load Avg: 6.12, 6.49, 6.88 
+CPU usage: 20.55% user, 11.74% sys, 67.69% idle 
+SharedLibs: 1499M resident, 260M data, 848M linkedit.
+MemRegions: 0 total, 0B resident, 0B private, 20G shared.
+PhysMem: 103G used (8743M wired, 437M compressor), 24G unused.
+VM: 649T vsize, 57G framework vsize, 0(0) swapins, 0(0) swapouts.
+Networks: packets: 261294283/170G in, 168863790/113G out.
+Disks: 25523990/773G read, 69936705/1416G written.
+
+PID    COMMAND %CPU MEM 
+79986  Dock    0.0  60M-
+Processes: 1206 total, 11 running, 1195 sleeping, 7702 threads 
+2026/09/24 16:22:47
+Load Avg: 6.12, 6.49, 6.88 
+CPU usage: 26.50% user, 12.23% sys, 61.26% idle 
+SharedLibs: 1499M resident, 260M data, 848M linkedit.
+MemRegions: 11956 total, 27M resident, 0B private, 20G shared.
+PhysMem: 103G used (8705M wired, 437M compressor), 24G unused.
+VM: 651T vsize, 57G framework vsize, 0(0) swapins, 0(0) swapouts.
+Networks: packets: 261294802/170G in, 168864152/113G out.
+Disks: 25524056/773G read, 69937050/1416G written.
+
+PID    COMMAND %CPU MEM 
+79986  Dock    0.0  60M 
+Processes: 1206 total, 8 running, 1198 sleeping, 7702 threads 
+2026/09/24 16:22:48
+Load Avg: 6.12, 6.49, 6.88 
+CPU usage: 28.14% user, 12.77% sys, 59.8% idle 
+SharedLibs: 1499M resident, 260M data, 848M linkedit.
+MemRegions: 0 total, 0B resident, 0B private, 20G shared.
+PhysMem: 103G used (8313M wired, 437M compressor), 24G unused.
+VM: 651T vsize, 57G framework vsize, 0(0) swapins, 0(0) swapouts.
+Networks: packets: 261296581/170G in, 168865572/113G out.
+Disks: 25524181/773G read, 69937300/1416G written.
+
+PID    COMMAND %CPU MEM 
+79986  Dock    0.0  60M 
+Processes: 1206 total, 5 running, 1201 sleeping, 7694 threads 
+2026/09/24 16:22:49
+Load Avg: 6.03, 6.46, 6.87 
+CPU usage: 14.72% user, 10.22% sys, 75.4% idle 
+SharedLibs: 1499M resident, 260M data, 848M linkedit.
+MemRegions: 0 total, 0B resident, 0B private, 20G shared.
+PhysMem: 103G used (7916M wired, 437M compressor), 24G unused.
+VM: 651T vsize, 57G framework vsize, 0(0) swapins, 0(0) swapouts.
+Networks: packets: 261296682/170G in, 168865684/113G out.
+Disks: 25524181/773G read, 69937319/1416G written.
+
+PID    COMMAND %CPU MEM 
+79986  Dock    0.0  60M 
+Processes: 1205 total, 5 running, 1200 sleeping, 7593 threads 
+2026/09/24 16:22:50
+Load Avg: 6.03, 6.46, 6.87 
+CPU usage: 23.35% user, 12.39% sys, 64.25% idle 
+SharedLibs: 1499M resident, 260M data, 848M linkedit.
+MemRegions: 0 total, 0B resident, 0B private, 20G shared.
+PhysMem: 103G used (8775M wired, 437M compressor), 24G unused.
+VM: 649T vsize, 57G framework vsize, 0(0) swapins, 0(0) swapouts.
+Networks: packets: 261297403/170G in, 168866179/113G out.
+Disks: 25524191/773G read, 69937458/1416G written.
+
+PID    COMMAND %CPU MEM 
+79986  Dock    0.0  60M+
+Processes: 1205 total, 5 running, 1200 sleeping, 7604 threads 
+2026/09/24 16:22:52
+Load Avg: 6.03, 6.46, 6.87 
+CPU usage: 25.7% user, 11.90% sys, 63.2% idle 
+SharedLibs: 1499M resident, 260M data, 848M linkedit.
+MemRegions: 0 total, 0B resident, 0B private, 20G shared.
+PhysMem: 103G used (8684M wired, 437M compressor), 24G unused.
+VM: 649T vsize, 57G framework vsize, 0(0) swapins, 0(0) swapouts.
+Networks: packets: 261298502/170G in, 168867269/113G out.
+Disks: 25524215/773G read, 69937548/1416G written.
+
+PID    COMMAND %CPU MEM 
+79986  Dock    0.0  60M 
+Processes: 1205 total, 5 running, 1200 sleeping, 7602 threads 
+2026/09/24 16:22:53
+Load Avg: 6.03, 6.46, 6.87 
+CPU usage: 15.94% user, 11.29% sys, 72.75% idle 
+SharedLibs: 1499M resident, 260M data, 848M linkedit.
+MemRegions: 0 total, 0B resident, 0B private, 20G shared.
+PhysMem: 103G used (8266M wired, 437M compressor), 24G unused.
+VM: 649T vsize, 57G framework vsize, 0(0) swapins, 0(0) swapouts.
+Networks: packets: 261298676/170G in, 168867446/113G out.
+Disks: 25524215/773G read, 69938551/1416G written.
+
+PID    COMMAND %CPU MEM 
+79986  Dock    0.0  60M 
+Processes: 1205 total, 4 running, 1 stuck, 1200 sleeping, 7586 threads 
+2026/09/24 16:22:54
+Load Avg: 5.87, 6.42, 6.85 
+CPU usage: 18.2% user, 9.97% sys, 72.0% idle 
+SharedLibs: 1499M resident, 260M data, 848M linkedit.
+MemRegions: 0 total, 0B resident, 0B private, 20G shared.
+PhysMem: 103G used (8166M wired, 437M compressor), 24G unused.
+VM: 649T vsize, 57G framework vsize, 0(0) swapins, 0(0) swapouts.
+Networks: packets: 261299291/170G in, 168867784/113G out.
+Disks: 25524215/773G read, 69938557/1416G written.
+
+PID    COMMAND %CPU MEM 
+79986  Dock    0.0  60M 
+Processes: 1206 total, 8 running, 1 stuck, 1197 sleeping, 7585 threads 
+2026/09/24 16:22:55
+Load Avg: 5.87, 6.42, 6.85 
+CPU usage: 19.8% user, 10.2% sys, 70.88% idle 
+SharedLibs: 1499M resident, 260M data, 848M linkedit.
+MemRegions: 47 total, 1872K resident, 0B private, 20G shared.
+PhysMem: 103G used (7817M wired, 437M compressor), 25G unused.
+VM: 649T vsize, 57G framework vsize, 0(0) swapins, 0(0) swapouts.
+Networks: packets: 261300496/170G in, 168868465/113G out.
+Disks: 25524215/773G read, 69938773/1416G written.
+
+PID    COMMAND %CPU MEM 
+79986  Dock    0.0  60M 
+Processes: 1206 total, 6 running, 1200 sleeping, 7564 threads 
+2026/09/24 16:22:56
+Load Avg: 5.87, 6.42, 6.85 
+CPU usage: 23.89% user, 10.38% sys, 65.72% idle 
+SharedLibs: 1499M resident, 260M data, 848M linkedit.
+MemRegions: 0 total, 0B resident, 0B private, 20G shared.
+PhysMem: 102G used (7777M wired, 437M compressor), 25G unused.
+VM: 649T vsize, 57G framework vsize, 0(0) swapins, 0(0) swapouts.
+Networks: packets: 261301486/170G in, 168868993/113G out.
+Disks: 25524215/773G read, 69938786/1416G written.
+
+PID    COMMAND %CPU MEM 
+79986  Dock    0.0  60M 
+Processes: 1203 total, 6 running, 1 stuck, 1196 sleeping, 7628 threads 
+2026/09/24 16:22:58
+Load Avg: 5.87, 6.42, 6.85 
+CPU usage: 21.28% user, 11.93% sys, 66.78% idle 
+SharedLibs: 1499M resident, 260M data, 848M linkedit.
+MemRegions: 0 total, 0B resident, 0B private, 20G shared.
+PhysMem: 102G used (8508M wired, 437M compressor), 25G unused.
+VM: 647T vsize, 57G framework vsize, 0(0) swapins, 0(0) swapouts.
+Networks: packets: 261301904/170G in, 168869304/113G out.
+Disks: 25524261/773G read, 69938861/1416G written.
+
+PID    COMMAND %CPU MEM 
+79986  Dock    0.0  60M 
+Processes: 1203 total, 5 running, 1 stuck, 1197 sleeping, 7631 threads 
+2026/09/24 16:22:59
+Load Avg: 5.72, 6.38, 6.84 
+CPU usage: 12.33% user, 9.54% sys, 78.12% idle 
+SharedLibs: 1499M resident, 260M data, 848M linkedit.
+MemRegions: 0 total, 0B resident, 0B private, 20G shared.
+PhysMem: 102G used (7568M wired, 437M compressor), 25G unused.
+VM: 647T vsize, 57G framework vsize, 0(0) swapins, 0(0) swapouts.
+Networks: packets: 261301958/170G in, 168869360/113G out.
+Disks: 25524261/773G read, 69938863/1416G written.
+
+PID    COMMAND %CPU MEM 
+79986  Dock    0.0  60M 
+Processes: 1203 total, 5 running, 1 stuck, 1197 sleeping, 7633 threads 
+2026/09/24 16:23:00
+Load Avg: 5.72, 6.38, 6.84 
+CPU usage: 11.82% user, 9.78% sys, 78.38% idle 
+SharedLibs: 1499M resident, 260M data, 848M linkedit.
+MemRegions: 0 total, 0B resident, 0B private, 20G shared.
+PhysMem: 102G used (7802M wired, 437M compressor), 25G unused.
+VM: 647T vsize, 57G framework vsize, 0(0) swapins, 0(0) swapouts.
+Networks: packets: 261301994/170G in, 168869396/113G out.
+Disks: 25524261/773G read, 69939169/1416G written.
+
+PID    COMMAND %CPU MEM 
+79986  Dock    0.0  60M 

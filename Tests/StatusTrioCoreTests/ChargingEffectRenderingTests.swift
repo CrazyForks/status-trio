@@ -75,27 +75,10 @@ struct ChargingEffectRenderingTests {
         #expect(phasePixels.bytes != staticPixels.bytes)
     }
 
-    @MainActor @Test func dockRendererUsesTheSameChargingPhase() throws {
+    @MainActor @Test func dockRendererProducesStaticChargingArtwork() throws {
         let status = MenuBarStatus(snapshot: chargingSnapshot)
-        let staticImage = try #require(DockIconRenderer.image(status: status, phase: nil))
-        let phaseImage = try #require(DockIconRenderer.image(
-            status: status,
-            phase: .init(step: 33, stepsPerCycle: 36, kind: .steady)
-        ))
-        let staticCGImage = try #require(staticImage.cgImage(
-            forProposedRect: nil,
-            context: nil,
-            hints: nil
-        ))
-        let phaseCGImage = try #require(phaseImage.cgImage(
-            forProposedRect: nil,
-            context: nil,
-            hints: nil
-        ))
-
-        let staticPixels = try PixelBuffer(image: staticCGImage)
-        let phasePixels = try PixelBuffer(image: phaseCGImage)
-        #expect(phasePixels.bytes != staticPixels.bytes)
+        let image = try #require(DockIconRenderer.image(status: status))
+        #expect(image.size == NSSize(width: 256, height: 256))
     }
 
     @Test func disablingTheEffectKeepsTheStaticPixels() throws {

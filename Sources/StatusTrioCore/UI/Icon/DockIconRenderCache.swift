@@ -16,7 +16,6 @@ struct DockIconRenderKey: Equatable, Hashable {
     let bluetoothAudioOptions: BluetoothAudioIconOptions
     let bluetoothAudioDeviceIcon: AudioOutputDeviceIconSource?
     let backgroundStyle: DockIconBackgroundStyle
-    let phase: ChargingEffectPhase?
 
     init(
         status: MenuBarStatus,
@@ -24,8 +23,7 @@ struct DockIconRenderKey: Equatable, Hashable {
         connectionOptions: ConnectionIconOptions,
         volumeOptions: VolumeIconOptions = .standard,
         bluetoothAudioOptions: BluetoothAudioIconOptions = .standard,
-        backgroundStyle: DockIconBackgroundStyle,
-        phase: ChargingEffectPhase? = nil
+        backgroundStyle: DockIconBackgroundStyle
     ) {
         self.batteryPercentage = status.battery.percentage
         self.gapContent = StatusMappings.batteryGapContent(
@@ -56,7 +54,6 @@ struct DockIconRenderKey: Equatable, Hashable {
             ? status.volume.currentDevice.map { AudioOutputDeviceIcon.source(for: $0) }
             : nil
         self.backgroundStyle = backgroundStyle
-        self.phase = phase?.kind == .burst ? phase : nil
     }
 
     private static func clampedVolume(_ scalar: Double) -> Double? {

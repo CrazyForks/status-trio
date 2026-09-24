@@ -67,15 +67,16 @@ final class AppEnvironment {
 
     private func subscribeToChargingEffectInputs() {
         guard chargingEffectCancellables.isEmpty else { return }
-        Publishers.CombineLatest3(
+        Publishers.CombineLatest4(
             store.$snapshot.map(\.battery).removeDuplicates(),
             settings.$showsChargingEffect.removeDuplicates(),
-            store.$isDisplayAsleep.removeDuplicates()
+            store.$isDisplayAsleep.removeDuplicates(),
+            settings.$testsChargingEffect.removeDuplicates()
         )
-        .sink { [weak self] battery, enabled, displayAsleep in
+        .sink { [weak self] battery, enabled, displayAsleep, testMode in
             guard let self else { return }
             chargingEffectClock.update(
-                battery: battery,
+                battery: ChargingEffectTestMode.battery(battery, enabled: testMode),
                 enabled: enabled,
                 reduceMotion: chargingEffectMotionMonitor.shouldReduceMotion,
                 displayAsleep: displayAsleep
@@ -86,7 +87,10 @@ final class AppEnvironment {
 
     private func updateChargingEffectClock() {
         chargingEffectClock.update(
-            battery: store.snapshot.battery,
+            battery: ChargingEffectTestMode.battery(
+                store.snapshot.battery,
+                enabled: settings.testsChargingEffect
+            ),
             enabled: settings.showsChargingEffect,
             reduceMotion: chargingEffectMotionMonitor.shouldReduceMotion,
             displayAsleep: store.isDisplayAsleep
@@ -162,19 +166,16 @@ final class AppEnvironment {
                 connectionOptions,
                 volumeOptions,
                 bluetoothAudioOptions,
-                backgroundStyle,
-                phase in
+                backgroundStyle in
                 DockIconRenderer.image(
                     status: status,
                     options: options,
                     connectionOptions: connectionOptions,
                     volumeOptions: volumeOptions,
                     bluetoothAudioOptions: bluetoothAudioOptions,
-                    backgroundStyle: backgroundStyle,
-                    phase: phase
+                    backgroundStyle: backgroundStyle
                 )
-            },
-            chargingEffectClock: chargingEffectClock
+            }
         )
         let mainMenuController = MainMenuController(
             activationPolicy: activationPolicy,
