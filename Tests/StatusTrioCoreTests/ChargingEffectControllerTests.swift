@@ -40,7 +40,7 @@ struct ChargingEffectControllerTests {
         let increasedBattery = dockTestBattery(61, charging: true)
         let initialRenderCount = harness.log.renderCount
         harness.publishBattery(increasedBattery)
-        let deadline = Date().addingTimeInterval(1)
+        let deadline = Date().addingTimeInterval(5)
         while harness.log.renderCount == initialRenderCount, Date() < deadline {
             try? await Task.sleep(for: .milliseconds(10))
         }

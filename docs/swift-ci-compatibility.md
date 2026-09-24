@@ -632,3 +632,20 @@ Error: published appcast does not contain build 14.
 空数组（`/releases/tags/…/assets` 甚至 404），而同一时刻 Release 页面的 `expanded_assets` 已列出两个
 资产、`releases/download/v1.3.2/StatusTrio-1.3.2.dmg` 直链返回 200。**核对资产不要只看 `assets` 字段**，
 用页面或直链交叉验证。
+
+## 35997423299：macOS 26 预检中的状态更新测试超时
+
+Release workflow run [`35997423299`](https://github.com/lingyired/status-trio/actions/runs/35997423299)
+（`version=1.3.3`、`build=16`、`publish=false`）在 `Run tests` 阶段失败；工具链显示步骤、版本解析及
+12 语言 appcast 校验均通过，后续 build/publish 步骤因此未运行。
+
+失败项：
+
+- `AppIconControllerTests.visibleDockRendersStatusChanges`：在原有 900 ms 固定等待后仍为 0 次渲染。
+- `ChargingEffectControllerTests.batteryLevelChangesStillUpdateStaticDockArtwork`：原有 1 秒轮询期限到达时，渲染仍为初始值，最后电量仍为 60%。
+
+根因：这两项测试依赖电池监视器的 `AsyncStream` 消费与 `AppIconController` 的 500 ms Combine debounce；Swift Testing 会并发启动测试，macOS CI 忙时事件调度超过了 900 ms / 1 秒测试期限。失败只发生在等待事件的断言前，其他新预览测试均通过。专项本机重跑的可见 Dock 更新在 580 ms 完成，符合调度变慢而非渲染键失效的表现。
+
+修复：可见 Dock 测试改为轮询至渲染条件满足（最多 5 秒，沿用该测试套件已有 helper）；隐藏 Dock 测试等待 2 秒后再确认没有渲染；静态 Dock 电池测试的轮询期限从 1 秒延长到 5 秒。只调整测试等待，不改变产品更新延迟或渲染行为。
+
+验证：`swift test --filter AppIconControllerTests`（28 项）与 `swift test --filter ChargingEffectControllerTests`（2 项）本机通过；全量 `swift test` 通过（349 项 / 59 suites）；`swift build -c release` 通过；`git diff --check` 通过。第二次 macOS 26 预检待完成，完成后将 run ID 与结果补记于此。

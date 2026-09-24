@@ -139,7 +139,9 @@ struct AppIconControllerTests {
         harness.log.reset()
 
         harness.publishDifferentSnapshot()
-        try await Task.sleep(for: .milliseconds(900))
+        // Let the snapshot debounce and the monitor's AsyncStream consumer
+        // settle before asserting that a hidden Dock produced no render.
+        try await Task.sleep(for: .seconds(2))
 
         #expect(harness.log.renderCount == 0)
     }
@@ -151,7 +153,7 @@ struct AppIconControllerTests {
         harness.log.reset()
 
         harness.publishDifferentSnapshot()
-        try await Task.sleep(for: .milliseconds(900))
+        try await waitForCoalescedRenders { harness.log.renderCount == 1 }
 
         #expect(harness.log.renderCount == 1)
     }
