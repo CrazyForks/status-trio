@@ -148,6 +148,18 @@ To check whether the earlier 129 MB sample at process age 53:56–54:18 could be
 
 Repeated five-minute reads through the run stayed at 18 MB physical footprint and roughly 62.4–62.9 MB RSS. The 54-minute comparison point remained at 18 MB, so elapsed idle time alone did not reproduce the earlier 129 MB physical footprint / 226 MB RSS. At one hour, `vmmap` still showed only about 11.1 MB resident across malloc zones, 80 KB of CG Image, and 32 KB of CoreAnimation. This rules out a simple monotonic idle-time growth in this controlled run; it does not explain the old process, whose UI history and exact executable were not established. A production change should wait for the 100+ MB report to be matched to a specific metric, process/version, and menu-bar-only interaction history.
 
-### User-provided Activity Monitor screenshot (unmatched process)
+### Post-popover and permission interaction sample
 
-The user supplied an Activity Monitor Memory-tab screenshot showing a `Status Trio` row at **111.9 MB** and **4 threads**. The screenshot confirms the reported Activity Monitor reading, but the PID, app version, and capture time are not visible. During the current live check, Activity Monitor showed PID 75578 at 18.1 MB; `top` showed 18 MB with 4–6 threads across successive reads, and `footprint` showed 18 MB current / 18 MB lifetime peak. The process path is `dist/StatusTrio.app` (v1.3.2 build 15). Because the screenshot does not identify its PID or version, it cannot be matched to this live process or to the controlled one-hour soak. Capture the PID and `footprint` output while the Activity Monitor row is still above 100 MB to identify whether this is another process/build or a different measurement state.
+After the one-hour clean-idle soak, the user opened and closed the status popover and handled Wi-Fi and Bluetooth permissions, then ran the same process checks. The process remained PID 75578 (base v1.3.2 build 15 from `dist/StatusTrio.app`):
+
+| Sample | Process elapsed | RSS | `footprint` current / peak | Key details |
+|---|---:|---:|---:|---|
+| Before interaction, clean idle | 1:02:23 | 62,816 KB | 18 / 18.2 MB | No Settings, popover, or Dock UI had been opened in this soak. |
+| User command after popover/permission interaction | 1:19:02 | 178,528 KB | 81 / 383 MB | Malloc Small 56 MB; IOSurface 3.5 MB; owned graphics 2.2 MB. |
+| Follow-up samples, 23:15–23:17 | 1:21–1:23 | 178,432–178,464 KB | 81 / 383 MB | Closed UI; footprint stayed at 81 MB for about two minutes. |
+
+`vmmap -summary` at elapsed 1:20:16 reported 80.7 MB physical footprint. The default malloc zone had 54.0 MB resident, including 28.2 MB allocated and 25.9 MB fragmentation (48%). `Malloc Small` resident was 47.0 MB; additional allocations were in `Malloc Small (empty)`, graphics, IOSurface, and image regions. The interaction sequence therefore correlates with a persistent same-process increase from 18 MB to 81 MB, but it combines popover use with permission handling and cannot assign the growth to one trigger.
+
+The Activity Monitor screenshot shows 111.9 MB and four threads, but its PID and capture time are not visible. In a later live read, Activity Monitor showed PID 75578 at 95.5 MB while `top` and `footprint` reported about 81 MB. The 111.9 MB screenshot should therefore be treated as a user-observed Activity Monitor value, not as a directly paired footprint sample. An Allocations trace attempt against PID 75578 failed to attach, so no allocation call stacks are available yet.
+
+The current code intentionally keeps Bluetooth monitoring active after popover close so connected-device names stay warm; `BluetoothPermissionTimingTests.testEnabledBluetoothMonitorSurvivesPopupClose` pins that behavior. This is a concrete idle-lifecycle candidate because Bluetooth is not part of the menu-bar icon, but changing it trades instant device names on reopen for lower hidden-state work. A focused follow-up should isolate popover-only from permission handling, then measure whether stopping that monitor on close lowers the retained heap before changing the lifecycle contract.
