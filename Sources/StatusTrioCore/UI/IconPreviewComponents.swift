@@ -296,17 +296,49 @@ struct DockIconTile: View {
     var size: CGFloat = 44
     var highlightedPart: IconGuidePart?
     var highlightOpacity: Double = 1
+    /// Injected by tests; the app shares one bounded cache.
+    var previewCache: DockIconPreviewCache? = nil
 
-    var body: some View {
-        ZStack {
-            if let image = DockIconRenderer.image(
+    /// The raster length this tile's on-screen size needs, never the Dock's.
+    var pixelLength: Int {
+        DockIconPreviewMetrics.pixelLength(forPointSize: size)
+    }
+
+    /// What the tile draws, identified exactly like the Dock path identifies its
+    /// own rasters. A body evaluation only looks this up.
+    @MainActor
+    var renderKey: DockIconRenderKey {
+        DockIconRenderKey(
+            status: status,
+            options: batteryOptions,
+            connectionOptions: connectionOptions,
+            volumeOptions: volumeOptions,
+            bluetoothAudioOptions: bluetoothAudioOptions,
+            backgroundStyle: backgroundStyle,
+            pixelLength: pixelLength
+        )
+    }
+
+    /// The single place this tile resolves its bitmap.
+    @MainActor
+    var previewImage: NSImage? {
+        let cache = previewCache ?? DockIconPreviewCache.shared
+        return cache.image(for: renderKey) {
+            DockIconRenderer.image(
                 status: status,
                 options: batteryOptions,
                 connectionOptions: connectionOptions,
                 volumeOptions: volumeOptions,
                 bluetoothAudioOptions: bluetoothAudioOptions,
-                backgroundStyle: backgroundStyle
-            ) {
+                backgroundStyle: backgroundStyle,
+                pixelLength: pixelLength
+            )
+        }
+    }
+
+    var body: some View {
+        ZStack {
+            if let image = previewImage {
                 Image(nsImage: image)
                     .resizable()
                     .interpolation(.high)

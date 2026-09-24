@@ -23,8 +23,10 @@ enum DockIconGlyphLayout {
 
 @MainActor
 enum DockIconRenderer {
+    /// The real Dock icon is a 512 px bitmap presented as a 256 pt 2x asset.
+    static let scale: CGFloat = 2
     static let logicalSize: CGFloat = 256
-    static let pixelSize = 512
+    nonisolated static let pixelSize = 512
 
     // Geometry mirrors Support/AppIcon.svg.
     private static let bodyRect = CGRect(x: 64, y: 64, width: 896, height: 896)
@@ -85,12 +87,15 @@ enum DockIconRenderer {
         connectionOptions: ConnectionIconOptions = .standard,
         volumeOptions: VolumeIconOptions = .standard,
         bluetoothAudioOptions: BluetoothAudioIconOptions = .standard,
-        backgroundStyle: DockIconBackgroundStyle = .dark
+        backgroundStyle: DockIconBackgroundStyle = .dark,
+        pixelLength: Int = DockIconRenderer.pixelSize
     ) -> NSImage? {
+        guard pixelLength > 0, pixelLength <= pixelSize else { return nil }
+
         let palette = palette(for: backgroundStyle)
 
-        let canvasLength = CGFloat(pixelSize)
-        guard let context = scratchContext() else { return nil }
+        let canvasLength = CGFloat(pixelLength)
+        guard let context = scratchContext(pixelLength: pixelLength) else { return nil }
 
         // Reuse one bitmap buffer across renders: the Dock icon is redrawn on
         // every status change, and allocating a fresh bitmap each time leaves the
@@ -138,30 +143,56 @@ enum DockIconRenderer {
 
         guard let output = context.makeImage() else { return nil }
 
+        let logicalLength = CGFloat(pixelLength) / Self.scale
         let representation = NSBitmapImageRep(cgImage: output)
-        representation.size = NSSize(width: logicalSize, height: logicalSize)
+        representation.size = NSSize(width: logicalLength, height: logicalLength)
 
-        let image = NSImage(size: NSSize(width: logicalSize, height: logicalSize))
+        let image = NSImage(size: NSSize(width: logicalLength, height: logicalLength))
         image.addRepresentation(representation)
         image.isTemplate = false
         return image
     }
 
-    private static var reusedContext: CGContext?
+    /// One reusable bitmap per pixel length: the Dock icon is redrawn on every
+    /// status change and a preview tile is redrawn whenever its pane
+    /// re-evaluates, so allocating a fresh buffer each time leaves the freed
+    /// pages in the process.
+    private static var reusedContexts: [Int: CGContext] = [:]
+    private static var reusedContextOrder: [Int] = []
+    /// The 512 px Dock raster plus the handful of preview lengths the Settings
+    /// pane and the icon guide use.
+    private static let maximumReusedContexts = 6
 
-    private static func scratchContext() -> CGContext? {
-        if let reusedContext { return reusedContext }
+    private static func scratchContext(pixelLength: Int) -> CGContext? {
+        if let reused = reusedContexts[pixelLength] {
+            touchScratchContext(pixelLength)
+            return reused
+        }
+
         let context = CGContext(
             data: nil,
-            width: pixelSize,
-            height: pixelSize,
+            width: pixelLength,
+            height: pixelLength,
             bitsPerComponent: 8,
-            bytesPerRow: pixelSize * 4,
-            space: CGColorSpaceCreateDeviceRGB(),
+            bytesPerRow: pixelLength * 4,
+            space: colorSpace,
             bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
         )
-        reusedContext = context
+        guard let context else { return nil }
+
+        reusedContexts[pixelLength] = context
+        touchScratchContext(pixelLength)
+
+        while reusedContextOrder.count > maximumReusedContexts {
+            let oldest = reusedContextOrder.removeFirst()
+            reusedContexts[oldest] = nil
+        }
         return context
+    }
+
+    private static func touchScratchContext(_ pixelLength: Int) {
+        reusedContextOrder.removeAll { $0 == pixelLength }
+        reusedContextOrder.append(pixelLength)
     }
 
     private static func roundedRect(_ rect: CGRect, cornerRadius: CGFloat) -> CGPath {

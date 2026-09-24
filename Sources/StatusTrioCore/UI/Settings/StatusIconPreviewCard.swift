@@ -183,8 +183,25 @@ struct DockIconPreviewTile: View {
     @ObservedObject var statusStore: SystemStatusStore
     var size: CGFloat = 44
     var overrideStyle: DockIconBackgroundStyle? = nil
+    var previewCache: DockIconPreviewCache? = nil
 
     var body: some View {
+        tile
+            .animation(reduceMotion ? nil : .easeInOut(duration: 0.15), value: store.batteryIconOptions)
+            .animation(reduceMotion ? nil : .easeInOut(duration: 0.15), value: store.connectionIconOptions)
+            .animation(reduceMotion ? nil : .easeInOut(duration: 0.15), value: store.volumeIconOptions)
+            .animation(reduceMotion ? nil : .easeInOut(duration: 0.15), value: store.bluetoothAudioIconOptions)
+            .accessibilityHidden(true)
+    }
+
+    @MainActor
+    var renderKey: DockIconRenderKey { tile.renderKey }
+
+    @MainActor
+    var previewImage: NSImage? { tile.previewImage }
+
+    /// The tile the body renders, so a test reads exactly the key the body uses.
+    private var tile: DockIconTile {
         DockIconTile(
             status: MenuBarStatus(snapshot: statusStore.snapshot),
             batteryOptions: store.batteryIconOptions,
@@ -192,13 +209,9 @@ struct DockIconPreviewTile: View {
             volumeOptions: store.volumeIconOptions,
             bluetoothAudioOptions: store.bluetoothAudioIconOptions,
             backgroundStyle: resolvedBackgroundStyle,
-            size: size
+            size: size,
+            previewCache: previewCache
         )
-        .animation(reduceMotion ? nil : .easeInOut(duration: 0.15), value: store.batteryIconOptions)
-        .animation(reduceMotion ? nil : .easeInOut(duration: 0.15), value: store.connectionIconOptions)
-        .animation(reduceMotion ? nil : .easeInOut(duration: 0.15), value: store.volumeIconOptions)
-        .animation(reduceMotion ? nil : .easeInOut(duration: 0.15), value: store.bluetoothAudioIconOptions)
-        .accessibilityHidden(true)
     }
 
     private var resolvedBackgroundStyle: DockIconBackgroundStyle {

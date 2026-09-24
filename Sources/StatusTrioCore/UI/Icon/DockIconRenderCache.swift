@@ -1,6 +1,10 @@
-/// Identifies what the Dock icon actually draws, so signal noise that cannot
-/// change a pixel (a different RSSI inside the same bar count, a different volume
-/// inside the same dot count) does not trigger another render.
+/// Identifies what a Dock-icon raster actually contains, so signal noise that
+/// cannot change a pixel (a different RSSI inside the same bar count, a
+/// different volume inside the same dot count) does not trigger another render.
+///
+/// The raster's pixel length is part of the identity: the Dock icon and a
+/// preview tile of the same state are different bitmaps, and serving one for the
+/// other would either blur the Dock or waste a megabyte on a 30 pt tile.
 struct DockIconRenderKey: Equatable, Hashable {
     let batteryPercentage: Int
     let gapContent: BatteryGapContent
@@ -16,6 +20,7 @@ struct DockIconRenderKey: Equatable, Hashable {
     let bluetoothAudioOptions: BluetoothAudioIconOptions
     let bluetoothAudioDeviceIcon: AudioOutputDeviceIconSource?
     let backgroundStyle: DockIconBackgroundStyle
+    let pixelLength: Int
 
     init(
         status: MenuBarStatus,
@@ -23,7 +28,8 @@ struct DockIconRenderKey: Equatable, Hashable {
         connectionOptions: ConnectionIconOptions,
         volumeOptions: VolumeIconOptions = .standard,
         bluetoothAudioOptions: BluetoothAudioIconOptions = .standard,
-        backgroundStyle: DockIconBackgroundStyle
+        backgroundStyle: DockIconBackgroundStyle,
+        pixelLength: Int = DockIconRenderer.pixelSize
     ) {
         self.batteryPercentage = status.battery.percentage
         self.gapContent = StatusMappings.batteryGapContent(
@@ -54,6 +60,7 @@ struct DockIconRenderKey: Equatable, Hashable {
             ? status.volume.currentDevice.map { AudioOutputDeviceIcon.source(for: $0) }
             : nil
         self.backgroundStyle = backgroundStyle
+        self.pixelLength = pixelLength
     }
 
     private static func clampedVolume(_ scalar: Double) -> Double? {
