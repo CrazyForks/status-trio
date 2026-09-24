@@ -107,7 +107,7 @@ To compare the base and preview-optimized code on the same machine with the same
 | Base v1.3.2 (15) | 20:05:39 | 2:19 | 61,888 KB | 17 / 17 MB | 17 MB | 9.5 MB | 80 KB | not listed | 32 KB |
 | Candidate v1.3.3 (16) | 20:08:21 | 2:19 | 58,304 KB | 17 / 17 MB | 17 MB | 9.4 MB | 80 KB | not listed | 32 KB |
 
-The cold-idle physical footprint is unchanged at the tool's 1 MB display precision, with no new graphics footprint visible. This is consistent with the preview cache being lazy and having no idle Dock allocation when Settings and the guide are unopened. An earlier 44 MB reading used a fresh, different bundle ID and occurred while the Mac was locked, so the UI state and preferences were not controlled; it is excluded from this comparison. The original 17 MB sample and this repeat also remain below 100 MB physical footprint, while RSS is about 58–62 MB. If the reported “100 MB” comes from another metric or a post-Settings scenario, compare that same display and interaction state separately.
+The cold-idle physical footprint is unchanged at the tool's 1 MB display precision, with no new graphics footprint visible. This is consistent with the preview cache being lazy and having no idle Dock allocation when Settings and the guide are unopened. An earlier 44 MB reading used a fresh, different bundle ID and occurred while the Mac was locked, so the UI state and preferences were not controlled; it is excluded from this comparison. The original 17 MB sample and this repeat also remain below 100 MB physical footprint, while RSS is about 58–62 MB. The later one-hour base soak is recorded below.
 
 ### Candidate Settings App Icon interaction sample (single run, user-confirmed)
 
@@ -133,4 +133,17 @@ Because the preceding candidate process had gone through a Settings interaction,
 | 21:43:24 | 2:43 | 62,528 KB | 18 / 18 MB | 18 / 10.9 MB | Malloc Small 10 MB; CG Image 80 KB; CoreAnimation 32 KB; CG Raster Data not listed. |
 | 21:51:41 | 11:00 | 62,608 KB | 18 / 18 MB | 18 / 10.9 MB | Malloc Small 10.1 MB; CG Image 80 KB; CoreAnimation 32 KB; CG Raster Data not listed. |
 
-Repeated reads between the table rows stayed at 17–18 MB physical footprint and 62.0–62.7 MB RSS. No upward trend appeared over 11 minutes. On the same machine, the base v1.3.2 cold-idle sample was 17 MB footprint / 61,888 KB RSS at 2:19, while the first v1.3.3 candidate sample was 17 MB / 58,304 KB at 2:19. This supports that the preview work does not add meaningful memory while Settings and Dock previews are never opened; it also means a report of over 100 MB has not been reproduced in a fresh menu-bar-only process. Continue a longer idle run only if the user's reading is confirmed as physical footprint or if the clean process crosses 100 MB later.
+Repeated reads between the table rows stayed at 17–18 MB physical footprint and 62.0–62.7 MB RSS. No upward trend appeared over 11 minutes. On the same machine, the base v1.3.2 cold-idle sample was 17 MB footprint / 61,888 KB RSS at 2:19, while the first v1.3.3 candidate sample was 17 MB / 58,304 KB at 2:19. This supports that the preview work does not add meaningful memory while Settings and Dock previews are never opened. The later one-hour base soak below checks the earlier high reading at the same process age.
+
+### Clean base menu-bar-only idle soak (60 minutes)
+
+To check whether the earlier 129 MB sample at process age 53:56–54:18 could be reproduced by long idle time alone, the base v1.3.2 (15) app was relaunched from the same `dist/StatusTrio.app`, with `appIconPlacement=menuBar`. No popover, Settings window, or Dock UI was opened. PID 75578 remained alive throughout the run, launched at 21:53:40 CST. The Activity Monitor process row was also refreshed during the run and showed about 17.9 MB of Actual Memory.
+
+| Local sample time (CST) | Elapsed | RSS | `footprint` current / peak | `vmmap` physical / peak | Malloc Small resident | Total malloc-zone resident |
+|---|---:|---:|---:|---:|---:|---:|
+| 22:03:55 | 10:15 | 62,784 KB | 18 / 18 MB | 18 MB / 18 MB | 10.2 MB | 11.0 MB |
+| 22:47:41 | 53:58 | 62,816 KB | 18 / 18 MB | 18.0 MB / 18.2 MB | 9,824 KB | 11.1 MB |
+| 22:48:13 | 54:33 | 62,832 KB | 18 / 18 MB | — | — | — |
+| 22:56:03 | 1:02:23 | 62,816 KB | 18 / 18 MB | 18.0 MB / 18.2 MB | 9,824 KB | 11.1 MB |
+
+Repeated five-minute reads through the run stayed at 18 MB physical footprint and roughly 62.4–62.9 MB RSS. The 54-minute comparison point remained at 18 MB, so elapsed idle time alone did not reproduce the earlier 129 MB physical footprint / 226 MB RSS. At one hour, `vmmap` still showed only about 11.1 MB resident across malloc zones, 80 KB of CG Image, and 32 KB of CoreAnimation. This rules out a simple monotonic idle-time growth in this controlled run; it does not explain the old process, whose UI history and exact executable were not established. A production change should wait for the 100+ MB report to be matched to a specific metric, process/version, and menu-bar-only interaction history.
