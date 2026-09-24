@@ -174,6 +174,16 @@ struct AudioInputVolumeDraft {
         receiveSystemScalar(scalar)
     }
 
+    func accessibilityValue(systemScalar: Double?, locale: Locale) -> String {
+        guard let systemScalar, systemScalar.isFinite, (0...1).contains(systemScalar) else {
+            return "—"
+        }
+        let displayedValue = isEditing ? value : systemScalar
+        return displayedValue.formatted(
+            .percent.precision(.fractionLength(0)).locale(locale)
+        )
+    }
+
     private static func displayValue(for scalar: Double?) -> Double {
         guard let scalar, scalar.isFinite, (0...1).contains(scalar) else { return 0 }
         return scalar
@@ -237,11 +247,9 @@ struct AudioInputControlsView: View {
     }
 
     private var sliderAccessibilityValue: String {
-        guard volumeDraft.isEditing else {
-            return presentation.volumeAccessibilityValue
-        }
-        return volumeDraft.value.formatted(
-            .percent.precision(.fractionLength(0)).locale(localization.resolvedLanguage.locale)
+        volumeDraft.accessibilityValue(
+            systemScalar: status.scalar,
+            locale: localization.resolvedLanguage.locale
         )
     }
 

@@ -22,6 +22,21 @@ final class AudioInputControlsViewTests: XCTestCase {
         XCTAssertTrue(controls.contains(".audioInputVolumeUnavailable"))
     }
 
+    func testSliderAccessibilityValueUsesReadbackAwareDraftPresentation() throws {
+        let sourceURL = packageRoot
+            .appendingPathComponent("Sources/StatusTrioCore/UI/AudioInputControlsView.swift")
+        let source = try String(contentsOf: sourceURL, encoding: .utf8)
+        let valueStart = try XCTUnwrap(source.range(of: "private var sliderAccessibilityValue: String {"))
+        let valueEnd = try XCTUnwrap(source.range(of: "    var body: some View {", range: valueStart.upperBound..<source.endIndex))
+        let accessibilityValue = String(source[valueStart.lowerBound..<valueEnd.lowerBound])
+
+        XCTAssertTrue(accessibilityValue.contains("volumeDraft.accessibilityValue("))
+        XCTAssertTrue(
+            accessibilityValue.contains("systemScalar: status.scalar"),
+            "the drag draft must not bypass current system readback availability"
+        )
+    }
+
     private var packageRoot: URL {
         URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()

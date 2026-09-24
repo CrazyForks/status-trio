@@ -192,6 +192,28 @@ final class AudioInputPresentationTests: XCTestCase {
         XCTAssertEqual(unreadable.visibleVolumeValue, "—")
     }
 
+    func testVolumeDraftAccessibilityValueHidesDragValueWhenReadbackBecomesUnavailable() {
+        let locale = Locale(identifier: "en_US")
+        var draft = AudioInputVolumeDraft()
+        draft.receiveSystemScalar(0.4)
+        draft.setEditing(true)
+        draft.setSliderValue(0.8, systemScalar: 0.4) { _ in }
+
+        XCTAssertEqual(
+            draft.accessibilityValue(systemScalar: 0.4, locale: locale),
+            0.8.formatted(.percent.precision(.fractionLength(0)).locale(locale))
+        )
+
+        for scalar in [nil, -0.1, 1.1] as [Double?] {
+            draft.receiveSystemScalar(scalar)
+            XCTAssertEqual(
+                draft.accessibilityValue(systemScalar: scalar, locale: locale),
+                "—",
+                "scalar=\(String(describing: scalar)) must not expose the in-progress draft"
+            )
+        }
+    }
+
     func testVolumeDraftReconcilesDifferingSystemReadbackWhenDragEnds() {
         var draft = AudioInputVolumeDraft()
         draft.receiveSystemScalar(0.2)
