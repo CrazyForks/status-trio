@@ -122,3 +122,15 @@ The optimized v1.3.3 (16) worktree app was launched with the existing `menuBar` 
 The open-page sample was about 18 MB above the earlier idle observation in both physical footprint and RSS. Within roughly a minute of closing, physical footprint fell by about 5 MB and RSS by about 2 MB, but neither returned to the earlier idle values. The first idle sample and Settings sample are from the same PID and binary, but they are separated by about 49 minutes with no measurements in between; this is not a tightly paired before/after run and does not establish that opening Settings caused the entire difference. The candidate's 71 MB open / 66 MB post-close physical footprint is below 100 MB, while its RSS remains above 100 MB. The earlier base-app Settings observations (71–90 MB physical) had unknown window-open timing, so neither comparison proves a memory reduction from the preview change.
 
 The desktop controller could not attach to this menu-bar-only app, so the user confirmed the App Icon page and close state manually; process metrics were collected directly from the same PID. For causal before/after evidence, repeat the same interaction with the base v1.3.2 binary under the same preference and OS, and use identical open duration and post-close sampling windows. Current evidence supports the expected lazy preview allocation in cold idle and a modest observed drop after close, but does not establish the optimized build's Settings memory savings against base.
+
+### Clean menu-bar-only idle recheck (candidate, no UI opened)
+
+Because the preceding candidate process had gone through a Settings interaction, it was terminated normally and a new process was launched from the same optimized worktree app. `appIconPlacement` was verified as `menuBar`. During this run, no Settings, popover, or Dock UI interaction was issued. The app remained PID 74858 for the full sample.
+
+| Local time (CST) | Process elapsed | RSS | `footprint` current / peak | `vmmap -summary` physical / malloc-zone resident | Notes |
+|---|---:|---:|---:|---:|---|
+| 21:40:56 | 0:15 | 62,160 KB | 17 / 17 MB | not captured | First sample after launch. |
+| 21:43:24 | 2:43 | 62,528 KB | 18 / 18 MB | 18 / 10.9 MB | Malloc Small 10 MB; CG Image 80 KB; CoreAnimation 32 KB; CG Raster Data not listed. |
+| 21:51:41 | 11:00 | 62,608 KB | 18 / 18 MB | 18 / 10.9 MB | Malloc Small 10.1 MB; CG Image 80 KB; CoreAnimation 32 KB; CG Raster Data not listed. |
+
+Repeated reads between the table rows stayed at 17–18 MB physical footprint and 62.0–62.7 MB RSS. No upward trend appeared over 11 minutes. On the same machine, the base v1.3.2 cold-idle sample was 17 MB footprint / 61,888 KB RSS at 2:19, while the first v1.3.3 candidate sample was 17 MB / 58,304 KB at 2:19. This supports that the preview work does not add meaningful memory while Settings and Dock previews are never opened; it also means a report of over 100 MB has not been reproduced in a fresh menu-bar-only process. Continue a longer idle run only if the user's reading is confirmed as physical footprint or if the clean process crosses 100 MB later.
