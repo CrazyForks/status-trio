@@ -648,4 +648,19 @@ Release workflow run [`35997423299`](https://github.com/lingyired/status-trio/ac
 
 修复：可见 Dock 测试改为轮询至渲染条件满足（最多 5 秒，沿用该测试套件已有 helper）；隐藏 Dock 测试等待 2 秒后再确认没有渲染；静态 Dock 电池测试的轮询期限从 1 秒延长到 5 秒。只调整测试等待，不改变产品更新延迟或渲染行为。
 
-验证：`swift test --filter AppIconControllerTests`（28 项）与 `swift test --filter ChargingEffectControllerTests`（2 项）本机通过；全量 `swift test` 通过（349 项 / 59 suites）；`swift build -c release` 通过；`git diff --check` 通过。第二次 macOS 26 预检待完成，完成后将 run ID 与结果补记于此。
+验证：`swift test --filter AppIconControllerTests`（28 项）与 `swift test --filter ChargingEffectControllerTests`（2 项）本机通过；全量 `swift test` 通过（349 项 / 59 suites）；`swift build -c release` 通过；`git diff --check` 通过。第二次预检发现另一项独立的像素基准问题，见下节。
+
+## 35998205381：静态图标哈希只覆盖了本机 CoreGraphics 输出
+
+第二次 `publish=false` 预检 run [`35998205381`](https://github.com/lingyired/status-trio/actions/runs/35998205381)
+（`version=1.3.3`、`build=16`）通过版本与 appcast 检查，但 `Run tests` 因
+`ChargingEffectRenderingTests.nilPhaseKeepsThePreEffectStaticPixelFingerprint` 失败：测试的本机预期值是
+`224850873cf3d786d2fe246a1b1f15c092e34297dfb944832284b2fbf671bd74`，CI 同一静态渲染得到
+`4d795d40269a978007765c4d4d20922982b140207d34d7ddcaeb25368c9a5591`。全量测试中的其他 348 项通过。
+
+根因：该测试把 macOS 27 本地 CoreGraphics 的完整 40×40 像素哈希当作跨平台唯一基准；macOS 26/Xcode 26.6
+对相同的 `StatusIconRenderer` 输入，在抗锯齿边缘产生不同字节。预览改动不修改 `StatusIconRenderer`，但此前没有 macOS 26 的该测试基准。
+
+修复：测试允许两个已观测的静态哈希（macOS 26 CI 与 macOS 27 本机），其他输出仍须精确匹配其中一个基准；这样保留像素回归检测，同时避免跨 OS 抗锯齿差异造成假失败。
+
+验证：修改后的 `swift test --filter ChargingEffectRenderingTests`（7 项）通过；全量 `swift test` 通过（349 项 / 59 suites）；`swift build -c release` 通过；第三次 `publish=false` 预检待完成，结果随后补记。
