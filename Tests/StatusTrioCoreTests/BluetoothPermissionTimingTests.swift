@@ -64,7 +64,7 @@ final class BluetoothPermissionTimingTests: XCTestCase {
         XCTAssertEqual(stateMonitor.stopCount, 1)
     }
 
-    func testEnabledBluetoothMonitorSurvivesPopupClose() {
+    func testExplicitlyEnabledBluetoothMonitorSurvivesPopupClose() {
         let stateMonitor = BluetoothStateMonitorSpy(authorization: .notDetermined)
         let bluetoothController = BluetoothDeviceController(
             stateMonitor: stateMonitor,
@@ -93,9 +93,9 @@ final class BluetoothPermissionTimingTests: XCTestCase {
     }
 
     /// An authorized app has nothing left to ask for, so opening the popover
-    /// refreshes the connected device names the summary reports. This is what
-    /// makes the row show device names instead of "open details" after launch.
-    func testOpeningThePopoverActivatesBluetoothWhenAlreadyAuthorized() {
+    /// temporarily starts monitoring to refresh device names. Closing the
+    /// popover releases that temporary activation.
+    func testPopoverOnlyBluetoothActivationStopsWhenPopoverCloses() {
         let stateMonitor = BluetoothStateMonitorSpy(authorization: .allowed)
         let bluetoothController = BluetoothDeviceController(
             stateMonitor: stateMonitor,
@@ -111,11 +111,11 @@ final class BluetoothPermissionTimingTests: XCTestCase {
 
         store.setPopoverVisible(true)
         XCTAssertEqual(stateMonitor.startCount, 1)
-        // Monitoring survives the popover, so its device names stay warm.
         XCTAssertTrue(bluetoothController.isActive)
 
-        store.closePopoverDetails()
-        XCTAssertEqual(stateMonitor.stopCount, 0)
+        store.setPopoverVisible(false)
+        XCTAssertEqual(stateMonitor.stopCount, 1)
+        XCTAssertFalse(bluetoothController.isActive)
     }
 
     /// Permission is only ever requested by the user's tap, never by the
@@ -166,9 +166,7 @@ final class BluetoothPermissionTimingTests: XCTestCase {
     }
 
     /// The popover is what holds the Bluetooth surface, and closing it must stop
-    /// the poll while the already-running state monitor stays warm: the summary
-    /// row still reports device state the next time it opens, and starting the
-    /// monitor is what raises the permission prompt.
+    /// the poll and any state monitor started only for that popover.
     func testClosingThePopoverStopsTheSafetyNetPoll() {
         let stateMonitor = BluetoothStateMonitorSpy(authorization: .allowed)
         let bluetoothController = BluetoothDeviceController(
@@ -195,14 +193,16 @@ final class BluetoothPermissionTimingTests: XCTestCase {
         store.setPopoverVisible(false)
         XCTAssertFalse(bluetoothController.hasVisibleSurface)
         XCTAssertFalse(bluetoothController.isSafetyNetPolling)
+        XCTAssertEqual(stateMonitor.stopCount, 1)
 
         store.setPopoverVisible(true)
+        XCTAssertEqual(stateMonitor.startCount, 2)
         stateMonitor.emit(authorization: .allowed, managerState: .poweredOn)
         XCTAssertTrue(bluetoothController.isSafetyNetPolling)
-        store.closePopoverDetails()
+        store.setPopoverVisible(false)
         XCTAssertFalse(bluetoothController.hasVisibleSurface)
         XCTAssertFalse(bluetoothController.isSafetyNetPolling)
-        XCTAssertEqual(stateMonitor.stopCount, 0, "the state monitor is not what the popover owns")
+        XCTAssertEqual(stateMonitor.stopCount, 2)
     }
 }
 

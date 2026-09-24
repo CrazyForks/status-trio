@@ -107,6 +107,7 @@ final class SystemStatusStore: ObservableObject {
     @Published private(set) var isDisplayAsleep = false
     private var isSettingsVisible = false
     private var isBluetoothEnabled = false
+    private var isBluetoothActivatedForPopover = false
     /// Whether the wired link panel is the open detail panel. The controller
     /// itself follows the connection; this only records that the panel is on
     /// screen, which is what decides whether the built popover content can be
@@ -420,6 +421,7 @@ final class SystemStatusStore: ObservableObject {
     func setBluetoothEnabled(_ enabled: Bool) {
         guard !hasStopped else { return }
         isBluetoothEnabled = enabled
+        isBluetoothActivatedForPopover = false
         if enabled {
             bluetoothDevices.activate()
         } else {
@@ -432,16 +434,19 @@ final class SystemStatusStore: ObservableObject {
     // second literal here would let a rename silently stop the poll forever
     // with no compile error.
 
-    /// Enables the Bluetooth monitor when the popover opens, so the row can
-    /// report device names. Starting the monitor is what raises the system
-    /// permission prompt, so this only runs for an app that already holds the
-    /// grant; every other state is left for the row to report and for the
-    /// user's tap to resolve.
+    /// Temporarily enables Bluetooth monitoring while the popover is open, so
+    /// the row can report device names. Starting the monitor is what raises the
+    /// system permission prompt, so this only runs for an app that already
+    /// holds the grant. An explicit Settings toggle owns the monitor beyond the
+    /// popover lifetime; this activation does not.
     private func activateBluetoothForPopover() {
         guard BluetoothPanelActivation.shouldActivate(
             authorization: bluetoothDevices.authorization
         ) else { return }
-        setBluetoothEnabled(true)
+        if !isBluetoothEnabled {
+            isBluetoothActivatedForPopover = true
+            bluetoothDevices.activate()
+        }
         // The state monitor is already running for a granted app, and `activate`
         // is then a no-op, so the popover asks for its own read: an extra read
         // when the row opens. `refresh()` drops that request unless availability
@@ -474,6 +479,10 @@ final class SystemStatusStore: ObservableObject {
         guard visible else {
             clearWiFiNameResolution()
             bluetoothDevices.releaseVisibleSurface(BluetoothDeviceController.popoverSurfaceToken)
+            if isBluetoothActivatedForPopover {
+                isBluetoothActivatedForPopover = false
+                bluetoothDevices.deactivate()
+            }
             // A confirmation is answered inside the panel, so closing the panel
             // cancels an unanswered one. The popover retains its content view
             // controller after a close, which is why this belongs here rather
