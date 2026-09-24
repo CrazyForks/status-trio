@@ -22,6 +22,9 @@ enum SettingsMetrics {
     /// How far the selection ring is drawn outside its card: the gap plus the
     /// stroke, on every side.
     static let selectionRingInset: CGFloat = 5
+    /// Shared preview dimensions for the three-choice app icon settings.
+    static let appIconPictureOptionPreviewSize = CGSize(width: 64, height: 42)
+    static let appIconPictureOptionSpacing: CGFloat = 6
 }
 
 /// A titled, rounded card group for settings rows.
@@ -69,6 +72,30 @@ struct SettingsGroup<Content: View>: View {
                     .padding(.top, 1)
             }
         }
+    }
+}
+
+/// A full-width explanatory row separated from the setting controls above it.
+struct SettingsHintRow: View {
+    let text: String
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "info.circle")
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+                .accessibilityHidden(true)
+
+            Text(text)
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, SettingsMetrics.rowPaddingH)
+        .padding(.vertical, 8)
     }
 }
 
@@ -235,6 +262,7 @@ extension View {
 struct SettingsPictureRow<T: Hashable & Identifiable, Leading: View, Preview: View>: View {
     let title: String
     var subtitle: String? = nil
+    var optionSymbol: ((T) -> String?)? = nil
     @Binding var selection: T
     let options: [T]
     var previewSize: CGSize = CGSize(width: 68, height: 44)
@@ -248,7 +276,7 @@ struct SettingsPictureRow<T: Hashable & Identifiable, Leading: View, Preview: Vi
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .top, spacing: 12) {
+            HStack(alignment: .center, spacing: 12) {
                 if !(Leading.self == EmptyView.self) {
                     leading
                         .frame(width: SettingsMetrics.iconSize, height: SettingsMetrics.iconSize)
@@ -258,16 +286,13 @@ struct SettingsPictureRow<T: Hashable & Identifiable, Leading: View, Preview: Vi
                     Text(title)
                         .font(.system(size: 13, weight: .regular))
                     if let subtitle {
-                        Text(subtitle)
-                            .font(.system(size: 11))
-                            .foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
+                        subtitleText(subtitle)
                     }
                 }
 
                 Spacer(minLength: 12)
 
-                HStack(alignment: .top, spacing: 10) {
+                HStack(alignment: .top, spacing: SettingsMetrics.appIconPictureOptionSpacing) {
                     ForEach(options) { option in
                         let isSelected = selection == option
                         Button {
@@ -276,6 +301,11 @@ struct SettingsPictureRow<T: Hashable & Identifiable, Leading: View, Preview: Vi
                             VStack(spacing: 5) {
                                 preview(option)
                                     .frame(width: previewSize.width, height: previewSize.height)
+                                    .overlay(alignment: .topTrailing) {
+                                        if let symbol = optionSymbol?(option) {
+                                            optionSymbolBadge(symbol)
+                                        }
+                                    }
                                     .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 6, style: .continuous)
@@ -287,7 +317,7 @@ struct SettingsPictureRow<T: Hashable & Identifiable, Leading: View, Preview: Vi
                                 // wrap to two lines, so a long translation cannot
                                 // stretch the row or push the cards out of the group.
                                 Text(caption(option))
-                                    .font(.system(size: 11, weight: isSelected ? .semibold : .regular))
+                                    .font(.system(size: 11.5, weight: isSelected ? .semibold : .regular))
                                     .foregroundStyle(isSelected ? .primary : .secondary)
                                     .multilineTextAlignment(.center)
                                     .lineLimit(2)
@@ -333,9 +363,28 @@ struct SettingsPictureRow<T: Hashable & Identifiable, Leading: View, Preview: Vi
                 .accessibilityElement(children: .contain)
                 .accessibilityLabel(title)
             }
+
         }
         .padding(.horizontal, SettingsMetrics.rowPaddingH)
         .padding(.vertical, SettingsMetrics.rowPaddingV)
+    }
+
+    private func subtitleText(_ subtitle: String) -> some View {
+        Text(subtitle)
+            .font(.system(size: 11.5))
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private func optionSymbolBadge(_ symbol: String) -> some View {
+        Image(systemName: symbol)
+            .font(.system(size: 8, weight: .semibold))
+            .foregroundStyle(.primary)
+            .frame(width: 16, height: 16)
+            .background(.regularMaterial, in: Circle())
+            .overlay(Circle().strokeBorder(Color.primary.opacity(0.12), lineWidth: 0.5))
+            .padding(4)
+            .accessibilityHidden(true)
     }
 
     /// Left and right follow the reading direction: the option row mirrors in a
@@ -386,6 +435,7 @@ extension SettingsPictureRow where Leading == EmptyView {
     init(
         title: String,
         subtitle: String? = nil,
+        optionSymbol: ((T) -> String?)? = nil,
         selection: Binding<T>,
         options: [T],
         previewSize: CGSize = CGSize(width: 68, height: 44),
@@ -395,6 +445,7 @@ extension SettingsPictureRow where Leading == EmptyView {
         self.init(
             title: title,
             subtitle: subtitle,
+            optionSymbol: optionSymbol,
             selection: selection,
             options: options,
             previewSize: previewSize,
@@ -411,6 +462,7 @@ extension SettingsPictureRow where Leading == SettingsIcon {
         tint: Color = .accentColor,
         title: String,
         subtitle: String? = nil,
+        optionSymbol: ((T) -> String?)? = nil,
         selection: Binding<T>,
         options: [T],
         previewSize: CGSize = CGSize(width: 68, height: 44),
@@ -420,6 +472,7 @@ extension SettingsPictureRow where Leading == SettingsIcon {
         self.init(
             title: title,
             subtitle: subtitle,
+            optionSymbol: optionSymbol,
             selection: selection,
             options: options,
             previewSize: previewSize,
