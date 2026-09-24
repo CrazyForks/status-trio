@@ -127,6 +127,10 @@ struct AudioInputPresentation {
         status.muteState != .muted
     }
 
+    var isDefaultInputInUse: Bool {
+        status.isDefaultInputInUse == true
+    }
+
     var visibleVolumeValue: String {
         guard hasReadableVolume, let scalar = status.scalar else { return "—" }
         return scalar.formatted(.percent.precision(.fractionLength(0)).locale(locale))
@@ -296,10 +300,24 @@ struct AudioInputControlsView: View {
                 .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(localization.string(.audioInputTitle))
-                    .font(.headline)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
+                HStack(spacing: 7) {
+                    Text(localization.string(.audioInputTitle))
+                        .font(.headline)
+                        .foregroundStyle(presentation.isDefaultInputInUse ? Color.yellow : Color.primary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+
+                    if presentation.isDefaultInputInUse {
+                        Label(localization.string(.audioInputInUse), systemImage: "mic.fill")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 3)
+                            .background(Color.orange, in: Capsule())
+                            .accessibilityElement(children: .ignore)
+                            .accessibilityLabel(localization.string(.audioInputInUse))
+                    }
+                }
 
                 Text(defaultDeviceName)
                     .font(.subheadline)

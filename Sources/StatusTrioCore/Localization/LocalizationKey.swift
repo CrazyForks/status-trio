@@ -335,6 +335,7 @@ enum LocalizationKey: String, CaseIterable, Hashable, Sendable {
     case volumeAccessibilityLabel = "volume.accessibility.label"
 
     case audioInputTitle = "audioInput.title"
+    case audioInputInUse = "audioInput.inUse"
     case audioInputNoDefault = "audioInput.noDefault"
     case audioInputNoDevices = "audioInput.noDevices"
     case audioInputUnknownDevice = "audioInput.unknownDevice"

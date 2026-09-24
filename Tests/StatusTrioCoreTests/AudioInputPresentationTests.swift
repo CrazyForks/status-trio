@@ -62,6 +62,12 @@ final class AudioInputPresentationTests: XCTestCase {
         }
     }
 
+    func testInputUseBadgeAppearsOnlyForAConfirmedActiveDefaultInput() {
+        XCTAssertFalse(AudioInputPresentation(status: makeStatus(isDefaultInputInUse: nil)).isDefaultInputInUse)
+        XCTAssertFalse(AudioInputPresentation(status: makeStatus(isDefaultInputInUse: false)).isDefaultInputInUse)
+        XCTAssertTrue(AudioInputPresentation(status: makeStatus(isDefaultInputInUse: true)).isDefaultInputInUse)
+    }
+
     func testAccessibilityPositionIsAddedForDuplicateAndUnnamedDevices() {
         let first = AudioInputDevice(id: AudioDeviceID(1), uid: "first", name: "Studio Mic")
         let second = AudioInputDevice(id: AudioDeviceID(2), uid: "second", name: "Studio Mic")
@@ -260,7 +266,8 @@ final class AudioInputPresentationTests: XCTestCase {
         canSetMute: Bool = false,
         isRefreshing: Bool = false,
         isBusy: Bool = false,
-        error: AudioInputError? = nil
+        error: AudioInputError? = nil,
+        isDefaultInputInUse: Bool? = nil
     ) -> AudioInputStatus {
         AudioInputStatus(
             devices: devices,
@@ -272,7 +279,8 @@ final class AudioInputPresentationTests: XCTestCase {
             canSetMute: canSetMute,
             isRefreshing: isRefreshing,
             isBusy: isBusy,
-            error: error
+            error: error,
+            isDefaultInputInUse: isDefaultInputInUse
         )
     }
 }

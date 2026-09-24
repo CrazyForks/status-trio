@@ -61,6 +61,48 @@ final class AudioInputHardwareTests: XCTestCase {
     XCTAssertNil(reading.deviceName)
   }
 
+  func testReportsOnlyAnActiveInputStreamOnTheCurrentDefaultDevice() throws {
+    let hardware = CoreAudioInputHardware(
+      client: makeClient(
+        defaultID: 11,
+        activeInputUsage: AudioInputProcessDeviceUsage(
+          activeInputDeviceIDs: [22],
+          isComplete: true
+        )
+      )
+    )
+
+    XCTAssertFalse(try XCTUnwrap(hardware.read(includeDevices: true).isDefaultInputInUse))
+  }
+
+  func testActiveInputStreamOnTheCurrentDefaultDeviceIsReportedInUse() throws {
+    let hardware = CoreAudioInputHardware(
+      client: makeClient(
+        defaultID: 11,
+        activeInputUsage: AudioInputProcessDeviceUsage(
+          activeInputDeviceIDs: [11],
+          isComplete: true
+        )
+      )
+    )
+
+    XCTAssertTrue(try XCTUnwrap(hardware.read(includeDevices: true).isDefaultInputInUse))
+  }
+
+  func testIncompleteProcessSnapshotDoesNotClaimTheDefaultInputIsIdle() throws {
+    let hardware = CoreAudioInputHardware(
+      client: makeClient(
+        defaultID: 11,
+        activeInputUsage: AudioInputProcessDeviceUsage(
+          activeInputDeviceIDs: [],
+          isComplete: false
+        )
+      )
+    )
+
+    XCTAssertNil(try hardware.read(includeDevices: true).isDefaultInputInUse)
+  }
+
   func testInvalidDefaultIsNotSelectedButEligibleDevicesRemainAvailable() throws {
     let hardware = CoreAudioInputHardware(
       client: makeClient(defaultID: 99, deviceIDs: [11, 12])
@@ -602,6 +644,10 @@ final class AudioInputHardwareTests: XCTestCase {
     defaultID: AudioDeviceID? = 11,
     deviceIDs: [AudioDeviceID] = [11, 12, 13, 14, 15, AudioDeviceID(kAudioObjectUnknown)],
     devicesError: AudioInputHardwareError? = nil,
+    activeInputUsage: AudioInputProcessDeviceUsage? = AudioInputProcessDeviceUsage(
+      activeInputDeviceIDs: [],
+      isComplete: true
+    ),
     overrides: [AudioDeviceID: FakeDevice] = [:]
   ) -> FakeAudioInputPropertyClient {
     var devices: [AudioDeviceID: FakeDevice] = [
@@ -621,6 +667,7 @@ final class AudioInputHardwareTests: XCTestCase {
       deviceIDs: deviceIDs,
       defaultID: defaultID,
       devicesError: devicesError,
+      activeInputUsage: activeInputUsage,
       devices: devices
     )
   }
@@ -629,6 +676,7 @@ final class AudioInputHardwareTests: XCTestCase {
 private final class FakeAudioInputPropertyClient: AudioInputPropertyClient, @unchecked Sendable {
   let deviceIDs: [AudioDeviceID]
   let devicesError: AudioInputHardwareError?
+  let activeInputUsage: AudioInputProcessDeviceUsage?
   private(set) var defaultID: AudioDeviceID?
   private var devicesByID: [AudioDeviceID: FakeDevice]
   private(set) var writtenScalarElements: [AudioObjectPropertyElement] = []
@@ -644,11 +692,13 @@ private final class FakeAudioInputPropertyClient: AudioInputPropertyClient, @unc
     deviceIDs: [AudioDeviceID],
     defaultID: AudioDeviceID?,
     devicesError: AudioInputHardwareError?,
+    activeInputUsage: AudioInputProcessDeviceUsage?,
     devices: [AudioDeviceID: FakeDevice]
   ) {
     self.deviceIDs = deviceIDs
     self.defaultID = defaultID
     self.devicesError = devicesError
+    self.activeInputUsage = activeInputUsage
     self.devicesByID = devices
   }
 
@@ -658,6 +708,7 @@ private final class FakeAudioInputPropertyClient: AudioInputPropertyClient, @unc
   }
 
   func defaultInput() throws -> AudioDeviceID? { defaultID }
+  func activeInputProcessUsage() -> AudioInputProcessDeviceUsage? { activeInputUsage }
   func isDevice(_ id: AudioDeviceID) -> Bool { devicesByID[id]?.isDevice ?? false }
   func isAlive(_ id: AudioDeviceID) -> Bool? { devicesByID[id]?.isAlive }
   func isHidden(_ id: AudioDeviceID) -> Bool? { devicesByID[id]?.isHidden }

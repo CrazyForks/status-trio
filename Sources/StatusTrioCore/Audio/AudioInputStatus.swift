@@ -51,6 +51,22 @@ struct AudioInputReading: Equatable, Sendable {
   let canSetVolume: Bool
   let muteState: AudioInputMuteState?
   let canSetMute: Bool
+  var isDefaultInputInUse: Bool? = nil
+}
+
+struct AudioInputProcessDeviceUsage: Equatable, Sendable {
+  let activeInputDeviceIDs: Set<AudioDeviceID>
+  let isComplete: Bool
+
+  func isInUse(_ deviceID: AudioDeviceID) -> Bool? {
+    if activeInputDeviceIDs.contains(deviceID) { return true }
+    return isComplete ? false : nil
+  }
+}
+
+struct AudioInputUsageReading: Equatable, Sendable {
+  let defaultDeviceID: AudioDeviceID?
+  let isDefaultInputInUse: Bool?
 }
 
 struct AudioInputStatus: Equatable, Sendable {
@@ -64,6 +80,7 @@ struct AudioInputStatus: Equatable, Sendable {
   var isRefreshing: Bool
   var isBusy: Bool
   var error: AudioInputError?
+  var isDefaultInputInUse: Bool? = nil
 
   static let empty = Self(
     devices: [],
@@ -75,6 +92,7 @@ struct AudioInputStatus: Equatable, Sendable {
     canSetMute: false,
     isRefreshing: false,
     isBusy: false,
-    error: nil
+    error: nil,
+    isDefaultInputInUse: nil
   )
 }

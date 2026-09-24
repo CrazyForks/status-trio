@@ -168,6 +168,7 @@
 "volume.action.openSettings" = "Ouvrir les réglages du son";
 "volume.accessibility.label" = "Volume";
 "audioInput.title" = "Microphone";
+"audioInput.inUse" = "En cours d’utilisation";
 "audioInput.noDefault" = "Aucun périphérique d’entrée par défaut";
 "audioInput.noDevices" = "Aucun périphérique d’entrée disponible";
 "audioInput.unknownDevice" = "Périphérique d’entrée inconnu";

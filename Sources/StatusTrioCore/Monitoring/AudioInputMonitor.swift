@@ -111,7 +111,9 @@ final class AudioInputMonitor: AudioInputMonitoring {
   private let visibilityGate = AudioInputVisibilityGate()
   private var sessionGate: AudioInputSessionGate?
   private let commandTimeout: Duration
+  private let usagePollInterval: Duration
   private let sleep: @Sendable (Duration) async throws -> Void
+  private let usageSleep: @Sendable (Duration) async throws -> Void
 
   private var status = AudioInputStatus.empty
   private var isEnabled = false
@@ -133,10 +135,17 @@ final class AudioInputMonitor: AudioInputMonitoring {
   private var commandTimeoutTask: Task<Void, Never>?
   private var errorExpiryToken: UUID?
   private var errorExpiryTask: Task<Void, Never>?
+  private var usagePollTask: Task<Void, Never>?
+  private var usageReadID: UUID?
+  private var usageReadInFlight = false
 
   init(
     hardware: any AudioInputHardware = CoreAudioInputHardware(),
     commandTimeout: Duration = .seconds(2),
+    usagePollInterval: Duration = .seconds(1),
+    usageSleep: @escaping @Sendable (Duration) async throws -> Void = { duration in
+      try await Task.sleep(for: duration)
+    },
     sleep: @escaping @Sendable (Duration) async throws -> Void = { duration in
       try await Task.sleep(for: duration)
     }
@@ -149,6 +158,8 @@ final class AudioInputMonitor: AudioInputMonitoring {
     self.continuation = continuation
     self.worker = AudioInputWorker(hardware: hardware)
     self.commandTimeout = commandTimeout
+    self.usagePollInterval = usagePollInterval
+    self.usageSleep = usageSleep
     self.sleep = sleep
     continuation.yield(.empty)
   }
@@ -158,6 +169,7 @@ final class AudioInputMonitor: AudioInputMonitoring {
     if !enabled {
       sessionGate?.invalidate()
       sessionGate = nil
+      stopUsagePolling()
     }
     sessionGeneration &+= 1
     readGeneration &+= 1
@@ -196,11 +208,15 @@ final class AudioInputMonitor: AudioInputMonitoring {
           }
         }
       )
-      if isVisible { requestRefresh() }
+      if isVisible {
+        requestRefresh()
+        startUsagePolling()
+      }
     } else {
       worker.stopObservation()
       status.isRefreshing = false
       status.isBusy = false
+      status.isDefaultInputInUse = nil
       publish()
     }
   }
@@ -210,8 +226,12 @@ final class AudioInputMonitor: AudioInputMonitoring {
     visibilityGate.setVisible(visible)
     isVisible = visible
     if visible {
-      if isEnabled { requestRefresh() }
+      if isEnabled {
+        requestRefresh()
+        startUsagePolling()
+      }
     } else {
+      stopUsagePolling()
       readGeneration &+= 1
       isDirty = true
       refreshPending = false
@@ -220,6 +240,7 @@ final class AudioInputMonitor: AudioInputMonitoring {
       readInFlight = false
       readInFlightID = nil
       status.isRefreshing = false
+      status.isDefaultInputInUse = nil
       publish()
       startNextWorkIfPossible()
     }
@@ -287,6 +308,7 @@ final class AudioInputMonitor: AudioInputMonitoring {
     guard !isStopped else { return }
     sessionGate?.invalidate()
     sessionGate = nil
+    stopUsagePolling()
     isStopped = true
     isEnabled = false
     isVisible = false
@@ -425,6 +447,7 @@ final class AudioInputMonitor: AudioInputMonitoring {
     status.canSetVolume = false
     status.muteState = nil
     status.canSetMute = false
+    status.isDefaultInputInUse = nil
     status.isBusy = false
 
     queuedCommands.removeAll()
@@ -641,6 +664,89 @@ final class AudioInputMonitor: AudioInputMonitoring {
     status.canSetVolume = reading.canSetVolume
     status.muteState = reading.muteState
     status.canSetMute = reading.canSetMute
+    status.isDefaultInputInUse = reading.isDefaultInputInUse
+  }
+
+  private func startUsagePolling() {
+    guard usagePollTask == nil, isEnabled, isVisible, !isStopped else { return }
+    let expectedSession = sessionGeneration
+    usagePollTask = Task { [weak self] in
+      guard let self else { return }
+      while !Task.isCancelled {
+        do {
+          try await self.usageSleep(self.usagePollInterval)
+        } catch {
+          break
+        }
+        guard !Task.isCancelled else { break }
+        self.refreshDefaultInputUsage(sessionGeneration: expectedSession)
+      }
+      if self.sessionGeneration == expectedSession {
+        self.usagePollTask = nil
+      }
+    }
+  }
+
+  private func stopUsagePolling() {
+    usagePollTask?.cancel()
+    usagePollTask = nil
+    usageReadID = nil
+    usageReadInFlight = false
+  }
+
+  private func refreshDefaultInputUsage(sessionGeneration expectedSession: UInt64) {
+    guard isEnabled, isVisible, !isStopped,
+      sessionGeneration == expectedSession,
+      !usageReadInFlight,
+      let sessionGate
+    else { return }
+
+    let readID = UUID()
+    usageReadID = readID
+    usageReadInFlight = true
+    let visibilitySnapshot = visibilityGate.snapshot
+    worker.readDefaultInputUsage(
+      sessionGate: sessionGate,
+      visibilityGate: visibilityGate,
+      visibilitySnapshot: visibilitySnapshot
+    ) { [weak self] result in
+      Task { @MainActor [weak self] in
+        self?.defaultInputUsageCompleted(
+          result,
+          readID: readID,
+          sessionGeneration: expectedSession
+        )
+      }
+    }
+  }
+
+  private func defaultInputUsageCompleted(
+    _ result: Result<AudioInputUsageReading, AudioInputHardwareError>,
+    readID: UUID,
+    sessionGeneration expectedSession: UInt64
+  ) {
+    guard usageReadID == readID, isEnabled, isVisible, !isStopped,
+      expectedSession == sessionGeneration
+    else { return }
+    usageReadID = nil
+    usageReadInFlight = false
+
+    switch result {
+    case let .success(reading):
+      guard reading.defaultDeviceID == status.defaultDeviceID else {
+        guard status.isDefaultInputInUse != nil else { return }
+        status.isDefaultInputInUse = nil
+        publish()
+        return
+      }
+      guard reading.isDefaultInputInUse != status.isDefaultInputInUse else { return }
+      status.isDefaultInputInUse = reading.isDefaultInputInUse
+      publish()
+    case .failure:
+      guard status.isDefaultInputInUse != nil else { return }
+      status.isDefaultInputInUse = nil
+      publish()
+    }
   }
 
   private func showError(_ error: AudioInputError) {
@@ -778,6 +884,29 @@ private final class AudioInputWorker: @unchecked Sendable {
         reading: reading,
         observationError: observationError
       )))
+    }
+  }
+
+  func readDefaultInputUsage(
+    sessionGate: AudioInputSessionGate,
+    visibilityGate: AudioInputVisibilityGate,
+    visibilitySnapshot: AudioInputVisibilitySnapshot,
+    completion: @escaping @Sendable (Result<AudioInputUsageReading, AudioInputHardwareError>) -> Void
+  ) {
+    queue.async {
+      guard sessionGate.isActive, visibilityGate.isCurrentVisible(visibilitySnapshot) else { return }
+      do {
+        let reading = try self.hardware.readDefaultInputUsage()
+        guard sessionGate.isActive,
+          visibilityGate.isCurrentVisible(visibilitySnapshot)
+        else { return }
+        completion(.success(reading))
+      } catch {
+        guard sessionGate.isActive,
+          visibilityGate.isCurrentVisible(visibilitySnapshot)
+        else { return }
+        completion(.failure(Self.hardwareError(error)))
+      }
     }
   }
 

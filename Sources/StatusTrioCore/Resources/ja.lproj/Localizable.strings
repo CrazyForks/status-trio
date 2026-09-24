@@ -168,6 +168,7 @@
 "volume.action.openSettings" = "サウンド設定を開く";
 "volume.accessibility.label" = "音量";
 "audioInput.title" = "マイク";
+"audioInput.inUse" = "使用中";
 "audioInput.noDefault" = "デフォルトの入力デバイスがありません";
 "audioInput.noDevices" = "利用可能な入力デバイスがありません";
 "audioInput.unknownDevice" = "不明な入力デバイス";

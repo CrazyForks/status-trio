@@ -168,6 +168,7 @@
 "volume.action.openSettings" = "打开声音设置";
 "volume.accessibility.label" = "音量";
 "audioInput.title" = "麦克风";
+"audioInput.inUse" = "使用中";
 "audioInput.noDefault" = "未设置默认输入设备";
 "audioInput.noDevices" = "没有可用的输入设备";
 "audioInput.unknownDevice" = "未知输入设备";

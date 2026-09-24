@@ -88,7 +88,7 @@ final class LocalizationParityTests: XCTestCase {
             $0.hasPrefix("audioInput.") || $0 == "settings.popup.order.audioInput"
         }
         XCTAssertFalse(keys.isEmpty)
-        XCTAssertEqual(keys.count, 21, "Expected the audio-input order key and all 20 audioInput keys")
+        XCTAssertEqual(keys.count, 22, "Expected the audio-input order key and all 21 audioInput keys")
         for language in AppLanguage.allCases {
             let values = Dictionary(uniqueKeysWithValues: try entries(for: language).map { ($0.key, $0.value) })
             for key in keys {

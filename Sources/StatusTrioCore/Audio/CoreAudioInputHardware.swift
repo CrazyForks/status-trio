@@ -146,6 +146,7 @@ struct CoreAudioInputHardware: AudioInputHardware {
 
     let volume = readVolume(selectedID)
     let mute = readMute(selectedID)
+    let inputUsage = client.activeInputProcessUsage()?.isInUse(selectedID)
 
     return AudioInputReading(
       devices: devices,
@@ -154,7 +155,18 @@ struct CoreAudioInputHardware: AudioInputHardware {
       scalar: volume.scalar,
       canSetVolume: volume.scalar != nil && volume.canSet,
       muteState: mute.state,
-      canSetMute: mute.state != nil && mute.canSet
+      canSetMute: mute.state != nil && mute.canSet,
+      isDefaultInputInUse: inputUsage
+    )
+  }
+
+  func readDefaultInputUsage() throws -> AudioInputUsageReading {
+    guard let defaultID = try client.defaultInput(), isEligibleInput(defaultID) else {
+      return AudioInputUsageReading(defaultDeviceID: nil, isDefaultInputInUse: nil)
+    }
+    return AudioInputUsageReading(
+      defaultDeviceID: defaultID,
+      isDefaultInputInUse: client.activeInputProcessUsage()?.isInUse(defaultID)
     )
   }
 
@@ -594,6 +606,39 @@ private struct CoreAudioInputPropertyClient: AudioInputPropertyClient, AudioInpu
     return deviceID == AudioDeviceID(kAudioObjectUnknown) ? nil : deviceID
   }
 
+  func activeInputProcessUsage() -> AudioInputProcessDeviceUsage? {
+    guard let processIDs = readObjectIDs(
+      objectID: systemObjectID,
+      selector: kAudioHardwarePropertyProcessObjectList
+    ) else { return nil }
+
+    var activeInputDeviceIDs = Set<AudioDeviceID>()
+    var isComplete = true
+    for processID in processIDs {
+      guard let isRunningInput: UInt32 = readValue(
+        objectID: processID,
+        selector: kAudioProcessPropertyIsRunningInput
+      ), isRunningInput <= 1 else {
+        isComplete = false
+        continue
+      }
+      guard isRunningInput == 1 else { continue }
+      guard let deviceIDs = readObjectIDs(
+        objectID: processID,
+        selector: kAudioProcessPropertyDevices,
+        scope: kAudioDevicePropertyScopeInput
+      ) else {
+        isComplete = false
+        continue
+      }
+      activeInputDeviceIDs.formUnion(deviceIDs)
+    }
+    return AudioInputProcessDeviceUsage(
+      activeInputDeviceIDs: activeInputDeviceIDs,
+      isComplete: isComplete
+    )
+  }
+
   func isDevice(_ id: AudioDeviceID) -> Bool {
     guard
       let objectClass: AudioClassID = readValue(
@@ -849,6 +894,36 @@ private struct CoreAudioInputPropertyClient: AudioInputPropertyClient, AudioInpu
     )
     guard status == noErr, returnedSize == size else { return nil }
     return storage.load(as: Value.self)
+  }
+
+  private func readObjectIDs(
+    objectID: AudioObjectID,
+    selector: AudioObjectPropertySelector,
+    scope: AudioObjectPropertyScope = kAudioObjectPropertyScopeGlobal
+  ) -> [AudioObjectID]? {
+    var address = propertyAddress(selector: selector, scope: scope)
+    guard let requestedSize = try? propertyDataSize(objectID, address: &address),
+      Int(requestedSize) % MemoryLayout<AudioObjectID>.size == 0
+    else { return nil }
+    let count = Int(requestedSize) / MemoryLayout<AudioObjectID>.size
+    guard count > 0 else { return [] }
+
+    var objectIDs = Array(repeating: AudioObjectID(kAudioObjectUnknown), count: count)
+    var returnedSize = requestedSize
+    let status = objectIDs.withUnsafeMutableBytes { buffer in
+      AudioObjectGetPropertyData(
+        objectID,
+        &address,
+        0,
+        nil,
+        &returnedSize,
+        buffer.baseAddress!
+      )
+    }
+    guard status == noErr, returnedSize == requestedSize,
+      Int(returnedSize) % MemoryLayout<AudioObjectID>.size == 0
+    else { return nil }
+    return objectIDs.filter { $0 != AudioObjectID(kAudioObjectUnknown) }
   }
 
   private func isSettable(

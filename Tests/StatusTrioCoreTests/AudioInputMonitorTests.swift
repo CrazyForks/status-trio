@@ -18,6 +18,7 @@ final class AudioInputMonitorTests: XCTestCase {
     monitor.setVisible(true)
     XCTAssertEqual(hardware.observationCount, 0)
     XCTAssertEqual(hardware.fullReadCount, 0)
+    XCTAssertEqual(hardware.usageReadCount, 0)
 
     let firstRead = log.expectStatus("initial visible read") { $0.defaultDeviceID == 11 }
     monitor.setEnabled(true)
@@ -155,20 +156,24 @@ final class AudioInputMonitorTests: XCTestCase {
   }
 
   func testExternalDefaultChangeRefreshesAndRebindsCurrentDevice() async throws {
-    let hardware = FakeAudioInputHardware(reading: reading(defaultID: 11))
+    let hardware = FakeAudioInputHardware(reading: reading(defaultID: 11, isDefaultInputInUse: true))
     let monitor = AudioInputMonitor(hardware: hardware)
     let log = AudioInputStatusLog(monitor.updates)
     defer { monitor.stop() }
 
-    let firstRead = log.expectStatus("first default device") { $0.defaultDeviceID == 11 }
+    let firstRead = log.expectStatus("first default device is in use") {
+      $0.defaultDeviceID == 11 && $0.isDefaultInputInUse == true
+    }
     monitor.setVisible(true)
     monitor.setEnabled(true)
     await fulfillment(of: [firstRead], timeout: 5)
     let observation = try XCTUnwrap(hardware.waitForObservation(timeout: 5))
     XCTAssertTrue(observation.waitForCurrentDevice(11, timeout: 5))
 
-    hardware.setReading(reading(defaultID: 22))
-    let switched = log.expectStatus("external default-device change") { $0.defaultDeviceID == 22 }
+    hardware.setReading(reading(defaultID: 22, isDefaultInputInUse: false))
+    let switched = log.expectStatus("external default-device change clears the previous use state") {
+      $0.defaultDeviceID == 22 && $0.isDefaultInputInUse == false
+    }
     observation.emit(.defaultChanged)
     await fulfillment(of: [switched], timeout: 5)
 
@@ -196,6 +201,41 @@ final class AudioInputMonitorTests: XCTestCase {
     await fulfillment(of: [changed], timeout: 5)
 
     XCTAssertEqual(hardware.readRequests, [true, true])
+  }
+
+  func testVisiblePanelPollsOnlyDefaultInputUsageAndStopsWhenHidden() async throws {
+    let sleeper = ManualAudioSleeper()
+    let hardware = FakeAudioInputHardware(
+      reading: reading(defaultID: 11, isDefaultInputInUse: false)
+    )
+    let monitor = AudioInputMonitor(
+      hardware: hardware,
+      usageSleep: { try await sleeper.sleep(for: $0) },
+      sleep: { try await sleeper.sleep(for: $0) }
+    )
+    let log = AudioInputStatusLog(monitor.updates)
+    defer { monitor.stop() }
+
+    let initial = log.expectStatus("initial default input is idle") {
+      $0.defaultDeviceID == 11 && $0.isDefaultInputInUse == false
+    }
+    monitor.setEnabled(true)
+    monitor.setVisible(true)
+    await fulfillment(of: [initial], timeout: 5)
+
+    let pollScheduled = sleeper.expectCall(.seconds(1), count: 1)
+    await fulfillment(of: [pollScheduled], timeout: 5)
+    hardware.setUsageReading(AudioInputUsageReading(defaultDeviceID: 11, isDefaultInputInUse: true))
+    let becameActive = log.expectStatus("active input stream updates the visible status") {
+      $0.isDefaultInputInUse == true
+    }
+    XCTAssertTrue(sleeper.releaseNext(.seconds(1)))
+    await fulfillment(of: [becameActive], timeout: 5)
+
+    XCTAssertEqual(hardware.usageReadCount, 1)
+    XCTAssertEqual(hardware.readRequests, [true], "usage polling must not enumerate the device list")
+    monitor.setVisible(false)
+    XCTAssertEqual(hardware.usageReadCount, 1, "hidden popovers stop input-use polling")
   }
 
   func testDeviceRemovalRefreshesInventoryAndClearsDefaultControls() async throws {
@@ -817,7 +857,8 @@ final class AudioInputMonitorTests: XCTestCase {
   private func reading(
     defaultID: AudioDeviceID?,
     scalar: Double? = 0.42,
-    muteState: AudioInputMuteState = .unmuted
+    muteState: AudioInputMuteState = .unmuted,
+    isDefaultInputInUse: Bool? = nil
   ) -> AudioInputReading {
     AudioInputReading(
       devices: [firstDevice, secondDevice],
@@ -826,7 +867,8 @@ final class AudioInputMonitorTests: XCTestCase {
       scalar: defaultID == nil ? nil : scalar,
       canSetVolume: defaultID != nil,
       muteState: defaultID == nil ? nil : muteState,
-      canSetMute: defaultID != nil
+      canSetMute: defaultID != nil,
+      isDefaultInputInUse: isDefaultInputInUse
     )
   }
 }
@@ -1065,6 +1107,9 @@ private struct FakeObservedAudioInputProperties: AudioInputPropertyClient {
 
   func devices() throws -> [AudioDeviceID] { [11, 22] }
   func defaultInput() throws -> AudioDeviceID? { 11 }
+  func activeInputProcessUsage() -> AudioInputProcessDeviceUsage? {
+    AudioInputProcessDeviceUsage(activeInputDeviceIDs: [], isComplete: true)
+  }
   func isDevice(_ id: AudioDeviceID) -> Bool { id == 11 || id == 22 }
   func isAlive(_ id: AudioDeviceID) -> Bool? { isDevice(id) }
   func isHidden(_ id: AudioDeviceID) -> Bool? { false }
@@ -1234,6 +1279,8 @@ private struct GatedAudioInputRead {
 private final class FakeAudioInputHardware: AudioInputHardware, @unchecked Sendable {
   private let lock = NSLock()
   private var storedReading: AudioInputReading
+  private var storedUsageReading: AudioInputUsageReading
+  private var storedUsageReadCount = 0
   private var storedReadRequests: [Bool] = []
   private var observations: [FakeAudioInputObservation] = []
   private var observationGates: [ManualAudioGate] = []
@@ -1253,6 +1300,10 @@ private final class FakeAudioInputHardware: AudioInputHardware, @unchecked Senda
 
   init(reading: AudioInputReading, ignoresScalarWrites: Bool = false) {
     storedReading = reading
+    storedUsageReading = AudioInputUsageReading(
+      defaultDeviceID: reading.defaultDeviceID,
+      isDefaultInputInUse: reading.isDefaultInputInUse
+    )
     self.ignoresScalarWrites = ignoresScalarWrites
   }
 
@@ -1270,6 +1321,12 @@ private final class FakeAudioInputHardware: AudioInputHardware, @unchecked Senda
   }
 
   var fullReadCount: Int { readRequests.filter { $0 }.count }
+
+  var usageReadCount: Int {
+    lock.lock()
+    defer { lock.unlock() }
+    return storedUsageReadCount
+  }
 
   var readRequests: [Bool] {
     lock.lock()
@@ -1314,6 +1371,16 @@ private final class FakeAudioInputHardware: AudioInputHardware, @unchecked Senda
   func setReading(_ reading: AudioInputReading) {
     lock.lock()
     storedReading = reading
+    storedUsageReading = AudioInputUsageReading(
+      defaultDeviceID: reading.defaultDeviceID,
+      isDefaultInputInUse: reading.isDefaultInputInUse
+    )
+    lock.unlock()
+  }
+
+  func setUsageReading(_ reading: AudioInputUsageReading) {
+    lock.lock()
+    storedUsageReading = reading
     lock.unlock()
   }
 
@@ -1378,8 +1445,16 @@ private final class FakeAudioInputHardware: AudioInputHardware, @unchecked Senda
       scalar: reading.scalar,
       canSetVolume: reading.canSetVolume,
       muteState: reading.muteState,
-      canSetMute: reading.canSetMute
+      canSetMute: reading.canSetMute,
+      isDefaultInputInUse: reading.isDefaultInputInUse
     )
+  }
+
+  func readDefaultInputUsage() throws -> AudioInputUsageReading {
+    lock.lock()
+    defer { lock.unlock() }
+    storedUsageReadCount += 1
+    return storedUsageReading
   }
 
   func selectDefault(_ id: AudioDeviceID) throws {
@@ -1392,8 +1467,10 @@ private final class FakeAudioInputHardware: AudioInputHardware, @unchecked Senda
       scalar: reading.scalar,
       canSetVolume: reading.canSetVolume,
       muteState: reading.muteState,
-      canSetMute: reading.canSetMute
+      canSetMute: reading.canSetMute,
+      isDefaultInputInUse: nil
     )
+    storedUsageReading = AudioInputUsageReading(defaultDeviceID: id, isDefaultInputInUse: nil)
     lock.unlock()
   }
 
@@ -1423,7 +1500,8 @@ private final class FakeAudioInputHardware: AudioInputHardware, @unchecked Senda
         scalar: scalar,
         canSetVolume: reading.canSetVolume,
         muteState: reading.muteState,
-        canSetMute: reading.canSetMute
+        canSetMute: reading.canSetMute,
+        isDefaultInputInUse: reading.isDefaultInputInUse
       )
     }
     lock.unlock()
@@ -1445,7 +1523,8 @@ private final class FakeAudioInputHardware: AudioInputHardware, @unchecked Senda
         scalar: reading.scalar,
         canSetVolume: reading.canSetVolume,
         muteState: muted ? .muted : .unmuted,
-        canSetMute: reading.canSetMute
+        canSetMute: reading.canSetMute,
+        isDefaultInputInUse: reading.isDefaultInputInUse
       )
     }
     lock.unlock()

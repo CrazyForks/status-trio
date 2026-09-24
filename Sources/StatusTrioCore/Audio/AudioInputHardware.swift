@@ -22,6 +22,7 @@ protocol AudioInputPropertyClient: Sendable {
     _ selector: AudioObjectPropertySelector,
     _ element: AudioObjectPropertyElement
   ) -> Bool
+  func activeInputProcessUsage() -> AudioInputProcessDeviceUsage?
   func readScalar(_ id: AudioDeviceID, _ element: AudioObjectPropertyElement) -> Float32?
   func readMute(_ id: AudioDeviceID, _ element: AudioObjectPropertyElement) -> Bool?
   func writeScalar(
@@ -65,6 +66,7 @@ protocol AudioInputObservation: Sendable {
 
 protocol AudioInputHardware: Sendable {
   func read(includeDevices: Bool) throws -> AudioInputReading
+  func readDefaultInputUsage() throws -> AudioInputUsageReading
   func selectDefault(_ id: AudioDeviceID) throws
   func setScalar(_ scalar: Double, on id: AudioDeviceID) throws
   func setMuted(_ muted: Bool, on id: AudioDeviceID) throws

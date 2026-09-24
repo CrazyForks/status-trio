@@ -168,6 +168,7 @@
 "volume.action.openSettings" = "Soundeinstellungen öffnen";
 "volume.accessibility.label" = "Lautstärke";
 "audioInput.title" = "Mikrofon";
+"audioInput.inUse" = "In Benutzung";
 "audioInput.noDefault" = "Kein Standard-Eingabegerät";
 "audioInput.noDevices" = "Keine verfügbaren Eingabegeräte";
 "audioInput.unknownDevice" = "Unbekanntes Eingabegerät";
