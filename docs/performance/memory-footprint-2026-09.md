@@ -179,3 +179,5 @@ A new v1.3.3 (16) process from Actions run 36021302008 was launched through Comp
 | 2026-09-25 00:40:45 | 11:13 | 62,080 KB | 18 / 18 MB | 17.9 MB | 11.0 / 12.2 MB |
 
 The fresh candidate stayed at 18 MB physical footprint for the entire 11-minute sample, with RSS varying by less than 0.5 MB. The 11:13 `vmmap -summary` showed 11.0 MB resident across malloc zones and no default-zone fragmentation. This is another clean-idle run, not a post-popover test. It supports keeping production changes focused on the interaction-triggered 18→81 MB growth already recorded above; it does not attribute that growth to Bluetooth, Wi-Fi permission handling, or SwiftUI individually.
+
+At elapsed 15:01, `heap -s -H` reported 12.2 MB allocated across 36,806 malloc nodes, with 17.9 MB physical footprint and an 18.1 MB peak. About 9.4 MB was categorized as non-object allocations; the largest named object category was 292 KB of `NSMutableDictionary` storage. The heap sample confirms that this fresh idle process does not have a large reachable object graph. It still cannot explain the earlier post-interaction allocation without a matched post-popover heap/Allocations sample.
