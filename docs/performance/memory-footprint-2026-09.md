@@ -162,4 +162,20 @@ After the one-hour clean-idle soak, the user opened and closed the status popove
 
 The Activity Monitor screenshot shows 111.9 MB and four threads, but its PID and capture time are not visible. In a later live read, Activity Monitor showed PID 75578 at 95.5 MB while `top` and `footprint` reported about 81 MB. The 111.9 MB screenshot should therefore be treated as a user-observed Activity Monitor value, not as a directly paired footprint sample. An Allocations trace attempt against PID 75578 failed to attach, so no allocation call stacks are available yet.
 
-The current code intentionally keeps Bluetooth monitoring active after popover close so connected-device names stay warm; `BluetoothPermissionTimingTests.testEnabledBluetoothMonitorSurvivesPopupClose` pins that behavior. This is a concrete idle-lifecycle candidate because Bluetooth is not part of the menu-bar icon, but changing it trades instant device names on reopen for lower hidden-state work. A focused follow-up should isolate popover-only from permission handling, then measure whether stopping that monitor on close lowers the retained heap before changing the lifecycle contract.
+The measured v1.3.2 process kept a popover-only Bluetooth monitor active after close. The v1.3.3 candidate in PR #71 changes that lifecycle: popover-only activation stops on close, while an explicit Settings toggle still keeps the monitor active. Its cold-idle samples remain low, but they do not measure the post-popover delta; the next controlled run should isolate popover-only activation from permission handling and compare the same `footprint` categories before and after close.
+
+### Fresh candidate menu-bar-only recheck (2026-09-25)
+
+A new v1.3.3 (16) process from Actions run 36021302008 was launched through Computer Use from the verified candidate DMG, with the saved `appIconPlacement=menuBar` preference. No Settings, status popover, or Dock UI was opened during this run. PID 91335 remained alive through the samples below.
+
+| Local sample time (CST) | Elapsed | RSS | `footprint` current / peak | `vmmap` physical | Malloc-zone resident / allocated |
+|---|---:|---:|---:|---:|---:|
+| 2026-09-25 00:33:02 | 3:30 | 61,728 KB | 18 / 18 MB | 17.6 MB | 10.7 / 12.0 MB |
+| 2026-09-25 00:36:06 | 6:34 | 62,000 KB | 18 / 18 MB | — | — |
+| 2026-09-25 00:37:06 | 7:34 | 62,000 KB | 18 / 18 MB | — | — |
+| 2026-09-25 00:38:06 | 8:34 | 62,144 KB | 18 / 18 MB | — | — |
+| 2026-09-25 00:39:06 | 9:34 | 62,080 KB | 18 / 18 MB | — | — |
+| 2026-09-25 00:40:06 | 10:34 | 62,128 KB | 18 / 18 MB | — | — |
+| 2026-09-25 00:40:45 | 11:13 | 62,080 KB | 18 / 18 MB | 17.9 MB | 11.0 / 12.2 MB |
+
+The fresh candidate stayed at 18 MB physical footprint for the entire 11-minute sample, with RSS varying by less than 0.5 MB. The 11:13 `vmmap -summary` showed 11.0 MB resident across malloc zones and no default-zone fragmentation. This is another clean-idle run, not a post-popover test. It supports keeping production changes focused on the interaction-triggered 18→81 MB growth already recorded above; it does not attribute that growth to Bluetooth, Wi-Fi permission handling, or SwiftUI individually.
