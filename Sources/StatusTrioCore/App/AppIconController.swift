@@ -20,13 +20,15 @@ final class AppIconController {
         _ connectionOptions: ConnectionIconOptions,
         _ volumeOptions: VolumeIconOptions,
         _ bluetoothAudioOptions: BluetoothAudioIconOptions,
-        _ backgroundStyle: DockIconBackgroundStyle
+        _ backgroundStyle: DockIconBackgroundStyle,
+        _ phase: ChargingEffectPhase?
     ) -> NSImage?
 
     static let snapshotDebounceInterval: TimeInterval = 0.5
 
     private let store: SystemStatusStore
     private let settings: SettingsStore
+    let chargingEffectClock: ChargingEffectClock
     private let activationPolicy: AppActivationPolicy
     private let application: any ApplicationDockIconApplying
     private let setMenuBarVisible: (Bool) -> Void
@@ -39,6 +41,7 @@ final class AppIconController {
     private let imageCache = DockIconImageCache()
     private let renderCoalescer = IconRenderCoalescer()
     private var hasRenderedDockIcon = false
+    private var isDockBurstActive = false
     private var currentPlacement: AppIconPlacement
     private var currentAppearance: StatusIconAppearance
     private var currentBackgroundPreference: DockIconBackgroundPreference
@@ -59,10 +62,12 @@ final class AppIconController {
             NSApplication.shared.effectiveAppearance
                 .bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
         },
-        notificationCenter: NotificationCenter = .default
+        notificationCenter: NotificationCenter = .default,
+        chargingEffectClock: ChargingEffectClock = ChargingEffectClock()
     ) {
         self.store = store
         self.settings = settings
+        self.chargingEffectClock = chargingEffectClock
         self.activationPolicy = activationPolicy
         self.application = application
         self.setMenuBarVisible = setMenuBarVisible
@@ -108,12 +113,14 @@ final class AppIconController {
         subscribeToSnapshot()
         subscribeToIconAppearance()
         subscribeToBackgroundStyle()
+        subscribeToChargingEffectPhase()
     }
 
     func stop() {
         guard isStarted else { return }
         isStarted = false
         cancellables.removeAll()
+        isDockBurstActive = false
         renderCoalescer.cancel()
         monitor.onChange = nil
         monitor.stop()
@@ -190,6 +197,29 @@ final class AppIconController {
             .store(in: &cancellables)
     }
 
+    private func subscribeToChargingEffectPhase() {
+        chargingEffectClock.$dockPhase
+            .removeDuplicates()
+            .sink { [weak self] phase in
+                self?.renderAnimationPhase(phase)
+            }
+            .store(in: &cancellables)
+    }
+
+    private func renderAnimationPhase(_ phase: ChargingEffectPhase?) {
+        guard let phase, phase.kind == .burst else {
+            guard isDockBurstActive else { return }
+            isDockBurstActive = false
+            guard isDockTileVisible else { return }
+            renderLatestDockIcon()
+            return
+        }
+
+        isDockBurstActive = true
+        guard isDockTileVisible, phase.step.isMultiple(of: 2) else { return }
+        renderLatestDockIcon(phase: phase)
+    }
+
     private func apply(_ placement: AppIconPlacement) {
         currentPlacement = placement
 
@@ -210,7 +240,7 @@ final class AppIconController {
         }
     }
 
-    private func renderLatestDockIcon() {
+    private func renderLatestDockIcon(phase: ChargingEffectPhase? = nil) {
         guard isDockTileVisible else { return }
 
         let backgroundStyle = DockIconBackgroundResolver.style(
@@ -225,7 +255,8 @@ final class AppIconController {
             connectionOptions: currentAppearance.connectionOptions,
             volumeOptions: currentAppearance.volumeOptions,
             bluetoothAudioOptions: currentAppearance.bluetoothAudioOptions,
-            backgroundStyle: backgroundStyle
+            backgroundStyle: backgroundStyle,
+            phase: phase
         )
         guard renderCache.shouldRender(key) else { return }
 
@@ -241,7 +272,8 @@ final class AppIconController {
             currentAppearance.connectionOptions,
             currentAppearance.volumeOptions,
             currentAppearance.bluetoothAudioOptions,
-            backgroundStyle
+            backgroundStyle,
+            phase
         ) else {
             if !hasRenderedDockIcon {
                 application.setApplicationIconImage(nil)

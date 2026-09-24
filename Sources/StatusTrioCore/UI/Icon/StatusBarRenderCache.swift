@@ -6,6 +6,7 @@ struct StatusBarRenderKey: Equatable {
     let volumeOptions: VolumeIconOptions
     let bluetoothAudioOptions: BluetoothAudioIconOptions
     let appearanceName: String
+    let phase: ChargingEffectPhase?
 
     init(
         status: MenuBarStatus,
@@ -14,7 +15,8 @@ struct StatusBarRenderKey: Equatable {
         connectionOptions: ConnectionIconOptions,
         volumeOptions: VolumeIconOptions = .standard,
         bluetoothAudioOptions: BluetoothAudioIconOptions = .standard,
-        appearanceName: String
+        appearanceName: String,
+        phase: ChargingEffectPhase? = nil
     ) {
         self.status = status
         self.iconSize = iconSize
@@ -23,6 +25,7 @@ struct StatusBarRenderKey: Equatable {
         self.volumeOptions = volumeOptions
         self.bluetoothAudioOptions = bluetoothAudioOptions
         self.appearanceName = appearanceName
+        self.phase = phase
     }
 }
 

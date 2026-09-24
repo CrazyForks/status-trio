@@ -11,30 +11,109 @@ struct StatusIconPreviewCard: View {
     @ObservedObject var statusStore: SystemStatusStore
     @Binding var isDarkBackground: Bool
     @EnvironmentObject private var localization: Localization
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var previewPlayback = ChargingEffectPreviewPlayback()
 
     var body: some View {
         VStack(spacing: 8) {
-            MenuBarPreviewBar(
-                status: MenuBarStatus(snapshot: statusStore.snapshot),
-                iconSize: store.iconSize,
-                batteryOptions: store.batteryIconOptions,
-                connectionOptions: store.connectionIconOptions,
-                volumeOptions: store.volumeIconOptions,
-                bluetoothAudioOptions: store.bluetoothAudioIconOptions,
-                isDarkBackground: isDarkBackground
-            ) {
-                appearanceToggle
-            }
-            .animation(.easeInOut(duration: 0.15), value: store.iconSize)
-            .animation(.easeInOut(duration: 0.15), value: store.batteryIconOptions)
-            .animation(.easeInOut(duration: 0.15), value: store.connectionIconOptions)
-            .animation(.easeInOut(duration: 0.15), value: store.volumeIconOptions)
-            .animation(.easeInOut(duration: 0.15), value: store.bluetoothAudioIconOptions)
+            menuBarPreview
 
             Text(localization.string(.settingsPreviewHint))
                 .font(.system(size: 11))
                 .foregroundStyle(.tertiary)
         }
+        .onChange(of: store.showsChargingEffect) { _, isEnabled in
+            if isEnabled {
+                startPreviewIfAllowed()
+            } else {
+                previewPlayback.stop()
+            }
+        }
+        .onChange(of: reduceMotion) { _, isEnabled in
+            if isEnabled {
+                previewPlayback.stop()
+            }
+        }
+        .onDisappear {
+            previewPlayback.stop()
+        }
+        .task(id: previewPlayback.startedAt) {
+            guard let startedAt = previewPlayback.startedAt else { return }
+            let elapsed = Date().timeIntervalSince(startedAt)
+            let remaining = max(0, ChargingEffectPreviewPlayback.duration - elapsed)
+            if remaining > 0 {
+                try? await Task.sleep(for: .seconds(remaining))
+            }
+            guard !Task.isCancelled else { return }
+            previewPlayback.stop()
+        }
+    }
+
+    @ViewBuilder
+    private var menuBarPreview: some View {
+        if previewPlayback.isPlaying {
+            TimelineView(.animation(
+                minimumInterval: 1 / Double(ChargingEffectTimeline.framesPerSecond),
+                paused: false
+            )) { timeline in
+                let phase = previewPlayback.phase(at: timeline.date)
+                previewBar(
+                    status: phase == nil ? currentStatus : chargingPreviewStatus,
+                    phase: phase
+                )
+            }
+        } else {
+            previewBar(status: currentStatus, phase: nil)
+        }
+    }
+
+    private var currentStatus: MenuBarStatus {
+        MenuBarStatus(snapshot: statusStore.snapshot)
+    }
+
+    private var chargingPreviewStatus: MenuBarStatus {
+        let current = statusStore.snapshot
+        let battery = BatteryStatus(
+            rawPercentage: 62,
+            isPresent: true,
+            isCharging: true,
+            isLowPowerMode: current.battery.isLowPowerMode,
+            isConnectedToPower: true
+        )
+        return MenuBarStatus(snapshot: StatusSnapshot(
+            battery: battery,
+            wifi: current.wifi,
+            connection: current.connection,
+            volume: current.volume
+        ))
+    }
+
+    private func previewBar(
+        status: MenuBarStatus,
+        phase: ChargingEffectPhase?
+    ) -> some View {
+        MenuBarPreviewBar(
+            status: status,
+            iconSize: store.iconSize,
+            batteryOptions: store.batteryIconOptions,
+            connectionOptions: store.connectionIconOptions,
+            volumeOptions: store.volumeIconOptions,
+            bluetoothAudioOptions: store.bluetoothAudioIconOptions,
+            isDarkBackground: isDarkBackground,
+            phase: phase
+        ) {
+            appearanceToggle
+        }
+        .animation(.easeInOut(duration: 0.15), value: store.iconSize)
+        .animation(.easeInOut(duration: 0.15), value: store.batteryIconOptions)
+        .animation(.easeInOut(duration: 0.15), value: store.connectionIconOptions)
+        .animation(.easeInOut(duration: 0.15), value: store.volumeIconOptions)
+        .animation(.easeInOut(duration: 0.15), value: store.bluetoothAudioIconOptions)
+    }
+
+    private func startPreviewIfAllowed() {
+        guard !reduceMotion else { return }
+        previewPlayback.start(at: Date())
     }
 
     private var appearanceToggle: some View {

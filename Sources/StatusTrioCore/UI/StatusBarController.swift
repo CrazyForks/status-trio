@@ -27,9 +27,12 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     private let store: SystemStatusStore
     private let settings: SettingsStore
     private let localization: Localization
+    let chargingEffectClock: ChargingEffectClock
     private var cancellable: AnyCancellable?
     private var localizationCancellable: AnyCancellable?
     private var appearanceCancellable: AnyCancellable?
+    private var chargingEffectCancellable: AnyCancellable?
+    private var currentChargingEffectPhase: ChargingEffectPhase?
     private var screenParametersCancellable: AnyCancellable?
     private var refreshIntervalCancellable: AnyCancellable?
     private let openSettings: () -> Void
@@ -59,11 +62,13 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         localization: Localization,
         isVisible: Bool = true,
         openSettings: @escaping () -> Void,
-        quitAction: @escaping () -> Void
+        quitAction: @escaping () -> Void,
+        chargingEffectClock: ChargingEffectClock = ChargingEffectClock()
     ) {
         self.store = store
         self.settings = settings
         self.localization = localization
+        self.chargingEffectClock = chargingEffectClock
         self.openSettings = openSettings
         self.quitAction = quitAction
         self.isStatusItemVisible = isVisible
@@ -100,9 +105,16 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
                     guard let self else { return }
                     self.render(
                         appearance,
-                        status: MenuBarStatus(snapshot: self.store.snapshot)
+                        status: MenuBarStatus(snapshot: self.store.snapshot),
+                        phase: currentChargingEffectPhase
                     )
                 }
+            }
+
+        chargingEffectCancellable = chargingEffectClock.$phase
+            .removeDuplicates()
+            .sink { [weak self] phase in
+                self?.renderAnimationPhase(phase)
             }
 
         localizationCancellable = localization.$resolvedLanguage
@@ -460,7 +472,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
 
     private func render(
         _ appearance: StatusIconAppearance,
-        status: MenuBarStatus
+        status: MenuBarStatus,
+        phase: ChargingEffectPhase?
     ) {
         guard isStatusItemVisible, let button = statusItem.button else { return }
 
@@ -471,7 +484,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             connectionOptions: appearance.connectionOptions,
             volumeOptions: appearance.volumeOptions,
             bluetoothAudioOptions: appearance.bluetoothAudioOptions,
-            appearanceName: button.effectiveAppearance.name.rawValue
+            appearanceName: button.effectiveAppearance.name.rawValue,
+            phase: phase
         )
         guard renderCache.shouldRender(key) else { return }
 
@@ -481,7 +495,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             options: appearance.batteryOptions,
             connectionOptions: appearance.connectionOptions,
             volumeOptions: appearance.volumeOptions,
-            bluetoothAudioOptions: appearance.bluetoothAudioOptions
+            bluetoothAudioOptions: appearance.bluetoothAudioOptions,
+            phase: phase
         )
 
         let nextAccessibilityKey = StatusBarAccessibilityKey(
@@ -499,6 +514,17 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         )
     }
 
+    /// Clock-driven frames bypass the status/setting coalescer; the menu-bar key
+    /// includes every phase so the 20-fps stream cannot be deduplicated as static.
+    private func renderAnimationPhase(_ phase: ChargingEffectPhase?) {
+        currentChargingEffectPhase = phase
+        render(
+            StatusIconAppearance(settings: settings),
+            status: MenuBarStatus(snapshot: store.snapshot),
+            phase: phase
+        )
+    }
+
     /// The status, the appearance, and the window's effective appearance all feed
     /// one cached render, so the newest state wins over a redraw that is still
     /// waiting out the coalescing interval.
@@ -507,7 +533,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             guard let self else { return }
             self.render(
                 StatusIconAppearance(settings: self.settings),
-                status: MenuBarStatus(snapshot: self.store.snapshot)
+                status: MenuBarStatus(snapshot: self.store.snapshot),
+                phase: self.currentChargingEffectPhase
             )
         }
     }

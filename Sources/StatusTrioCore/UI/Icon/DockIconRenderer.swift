@@ -85,7 +85,8 @@ enum DockIconRenderer {
         connectionOptions: ConnectionIconOptions = .standard,
         volumeOptions: VolumeIconOptions = .standard,
         bluetoothAudioOptions: BluetoothAudioIconOptions = .standard,
-        backgroundStyle: DockIconBackgroundStyle = .dark
+        backgroundStyle: DockIconBackgroundStyle = .dark,
+        phase: ChargingEffectPhase? = nil
     ) -> NSImage? {
         let palette = palette(for: backgroundStyle)
 
@@ -133,7 +134,8 @@ enum DockIconRenderer {
                     - DockIconGlyphLayout.glyphSVGOrigin.y
                     - DockIconGlyphLayout.glyphSVGSize
             ),
-            size: DockIconGlyphLayout.glyphSVGSize
+            size: DockIconGlyphLayout.glyphSVGSize,
+            phase: phase
         )
 
         guard let output = context.makeImage() else { return nil }

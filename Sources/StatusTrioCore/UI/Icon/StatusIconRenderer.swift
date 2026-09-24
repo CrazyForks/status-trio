@@ -39,7 +39,8 @@ enum StatusIconRenderer {
         options: BatteryIconOptions = .standard,
         connectionOptions: ConnectionIconOptions = .standard,
         volumeOptions: VolumeIconOptions = .standard,
-        bluetoothAudioOptions: BluetoothAudioIconOptions = .standard
+        bluetoothAudioOptions: BluetoothAudioIconOptions = .standard,
+        phase: ChargingEffectPhase? = nil
     ) -> NSImage {
         image(
             menuBarStatus: MenuBarStatus(snapshot: snapshot),
@@ -47,7 +48,8 @@ enum StatusIconRenderer {
             options: options,
             connectionOptions: connectionOptions,
             volumeOptions: volumeOptions,
-            bluetoothAudioOptions: bluetoothAudioOptions
+            bluetoothAudioOptions: bluetoothAudioOptions,
+            phase: phase
         )
     }
 
@@ -58,7 +60,8 @@ enum StatusIconRenderer {
         connectionOptions: ConnectionIconOptions = .standard,
         volumeOptions: VolumeIconOptions = .standard,
         bluetoothAudioOptions: BluetoothAudioIconOptions = .standard,
-        appearance: NSAppearance? = nil
+        appearance: NSAppearance? = nil,
+        phase: ChargingEffectPhase? = nil
     ) -> NSImage {
         // Resolve colors while AppKit draws into each menu bar. A pre-rendered
         // bitmap would keep the first display's light or dark foreground.
@@ -90,7 +93,8 @@ enum StatusIconRenderer {
                 in: context,
                 size: size,
                 foreground: foreground,
-                criticalColor: criticalColor
+                criticalColor: criticalColor,
+                phase: phase
             )
             return true
         }
@@ -138,7 +142,8 @@ enum StatusIconRenderer {
         options: BatteryIconOptions = .standard,
         connectionOptions: ConnectionIconOptions = .standard,
         volumeOptions: VolumeIconOptions = .standard,
-        bluetoothAudioOptions: BluetoothAudioIconOptions = .standard
+        bluetoothAudioOptions: BluetoothAudioIconOptions = .standard,
+        phase: ChargingEffectPhase? = nil
     ) -> CGImage? {
         render(
             menuBarStatus: MenuBarStatus(snapshot: snapshot),
@@ -148,7 +153,8 @@ enum StatusIconRenderer {
             options: options,
             connectionOptions: connectionOptions,
             volumeOptions: volumeOptions,
-            bluetoothAudioOptions: bluetoothAudioOptions
+            bluetoothAudioOptions: bluetoothAudioOptions,
+            phase: phase
         )
     }
 
@@ -160,7 +166,8 @@ enum StatusIconRenderer {
         options: BatteryIconOptions = .standard,
         connectionOptions: ConnectionIconOptions = .standard,
         volumeOptions: VolumeIconOptions = .standard,
-        bluetoothAudioOptions: BluetoothAudioIconOptions = .standard
+        bluetoothAudioOptions: BluetoothAudioIconOptions = .standard,
+        phase: ChargingEffectPhase? = nil
     ) -> CGImage? {
         guard size.isFinite, scale.isFinite, size > 0, scale > 0 else { return nil }
 
@@ -195,7 +202,8 @@ enum StatusIconRenderer {
             in: context,
             size: size,
             foreground: foreground,
-            criticalColor: defaultCriticalColor
+            criticalColor: defaultCriticalColor,
+            phase: phase
         )
         return context.makeImage()
     }
@@ -211,7 +219,8 @@ enum StatusIconRenderer {
         foreground: CGColor,
         in context: CGContext,
         origin: CGPoint,
-        size: CGFloat
+        size: CGFloat,
+        phase: ChargingEffectPhase? = nil
     ) {
         context.saveGState()
         defer { context.restoreGState() }
@@ -226,7 +235,8 @@ enum StatusIconRenderer {
             in: context,
             size: size,
             foreground: foreground,
-            criticalColor: defaultCriticalColor
+            criticalColor: defaultCriticalColor,
+            phase: phase
         )
     }
 
@@ -239,7 +249,8 @@ enum StatusIconRenderer {
         in context: CGContext,
         size: CGFloat,
         foreground: CGColor,
-        criticalColor: CGColor
+        criticalColor: CGColor,
+        phase: ChargingEffectPhase?
     ) {
         context.saveGState()
         defer { context.restoreGState() }
@@ -256,7 +267,8 @@ enum StatusIconRenderer {
             options: options,
             in: context,
             foreground: foreground,
-            criticalColor: criticalColor
+            criticalColor: criticalColor,
+            phase: phase
         )
         if let currentDevice = menuBarStatus.volume.currentDevice,
            StatusMappings.shouldReplaceNetworkIcon(
@@ -299,7 +311,8 @@ enum StatusIconRenderer {
         options: BatteryIconOptions,
         in context: CGContext,
         foreground: CGColor,
-        criticalColor: CGColor
+        criticalColor: CGColor,
+        phase: ChargingEffectPhase?
     ) {
         let gapContent = StatusMappings.batteryGapContent(battery, options: options)
         let hasTopGap = gapContent != .empty
@@ -336,6 +349,27 @@ enum StatusIconRenderer {
         ))
         context.strokePath()
 
+        if options.showsChargingEffect,
+           battery.isPresent,
+           battery.isCharging,
+           !battery.isCharged,
+           let phase,
+           let frame = ChargingEffectPolicy.frame(
+                progress: StatusMappings.batteryProgress(battery),
+                phase: phase,
+                hasTopGap: hasTopGap,
+                topGapWidth: topGapWidth
+           ) {
+            drawChargingEffect(
+                frame,
+                fillColor: arcColor,
+                lineWidth: 8 * CGFloat(options.ringStrokeScale),
+                hasTopGap: hasTopGap,
+                topGapWidth: topGapWidth,
+                in: context
+            )
+        }
+
         context.saveGState()
         context.setShadow(
             offset: CGSize(width: 0, height: 0.75),
@@ -368,6 +402,74 @@ enum StatusIconRenderer {
             )
         case .empty:
             break
+        }
+    }
+
+    private static func drawChargingEffect(
+        _ frame: ChargingEffectFrame,
+        fillColor: CGColor,
+        lineWidth: CGFloat,
+        hasTopGap: Bool,
+        topGapWidth: CGFloat,
+        in context: CGContext
+    ) {
+        let highlight = ChargingEffectPalette.automaticHighlight(for: fillColor)
+
+        if let tailRange = frame.tailRange {
+            let tailPath = StatusIconGeometry.batteryHighlight(
+                from: tailRange.lowerBound,
+                to: tailRange.upperBound,
+                hasTopGap: hasTopGap,
+                topGapWidth: topGapWidth
+            )
+            let strokedTail = tailPath.copy(
+                strokingWithWidth: lineWidth,
+                lineCap: .round,
+                lineJoin: .round,
+                miterLimit: 10
+            )
+            let transparent = highlight.copy(alpha: 0) ?? highlight
+            let bright = highlight.copy(alpha: min(1, max(0, frame.tailAlpha))) ?? highlight
+            if let gradient = CGGradient(
+                colorsSpace: CGColorSpaceCreateDeviceRGB(),
+                colors: [transparent, bright, transparent] as CFArray,
+                locations: [0, 0.82, 1]
+            ) {
+                context.saveGState()
+                context.addPath(strokedTail)
+                context.clip()
+                context.drawLinearGradient(
+                    gradient,
+                    start: StatusIconGeometry.batteryPoint(forProgress: tailRange.lowerBound),
+                    end: StatusIconGeometry.batteryPoint(forProgress: tailRange.upperBound),
+                    options: []
+                )
+                context.restoreGState()
+            }
+        }
+
+        if frame.headIsVisible, frame.beadAlpha > 0 {
+            let center = StatusIconGeometry.batteryPoint(forProgress: frame.headProgress)
+            let radius = lineWidth * 0.5 * 1.18
+            context.setFillColor(highlight.copy(alpha: min(1, frame.beadAlpha)) ?? highlight)
+            context.fillEllipse(in: CGRect(
+                x: center.x - radius,
+                y: center.y - radius,
+                width: radius * 2,
+                height: radius * 2
+            ))
+        }
+
+        if frame.headIsVisible, frame.heartbeatAlpha > 0 {
+            let center = StatusIconGeometry.batteryPoint(forProgress: frame.headProgress)
+            let radius = lineWidth * 0.95 * frame.heartbeatScale
+            context.setFillColor(highlight.copy(alpha: min(1, frame.heartbeatAlpha)) ?? highlight)
+            context.fillEllipse(in: CGRect(
+                x: center.x - radius,
+                y: center.y - radius,
+                width: radius * 2,
+                height: radius * 2
+            ))
         }
     }
 

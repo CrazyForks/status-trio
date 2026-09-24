@@ -3,6 +3,7 @@ import Foundation
 struct BatteryIconOptions: Equatable, Hashable, Sendable {
     let showsPercentage: Bool
     let showsChargingIndicator: Bool
+    let showsChargingEffect: Bool
     let usesStatusColors: Bool
     let showsPercentageWhenConnected: Bool
     let criticalThreshold: Int
@@ -17,6 +18,7 @@ struct BatteryIconOptions: Equatable, Hashable, Sendable {
     static let standard = BatteryIconOptions(
         showsPercentage: true,
         showsChargingIndicator: true,
+        showsChargingEffect: true,
         usesStatusColors: true,
         criticalThreshold: 20,
         showsPercentageWhenConnected: false,
@@ -27,6 +29,7 @@ struct BatteryIconOptions: Equatable, Hashable, Sendable {
     init(
         showsPercentage: Bool = true,
         showsChargingIndicator: Bool = true,
+        showsChargingEffect: Bool = true,
         usesStatusColors: Bool = true,
         criticalThreshold: Int = 20,
         showsPercentageWhenConnected: Bool = false,
@@ -35,6 +38,7 @@ struct BatteryIconOptions: Equatable, Hashable, Sendable {
     ) {
         self.showsPercentage = showsPercentage
         self.showsChargingIndicator = showsChargingIndicator
+        self.showsChargingEffect = showsChargingEffect
         self.usesStatusColors = usesStatusColors
         self.showsPercentageWhenConnected = showsPercentageWhenConnected
         self.criticalThreshold = min(100, max(0, criticalThreshold))

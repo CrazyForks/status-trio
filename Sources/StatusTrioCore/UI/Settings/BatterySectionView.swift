@@ -40,6 +40,16 @@ struct BatterySectionView: View {
                 isOn: $store.showsChargingIndicator
             )
 
+            SettingsDivider()
+
+            SettingsToggleRow(
+                symbol: "sparkles",
+                tint: .green,
+                title: localization.string(.settingsBatteryChargingEffect),
+                subtitle: localization.string(.settingsBatteryChargingEffectDescription),
+                isOn: $store.showsChargingEffect
+            )
+
             if store.showsChargingIndicator && store.showsBatteryPercentage {
                 SettingsDivider()
 

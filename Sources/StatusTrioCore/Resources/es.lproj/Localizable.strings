@@ -90,6 +90,8 @@
 "settings.battery.showPercentage" = "Mostrar porcentaje de batería";
 "settings.battery.showChargingIndicator" = "Mostrar un indicador al cargar o conectar a la corriente";
 "settings.battery.chargingDescription" = "Al activarlo, el porcentaje se convierte en un rayo o un enchufe mientras se carga o está conectado a la corriente.";
+"settings.battery.chargingEffect" = "Efecto de carga";
+"settings.battery.chargingEffectDescription" = "Anima el resaltado solo durante la carga. Se detiene si «Reducir movimiento» está activado.";
 "settings.battery.percentageWhenConnected" = "Mostrar el porcentaje al estar conectado sin cargar";
 "settings.battery.percentageWhenConnectedDescription" = "Al activarlo, una fuente de corriente conectada que no está cargando muestra el porcentaje en lugar del enchufe.";
 "settings.battery.symbolScale" = "Tamaño del porcentaje/rayo";

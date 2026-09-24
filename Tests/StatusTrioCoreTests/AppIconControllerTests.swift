@@ -427,13 +427,14 @@ struct AppIconControllerTests {
 }
 
 @MainActor
-private final class AppIconControllerHarness {
+final class AppIconControllerHarness {
     let log = AppIconEventLog()
     let application: AppIconApplicationSpy
     let activationPolicy: AppActivationPolicy
     let settings: SettingsStore
     let store: SystemStatusStore
     let controller: AppIconController
+    let chargingEffectClock: ChargingEffectClock
 
     private let suiteName: String
     private let defaults: UserDefaults
@@ -444,7 +445,9 @@ private final class AppIconControllerHarness {
         acceptsActivationPolicy: Bool = true,
         systemTheme: @escaping () -> SystemIconAppearanceTheme = { .default },
         isDarkAppearance: Bool = false,
-        notificationCenter: NotificationCenter = .default
+        notificationCenter: NotificationCenter = .default,
+        chargingEffectClock: ChargingEffectClock = ChargingEffectClock(),
+        initialBattery: BatteryStatus = .placeholder
     ) throws {
         suiteName = "StatusTrioCoreTests.AppIconController.\(UUID().uuidString)"
         guard let defaults = UserDefaults(suiteName: suiteName) else {
@@ -452,6 +455,7 @@ private final class AppIconControllerHarness {
         }
         defaults.removeTestSuite(named: suiteName)
         self.defaults = defaults
+        self.chargingEffectClock = chargingEffectClock
 
         let log = self.log
         let application = AppIconApplicationSpy(
@@ -466,9 +470,14 @@ private final class AppIconControllerHarness {
 
         let store = SystemStatusStore(
             batteryMonitor: battery,
-            wifiMonitor: NoopWiFiMonitor(),
-            volumeMonitor: NoopVolumeMonitor(),
-            refreshInterval: .seconds(60)
+            wifiMonitor: AppIconNoopWiFiMonitor(),
+            volumeMonitor: AppIconNoopVolumeMonitor(),
+            refreshInterval: .seconds(60),
+            initialSnapshot: StatusSnapshot(
+                battery: initialBattery,
+                wifi: .placeholder,
+                volume: .placeholder
+            )
         )
         self.store = store
 
@@ -489,8 +498,10 @@ private final class AppIconControllerHarness {
                 connectionOptions,
                 volumeOptions,
                 bluetoothAudioOptions,
-                backgroundStyle in
+                backgroundStyle,
+                phase in
                 log.renderCount += 1
+                log.renderedPhases.append(phase)
                 log.backgroundStyles.append(backgroundStyle)
                 log.batteryOptions.append(batteryOptions)
                 log.connectionOptions.append(connectionOptions)
@@ -500,10 +511,15 @@ private final class AppIconControllerHarness {
             },
             theme: systemTheme,
             isDarkAppearance: { isDarkAppearance },
-            notificationCenter: notificationCenter
+            notificationCenter: notificationCenter,
+            chargingEffectClock: chargingEffectClock
         )
 
         store.start()
+    }
+
+    func publishBattery(_ status: BatteryStatus) {
+        battery.send(status)
     }
 
     func publishDifferentSnapshot() {
@@ -527,7 +543,7 @@ private enum AppIconHarnessError: Error {
 }
 
 @MainActor
-private final class AppIconEventLog {
+final class AppIconEventLog {
     var events: [String] = []
     var renderCount = 0
     var backgroundStyles: [DockIconBackgroundStyle] = []
@@ -535,6 +551,7 @@ private final class AppIconEventLog {
     var connectionOptions: [ConnectionIconOptions] = []
     var volumeOptions: [VolumeIconOptions] = []
     var bluetoothAudioOptions: [BluetoothAudioIconOptions] = []
+    var renderedPhases: [ChargingEffectPhase?] = []
 
     func reset() {
         events.removeAll()
@@ -544,11 +561,12 @@ private final class AppIconEventLog {
         connectionOptions.removeAll()
         volumeOptions.removeAll()
         bluetoothAudioOptions.removeAll()
+        renderedPhases.removeAll()
     }
 }
 
 @MainActor
-private final class AppIconApplicationSpy: ApplicationActivationPolicyApplying, ApplicationDockIconApplying {
+final class AppIconApplicationSpy: ApplicationActivationPolicyApplying, ApplicationDockIconApplying {
     private let log: AppIconEventLog
     private let acceptsActivationPolicy: Bool
     private(set) var currentActivationPolicy: NSApplication.ActivationPolicy
@@ -590,7 +608,7 @@ private final class AppIconActivationSpy: ApplicationActivating {
 }
 
 @MainActor
-private final class ControllableBatteryMonitor: BatteryMonitoring {
+final class ControllableBatteryMonitor: BatteryMonitoring {
     let updates: AsyncStream<BatteryStatus>
     private let continuation: AsyncStream<BatteryStatus>.Continuation
 
@@ -609,7 +627,7 @@ private final class ControllableBatteryMonitor: BatteryMonitoring {
 }
 
 @MainActor
-private final class NoopWiFiMonitor: WiFiMonitoring {
+final class AppIconNoopWiFiMonitor: WiFiMonitoring {
     let updates: AsyncStream<WiFiStatus>
 
     init() {
@@ -624,7 +642,7 @@ private final class NoopWiFiMonitor: WiFiMonitoring {
 }
 
 @MainActor
-private final class NoopVolumeMonitor: VolumeMonitoring {
+final class AppIconNoopVolumeMonitor: VolumeMonitoring {
     let updates: AsyncStream<VolumeStatus>
 
     init() {

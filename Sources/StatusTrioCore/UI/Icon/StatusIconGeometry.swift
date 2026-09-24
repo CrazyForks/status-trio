@@ -52,11 +52,25 @@ enum StatusIconGeometry {
     private static let wifiOuterStart: CGFloat = 227.35 * .pi / 180
     private static let wifiOuterEnd: CGFloat = 312.65 * .pi / 180
 
+    static func batteryPoint(forProgress progress: Double) -> CGPoint {
+        let clampedProgress = clampedUnit(progress)
+        let angle = batteryStart + batterySweep * CGFloat(clampedProgress)
+        return CGPoint(
+            x: batteryCenter.x + batteryRadius * cos(angle),
+            y: batteryCenter.y + batteryRadius * sin(angle)
+        )
+    }
+
     static func batteryTrack(
         hasTopGap: Bool = false,
         topGapWidth: CGFloat = batteryChargingBoltTopGapWidth
     ) -> CGPath {
-        batteryArc(progress: 1, hasTopGap: hasTopGap, topGapWidth: topGapWidth)
+        batteryArc(
+            from: 0,
+            to: 1,
+            hasTopGap: hasTopGap,
+            topGapWidth: topGapWidth
+        )
     }
 
     static func batteryFill(
@@ -64,13 +78,104 @@ enum StatusIconGeometry {
         hasTopGap: Bool = false,
         topGapWidth: CGFloat = batteryChargingBoltTopGapWidth
     ) -> CGPath {
-        let clamped = min(1, max(0, progress))
-        guard clamped > 0 else { return CGMutablePath() }
-        return batteryArc(
-            progress: clamped,
+        batteryArc(
+            from: 0,
+            to: progress,
             hasTopGap: hasTopGap,
             topGapWidth: topGapWidth
         )
+    }
+
+    /// A visible segment of the battery's progress-space arc. Progress inside
+    /// the top gap is intentionally absent from the returned path.
+    static func batteryHighlight(
+        from start: Double,
+        to end: Double,
+        hasTopGap: Bool = false,
+        topGapWidth: CGFloat = batteryChargingBoltTopGapWidth
+    ) -> CGPath {
+        batteryArc(
+            from: start,
+            to: end,
+            hasTopGap: hasTopGap,
+            topGapWidth: topGapWidth
+        )
+    }
+
+    /// Maps battery progress to the normalized length of its visible arc. All
+    /// progress values inside a gap share the midpoint because no point there
+    /// is visible; round trips are defined on the visible segments.
+    static func visibleFraction(
+        forProgress progress: Double,
+        hasTopGap: Bool,
+        topGapWidth: CGFloat = batteryChargingBoltTopGapWidth
+    ) -> Double {
+        let clampedProgress = clampedUnit(progress)
+        guard hasTopGap else { return clampedProgress }
+
+        let gap = batteryGapFraction(topGapWidth: topGapWidth)
+        let gapStart = (1 - gap) / 2
+        let gapEnd = gapStart + gap
+        if clampedProgress <= gapStart {
+            return clampedProgress
+        }
+        if clampedProgress >= gapEnd {
+            return clampedProgress - gap
+        }
+        return gapStart
+    }
+
+    /// Maps a normalized visible-arc coordinate back to progress space. At the
+    /// exact midpoint, the left edge is selected deterministically.
+    static func progress(
+        forVisibleFraction fraction: Double,
+        hasTopGap: Bool,
+        topGapWidth: CGFloat = batteryChargingBoltTopGapWidth
+    ) -> Double {
+        let clampedFraction = clampedUnit(fraction)
+        guard hasTopGap else { return clampedFraction }
+
+        let gap = batteryGapFraction(topGapWidth: topGapWidth)
+        let visibleLength = 1 - gap
+        guard visibleLength > 0 else { return 0 }
+
+        let visibleCoordinate = min(visibleLength, clampedFraction)
+        let gapStart = visibleLength / 2
+        if visibleCoordinate <= gapStart {
+            return visibleCoordinate
+        }
+        return visibleCoordinate + gap
+    }
+
+    /// Stops the charging-effect endpoint at the left edge if the battery fill
+    /// currently ends inside the top gap.
+    static func lastVisibleProgress(
+        forProgress progress: Double,
+        hasTopGap: Bool,
+        topGapWidth: CGFloat = batteryChargingBoltTopGapWidth
+    ) -> Double {
+        let clampedProgress = clampedUnit(progress)
+        guard hasTopGap else { return clampedProgress }
+
+        let gap = batteryGapFraction(topGapWidth: topGapWidth)
+        let gapStart = (1 - gap) / 2
+        let gapEnd = gapStart + gap
+        guard clampedProgress > gapStart, clampedProgress < gapEnd else {
+            return clampedProgress
+        }
+        return gapStart
+    }
+
+    private static func clampedUnit(_ value: Double) -> Double {
+        guard value.isFinite else { return 0 }
+        return min(1, max(0, value))
+    }
+
+    private static func batteryGapFraction(topGapWidth: CGFloat) -> Double {
+        guard topGapWidth.isFinite, topGapWidth > 0 else { return 0 }
+        let arcLength = batteryRadius * batterySweep
+        guard arcLength.isFinite, arcLength > 0 else { return 0 }
+        return min(1, max(0, Double(topGapWidth / arcLength)))
     }
 
     static func batteryChargingBolt(scale: CGFloat = 1) -> CGPath {
@@ -359,40 +464,51 @@ enum StatusIconGeometry {
         return path
     }
 
-    private static func batteryArc(
-        progress: Double,
+    static func batteryArc(
+        from start: Double,
+        to end: Double,
         hasTopGap: Bool,
         topGapWidth: CGFloat
     ) -> CGPath {
-        guard hasTopGap else {
-            let end = batteryStart + batterySweep * CGFloat(progress)
-            return arc(center: batteryCenter, radius: batteryRadius, start: batteryStart, end: end)
-        }
+        guard start.isFinite, end.isFinite else { return CGMutablePath() }
+        let clampedStart = clampedUnit(start)
+        let clampedEnd = clampedUnit(end)
+        guard clampedEnd > clampedStart else { return CGMutablePath() }
 
-        let gapFraction = min(
-            1,
-            max(0, Double(topGapWidth / (batteryRadius * batterySweep)))
-        )
-        let gapStartProgress = 0.5 - gapFraction / 2
-        let gapEndProgress = 0.5 + gapFraction / 2
         let path = CGMutablePath()
-        let firstSegmentEnd = min(progress, gapStartProgress)
-        if firstSegmentEnd > 0 {
+        guard hasTopGap else {
             path.addPath(arc(
                 center: batteryCenter,
                 radius: batteryRadius,
-                start: batteryStart,
+                start: batteryStart + batterySweep * CGFloat(clampedStart),
+                end: batteryStart + batterySweep * CGFloat(clampedEnd)
+            ))
+            return path
+        }
+
+        let gapFraction = batteryGapFraction(topGapWidth: topGapWidth)
+        let gapStartProgress = (1 - gapFraction) / 2
+        let gapEndProgress = gapStartProgress + gapFraction
+
+        let firstSegmentEnd = min(clampedEnd, gapStartProgress)
+        if firstSegmentEnd > clampedStart {
+            path.addPath(arc(
+                center: batteryCenter,
+                radius: batteryRadius,
+                start: batteryStart + batterySweep * CGFloat(clampedStart),
                 end: batteryStart + batterySweep * CGFloat(firstSegmentEnd)
             ))
         }
 
-        guard progress > gapEndProgress else { return path }
-        path.addPath(arc(
-            center: batteryCenter,
-            radius: batteryRadius,
-            start: batteryStart + batterySweep * CGFloat(gapEndProgress),
-            end: batteryStart + batterySweep * CGFloat(progress)
-        ))
+        let secondSegmentStart = max(clampedStart, gapEndProgress)
+        if clampedEnd > secondSegmentStart {
+            path.addPath(arc(
+                center: batteryCenter,
+                radius: batteryRadius,
+                start: batteryStart + batterySweep * CGFloat(secondSegmentStart),
+                end: batteryStart + batterySweep * CGFloat(clampedEnd)
+            ))
+        }
         return path
     }
 

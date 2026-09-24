@@ -90,6 +90,8 @@
 "settings.battery.showPercentage" = "Show battery percentage";
 "settings.battery.showChargingIndicator" = "Show an indicator while charging or connected to power";
 "settings.battery.chargingDescription" = "When enabled, the percentage becomes a bolt or plug while charging or connected to power.";
+"settings.battery.chargingEffect" = "Charging effect";
+"settings.battery.chargingEffectDescription" = "Animate the highlight only while charging. Stops when Reduce Motion is on.";
 "settings.battery.percentageWhenConnected" = "Show the percentage while connected without charging";
 "settings.battery.percentageWhenConnectedDescription" = "When enabled, a connected power source that is not charging shows the percentage instead of the plug.";
 "settings.battery.symbolScale" = "Percentage/bolt size";

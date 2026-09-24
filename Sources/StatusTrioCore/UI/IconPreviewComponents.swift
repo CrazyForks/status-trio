@@ -10,6 +10,7 @@ struct MenuBarPreviewBar<TrailingAccessory: View>: View {
     var volumeOptions: VolumeIconOptions = .standard
     var bluetoothAudioOptions: BluetoothAudioIconOptions = .standard
     var isDarkBackground = true
+    var phase: ChargingEffectPhase?
     var highlightedPart: IconGuidePart?
     var highlightOpacity: Double = 1
     /// Rendered after `rightContext` inside the same `HStack`, so a caller's
@@ -27,6 +28,7 @@ struct MenuBarPreviewBar<TrailingAccessory: View>: View {
         isDarkBackground: Bool = true,
         highlightedPart: IconGuidePart? = nil,
         highlightOpacity: Double = 1,
+        phase: ChargingEffectPhase? = nil,
         @ViewBuilder trailingAccessory: @escaping () -> TrailingAccessory
     ) {
         self.status = status
@@ -38,6 +40,7 @@ struct MenuBarPreviewBar<TrailingAccessory: View>: View {
         self.isDarkBackground = isDarkBackground
         self.highlightedPart = highlightedPart
         self.highlightOpacity = highlightOpacity
+        self.phase = phase
         self.trailingAccessory = trailingAccessory
     }
 
@@ -60,7 +63,8 @@ struct MenuBarPreviewBar<TrailingAccessory: View>: View {
                         bluetoothAudioOptions: bluetoothAudioOptions,
                         appearance: NSAppearance(
                             named: isDarkBackground ? .darkAqua : .aqua
-                        )
+                        ),
+                        phase: phase
                     ))
 
                     if let highlightedPart {
@@ -146,7 +150,8 @@ extension MenuBarPreviewBar where TrailingAccessory == EmptyView {
         bluetoothAudioOptions: BluetoothAudioIconOptions = .standard,
         isDarkBackground: Bool = true,
         highlightedPart: IconGuidePart? = nil,
-        highlightOpacity: Double = 1
+        highlightOpacity: Double = 1,
+        phase: ChargingEffectPhase? = nil
     ) {
         self.init(
             status: status,
@@ -158,6 +163,7 @@ extension MenuBarPreviewBar where TrailingAccessory == EmptyView {
             isDarkBackground: isDarkBackground,
             highlightedPart: highlightedPart,
             highlightOpacity: highlightOpacity,
+            phase: phase,
             trailingAccessory: { EmptyView() }
         )
     }
