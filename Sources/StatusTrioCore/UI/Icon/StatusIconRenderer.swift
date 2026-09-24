@@ -139,6 +139,7 @@ enum StatusIconRenderer {
         size: CGFloat,
         scale: CGFloat,
         foreground: CGColor,
+        criticalColor: CGColor? = nil,
         options: BatteryIconOptions = .standard,
         connectionOptions: ConnectionIconOptions = .standard,
         volumeOptions: VolumeIconOptions = .standard,
@@ -150,6 +151,7 @@ enum StatusIconRenderer {
             size: size,
             scale: scale,
             foreground: foreground,
+            criticalColor: criticalColor,
             options: options,
             connectionOptions: connectionOptions,
             volumeOptions: volumeOptions,
@@ -163,6 +165,7 @@ enum StatusIconRenderer {
         size: CGFloat,
         scale: CGFloat,
         foreground: CGColor,
+        criticalColor: CGColor? = nil,
         options: BatteryIconOptions = .standard,
         connectionOptions: ConnectionIconOptions = .standard,
         volumeOptions: VolumeIconOptions = .standard,
@@ -202,10 +205,81 @@ enum StatusIconRenderer {
             in: context,
             size: size,
             foreground: foreground,
-            criticalColor: defaultCriticalColor,
+            criticalColor: criticalColor ?? defaultCriticalColor,
             phase: phase
         )
         return context.makeImage()
+    }
+
+    /// Creates a fully rasterized menu-bar image for reuse across animation ticks.
+    @MainActor
+    static func preRenderedMenuBarImage(
+        menuBarStatus: MenuBarStatus,
+        size: CGFloat,
+        scale: CGFloat,
+        appearance: NSAppearance,
+        phase: ChargingEffectPhase,
+        options: BatteryIconOptions = .standard,
+        connectionOptions: ConnectionIconOptions = .standard,
+        volumeOptions: VolumeIconOptions = .standard,
+        bluetoothAudioOptions: BluetoothAudioIconOptions = .standard
+    ) -> NSImage? {
+        var foreground = CGColor(gray: 1, alpha: 1)
+        var criticalColor = Self.defaultCriticalColor
+        appearance.performAsCurrentDrawingAppearance {
+            foreground = NSColor.labelColor.usingColorSpace(.deviceRGB)?.cgColor
+                ?? CGColor(gray: 1, alpha: 1)
+            criticalColor = NSColor.systemRed.usingColorSpace(.deviceRGB)?.cgColor
+                ?? Self.defaultCriticalColor
+        }
+
+        guard let cgImage = render(
+            menuBarStatus: menuBarStatus,
+            size: size,
+            scale: scale,
+            foreground: foreground,
+            criticalColor: criticalColor,
+            options: options,
+            connectionOptions: connectionOptions,
+            volumeOptions: volumeOptions,
+            bluetoothAudioOptions: bluetoothAudioOptions,
+            phase: phase
+        ) else {
+            return nil
+        }
+        return NSImage(cgImage: cgImage, size: NSSize(width: size, height: size))
+    }
+
+    /// Creates a transparent, correctly sized image to reserve the status-item
+    /// button footprint while a Core Animation layer draws over it.
+    @MainActor
+    static func transparentMenuBarImage(size: CGFloat, scale: CGFloat) -> NSImage? {
+        guard size.isFinite, scale.isFinite, size > 0, scale > 0 else { return nil }
+
+        let pixelLength = (size * scale).rounded(.up)
+        guard pixelLength.isFinite,
+              let pixelDimension = Int(exactly: pixelLength),
+              pixelDimension > 0,
+              pixelDimension <= Int.max / 4
+        else {
+            return nil
+        }
+
+        guard let context = CGContext(
+            data: nil,
+            width: pixelDimension,
+            height: pixelDimension,
+            bitsPerComponent: 8,
+            bytesPerRow: pixelDimension * 4,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else {
+            return nil
+        }
+
+        context.clear(CGRect(x: 0, y: 0, width: pixelDimension, height: pixelDimension))
+        guard let cgImage = context.makeImage() else { return nil }
+        return NSImage(cgImage: cgImage, size: NSSize(width: size, height: size))
     }
 
     /// Draws the status glyph into an existing context, using the renderer's

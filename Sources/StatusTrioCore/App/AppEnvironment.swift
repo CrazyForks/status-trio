@@ -134,7 +134,8 @@ final class AppEnvironment {
             activationPolicy: activationPolicy,
             showIconGuide: { [weak onboardingWindowController] in
                 onboardingWindowController?.show()
-            }
+            },
+            chargingEffectClock: chargingEffectClock
         )
         onboardingWindowController.openSettings = { [weak settingsWindowController] in
             settingsWindowController?.show()

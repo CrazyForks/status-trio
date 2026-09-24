@@ -447,7 +447,8 @@ final class AppIconControllerHarness {
         isDarkAppearance: Bool = false,
         notificationCenter: NotificationCenter = .default,
         chargingEffectClock: ChargingEffectClock = ChargingEffectClock(),
-        initialBattery: BatteryStatus = .placeholder
+        initialBattery: BatteryStatus = .placeholder,
+        initialShowsChargingEffect: Bool = true
     ) throws {
         suiteName = "StatusTrioCoreTests.AppIconController.\(UUID().uuidString)"
         guard let defaults = UserDefaults(suiteName: suiteName) else {
@@ -466,6 +467,9 @@ final class AppIconControllerHarness {
 
         let settings = SettingsStore(defaults: defaults)
         settings.appIconPlacement = initialPlacement
+        if !initialShowsChargingEffect {
+            settings.showsChargingEffect = false
+        }
         self.settings = settings
 
         let store = SystemStatusStore(

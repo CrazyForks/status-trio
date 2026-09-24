@@ -107,6 +107,78 @@ struct ChargingEffectControllerTests {
         await stopClock(clock, sleeper: sleeper)
     }
 
+    @Test func enablingAfterDisabledLaunchRendersTheDockPlugInBurstWithTheCurrentOption() async throws {
+        let time = ChargingEffectTestTime()
+        let sleeper = ManualEventSleeper()
+        let clock = makeClock(time: time, sleeper: sleeper)
+        let unpluggedBattery = chargingBattery(60, charging: false)
+        let harness = try AppIconControllerHarness(
+            initialPlacement: .dock,
+            chargingEffectClock: clock,
+            initialBattery: unpluggedBattery,
+            initialShowsChargingEffect: false
+        )
+        harness.controller.start()
+        harness.log.reset()
+        defer {
+            clock.stop()
+            sleeper.releaseAll()
+            harness.controller.stop()
+            harness.cleanUp()
+        }
+
+        clock.update(
+            battery: unpluggedBattery,
+            enabled: false,
+            reduceMotion: false,
+            displayAsleep: false
+        )
+        harness.settings.showsChargingEffect = true
+        clock.update(
+            battery: unpluggedBattery,
+            enabled: true,
+            reduceMotion: false,
+            displayAsleep: false
+        )
+
+        let pluggedBattery = chargingBattery(60)
+        harness.publishBattery(pluggedBattery)
+        await waitForBattery(pluggedBattery, in: harness)
+        clock.update(
+            battery: pluggedBattery,
+            enabled: true,
+            reduceMotion: false,
+            displayAsleep: false
+        )
+        let clockStarted = await sleeper.waitForCallCount(1, timeout: .seconds(1))
+
+        #expect(clockStarted)
+        #expect(harness.log.renderedPhases.compactMap { $0 }.first?.kind == .burst)
+        #expect(harness.log.batteryOptions.last?.showsChargingEffect == true)
+
+        time.setElapsed(0.6)
+        clock.update(
+            battery: pluggedBattery,
+            enabled: true,
+            reduceMotion: false,
+            displayAsleep: false
+        )
+        let increasedBattery = chargingBattery(61)
+        harness.publishBattery(increasedBattery)
+        await waitForBattery(increasedBattery, in: harness)
+        clock.update(
+            battery: increasedBattery,
+            enabled: true,
+            reduceMotion: false,
+            displayAsleep: false
+        )
+
+        #expect(clock.dockPhase?.stepsPerCycle == 6)
+        #expect(harness.log.renderedPhases.compactMap { $0 }.last?.stepsPerCycle == 6)
+        #expect(harness.log.batteryOptions.last?.showsChargingEffect == true)
+        await stopClock(clock, sleeper: sleeper)
+    }
+
     @Test func levelAdvanceBurstRendersExactlyThreeFramesThenRestoresStaticIcon() async throws {
         let time = ChargingEffectTestTime()
         let sleeper = ManualEventSleeper()

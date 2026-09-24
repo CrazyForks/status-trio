@@ -258,7 +258,7 @@ Expected: PASS; phase nil/non-charging/disabled outputs equal baseline pixels.
 
 **Interfaces:**
 - Consumes: existing `SettingsStore.batteryIconOptions`, `iconAppearancePublisher`, and `StatusIconPreviewCard`.
-- Produces: persisted `SettingsStore.showsChargingEffect` (default `true`), and two keys `settingsBatteryChargingEffect` / `settingsBatteryChargingEffectDescription` in every shipped locale. `ChargingEffectPreviewPlayback` replays two 1.8-second steady cycles only in the settings preview after the user enables the effect; it never changes the real battery snapshot.
+- Produces: persisted `SettingsStore.showsChargingEffect` (default `true`), and two keys `settingsBatteryChargingEffect` / `settingsBatteryChargingEffectDescription` in every shipped locale. While an enabled real charge is active, `StatusIconPreviewCard` displays the shared production clock phase and real status; otherwise, enabling the effect replays two 1.8-second steady cycles with a local preview-only charging status. The local replay never changes the real battery snapshot.
 
 - [ ] **Step 1: Write failing persistence, option-propagation, localization-coverage, and preview-duration tests.** Assert a missing defaults key enables the effect, an explicit false persists across store instances and reaches `batteryIconOptions`, all 12 bundles have both keys, and preview playback expires after 3.6 seconds.
 
@@ -281,7 +281,7 @@ Expected: PASS; phase nil/non-charging/disabled outputs equal baseline pixels.
 Run: `swift test --filter 'ChargingEffectSettingsTests|ChargingEffectLocalizationTests|ChargingEffectPreviewPlaybackTests'`
 Expected: FAIL for absent effect setting/API and locale keys.
 
-- [ ] **Step 3: Implement the persisted setting and preview**. Add the setting to `SettingsStore` and the existing icon appearance pipeline; `BatteryIconOptions` already owns the effect option from Task 3. Place a green `sparkles` toggle directly below the charging-indicator toggle. The description must state that it runs only while charging and stops when Reduce Motion is on. On an off-to-on transition, run the preview through two cycles using the view's local preview-only charging status; stop immediately for Reduce Motion, view disappearance, or after 3.6 seconds. Add equivalent localized strings to the 12 locale files using each locale's existing terms for charging and motion reduction.
+- [ ] **Step 3: Implement the persisted setting and preview**. Add the setting to `SettingsStore` and the existing icon appearance pipeline; `BatteryIconOptions` already owns the effect option from Task 3. Place a green `sparkles` toggle directly below the charging-indicator toggle. The description must state that it runs only while charging and stops when Reduce Motion is on. When an enabled real charge is active, the settings preview uses the shared production clock phase and real battery status. On an off-to-on transition without a live phase, run two cycles using the view's local preview-only charging status; stop immediately for Reduce Motion, view disappearance, or after 3.6 seconds. Add equivalent localized strings to the 12 locale files using each locale's existing terms for charging and motion reduction.
 
 ```swift
 SettingsToggleRow(
@@ -293,10 +293,10 @@ SettingsToggleRow(
 )
 ```
 
-- [ ] **Step 4: Re-run settings, localization, and preview tests**, then run `swift test --filter 'BatterySectionView|SettingsViewTests'` to catch layout or accessibility regressions.
+- [ ] **Step 4: Re-run settings, localization, and preview tests**, including an active-charge test proving the preview uses the shared clock phase, then run `swift test --filter 'BatterySectionView|SettingsViewTests'` to catch layout or accessibility regressions.
 
 Run: `swift test --filter 'SettingsStoreTests|LocalizationTests|ChargingEffectSettingsTests|ChargingEffectLocalizationTests|ChargingEffectPreviewPlaybackTests|SettingsViewTests'`
-Expected: PASS; preview playback is local-only and all 12 translations are non-empty.
+Expected: PASS; local preview replay never mutates battery status, live charging uses the shared phase, and all 12 translations are non-empty.
 
 ### Task 5: Shared 20-fps clock and Reduce Motion stop/resume
 
@@ -424,9 +424,9 @@ Expected: PASS; record any pre-existing warnings separately from new warnings.
 Run: `swift build -c release`
 Expected: PASS with CI-compatible Swift; do not use experimental flags to mask compiler diagnostics.
 
-- [ ] **Step 3: Measure the menu-bar CPU budget** for 60 seconds while actively charging, then for 60 seconds with `showsChargingEffect` disabled. Record the mean single-core percentage and method in the design doc. The enabled animation must remain below 1%; if it exceeds 1%, stop and revise to the spec's 36-frame pre-rendered animation before accepting the feature.
+- [ ] **Step 3: Measure the menu-bar CPU budget** for 60 seconds with animation active, then for 60 seconds with `showsChargingEffect` disabled, using the same dev build. Record mean single-core percentage and method in the design doc. The user's updated acceptance is ≤3% mean (superseding the original <1% target). The 36-frame cache alone measured 11.759% mean; the layer-backed presentation A/B measured 1.651% enabled versus 0.136% disabled, meeting the accepted budget. A synthetic charging input was used only in a temporary explicit dev-bundle test mode, now removed.
 
-- [ ] **Step 4: Dispatch the required non-publishing release workflow** after the implementation is complete, using the next semantic version and a build number greater than the latest published build, both explicitly confirmed when the preflight is run, with `publish=false`; watch the run to completion and report its result. Do not merge or publish unless it passes.
+- [ ] **Step 4: Non-publishing release workflow gate (deferred by user).** Before merging or publishing, run the release workflow with `publish=false` only after the user explicitly approves that preflight and confirms the next semantic version and build number. The user has said not to package or run preflight yet; do not dispatch it during this test-only phase. If later approved, watch the run to completion and do not merge or publish unless it passes.
 
 ```bash
 read -r -p 'Next release version (greater than the latest published version): ' NEXT_VERSION
@@ -454,7 +454,7 @@ Expected: no whitespace errors; only planned files are changed.
 
 ## Scope Coverage Check
 
-This plan covers phase-one spec requirements for charging-only behavior, gap-aware geometry, low-fill behavior, initial and level-advance events, shared clock, Reduce Motion/display sleep, an enabled-by-default localized switch, automatic tail color, menu-bar/Dock render-key invalidation, preview playback, static-pixel preservation, and CPU budget. Phase-two requirements (preset/custom color configuration and color-setting UI) are explicitly deferred, not omitted accidentally.
+This plan covers phase-one spec requirements for charging-only behavior, gap-aware geometry, low-fill behavior, initial and level-advance events, shared clock, Reduce Motion/display sleep, an enabled-by-default localized switch, automatic tail color, menu-bar/Dock render-key invalidation, a shared-phase live charging preview with a local replay fallback, static-pixel preservation, and CPU budget. Phase-two requirements (preset/custom color configuration and color-setting UI) are explicitly deferred, not omitted accidentally.
 
 ## Plan Self-Review
 

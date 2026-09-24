@@ -118,6 +118,39 @@ struct ChargingEffectClockTests {
         #expect(sleeper.callCount == 13)
     }
 
+    @Test func levelAdvanceDuringPlugInKeepsMenuBurstAndStartsDockLevelBurst() async {
+        let time = ManualDateProvider()
+        let sleeper = ManualEventSleeper()
+        let clock = makeClock(time: time, sleeper: sleeper)
+        let initial = batteryStatus(61, charging: true)
+        let increased = batteryStatus(62, charging: true)
+
+        clock.update(battery: initial, enabled: true, reduceMotion: false, displayAsleep: false)
+        await sleeper.waitForCallCount(1)
+        time.setElapsed(0.25)
+        clock.update(battery: initial, enabled: true, reduceMotion: false, displayAsleep: false)
+        #expect(clock.phase?.kind == .burst)
+        #expect(clock.phase?.step == 5)
+
+        clock.update(battery: increased, enabled: true, reduceMotion: false, displayAsleep: false)
+
+        #expect(clock.phase?.kind == .burst)
+        #expect(clock.phase?.step == 5)
+        #expect(clock.dockPhase?.kind == .burst)
+        #expect(clock.dockPhase?.stepsPerCycle == 6)
+        #expect(clock.dockPhase?.step == 0)
+
+        time.setElapsed(0.3)
+        clock.update(battery: increased, enabled: true, reduceMotion: false, displayAsleep: false)
+        #expect(clock.phase?.kind == .burst)
+        #expect(clock.phase?.step == 6)
+        #expect(clock.dockPhase?.step == 1)
+
+        clock.stop()
+        sleeper.releaseAll()
+        await sleeper.waitForCompletionCount(1)
+    }
+
     @Test func levelAdvanceBoostsTheNextHeartbeatWithoutResettingSteadyPosition() async {
         let time = ManualDateProvider()
         let sleeper = ManualEventSleeper()

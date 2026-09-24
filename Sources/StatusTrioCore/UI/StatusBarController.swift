@@ -39,7 +39,11 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     private let quitAction: () -> Void
     private var appearanceObservations: [NSKeyValueObservation] = []
     private var renderCache = StatusBarRenderCache()
+    private let chargingFrameCache = StatusBarChargingFrameCache()
+    private let animationLayerPresenter = StatusBarAnimationLayerPresenter()
     private let renderCoalescer = IconRenderCoalescer()
+    var cachedChargingFrameCount: Int { chargingFrameCache.frameCount }
+    var hasLayerBackedAnimation: Bool { animationLayerPresenter.isInstalled }
     private var isStatusItemVisible: Bool
     private var accessibilityKey: StatusBarAccessibilityKey?
     private var popoverDismissMonitor: Any?
@@ -160,6 +164,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             renderCache = StatusBarRenderCache()
             renderLatestSnapshot()
         } else {
+            clearAnimationPresentation()
             popover.performClose(nil)
             store.setPopoverVisible(false)
             statusItem.isVisible = false
@@ -477,6 +482,13 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     ) {
         guard isStatusItemVisible, let button = statusItem.button else { return }
 
+        if phase == nil {
+            clearAnimationPresentation()
+        }
+        let backingScale =
+            button.window?.backingScaleFactor
+            ?? NSScreen.main?.backingScaleFactor
+            ?? 1
         let key = StatusBarRenderKey(
             status: status,
             iconSize: appearance.iconSize,
@@ -487,17 +499,53 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             appearanceName: button.effectiveAppearance.name.rawValue,
             phase: phase
         )
+        if let phase, phase.kind == .steady,
+            chargingFrameCache.needsFrames(for: phase, key: key, backingScale: backingScale)
+        {
+            // A backing-scale change is not in the existing render key. Reset on
+            // any frame-set rebuild so the current phase is displayed immediately.
+            renderCache = StatusBarRenderCache()
+        }
         guard renderCache.shouldRender(key) else { return }
 
-        button.image = StatusIconRenderer.image(
-            menuBarStatus: status,
-            size: appearance.iconSize,
-            options: appearance.batteryOptions,
-            connectionOptions: appearance.connectionOptions,
-            volumeOptions: appearance.volumeOptions,
-            bluetoothAudioOptions: appearance.bluetoothAudioOptions,
-            phase: phase
-        )
+        if let phase, phase.kind == .steady,
+            let cachedImage = chargingFrameCache.image(
+                for: phase,
+                key: key,
+                backingScale: backingScale,
+                renderFrame: { framePhase in
+                    StatusIconRenderer.preRenderedMenuBarImage(
+                        menuBarStatus: status,
+                        size: appearance.iconSize,
+                        scale: backingScale,
+                        appearance: button.effectiveAppearance,
+                        phase: framePhase,
+                        options: appearance.batteryOptions,
+                        connectionOptions: appearance.connectionOptions,
+                        volumeOptions: appearance.volumeOptions,
+                        bluetoothAudioOptions: appearance.bluetoothAudioOptions
+                    )
+                }
+            )
+        {
+            presentCachedAnimationFrame(
+                cachedImage,
+                button: button,
+                iconSize: appearance.iconSize,
+                backingScale: backingScale
+            )
+        } else {
+            animationLayerPresenter.clear()
+            button.image = StatusIconRenderer.image(
+                menuBarStatus: status,
+                size: appearance.iconSize,
+                options: appearance.batteryOptions,
+                connectionOptions: appearance.connectionOptions,
+                volumeOptions: appearance.volumeOptions,
+                bluetoothAudioOptions: appearance.bluetoothAudioOptions,
+                phase: phase
+            )
+        }
 
         let nextAccessibilityKey = StatusBarAccessibilityKey(
             status: status,
@@ -512,6 +560,48 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
                 localization: localization
             )
         )
+    }
+
+    private func clearAnimationPresentation() {
+        chargingFrameCache.reset()
+        animationLayerPresenter.clear()
+    }
+
+    private func presentCachedAnimationFrame(
+        _ image: NSImage,
+        button: NSStatusBarButton,
+        iconSize: CGFloat,
+        backingScale: CGFloat
+    ) {
+        guard
+            let cgImage = image.cgImage(
+                forProposedRect: nil,
+                context: nil,
+                hints: nil
+            ),
+            let result = animationLayerPresenter.display(
+                cgImage,
+                in: button,
+                backingScale: backingScale
+            )
+        else {
+            animationLayerPresenter.clear()
+            button.image = image
+            return
+        }
+
+        guard result == .installed else { return }
+        guard
+            let placeholder = StatusIconRenderer.transparentMenuBarImage(
+                size: iconSize,
+                scale: backingScale
+            )
+        else {
+            animationLayerPresenter.clear()
+            button.image = image
+            return
+        }
+        button.image = placeholder
     }
 
     /// Clock-driven frames bypass the status/setting coalescer; the menu-bar key

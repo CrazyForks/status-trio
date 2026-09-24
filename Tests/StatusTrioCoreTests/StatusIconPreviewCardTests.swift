@@ -67,6 +67,7 @@ final class StatusIconPreviewCardTests: XCTestCase {
             isDarkBackground: .constant(true)
         )
         .environmentObject(localization)
+        .environmentObject(ChargingEffectClock())
 
         let hostingView = NSHostingView(rootView: card)
         hostingView.frame = NSRect(x: 0, y: 0, width: 500, height: 80)

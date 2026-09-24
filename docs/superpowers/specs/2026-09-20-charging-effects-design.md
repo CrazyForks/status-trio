@@ -51,7 +51,7 @@
 | `ChargingEffectClock` | `@MainActor` 20fps 步进器，`sleep`/`now` 可注入（照 `IconRenderCoalescer` 的写法） |
 | `ChargingEffectPalette` | 颜色解析：角色 × 外观 × 用户选择 → 尾巴色 + 实测对比度 + 可见性下限 |
 | `ChargingTailColorSetting` | 用户选择的值类型：`preset(id)` 或 `custom(hue:saturation:brightness:)` |
-| `DisplaySleepMonitor`（`App/`） | 息屏即停，照 `SystemIconAppearanceMonitor` 的通知 + 轮询先例 |
+| `ChargingEffectMotionMonitor`（`App/`） | 监听系统 Reduce Motion，并将变化送入共享时钟；息屏状态复用现有 `SystemStatusStore.isDisplayAsleep`，不新增独立显示休眠 observer |
 
 **改动**
 
@@ -62,7 +62,7 @@
 | `Models/BatteryIconOptions.swift` | 加 `showsChargingEffect`、`tailColor` |
 | `UI/StatusBarController.swift` | 订阅时钟；`StatusBarRenderKey` 加 `phase`；`StatusBarController.swift:476` 的渲染调用带上相位 |
 | `App/AppIconController.swift` | 订阅同一个时钟，但只在 burst 窗口内重绘；`DockIconRenderKey` 加 `phase` |
-| `App/AppEnvironment.swift` | 持有共享时钟与 `DisplaySleepMonitor`（**一个时钟、两个订阅者**，各自带闸门） |
+| `App/AppEnvironment.swift` | 持有共享时钟与 `ChargingEffectMotionMonitor`；将电池、开关、`SystemStatusStore.isDisplayAsleep` 和 Reduce Motion 状态送入时钟 |
 | `Settings/SettingsStore.swift` | `showsChargingEffect`（默认开）、`chargingTailColor`，进 `batteryIconOptions` |
 | `UI/Settings/BatterySectionView.swift` | 开关行 + 颜色区（预设网格、取色器、恢复默认） |
 | `Localization/LocalizationKey.swift` + 12×`Resources/*.lproj/Localizable.strings` | 新增键（见「设置与本地化」） |
@@ -122,9 +122,9 @@ BatteryMonitor → snapshot 变化
 
 ## 能耗、降级与预算
 
-- 只在充电时运行；**屏幕休眠立刻停**（`DisplaySleepMonitor`）；Reduce Motion → `phase = nil`。
+- 只在充电时运行；**屏幕休眠立刻停**（复用 `SystemStatusStore.isDisplayAsleep`）；Reduce Motion → `phase = nil`。
 - 菜单栏 20fps；Dock burst 10fps（插电 6 帧 / 0.6s，与菜单栏的压缩轮同时长；电量跳变 3 帧）。
-- **预算：菜单栏动画 < 单核 1%**。实现后必须实测（`top` 采样 60 秒，对比开关关闭时）并把数字写进本文件。超预算则改上「预渲染帧表」（进入充电态时预渲 36 帧、之后只换图），本设计不做是因为当前 22pt 位图重绘本就很便宜。
+- **预算：菜单栏动画启用时 60 秒单核均值 ≤3%**（按用户后续确认覆盖原先的 1% 目标；同时记录峰值及关闭动画基线）。使用相同 `.dev.` 构建的 `top -l 61 -s 1` 样本比较。最终 layer-backed A/B：启用均值 1.651% / 峰值 6.800%，关闭均值 0.136% / 峰值 1.900%，动画额外均值 1.515 个百分点，满足均值预算。仅预渲 36 帧仍有 11.759% 均值；性能采样指向逐帧设置 `NSStatusBarButton.image` 引发的 AppKit 布局，因此稳态改为单个 `CALayer` 持有并更新已预渲的 CGImage。`phase == nil` 和 burst 继续使用原图像渲染路径。测试机电量 98% 且未充电，故 CPU 测量使用的合成充电输入仅在临时显式 dev-bundle CLI mode 中启用；临时模式、测试 app 与 app 专属偏好已在测量后删除。
 - Dock 512px 不参与常驻重绘（见下）。
 
 ## 设置、本地化与预览
@@ -134,7 +134,7 @@ BatteryMonitor → snapshot 变化
 - **新增本地化键**（12 个 `.lproj`：ar / de / en / es / fr / it / ja / ko / pt-BR / ru / zh-Hans / zh-Hant）：
   `settingsBatteryChargingEffect`、`…ChargingEffectDescription`、`settingsBatteryTailColor`、`…TailColorDescription`、`settingsBatteryTailColorCustom`、`…TailColorReset`、`…TailColorContrastFormat`、`settingsBatteryTailColorPresetSameSoft` / `SameWhite` / `Cyan` / `Warm` / `Mint` / `White` / `Blue` / `Dark`、`settingsBatteryTailColorMonoNote`。
   文案必须沿用各语言既有 `.lproj` 的术语（充电／Charging 等）。
-- **预览卡**：`StatusIconPreviewCard` 渲染的就是真图标，实时充电时会自己动。**待定项**：Mac 没插电时用户看不到效果，是否加「拨开开关时本地试播 2 轮（约 3.6s）」，约 10 行代码——建议要。
+- **预览卡**：`StatusIconPreviewCard` 使用真实图标渲染；实际充电且开关启用时使用共享生产时钟相位与真实电池状态实时动画。无实时充电相位时，用户打开开关可本地试播 2 轮（约 3.6s，合成状态不写入电池 store）；Reduce Motion、视图离开或超时立即停止。
 
 ## Dock 平价（有意差异声明）
 

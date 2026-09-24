@@ -22,8 +22,9 @@ final class ChargingEffectClock: ObservableObject {
     private var enabled = false
     private var reduceMotion = false
     private var displayAsleep = false
-    private var burstStartedAt: Date?
-    private var burstEvent: ChargingEffectEvent?
+    private var menuPlugInBurstStartedAt: Date?
+    private var dockBurstStartedAt: Date?
+    private var dockBurstEvent: ChargingEffectEvent?
     private var steadyStartedAt: Date?
     private var boostedHeartbeatCycle: Int?
 
@@ -80,8 +81,8 @@ final class ChargingEffectClock: ObservableObject {
             beginTimeline(for: .pluggedIn, at: eventDate)
         case .levelAdvanced:
             scheduleHeartbeatBoost(at: eventDate)
-            burstStartedAt = eventDate
-            burstEvent = .levelAdvanced
+            dockBurstStartedAt = eventDate
+            dockBurstEvent = .levelAdvanced
         case nil:
             break
         }
@@ -131,8 +132,9 @@ final class ChargingEffectClock: ObservableObject {
         isRunning = false
         phase = nil
         dockPhase = nil
-        burstStartedAt = nil
-        burstEvent = nil
+        menuPlugInBurstStartedAt = nil
+        dockBurstStartedAt = nil
+        dockBurstEvent = nil
         steadyStartedAt = nil
         boostedHeartbeatCycle = nil
     }
@@ -141,16 +143,19 @@ final class ChargingEffectClock: ObservableObject {
         boostedHeartbeatCycle = nil
         switch event {
         case .pluggedIn:
-            burstStartedAt = date
-            burstEvent = .pluggedIn
+            menuPlugInBurstStartedAt = date
+            dockBurstStartedAt = date
+            dockBurstEvent = .pluggedIn
             steadyStartedAt = date.addingTimeInterval(ChargingEffectTimeline.burstDuration)
         case .levelAdvanced:
-            burstStartedAt = date
-            burstEvent = .levelAdvanced
+            menuPlugInBurstStartedAt = nil
+            dockBurstStartedAt = date
+            dockBurstEvent = .levelAdvanced
             steadyStartedAt = date
         case nil:
-            burstStartedAt = nil
-            burstEvent = nil
+            menuPlugInBurstStartedAt = nil
+            dockBurstStartedAt = nil
+            dockBurstEvent = nil
             steadyStartedAt = date
         }
     }
@@ -169,8 +174,15 @@ final class ChargingEffectClock: ObservableObject {
     private func phase(at date: Date) -> ChargingEffectPhase? {
         guard let steadyStartedAt else { return nil }
 
-        if burstEvent == .pluggedIn, let burstPhase = dockPhase(at: date) {
-            return burstPhase
+        if let menuPlugInBurstStartedAt {
+            if let burstPhase = burstPhase(
+                event: .pluggedIn,
+                startedAt: menuPlugInBurstStartedAt,
+                at: date
+            ) {
+                return burstPhase
+            }
+            self.menuPlugInBurstStartedAt = nil
         }
 
         let steadyElapsed = max(0, date.timeIntervalSince(steadyStartedAt))
@@ -186,11 +198,19 @@ final class ChargingEffectClock: ObservableObject {
     }
 
     private func dockPhase(at date: Date) -> ChargingEffectPhase? {
-        guard let burstStartedAt, let burstEvent else { return nil }
-        let burstElapsed = max(0, date.timeIntervalSince(burstStartedAt))
+        guard let dockBurstStartedAt, let dockBurstEvent else { return nil }
+        return burstPhase(event: dockBurstEvent, startedAt: dockBurstStartedAt, at: date)
+    }
+
+    private func burstPhase(
+        event: ChargingEffectEvent,
+        startedAt: Date,
+        at date: Date
+    ) -> ChargingEffectPhase? {
+        let burstElapsed = max(0, date.timeIntervalSince(startedAt))
         let adjustedElapsed = burstElapsed + Self.frameBoundaryTolerance
         let burstFramePosition = adjustedElapsed * Double(ChargingEffectTimeline.framesPerSecond)
-        let burstDuration = ChargingEffectTimeline.cycleDuration(for: .burst, event: burstEvent)
+        let burstDuration = ChargingEffectTimeline.cycleDuration(for: .burst, event: event)
         let burstFrameCount = Double(
             (burstDuration * Double(ChargingEffectTimeline.framesPerSecond)).rounded()
         )
@@ -200,7 +220,7 @@ final class ChargingEffectClock: ObservableObject {
         return ChargingEffectTimeline.phase(
             elapsed: adjustedElapsed,
             kind: .burst,
-            event: burstEvent
+            event: event
         )
     }
 }

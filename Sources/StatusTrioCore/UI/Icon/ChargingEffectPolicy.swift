@@ -104,7 +104,22 @@ enum ChargingEffectPolicy {
         )
         let tailRange: ClosedRange<Double>?
         if visibleFill >= minimumTailFill, head > 0, tailLength > 0 {
-            tailRange = max(0, head - tailLength)...head
+            let visibleHead = StatusIconGeometry.visibleFraction(
+                forProgress: head,
+                hasTopGap: hasTopGap,
+                topGapWidth: topGapWidth
+            )
+            let tailStart = StatusIconGeometry.progress(
+                forVisibleFraction: max(0, visibleHead - tailLength),
+                hasTopGap: hasTopGap,
+                topGapWidth: topGapWidth
+            )
+            let tailEnd = StatusIconGeometry.progress(
+                forVisibleFraction: visibleHead,
+                hasTopGap: hasTopGap,
+                topGapWidth: topGapWidth
+            )
+            tailRange = tailStart...tailEnd
         } else {
             tailRange = nil
         }

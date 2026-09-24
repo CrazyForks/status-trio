@@ -84,7 +84,17 @@ struct ChargingEffectPolicyTests {
         ))
         let tail = try #require(frame.tailRange)
 
-        #expect(abs((tail.upperBound - tail.lowerBound) - 0.2466) < 0.001)
+        let visibleTailLength = StatusIconGeometry.visibleFraction(
+            forProgress: tail.upperBound,
+            hasTopGap: true,
+            topGapWidth: StatusIconGeometry.batteryChargingBoltTopGapWidth
+        ) - StatusIconGeometry.visibleFraction(
+            forProgress: tail.lowerBound,
+            hasTopGap: true,
+            topGapWidth: StatusIconGeometry.batteryChargingBoltTopGapWidth
+        )
+
+        #expect(abs(visibleTailLength - 0.2466) < 0.001)
     }
 
     @Test func fillEndingInsideGapUsesTheLeftEdgeForItsHeartbeat() throws {

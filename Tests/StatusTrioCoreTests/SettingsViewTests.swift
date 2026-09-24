@@ -64,7 +64,9 @@ final class SettingsViewTests: XCTestCase {
 
         for (name, pane) in panes {
             let hostingView = NSHostingView(
-                rootView: pane.environmentObject(localization)
+                rootView: pane
+                    .environmentObject(localization)
+                    .environmentObject(ChargingEffectClock())
             )
             hostingView.frame = NSRect(
                 x: 0,
@@ -98,7 +100,7 @@ final class SettingsViewTests: XCTestCase {
             onShowIconGuide: {}
         )
 
-        let hostingView = NSHostingView(rootView: view)
+        let hostingView = NSHostingView(rootView: view.environmentObject(ChargingEffectClock()))
         hostingView.frame = NSRect(x: 0, y: 0, width: SettingsView.width, height: SettingsView.height)
         hostingView.layoutSubtreeIfNeeded()
 

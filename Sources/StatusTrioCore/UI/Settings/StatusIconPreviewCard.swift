@@ -11,6 +11,7 @@ struct StatusIconPreviewCard: View {
     @ObservedObject var statusStore: SystemStatusStore
     @Binding var isDarkBackground: Bool
     @EnvironmentObject private var localization: Localization
+    @EnvironmentObject private var chargingEffectClock: ChargingEffectClock
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var previewPlayback = ChargingEffectPreviewPlayback()
 
@@ -28,6 +29,9 @@ struct StatusIconPreviewCard: View {
             } else {
                 previewPlayback.stop()
             }
+        }
+        .onChange(of: isLiveChargingActive) { _, isActive in
+            if isActive { previewPlayback.stop() }
         }
         .onChange(of: reduceMotion) { _, isEnabled in
             if isEnabled {
@@ -51,7 +55,9 @@ struct StatusIconPreviewCard: View {
 
     @ViewBuilder
     private var menuBarPreview: some View {
-        if previewPlayback.isPlaying {
+        if let phase = liveChargingPhase {
+            previewBar(status: currentStatus, phase: phase)
+        } else if previewPlayback.isPlaying {
             TimelineView(.animation(
                 minimumInterval: 1 / Double(ChargingEffectTimeline.framesPerSecond),
                 paused: false
@@ -69,6 +75,29 @@ struct StatusIconPreviewCard: View {
 
     private var currentStatus: MenuBarStatus {
         MenuBarStatus(snapshot: statusStore.snapshot)
+    }
+
+    private var liveChargingPhase: ChargingEffectPhase? {
+        Self.livePhase(
+            battery: statusStore.snapshot.battery,
+            enabled: store.showsChargingEffect,
+            reduceMotion: reduceMotion,
+            phase: chargingEffectClock.phase
+        )
+    }
+
+    private var isLiveChargingActive: Bool {
+        liveChargingPhase != nil
+    }
+
+    static func livePhase(
+        battery: BatteryStatus,
+        enabled: Bool,
+        reduceMotion: Bool,
+        phase: ChargingEffectPhase?
+    ) -> ChargingEffectPhase? {
+        guard battery.isCharging, enabled, !reduceMotion else { return nil }
+        return phase
     }
 
     private var chargingPreviewStatus: MenuBarStatus {
@@ -112,7 +141,7 @@ struct StatusIconPreviewCard: View {
     }
 
     private func startPreviewIfAllowed() {
-        guard !reduceMotion else { return }
+        guard !reduceMotion, !isLiveChargingActive else { return }
         previewPlayback.start(at: Date())
     }
 
