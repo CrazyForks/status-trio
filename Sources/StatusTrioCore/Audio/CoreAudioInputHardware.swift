@@ -266,6 +266,9 @@ struct CoreAudioInputHardware: AudioInputHardware {
     } else if client.readMute(id, element) == nil {
       throw AudioInputHardwareError.unsupported
     }
+    guard try client.defaultInput() == id else {
+      throw AudioInputHardwareError.unavailable
+    }
   }
 
   private func isPropertySettable(

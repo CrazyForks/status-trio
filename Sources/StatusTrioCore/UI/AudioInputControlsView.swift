@@ -122,11 +122,15 @@ struct AudioInputPresentation {
         status.muteState != .muted
     }
 
-    var volumeAccessibilityValue: String {
+    var visibleVolumeValue: String {
         guard let scalar = status.scalar, scalar.isFinite else { return "—" }
         return min(1, max(0, scalar)).formatted(
             .percent.precision(.fractionLength(0)).locale(locale)
         )
+    }
+
+    var volumeAccessibilityValue: String {
+        visibleVolumeValue
     }
 }
 
@@ -338,24 +342,40 @@ struct AudioInputControlsView: View {
                 presentation.muteEnabled ? "" : localization.string(.audioInputMuteUnavailable)
             )
 
-            Slider(
-                value: sliderValue,
-                in: 0...1,
-                onEditingChanged: { editing in
-                    if !editing {
-                        volumeDraft.receiveSystemScalar(status.scalar)
+            if status.scalar?.isFinite == true {
+                Slider(
+                    value: sliderValue,
+                    in: 0...1,
+                    onEditingChanged: { editing in
+                        if !editing {
+                            volumeDraft.receiveSystemScalar(status.scalar)
+                        }
+                        volumeDraft.setEditing(editing)
                     }
-                    volumeDraft.setEditing(editing)
-                }
-            )
-            .tint(status.muteState == .muted ? Color.secondary : Color.accentColor)
-            .disabled(!presentation.volumeEnabled)
-            .help(volumeControlHint)
-            .accessibilityLabel(localization.string(.audioInputVolume))
-            .accessibilityValue(sliderAccessibilityValue)
-            .accessibilityHint(
-                presentation.volumeEnabled ? "" : localization.string(.audioInputVolumeUnavailable)
-            )
+                )
+                .tint(status.muteState == .muted ? Color.secondary : Color.accentColor)
+                .disabled(!presentation.volumeEnabled)
+                .help(volumeControlHint)
+                .accessibilityLabel(localization.string(.audioInputVolume))
+                .accessibilityValue(sliderAccessibilityValue)
+                .accessibilityHint(
+                    presentation.volumeEnabled ? "" : localization.string(.audioInputVolumeUnavailable)
+                )
+
+                Text(presentation.visibleVolumeValue)
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+                    .frame(minWidth: 34, alignment: .trailing)
+                    .accessibilityHidden(true)
+            } else {
+                Text(presentation.visibleVolumeValue)
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityLabel(localization.string(.audioInputVolume))
+                    .accessibilityValue(presentation.visibleVolumeValue)
+                    .accessibilityHint(localization.string(.audioInputVolumeUnavailable))
+            }
 
             Image(systemName: "waveform")
                 .foregroundStyle(.secondary)

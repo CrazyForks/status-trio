@@ -410,11 +410,26 @@ final class AudioInputMonitor: AudioInputMonitoring {
         clearError()
       }
     case .failure:
+      invalidateDefaultControlReadback()
       showError(.refreshFailed)
     }
     status.isRefreshing = false
     publish()
     startNextWorkIfPossible()
+  }
+
+  private func invalidateDefaultControlReadback() {
+    status.defaultDeviceID = nil
+    status.deviceName = nil
+    status.scalar = nil
+    status.canSetVolume = false
+    status.muteState = nil
+    status.canSetMute = false
+    status.isBusy = false
+
+    queuedCommands.removeAll()
+    clearPendingScalar()
+    refreshPending = false
   }
 
   private func enqueueOrStart(_ queued: QueuedCommand) {

@@ -465,6 +465,61 @@ final class AudioInputHardwareTests: XCTestCase {
     XCTAssertEqual(client.writtenMuteElements, [1, 2])
   }
 
+  func testVolumeWriteRechecksDefaultBeforeEachChannelWrite() {
+    let client = makeClient(
+      defaultID: 11,
+      deviceIDs: [11, 22],
+      overrides: [
+        11: .eligible(
+          name: "Two-channel microphone",
+          uid: "stereo",
+          channels: 2,
+          controlProperties: [
+            .init(selector: kAudioDevicePropertyVolumeScalar, element: 1): .init(scalar: 0.4, settable: true),
+            .init(selector: kAudioDevicePropertyVolumeScalar, element: 2): .init(scalar: 0.4, settable: true),
+          ]
+        ),
+        22: .eligible(name: "New default", uid: "new-default"),
+      ]
+    )
+    let hardware = CoreAudioInputHardware(client: client)
+    client.switchDefaultAfterNextScalarWrite = 22
+
+    XCTAssertThrowsError(try hardware.setScalar(0.9, on: 11))
+    XCTAssertEqual(client.writtenScalarElements, [1])
+    XCTAssertEqual(client.writtenScalarIDs, [11])
+    XCTAssertEqual(client.defaultID, 22)
+  }
+
+  func testVolumeAndMuteWritesAreRejectedWhenTargetIsNoLongerDefault() {
+    let client = makeClient(
+      defaultID: 11,
+      deviceIDs: [11, 22],
+      overrides: [
+        11: .eligible(
+          name: "Previous microphone",
+          uid: "previous",
+          volume: AudioInputVolumeReadback(scalar: 0.4, canSet: true),
+          mute: AudioInputMuteReadback(state: .unmuted, canSet: true)
+        ),
+        22: .eligible(
+          name: "Current microphone",
+          uid: "current",
+          volume: AudioInputVolumeReadback(scalar: 0.6, canSet: true),
+          mute: AudioInputMuteReadback(state: .unmuted, canSet: true)
+        ),
+      ]
+    )
+    let hardware = CoreAudioInputHardware(client: client)
+    client.setDefaultInput(22)
+
+    XCTAssertThrowsError(try hardware.setScalar(0.9, on: 11))
+    XCTAssertThrowsError(try hardware.setMuted(true, on: 11))
+    XCTAssertTrue(client.writtenScalarElements.isEmpty)
+    XCTAssertTrue(client.writtenMuteElements.isEmpty)
+    XCTAssertEqual(client.defaultID, 22)
+  }
+
   func testCommandsRevalidateDeviceAndPropertyCapabilities() {
     let client = makeClient(
       defaultID: 11,
@@ -578,9 +633,12 @@ private final class FakeAudioInputPropertyClient: AudioInputPropertyClient, @unc
   private var devicesByID: [AudioDeviceID: FakeDevice]
   private(set) var writtenScalarElements: [AudioObjectPropertyElement] = []
   private(set) var writtenMuteElements: [AudioObjectPropertyElement] = []
+  private(set) var writtenScalarIDs: [AudioDeviceID] = []
+  private(set) var writtenMuteIDs: [AudioDeviceID] = []
   private(set) var writtenDefaultInputs: [AudioDeviceID] = []
   var failingMuteElement: AudioObjectPropertyElement?
   var failDefaultInputWrite = false
+  var switchDefaultAfterNextScalarWrite: AudioDeviceID?
 
   init(
     deviceIDs: [AudioDeviceID],
@@ -640,6 +698,7 @@ private final class FakeAudioInputPropertyClient: AudioInputPropertyClient, @unc
     element: AudioObjectPropertyElement
   ) throws {
     writtenScalarElements.append(element)
+    writtenScalarIDs.append(id)
     let key = FakePropertyKey(selector: kAudioDevicePropertyVolumeScalar, element: element)
     guard var device = devicesByID[id], var property = device.controlProperties[key], property.settable else {
       throw AudioInputHardwareError.unsupported
@@ -647,6 +706,10 @@ private final class FakeAudioInputPropertyClient: AudioInputPropertyClient, @unc
     property.scalar = value
     device.controlProperties[key] = property
     devicesByID[id] = device
+    if let nextDefault = switchDefaultAfterNextScalarWrite {
+      defaultID = nextDefault
+      switchDefaultAfterNextScalarWrite = nil
+    }
   }
 
   func writeMute(
@@ -655,6 +718,7 @@ private final class FakeAudioInputPropertyClient: AudioInputPropertyClient, @unc
     element: AudioObjectPropertyElement
   ) throws {
     writtenMuteElements.append(element)
+    writtenMuteIDs.append(id)
     if failingMuteElement == element { throw AudioInputHardwareError.osStatus(OSStatus(-1)) }
     let key = FakePropertyKey(selector: kAudioDevicePropertyMute, element: element)
     guard var device = devicesByID[id], var property = device.controlProperties[key], property.settable else {
@@ -668,6 +732,10 @@ private final class FakeAudioInputPropertyClient: AudioInputPropertyClient, @unc
   func writeDefaultInput(_ id: AudioDeviceID) throws {
     writtenDefaultInputs.append(id)
     if failDefaultInputWrite { throw AudioInputHardwareError.osStatus(OSStatus(-1)) }
+    defaultID = id
+  }
+
+  func setDefaultInput(_ id: AudioDeviceID?) {
     defaultID = id
   }
 

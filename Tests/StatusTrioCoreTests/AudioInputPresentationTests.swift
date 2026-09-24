@@ -159,6 +159,24 @@ final class AudioInputPresentationTests: XCTestCase {
         XCTAssertEqual(unknown.volumeAccessibilityValue, "—")
     }
 
+    func testVisibleVolumeValueShowsReadableReadOnlyGainAndDashWhenUnreadable() {
+        let locale = Locale(identifier: "en_US")
+        let readOnly = AudioInputPresentation(
+            status: makeStatus(scalar: 0.42, canSetVolume: false),
+            locale: locale
+        )
+        let unreadable = AudioInputPresentation(
+            status: makeStatus(scalar: nil, canSetVolume: false),
+            locale: locale
+        )
+
+        XCTAssertEqual(
+            readOnly.visibleVolumeValue,
+            0.42.formatted(.percent.precision(.fractionLength(0)).locale(locale))
+        )
+        XCTAssertEqual(unreadable.visibleVolumeValue, "—")
+    }
+
     func testVolumeDraftReconcilesDifferingSystemReadbackWhenDragEnds() {
         var draft = AudioInputVolumeDraft()
         draft.receiveSystemScalar(0.2)

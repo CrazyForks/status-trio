@@ -27,6 +27,95 @@ final class AudioInputMonitorTests: XCTestCase {
     XCTAssertEqual(hardware.readRequests, [true])
   }
 
+  func testReenabledRefreshFailureCannotApplyVolumeOrMuteUsingPreviousDefault() async throws {
+    let readGate = ManualAudioGate()
+    let readStarted = expectation(description: "reenabled full read started")
+    readGate.onEnter = { readStarted.fulfill() }
+    let hardware = FakeAudioInputHardware(reading: reading(defaultID: 11))
+    let monitor = AudioInputMonitor(hardware: hardware)
+    let log = AudioInputStatusLog(monitor.updates)
+    defer {
+      monitor.stop()
+      readGate.release()
+    }
+
+    let initial = log.expectStatus("initial default input is read") { $0.defaultDeviceID == 11 }
+    monitor.setEnabled(true)
+    monitor.setVisible(true)
+    await fulfillment(of: [initial], timeout: 5)
+
+    monitor.setEnabled(false)
+    hardware.setReading(reading(defaultID: 22, scalar: 0.73))
+    hardware.blockNextRead(with: readGate)
+    hardware.failNextRead(with: .unavailable)
+
+    let refreshing = log.expectStatus("new session refresh is in progress") { $0.isRefreshing }
+    monitor.setEnabled(true)
+    await fulfillment(of: [readStarted, refreshing], timeout: 5)
+    readGate.release()
+
+    let failed = log.expectStatus("failed refresh leaves no usable old readback") {
+      $0.error == .refreshFailed && !$0.isRefreshing && !$0.isBusy
+    }
+    await fulfillment(of: [failed], timeout: 5)
+    let failedStatus = try XCTUnwrap(log.values.last)
+    XCTAssertNil(failedStatus.defaultDeviceID)
+    XCTAssertNil(failedStatus.scalar)
+    XCTAssertNil(failedStatus.muteState)
+
+    // Even a caller that races the failed-refresh UI must not reuse the previous device ID.
+    let actionsSettled = log.expectStatus("racing controls settle without busy work") {
+      !$0.isBusy && !$0.isRefreshing
+    }
+    monitor.setScalar(0.9)
+    monitor.toggleMute()
+    await fulfillment(of: [actionsSettled], timeout: 5)
+
+    XCTAssertTrue(hardware.scalarWriteTargets.isEmpty, "volume must not be sent to the previous device")
+    XCTAssertTrue(hardware.muteWriteTargets.isEmpty, "mute must not be sent to the previous device")
+  }
+
+  func testCommandsQueuedDuringRefreshAreDiscardedWhenReadFails() async throws {
+    let readGate = ManualAudioGate()
+    let readStarted = expectation(description: "refresh read started")
+    readGate.onEnter = { readStarted.fulfill() }
+    let hardware = FakeAudioInputHardware(reading: reading(defaultID: 11))
+    let monitor = AudioInputMonitor(hardware: hardware)
+    let log = AudioInputStatusLog(monitor.updates)
+    defer {
+      monitor.stop()
+      readGate.release()
+    }
+
+    let initial = log.expectStatus("initial default input is read") { $0.defaultDeviceID == 11 }
+    monitor.setEnabled(true)
+    monitor.setVisible(true)
+    await fulfillment(of: [initial], timeout: 5)
+
+    hardware.setReading(reading(defaultID: 22, scalar: 0.73))
+    hardware.blockNextRead(with: readGate)
+    hardware.failNextRead(with: .unavailable)
+    let refreshing = log.expectStatus("read is in progress") { $0.isRefreshing }
+    monitor.recover()
+    await fulfillment(of: [readStarted, refreshing], timeout: 5)
+
+    let queued = log.expectStatus("control command is queued behind refresh") {
+      $0.isBusy && $0.isRefreshing
+    }
+    monitor.setScalar(0.9)
+    monitor.toggleMute()
+    await fulfillment(of: [queued], timeout: 5)
+
+    let failed = log.expectStatus("failed refresh discards queued controls") {
+      $0.error == .refreshFailed && !$0.isRefreshing && !$0.isBusy
+    }
+    readGate.release()
+    await fulfillment(of: [failed], timeout: 5)
+
+    XCTAssertTrue(hardware.scalarWriteTargets.isEmpty, "queued volume must be dropped after refresh failure")
+    XCTAssertTrue(hardware.muteWriteTargets.isEmpty, "queued mute must be dropped after refresh failure")
+  }
+
   func testEnableIsIdempotentAndHiddenEventsOnlyMarkStatusDirty() async throws {
     let hardware = FakeAudioInputHardware(reading: reading(defaultID: 11))
     let monitor = AudioInputMonitor(hardware: hardware)
@@ -1146,6 +1235,9 @@ private final class FakeAudioInputHardware: AudioInputHardware, @unchecked Senda
   private var scalarWriteGates: [ManualAudioGate] = []
   private var muteWriteGates: [ManualAudioGate] = []
   private var writtenScalars: [Double] = []
+  private var storedScalarWriteTargets: [AudioDeviceID] = []
+  private var storedMuteWriteTargets: [AudioDeviceID] = []
+  private var readErrors: [AudioInputHardwareError] = []
   private var activeWrites = 0
   private var maxConcurrentWrites = 0
   private let ignoresScalarWrites: Bool
@@ -1187,6 +1279,18 @@ private final class FakeAudioInputHardware: AudioInputHardware, @unchecked Senda
 
   var scalarWriteCount: Int { scalarWrites.count }
 
+  var scalarWriteTargets: [AudioDeviceID] {
+    lock.lock()
+    defer { lock.unlock() }
+    return storedScalarWriteTargets
+  }
+
+  var muteWriteTargets: [AudioDeviceID] {
+    lock.lock()
+    defer { lock.unlock() }
+    return storedMuteWriteTargets
+  }
+
   var maximumConcurrentWrites: Int {
     lock.lock()
     defer { lock.unlock() }
@@ -1219,6 +1323,12 @@ private final class FakeAudioInputHardware: AudioInputHardware, @unchecked Senda
     lock.unlock()
   }
 
+  func failNextRead(with error: AudioInputHardwareError) {
+    lock.lock()
+    readErrors.append(error)
+    lock.unlock()
+  }
+
   func blockNextScalarWrite(with gate: ManualAudioGate) {
     lock.lock()
     scalarWriteGates.append(gate)
@@ -1241,9 +1351,11 @@ private final class FakeAudioInputHardware: AudioInputHardware, @unchecked Senda
     lock.lock()
     storedReadRequests.append(includeDevices)
     let gatedRead = readGates.isEmpty ? nil : readGates.removeFirst()
+    let readError = readErrors.isEmpty ? nil : readErrors.removeFirst()
     let initialReading = storedReading
     lock.unlock()
     gatedRead?.gate.wait()
+    if let readError { throw readError }
     let reading: AudioInputReading
     if gatedRead?.readAfterRelease == true {
       lock.lock()
@@ -1282,6 +1394,7 @@ private final class FakeAudioInputHardware: AudioInputHardware, @unchecked Senda
   func setScalar(_ scalar: Double, on id: AudioDeviceID) throws {
     lock.lock()
     writtenScalars.append(scalar)
+    storedScalarWriteTargets.append(id)
     activeWrites += 1
     maxConcurrentWrites = max(maxConcurrentWrites, activeWrites)
     let gate = scalarWriteGates.isEmpty ? nil : scalarWriteGates.removeFirst()
@@ -1312,6 +1425,7 @@ private final class FakeAudioInputHardware: AudioInputHardware, @unchecked Senda
 
   func setMuted(_ muted: Bool, on id: AudioDeviceID) throws {
     lock.lock()
+    storedMuteWriteTargets.append(id)
     let gate = muteWriteGates.isEmpty ? nil : muteWriteGates.removeFirst()
     lock.unlock()
     gate?.wait()
