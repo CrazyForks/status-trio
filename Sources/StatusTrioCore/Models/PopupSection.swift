@@ -6,6 +6,7 @@ enum PopupSection: String, CaseIterable, Identifiable, Sendable {
     case vpn
     case bluetooth
     case volume
+    case audioInput
 
     var id: Self { self }
 
@@ -16,6 +17,7 @@ enum PopupSection: String, CaseIterable, Identifiable, Sendable {
         case .vpn: .vpnTitle
         case .bluetooth: .bluetoothTitle
         case .volume: .settingsPopupOrderVolume
+        case .audioInput: .settingsPopupOrderAudioInput
         }
     }
 
@@ -26,6 +28,7 @@ enum PopupSection: String, CaseIterable, Identifiable, Sendable {
         case .vpn: "lock.shield"
         case .bluetooth: "antenna.radiowaves.left.and.right"
         case .volume: "speaker.wave.2"
+        case .audioInput: "mic"
         }
     }
 }

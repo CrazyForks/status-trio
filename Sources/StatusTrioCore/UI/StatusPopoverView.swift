@@ -402,6 +402,14 @@ struct StatusPopoverView: View {
                 onSelectOutputDevice: { store.selectOutputDevice($0) },
                 onOpenSoundSettings: openSoundSettings
             )
+        case .audioInput:
+            AudioInputControlsView(
+                status: store.liveInput,
+                onSelect: { store.selectInputDevice($0) },
+                onScalarChange: { store.setInputScalar($0) },
+                onToggleMute: { store.toggleInputMute() },
+                onOpenSoundSettings: openSoundSettings
+            )
         }
     }
 }
