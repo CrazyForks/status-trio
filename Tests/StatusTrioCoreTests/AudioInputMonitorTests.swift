@@ -63,13 +63,19 @@ final class AudioInputMonitorTests: XCTestCase {
     XCTAssertNil(failedStatus.scalar)
     XCTAssertNil(failedStatus.muteState)
 
-    // Even a caller that races the failed-refresh UI must not reuse the previous device ID.
-    let actionsSettled = log.expectStatus("racing controls settle without busy work") {
-      !$0.isBusy && !$0.isRefreshing
+    // Wait for each attempted operation's own terminal failure. An idle-status waiter
+    // can match a status that predates the asynchronous command and mask a false positive.
+    let volumeRejected = log.expectStatus("racing volume action is processed and rejected") {
+      $0.error == .volumeFailed && !$0.isBusy && !$0.isRefreshing
     }
     monitor.setScalar(0.9)
+    await fulfillment(of: [volumeRejected], timeout: 5)
+
+    let muteRejected = log.expectStatus("racing mute action is processed and rejected") {
+      $0.error == .muteFailed && !$0.isBusy && !$0.isRefreshing
+    }
     monitor.toggleMute()
-    await fulfillment(of: [actionsSettled], timeout: 5)
+    await fulfillment(of: [muteRejected], timeout: 5)
 
     XCTAssertTrue(hardware.scalarWriteTargets.isEmpty, "volume must not be sent to the previous device")
     XCTAssertTrue(hardware.muteWriteTargets.isEmpty, "mute must not be sent to the previous device")

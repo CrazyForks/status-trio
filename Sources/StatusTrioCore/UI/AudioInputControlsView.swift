@@ -107,8 +107,13 @@ struct AudioInputPresentation {
     var volumeEnabled: Bool {
         status.defaultDeviceID != nil
             && status.canSetVolume
-            && status.scalar?.isFinite == true
+            && hasReadableVolume
             && !status.isBusy
+    }
+
+    var hasReadableVolume: Bool {
+        guard let scalar = status.scalar else { return false }
+        return scalar.isFinite && (0...1).contains(scalar)
     }
 
     var muteEnabled: Bool {
@@ -123,10 +128,8 @@ struct AudioInputPresentation {
     }
 
     var visibleVolumeValue: String {
-        guard let scalar = status.scalar, scalar.isFinite else { return "—" }
-        return min(1, max(0, scalar)).formatted(
-            .percent.precision(.fractionLength(0)).locale(locale)
-        )
+        guard hasReadableVolume, let scalar = status.scalar else { return "—" }
+        return scalar.formatted(.percent.precision(.fractionLength(0)).locale(locale))
     }
 
     var volumeAccessibilityValue: String {
@@ -158,12 +161,11 @@ struct AudioInputVolumeDraft {
         systemScalar: Double?,
         onScalarChange: (Double) -> Void
     ) {
-        guard isEditing, newValue.isFinite else { return }
+        guard isEditing, newValue.isFinite,
+              let systemScalar, systemScalar.isFinite,
+              (0...1).contains(systemScalar) else { return }
         value = min(1, max(0, newValue))
-        guard let systemScalar, systemScalar.isFinite,
-              abs(value - Self.displayValue(for: systemScalar)) >= 0.0005 else {
-            return
-        }
+        guard abs(value - Self.displayValue(for: systemScalar)) >= 0.0005 else { return }
         onScalarChange(value)
     }
 
@@ -173,8 +175,8 @@ struct AudioInputVolumeDraft {
     }
 
     private static func displayValue(for scalar: Double?) -> Double {
-        guard let scalar, scalar.isFinite else { return 0 }
-        return min(1, max(0, scalar))
+        guard let scalar, scalar.isFinite, (0...1).contains(scalar) else { return 0 }
+        return scalar
     }
 }
 
@@ -342,7 +344,7 @@ struct AudioInputControlsView: View {
                 presentation.muteEnabled ? "" : localization.string(.audioInputMuteUnavailable)
             )
 
-            if status.scalar?.isFinite == true {
+            ZStack {
                 Slider(
                     value: sliderValue,
                     in: 0...1,
@@ -362,20 +364,22 @@ struct AudioInputControlsView: View {
                     presentation.volumeEnabled ? "" : localization.string(.audioInputVolumeUnavailable)
                 )
 
-                Text(presentation.visibleVolumeValue)
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
-                    .frame(minWidth: 34, alignment: .trailing)
-                    .accessibilityHidden(true)
-            } else {
-                Text(presentation.visibleVolumeValue)
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .accessibilityLabel(localization.string(.audioInputVolume))
-                    .accessibilityValue(presentation.visibleVolumeValue)
-                    .accessibilityHint(localization.string(.audioInputVolumeUnavailable))
+                if !presentation.hasReadableVolume {
+                    Text("—")
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 4)
+                        .background(.background)
+                        .accessibilityHidden(true)
+                }
             }
+            .frame(maxWidth: .infinity)
+
+            Text(presentation.visibleVolumeValue)
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(.secondary)
+                .frame(minWidth: 34, alignment: .trailing)
+                .accessibilityHidden(true)
 
             Image(systemName: "waveform")
                 .foregroundStyle(.secondary)
@@ -486,7 +490,7 @@ struct AudioInputControlsView: View {
 
     private var sliderValue: Binding<Double> {
         Binding(
-            get: { volumeDraft.value },
+            get: { presentation.hasReadableVolume ? volumeDraft.value : 0.5 },
             set: { newValue in
                 volumeDraft.setSliderValue(newValue, systemScalar: status.scalar) {
                     onScalarChange($0)

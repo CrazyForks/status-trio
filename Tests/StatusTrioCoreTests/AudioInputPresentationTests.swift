@@ -159,6 +159,21 @@ final class AudioInputPresentationTests: XCTestCase {
         XCTAssertEqual(unknown.volumeAccessibilityValue, "—")
     }
 
+    func testOutOfRangeVolumeReadbackIsUnavailableRatherThanClampedToAnEndpoint() {
+        let locale = Locale(identifier: "en_US")
+
+        for scalar in [-0.1, 1.1] {
+            let presentation = AudioInputPresentation(
+                status: makeStatus(scalar: scalar, canSetVolume: true),
+                locale: locale
+            )
+
+            XCTAssertEqual(presentation.visibleVolumeValue, "—", "scalar=\(scalar)")
+            XCTAssertEqual(presentation.volumeAccessibilityValue, "—", "scalar=\(scalar)")
+            XCTAssertFalse(presentation.volumeEnabled, "scalar=\(scalar)")
+        }
+    }
+
     func testVisibleVolumeValueShowsReadableReadOnlyGainAndDashWhenUnreadable() {
         let locale = Locale(identifier: "en_US")
         let readOnly = AudioInputPresentation(
