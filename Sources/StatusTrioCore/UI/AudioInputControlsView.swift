@@ -295,8 +295,13 @@ struct AudioInputControlsView: View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: "mic.fill")
                 .font(.system(size: 16, weight: .medium))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(presentation.isDefaultInputInUse ? Color.white : Color.secondary)
                 .frame(width: 24, height: 24)
+                .background {
+                    Capsule()
+                        .fill(presentation.isDefaultInputInUse ? Color.orange : Color.clear)
+                        .frame(width: 32, height: 26)
+                }
                 .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 2) {
@@ -306,17 +311,6 @@ struct AudioInputControlsView: View {
                         .foregroundStyle(presentation.isDefaultInputInUse ? Color.yellow : Color.primary)
                         .lineLimit(1)
                         .truncationMode(.middle)
-
-                    if presentation.isDefaultInputInUse {
-                        Label(localization.string(.audioInputInUse), systemImage: "mic.fill")
-                            .font(.caption2.weight(.semibold))
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 7)
-                            .padding(.vertical, 3)
-                            .background(Color.orange, in: Capsule())
-                            .accessibilityElement(children: .ignore)
-                            .accessibilityLabel(localization.string(.audioInputInUse))
-                    }
                 }
 
                 Text(defaultDeviceName)
