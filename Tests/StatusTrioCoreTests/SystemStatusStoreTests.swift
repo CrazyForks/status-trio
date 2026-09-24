@@ -308,6 +308,117 @@ final class SystemStatusStoreTests: XCTestCase {
         XCTAssertFalse(store.hasOpenPopoverPanel)
     }
 
+    func testReadsTheWiredLinkOnlyWhileThePopoverIsOpenOnEthernet() async {
+        let connection = FakeNetworkConnectionMonitor()
+        let primaryLink = makePrimaryLinkController()
+        let store = SystemStatusStore(
+            batteryMonitor: FakeBatteryMonitor(),
+            wifiMonitor: FakeWiFiMonitor(),
+            connectionMonitor: connection,
+            volumeMonitor: FakeVolumeMonitor(),
+            primaryLink: primaryLink
+        )
+
+        store.start()
+        await apply(.ethernet, from: connection, to: store)
+        // The connection is wired, but nothing is looking at it yet.
+        XCTAssertFalse(primaryLink.isActive)
+
+        store.setPopoverVisible(true)
+        XCTAssertTrue(primaryLink.isActive)
+
+        store.setPopoverVisible(false)
+        XCTAssertFalse(primaryLink.isActive, "Closing the popover drops the address a cable may have left behind")
+
+        store.stop()
+    }
+
+    func testACablePluggedInWhileThePopoverIsOpenStartsTheWiredRead() async {
+        let connection = FakeNetworkConnectionMonitor()
+        let primaryLink = makePrimaryLinkController()
+        let store = SystemStatusStore(
+            batteryMonitor: FakeBatteryMonitor(),
+            wifiMonitor: FakeWiFiMonitor(),
+            connectionMonitor: connection,
+            volumeMonitor: FakeVolumeMonitor(),
+            primaryLink: primaryLink
+        )
+
+        store.start()
+        await apply(.wifi, from: connection, to: store)
+        store.setPopoverVisible(true)
+        XCTAssertFalse(primaryLink.isActive, "A Wi-Fi primary connection has no wired link to report")
+
+        await apply(.ethernet, from: connection, to: store)
+        XCTAssertTrue(primaryLink.isActive)
+
+        await apply(.offline, from: connection, to: store)
+        XCTAssertFalse(primaryLink.isActive)
+        store.stop()
+    }
+
+    func testReportsTheWiredPanelAsAnOpenPanel() {
+        let store = SystemStatusStore(
+            batteryMonitor: FakeBatteryMonitor(),
+            wifiMonitor: FakeWiFiMonitor(),
+            volumeMonitor: FakeVolumeMonitor()
+        )
+        XCTAssertFalse(store.hasOpenPopoverPanel)
+
+        store.activatePrimaryLinkPanel()
+        XCTAssertTrue(store.hasOpenPopoverPanel)
+
+        store.closePopoverDetails()
+        XCTAssertFalse(store.hasOpenPopoverPanel)
+    }
+
+    private func makePrimaryLinkController() -> PrimaryLinkController {
+        PrimaryLinkController(
+            reader: StubPrimaryLinkReader(),
+            wiredInterfaces: StubWiredInterfaces(names: ["en0"]),
+            periodicRefreshInterval: .seconds(600)
+        )
+    }
+
+    /// Sends a connection change and waits until the store has applied it, so
+    /// the assertion that follows observes the activation rule rather than the
+    /// send.
+    private func apply(
+        _ value: NetworkConnection,
+        from monitor: FakeNetworkConnectionMonitor,
+        to store: SystemStatusStore,
+        constrained: Bool = false
+    ) async {
+        monitor.send(value, constrained: constrained)
+        for _ in 0..<200 where store.snapshot.connection != value
+            || store.isNetworkConstrained != constrained {
+            try? await Task.sleep(for: .milliseconds(2))
+        }
+        XCTAssertEqual(store.snapshot.connection, value)
+        XCTAssertEqual(store.isNetworkConstrained, constrained)
+    }
+
+    func testARestrictedPathReachesTheStore() async {
+        let connection = FakeNetworkConnectionMonitor()
+        let store = SystemStatusStore(
+            batteryMonitor: FakeBatteryMonitor(),
+            wifiMonitor: FakeWiFiMonitor(),
+            connectionMonitor: connection,
+            volumeMonitor: FakeVolumeMonitor()
+        )
+
+        store.start()
+        XCTAssertFalse(store.isNetworkConstrained)
+
+        await apply(.ethernet, from: connection, to: store, constrained: true)
+        XCTAssertTrue(store.isNetworkConstrained)
+
+        await apply(.ethernet, from: connection, to: store, constrained: false)
+        XCTAssertFalse(store.isNetworkConstrained)
+
+        store.stop()
+    }
+
     func testPopupSnapshotDebouncesRapidUpdates() async {
         let battery = FakeBatteryMonitor()
         let sleeper = ManualSleeper()
@@ -1824,14 +1935,43 @@ private final class SpyWakeNotificationCenter: NotificationCenter, @unchecked Se
 
 @MainActor
 private final class FakeNetworkConnectionMonitor: NetworkConnectionMonitoring {
-    let updates: AsyncStream<NetworkConnection>
-    private let continuation: AsyncStream<NetworkConnection>.Continuation
+    let updates: AsyncStream<NetworkPathSnapshot>
+    private let continuation: AsyncStream<NetworkPathSnapshot>.Continuation
 
     init() { (updates, continuation) = AsyncStream.makeStream() }
     func start() {}
     func stop() { continuation.finish() }
     func recover() {}
-    func send(_ value: NetworkConnection) { continuation.yield(value) }
+
+    /// These tests are about the store, not about `NWPath`, so they name the
+    /// connection they mean and the snapshot is spelled out here once.
+    func send(_ value: NetworkConnection, constrained: Bool = false) {
+        continuation.yield(
+            NetworkPathSnapshot(
+                connected: value != .offline,
+                wired: value == .ethernet,
+                wireless: value == .wifi,
+                constrained: constrained
+            )
+        )
+    }
+
+    func send(_ path: NetworkPathSnapshot) { continuation.yield(path) }
+}
+
+/// Answers nothing: these tests observe whether the wired read runs, not what it
+/// finds. The resolution itself is covered by `PrimaryLinkTests`.
+private final class StubPrimaryLinkReader: PrimaryLinkReading {
+    func read(
+        wiredInterfaces: [WiredInterface],
+        completion: @escaping @Sendable (PrimaryLinkDetails?) -> Void
+    ) {}
+}
+
+private struct StubWiredInterfaces: WiredInterfaceProviding {
+    let names: [String]
+
+    func wiredInterfaces() -> [WiredInterface] { names.map { WiredInterface(name: $0) } }
 }
 
 @MainActor

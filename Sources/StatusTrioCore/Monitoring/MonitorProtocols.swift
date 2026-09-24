@@ -28,7 +28,7 @@ extension WiFiMonitoring {
 
 @MainActor
 protocol NetworkConnectionMonitoring: AnyObject {
-    var updates: AsyncStream<NetworkConnection> { get }
+    var updates: AsyncStream<NetworkPathSnapshot> { get }
     func start()
     func stop()
     func recover()

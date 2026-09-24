@@ -3,20 +3,29 @@ import XCTest
 
 @MainActor
 final class NetworkConnectionMonitorTests: XCTestCase {
-    func testWiredPathUpdatePublishesEthernet() async {
+    func testWiredPathUpdatePublishesTheWholePath() async {
         let pathMonitor = FakeNetworkPathMonitor()
         let monitor = NetworkConnectionMonitor(pathMonitor: pathMonitor)
-        let updated = expectation(description: "connection update published")
+        let updated = expectation(description: "path update published")
         let updateTask = Task {
             var iterator = monitor.updates.makeAsyncIterator()
-            let connection = await iterator.next()
-            XCTAssertEqual(connection, .ethernet)
+            let path = await iterator.next()
+            XCTAssertEqual(path?.connection, .ethernet)
+            // The snapshot is forwarded whole: the popover reads the restriction
+            // off the same update the connection arrives on, so dropping it here
+            // would silently cost the row its second clause.
+            XCTAssertEqual(path?.constrained, true)
             updated.fulfill()
         }
 
         monitor.start()
         pathMonitor.send(
-            NetworkPathSnapshot(connected: true, wired: true, wireless: true)
+            NetworkPathSnapshot(
+                connected: true,
+                wired: true,
+                wireless: true,
+                constrained: true
+            )
         )
         await fulfillment(of: [updated], timeout: 1)
 

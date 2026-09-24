@@ -58,6 +58,7 @@ enum LocalizationKey: String, CaseIterable, Hashable, Sendable {
     case settingsPopupOrder = "settings.popup.order"
     case settingsPopupOrderDescription = "settings.popup.order.description"
     case settingsPopupOrderBattery = "settings.popup.order.battery"
+    case settingsPopupOrderNetwork = "settings.popup.order.network"
     case settingsPopupOrderVolume = "settings.popup.order.volume"
     case settingsPopupOrderAudioInput = "settings.popup.order.audioInput"
     case settingsPopupVolumeScrollGroup = "settings.popup.volumeScroll.group"
@@ -222,6 +223,10 @@ enum LocalizationKey: String, CaseIterable, Hashable, Sendable {
     case commonExpanded = "common.expanded"
     case commonCollapsed = "common.collapsed"
     case ethernetAccessibilityConnected = "ethernet.accessibility.connected"
+    case ethernetTitle = "ethernet.title"
+    case ethernetSubtitleConnected = "ethernet.subtitle.connected"
+    case ethernetSubtitleConstrained = "ethernet.subtitle.constrained"
+    case ethernetActionOpenSettings = "ethernet.action.openSettings"
 
     case wifiSummaryBand = "wifi.summary.band"
     case wifiSummarySignal = "wifi.summary.signal"
@@ -286,12 +291,18 @@ enum LocalizationKey: String, CaseIterable, Hashable, Sendable {
     case wifiDetailTxRate = "wifi.detail.txRate"
     case wifiDetailSecurity = "wifi.detail.security"
     case wifiDetailCountryCode = "wifi.detail.countryCode"
-    case wifiDetailInterface = "wifi.detail.interface"
-    case wifiDetailIPv4 = "wifi.detail.ipv4"
-    case wifiDetailIPv6 = "wifi.detail.ipv6"
-    case wifiDetailRouter = "wifi.detail.router"
-    case wifiDetailDNS = "wifi.detail.dns"
-    case wifiUnavailableValue = "wifi.unavailableValue"
+
+    // The rows every link reports. The Wi-Fi panel and the wired panel draw the
+    // same five, so their labels carry no radio wording and the key carries no
+    // radio prefix. The `wifi.detail.*` rows above stay Wi-Fi-only: they
+    // describe the radio and the association, which a cable does not have.
+    case networkDetailInterface = "network.detail.interface"
+    case networkDetailIPv4 = "network.detail.ipv4"
+    case networkDetailIPv6 = "network.detail.ipv6"
+    case networkDetailRouter = "network.detail.router"
+    case networkDetailDNS = "network.detail.dns"
+    /// Stands in for a row the link cannot report, in either panel.
+    case networkDetailUnavailable = "network.detail.unavailable"
     case wifiSecurityOpen = "wifi.security.open"
     case wifiSecurityEnterprise = "wifi.security.enterprise"
 

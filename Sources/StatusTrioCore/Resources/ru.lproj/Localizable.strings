@@ -158,6 +158,10 @@
 "wifi.action.switchingHint" = "Выбор сети открывает панель Wi-Fi в «Системных настройках».";
 "wifi.accessibility.withSSID" = "Wi‑Fi %@, %@";
 "ethernet.accessibility.connected" = "Ethernet подключён";
+"ethernet.title" = "Ethernet";
+"ethernet.subtitle.connected" = "Подключено";
+"ethernet.subtitle.constrained" = "Ограниченная сеть";
+"ethernet.action.openSettings" = "Открыть настройки сети";
 "volume.title" = "Громкость · %d%%";
 "volume.titleUnavailable" = "Громкость · —";
 "volume.muted" = "Без звука";
@@ -203,6 +207,7 @@
 "settings.popup.order" = "Отображаемые элементы";
 "settings.popup.order.description" = "Выберите элементы, отображаемые на панели состояния, и перетаскивайте их, чтобы изменить порядок.";
 "settings.popup.order.battery" = "Аккумулятор";
+"settings.popup.order.network" = "Сеть";
 "settings.popup.order.volume" = "Громкость";
 "settings.popup.order.audioInput" = "Звуковой вход";
 "settings.popup.volumeScroll.group" = "Прокрутка панели";
@@ -250,12 +255,12 @@
 "wifi.detail.txRate" = "Скорость передачи";
 "wifi.detail.security" = "Безопасность";
 "wifi.detail.countryCode" = "Код страны";
-"wifi.detail.interface" = "Интерфейс Wi-Fi";
-"wifi.detail.ipv4" = "IPv4";
-"wifi.detail.ipv6" = "IPv6";
-"wifi.detail.router" = "Маршрутизатор";
-"wifi.detail.dns" = "DNS";
-"wifi.unavailableValue" = "Недоступно";
+"network.detail.interface" = "Интерфейс";
+"network.detail.ipv4" = "IPv4";
+"network.detail.ipv6" = "IPv6";
+"network.detail.router" = "Маршрутизатор";
+"network.detail.dns" = "DNS";
+"network.detail.unavailable" = "Недоступно";
 "wifi.security.open" = "Открытая";
 "wifi.security.enterprise" = "Корпоративная";
 "bluetooth.openDetails" = "Откройте сведения, чтобы увидеть состояние устройств";

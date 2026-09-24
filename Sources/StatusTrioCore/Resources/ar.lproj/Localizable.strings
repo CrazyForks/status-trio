@@ -158,6 +158,10 @@
 "wifi.action.switchingHint" = "اختيار شبكة يفتح لوحة Wi-Fi في إعدادات النظام.";
 "wifi.accessibility.withSSID" = "Wi‑Fi %@، %@";
 "ethernet.accessibility.connected" = "إيثرنت متصل";
+"ethernet.title" = "إيثرنت";
+"ethernet.subtitle.connected" = "متصل";
+"ethernet.subtitle.constrained" = "شبكة مقيّدة";
+"ethernet.action.openSettings" = "فتح إعدادات الشبكة";
 "volume.title" = "مستوى الصوت · %d%%";
 "volume.titleUnavailable" = "مستوى الصوت · —";
 "volume.muted" = "صامت";
@@ -203,6 +207,7 @@
 "settings.popup.order" = "عناصر لوحة الحالة";
 "settings.popup.order.description" = "اختر العناصر التي تظهر في لوحة الحالة واسحب لتغيير ترتيبها.";
 "settings.popup.order.battery" = "البطارية";
+"settings.popup.order.network" = "الشبكة";
 "settings.popup.order.volume" = "مستوى الصوت";
 "settings.popup.order.audioInput" = "إدخال الصوت";
 "settings.popup.volumeScroll.group" = "تمرير اللوحة";
@@ -250,12 +255,12 @@
 "wifi.detail.txRate" = "معدل إرسال الرابط";
 "wifi.detail.security" = "الأمان";
 "wifi.detail.countryCode" = "رمز البلد";
-"wifi.detail.interface" = "واجهة Wi-Fi";
-"wifi.detail.ipv4" = "IPv4";
-"wifi.detail.ipv6" = "IPv6";
-"wifi.detail.router" = "الموجّه";
-"wifi.detail.dns" = "DNS";
-"wifi.unavailableValue" = "غير متاح";
+"network.detail.interface" = "واجهة";
+"network.detail.ipv4" = "IPv4";
+"network.detail.ipv6" = "IPv6";
+"network.detail.router" = "الموجّه";
+"network.detail.dns" = "DNS";
+"network.detail.unavailable" = "غير متاح";
 "wifi.security.open" = "مفتوح";
 "wifi.security.enterprise" = "المؤسسات";
 "bluetooth.openDetails" = "افتح التفاصيل لعرض حالة الجهاز";

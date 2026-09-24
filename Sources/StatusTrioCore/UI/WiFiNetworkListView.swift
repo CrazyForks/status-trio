@@ -206,25 +206,15 @@ private struct WiFiDetailsView: View {
 
     var body: some View {
         VStack(spacing: 5) {
-            detail(.wifiDetailSSID, details.ssid)
-            detail(.wifiDetailBSSID, details.bssid, copyable: true)
-            detail(.wifiDetailBand, details.band)
-            detail(.wifiDetailChannel, details.channel.map(String.init))
-            detail(.wifiDetailChannelWidth, details.channelWidth)
-            detail(.wifiDetailRSSI, details.rssi.map { "\($0) dBm" })
-            detail(.wifiDetailPHY, details.phyMode)
-            detail(.wifiDetailTxRate, details.transmitRateMbps.map { String(format: "%.1f Mbps", $0) })
-            detail(.wifiDetailSecurity, securityName(details.security))
-            if showsMore {
-                detail(.wifiDetailNoise, details.noise.map { "\($0) dBm" })
-                detail(.wifiDetailSNR, details.signalToNoiseRatio.map { "\($0) dB" })
-                detail(.wifiDetailCountryCode, details.countryCode)
-                detail(.wifiDetailInterface, details.interfaceName)
-                detail(.wifiDetailIPv4, details.ipv4Addresses.joined(separator: ", "), copyable: true)
-                detail(.wifiDetailIPv6, details.ipv6Addresses.joined(separator: ", "), copyable: true)
-                detail(.wifiDetailRouter, details.router, copyable: true)
-                detail(.wifiDetailDNS, details.dnsServers.joined(separator: ", "), copyable: true)
-            }
+            // The rows live in `LinkDetailPresentation` because the wired panel
+            // draws five of the same ones; only the radio rows are this panel's.
+            LinkDetailsList(
+                rows: LinkDetailPresentation.wirelessRows(
+                    details,
+                    expanded: showsMore,
+                    localization: localization
+                )
+            )
             Button(showsMore ? localization.string(.wifiDetailsLess) : localization.string(.wifiDetailsMore)) {
                 showsMore.toggle()
             }
@@ -235,40 +225,4 @@ private struct WiFiDetailsView: View {
     }
 
     @State private var showsMore = false
-
-    private func detail(_ label: LocalizationKey, _ value: String?, copyable: Bool = false) -> some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text(localization.string(label))
-                .foregroundStyle(.secondary)
-            Spacer()
-            if copyable, let value, !value.isEmpty {
-                Button(value) {
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(value, forType: .string)
-                }
-                .buttonStyle(.plain)
-                .textSelection(.enabled)
-                .accessibilityLabel("\(localization.string(label)): \(value)")
-            } else {
-                Text(value?.isEmpty == false ? value! : localization.string(.wifiUnavailableValue))
-                    .multilineTextAlignment(.trailing)
-                    .textSelection(.enabled)
-            }
-        }
-    }
-
-    private func securityName(_ security: WiFiSecurityKind) -> String {
-        switch security {
-        case .open: localization.string(.wifiSecurityOpen)
-        case .wep, .dynamicWEP: "WEP"
-        case .wpaPersonal, .wpaPersonalMixed: "WPA"
-        case .wpa2Personal, .personal: "WPA2"
-        case .wpa3Personal, .wpa3Transition: "WPA3"
-        case .owe: "OWE"
-        case .oweTransition: "OWE Transition"
-        case .wpaEnterprise, .wpaEnterpriseMixed, .wpa2Enterprise, .enterprise, .wpa3Enterprise:
-            localization.string(.wifiSecurityEnterprise)
-        case .unknown: localization.string(.wifiUnavailableValue)
-        }
-    }
 }

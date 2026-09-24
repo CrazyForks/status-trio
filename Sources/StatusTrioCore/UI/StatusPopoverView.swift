@@ -285,6 +285,7 @@ private enum PopoverPanel {
     case summary
     case battery
     case wifi(showDetails: Bool)
+    case ethernet
 }
 
 struct StatusPopoverView: View {
@@ -296,6 +297,7 @@ struct StatusPopoverView: View {
     let requestBluetoothAuthorization: () -> Void
     let openBatterySettings: () -> Void
     let openWiFiSettings: () -> Void
+    let openNetworkSettings: () -> Void
     let openLocationSettings: () -> Void
     let openBluetoothSettings: () -> Void
     let openBluetoothPermissionSettings: () -> Void
@@ -331,6 +333,15 @@ struct StatusPopoverView: View {
                     onOpenWiFiSettings: openWiFiSettings,
                     onOpenLocationSettings: openLocationSettings,
                     showsDetailsInitially: showDetails
+                )
+            case .ethernet:
+                EthernetLinkView(
+                    primaryLink: store.primaryLink,
+                    onBack: {
+                        store.closePrimaryLinkPanel()
+                        panel = .summary
+                    },
+                    onOpenNetworkSettings: openNetworkSettings
                 )
             }
         }
@@ -368,16 +379,23 @@ struct StatusPopoverView: View {
                 onOpenBatterySettings: openBatterySettings
             )
         case .network:
-            WiFiStatusView(
-                wifi: store.popupSnapshot.wifi,
+            NetworkStatusView(
+                primaryLink: store.primaryLink,
                 connection: store.popupSnapshot.connection,
+                isConstrained: store.isNetworkConstrained,
+                wifi: store.popupSnapshot.wifi,
                 isResolvingName: store.isResolvingWiFiName,
-                onOpenDetails: { showDetails in
+                onOpenWiFiDetails: { showDetails in
                     store.activateWiFiPanel()
                     panel = .wifi(showDetails: showDetails)
                 },
+                onOpenWiredDetails: {
+                    store.activatePrimaryLinkPanel()
+                    panel = .ethernet
+                },
                 onRequestNameAccess: requestWiFiNameAccess,
                 onOpenWiFiSettings: openWiFiSettings,
+                onOpenNetworkSettings: openNetworkSettings,
                 onOpenLocationSettings: openLocationSettings
             )
         case .vpn:

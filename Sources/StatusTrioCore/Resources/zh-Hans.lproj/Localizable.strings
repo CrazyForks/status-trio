@@ -158,6 +158,10 @@
 "wifi.action.switchingHint" = "选择网络会在系统设置中打开 Wi-Fi 面板。";
 "wifi.accessibility.withSSID" = "Wi-Fi %@，%@";
 "ethernet.accessibility.connected" = "以太网已连接";
+"ethernet.title" = "以太网";
+"ethernet.subtitle.connected" = "已连接";
+"ethernet.subtitle.constrained" = "受限网络";
+"ethernet.action.openSettings" = "打开网络设置";
 "volume.title" = "音量 · %d%%";
 "volume.titleUnavailable" = "音量 · —";
 "volume.muted" = "静音";
@@ -203,6 +207,7 @@
 "settings.popup.order" = "显示项目";
 "settings.popup.order.description" = "选择状态面板显示的项目，并拖动调整顺序。";
 "settings.popup.order.battery" = "电池";
+"settings.popup.order.network" = "网络";
 "settings.popup.order.volume" = "音量";
 "settings.popup.order.audioInput" = "声音输入";
 "settings.popup.volumeScroll.group" = "面板滚动";
@@ -250,12 +255,12 @@
 "wifi.detail.txRate" = "链路发送速率";
 "wifi.detail.security" = "安全类型";
 "wifi.detail.countryCode" = "国家代码";
-"wifi.detail.interface" = "Wi-Fi 接口";
-"wifi.detail.ipv4" = "IPv4";
-"wifi.detail.ipv6" = "IPv6";
-"wifi.detail.router" = "路由器";
-"wifi.detail.dns" = "DNS";
-"wifi.unavailableValue" = "不可用";
+"network.detail.interface" = "接口";
+"network.detail.ipv4" = "IPv4";
+"network.detail.ipv6" = "IPv6";
+"network.detail.router" = "路由器";
+"network.detail.dns" = "DNS";
+"network.detail.unavailable" = "不可用";
 "wifi.security.open" = "开放网络";
 "wifi.security.enterprise" = "企业网络";
 "bluetooth.openDetails" = "打开详情查看设备状态";

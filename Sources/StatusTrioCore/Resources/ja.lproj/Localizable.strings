@@ -158,6 +158,10 @@
 "wifi.action.switchingHint" = "ネットワークを選ぶと、システム設定の Wi-Fi パネルが開きます。";
 "wifi.accessibility.withSSID" = "Wi-Fi %@、%@";
 "ethernet.accessibility.connected" = "イーサネット接続済み";
+"ethernet.title" = "イーサネット";
+"ethernet.subtitle.connected" = "接続済み";
+"ethernet.subtitle.constrained" = "制限付きネットワーク";
+"ethernet.action.openSettings" = "ネットワーク設定を開く";
 "volume.title" = "音量 · %d%%";
 "volume.titleUnavailable" = "音量 · —";
 "volume.muted" = "ミュート中";
@@ -203,6 +207,7 @@
 "settings.popup.order" = "表示項目";
 "settings.popup.order.description" = "ステータスパネルに表示する項目を選択し、ドラッグして順序を変更します。";
 "settings.popup.order.battery" = "バッテリー";
+"settings.popup.order.network" = "ネットワーク";
 "settings.popup.order.volume" = "音量";
 "settings.popup.order.audioInput" = "オーディオ入力";
 "settings.popup.volumeScroll.group" = "パネルのスクロール";
@@ -250,12 +255,12 @@
 "wifi.detail.txRate" = "リンク送信レート";
 "wifi.detail.security" = "セキュリティ";
 "wifi.detail.countryCode" = "国コード";
-"wifi.detail.interface" = "Wi-Fi インターフェイス";
-"wifi.detail.ipv4" = "IPv4";
-"wifi.detail.ipv6" = "IPv6";
-"wifi.detail.router" = "ルーター";
-"wifi.detail.dns" = "DNS";
-"wifi.unavailableValue" = "利用不可";
+"network.detail.interface" = "インターフェイス";
+"network.detail.ipv4" = "IPv4";
+"network.detail.ipv6" = "IPv6";
+"network.detail.router" = "ルーター";
+"network.detail.dns" = "DNS";
+"network.detail.unavailable" = "利用不可";
 "wifi.security.open" = "オープン";
 "wifi.security.enterprise" = "エンタープライズ";
 "bluetooth.openDetails" = "詳細を開いてデバイスの状態を表示";

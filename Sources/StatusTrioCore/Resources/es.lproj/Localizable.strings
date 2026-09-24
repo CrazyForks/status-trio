@@ -158,6 +158,10 @@
 "wifi.action.switchingHint" = "Elegir una red abre el panel de Wi-Fi de Ajustes del Sistema.";
 "wifi.accessibility.withSSID" = "Wi-Fi %@, %@";
 "ethernet.accessibility.connected" = "Ethernet conectado";
+"ethernet.title" = "Ethernet";
+"ethernet.subtitle.connected" = "Conectado";
+"ethernet.subtitle.constrained" = "Red restringida";
+"ethernet.action.openSettings" = "Abrir ajustes de red";
 "volume.title" = "Volumen · %d%%";
 "volume.titleUnavailable" = "Volumen · —";
 "volume.muted" = "Silenciado";
@@ -203,6 +207,7 @@
 "settings.popup.order" = "Elementos mostrados";
 "settings.popup.order.description" = "Elige qué elementos aparecen en el panel de estado y arrástralos para cambiar su orden.";
 "settings.popup.order.battery" = "Batería";
+"settings.popup.order.network" = "Red";
 "settings.popup.order.volume" = "Volumen";
 "settings.popup.order.audioInput" = "Entrada de audio";
 "settings.popup.volumeScroll.group" = "Desplazamiento del panel";
@@ -250,12 +255,12 @@
 "wifi.detail.txRate" = "Velocidad de transmisión del enlace";
 "wifi.detail.security" = "Seguridad";
 "wifi.detail.countryCode" = "Código de país";
-"wifi.detail.interface" = "Interfaz Wi-Fi";
-"wifi.detail.ipv4" = "IPv4";
-"wifi.detail.ipv6" = "IPv6";
-"wifi.detail.router" = "Router";
-"wifi.detail.dns" = "DNS";
-"wifi.unavailableValue" = "No disponible";
+"network.detail.interface" = "Interfaz";
+"network.detail.ipv4" = "IPv4";
+"network.detail.ipv6" = "IPv6";
+"network.detail.router" = "Router";
+"network.detail.dns" = "DNS";
+"network.detail.unavailable" = "No disponible";
 "wifi.security.open" = "Abierta";
 "wifi.security.enterprise" = "Empresarial";
 "bluetooth.openDetails" = "Abre los detalles para ver el estado del dispositivo";
