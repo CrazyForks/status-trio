@@ -17,6 +17,7 @@ final class SettingsStore: ObservableObject {
     static let defaultBatterySymbolScale: Double = 1
     static let showsBatteryPercentageDefaultsKey = "showsBatteryPercentage"
     static let showsChargingIndicatorDefaultsKey = "showsChargingIndicator"
+    static let showsChargingEffectDefaultsKey = "showsChargingEffect"
     static let showsPercentageWhenConnectedDefaultsKey = "showsPercentageWhenConnected"
     static let usesBatteryStatusColorsDefaultsKey = "usesBatteryStatusColors"
     static let batteryCriticalThresholdDefaultsKey = "batteryCriticalThreshold"
@@ -131,6 +132,24 @@ final class SettingsStore: ObservableObject {
         didSet {
             defaults.set(showsChargingIndicator, forKey: Self.showsChargingIndicatorDefaultsKey)
         }
+    }
+
+    @Published var showsChargingEffect: Bool {
+        didSet {
+            defaults.set(showsChargingEffect, forKey: Self.showsChargingEffectDefaultsKey)
+            if !showsChargingEffect {
+                testsChargingEffect = false
+            }
+        }
+    }
+
+    @Published private(set) var testsChargingEffect = false
+
+    func setChargingEffectTestEnabled(_ enabled: Bool) {
+        if enabled {
+            showsChargingEffect = true
+        }
+        testsChargingEffect = enabled
     }
 
     @Published var showsPercentageWhenConnected: Bool {
@@ -566,6 +585,7 @@ final class SettingsStore: ObservableObject {
         BatteryIconOptions(
             showsPercentage: showsBatteryPercentage,
             showsChargingIndicator: showsChargingIndicator,
+            showsChargingEffect: showsChargingEffect,
             usesStatusColors: usesBatteryStatusColors,
             criticalThreshold: Int(batteryCriticalThreshold.rounded()),
             showsPercentageWhenConnected: showsPercentageWhenConnected,
@@ -671,6 +691,9 @@ final class SettingsStore: ObservableObject {
         self.iconSize = Self.clampedIconSize(storedIconSize ?? Self.defaultIconSize)
         self.showsBatteryPercentage = defaults.object(forKey: Self.showsBatteryPercentageDefaultsKey) as? Bool ?? true
         self.showsChargingIndicator = defaults.object(forKey: Self.showsChargingIndicatorDefaultsKey) as? Bool ?? true
+        self.showsChargingEffect = defaults.object(
+            forKey: Self.showsChargingEffectDefaultsKey
+        ) as? Bool ?? true
         self.showsPercentageWhenConnected = defaults.object(
             forKey: Self.showsPercentageWhenConnectedDefaultsKey
         ) as? Bool ?? false

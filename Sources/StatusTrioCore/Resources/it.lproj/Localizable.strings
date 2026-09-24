@@ -99,6 +99,10 @@
 "settings.battery.showPercentage" = "Mostra percentuale batteria";
 "settings.battery.showChargingIndicator" = "Mostra un indicatore durante la carica o con alimentazione collegata";
 "settings.battery.chargingDescription" = "Se attivato, la percentuale diventa un fulmine o una spina durante la carica o con alimentazione collegata.";
+"settings.battery.chargingEffect" = "Effetto di ricarica";
+"settings.battery.chargingEffectDescription" = "Anima l’evidenziazione solo durante la ricarica. Si interrompe quando «Riduci movimento» è attivo.";
+"settings.battery.chargingEffectTest" = "Prova animazione di ricarica";
+"settings.battery.chargingEffectTestDescription" = "Versione di sviluppo: riproduce senza ricarica. La modalità di prova si disattiva al riavvio.";
 "settings.battery.percentageWhenConnected" = "Mostra la percentuale con alimentazione collegata senza carica";
 "settings.battery.percentageWhenConnectedDescription" = "Se attivato, una fonte di alimentazione collegata che non sta caricando mostra la percentuale invece della spina.";
 "settings.battery.symbolScale" = "Dimensione percentuale/fulmine";

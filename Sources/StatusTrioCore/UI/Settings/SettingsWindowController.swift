@@ -6,6 +6,7 @@ import SwiftUI
 final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     private let store: SettingsStore
     private let statusStore: SystemStatusStore
+    private let chargingEffectClock: ChargingEffectClock
     private let localization: Localization
     private let activationPolicy: AppActivationPolicy
     private let showIconGuide: () -> Void
@@ -22,10 +23,12 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         statusStore: SystemStatusStore,
         localization: Localization,
         activationPolicy: AppActivationPolicy,
-        showIconGuide: @escaping () -> Void
+        showIconGuide: @escaping () -> Void,
+        chargingEffectClock: ChargingEffectClock = ChargingEffectClock()
     ) {
         self.store = store
         self.statusStore = statusStore
+        self.chargingEffectClock = chargingEffectClock
         self.localization = localization
         self.activationPolicy = activationPolicy
         self.showIconGuide = showIconGuide
@@ -112,6 +115,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
                 localization: localization,
                 onShowIconGuide: showIconGuide
             )
+            .environmentObject(chargingEffectClock)
         }
 
         window.contentView = NSHostingView(rootView: rootView)

@@ -40,6 +40,31 @@ struct BatterySectionView: View {
                 isOn: $store.showsChargingIndicator
             )
 
+            SettingsDivider()
+
+            SettingsToggleRow(
+                symbol: "sparkles",
+                tint: .green,
+                title: localization.string(.settingsBatteryChargingEffect),
+                subtitle: localization.string(.settingsBatteryChargingEffectDescription),
+                isOn: $store.showsChargingEffect
+            )
+
+            if ChargingEffectTestMode.isAvailable() {
+                SettingsDivider()
+
+                SettingsToggleRow(
+                    symbol: "flask.fill",
+                    tint: .orange,
+                    title: localization.string(.settingsBatteryChargingEffectTest),
+                    subtitle: localization.string(.settingsBatteryChargingEffectTestDescription),
+                    isOn: Binding(
+                        get: { store.testsChargingEffect },
+                        set: { store.setChargingEffectTestEnabled($0) }
+                    )
+                )
+            }
+
             if store.showsChargingIndicator && store.showsBatteryPercentage {
                 SettingsDivider()
 

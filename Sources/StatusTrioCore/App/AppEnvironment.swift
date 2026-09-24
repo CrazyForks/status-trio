@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 
 @MainActor
 final class AppEnvironment {
@@ -11,6 +12,10 @@ final class AppEnvironment {
     let activationPolicy: AppActivationPolicy
     let appIconController: AppIconController
     let mainMenuController: MainMenuController
+    let chargingEffectClock: ChargingEffectClock
+    let chargingEffectMotionMonitor: ChargingEffectMotionMonitor
+
+    private var chargingEffectCancellables = Set<AnyCancellable>()
 
     init(
         store: SystemStatusStore,
@@ -21,7 +26,9 @@ final class AppEnvironment {
         onboardingWindowController: OnboardingWindowController,
         activationPolicy: AppActivationPolicy,
         appIconController: AppIconController,
-        mainMenuController: MainMenuController
+        mainMenuController: MainMenuController,
+        chargingEffectClock: ChargingEffectClock,
+        chargingEffectMotionMonitor: ChargingEffectMotionMonitor
     ) {
         self.store = store
         self.settings = settings
@@ -32,10 +39,17 @@ final class AppEnvironment {
         self.activationPolicy = activationPolicy
         self.appIconController = appIconController
         self.mainMenuController = mainMenuController
+        self.chargingEffectClock = chargingEffectClock
+        self.chargingEffectMotionMonitor = chargingEffectMotionMonitor
     }
 
     func start() {
         onboardingWindowController.showIfNeeded()
+        chargingEffectMotionMonitor.onChange = { [weak self] _ in
+            self?.updateChargingEffectClock()
+        }
+        chargingEffectMotionMonitor.start()
+        subscribeToChargingEffectInputs()
         mainMenuController.start()
         appIconController.start()
         store.bindInputSettings(settings)
@@ -43,9 +57,45 @@ final class AppEnvironment {
     }
 
     func stop() {
+        chargingEffectClock.stop()
+        chargingEffectMotionMonitor.onChange = nil
+        chargingEffectMotionMonitor.stop()
+        chargingEffectCancellables.removeAll()
         appIconController.stop()
         mainMenuController.stop()
         store.stop()
+    }
+
+    private func subscribeToChargingEffectInputs() {
+        guard chargingEffectCancellables.isEmpty else { return }
+        Publishers.CombineLatest4(
+            store.$snapshot.map(\.battery).removeDuplicates(),
+            settings.$showsChargingEffect.removeDuplicates(),
+            store.$isDisplayAsleep.removeDuplicates(),
+            settings.$testsChargingEffect.removeDuplicates()
+        )
+        .sink { [weak self] battery, enabled, displayAsleep, testMode in
+            guard let self else { return }
+            chargingEffectClock.update(
+                battery: ChargingEffectTestMode.battery(battery, enabled: testMode),
+                enabled: enabled,
+                reduceMotion: chargingEffectMotionMonitor.shouldReduceMotion,
+                displayAsleep: displayAsleep
+            )
+        }
+        .store(in: &chargingEffectCancellables)
+    }
+
+    private func updateChargingEffectClock() {
+        chargingEffectClock.update(
+            battery: ChargingEffectTestMode.battery(
+                store.snapshot.battery,
+                enabled: settings.testsChargingEffect
+            ),
+            enabled: settings.showsChargingEffect,
+            reduceMotion: chargingEffectMotionMonitor.shouldReduceMotion,
+            displayAsleep: store.isDisplayAsleep
+        )
     }
 
     static func makeStore(
@@ -89,6 +139,8 @@ final class AppEnvironment {
             refreshInterval: settings.refreshInterval
         )
         let localization = Localization()
+        let chargingEffectClock = ChargingEffectClock()
+        let chargingEffectMotionMonitor = ChargingEffectMotionMonitor()
         let activationPolicy = AppActivationPolicy()
         let onboardingWindowController = OnboardingWindowController(
             settings: settings,
@@ -102,7 +154,8 @@ final class AppEnvironment {
             activationPolicy: activationPolicy,
             showIconGuide: { [weak onboardingWindowController] in
                 onboardingWindowController?.show()
-            }
+            },
+            chargingEffectClock: chargingEffectClock
         )
         onboardingWindowController.openSettings = { [weak settingsWindowController] in
             settingsWindowController?.show()
@@ -113,7 +166,8 @@ final class AppEnvironment {
             localization: localization,
             isVisible: settings.appIconPlacement.showsMenuBarIcon,
             openSettings: { settingsWindowController.show() },
-            quitAction: { NSApplication.shared.terminate(nil) }
+            quitAction: { NSApplication.shared.terminate(nil) },
+            chargingEffectClock: chargingEffectClock
         )
         let appIconController = AppIconController(
             store: store,
@@ -153,7 +207,9 @@ final class AppEnvironment {
             onboardingWindowController: onboardingWindowController,
             activationPolicy: activationPolicy,
             appIconController: appIconController,
-            mainMenuController: mainMenuController
+            mainMenuController: mainMenuController,
+            chargingEffectClock: chargingEffectClock,
+            chargingEffectMotionMonitor: chargingEffectMotionMonitor
         )
     }
 }

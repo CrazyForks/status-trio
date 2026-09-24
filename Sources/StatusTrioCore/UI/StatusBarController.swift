@@ -27,16 +27,25 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     private let store: SystemStatusStore
     private let settings: SettingsStore
     private let localization: Localization
+    let chargingEffectClock: ChargingEffectClock
     private var cancellable: AnyCancellable?
     private var localizationCancellable: AnyCancellable?
     private var appearanceCancellable: AnyCancellable?
+    private var chargingEffectCancellable: AnyCancellable?
+    private var currentChargingEffectPhase: ChargingEffectPhase?
+    private var testsChargingEffect: Bool
+    private var chargingEffectTestCancellable: AnyCancellable?
     private var screenParametersCancellable: AnyCancellable?
     private var refreshIntervalCancellable: AnyCancellable?
     private let openSettings: () -> Void
     private let quitAction: () -> Void
     private var appearanceObservations: [NSKeyValueObservation] = []
     private var renderCache = StatusBarRenderCache()
+    private let chargingFrameCache = StatusBarChargingFrameCache()
+    private let animationLayerPresenter = StatusBarAnimationLayerPresenter()
     private let renderCoalescer = IconRenderCoalescer()
+    var cachedChargingFrameCount: Int { chargingFrameCache.frameCount }
+    var hasLayerBackedAnimation: Bool { animationLayerPresenter.isInstalled }
     private var isStatusItemVisible: Bool
     private var accessibilityKey: StatusBarAccessibilityKey?
     private var popoverDismissMonitor: Any?
@@ -59,14 +68,17 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         localization: Localization,
         isVisible: Bool = true,
         openSettings: @escaping () -> Void,
-        quitAction: @escaping () -> Void
+        quitAction: @escaping () -> Void,
+        chargingEffectClock: ChargingEffectClock = ChargingEffectClock()
     ) {
         self.store = store
         self.settings = settings
         self.localization = localization
+        self.chargingEffectClock = chargingEffectClock
         self.openSettings = openSettings
         self.quitAction = quitAction
         self.isStatusItemVisible = isVisible
+        self.testsChargingEffect = settings.testsChargingEffect
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         super.init()
 
@@ -100,9 +112,25 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
                     guard let self else { return }
                     self.render(
                         appearance,
-                        status: MenuBarStatus(snapshot: self.store.snapshot)
+                        status: MenuBarStatus(snapshot: self.store.snapshot),
+                        phase: currentChargingEffectPhase
                     )
                 }
+            }
+
+        chargingEffectCancellable = chargingEffectClock.$phase
+            .removeDuplicates()
+            .sink { [weak self] phase in
+                self?.renderAnimationPhase(phase)
+            }
+
+        chargingEffectTestCancellable = settings.$testsChargingEffect
+            .removeDuplicates()
+            .dropFirst()
+            .sink { [weak self] enabled in
+                guard let self else { return }
+                testsChargingEffect = enabled
+                renderLatestSnapshot()
             }
 
         localizationCancellable = localization.$resolvedLanguage
@@ -148,6 +176,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             renderCache = StatusBarRenderCache()
             renderLatestSnapshot()
         } else {
+            clearAnimationPresentation()
             popover.performClose(nil)
             store.setPopoverVisible(false)
             statusItem.isVisible = false
@@ -462,10 +491,20 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
 
     private func render(
         _ appearance: StatusIconAppearance,
-        status: MenuBarStatus
+        status: MenuBarStatus,
+        phase: ChargingEffectPhase?
     ) {
         guard isStatusItemVisible, let button = statusItem.button else { return }
 
+        let status = ChargingEffectTestMode.status(status, enabled: testsChargingEffect)
+
+        if phase == nil {
+            clearAnimationPresentation()
+        }
+        let backingScale =
+            button.window?.backingScaleFactor
+            ?? NSScreen.main?.backingScaleFactor
+            ?? 1
         let key = StatusBarRenderKey(
             status: status,
             iconSize: appearance.iconSize,
@@ -473,18 +512,56 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             connectionOptions: appearance.connectionOptions,
             volumeOptions: appearance.volumeOptions,
             bluetoothAudioOptions: appearance.bluetoothAudioOptions,
-            appearanceName: button.effectiveAppearance.name.rawValue
+            appearanceName: button.effectiveAppearance.name.rawValue,
+            phase: phase
         )
+        if let phase, phase.kind == .steady,
+            chargingFrameCache.needsFrames(for: phase, key: key, backingScale: backingScale)
+        {
+            // A backing-scale change is not in the existing render key. Reset on
+            // any frame-set rebuild so the current phase is displayed immediately.
+            renderCache = StatusBarRenderCache()
+        }
         guard renderCache.shouldRender(key) else { return }
 
-        button.image = StatusIconRenderer.image(
-            menuBarStatus: status,
-            size: appearance.iconSize,
-            options: appearance.batteryOptions,
-            connectionOptions: appearance.connectionOptions,
-            volumeOptions: appearance.volumeOptions,
-            bluetoothAudioOptions: appearance.bluetoothAudioOptions
-        )
+        if let phase, phase.kind == .steady,
+            let cachedImage = chargingFrameCache.image(
+                for: phase,
+                key: key,
+                backingScale: backingScale,
+                renderFrame: { framePhase in
+                    StatusIconRenderer.preRenderedMenuBarImage(
+                        menuBarStatus: status,
+                        size: appearance.iconSize,
+                        scale: backingScale,
+                        appearance: button.effectiveAppearance,
+                        phase: framePhase,
+                        options: appearance.batteryOptions,
+                        connectionOptions: appearance.connectionOptions,
+                        volumeOptions: appearance.volumeOptions,
+                        bluetoothAudioOptions: appearance.bluetoothAudioOptions
+                    )
+                }
+            )
+        {
+            presentCachedAnimationFrame(
+                cachedImage,
+                button: button,
+                iconSize: appearance.iconSize,
+                backingScale: backingScale
+            )
+        } else {
+            animationLayerPresenter.clear()
+            button.image = StatusIconRenderer.image(
+                menuBarStatus: status,
+                size: appearance.iconSize,
+                options: appearance.batteryOptions,
+                connectionOptions: appearance.connectionOptions,
+                volumeOptions: appearance.volumeOptions,
+                bluetoothAudioOptions: appearance.bluetoothAudioOptions,
+                phase: phase
+            )
+        }
 
         let nextAccessibilityKey = StatusBarAccessibilityKey(
             status: status,
@@ -501,6 +578,59 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         )
     }
 
+    private func clearAnimationPresentation() {
+        chargingFrameCache.reset()
+        animationLayerPresenter.clear()
+    }
+
+    private func presentCachedAnimationFrame(
+        _ image: NSImage,
+        button: NSStatusBarButton,
+        iconSize: CGFloat,
+        backingScale: CGFloat
+    ) {
+        guard
+            let cgImage = image.cgImage(
+                forProposedRect: nil,
+                context: nil,
+                hints: nil
+            ),
+            let result = animationLayerPresenter.display(
+                cgImage,
+                in: button,
+                backingScale: backingScale
+            )
+        else {
+            animationLayerPresenter.clear()
+            button.image = image
+            return
+        }
+
+        guard result == .installed else { return }
+        guard
+            let placeholder = StatusIconRenderer.transparentMenuBarImage(
+                size: iconSize,
+                scale: backingScale
+            )
+        else {
+            animationLayerPresenter.clear()
+            button.image = image
+            return
+        }
+        button.image = placeholder
+    }
+
+    /// Clock-driven frames bypass the status/setting coalescer; the menu-bar key
+    /// includes every phase so the 20-fps stream cannot be deduplicated as static.
+    private func renderAnimationPhase(_ phase: ChargingEffectPhase?) {
+        currentChargingEffectPhase = phase
+        render(
+            StatusIconAppearance(settings: settings),
+            status: MenuBarStatus(snapshot: store.snapshot),
+            phase: phase
+        )
+    }
+
     /// The status, the appearance, and the window's effective appearance all feed
     /// one cached render, so the newest state wins over a redraw that is still
     /// waiting out the coalescing interval.
@@ -509,7 +639,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             guard let self else { return }
             self.render(
                 StatusIconAppearance(settings: self.settings),
-                status: MenuBarStatus(snapshot: self.store.snapshot)
+                status: MenuBarStatus(snapshot: self.store.snapshot),
+                phase: self.currentChargingEffectPhase
             )
         }
     }
