@@ -124,3 +124,21 @@ The previously run focused lifecycle suites passed 17 tests: popover content-ret
 ## Reproduction commands and verification
 
 The executable provenance commands and their output are summarized above. Raw environment and initial snapshot captures are in `/tmp/status-trio-popover-baseline/raw/environment.txt` and `/tmp/status-trio-popover-baseline/raw/baseline-ui-unconfirmed-001.txt`. `scripts/build-app.sh release no-open` completed successfully and the SDK check passed. The initial `swift test` baseline passed 351 Swift Testing tests in 60 suites; focused lifecycle suite verification for this report amendment is recorded in the task report.
+
+## Candidate exploratory run — excluded from acceptance
+
+The user chose to keep the current candidate running and record the available results. The candidate was built from ref `974aa1fec02217482fe5eb42cd1707cfa376cf5b` (`974aa1f`) with executable SHA-256 `b7394a6404df2dc3d4d160b879effdeb384726bc15017770652b107138687708`. Its bundle ID was `com.lingsmbp.StatusTrio.dev.popover-resource`, and its development footer was `Popover Perf`. The user confirmed Wi-Fi and Bluetooth permissions were enabled, the footer was correct, and Settings was closed. PID `21738` was the only Status Trio app process during the captures and ran from the candidate worktree. The user confirmed the popover was closed before the idle sample, then manually opened and closed it for one later exploratory session. No Settings window appeared. No app restart or additional trial followed.
+
+### Closed idle — 122 seconds
+
+From `2026-09-25 14:09:06Z` to `14:11:08Z`, PID `21738` cumulative CPU rose from `1.70 s` to `1.82 s` (`+0.12 s`); RSS rose from `157952 KB` to `158032 KB` (`+80 KB`). `footprint` reported `68 MB` at both ends. `vmmap` physical footprint changed from `68.3M` to `68.4M`; peak remained `410.7M`. No direct child was present in either census. This is one candidate idle sample, not a matched baseline comparison.
+
+### Manual popover session — one 173-second watcher
+
+The watcher ran from `2026-09-25 14:13:01Z` to `14:15:54Z`. Its first app sample recorded CPU `1.93 s` and RSS `157968 KB`; its final sample recorded CPU `2.73 s` and RSS `157568 KB`, a full-watcher delta of `+0.80 s` CPU and `-400 KB` RSS. `footprint` rounded to `68 MB` at both ends; `vmmap` physical footprint changed from `68.3M` to `67.6M`, with peak `410.7M` at both ends. Malloc Small remained `42 MB` at both endpoints.
+
+The user confirmed the popover was closed at `14:14:19Z` and Settings stayed closed. The exact open time is unknown, so the full-watcher CPU delta cannot be attributed to an open or closed interval. One direct-child census at `14:13:03Z` observed PID `22228`, parent `21738`, running `/usr/sbin/system_profiler -json SPBluetoothDataType`; that sample showed cumulative child CPU `0.01 s` and RSS `5248 KB`. The child appeared in only one approximately one-second census. Its completion and relationship to the manually opened popover are unknown, so this is not a completed Bluetooth read count. No other direct-child census row was recorded. The separate broad text matcher also matched the watcher shell's command line; its apparent profiler rows are discarded.
+
+The available post-close captures were taken at `14:15:17Z`, `14:15:33Z`, and `14:17:19Z`, respectively about 58, 74, and 180 seconds after the user's close reply. Their `vmmap` footprints were `67.7M`, `67.6M`, and `67.7M`; peak was `410.7M` in each. The labels in the raw marker log reflect the originally scheduled sequence, not the requested delays from the close reply. The requested exact immediate, +15-second, and +120-second markers were not captured.
+
+Raw candidate captures are `/tmp/status-trio-popover-next-20260925/raw/candidate-singleproc-idle-20260925T2204.log`, `/tmp/status-trio-popover-next-20260925/raw/candidate-popover-session-20260925T2214.log`, and `/tmp/status-trio-popover-next-20260925/raw/candidate-popover-close-markers-20260925T2214.log`. These observations are exploratory only. They do not replace any required three-fresh-process rows, establish an app-plus-child CPU total, identify a retained allocation owner, or support a CPU or memory improvement claim.
