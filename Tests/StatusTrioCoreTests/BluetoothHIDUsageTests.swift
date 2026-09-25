@@ -292,3 +292,36 @@ private final class CallCounter: @unchecked Sendable {
         lock.unlock()
     }
 }
+
+/// The I/O Registry lookup stays limited to the four values needed to join
+/// Bluetooth HID interfaces to paired devices and classify their usage.
+struct BluetoothHIDRegistryPropertyReadTests {
+    @Test func bluetoothUsageReadsOnlyItsRequiredProperties() {
+        var lookedUp: [String] = []
+        let result = BluetoothHIDUsageReader.readUsage(from: 17) { _, key -> Any? in
+            lookedUp.append(key as String)
+            return switch key as String {
+            case "Transport": "Bluetooth Low Energy"
+            case "DeviceAddress": "d3-6d-6c-40-a3-2e"
+            case "PrimaryUsagePage": 1
+            case "PrimaryUsage": 6
+            default: Optional<Any>.none
+            }
+        }
+
+        #expect(lookedUp == ["Transport", "DeviceAddress", "PrimaryUsagePage", "PrimaryUsage"])
+        #expect(result?.address == "d3-6d-6c-40-a3-2e")
+        #expect(result?.usage == BluetoothHIDUsage(usagePage: 1, usage: 6))
+    }
+
+    @Test func nonBluetoothHIDServicesOnlyReadTransport() {
+        var lookedUp: [String] = []
+        let result = BluetoothHIDUsageReader.readUsage(from: 18) { _, key -> Any? in
+            lookedUp.append(key as String)
+            return "USB"
+        }
+
+        #expect(lookedUp == ["Transport"])
+        #expect(result == nil)
+    }
+}

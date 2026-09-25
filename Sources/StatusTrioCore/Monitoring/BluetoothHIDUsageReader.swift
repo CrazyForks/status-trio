@@ -46,32 +46,39 @@ enum BluetoothHIDUsageReader {
         while case let service = IOIteratorNext(iterator), service != 0 {
             defer { IOObjectRelease(service) }
 
-            var unmanaged: Unmanaged<CFMutableDictionary>?
-            guard IORegistryEntryCreateCFProperties(service, &unmanaged, kCFAllocatorDefault, 0) == KERN_SUCCESS,
-                  let properties = unmanaged?.takeRetainedValue() as? [String: Any],
-                  let address = bluetoothAddress(of: properties),
-                  let usagePage = properties["PrimaryUsagePage"] as? Int,
-                  let usage = properties["PrimaryUsage"] as? Int else {
+            guard let value = readUsage(from: service, using: registryProperty) else {
                 continue
             }
 
-            let key = BluetoothBatteryReader.normalizedAddress(address)
+            let key = BluetoothBatteryReader.normalizedAddress(value.address)
             guard !key.isEmpty else { continue }
-            usages[key, default: []].append(
-                BluetoothHIDUsage(usagePage: usagePage, usage: usage)
-            )
+            usages[key, default: []].append(value.usage)
         }
         return usages
     }
 
-    /// The node's own address, and only for a Bluetooth node: the transport is
-    /// what separates these from the built-in and USB devices that also carry
-    /// primary usages. Both transports the system reports for a Bluetooth
-    /// accessory — `Bluetooth` and `Bluetooth Low Energy` — contain the word.
-    private static func bluetoothAddress(of properties: [String: Any]) -> String? {
-        let transport = (properties["Transport"] as? String) ?? ""
-        guard transport.lowercased().contains("bluetooth") else { return nil }
-        return properties["DeviceAddress"] as? String
+    /// Reads only the four Registry values used to filter and classify a
+    /// Bluetooth HID service. Transport is checked first so built-in and USB
+    /// services avoid the other property lookups entirely.
+    static func readUsage(
+        from service: io_registry_entry_t,
+        using readProperty: (io_registry_entry_t, CFString) -> Any?
+    ) -> (address: String, usage: BluetoothHIDUsage)? {
+        guard let transport = readProperty(service, "Transport" as CFString) as? String,
+              transport.lowercased().contains("bluetooth"),
+              let address = readProperty(service, "DeviceAddress" as CFString) as? String,
+              let usagePage = readProperty(service, "PrimaryUsagePage" as CFString) as? Int,
+              let usage = readProperty(service, "PrimaryUsage" as CFString) as? Int else {
+            return nil
+        }
+        return (address, BluetoothHIDUsage(usagePage: usagePage, usage: usage))
+    }
+
+    private static func registryProperty(_ service: io_registry_entry_t, _ key: CFString) -> Any? {
+        guard let property = IORegistryEntryCreateCFProperty(service, key, kCFAllocatorDefault, 0) else {
+            return nil
+        }
+        return property.takeRetainedValue()
     }
 }
 

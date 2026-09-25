@@ -73,6 +73,8 @@ final class SystemStatusStore: ObservableObject {
     private let popupDebounceSleep: @Sendable (Duration) async throws -> Void
     private let wakeNotificationCenter: NotificationCenter
     private var monitorTasks: [Task<Void, Never>] = []
+    private var vpnUpdateTask: Task<Void, Never>?
+    private var isVPNActiveForPopover = false
     private var inputUpdateTask: Task<Void, Never>?
     private var inputSettingsCancellable: AnyCancellable?
     private var inputSettingEnabled = false
@@ -233,7 +235,6 @@ final class SystemStatusStore: ObservableObject {
         batteryMonitor.start()
         wifiMonitor.start()
         connectionMonitor?.start()
-        vpnMonitor?.start()
         volumeMonitor.start()
 
         if let inputMonitor {
@@ -254,7 +255,6 @@ final class SystemStatusStore: ObservableObject {
         let batteryUpdates = batteryMonitor.updates
         let wifiUpdates = wifiMonitor.updates
         let connectionUpdates = connectionMonitor?.updates
-        let vpnUpdates = vpnMonitor?.updates
         let volumeUpdates = volumeMonitor.updates
         var tasks = [
             Task { [weak self] in
@@ -284,14 +284,6 @@ final class SystemStatusStore: ObservableObject {
                 }
             })
         }
-        if let vpnUpdates {
-            tasks.append(Task { [weak self] in
-                for await value in vpnUpdates {
-                    guard let self else { return }
-                    self.applyVPN(value)
-                }
-            })
-        }
         monitorTasks = tasks
 
         refreshTask = Task { @MainActor [weak self] in
@@ -317,6 +309,7 @@ final class SystemStatusStore: ObservableObject {
         inputUpdateTask?.cancel()
         inputUpdateTask = nil
         inputMonitor?.stop()
+        stopVPNMonitoringForPopover()
 
         if let wakeObserver {
             wakeNotificationCenter.removeObserver(wakeObserver)
@@ -335,7 +328,6 @@ final class SystemStatusStore: ObservableObject {
         batteryMonitor.stop()
         wifiMonitor.stop()
         connectionMonitor?.stop()
-        vpnMonitor?.stop()
         volumeMonitor.stop()
         monitorTasks.forEach { $0.cancel() }
         monitorTasks.removeAll()
@@ -477,6 +469,7 @@ final class SystemStatusStore: ObservableObject {
         updatePrimaryLinkActivation()
 
         guard visible else {
+            stopVPNMonitoringForPopover()
             clearWiFiNameResolution()
             bluetoothDevices.releaseVisibleSurface(BluetoothDeviceController.popoverSurfaceToken)
             if isBluetoothActivatedForPopover {
@@ -492,6 +485,7 @@ final class SystemStatusStore: ObservableObject {
         }
         popupPublishTask?.cancel()
         popupPublishTask = nil
+        startVPNMonitoringForPopover()
         popupSnapshot = snapshot
         startWiFiNameResolutionIfNeeded()
         bluetoothDevices.prepareForPresentation()
@@ -555,7 +549,6 @@ final class SystemStatusStore: ObservableObject {
         guard !hasStopped else { return }
         batteryMonitor.refresh()
         wifiMonitor.refresh()
-        vpnMonitor?.refresh()
         volumeMonitor.refresh()
     }
 
@@ -584,7 +577,6 @@ final class SystemStatusStore: ObservableObject {
         let showsStatusUI = isPopoverVisible || isSettingsVisible
         guard showsStatusUI || fallbackTickCount % Self.hiddenFallbackTickStride == 0 else { return }
         wifiMonitor.refresh()
-        vpnMonitor?.refresh()
         volumeMonitor.refresh()
     }
 
@@ -592,9 +584,32 @@ final class SystemStatusStore: ObservableObject {
         batteryMonitor.recover()
         wifiMonitor.recover()
         connectionMonitor?.recover()
-        vpnMonitor?.recover()
+        if isVPNActiveForPopover {
+            vpnMonitor?.recover()
+        }
         volumeMonitor.recover()
         inputMonitor?.recover()
+    }
+
+    private func startVPNMonitoringForPopover() {
+        guard !isVPNActiveForPopover, let vpnMonitor else { return }
+        isVPNActiveForPopover = true
+        let updates = vpnMonitor.updates
+        vpnUpdateTask = Task { [weak self] in
+            for await value in updates {
+                guard let self else { return }
+                self.applyVPN(value)
+            }
+        }
+        vpnMonitor.start()
+    }
+
+    private func stopVPNMonitoringForPopover() {
+        guard isVPNActiveForPopover else { return }
+        isVPNActiveForPopover = false
+        vpnUpdateTask?.cancel()
+        vpnUpdateTask = nil
+        vpnMonitor?.stop()
     }
 
     private func updateDetailsVisibility() {
