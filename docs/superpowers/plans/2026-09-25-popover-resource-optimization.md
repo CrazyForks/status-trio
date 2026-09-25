@@ -41,6 +41,8 @@
 
 ### Task 1: Establish a controlled PR-head resource baseline
 
+**Execution status:** Steps 1–2 completed; Steps 3–5 remain incomplete. The report records one excluded fresh-process attempt and later exploratory same-process samples, but the required three fresh-process sequences and profiler allocation stacks were not captured. Step 5's repeat protocol therefore remains unmet despite the report being committed. See [`popover-resource-2026-09.md`](../../performance/popover-resource-2026-09.md).
+
 **Files:**
 - Create: `docs/performance/popover-resource-2026-09.md`
 - Read: `docs/superpowers/specs/2026-09-25-popover-resource-optimization-design.md`
@@ -50,7 +52,7 @@
 - Consumes: the exact PR-head executable, `StatusBarController`'s visible/closed states, and the existing system readers.
 - Produces: a table of three raw runs per scenario, actual reader/process counts, CPU totals, retained-allocation attribution, and an explicit Task 2 eligibility verdict.
 
-- [ ] **Step 1: Prepare an isolated profiling build.** Record the commit and SDK, then build without opening the app. Use the same bundle ID for all baseline and candidate runs; grant Bluetooth only to that exact app if the scenario requires it. The execution worktree must have no running process using its `dist/` path.
+- [x] **Step 1: Prepare an isolated profiling build.** Record the commit and SDK, then build without opening the app. Use the same bundle ID for all baseline and candidate runs; grant Bluetooth only to that exact app if the scenario requires it. The execution worktree must have no running process using its `dist/` path.
 
 ```bash
 git rev-parse HEAD
@@ -61,7 +63,7 @@ xcrun vtool -show-build dist/StatusTrio.app/Contents/MacOS/StatusTrio
 /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' dist/StatusTrio.app/Contents/Info.plist
 ```
 
-- [ ] **Step 2: Write the measurement sheet before collecting data.** Create `docs/performance/popover-resource-2026-09.md` with one row per run and marker. Columns: commit/hash, bundle ID, OS/SDK, permissions, enabled sections, power/display state, PID, confirmed UI state, elapsed time, RSS KB, app CPU seconds, child CPU seconds, physical footprint MB/peak, `vmmap` Malloc Small/CoreAnimation/CG Raster/CG Image/IOSurface, profiler launches, Bluetooth/Wi-Fi/volume completed reads, and first-open/reopen latency. Label unavailable values explicitly.
+- [x] **Step 2: Write the measurement sheet before collecting data.** Create `docs/performance/popover-resource-2026-09.md` with one row per run and marker. Columns: commit/hash, bundle ID, OS/SDK, permissions, enabled sections, power/display state, PID, confirmed UI state, elapsed time, RSS KB, app CPU seconds, child CPU seconds, physical footprint MB/peak, `vmmap` Malloc Small/CoreAnimation/CG Raster/CG Image/IOSurface, profiler launches, Bluetooth/Wi-Fi/volume completed reads, and first-open/reopen latency. Label unavailable values explicitly.
 
 - [ ] **Step 3: Capture three fresh-process sequences.** For each run: 2 minutes cold idle; summary open 60 seconds; Bluetooth section visible; close at 15 seconds and 2 minutes; Wi-Fi detail and battery detail in separate summary sessions; ten summary cycles of 10 seconds open/10 seconds closed; then 2 minutes closed. Confirm Settings closed at every marker. Read the exact PID from `pgrep -fl StatusTrio` and assign it to `pid`; assign a unique label such as `baseline-1` to `run_id`. Use `ps`, `footprint`, and `vmmap` at each marker and save their raw output outside Git, linked by run ID in the report.
 
@@ -87,6 +89,8 @@ git commit -m 'docs(perf): measure PR 71 popover CPU and memory'
 ```
 
 ### Task 2: Remove a confirmed duplicate Bluetooth opening read
+
+**Execution status: skipped.** Task 1 did not capture the completed-read count required to establish duplicate-read eligibility. The implementation and test steps below were not run; no production Swift change was made.
 
 **Gate:** Execute only if Task 1 records at least two completed no-event device reads for one ordinary popover opening. If the count is already one, record “Task 2 skipped: no duplicate completed read” in the report and continue to Task 3 without changing production code.
 
@@ -234,6 +238,8 @@ git commit -m 'perf(popover): avoid duplicate Bluetooth opening read'
 
 ### Task 3: Attribute post-close memory and choose the next bounded change
 
+**Execution status:** Step 1 remains incomplete because the Allocations trace failed to attach and no three-run allocation/footprint comparison exists. Step 2's source review and 17 focused lifecycle tests completed, but live hosting-controller deallocation remains unverified, so the full step remains unchecked. Steps 3–4 completed: the report records no justified memory edit and was committed. The measured executable used source commit `c5a6240`, a docs-only descendant of PR head `cbe3a0e`, so the PR's VPN/HID changes were present. See [`popover-resource-2026-09.md`](../../performance/popover-resource-2026-09.md).
+
 **Files:**
 - Modify: `docs/performance/popover-resource-2026-09.md`
 - Read/run: `Tests/StatusTrioCoreTests/WiFiNetworkScanCadenceTests.swift`, `Tests/StatusTrioCoreTests/BatteryPopoverPanelTests.swift`, `Sources/StatusTrioCore/UI/StatusBarController.swift:450-480`
@@ -252,9 +258,9 @@ swift test --filter 'WiFiNetworkScanCadenceTests'
 swift test --filter 'BatteryPopoverPanelTests'
 ```
 
-- [ ] **Step 3: Record the decision.** If an application-owned group contributes at least 2 MB median live bytes and at least 3 MB median physical footprint at 2 minutes, write its exact stack, file/owner, entry/close path, and three-run numbers into the report, then create a separate narrow design/plan for that owner before editing it. This preserves the spec's evidence gate: the current plan cannot truthfully prescribe a lifetime change for an owner the trace has not named. If the gate is not met or tracing was unavailable, record that no memory optimization is established and leave the 60-second retention/cache policy unchanged.
+- [x] **Step 3: Record the decision.** If an application-owned group contributes at least 2 MB median live bytes and at least 3 MB median physical footprint at 2 minutes, write its exact stack, file/owner, entry/close path, and three-run numbers into the report, then create a separate narrow design/plan for that owner before editing it. This preserves the spec's evidence gate: the current plan cannot truthfully prescribe a lifetime change for an owner the trace has not named. If the gate is not met or tracing was unavailable, record that no memory optimization is established and leave the 60-second retention/cache policy unchanged.
 
-- [ ] **Step 4: Commit the attribution report.** Include trace paths/tool settings, excluded runs, and whether the latest VPN/HID changes were present in the measured binary.
+- [x] **Step 4: Commit the attribution report.** Include trace paths/tool settings, excluded runs, and whether the latest VPN/HID changes were present in the measured binary.
 
 ```bash
 git diff --check
@@ -263,6 +269,8 @@ git commit -m 'docs(perf): attribute post-popover retained memory'
 ```
 
 ### Task 4: Final verification and PR #71 handoff
+
+**Execution status:** Step 1's full local gates were not rerun because this plan made no Swift changes; the recorded 351-test baseline/release build and 17 focused lifecycle tests are in the performance report. Steps 2–3 completed: preflight run `36131258691` passed with `publish=false`, and the PR body was updated and verified while PR #71 remained draft.
 
 **Files:**
 - Modify: `docs/performance/popover-resource-2026-09.md` only if final verification changes a recorded result.
@@ -273,7 +281,7 @@ git commit -m 'docs(perf): attribute post-popover retained memory'
 - Consumes: Tasks 1–3 results and any accepted Swift commit.
 - Produces: a PR comment/body update that distinguishes demonstrated CPU improvement, fewer reads without measured CPU improvement, and unresolved memory attribution.
 
-- [ ] **Step 1: Run the final local gates if Swift changed.** Execute the full test suite and release build from the exact implementation commit. Check the tree and diff for accidental changes.
+- [x] **Step 1: Run the final local gates if Swift changed.** No Swift source changed in this plan, so the full local gates were not rerun; the working tree and diff were checked for accidental changes.
 
 ```bash
 swift test
@@ -282,7 +290,7 @@ git diff --check
 git status --short --branch
 ```
 
-- [ ] **Step 2: Run the non-publishing CI preflight if required.** Push the implementation branch after local gates. Inspect the latest published version/build, enter explicit higher values that satisfy the release-note validator, dispatch against the pushed branch, and watch the returned run ID. For every failed run, add its run ID, stage, root cause, fix, and verification result to `docs/swift-ci-compatibility.md` before retrying. Do not publish a release.
+- [x] **Step 2: Run the non-publishing CI preflight if required.** Push the implementation branch after local gates. Inspect the latest published version/build, enter explicit higher values that satisfy the release-note validator, dispatch against the pushed branch, and watch the returned run ID. For every failed run, add its run ID, stage, root cause, fix, and verification result to `docs/swift-ci-compatibility.md` before retrying. Do not publish a release.
 
 ```bash
 git push origin HEAD:codex/memory-footprint-opt
@@ -300,7 +308,7 @@ read -r preflight_run_id
 gh run watch "$preflight_run_id" --repo lingyired/status-trio --exit-status
 ```
 
-- [ ] **Step 3: Review and hand off PR #71.** Confirm the measured binary matches the final source commit, all accepted changes meet the spec's read-count/CPU/memory/latency gates, and the performance report states remaining limits. Update the PR summary with verified numbers and any skipped conditional task; leave the PR as draft until its required checks pass. If Task 3 identified a memory owner, link its separate plan rather than claiming this PR already reduced that memory.
+- [x] **Step 3: Review and hand off PR #71.** Confirm the measured binary matches the final source commit, all accepted changes meet the spec's read-count/CPU/memory/latency gates, and the performance report states remaining limits. Update the PR summary with verified numbers and any skipped conditional task; leave the PR as draft until its required checks pass. If Task 3 identified a memory owner, link its separate plan rather than claiming this PR already reduced that memory.
 
 ## Execution order
 
