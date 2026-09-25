@@ -107,6 +107,14 @@ The first CUA attempt and the preliminary PID 85013 snapshot are superseded by t
 - Application-owned allocation group >=2 MB live after close: unknown; the attempted Allocations recording failed to attach and provided no retained-stack evidence.
 - Task 2 eligibility: **not eligible** because the required completed Bluetooth-read count was not captured. CPU benefit is a separate, unmeasured performance question; it is not an eligibility prerequisite.
 
+## Task 3 close-path and memory decision
+
+**Decision: no justified memory edit.** The owner-ranked finding is unresolved: no application-owned allocation stack or retained object group can be named or assigned live-byte totals. The Allocations recording failed to attach to PID `91189`, so this is an absence of owner evidence, not proof that the app retains no memory. The available physical-footprint samples are exploratory, not three matched fresh-process runs: one user-driven close sample was `80 MB` and its 2m47s follow-up was `78 MB`; an earlier close sample was `77 MB` and its 114s follow-up was `76 MB`. They do not establish a repeatable post-close delta or a median, and there are no corresponding post-close allocation-stack or `Malloc Small`, CoreAnimation, CG Raster, CG Image, or IOSurface deltas to compare. No group meets the plan's `2 MB` live-allocation and `3 MB` physical-footprint evidence gate.
+
+Source inspection confirms `StatusBarController.popoverDidClose` calls `store.setPopoverVisible(false)` and `store.closePopoverDetails()`. If a detail panel was open, it clears `popover.contentViewController` immediately; otherwise it schedules the existing 60-second release, whose task clears the content controller after the delay when the popover remains closed. The 60-second retention/cache policy remains unchanged because no retained owner has been attributed to it.
+
+The previously run focused lifecycle suites passed 17 tests: popover content-retention state, Wi-Fi scan cadence/close behavior, and battery detail-panel close behavior. These cover the release timing policy and detail collectors, but they do not assert that the AppKit hosting controller deallocates in a live app after the delayed release. The failed allocation trace cannot answer that question. No further lifecycle run was needed for this docs-only decision; actual controller deallocation remains unverified.
+
 ## Reproduction commands and verification
 
 The executable provenance commands and their output are summarized above. Raw environment and initial snapshot captures are in `/tmp/status-trio-popover-baseline/raw/environment.txt` and `/tmp/status-trio-popover-baseline/raw/baseline-ui-unconfirmed-001.txt`. `scripts/build-app.sh release no-open` completed successfully and the SDK check passed. The initial `swift test` baseline passed 351 Swift Testing tests in 60 suites; focused lifecycle suite verification for this report amendment is recorded in the task report.
