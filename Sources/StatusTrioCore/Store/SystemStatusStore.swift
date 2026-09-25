@@ -438,13 +438,11 @@ final class SystemStatusStore: ObservableObject {
         if !isBluetoothEnabled {
             isBluetoothActivatedForPopover = true
             bluetoothDevices.activate()
+        } else {
+            // An already-running Settings-owned monitor will not report its
+            // current state again just because the popover opened.
+            bluetoothDevices.refresh()
         }
-        // The state monitor is already running for a granted app, and `activate`
-        // is then a no-op, so the popover asks for its own read: an extra read
-        // when the row opens. `refresh()` drops that request unless availability
-        // is `.available`, so a row that opened in another state keeps reporting
-        // that state until the system reports a usable adapter.
-        bluetoothDevices.refresh()
     }
 
     func closeBatteryDetails() {

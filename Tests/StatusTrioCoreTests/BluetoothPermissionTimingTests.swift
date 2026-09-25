@@ -118,6 +118,76 @@ final class BluetoothPermissionTimingTests: XCTestCase {
         XCTAssertFalse(bluetoothController.isActive)
     }
 
+    /// Starting the monitor reports an already-powered-on adapter and starts a
+    /// read. That opening must not queue a second completed read.
+    func testOrdinaryAuthorizedPopoverOpeningCompletesOneBluetoothRead() async {
+        let stateMonitor = BluetoothStateMonitorSpy(authorization: .allowed)
+        stateMonitor.stateOnStart = .poweredOn
+        let reader = ImmediateCountingBluetoothReader()
+        let bluetoothController = BluetoothDeviceController(
+            worker: reader,
+            stateMonitor: stateMonitor,
+            notificationCenter: NotificationCenter(),
+            workspaceNotificationCenter: NotificationCenter()
+        )
+        let store = SystemStatusStore(
+            batteryMonitor: EmptyBatteryMonitorForBluetoothTiming(),
+            wifiMonitor: EmptyWiFiMonitorForBluetoothTiming(),
+            volumeMonitor: EmptyVolumeMonitorForBluetoothTiming(),
+            bluetoothDevices: bluetoothController
+        )
+
+        store.setPopoverVisible(true)
+        await waitUntil { bluetoothController.devices.map(\.id) == ["opening-read"] }
+
+        XCTAssertEqual(reader.completedReadCount, 1)
+        store.setPopoverVisible(false)
+        store.stop()
+    }
+
+    /// An already active Settings-owned monitor does not send another state
+    /// callback on opening, so the popover must request one refresh itself.
+    func testPopoverOpeningRefreshesAlreadyActiveBluetoothMonitorOnce() async {
+        let stateMonitor = BluetoothStateMonitorSpy(authorization: .allowed)
+        let reader = ImmediateCountingBluetoothReader()
+        let bluetoothController = BluetoothDeviceController(
+            worker: reader,
+            stateMonitor: stateMonitor,
+            notificationCenter: NotificationCenter(),
+            workspaceNotificationCenter: NotificationCenter()
+        )
+        let store = SystemStatusStore(
+            batteryMonitor: EmptyBatteryMonitorForBluetoothTiming(),
+            wifiMonitor: EmptyWiFiMonitorForBluetoothTiming(),
+            volumeMonitor: EmptyVolumeMonitorForBluetoothTiming(),
+            bluetoothDevices: bluetoothController
+        )
+
+        store.setBluetoothEnabled(true)
+        stateMonitor.emit(authorization: .allowed, managerState: .poweredOn)
+        await waitUntil { bluetoothController.devices.map(\.id) == ["opening-read"] }
+        reader.resetCompletedReadCount()
+
+        store.setPopoverVisible(true)
+        await waitUntil { reader.completedReadCount == 1 }
+
+        XCTAssertEqual(reader.completedReadCount, 1)
+        store.setPopoverVisible(false)
+        store.setBluetoothEnabled(false)
+        store.stop()
+    }
+
+    private func waitUntil(
+        timeout: Duration = .seconds(1),
+        condition: () -> Bool
+    ) async {
+        let deadline = ContinuousClock.now + timeout
+        while !condition(), ContinuousClock.now < deadline {
+            await Task.yield()
+        }
+        XCTAssertTrue(condition(), "Timed out waiting for the Bluetooth read result")
+    }
+
     /// Permission is only ever requested by the user's tap, never by the
     /// popover appearing.
     func testOpeningThePopoverKeepsUnauthorizedBluetoothIdle() {
@@ -212,6 +282,7 @@ private final class BluetoothStateMonitorSpy: BluetoothStateMonitoring {
     private(set) var startCount = 0
     private(set) var stopCount = 0
     let authorization: BluetoothAuthorizationStatus
+    var stateOnStart: BluetoothManagerState = .unknown
 
     init(authorization: BluetoothAuthorizationStatus = .notDetermined) {
         self.authorization = authorization
@@ -219,6 +290,9 @@ private final class BluetoothStateMonitorSpy: BluetoothStateMonitoring {
 
     func start() {
         startCount += 1
+        if stateOnStart != .unknown {
+            emit(authorization: authorization, managerState: stateOnStart)
+        }
     }
 
     func stop() {
@@ -232,6 +306,24 @@ private final class BluetoothStateMonitorSpy: BluetoothStateMonitoring {
 
 /// The default worker runs `/usr/sbin/system_profiler`; a unit test that makes
 /// the adapter report ready must not.
+private final class ImmediateCountingBluetoothReader: BluetoothPairedDeviceReading {
+    private let lock = NSLock()
+    private var completedCount = 0
+
+    var completedReadCount: Int { lock.withLock { completedCount } }
+
+    func resetCompletedReadCount() {
+        lock.withLock { completedCount = 0 }
+    }
+
+    func read(completion: @escaping @Sendable (BluetoothWorkerResult) -> Void) {
+        lock.withLock { completedCount += 1 }
+        completion(.success([
+            BluetoothDevice(id: "opening-read", name: "Test Device", kind: .audio, isConnected: true)
+        ]))
+    }
+}
+
 private final class PermissionTimingBluetoothReader: BluetoothPairedDeviceReading {
     func read(completion: @escaping @Sendable (BluetoothWorkerResult) -> Void) {
         completion(.success([]))

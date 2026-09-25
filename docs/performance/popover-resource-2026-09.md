@@ -100,12 +100,16 @@ The first CUA attempt and the preliminary PID 85013 snapshot are superseded by t
 
 ## Reader, process, and Task 2 verdict
 
+### Amended deterministic test gate (2026-09-25)
+
+At the user's request, the Task 2 runtime measurement gate was amended for this bounded fix: no app restart or controlled runtime benefit claim is required. A deterministic unit test injects a Bluetooth state monitor that synchronously reports an already-powered-on adapter when ordinary authorized popover activation starts it, plus a reader that immediately completes each no-event read with a known device. The test waits until that device result is published before checking the reader count. Before the fix, the ordinary opening produced **two completed reader invocations** (not merely two requests); the already-active Settings-owned monitor path produced one. After the fix, the ordinary opening must produce one, while the Settings-owned path still explicitly refreshes once. This is test evidence about call behavior only: it does not count `system_profiler` launches in a running app, measure CPU, or establish a runtime performance benefit.
+
 - `system_profiler` child: one pre-open direct child was sampled in excluded fresh-process attempt 1; none appeared in the later one-second watcher files. No completed reads were measured.
-- Bluetooth completed reads per ordinary opening: unknown. User confirmed authorization and Bluetooth UI presence in a menu-bar session, but the required completed-read counts were not captured.
+- Bluetooth completed reads per ordinary runtime opening: unknown. The deterministic test above establishes two completed injected-reader calls on the pre-fix code and one after the fix; runtime process/read counts remain uncaptured.
 - Redundant Wi-Fi or volume reads: unknown; the user exercised Wi-Fi detail in an exploratory session, but invocation counters were not observed and volume detail was not tested.
 - Combined app-plus-child CPU over ten cycles: unavailable; no controlled ten-cycle scenario or usable CPU attribution.
 - Application-owned allocation group >=2 MB live after close: unknown; the attempted Allocations recording failed to attach and provided no retained-stack evidence.
-- Task 2 eligibility: **not eligible** because the required completed Bluetooth-read count was not captured. CPU benefit is a separate, unmeasured performance question; it is not an eligibility prerequisite.
+- Original controlled-runtime Task 2 eligibility: **not established** because the required runtime completed-read count was not captured. The user-approved amended unit-test gate supports the narrow duplicate-read change. CPU benefit remains unmeasured and is not claimed.
 
 ## Task 3 close-path and memory decision
 
