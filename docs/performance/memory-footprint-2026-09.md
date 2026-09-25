@@ -181,3 +181,17 @@ A new v1.3.3 (16) process from Actions run 36021302008 was launched through Comp
 The fresh candidate stayed at 18 MB physical footprint for the entire 11-minute sample, with RSS varying by less than 0.5 MB. The 11:13 `vmmap -summary` showed 11.0 MB resident across malloc zones and no default-zone fragmentation. This is another clean-idle run, not a post-popover test. It supports keeping production changes focused on the interaction-triggered 18→81 MB growth already recorded above; it does not attribute that growth to Bluetooth, Wi-Fi permission handling, or SwiftUI individually.
 
 At elapsed 15:01, `heap -s -H` reported 12.2 MB allocated across 36,806 malloc nodes, with 17.9 MB physical footprint and an 18.1 MB peak. About 9.4 MB was categorized as non-object allocations; the largest named object category was 292 KB of `NSMutableDictionary` storage. The heap sample confirms that this fresh idle process does not have a large reachable object graph. It still cannot explain the earlier post-interaction allocation without a matched post-popover heap/Allocations sample.
+
+### Candidate menu-only state after closing a visible Settings window (single run)
+
+When Computer Use reconnected on 2026-09-25, the candidate process's Settings → App Icon window was already visible. Its open time and the actions before reconnection are unknown. I closed that window normally with `Command-W`; the Status Trio process stayed at PID 91335 and the menu-bar icon remained. This is a post-interaction observation, not a clean cold-idle run or a controlled before/after test.
+
+| Local sample time (CST) | State / elapsed | RSS | Activity Monitor Memory column | `footprint` current / peak | `vmmap` physical / malloc zone | Heap allocated / nodes |
+|---|---|---:|---:|---:|---:|---:|
+| 2026-09-25 10:22:24 | Settings closed / 9:52:52 | 168,672 KB | 69.0 MB | 69 / 326 MB | 69.1 / 48.8 MB resident | — |
+| 2026-09-25 10:22:54–10:24:25 | Settings closed / 9:53–9:55 | 174,208–174,256 KB | 69.0 MB | 69 / 326 MB | — | — |
+| 2026-09-25 10:25:06 | Settings closed / 9:55:34 | 174,208 KB | 69.0 MB | 69 / 326 MB | 69.4 / 48.8 MB resident | 45.2 MB / 287,393 |
+
+The Activity Monitor inspector for the same PID showed 164.7 MB Actual Memory, 56.2 MB private, and 174.2 MB shared; its process-list Memory column showed 69.0 MB, matching `footprint` at that time. RSS therefore must not be substituted for the Memory column or physical footprint. `vmmap` attributed 44 MB to Malloc Small, 2.6 MB to CG Image, 1.8 MB to CoreAnimation, and 1.5 MB to owned graphics. The heap sample was 45.2 MB across 287,393 nodes, versus 12.2 MB across 36,806 nodes in the earlier fresh idle sample. Thus the process had a persistent post-interaction physical footprint of 69 MB while only the menu-bar icon was visible; the Settings window's earlier visibility is correlated context, not a proven cause. It stayed flat across the roughly two-minute follow-up.
+
+One interim shell sample printed 20 MB because its `pgrep -f` expression matched the sampling shell rather than PID 91335; that reading is invalid and excluded. All values above use the confirmed PID directly. The next useful step is a controlled debug/Allocations trace around opening and closing Settings or the popover, with exact state timestamps. Do not change production code based on this single non-isolated trace; the live heap delta is real, but its retaining owners are not identified.
