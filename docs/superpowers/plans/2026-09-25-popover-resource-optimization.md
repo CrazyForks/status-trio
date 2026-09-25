@@ -270,7 +270,7 @@ git commit -m 'docs(perf): attribute post-popover retained memory'
 
 ### Task 4: Final verification and PR #71 handoff
 
-**Execution status:** Step 1's full local gates were not rerun because this plan made no Swift changes; the recorded 351-test baseline/release build and 17 focused lifecycle tests are in the performance report. Steps 2–3 completed: preflight run `36131258691` passed with `publish=false`, and the PR body was updated and verified while PR #71 remained draft.
+**Execution status:** No Swift source changed in this plan, so full local gates were not rerun; earlier local baseline tests and build passed, 17 focused lifecycle tests passed in Task 1, and CI run `36131258691` revalidated tests/build on macOS 26. Steps 2–3 completed: preflight run `36131258691` passed with `publish=false`, and the PR body was updated and verified while PR #71 remained draft.
 
 **Files:**
 - Modify: `docs/performance/popover-resource-2026-09.md` only if final verification changes a recorded result.
