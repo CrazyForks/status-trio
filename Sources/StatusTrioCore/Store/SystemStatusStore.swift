@@ -435,10 +435,14 @@ final class SystemStatusStore: ObservableObject {
         guard BluetoothPanelActivation.shouldActivate(
             authorization: bluetoothDevices.authorization
         ) else { return }
+        let monitorWasAlreadyActive = bluetoothDevices.isActive
         if !isBluetoothEnabled {
-            isBluetoothActivatedForPopover = true
-            bluetoothDevices.activate()
-        } else {
+            if !monitorWasAlreadyActive {
+                isBluetoothActivatedForPopover = true
+                bluetoothDevices.activate()
+            }
+        }
+        if monitorWasAlreadyActive {
             // An already-running Settings-owned monitor will not report its
             // current state again just because the popover opened.
             bluetoothDevices.refresh()

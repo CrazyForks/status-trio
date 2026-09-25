@@ -177,6 +177,39 @@ final class BluetoothPermissionTimingTests: XCTestCase {
         store.stop()
     }
 
+    /// Settings' Bluetooth section can activate the shared controller without
+    /// toggling the store's persistent Bluetooth setting. The popover still
+    /// needs one fresh read and must leave that existing activation alive.
+    func testPopoverRefreshesControllerActivatedBySettingsSection() async {
+        let stateMonitor = BluetoothStateMonitorSpy(authorization: .allowed)
+        let reader = ImmediateCountingBluetoothReader()
+        let bluetoothController = BluetoothDeviceController(
+            worker: reader,
+            stateMonitor: stateMonitor,
+            notificationCenter: NotificationCenter(),
+            workspaceNotificationCenter: NotificationCenter()
+        )
+        let store = SystemStatusStore(
+            batteryMonitor: EmptyBatteryMonitorForBluetoothTiming(),
+            wifiMonitor: EmptyWiFiMonitorForBluetoothTiming(),
+            volumeMonitor: EmptyVolumeMonitorForBluetoothTiming(),
+            bluetoothDevices: bluetoothController
+        )
+
+        bluetoothController.activate()
+        stateMonitor.emit(authorization: .allowed, managerState: .poweredOn)
+        await waitUntil { bluetoothController.devices.map(\.id) == ["opening-read"] }
+        reader.resetCompletedReadCount()
+
+        store.setPopoverVisible(true)
+
+        XCTAssertEqual(reader.completedReadCount, 1)
+        store.setPopoverVisible(false)
+        XCTAssertTrue(bluetoothController.isActive, "popover close must not stop the existing Settings activation")
+        bluetoothController.deactivate()
+        store.stop()
+    }
+
     private func waitUntil(
         timeout: Duration = .seconds(1),
         condition: () -> Bool
