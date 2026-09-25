@@ -15,7 +15,7 @@ The acceptance protocol requires three fresh-process sequences with confirmed vi
 | Bundle ID | `com.lingsmbp.StatusTrio.dev.popover-resource` |
 | Development codename | `Popover Perf` (footer verified by user as `设置… · 开发版 · Popover Perf`) |
 | App version / build | `1.3.2 (15)` |
-| Build command | `BUNDLE_ID=com.lingsmbp.StatusTrio.dev.popover-resource APP_NAME='Status Trio Popover Perf' bash scripts/build-app.sh release no-open` |
+| Build command | `BUNDLE_ID=com.lingsmbp.StatusTrio.dev.popover-resource APP_NAME='Status Trio Popover Perf' DEVELOPMENT_CODENAME='Popover Perf' bash scripts/build-app.sh release no-open` |
 | Build SDK | `LC_BUILD_VERSION sdk 26.0` (build script passed its SDK floor check) |
 | Host SDK / OS | SDK `27.0`; macOS `27.0 (26A428)` |
 | Toolchain | Xcode `27.0 (27A266a)`; Swift `6.4`; outside CI Xcode 26.6 / Swift 6.3.3 |
@@ -105,7 +105,7 @@ The first CUA attempt and the preliminary PID 85013 snapshot are superseded by t
 - Redundant Wi-Fi or volume reads: unknown; the user exercised Wi-Fi detail in an exploratory session, but invocation counters were not observed and volume detail was not tested.
 - Combined app-plus-child CPU over ten cycles: unavailable; no controlled ten-cycle scenario or usable CPU attribution.
 - Application-owned allocation group >=2 MB live after close: unknown; the attempted Allocations recording failed to attach and provided no retained-stack evidence.
-- Task 2 eligibility: **not eligible**. Required child/read and CPU evidence is absent; no production optimization should be selected from these samples.
+- Task 2 eligibility: **not eligible** because the required completed Bluetooth-read count was not captured. CPU benefit is a separate, unmeasured performance question; it is not an eligibility prerequisite.
 
 ## Reproduction commands and verification
 
