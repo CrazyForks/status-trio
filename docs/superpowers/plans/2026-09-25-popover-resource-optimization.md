@@ -90,9 +90,11 @@ git commit -m 'docs(perf): measure PR 71 popover CPU and memory'
 
 ### Task 2: Remove a confirmed duplicate Bluetooth opening read
 
-**Execution status: skipped.** Task 1 did not capture the completed-read count required to establish duplicate-read eligibility. The implementation and test steps below were not run; no production Swift change was made.
+**Execution status: amended bounded fix completed.** Task 1 did not capture the original controlled runtime read-count gate, so the runtime measurement steps below remain incomplete. On 2026-09-25 the user approved a narrower deterministic test gate without restarting the running app or claiming a runtime CPU benefit. A RED test showed two completed injected-reader calls for an ordinary authorized opening; the fix reduced this to one. A reviewer found a separate Settings-section activation route, which was covered by a second RED→GREEN test for one opening read and correct close ownership. Source/tests/report were committed in `09e3561` and `7a123ef`; the exact evidence and limits are in the performance report.
 
 **Gate:** Execute only if Task 1 records at least two completed no-event device reads for one ordinary popover opening. If the count is already one, record “Task 2 skipped: no duplicate completed read” in the report and continue to Task 3 without changing production code.
+
+**Approved scope amendment:** For the bounded fix above, deterministic RED→GREEN tests replaced the original runtime eligibility gate. The runtime comparison in Steps 4–5 remains open before any CPU or memory improvement claim.
 
 **Files:**
 - Modify: `Sources/StatusTrioCore/Store/SystemStatusStore.swift:429-448`
@@ -104,7 +106,7 @@ git commit -m 'docs(perf): measure PR 71 popover CPU and memory'
 - Consumes: `BluetoothDeviceController.isActive`, `activate()`, `refresh()`, and the existing `BluetoothPanelActivation.shouldActivate` permission gate.
 - Produces: `activateBluetoothForPopover()` that relies on the newly started state monitor's first `.available` callback for its initial read, but explicitly refreshes a monitor already active for Settings.
 
-- [ ] **Step 1: Write the failing opening test and test doubles.** Add two tests to `BluetoothPermissionTimingTests`: `testNewPopoverBluetoothMonitorGetsOneOpeningRead` and `testSettingsOwnedBluetoothGetsOneOpeningRead`. Use the existing empty battery/Wi-Fi/volume fakes. Extend its private state-monitor spy with `emitPoweredOnOnStart` (default `false`) and add an `NSLock`-protected counting reader; `start()` invokes `onStateChange?(.allowed, .poweredOn)` synchronously when that flag is true, and the reader counts then calls `completion(.success([]))`. The first test opens a granted popover, waits for the queued completion, and expects `readCount == 1`; the second enables Settings Bluetooth first, records the count, opens the popover, and expects exactly one additional read. End each test by closing the popover and stopping the store.
+- [x] **Step 1: Write the failing opening test and test doubles.** The amended implementation used deterministic completed-read tests (including both Settings activation routes) in `BluetoothPermissionTimingTests`; see the execution status above for the different test names and synchronization.
 
 ```swift
 func testNewPopoverBluetoothMonitorGetsOneOpeningRead() async {
@@ -200,21 +202,21 @@ func start() {
 }
 ```
 
-- [ ] **Step 2: Confirm the test fails against the baseline.** Run the focused test. Expected result: the newly started monitor's synchronous `.available` callback starts one read and the unconditional store `refresh()` queues a second; the assertion reports `2` rather than `1`. If it reports `1`, check the Task 1 runtime counter and skip the fix if no duplicate completed read exists.
+- [x] **Step 2: Confirm the test fails against the baseline.** The ordinary-opening RED test observed 2 completed injected-reader calls rather than 1; the follow-up Settings-section RED test observed 0 opening reads and incorrect close ownership.
 
 ```bash
 swift test --filter 'BluetoothPermissionTimingTests.testNewPopoverBluetoothMonitorGetsOneOpeningRead'
 ```
 
-- [ ] **Step 3: Make the smallest opening-path change.** Capture activation state before the optional `activate()`. Keep the existing permission gate and ownership flag. Explicitly refresh only if the controller was already active; a new monitor's state callback performs its initial read. Do not change `BluetoothDeviceController`'s event coalescing or watchdog.
+- [x] **Step 3: Make the smallest opening-path change.** Capture activation state before optional `activate()`, refresh only an already active controller, and claim popover lifetime ownership only when it starts an inactive controller. The controller's event coalescing and watchdog were unchanged.
 
 ```swift
-let wasActive = bluetoothDevices.isActive
-if !isBluetoothEnabled {
+let monitorWasAlreadyActive = bluetoothDevices.isActive
+if !isBluetoothEnabled, !monitorWasAlreadyActive {
     isBluetoothActivatedForPopover = true
     bluetoothDevices.activate()
 }
-if wasActive {
+if monitorWasAlreadyActive {
     bluetoothDevices.refresh()
 }
 ```
@@ -270,7 +272,7 @@ git commit -m 'docs(perf): attribute post-popover retained memory'
 
 ### Task 4: Final verification and PR #71 handoff
 
-**Execution status:** No Swift source changed in this plan, so full local gates were not rerun; earlier local baseline tests and build passed, 17 focused lifecycle tests passed in Task 1, and CI run `36131258691` revalidated tests/build on macOS 26. Steps 2–3 completed: preflight run `36131258691` passed with `publish=false`, and the PR body was updated and verified while PR #71 remained draft.
+**Execution status:** The amended Task 2 changed Swift source. Luna ran the 11-test Bluetooth permission timing suite, full `swift test` (351 tests in 60 suites), and `swift build -c release`; an independent review found and verified the Settings-section follow-up fix. Non-publishing CI run `36142870607` passed on source commit `7a123ef` with macOS 26, Xcode 26.6, and Swift 6.3.3. PR #71 was updated and remains draft. Controlled runtime CPU, memory, and launch-latency acceptance remain unmeasured and are not claimed.
 
 **Files:**
 - Modify: `docs/performance/popover-resource-2026-09.md` only if final verification changes a recorded result.
@@ -281,7 +283,7 @@ git commit -m 'docs(perf): attribute post-popover retained memory'
 - Consumes: Tasks 1–3 results and any accepted Swift commit.
 - Produces: a PR comment/body update that distinguishes demonstrated CPU improvement, fewer reads without measured CPU improvement, and unresolved memory attribution.
 
-- [x] **Step 1: Run the final local gates if Swift changed.** No Swift source changed in this plan, so the full local gates were not rerun; the working tree and diff were checked for accidental changes.
+- [x] **Step 1: Run the final local gates if Swift changed.** Full local tests and release build passed on `7a123ef`; `git diff --check` and worktree status were clean.
 
 ```bash
 swift test
