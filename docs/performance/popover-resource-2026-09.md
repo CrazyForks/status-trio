@@ -31,7 +31,7 @@ At the snapshot, `ps` identified the measured PID `85013` by its full executable
 
 ## Preliminary unclassified snapshot
 
-At `2026-09-25 17:17:20 CST`, PID 85013 had elapsed time `02:24`, cumulative CPU `0:21.29`, RSS `169648 KB`, physical footprint `68 MB` (vmmap `68.4 MB`), and lifetime peak footprint `327 MB` (vmmap `327.2 MB`). `vmmap` showed Malloc Small `38.8 MB` dirty/resident, CoreAnimation `2.75 MB`, CG Raster Data `2.83 MB`, CG Image `3.47 MB`, and IOSurface `272 KB`. Settings had been displayed during first launch, and its close state was not verifiable through the available UI channel; this is not an idle or post-close result. Raw command output is `raw/baseline-ui-unconfirmed-001.txt` under the raw artifact directory listed above.
+At `2026-09-25 17:17:20 CST`, PID 85013 had elapsed time `02:24`, cumulative CPU `0:21.29`, RSS `169648 KB`, physical footprint `68 MB` (vmmap `68.4 MB`), and lifetime peak footprint `327 MB` (vmmap `327.2 MB`). `vmmap` showed Malloc Small `38.8 MB` dirty/resident, CoreAnimation `2.75 MB`, CG Raster Data `2.83 MB`, CG Image `3.47 MB`, and IOSurface `272 KB`. Settings had been displayed during first launch, and its close state was not verifiable through the available UI channel; this is not an idle or post-close result. Raw command output: `/tmp/status-trio-popover-baseline/raw/baseline-ui-unconfirmed-001.txt`. Environment capture: `/tmp/status-trio-popover-baseline/raw/environment.txt`.
 
 These values do not identify a retained application allocation. No Allocations trace, Time Profiler trace, or before/after marker series was collected. The one PID's lifetime peak is not an allocation owner finding.
 
