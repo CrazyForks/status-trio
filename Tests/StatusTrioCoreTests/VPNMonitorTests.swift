@@ -77,20 +77,49 @@ final class VPNMonitorTests: XCTestCase {
         monitor.stop()
     }
 
-    func testStopFinishesTheStream() async {
+    func testStopAllowsRestartAndPublishesTheCurrentReadingAgain() async {
+        let reader = FakeVPNReader(reading: VPNProbeReading(tunnelInterfaces: ["utun4"]))
+        let observer = FakeNetworkChangeObserver()
         let monitor = VPNMonitor(
-            reader: FakeVPNReader(reading: .empty),
-            observer: FakeNetworkChangeObserver()
+            reader: reader,
+            observer: observer
         )
 
+        let firstUpdate = expectation(description: "initial VPN reading published")
+        let firstTask = Task {
+            var didPublishInitial = false
+            for await status in monitor.updates {
+                if !didPublishInitial, status.tunnelInterfaces == ["utun4"] {
+                    didPublishInitial = true
+                    firstUpdate.fulfill()
+                }
+            }
+        }
         monitor.start()
-        var iterator = monitor.updates.makeAsyncIterator()
-        _ = await iterator.next()
+        await fulfillment(of: [firstUpdate], timeout: 1)
+        firstTask.cancel()
+        await firstTask.value
 
         monitor.stop()
+        XCTAssertEqual(observer.cancelCount, 1)
 
-        let next = await iterator.next()
-        XCTAssertNil(next)
+        reader.reading = VPNProbeReading(tunnelInterfaces: ["utun8"])
+        let restartedUpdate = expectation(description: "restarted VPN reading published")
+        let restartedTask = Task {
+            for await status in monitor.updates {
+                if status.tunnelInterfaces == ["utun8"] {
+                    restartedUpdate.fulfill()
+                    return
+                }
+            }
+        }
+        monitor.start()
+        await fulfillment(of: [restartedUpdate], timeout: 1)
+        XCTAssertEqual(reader.readCount, 2)
+        XCTAssertEqual(observer.startCount, 2)
+
+        restartedTask.cancel()
+        monitor.stop()
     }
 
     /// A second `start()` must not subscribe twice: the store calls it once, but

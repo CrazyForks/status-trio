@@ -73,6 +73,8 @@ final class SystemStatusStore: ObservableObject {
     private let popupDebounceSleep: @Sendable (Duration) async throws -> Void
     private let wakeNotificationCenter: NotificationCenter
     private var monitorTasks: [Task<Void, Never>] = []
+    private var vpnUpdateTask: Task<Void, Never>?
+    private var isVPNActiveForPopover = false
     private var inputUpdateTask: Task<Void, Never>?
     private var inputSettingsCancellable: AnyCancellable?
     private var inputSettingEnabled = false
@@ -107,6 +109,7 @@ final class SystemStatusStore: ObservableObject {
     @Published private(set) var isDisplayAsleep = false
     private var isSettingsVisible = false
     private var isBluetoothEnabled = false
+    private var isBluetoothActivatedForPopover = false
     /// Whether the wired link panel is the open detail panel. The controller
     /// itself follows the connection; this only records that the panel is on
     /// screen, which is what decides whether the built popover content can be
@@ -232,7 +235,6 @@ final class SystemStatusStore: ObservableObject {
         batteryMonitor.start()
         wifiMonitor.start()
         connectionMonitor?.start()
-        vpnMonitor?.start()
         volumeMonitor.start()
 
         if let inputMonitor {
@@ -253,7 +255,6 @@ final class SystemStatusStore: ObservableObject {
         let batteryUpdates = batteryMonitor.updates
         let wifiUpdates = wifiMonitor.updates
         let connectionUpdates = connectionMonitor?.updates
-        let vpnUpdates = vpnMonitor?.updates
         let volumeUpdates = volumeMonitor.updates
         var tasks = [
             Task { [weak self] in
@@ -283,14 +284,6 @@ final class SystemStatusStore: ObservableObject {
                 }
             })
         }
-        if let vpnUpdates {
-            tasks.append(Task { [weak self] in
-                for await value in vpnUpdates {
-                    guard let self else { return }
-                    self.applyVPN(value)
-                }
-            })
-        }
         monitorTasks = tasks
 
         refreshTask = Task { @MainActor [weak self] in
@@ -316,6 +309,7 @@ final class SystemStatusStore: ObservableObject {
         inputUpdateTask?.cancel()
         inputUpdateTask = nil
         inputMonitor?.stop()
+        stopVPNMonitoringForPopover()
 
         if let wakeObserver {
             wakeNotificationCenter.removeObserver(wakeObserver)
@@ -334,7 +328,6 @@ final class SystemStatusStore: ObservableObject {
         batteryMonitor.stop()
         wifiMonitor.stop()
         connectionMonitor?.stop()
-        vpnMonitor?.stop()
         volumeMonitor.stop()
         monitorTasks.forEach { $0.cancel() }
         monitorTasks.removeAll()
@@ -420,6 +413,7 @@ final class SystemStatusStore: ObservableObject {
     func setBluetoothEnabled(_ enabled: Bool) {
         guard !hasStopped else { return }
         isBluetoothEnabled = enabled
+        isBluetoothActivatedForPopover = false
         if enabled {
             bluetoothDevices.activate()
         } else {
@@ -432,22 +426,27 @@ final class SystemStatusStore: ObservableObject {
     // second literal here would let a rename silently stop the poll forever
     // with no compile error.
 
-    /// Enables the Bluetooth monitor when the popover opens, so the row can
-    /// report device names. Starting the monitor is what raises the system
-    /// permission prompt, so this only runs for an app that already holds the
-    /// grant; every other state is left for the row to report and for the
-    /// user's tap to resolve.
+    /// Temporarily enables Bluetooth monitoring while the popover is open, so
+    /// the row can report device names. Starting the monitor is what raises the
+    /// system permission prompt, so this only runs for an app that already
+    /// holds the grant. An explicit Settings toggle owns the monitor beyond the
+    /// popover lifetime; this activation does not.
     private func activateBluetoothForPopover() {
         guard BluetoothPanelActivation.shouldActivate(
             authorization: bluetoothDevices.authorization
         ) else { return }
-        setBluetoothEnabled(true)
-        // The state monitor is already running for a granted app, and `activate`
-        // is then a no-op, so the popover asks for its own read: an extra read
-        // when the row opens. `refresh()` drops that request unless availability
-        // is `.available`, so a row that opened in another state keeps reporting
-        // that state until the system reports a usable adapter.
-        bluetoothDevices.refresh()
+        let monitorWasAlreadyActive = bluetoothDevices.isActive
+        if !isBluetoothEnabled {
+            if !monitorWasAlreadyActive {
+                isBluetoothActivatedForPopover = true
+                bluetoothDevices.activate()
+            }
+        }
+        if monitorWasAlreadyActive {
+            // An already-running Settings-owned monitor will not report its
+            // current state again just because the popover opened.
+            bluetoothDevices.refresh()
+        }
     }
 
     func closeBatteryDetails() {
@@ -472,8 +471,13 @@ final class SystemStatusStore: ObservableObject {
         updatePrimaryLinkActivation()
 
         guard visible else {
+            stopVPNMonitoringForPopover()
             clearWiFiNameResolution()
             bluetoothDevices.releaseVisibleSurface(BluetoothDeviceController.popoverSurfaceToken)
+            if isBluetoothActivatedForPopover {
+                isBluetoothActivatedForPopover = false
+                bluetoothDevices.deactivate()
+            }
             // A confirmation is answered inside the panel, so closing the panel
             // cancels an unanswered one. The popover retains its content view
             // controller after a close, which is why this belongs here rather
@@ -483,6 +487,7 @@ final class SystemStatusStore: ObservableObject {
         }
         popupPublishTask?.cancel()
         popupPublishTask = nil
+        startVPNMonitoringForPopover()
         popupSnapshot = snapshot
         startWiFiNameResolutionIfNeeded()
         bluetoothDevices.prepareForPresentation()
@@ -546,7 +551,6 @@ final class SystemStatusStore: ObservableObject {
         guard !hasStopped else { return }
         batteryMonitor.refresh()
         wifiMonitor.refresh()
-        vpnMonitor?.refresh()
         volumeMonitor.refresh()
     }
 
@@ -575,7 +579,6 @@ final class SystemStatusStore: ObservableObject {
         let showsStatusUI = isPopoverVisible || isSettingsVisible
         guard showsStatusUI || fallbackTickCount % Self.hiddenFallbackTickStride == 0 else { return }
         wifiMonitor.refresh()
-        vpnMonitor?.refresh()
         volumeMonitor.refresh()
     }
 
@@ -583,9 +586,32 @@ final class SystemStatusStore: ObservableObject {
         batteryMonitor.recover()
         wifiMonitor.recover()
         connectionMonitor?.recover()
-        vpnMonitor?.recover()
+        if isVPNActiveForPopover {
+            vpnMonitor?.recover()
+        }
         volumeMonitor.recover()
         inputMonitor?.recover()
+    }
+
+    private func startVPNMonitoringForPopover() {
+        guard !isVPNActiveForPopover, let vpnMonitor else { return }
+        isVPNActiveForPopover = true
+        let updates = vpnMonitor.updates
+        vpnUpdateTask = Task { [weak self] in
+            for await value in updates {
+                guard let self else { return }
+                self.applyVPN(value)
+            }
+        }
+        vpnMonitor.start()
+    }
+
+    private func stopVPNMonitoringForPopover() {
+        guard isVPNActiveForPopover else { return }
+        isVPNActiveForPopover = false
+        vpnUpdateTask?.cancel()
+        vpnUpdateTask = nil
+        vpnMonitor?.stop()
     }
 
     private func updateDetailsVisibility() {

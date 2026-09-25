@@ -533,11 +533,16 @@ struct IconGuideStateGalleryView: View {
     }
 }
 
-private struct IconGuideStateCard: View {
+/// One state card in the guide grid. Internal, and with an internal memberwise
+/// initializer, so a test can host the exact view the grid builds: a `private`
+/// stored property anywhere in the card would make that initializer `private`
+/// and leave the guide's render behaviour untestable.
+struct IconGuideStateCard: View {
     let state: IconGuideState
     @ObservedObject var settings: SettingsStore
     let previewAppearance: IconGuidePreviewAppearance
-    @EnvironmentObject private var localization: Localization
+    var previewCache: DockIconPreviewCache? = nil
+    @EnvironmentObject var localization: Localization
 
     var body: some View {
         VStack(spacing: 10) {
@@ -550,7 +555,8 @@ private struct IconGuideStateCard: View {
                     configuring: settings.bluetoothAudioIconOptions
                 ),
                 backgroundStyle: previewAppearance.dockBackgroundStyle,
-                size: 56
+                size: 56,
+                previewCache: previewCache
             )
 
             Text(localization.string(state.titleKey))

@@ -89,27 +89,27 @@ private let vpnDynamicStoreCallback: SCDynamicStoreCallBack = { _, _, info in
 
 /// Watches the three VPN signals and publishes the resolved status.
 ///
-/// The lifecycle mirrors `NetworkConnectionMonitor`: `idle` → `running` →
-/// `stopped`, with `recover()` available while running to re-subscribe after a
-/// wake. Reads happen on the main actor because a full read is a `getifaddrs`
-/// pass plus two `SystemConfiguration` lookups, measured in single-digit
-/// milliseconds on macOS 26.6.1, and this monitor is refreshed by the store's
-/// fallback tick rather than by a per-frame path — moving the read off the main
-/// actor would buy nothing and add a sequence guard for out-of-order results.
+/// The lifecycle moves between `idle` and `running`; `stop()` pauses the
+/// observer and leaves the stream available for the next popover opening.
+/// `recover()` re-subscribes while running after a wake. Reads happen on the
+/// main actor because a full read is a `getifaddrs` pass plus two
+/// `SystemConfiguration` lookups, measured in single-digit milliseconds on
+/// macOS 26.6.1. The store reads on popover opening and on network-change
+/// notifications; moving the read off the main actor would buy little and add
+/// a sequence guard for out-of-order results.
 @MainActor
 final class VPNMonitor: VPNMonitoring {
     private enum Lifecycle {
         case idle
         case running
-        case stopped
     }
 
-    let updates: AsyncStream<VPNStatus>
+    private(set) var updates: AsyncStream<VPNStatus>
 
     nonisolated(unsafe) private let reader: any VPNReading
     nonisolated(unsafe) private let observer: any NetworkChangeObserving
     private let queue = DispatchQueue(label: "StatusTrio.VPN")
-    private let continuation: AsyncStream<VPNStatus>.Continuation
+    private var continuation: AsyncStream<VPNStatus>.Continuation
     private var lifecycle = Lifecycle.idle
     /// The last value handed to the stream, so a notification that changed
     /// nothing does not wake the store.
@@ -125,10 +125,8 @@ final class VPNMonitor: VPNMonitoring {
     }
 
     deinit {
-        if lifecycle != .stopped {
-            observer.cancel()
-            continuation.finish()
-        }
+        observer.cancel()
+        continuation.finish()
     }
 
     func start() {
@@ -155,10 +153,14 @@ final class VPNMonitor: VPNMonitoring {
     }
 
     func stop() {
-        guard lifecycle != .stopped else { return }
-        lifecycle = .stopped
+        guard lifecycle == .running else { return }
+        lifecycle = .idle
         observer.cancel()
+        // Reopening must publish even when the status matches the last value
+        // from the previous visible session.
+        lastPublished = nil
         continuation.finish()
+        (updates, continuation) = MonitorStream.make(of: VPNStatus.self)
     }
 
     private func startObserving() {

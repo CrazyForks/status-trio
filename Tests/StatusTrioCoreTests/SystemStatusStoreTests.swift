@@ -42,6 +42,45 @@ final class SystemStatusStoreTests: XCTestCase {
         store.stop()
     }
 
+    func testVPNMonitoringFollowsPopoverLifetime() async {
+        let vpn = FakeVPNMonitor()
+        let sleeper = ManualSleeper()
+        let store = SystemStatusStore(
+            batteryMonitor: FakeBatteryMonitor(),
+            wifiMonitor: FakeWiFiMonitor(),
+            vpnMonitor: vpn,
+            volumeMonitor: FakeVolumeMonitor(),
+            refreshInterval: .seconds(60),
+            sleep: { _ in await sleeper.sleep() }
+        )
+
+        store.start()
+        XCTAssertEqual(vpn.startCount, 0)
+        for tick in 1...4 {
+            await sleeper.waitForCallCount(tick)
+            sleeper.releaseNext()
+            await sleeper.waitForCompletionCount(tick)
+        }
+        XCTAssertEqual(vpn.refreshCount, 0)
+
+        store.setPopoverVisible(true)
+        XCTAssertEqual(vpn.startCount, 1)
+        XCTAssertEqual(vpn.refreshCount, 1)
+
+        store.setPopoverVisible(true)
+        XCTAssertEqual(vpn.startCount, 1)
+
+        store.setPopoverVisible(false)
+        XCTAssertEqual(vpn.stopCount, 1)
+
+        store.setPopoverVisible(true)
+        XCTAssertEqual(vpn.startCount, 2)
+        XCTAssertEqual(vpn.refreshCount, 2)
+
+        store.stop()
+        XCTAssertEqual(vpn.stopCount, 2)
+    }
+
     func testInputMonitorFollowsOptInSettingAndPopoverVisibility() async {
         let battery = FakeBatteryMonitor()
         let wifi = FakeWiFiMonitor()
@@ -1827,6 +1866,28 @@ final class SystemStatusStoreTests: XCTestCase {
             try? await Task.sleep(for: .milliseconds(1))
         }
     }
+}
+
+@MainActor
+private final class FakeVPNMonitor: VPNMonitoring {
+    let updates: AsyncStream<VPNStatus>
+    private let continuation: AsyncStream<VPNStatus>.Continuation
+    private(set) var startCount = 0
+    private(set) var stopCount = 0
+    private(set) var refreshCount = 0
+    private(set) var recoverCount = 0
+
+    init() {
+        (updates, continuation) = MonitorStream.make(of: VPNStatus.self)
+    }
+
+    func start() {
+        startCount += 1
+        refresh()
+    }
+    func stop() { stopCount += 1 }
+    func refresh() { refreshCount += 1 }
+    func recover() { recoverCount += 1 }
 }
 
 @MainActor

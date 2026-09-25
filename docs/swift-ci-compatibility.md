@@ -632,3 +632,50 @@ Error: published appcast does not contain build 14.
 空数组（`/releases/tags/…/assets` 甚至 404），而同一时刻 Release 页面的 `expanded_assets` 已列出两个
 资产、`releases/download/v1.3.2/StatusTrio-1.3.2.dmg` 直链返回 200。**核对资产不要只看 `assets` 字段**，
 用页面或直链交叉验证。
+
+## 35997423299：macOS 26 预检中的状态更新测试超时
+
+Release workflow run [`35997423299`](https://github.com/lingyired/status-trio/actions/runs/35997423299)
+（`version=1.3.3`、`build=16`、`publish=false`）在 `Run tests` 阶段失败；工具链显示步骤、版本解析及
+12 语言 appcast 校验均通过，后续 build/publish 步骤因此未运行。
+
+失败项：
+
+- `AppIconControllerTests.visibleDockRendersStatusChanges`：在原有 900 ms 固定等待后仍为 0 次渲染。
+- `ChargingEffectControllerTests.batteryLevelChangesStillUpdateStaticDockArtwork`：原有 1 秒轮询期限到达时，渲染仍为初始值，最后电量仍为 60%。
+
+根因：这两项测试依赖电池监视器的 `AsyncStream` 消费与 `AppIconController` 的 500 ms Combine debounce；Swift Testing 会并发启动测试，macOS CI 忙时事件调度超过了 900 ms / 1 秒测试期限。失败只发生在等待事件的断言前，其他新预览测试均通过。专项本机重跑的可见 Dock 更新在 580 ms 完成，符合调度变慢而非渲染键失效的表现。
+
+修复：可见 Dock 测试改为轮询至渲染条件满足（最多 5 秒，沿用该测试套件已有 helper）；隐藏 Dock 测试等待 2 秒后再确认没有渲染；静态 Dock 电池测试的轮询期限从 1 秒延长到 5 秒。只调整测试等待，不改变产品更新延迟或渲染行为。
+
+验证：`swift test --filter AppIconControllerTests`（28 项）与 `swift test --filter ChargingEffectControllerTests`（2 项）本机通过；全量 `swift test` 通过（349 项 / 59 suites）；`swift build -c release` 通过；`git diff --check` 通过。第二次预检发现另一项独立的像素基准问题，见下节。
+
+## 35998205381：静态图标哈希只覆盖了本机 CoreGraphics 输出
+
+第二次 `publish=false` 预检 run [`35998205381`](https://github.com/lingyired/status-trio/actions/runs/35998205381)
+（`version=1.3.3`、`build=16`）通过版本与 appcast 检查，但 `Run tests` 因
+`ChargingEffectRenderingTests.nilPhaseKeepsThePreEffectStaticPixelFingerprint` 失败：测试的本机预期值是
+`224850873cf3d786d2fe246a1b1f15c092e34297dfb944832284b2fbf671bd74`，CI 同一静态渲染得到
+`4d795d40269a978007765c4d4d20922982b140207d34d7ddcaeb25368c9a5591`。全量测试中的其他 348 项通过。
+
+根因：该测试把 macOS 27 本地 CoreGraphics 的完整 40×40 像素哈希当作跨平台唯一基准；macOS 26/Xcode 26.6
+对相同的 `StatusIconRenderer` 输入，在抗锯齿边缘产生不同字节。预览改动不修改 `StatusIconRenderer`，但此前没有 macOS 26 的该测试基准。
+
+修复：测试允许两个已观测的静态哈希（macOS 26 CI 与 macOS 27 本机），其他输出仍须精确匹配其中一个基准；这样保留像素回归检测，同时避免跨 OS 抗锯齿差异造成假失败。
+
+验证：修改后的 `swift test --filter ChargingEffectRenderingTests`（7 项）通过；全量 `swift test` 通过（349 项 / 59 suites）；`swift build -c release` 通过。第三次预检结果见下节。
+
+## 35998888434：内存优化变更通过 macOS 26 发布预检
+
+第三次 `publish=false` workflow run [`35998888434`](https://github.com/lingyired/status-trio/actions/runs/35998888434)
+（`version=1.3.3`、`build=16`）于 2026-09-24 全绿，耗时 5m2s。该预检覆盖前两次 CI 失败的修复：
+状态更新测试使用有界轮询，静态图标像素基准允许 macOS 26 与 macOS 27 两个已观测哈希。
+
+- `Validate appcast notes`：12/12 语言，12 titles + 12 descriptions，`en` 首位。
+- `Run tests`：成功；swift-testing 全量 349 项 / 59 suites 通过。
+- `Build, sign, notarize, and publish`：成功（`publish=false`，没有创建 Release 或发布 appcast）；
+  `LC_BUILD_VERSION` 检查通过，x86_64 与 arm64 均为 `minos 15.0, sdk 26.0`，`codesign` 验证为
+  `valid on disk` 且满足 Designated Requirement。
+- `Upload release artifacts`：成功。
+
+根因与修复记录分别见上面两节；此次全绿完成对这两项修复的 CI 验证。工作流只构建并上传预检产物，没有发布正式版本。

@@ -19,7 +19,14 @@ struct ChargingEffectRenderingTests {
             .map { String(format: "%02x", $0) }
             .joined()
 
-        #expect(fingerprint == "224850873cf3d786d2fe246a1b1f15c092e34297dfb944832284b2fbf671bd74")
+        // CoreGraphics rasterizes a few edge pixels differently across the
+        // supported macOS 26 CI runner and the macOS 27 local toolchain. Keep
+        // both observed static baselines so other pixel changes still fail.
+        let knownPlatformFingerprints = [
+            "4d795d40269a978007765c4d4d20922982b140207d34d7ddcaeb25368c9a5591", // macOS 26 CI
+            "224850873cf3d786d2fe246a1b1f15c092e34297dfb944832284b2fbf671bd74", // macOS 27 local
+        ]
+        #expect(knownPlatformFingerprints.contains(fingerprint))
     }
 
     @Test func nonChargingBatteryIgnoresSuppliedChargingPhase() throws {
