@@ -402,7 +402,7 @@ final class BluetoothDeviceActionsTests: XCTestCase {
                 for: makeDevice(isConnected: false, name: "MX Keys", kind: .peripheral(.keyboard))
             )
         )
-        for kind in [BluetoothDeviceKind.audio, .computer(.unclassified), .mobile(.phone), .unknown] {
+        for kind in [BluetoothDeviceKind.audio, .computer(.unclassified), .mobile(.phone)] {
             XCTAssertFalse(
                 BluetoothDeviceActionPolicy.requiresConfirmation(
                     for: makeDevice(isConnected: true, kind: kind)
@@ -410,6 +410,27 @@ final class BluetoothDeviceActionsTests: XCTestCase {
                 "\(kind) must disconnect without a confirmation"
             )
         }
+        XCTAssertTrue(
+            BluetoothDeviceActionPolicy.requiresConfirmation(
+                for: makeDevice(isConnected: true, kind: .unknown)
+            ),
+            "unknown connected devices must disconnect with a confirmation"
+        )
+    }
+
+    func testAmbiguousUnknownHIDDeviceRequiresDisconnectConfirmation() {
+        let refined = BluetoothDeviceKindRefinement.apply(
+            to: [makeDevice(isConnected: true, name: "Combo Input", kind: .unknown)],
+            hidUsages: [
+                BluetoothBatteryReader.normalizedAddress(airPodsAddress): [
+                    BluetoothHIDUsage(usagePage: 1, usage: 2),
+                    BluetoothHIDUsage(usagePage: 1, usage: 6),
+                ]
+            ]
+        )
+
+        XCTAssertEqual(refined.first?.kind, .unknown)
+        XCTAssertTrue(BluetoothDeviceActionPolicy.requiresConfirmation(for: refined[0]))
     }
 
     func testTheActionFollowsTheConnectionState() {

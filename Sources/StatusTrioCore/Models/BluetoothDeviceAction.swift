@@ -62,11 +62,11 @@ enum BluetoothDeviceActionPolicy {
     /// anything else.
     ///
     /// A peripheral the class wording did not narrow down counts as an input
-    /// device too: one wasted tap costs far less than disconnecting the
-    /// keyboard the user is typing on because its class field said something
-    /// unrecognized.
+    /// device too. A connected unknown device does as well: ambiguous HID
+    /// capabilities intentionally preserve `.unknown`, so one extra tap costs
+    /// less than disconnecting an input device without warning.
     static func requiresConfirmation(for device: BluetoothDevice) -> Bool {
-        device.isConnected && device.kind.isPeripheral
+        device.isConnected && (device.kind.isPeripheral || device.kind == .unknown)
     }
 
     /// What the row shows in place of its connection state.
