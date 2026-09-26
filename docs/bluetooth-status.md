@@ -135,10 +135,13 @@ user is typing on.
 
 So a connected device whose class the report cannot be trusted on is corrected
 from the I/O Registry (`BluetoothHIDUsageReader`, `BluetoothHIDUsageClassifier`,
-`BluetoothDeviceKindRefinement`). The classification is a documented precedence
-rather than the order the Registry happens to return interfaces in: a touch pad
-outranks the pointer interface the same trackpad also presents, and a keyboard
-outranks the pointing surface of a combination device.
+`BluetoothDeviceKindRefinement`). HID usages describe the input capabilities a
+device offers; they do not by themselves determine its identity. A touch pad
+still outranks the pointer usage the same trackpad also presents. When both mouse
+and keyboard usages are present, the supported declared mouse or keyboard kind is
+preserved. When only one of those capabilities is present, it can correct a
+wrong declaration. If both are present and neither resolves the ambiguity, the
+original kind is left unchanged.
 
 Three bounds keep the correction from overreaching:
 
