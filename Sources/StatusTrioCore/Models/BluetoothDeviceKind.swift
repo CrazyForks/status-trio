@@ -380,21 +380,30 @@ enum BluetoothDeviceKindResolver {
 
 /// Corrects the class a connected HID device declared.
 ///
-/// `BluetoothHIDUsageClassifier` answers what the device presents; this decides
-/// whether the answer may be used. The report's own wording stays authoritative
-/// for every class a HID usage cannot describe, and for every device that is
-/// paired but not connected — IORegistry has no node for those, so their class
-/// is whatever the report says it is.
+/// `BluetoothHIDUsageClassifier` combines the interfaces with the declared
+/// peripheral form; this decides whether that answer may be used. The report's
+/// wording stays authoritative for unsupported kinds and disconnected devices.
 enum BluetoothDeviceKindRefinement {
     static func apply(
         to devices: [BluetoothDevice],
         hidUsages: [String: [BluetoothHIDUsage]]
     ) -> [BluetoothDevice] {
         devices.map { device in
-            guard device.kind.acceptsHIDRefinement,
-                  let form = BluetoothHIDUsageClassifier.peripheralForm(
-                      from: hidUsages[BluetoothBatteryReader.normalizedAddress(device.id)] ?? []
-                  ) else {
+            guard device.isConnected, device.kind.acceptsHIDRefinement else {
+                return device
+            }
+
+            let declared: PeripheralForm?
+            if case .peripheral(let form) = device.kind {
+                declared = form
+            } else {
+                declared = nil
+            }
+
+            guard let form = BluetoothHIDUsageClassifier.peripheralForm(
+                from: hidUsages[BluetoothBatteryReader.normalizedAddress(device.id)] ?? [],
+                declared: declared
+            ) else {
                 return device
             }
             return device.replacingKind(with: .peripheral(form))

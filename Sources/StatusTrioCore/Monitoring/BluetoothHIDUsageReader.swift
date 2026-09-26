@@ -84,62 +84,29 @@ enum BluetoothHIDUsageReader {
 
 /// Turns the usages a device presents into the peripheral it is.
 ///
-/// Pure, so the precedence is unit-tested rather than inferred from a live
-/// Mac's device list. A device presents several interfaces at once — a
-/// trackpad is both a pointer and a touch pad, a keyboard with a jog wheel
-/// presents more than one keyboard collection — so the order below is the rule
-/// that decides, not the order the Registry happens to return them in.
+/// Pure, so role selection is unit-tested rather than inferred from a live
+/// Mac's device list. Specialized roles take precedence, while a device with
+/// both mouse and keyboard capabilities needs its declared kind to disambiguate.
 enum BluetoothHIDUsageClassifier {
-    private enum UsagePage {
-        static let genericDesktop = 1
-        static let digitizer = 0x0D
-    }
+    /// `nil` when nothing here describes the device or a mouse/keyboard
+    /// combination has no declared kind to resolve the ambiguity.
+    static func peripheralForm(
+        from usages: [BluetoothHIDUsage],
+        declared: PeripheralForm?
+    ) -> PeripheralForm? {
+        let capabilities = BluetoothHIDCapabilities(usages: usages)
 
-    private enum GenericDesktopUsage {
-        static let pointer = 1
-        static let mouse = 2
-        static let joystick = 4
-        static let gamePad = 5
-        static let keyboard = 6
-        static let keypad = 7
-        static let multiAxisController = 8
-    }
+        if capabilities.hasTrackpad { return .trackpad }
+        if capabilities.hasGamepad { return .gamepad }
 
-    private enum DigitizerUsage {
-        static let touchPad = 0x05
-        static let finger = 0x22
-    }
-
-    /// `nil` when nothing here describes the device, which leaves whatever the
-    /// report declared in place.
-    ///
-    /// A touch pad outranks the pointer interface the same trackpad also
-    /// presents, and a keyboard outranks the pointer collection on a device
-    /// that is both: a combination device is a keyboard that happens to have a
-    /// pointing surface, and reading it the other way would redraw the
-    /// keyboard the user is typing on as a mouse.
-    static func peripheralForm(from usages: [BluetoothHIDUsage]) -> PeripheralForm? {
-        func has(_ page: Int, _ usage: Int) -> Bool {
-            usages.contains { $0.usagePage == page && $0.usage == usage }
+        if capabilities.hasMouse && capabilities.hasKeyboard {
+            if declared == .mouse || declared == .keyboard {
+                return declared
+            }
+            return nil
         }
-
-        if has(UsagePage.digitizer, DigitizerUsage.touchPad)
-            || has(UsagePage.digitizer, DigitizerUsage.finger) {
-            return .trackpad
-        }
-        if has(UsagePage.genericDesktop, GenericDesktopUsage.gamePad)
-            || has(UsagePage.genericDesktop, GenericDesktopUsage.joystick) {
-            return .gamepad
-        }
-        if has(UsagePage.genericDesktop, GenericDesktopUsage.keyboard)
-            || has(UsagePage.genericDesktop, GenericDesktopUsage.keypad) {
-            return .keyboard
-        }
-        if has(UsagePage.genericDesktop, GenericDesktopUsage.mouse)
-            || has(UsagePage.genericDesktop, GenericDesktopUsage.pointer)
-            || has(UsagePage.genericDesktop, GenericDesktopUsage.multiAxisController) {
-            return .mouse
-        }
+        if capabilities.hasKeyboard { return .keyboard }
+        if capabilities.hasMouse { return .mouse }
         return nil
     }
 }

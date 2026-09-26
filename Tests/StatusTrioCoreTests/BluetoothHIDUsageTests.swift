@@ -38,25 +38,25 @@ struct BluetoothHIDUsageClassifierTests {
     }
 
     @Test func theKeyboardUsageIsAKeyboard() {
-        #expect(BluetoothHIDUsageClassifier.peripheralForm(from: [usage(1, 6)]) == .keyboard)
+        #expect(BluetoothHIDUsageClassifier.peripheralForm(from: [usage(1, 6)], declared: nil) == .keyboard)
     }
 
     @Test func theKeypadUsageIsAKeyboard() {
-        #expect(BluetoothHIDUsageClassifier.peripheralForm(from: [usage(1, 7)]) == .keyboard)
+        #expect(BluetoothHIDUsageClassifier.peripheralForm(from: [usage(1, 7)], declared: nil) == .keyboard)
     }
 
     @Test func theMouseUsageIsAMouse() {
-        #expect(BluetoothHIDUsageClassifier.peripheralForm(from: [usage(1, 2)]) == .mouse)
+        #expect(BluetoothHIDUsageClassifier.peripheralForm(from: [usage(1, 2)], declared: nil) == .mouse)
     }
 
     @Test func thePointerAndMultiAxisUsagesAreAMouse() {
-        #expect(BluetoothHIDUsageClassifier.peripheralForm(from: [usage(1, 1)]) == .mouse)
-        #expect(BluetoothHIDUsageClassifier.peripheralForm(from: [usage(1, 8)]) == .mouse)
+        #expect(BluetoothHIDUsageClassifier.peripheralForm(from: [usage(1, 1)], declared: nil) == .mouse)
+        #expect(BluetoothHIDUsageClassifier.peripheralForm(from: [usage(1, 8)], declared: nil) == .mouse)
     }
 
     @Test func theGamePadAndJoystickUsagesAreAGamepad() {
-        #expect(BluetoothHIDUsageClassifier.peripheralForm(from: [usage(1, 5)]) == .gamepad)
-        #expect(BluetoothHIDUsageClassifier.peripheralForm(from: [usage(1, 4)]) == .gamepad)
+        #expect(BluetoothHIDUsageClassifier.peripheralForm(from: [usage(1, 5)], declared: nil) == .gamepad)
+        #expect(BluetoothHIDUsageClassifier.peripheralForm(from: [usage(1, 4)], declared: nil) == .gamepad)
     }
 
     /// A trackpad enumerates as a pointer too, so the Digitizer page is what
@@ -64,37 +64,47 @@ struct BluetoothHIDUsageClassifierTests {
     /// draw every trackpad as a mouse.
     @Test func theTouchPadUsageOutranksThePointerUsageItAlsoPresents() {
         #expect(
-            BluetoothHIDUsageClassifier.peripheralForm(from: [usage(1, 2), usage(0x0D, 0x05)])
+            BluetoothHIDUsageClassifier.peripheralForm(from: [usage(1, 2), usage(0x0D, 0x05)], declared: nil)
                 == .trackpad
         )
         #expect(
-            BluetoothHIDUsageClassifier.peripheralForm(from: [usage(1, 2), usage(0x0D, 0x22)])
+            BluetoothHIDUsageClassifier.peripheralForm(from: [usage(1, 2), usage(0x0D, 0x22)], declared: nil)
                 == .trackpad
         )
     }
 
-    /// A combination device is a keyboard that happens to have a pointing
-    /// surface, and reading it the other way redraws the keyboard as a mouse —
-    /// the same defect the report's own wording produced.
-    @Test func aKeyboardOutranksThePointerItAlsoPresents() {
+    @Test func aDeclaredMouseOutranksAnAuxiliaryKeyboardInterface() {
         #expect(
-            BluetoothHIDUsageClassifier.peripheralForm(from: [usage(1, 2), usage(1, 6)])
-                == .keyboard
+            BluetoothHIDUsageClassifier.peripheralForm(
+                from: [usage(1, 2), usage(1, 6)], declared: .mouse
+            ) == .mouse
         )
+    }
+
+    @Test func aKeyboardOnlyUsageCorrectsAWronglyDeclaredMouse() {
+        #expect(BluetoothHIDUsageClassifier.peripheralForm(from: [usage(1, 6)], declared: .mouse) == .keyboard)
+    }
+
+    @Test func aDeclaredKeyboardOutranksItsPointerInterface() {
+        #expect(BluetoothHIDUsageClassifier.peripheralForm(from: [usage(1, 6), usage(1, 2)], declared: .keyboard) == .keyboard)
+    }
+
+    @Test func ambiguousMouseAndKeyboardWithoutADeclarationAnswerNothing() {
+        #expect(BluetoothHIDUsageClassifier.peripheralForm(from: [usage(1, 2), usage(1, 6)], declared: nil) == nil)
     }
 
     @Test func aTrackpadOutranksAKeyboardOnTheSameDevice() {
         #expect(
-            BluetoothHIDUsageClassifier.peripheralForm(from: [usage(1, 6), usage(0x0D, 0x05)])
+            BluetoothHIDUsageClassifier.peripheralForm(from: [usage(1, 6), usage(0x0D, 0x05)], declared: nil)
                 == .trackpad
         )
     }
 
     /// Nothing here describes the device, so the declared class stands.
     @Test func usagesThatDescribeNoInputDeviceAnswerNothing() {
-        #expect(BluetoothHIDUsageClassifier.peripheralForm(from: []) == nil)
-        #expect(BluetoothHIDUsageClassifier.peripheralForm(from: [usage(0x0C, 0x01)]) == nil)
-        #expect(BluetoothHIDUsageClassifier.peripheralForm(from: [usage(1, 0x80)]) == nil)
+        #expect(BluetoothHIDUsageClassifier.peripheralForm(from: [], declared: nil) == nil)
+        #expect(BluetoothHIDUsageClassifier.peripheralForm(from: [usage(0x0C, 0x01)], declared: nil) == nil)
+        #expect(BluetoothHIDUsageClassifier.peripheralForm(from: [usage(1, 0x80)], declared: nil) == nil)
     }
 }
 
@@ -122,6 +132,44 @@ struct BluetoothDeviceKindRefinementTests {
 
         #expect(refined.first?.kind == .peripheral(.keyboard))
         #expect(refined.first?.name == "MX Keys")
+    }
+
+    @Test func aDeclaredMouseStaysMouseWhenItAlsoPresentsAKeyboardInterface() {
+        for usages in [[mouseUsage, keyboardUsage], [keyboardUsage, mouseUsage]] {
+            let refined = BluetoothDeviceKindRefinement.apply(
+                to: [device(kind: .peripheral(.mouse))],
+                hidUsages: ["D36D6C40A32E": usages]
+            )
+
+            #expect(refined.first?.kind == .peripheral(.mouse))
+        }
+    }
+
+    @Test func anUnknownKindStaysUnknownWhenMouseAndKeyboardAreAmbiguous() {
+        let refined = BluetoothDeviceKindRefinement.apply(
+            to: [device(kind: .unknown)],
+            hidUsages: ["D36D6C40A32E": [mouseUsage, keyboardUsage]]
+        )
+
+        #expect(refined.first?.kind == .unknown)
+    }
+
+    @Test func aDeclaredKeyboardStaysKeyboardWithItsPointerInterface() {
+        let refined = BluetoothDeviceKindRefinement.apply(
+            to: [device(kind: .peripheral(.keyboard))],
+            hidUsages: ["D36D6C40A32E": [mouseUsage, keyboardUsage]]
+        )
+
+        #expect(refined.first?.kind == .peripheral(.keyboard))
+    }
+
+    @Test func aDisconnectedDeviceIgnoresStaleHIDUsages() {
+        let refined = BluetoothDeviceKindRefinement.apply(
+            to: [device(kind: .peripheral(.mouse), connected: false)],
+            hidUsages: ["D36D6C40A32E": [keyboardUsage]]
+        )
+
+        #expect(refined.first?.kind == .peripheral(.mouse))
     }
 
     /// The Registry writes an address `d3-6d-6c-40-a3-2e` and the report
