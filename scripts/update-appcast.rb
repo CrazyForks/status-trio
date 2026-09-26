@@ -34,9 +34,10 @@ def notes_to_html(lines)
     next if line.empty?
     next if line.match?(/\A#\s+/)
 
-    if (heading = line.match(/\A##\s+(.+)\z/))
+    if (heading = line.match(/\A(#+)\s+(.+)\z/)) && (2..6).cover?(heading[1].length)
       flush_list.call
-      html << "<h2>#{xml_escape(heading[1])}</h2>"
+      level = heading[1].length
+      html << "<h#{level}>#{xml_escape(heading[2])}</h#{level}>"
     elsif (item = line.match(/\A(?:[-*+]|\d+\.)\s+(.+)\z/))
       list_items << "<li>#{xml_escape(item[1])}</li>"
     else
