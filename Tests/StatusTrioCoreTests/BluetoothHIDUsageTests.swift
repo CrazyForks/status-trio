@@ -14,6 +14,29 @@ struct BluetoothHIDUsageClassifierTests {
         BluetoothHIDUsage(usagePage: page, usage: usage)
     }
 
+    @Test func capabilitiesCollectEveryRecognizedInputRole() {
+        let capabilities = BluetoothHIDCapabilities(usages: [
+            usage(1, 2),       // mouse
+            usage(1, 6),       // keyboard
+            usage(0x0D, 0x05), // touch pad
+            usage(1, 5),       // game pad
+        ])
+
+        #expect(capabilities.hasMouse)
+        #expect(capabilities.hasKeyboard)
+        #expect(capabilities.hasTrackpad)
+        #expect(capabilities.hasGamepad)
+    }
+
+    @Test func unknownUsagesProduceNoCapabilities() {
+        let capabilities = BluetoothHIDCapabilities(usages: [usage(0x0C, 1), usage(1, 0x80)])
+
+        #expect(!capabilities.hasMouse)
+        #expect(!capabilities.hasKeyboard)
+        #expect(!capabilities.hasTrackpad)
+        #expect(!capabilities.hasGamepad)
+    }
+
     @Test func theKeyboardUsageIsAKeyboard() {
         #expect(BluetoothHIDUsageClassifier.peripheralForm(from: [usage(1, 6)]) == .keyboard)
     }

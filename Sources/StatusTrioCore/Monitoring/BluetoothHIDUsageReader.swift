@@ -143,3 +143,47 @@ enum BluetoothHIDUsageClassifier {
         return nil
     }
 }
+
+/// Input roles observed across a device's HID interfaces.
+struct BluetoothHIDCapabilities: Equatable, Sendable {
+    let hasMouse: Bool
+    let hasKeyboard: Bool
+    let hasTrackpad: Bool
+    let hasGamepad: Bool
+
+    private enum UsagePage {
+        static let genericDesktop = 1
+        static let digitizer = 0x0D
+    }
+
+    private enum GenericDesktopUsage {
+        static let pointer = 1
+        static let mouse = 2
+        static let joystick = 4
+        static let gamePad = 5
+        static let keyboard = 6
+        static let keypad = 7
+        static let multiAxisController = 8
+    }
+
+    private enum DigitizerUsage {
+        static let touchPad = 0x05
+        static let finger = 0x22
+    }
+
+    init(usages: [BluetoothHIDUsage]) {
+        func has(_ page: Int, _ usage: Int) -> Bool {
+            usages.contains { $0.usagePage == page && $0.usage == usage }
+        }
+
+        hasMouse = has(UsagePage.genericDesktop, GenericDesktopUsage.pointer)
+            || has(UsagePage.genericDesktop, GenericDesktopUsage.mouse)
+            || has(UsagePage.genericDesktop, GenericDesktopUsage.multiAxisController)
+        hasKeyboard = has(UsagePage.genericDesktop, GenericDesktopUsage.keyboard)
+            || has(UsagePage.genericDesktop, GenericDesktopUsage.keypad)
+        hasTrackpad = has(UsagePage.digitizer, DigitizerUsage.touchPad)
+            || has(UsagePage.digitizer, DigitizerUsage.finger)
+        hasGamepad = has(UsagePage.genericDesktop, GenericDesktopUsage.joystick)
+            || has(UsagePage.genericDesktop, GenericDesktopUsage.gamePad)
+    }
+}
