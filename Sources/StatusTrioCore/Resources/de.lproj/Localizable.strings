@@ -57,8 +57,8 @@
 "settings.network.wifiIconForTemporaryConnection" = "WLAN-Symbol für temporäre Verbindung verwenden";
 "settings.network.wifiIconForInternetSharing" = "WLAN-Symbol für Internetfreigabe verwenden";
 "settings.bluetooth.title" = "Bluetooth-Audio";
-"settings.bluetooth.replaceNetworkIcon" = "Netzwerksymbol durch Bluetooth-Audiogerät ersetzen";
-"settings.bluetooth.replaceNetworkIconDescription" = "Bei Audioausgabe über Bluetooth ersetzt das blaue Gerätesymbol das WLAN-Symbol.";
+"settings.bluetooth.replaceNetworkIcon" = "Netzwerksymbol durch ein Bluetooth-Gerätesymbol ersetzen";
+"settings.bluetooth.replaceNetworkIconDescription" = "Ersetzt das WLAN-Symbol durch das blaue Symbol des gewählten Bluetooth-Geräts.";
 "settings.bluetooth.networkIconSourceGroup" = "Bluetooth-Gerätesymbol verwenden";
 "settings.bluetooth.networkIconSourceAudio" = "Bluetooth-Audiogeräte";
 "settings.bluetooth.networkIconSourceAudioDescription" = "Folgt der aktuellen Bluetooth-Audioausgabe — der Standard.";

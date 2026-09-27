@@ -57,8 +57,8 @@
 "settings.network.wifiIconForTemporaryConnection" = "Usa l’icona Wi-Fi per connessione temporanea";
 "settings.network.wifiIconForInternetSharing" = "Usa l’icona Wi-Fi per condivisione Internet";
 "settings.bluetooth.title" = "Audio Bluetooth";
-"settings.bluetooth.replaceNetworkIcon" = "Sostituisci l’icona di rete con il dispositivo audio Bluetooth";
-"settings.bluetooth.replaceNetworkIconDescription" = "Con l’uscita audio Bluetooth, l’icona blu del dispositivo sostituisce l’icona Wi-Fi.";
+"settings.bluetooth.replaceNetworkIcon" = "Sostituisci l’icona di rete con l’icona di un dispositivo Bluetooth";
+"settings.bluetooth.replaceNetworkIconDescription" = "Sostituisce l’icona Wi‑Fi con l’icona blu del dispositivo Bluetooth scelto.";
 "settings.bluetooth.networkIconSourceGroup" = "Usa l’icona di un dispositivo Bluetooth";
 "settings.bluetooth.networkIconSourceAudio" = "Dispositivi audio Bluetooth";
 "settings.bluetooth.networkIconSourceAudioDescription" = "Segue l’uscita audio Bluetooth attuale: l’opzione predefinita.";

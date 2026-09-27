@@ -57,8 +57,8 @@
 "settings.network.wifiIconForTemporaryConnection" = "臨時連線使用 Wi‑Fi 圖示";
 "settings.network.wifiIconForInternetSharing" = "網際網路共享使用 Wi‑Fi 圖示";
 "settings.bluetooth.title" = "藍牙音訊";
-"settings.bluetooth.replaceNetworkIcon" = "使用藍牙音訊裝置圖示取代網路圖示";
-"settings.bluetooth.replaceNetworkIconDescription" = "藍牙輸出音訊時，以藍色裝置圖示取代 Wi‑Fi 圖示。";
+"settings.bluetooth.replaceNetworkIcon" = "使用藍牙裝置圖示取代網路圖示";
+"settings.bluetooth.replaceNetworkIconDescription" = "以所選藍牙裝置的藍色圖示取代 Wi‑Fi 圖示。";
 "settings.bluetooth.networkIconSourceGroup" = "使用藍牙裝置圖示";
 "settings.bluetooth.networkIconSourceAudio" = "藍牙音訊裝置";
 "settings.bluetooth.networkIconSourceAudioDescription" = "跟隨目前藍牙音訊輸出裝置，預設選項。";

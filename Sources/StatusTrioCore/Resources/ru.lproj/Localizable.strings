@@ -57,8 +57,8 @@
 "settings.network.wifiIconForTemporaryConnection" = "Использовать значок Wi-Fi для временного подключения";
 "settings.network.wifiIconForInternetSharing" = "Использовать значок Wi-Fi для общего доступа к интернету";
 "settings.bluetooth.title" = "Звук Bluetooth";
-"settings.bluetooth.replaceNetworkIcon" = "Заменять значок сети устройством вывода звука Bluetooth";
-"settings.bluetooth.replaceNetworkIconDescription" = "При выводе звука через Bluetooth синий значок устройства заменяет значок Wi-Fi.";
+"settings.bluetooth.replaceNetworkIcon" = "Заменять значок сети значком устройства Bluetooth";
+"settings.bluetooth.replaceNetworkIconDescription" = "Заменяет значок Wi-Fi синим значком выбранного устройства Bluetooth.";
 "settings.bluetooth.networkIconSourceGroup" = "Использовать значок устройства Bluetooth";
 "settings.bluetooth.networkIconSourceAudio" = "Bluetooth-аудиоустройства";
 "settings.bluetooth.networkIconSourceAudioDescription" = "Следует текущему аудиовыходу Bluetooth — значение по умолчанию.";

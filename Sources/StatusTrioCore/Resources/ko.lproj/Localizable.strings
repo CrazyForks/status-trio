@@ -57,8 +57,8 @@
 "settings.network.wifiIconForTemporaryConnection" = "임시 연결에 Wi-Fi 아이콘 사용";
 "settings.network.wifiIconForInternetSharing" = "인터넷 공유에 Wi-Fi 아이콘 사용";
 "settings.bluetooth.title" = "Bluetooth 오디오";
-"settings.bluetooth.replaceNetworkIcon" = "네트워크 아이콘을 Bluetooth 오디오 기기로 교체";
-"settings.bluetooth.replaceNetworkIconDescription" = "Bluetooth로 오디오를 출력할 때 Wi-Fi 아이콘 대신 파란색 기기 아이콘을 표시합니다.";
+"settings.bluetooth.replaceNetworkIcon" = "네트워크 아이콘을 Bluetooth 기기 아이콘으로 교체";
+"settings.bluetooth.replaceNetworkIconDescription" = "선택한 Bluetooth 기기의 파란색 아이콘을 Wi-Fi 아이콘 대신 표시합니다.";
 "settings.bluetooth.networkIconSourceGroup" = "Bluetooth 기기 아이콘 사용";
 "settings.bluetooth.networkIconSourceAudio" = "Bluetooth 오디오 기기";
 "settings.bluetooth.networkIconSourceAudioDescription" = "현재 Bluetooth 오디오 출력을 따릅니다(기본값).";

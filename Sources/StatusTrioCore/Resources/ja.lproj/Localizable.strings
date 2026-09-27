@@ -57,8 +57,8 @@
 "settings.network.wifiIconForTemporaryConnection" = "一時接続に Wi-Fi アイコンを使用";
 "settings.network.wifiIconForInternetSharing" = "インターネット共有に Wi-Fi アイコンを使用";
 "settings.bluetooth.title" = "Bluetooth オーディオ";
-"settings.bluetooth.replaceNetworkIcon" = "ネットワークアイコンを Bluetooth オーディオ機器に置き換える";
-"settings.bluetooth.replaceNetworkIconDescription" = "Bluetooth でオーディオを出力すると、Wi-Fi アイコンの代わりに青色の機器アイコンを表示します。";
+"settings.bluetooth.replaceNetworkIcon" = "ネットワークアイコンを Bluetooth デバイスのアイコンに置き換える";
+"settings.bluetooth.replaceNetworkIconDescription" = "選択した Bluetooth デバイスの青いアイコンを Wi-Fi アイコンの代わりに表示します。";
 "settings.bluetooth.networkIconSourceGroup" = "Bluetooth デバイスのアイコンを使用";
 "settings.bluetooth.networkIconSourceAudio" = "Bluetooth オーディオ機器";
 "settings.bluetooth.networkIconSourceAudioDescription" = "現在の Bluetooth オーディオ出力に従います（デフォルト）。";
