@@ -200,6 +200,49 @@ final class BluetoothNearbyBatteryLifecycleTests: XCTestCase {
         controller.deactivate()
     }
 
+    func testPartialScanRefreshPreservesOtherFreshCachedDevices() async {
+        let scanner = NearbyBatteryScannerSpy()
+        let monitor = NearbyBatteryStateMonitorSpy()
+        let controller = makeReadyController(scanner: scanner, monitor: monitor, cacheLifetime: 1.5)
+        controller.requestNearbyBatteryDevices("settings")
+
+        let first = nearbyDevice(name: "Sensor A", level: 40)
+        var second = nearbyDevice(name: "Sensor B", level: 55)
+        second.lastUpdated = Date().addingTimeInterval(-0.75)
+        scanner.publish([first, second])
+        await waitUntil { controller.nearbyBatteryDevices.count == 2 }
+
+        controller.releaseVisibleSurface(BluetoothDeviceController.popoverSurfaceToken)
+        controller.holdVisibleSurface(BluetoothDeviceController.popoverSurfaceToken)
+
+        var refreshedFirst = first
+        refreshedFirst.batteryLevel = 70
+        refreshedFirst.lastUpdated = Date()
+        scanner.publish([refreshedFirst])
+        await waitUntil {
+            controller.nearbyBatteryDevices.contains { $0.id == first.id && $0.batteryLevel == 70 }
+        }
+
+        XCTAssertEqual(Set(controller.nearbyBatteryDevices.map(\.id)), Set([first.id, second.id]))
+        XCTAssertEqual(
+            controller.nearbyBatteryDevices.first { $0.id == second.id }?.batteryLevel,
+            second.batteryLevel,
+            "a partial scan must retain another still-fresh cached reading"
+        )
+
+        await waitUntil(timeout: .seconds(2)) {
+            controller.nearbyBatteryDevices.count == 1
+                && controller.nearbyBatteryDevices.first?.id == first.id
+                && controller.nearbyBatteryDevices.first?.batteryLevel == 70
+        }
+        XCTAssertEqual(
+            controller.nearbyBatteryDevices.map(\.id),
+            [first.id],
+            "the retained reading expires on its own timestamp while the refreshed row stays visible"
+        )
+        controller.deactivate()
+    }
+
     private func makeReadyController(
         scanner: NearbyBatteryScannerSpy,
         monitor: NearbyBatteryStateMonitorSpy,

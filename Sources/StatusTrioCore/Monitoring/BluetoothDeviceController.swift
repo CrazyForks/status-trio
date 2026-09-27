@@ -1011,9 +1011,12 @@ final class BluetoothDeviceController: ObservableObject {
             return
         }
         let now = Date()
-        nearbyBatteryDevices = devices.filter {
-            now.timeIntervalSince($0.lastUpdated) <= nearbyBatteryCacheLifetime
+        var devicesByID: [UUID: NearbyBluetoothBatteryDevice] = [:]
+        for device in nearbyBatteryDevices + devices where
+            now.timeIntervalSince(device.lastUpdated) <= nearbyBatteryCacheLifetime {
+            devicesByID[device.id] = device
         }
+        nearbyBatteryDevices = devicesByID.values.sorted { $0.id.uuidString < $1.id.uuidString }
         scheduleNearbyBatteryCacheExpiration()
     }
 

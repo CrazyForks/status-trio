@@ -48,7 +48,7 @@ struct BluetoothLEBatteryScannerStateTests {
         #expect(policy.queuedCandidateCount == 8)
     }
 
-    @Test func connectionQueueNeverExceedsTwoAndContinuesAsSlotsOpen() {
+    @Test func connectionQueueStartsAndRefillsWhileScanWindowIsActive() {
         let start = Date(timeIntervalSince1970: 3_000)
         var policy = BluetoothLEBatteryScanPolicy()
         let scanStarted = policy.beginScan(at: start, manual: true)

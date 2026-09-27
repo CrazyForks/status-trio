@@ -230,6 +230,7 @@ final class CoreBluetoothLEBatteryScanner: NSObject,
         // The advertisement name is transient, kept only in this in-memory
         // session and never logged or persisted.
         candidateNames[identifier] = advertisementData[CBAdvertisementDataLocalNameKey] as? String
+        startQueuedConnections()
     }
 
     func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
@@ -451,7 +452,10 @@ final class CoreBluetoothLEBatteryScanner: NSObject,
     }
 
     private func startQueuedConnections() {
-        guard isRunning, !isScanning, let centralManager else { return }
+        // Discovery and GATT work share the five-second window. A free slot can
+        // start another queued candidate as soon as it opens without waiting
+        // for the scanner to stop listening.
+        guard isRunning, let centralManager, centralManager.state == .poweredOn else { return }
         let candidates = policy.startQueuedConnections()
         for identifier in candidates {
             guard let peripheral = candidatePeripherals.removeValue(forKey: identifier) else {
