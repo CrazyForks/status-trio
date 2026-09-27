@@ -10,6 +10,7 @@ final class BluetoothNearbyBatteryLifecycleTests: XCTestCase {
         let controller = makeController(scanner: scanner, monitor: monitor)
 
         controller.requestNearbyBatteryDevices("settings")
+        controller.holdVisibleSurface(BluetoothDeviceController.bluetoothSummarySurfaceToken)
         controller.holdVisibleSurface(BluetoothDeviceController.popoverSurfaceToken)
         XCTAssertEqual(scanner.startCount, 0, "a claim cannot start an inactive controller")
 
@@ -32,7 +33,7 @@ final class BluetoothNearbyBatteryLifecycleTests: XCTestCase {
 
         controller.requestNearbyBatteryDevices("settings")
         XCTAssertEqual(scanner.startCount, 0, "a request without a visible popover must not scan")
-        controller.holdVisibleSurface("bluetooth.summary.surface")
+        controller.holdVisibleSurface(BluetoothDeviceController.bluetoothSummarySurfaceToken)
         XCTAssertEqual(scanner.startCount, 0, "a view claim cannot substitute for the popover claim")
 
         controller.deactivate()
@@ -42,7 +43,6 @@ final class BluetoothNearbyBatteryLifecycleTests: XCTestCase {
         let scanner = NearbyBatteryScannerSpy()
         let monitor = NearbyBatteryStateMonitorSpy()
         let controller = makeReadyController(scanner: scanner, monitor: monitor)
-        controller.holdVisibleSurface("bluetooth.summary.surface")
         controller.requestNearbyBatteryDevices("settings")
         XCTAssertEqual(scanner.startCount, 1)
 
@@ -63,6 +63,24 @@ final class BluetoothNearbyBatteryLifecycleTests: XCTestCase {
         await Task.yield()
         XCTAssertEqual(controller.nearbyBatteryDevices, [device], "a callback from the stopped generation must be ignored")
 
+        controller.deactivate()
+    }
+
+    func testLeavingBluetoothSummaryStopsNearbyScanWhilePopoverRemainsOpen() async {
+        let scanner = NearbyBatteryScannerSpy()
+        let monitor = NearbyBatteryStateMonitorSpy()
+        let controller = makeReadyController(scanner: scanner, monitor: monitor)
+        controller.requestNearbyBatteryDevices("settings")
+        let device = nearbyDevice(name: "Sensor", level: 52)
+        scanner.publish([device])
+        await waitUntil { controller.nearbyBatteryDevices == [device] }
+
+        controller.releaseVisibleSurface(BluetoothDeviceController.bluetoothSummarySurfaceToken)
+
+        XCTAssertTrue(controller.hasVisibleSurface, "the overall popover remains open")
+        XCTAssertEqual(scanner.stopCount, 1)
+        XCTAssertFalse(scanner.isRunning)
+        XCTAssertEqual(controller.nearbyBatteryDevices, [device], "fresh cache remains available if the summary is reopened")
         controller.deactivate()
     }
 
@@ -117,11 +135,13 @@ final class BluetoothNearbyBatteryLifecycleTests: XCTestCase {
         await waitUntil { controller.nearbyBatteryDevices == [device] }
 
         controller.releaseVisibleSurface(BluetoothDeviceController.popoverSurfaceToken)
+        controller.releaseVisibleSurface(BluetoothDeviceController.bluetoothSummarySurfaceToken)
         controller.deactivate()
         XCTAssertTrue(controller.nearbyBatteryDevices.isEmpty)
 
         controller.activate()
         monitor.emit(authorization: .allowed, state: .poweredOn)
+        controller.holdVisibleSurface(BluetoothDeviceController.bluetoothSummarySurfaceToken)
         controller.holdVisibleSurface(BluetoothDeviceController.popoverSurfaceToken)
 
         XCTAssertEqual(scanner.startCount, 2, "the still-enabled feature should restart on the next authorized popover")
@@ -136,6 +156,7 @@ final class BluetoothNearbyBatteryLifecycleTests: XCTestCase {
         monitor.emit(authorization: .allowed, state: .poweredOn)
         controller?.requestNearbyBatteryDevices("settings")
         controller?.holdVisibleSurface(BluetoothDeviceController.popoverSurfaceToken)
+        controller?.holdVisibleSurface(BluetoothDeviceController.bluetoothSummarySurfaceToken)
         XCTAssertTrue(scanner.isRunning)
 
         controller = nil
@@ -150,6 +171,7 @@ final class BluetoothNearbyBatteryLifecycleTests: XCTestCase {
         controller.activate()
         monitor.emit(authorization: .allowed, state: .poweredOn)
         controller.requestNearbyBatteryDevices("settings")
+        controller.holdVisibleSurface(BluetoothDeviceController.bluetoothSummarySurfaceToken)
         controller.holdVisibleSurface(BluetoothDeviceController.popoverSurfaceToken)
 
         controller.refreshFromUser()
@@ -186,6 +208,7 @@ final class BluetoothNearbyBatteryLifecycleTests: XCTestCase {
         let controller = makeController(scanner: scanner, monitor: monitor, cacheLifetime: cacheLifetime)
         controller.activate()
         monitor.emit(authorization: .allowed, state: .poweredOn)
+        controller.holdVisibleSurface(BluetoothDeviceController.bluetoothSummarySurfaceToken)
         controller.holdVisibleSurface(BluetoothDeviceController.popoverSurfaceToken)
         return controller
     }

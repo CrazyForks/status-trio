@@ -806,11 +806,16 @@ final class BluetoothDeviceController: ObservableObject {
     /// life of the process. A view claim may only narrow this one, never
     /// sustain the poll on its own.
     static let popoverSurfaceToken = "bluetooth.popover"
+    static let bluetoothSummarySurfaceToken = "bluetooth.summary.surface"
 
     /// Whether the popover is showing Bluetooth device state. A leaked view
     /// claim cannot make this true.
     var hasVisibleSurface: Bool {
         visibleSurfaces.contains(Self.popoverSurfaceToken)
+    }
+
+    private var hasBluetoothSummarySurface: Bool {
+        visibleSurfaces.contains(Self.bluetoothSummarySurfaceToken)
     }
 
     /// Whether the safety-net poll is running.
@@ -829,7 +834,13 @@ final class BluetoothDeviceController: ObservableObject {
     /// popover claim stops the poll even while a view claim is still held.
     func releaseVisibleSurface(_ token: String) {
         guard visibleSurfaces.remove(token) != nil else { return }
-        guard !hasVisibleSurface else { return }
+        if hasVisibleSurface {
+            // A Bluetooth detail page replaces the summary inside an open
+            // popover. It ends Nearby work too, while leaving the popover's
+            // paired-device safety net alive.
+            updateNearbyBatteryScanner()
+            return
+        }
         stopPeriodicRefresh()
         // Keep recent readings available for a quick reopen, but end every
         // scan and connection as soon as the popover-level claim is released.
@@ -942,6 +953,7 @@ final class BluetoothDeviceController: ObservableObject {
         isActive
             && availability == .available
             && hasVisibleSurface
+            && hasBluetoothSummarySurface
             && !nearbyBatteryRequests.isEmpty
     }
 

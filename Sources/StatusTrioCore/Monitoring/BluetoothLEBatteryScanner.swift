@@ -66,6 +66,11 @@ struct BluetoothLEBatteryScanPolicy {
         return candidates
     }
 
+    mutating func discardQueuedCandidates() {
+        queuedCandidates.removeAll(keepingCapacity: false)
+        queuedCandidateCount = 0
+    }
+
     mutating func completeConnection(_ id: UUID, succeeded: Bool, at date: Date) {
         guard inFlightConnections.remove(id) != nil else { return }
         let cooldown = succeeded ? Self.successfulConnectionCooldown : Self.failedConnectionCooldown
@@ -437,6 +442,12 @@ final class CoreBluetoothLEBatteryScanner: NSObject,
         centralManager?.stopScan()
         isScanning = false
         startQueuedConnections()
+        // The scan window is the full discovery budget. Only connections
+        // started within it may continue afterward; the remaining candidates
+        // are dropped instead of being connected serially as slots open.
+        policy.discardQueuedCandidates()
+        candidatePeripherals.removeAll(keepingCapacity: false)
+        candidateNames.removeAll(keepingCapacity: false)
     }
 
     private func startQueuedConnections() {

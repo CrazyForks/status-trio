@@ -68,6 +68,27 @@ struct BluetoothLEBatteryScannerStateTests {
         #expect(policy.inFlightConnectionCount == 2)
     }
 
+    @Test func candidatesNotStartedAtWindowEndAreDropped() {
+        let start = Date(timeIntervalSince1970: 3_250)
+        var policy = BluetoothLEBatteryScanPolicy()
+        let scanStarted = policy.beginScan(at: start, manual: true)
+        let candidates = (0..<4).map { _ in UUID() }
+        for candidate in candidates {
+            let enqueued = policy.enqueueCandidate(candidate, at: start)
+            #expect(enqueued)
+        }
+
+        let initialConnections = policy.startQueuedConnections()
+        policy.discardQueuedCandidates()
+
+        #expect(scanStarted)
+        #expect(initialConnections == Array(candidates.prefix(2)))
+        #expect(policy.inFlightConnectionCount == 2)
+        #expect(policy.queuedCandidateCount == 0)
+        policy.completeConnection(candidates[0], succeeded: false, at: start)
+        #expect(policy.startQueuedConnections().isEmpty)
+    }
+
     @Test func doesNotQueueTheSamePeripheralWhileItsGattQueryIsInFlight() {
         let start = Date(timeIntervalSince1970: 3_500)
         let candidate = UUID()
