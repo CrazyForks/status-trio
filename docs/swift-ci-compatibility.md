@@ -29,6 +29,7 @@
 | `35614298374` | `Run tests` | 新增的 `BluetoothSummaryTests.testDevicesWithoutALevelKeepTheirNameOnly` 断言了 `机灵的耳机` 与 `MX Keys` 拼接后的先后。摘要行按系统 collation 排序，而 ICU collation 与语言有关：CI runner（英文）把 `MX Keys` 排在前，开发机（中文）把中文名排在前。本地 `swift test` 与 `swift build -c release` 全绿，所以失效的是断言（对混合脚本排序的假设），不是产品缺陷 | 把排序规则改成「AirPods 无条件最前、其余按名称」（`BluetoothDevicePresentation.grouped`），断言不再依赖 collation；后续预检 `35615262052`（`build=24`）全绿 |
 | `35718713396`（1.3.0 正式发布，`build=13`） | `Build, sign, notarize, and publish` 末尾的 appcast 发布回读（`scripts/release.sh`） | 测试、构建、签名、DMG、Release 上传、appcast 提交（`8519984`）全部成功后，PUT 完成仅 2 秒即用 Contents API 回读 `appcast.xml?ref=main`，撞上 GitHub Contents API 的最终一致性窗口，读到旧 blob 而误报 `published appcast does not contain build 13`。与工具链、代码、说明文件无关 | 回读改为带退避的重试（最多 6 次、间隔 5 秒），重试全部用尽才失败；已手动回读远端 appcast 确认 build 13 条目完整（12 titles + 12 descriptions、en 首位、edSignature 与 DMG 长度 4244534 一致），1.3.0 发布四项核验通过；重试逻辑经桩测（stale→stale→fresh 通过、恒 stale 失败并退出 1）验证，详见文末专节 |
 | `35876435136` | `Run tests` | `AppIconControllerTests.sliderBurstRepaintsTheDockIconOnce`（Swift Testing）偶发失败：`renderCount → 1` 期望 `0`（`harness.log.batteryOptions.last?.criticalThreshold → 33` 期望 `40`）。该测试模拟把 `batteryCriticalThreshold` 从 25 连续设到 40（滑块拖动），断言合并成一次尾部重绘且携带终值 40。Swift Testing 把整轮测试并行启动，runner 负载高时 `iconAppearancePublisher` 的逐次发射与 `currentAppearance` 更新被排到与存储值不同的时点，合并器的尾部重绘在 `currentAppearance` 还没推进到 40 时就抢先执行，抓到一个中间值。本机 Xcode 27 / Swift 6.4 与 CI 的 Xcode 26.6 / Swift 6.3.3 都跑这套合并逻辑，且本机 `swift test` 769/0 全绿，所以失效的是测试对「同步循环里的 16 次发射一定先于尾部重绘落地」的假设，不是产品缺陷，也与本轮蓝牙改动无关（蓝牙分支未触碰 `AppIconController` / `IconRenderCoalescer` / 电池 publisher） | 重跑同一 `version=1.3.3`、`build=16`、`publish=false` 的非发布预检 [`35877626348`](https://github.com/lingyired/status-trio/actions/runs/35877626348)：`Run tests` / `Build, sign, notarize, and publish` / `Upload release artifacts` 全绿，确认是偶发而非回归。该测试属时序敏感家族（见 `35316867111`、`35447521372`）；若日后还要根治，需让突发写入在 MainActor 上落地后再断言，不要据此误判蓝牙改动 |
+| `36332229393` | `Build, sign, notarize, and publish` | 蓝牙图标来源预检用 `version=1.4.0`，但仓库没有 `release-notes/1.4.0`：`scripts/validate-appcast-notes.sh` 在非发布时允许目录缺失并跳过校验（日志里只有一条 `::notice::`），`scripts/release.sh` 却在第 144 行硬性要求该目录存在，于是直接 `exit 1`。这是 `35375443023` 的同一模式复发，不是代码或工具链问题——Swift 6.3.3 的 `Run tests` 已通过，尚未进入 release 构建 | 不改动蓝牙代码（`0651799`），改用已有说明文件的 `version=1.3.3`、递增的 `build=17`、`publish=false` 重跑预检 [`36332507137`](https://github.com/lingyired/status-trio/actions/runs/36332507137)：`Run tests`、通用 release 构建/签名、`Upload release artifacts` 全绿（4m43s）。**发布 1.4.0 前必须先补 `release-notes/1.4.0/`（`publish=true` 需要全部 12 种语言）**，否则预检会以同一方式失败 |
 | （本地，非失败记录） | 本机 `swift test` | 新加的 `VolumeFeedbackTests.preferenceTreatsAMissingKeyAsEnabled` 想用 suites 断言「键不存在时按开启处理」，而 `UserDefaults(suiteName:)` 的搜索链在 suite 域之后仍会落到 `NSGlobalDomain`：全新 suite 读到的是本机 `com.apple.sound.beep.feedback`。开发机把这个开关关成 `0`（0 = 关）之后该测试即失败，CI runner 上（该键缺失）却一直是绿的——失效的是测试对「suite 隔离」的假设，不是产品行为 | 把判断拆成纯函数 `SystemVolumeFeedbackPreference.isEnabled(storedValue:)`，「缺失按开启」由它覆盖，suite 只留给显式写值的用例；顺带给两个未注入 feedback 播放器的既有 store 测试补上假播放器，免得在开关打开的机器上跑测试时真的出声。后续预检 `35851597428` 全绿 |
 
 > **本轮结束时构建不是零警告：** 上面的修复只清掉了 `weak var` 那 4 条 `WeakMutability` 和 Task 1 的 1 条 `String(cString:)`，共 5 条；剩下 **2 条**警告是 `WiFiPasswordStore.swift` 的 `kSecUseAuthenticationUIFail` / `kSecUseAuthenticationUIAllow` 弃用，属于 R-12（Keychain 加固）计划，class B，尚未开始。不要把本轮记录读成「构建已经干净」。
@@ -679,3 +680,21 @@ Release workflow run [`35997423299`](https://github.com/lingyired/status-trio/ac
 - `Upload release artifacts`：成功。
 
 根因与修复记录分别见上面两节；此次全绿完成对这两项修复的 CI 验证。工作流只构建并上传预检产物，没有发布正式版本。
+
+## 36332507137：蓝牙设备图标替代网络图标通过 macOS 26 发布预检
+
+蓝牙图标来源变更（提交 `0651799`，5 个提交的功能分支）在 `version=1.3.3`、`build=17`、
+`publish=false` 的预检 [`36332507137`](https://github.com/lingyired/status-trio/actions/runs/36332507137)
+上于 2026-09-27 全绿，耗时 4m43s。整轮 4 次 dispatch 中只有第一次因缺发布说明失败（见上表
+`36332229393`），代码本身没有出现过 CI 编译、测试或签名失败。
+
+- `Validate appcast notes`：沿用 1.3.3 的 12/12 语言说明，12 titles + 12 descriptions，`en` 首位。
+- `Run tests`：成功；本机同一提交 `swift test` 为 XCTest 944 项 + swift-testing 367 项全绿。
+- `Build, sign, notarize, and publish`：成功（`publish=false`，没有创建 Release 或发布 appcast）；
+  `LC_BUILD_VERSION` 检查通过，`minos 15.0` / `sdk 26.0`，`codesign` 为 `valid on disk` 且满足
+  Designated Requirement。
+- `Upload release artifacts`：成功。
+
+该预检覆盖的是引入 `Picker` 绑定、`BluetoothAudioIconOptions` 新字段与 12 个 `.lproj` 资源改动的
+提交 `0651799`；其后的唯一提交只是本文档本身（纯 Markdown，不参与编译、测试或签名），因此没有再跑一次。
+工作流只构建并上传预检产物，没有发布正式版本。
