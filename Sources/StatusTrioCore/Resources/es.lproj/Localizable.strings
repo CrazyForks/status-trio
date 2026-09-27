@@ -59,11 +59,10 @@
 "settings.bluetooth.title" = "Audio por Bluetooth";
 "settings.bluetooth.replaceNetworkIcon" = "Sustituir el icono de red por el dispositivo de audio Bluetooth";
 "settings.bluetooth.replaceNetworkIconDescription" = "Al reproducir audio por Bluetooth, el icono azul del dispositivo sustituye al icono de Wi-Fi.";
-"settings.bluetooth.networkIconSourceGroup" = "Fuente del icono";
+"settings.bluetooth.networkIconSourceGroup" = "Usar el icono de un dispositivo Bluetooth";
 "settings.bluetooth.networkIconSourceAudio" = "Dispositivos de audio Bluetooth";
 "settings.bluetooth.networkIconSourceAudioDescription" = "Sigue la salida de audio Bluetooth actual, la opción predeterminada.";
 "settings.bluetooth.networkIconSourceDevices" = "Dispositivos Bluetooth";
-"settings.bluetooth.networkIconSourceDevicesEmpty" = "No hay dispositivos emparejados.";
 "settings.bluetooth.volumeColor" = "Usar azul para el volumen de Bluetooth";
 "settings.bluetooth.volumeColorDescription" = "Los puntos activos o el arco del volumen se vuelven azules al reproducir audio por Bluetooth.";
 "settings.bluetooth.networkErrorPriority" = "Dar prioridad a los errores de red";

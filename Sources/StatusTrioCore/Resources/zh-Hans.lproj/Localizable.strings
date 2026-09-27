@@ -59,11 +59,10 @@
 "settings.bluetooth.title" = "蓝牙音频";
 "settings.bluetooth.replaceNetworkIcon" = "使用蓝牙音频设备图标代替网络图标";
 "settings.bluetooth.replaceNetworkIconDescription" = "蓝牙输出音频时，用蓝色设备图标替代 Wi‑Fi 图标。";
-"settings.bluetooth.networkIconSourceGroup" = "图标来源";
+"settings.bluetooth.networkIconSourceGroup" = "使用蓝牙设备图标";
 "settings.bluetooth.networkIconSourceAudio" = "蓝牙音频设备";
 "settings.bluetooth.networkIconSourceAudioDescription" = "跟随当前蓝牙音频输出设备，默认选项。";
 "settings.bluetooth.networkIconSourceDevices" = "蓝牙设备";
-"settings.bluetooth.networkIconSourceDevicesEmpty" = "暂无已配对设备。";
 "settings.bluetooth.volumeColor" = "蓝牙音量使用蓝色";
 "settings.bluetooth.volumeColorDescription" = "蓝牙输出音频时，音量点或圆弧的活动部分显示为蓝色。";
 "settings.bluetooth.networkErrorPriority" = "网络异常优先于蓝牙图标";

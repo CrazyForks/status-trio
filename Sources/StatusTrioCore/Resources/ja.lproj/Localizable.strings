@@ -59,11 +59,10 @@
 "settings.bluetooth.title" = "Bluetooth オーディオ";
 "settings.bluetooth.replaceNetworkIcon" = "ネットワークアイコンを Bluetooth オーディオ機器に置き換える";
 "settings.bluetooth.replaceNetworkIconDescription" = "Bluetooth でオーディオを出力すると、Wi-Fi アイコンの代わりに青色の機器アイコンを表示します。";
-"settings.bluetooth.networkIconSourceGroup" = "アイコンのソース";
+"settings.bluetooth.networkIconSourceGroup" = "Bluetooth デバイスのアイコンを使用";
 "settings.bluetooth.networkIconSourceAudio" = "Bluetooth オーディオ機器";
 "settings.bluetooth.networkIconSourceAudioDescription" = "現在の Bluetooth オーディオ出力に従います（デフォルト）。";
 "settings.bluetooth.networkIconSourceDevices" = "Bluetooth 機器";
-"settings.bluetooth.networkIconSourceDevicesEmpty" = "ペアリング済みの機器はありません。";
 "settings.bluetooth.volumeColor" = "Bluetooth の音量を青色で表示";
 "settings.bluetooth.volumeColorDescription" = "Bluetooth でオーディオを出力すると、音量の点または円弧のアクティブ部分が青色になります。";
 "settings.bluetooth.networkErrorPriority" = "ネットワークエラーを優先";

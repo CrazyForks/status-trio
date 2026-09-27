@@ -78,7 +78,7 @@ struct BluetoothSectionView: View {
                 if store.replacesNetworkIconWithBluetoothAudio {
                     SettingsDivider()
 
-                    networkIconSourceGroup
+                    networkIconSourceRow
                 }
 
                 SettingsDivider()
@@ -121,117 +121,87 @@ struct BluetoothSectionView: View {
 
     private static let orderSurfaceToken = "bluetooth.settings.order.surface"
 
-    /// Which glyph replaces the network icon: the featured audio-device row
-    /// leads, and every classified paired device follows. Selection is by the
-    /// device's normalized address, so the highlight survives a device list
-    /// refresh; `nil` is the audio device.
-    private var networkIconSourceGroup: some View {
-        SettingsGroup(localization.string(.settingsBluetoothNetworkIconSourceGroup)) {
-            audioDeviceSourceRow
-
-            SettingsDivider()
-
-            deviceSourceRows
-        }
-    }
-
-    private var audioDeviceSourceRow: some View {
-        Button {
-            store.setBluetoothNetworkIconDevice(address: nil, symbolName: nil)
-        } label: {
-            HStack(spacing: 12) {
-                Image(systemName: "airpodspro")
-                    .font(.system(size: 22))
-                    .foregroundStyle(.blue)
-                    .frame(width: 30)
-
-                VStack(alignment: .leading, spacing: 2) {
+    /// Which glyph replaces the network icon, as one pop-up menu: the audio
+    /// device leads, and every classified paired device follows. Selection is
+    /// by the device's normalized address, so the highlight survives a device
+    /// list refresh; the audio entry is `nil`.
+    ///
+    /// The button label draws the chosen device's real glyph, so the menu
+    /// reads like the menu bar will. A device list the user has not seen the
+    /// read for yet renders the row with the generic glyph until it lands.
+    private var networkIconSourceRow: some View {
+        SettingsRow(
+            title: localization.string(.settingsBluetoothNetworkIconSourceGroup),
+            subtitle: pickerSubtitle,
+            leading: { SettingsIcon(symbol: pickerGlyph, tint: .blue) }
+        ) {
+            Picker(
+                localization.string(.settingsBluetoothNetworkIconSourceGroup),
+                selection: networkIconSourceBinding
+            ) {
+                Section(localization.string(.settingsBluetoothNetworkIconSourceAudio)) {
                     Text(localization.string(.settingsBluetoothNetworkIconSourceAudio))
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(.primary)
-                    Text(localization.string(.settingsBluetoothNetworkIconSourceAudioDescription))
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
+                        .tag(BluetoothNetworkIconSource.audioDevices)
                 }
 
-                Spacer()
+                if !pickerDevices.isEmpty {
+                    Section(localization.string(.settingsBluetoothNetworkIconSourceDevices)) {
+                        ForEach(pickerDevices) { device in
+                            Label(
+                                device.name,
+                                systemImage: BluetoothDeviceRowIcon.symbolName(for: device)
+                            )
+                            .tag(BluetoothNetworkIconSource.device(address: normalizedAddress(device)))
+                        }
+                    }
+                }
+            }
+            .labelsHidden()
+            .fixedSize()
+            .accessibilityIdentifier("bluetooth.networkIconSource")
+        }
+    }
 
-                if store.bluetoothNetworkIconDeviceAddress == nil {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(Color.accentColor)
-                        .accessibilityLabel(
-                            localization.string(.settingsBluetoothNetworkIconSourceAudio)
+    private var networkIconSourceBinding: Binding<BluetoothNetworkIconSource> {
+        Binding(
+            get: {
+                store.bluetoothNetworkIconDeviceAddress.map(BluetoothNetworkIconSource.device)
+                    ?? .audioDevices
+            },
+            set: { source in
+                switch source {
+                case .audioDevices:
+                    store.setBluetoothNetworkIconDevice(address: nil, symbolName: nil)
+                case let .device(address):
+                    if let device = pickerDevices.first(where: { normalizedAddress($0) == address }) {
+                        store.setBluetoothNetworkIconDevice(
+                            address: address,
+                            symbolName: BluetoothDeviceRowIcon.symbolName(for: device)
                         )
+                    }
                 }
             }
-            .padding(.vertical, 4)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityAddTraits(store.bluetoothNetworkIconDeviceAddress == nil ? .isSelected : [])
+        )
     }
 
-    @ViewBuilder
-    private var deviceSourceRows: some View {
-        let devices = pickerDevices
-        if devices.isEmpty {
-            Label(
-                localization.string(.settingsBluetoothNetworkIconSourceDevicesEmpty),
-                systemImage: "questionmark.circle"
-            )
-            .font(.body)
-            .foregroundStyle(.secondary)
-            .padding(.vertical, 4)
-        } else {
-            VStack(alignment: .leading, spacing: 6) {
-                Text(localization.string(.settingsBluetoothNetworkIconSourceDevices))
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(.secondary)
-
-                ForEach(devices) { device in
-                    deviceSourceRow(device)
-                }
-            }
+    /// The row's leading glyph and trailing subtitle follow the choice: the
+    /// generic radio for the audio device, the device's own glyph once one is
+    /// picked. The subtitle explains the audio entry; a picked device's name
+    /// would repeat the menu's label, so it keeps the explanatory line.
+    private var pickerGlyph: String {
+        guard let address = store.bluetoothNetworkIconDeviceAddress,
+              let device = pickerDevices.first(where: { normalizedAddress($0) == address })
+        else {
+            return "airpodspro"
         }
+        return BluetoothDeviceRowIcon.symbolName(for: device)
     }
 
-    private func deviceSourceRow(_ device: BluetoothDevice) -> some View {
-        let address = BluetoothBatteryReader.normalizedAddress(device.id)
-        let isSelected = store.bluetoothNetworkIconDeviceAddress == address
-        return Button {
-            store.setBluetoothNetworkIconDevice(
-                address: address,
-                symbolName: BluetoothDeviceRowIcon.symbolName(for: device)
-            )
-        } label: {
-            HStack(spacing: 12) {
-                Image(systemName: BluetoothDeviceRowIcon.symbolName(for: device))
-                    .font(.system(size: 17))
-                    .foregroundStyle(device.isConnected ? Color.accentColor : Color.secondary)
-                    .frame(width: 30)
-
-                Text(device.name)
-                    .font(.system(size: 13))
-                    .lineLimit(1)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                if isSelected {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(Color.accentColor)
-                }
-            }
-            .padding(.vertical, 3)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(device.name)
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    private var pickerSubtitle: String {
+        localization.string(.settingsBluetoothNetworkIconSourceAudioDescription)
     }
 
-    /// Every classified paired device the picker offers, in the same order the
+    /// Every classified paired device the menu offers, in the same order the
     /// panel list uses (connected first). Ghost devices have no class, so they
     /// carry no glyph worth pinning and stay out; hidden ones stay in — the
     /// panel's hide list is about the popover, not about this choice.
@@ -240,6 +210,10 @@ struct BluetoothSectionView: View {
             bluetoothDevices.devices.filter { !$0.isUnpairedGhost },
             using: store.bluetoothDeviceOrder
         )
+    }
+
+    private func normalizedAddress(_ device: BluetoothDevice) -> String {
+        BluetoothBatteryReader.normalizedAddress(device.id)
     }
 
     /// The pane shows paired devices, so it needs the same monitor the popover

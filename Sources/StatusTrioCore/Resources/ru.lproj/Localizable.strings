@@ -59,11 +59,10 @@
 "settings.bluetooth.title" = "Звук Bluetooth";
 "settings.bluetooth.replaceNetworkIcon" = "Заменять значок сети устройством вывода звука Bluetooth";
 "settings.bluetooth.replaceNetworkIconDescription" = "При выводе звука через Bluetooth синий значок устройства заменяет значок Wi-Fi.";
-"settings.bluetooth.networkIconSourceGroup" = "Источник значка";
+"settings.bluetooth.networkIconSourceGroup" = "Использовать значок устройства Bluetooth";
 "settings.bluetooth.networkIconSourceAudio" = "Bluetooth-аудиоустройства";
 "settings.bluetooth.networkIconSourceAudioDescription" = "Следует текущему аудиовыходу Bluetooth — значение по умолчанию.";
 "settings.bluetooth.networkIconSourceDevices" = "Bluetooth-устройства";
-"settings.bluetooth.networkIconSourceDevicesEmpty" = "Нет сопряжённых устройств.";
 "settings.bluetooth.volumeColor" = "Показывать громкость Bluetooth синим";
 "settings.bluetooth.volumeColorDescription" = "Активные точки громкости или дуга становятся синими при выводе звука через Bluetooth.";
 "settings.bluetooth.networkErrorPriority" = "Приоритет ошибок сети";

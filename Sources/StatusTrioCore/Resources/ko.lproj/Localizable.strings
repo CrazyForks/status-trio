@@ -59,11 +59,10 @@
 "settings.bluetooth.title" = "Bluetooth 오디오";
 "settings.bluetooth.replaceNetworkIcon" = "네트워크 아이콘을 Bluetooth 오디오 기기로 교체";
 "settings.bluetooth.replaceNetworkIconDescription" = "Bluetooth로 오디오를 출력할 때 Wi-Fi 아이콘 대신 파란색 기기 아이콘을 표시합니다.";
-"settings.bluetooth.networkIconSourceGroup" = "아이콘 소스";
+"settings.bluetooth.networkIconSourceGroup" = "Bluetooth 기기 아이콘 사용";
 "settings.bluetooth.networkIconSourceAudio" = "Bluetooth 오디오 기기";
 "settings.bluetooth.networkIconSourceAudioDescription" = "현재 Bluetooth 오디오 출력을 따릅니다(기본값).";
 "settings.bluetooth.networkIconSourceDevices" = "Bluetooth 기기";
-"settings.bluetooth.networkIconSourceDevicesEmpty" = "페어링된 기기가 없습니다.";
 "settings.bluetooth.volumeColor" = "Bluetooth 볼륨을 파란색으로 표시";
 "settings.bluetooth.volumeColorDescription" = "Bluetooth 오디오 출력 중에는 활성 볼륨 점 또는 호가 파란색으로 표시됩니다.";
 "settings.bluetooth.networkErrorPriority" = "네트워크 오류 우선";
