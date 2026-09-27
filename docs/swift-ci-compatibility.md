@@ -696,5 +696,16 @@ Release workflow run [`35997423299`](https://github.com/lingyired/status-trio/ac
 - `Upload release artifacts`：成功。
 
 该预检覆盖的是引入 `Picker` 绑定、`BluetoothAudioIconOptions` 新字段与 12 个 `.lproj` 资源改动的
-提交 `0651799`；其后的唯一提交只是本文档本身（纯 Markdown，不参与编译、测试或签名），因此没有再跑一次。
-工作流只构建并上传预检产物，没有发布正式版本。
+提交 `0651799`。
+
+合入 main 前远端已经前进：`origin/main` 并入了 PR #73（nearby BLE battery，12 个提交），**同样改动蓝牙
+子系统**（设置键、蓝牙设置面板、12 个 `.lproj`）。整合只在
+`Tests/StatusTrioCoreTests/SettingsStoreTests.swift` 产生冲突——两边在同一位置各自新增了互不相关的测试
+方法，两边都保留——其余文件自动合并。整合后的 head 是 `5f3f8ea`，本机在其上跑出 XCTest 963 项 +
+swift-testing 380 项 0 失败、`swift build -c release` 通过。
+
+因为整合后的树包含了另一个 PR 的蓝牙改动与手工冲突解决，**新 head 又跑了一次预检**
+[`36333074090`](https://github.com/lingyired/status-trio/actions/runs/36333074090)
+（`version=1.3.3`、`build=17`、`publish=false`，head `5f3f8ea`），5m39s 全绿：
+`Run tests`、通用 release 构建/签名、`Upload release artifacts` 全部成功。这才是随 main 一起落地的验证；
+两轮预检都只构建并上传预检产物，没有发布正式版本。
