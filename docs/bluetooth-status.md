@@ -377,6 +377,38 @@ gated by `BluetoothPanelActivation.shouldActivate(authorization:)`, so the pane
 never raises a permission prompt; releasing it stops the safety-net poll but
 does not turn the panel's enabled flag off.
 
+## Nearby standard BLE battery readings
+
+`Settings › Bluetooth › Show nearby BLE battery levels` is an opt-in source,
+off by default. It supplements the paired-device report and appears in its own
+**Nearby** group. The existing Bluetooth battery-level setting must also be on.
+Nearby rows are read-only: scanning and GATT reads never change paired-device
+identity, paired battery readings, or connect/disconnect actions. The same name
+can appear once in each group because the two sources do not share a reliable
+identity key; rows are not merged by name.
+
+While the app is active and the Bluetooth summary is visible in the open status
+popover, the scanner looks for peripherals that advertise the standard Bluetooth
+Battery Service (`180F`). It listens for five seconds per scan window, starts no
+more than two GATT reads at once, and retries automatically no more often than
+once per minute. Each connection attempt is limited to four seconds. Closing the
+popover or leaving the Bluetooth summary stops scanning and cancels active
+connections. Recent readings are kept in memory for up to two minutes so the
+summary can reopen without an immediate empty state; they are not persisted.
+
+The scanner reads the standard Battery Level characteristic (`2A19`) and accepts
+only a single byte in the range `0...100`. Model and manufacturer strings from
+the optional Device Information Service can add a name, but they do not delay a
+valid battery reading. The app does not infer charging from a level change.
+
+The scan filter only finds devices that advertise `180F`; a device can expose
+that service to connected clients without advertising it, in which case it will
+not be discovered by this feature. Device support varies. The app does not use
+manufacturer-specific parsers, and this feature does not promise battery readings
+from iPhone or iPad. See
+[`nearby-ble-battery-observations.md`](nearby-ble-battery-observations.md) for
+the hardware validation status.
+
 ## Acting on a device from its row
 
 A device row is a button: tapping an unconnected device asks the system to
