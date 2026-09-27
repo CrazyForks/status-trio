@@ -24,6 +24,25 @@ final class BluetoothPermissionTimingTests: XCTestCase {
         XCTAssertEqual(stateMonitor.startCount, 0)
     }
 
+    func testNearbyClaimOnUnauthorizedPopoverDoesNotStartBluetoothOrPrompt() {
+        let stateMonitor = BluetoothStateMonitorSpy(authorization: .notDetermined)
+        let scanner = NearbyBatteryScannerSpy()
+        let bluetoothController = BluetoothDeviceController(
+            stateMonitor: stateMonitor,
+            notificationCenter: NotificationCenter(),
+            workspaceNotificationCenter: NotificationCenter(),
+            nearbyBatteryScanner: scanner
+        )
+
+        bluetoothController.requestNearbyBatteryDevices("nearby-test")
+        bluetoothController.holdVisibleSurface(BluetoothDeviceController.popoverSurfaceToken)
+        bluetoothController.prepareForPresentation()
+
+        XCTAssertEqual(stateMonitor.startCount, 0)
+        XCTAssertEqual(scanner.startCount, 0)
+        XCTAssertEqual(bluetoothController.availability, .authorizationNotDetermined)
+    }
+
     func testRequestingBluetoothAuthorizationStartsStateMonitor() {
         let stateMonitor = BluetoothStateMonitorSpy(authorization: .notDetermined)
         let bluetoothController = BluetoothDeviceController(
