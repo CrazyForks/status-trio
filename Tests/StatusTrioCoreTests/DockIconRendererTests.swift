@@ -212,6 +212,34 @@ final class DockIconRendererTests: XCTestCase {
         XCTAssertNotEqual(renamedWithoutProductID.bytes, renamedAirPods.bytes)
     }
 
+    /// Dock parity for the picker mode: with a device picked, the tile draws
+    /// its glyph instead of the network icon even with no current audio output.
+    func testDockIconDrawsTheNetworkIconOverrideWithoutAnyAudioOutput() throws {
+        let status = MenuBarStatus(snapshot: StatusSnapshot(
+            battery: .placeholder,
+            wifi: WiFiStatus(state: .connected, rssi: -55),
+            connection: .wifi,
+            volume: VolumeStatus(scalar: 0.5, isMuted: false, deviceName: nil)
+        ))
+        let standard = try pixels(for: status)
+        let overridden = try pixels(
+            for: status,
+            bluetoothAudioOptions: BluetoothAudioIconOptions(
+                replacesNetworkIcon: true,
+                networkIconSymbolOverride: "keyboard"
+            )
+        )
+
+        XCTAssertNotEqual(standard.bytes, overridden.bytes)
+        XCTAssertTrue(overridden.containsColor(
+            red: 77.0 / 255.0,
+            green: 163.0 / 255.0,
+            blue: 1,
+            tolerance: 0.08,
+            minimumAlpha: 0.9
+        ))
+    }
+
     private func bluetoothPixels(deviceName: String, modelUID: String?) throws -> PixelBuffer {
         let device = AudioOutputDevice(
             id: 42,

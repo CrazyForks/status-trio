@@ -129,6 +129,66 @@ final class SettingsViewTests: XCTestCase {
         controller.deactivate()
     }
 
+    /// The picker under the replace-network-icon toggle: off hides it, on
+    /// draws the audio-device row and every classified paired device, and
+    /// picking a device records its address and resolved symbol in the store.
+    func testBluetoothNetworkIconSourcePickerRendersAndPicksADevice() async {
+        let suite = makeSuite()
+        defer { clear(suite) }
+
+        let devices = [
+            BluetoothDevice(id: "AC:90:85:C2:9C:1F", name: "AirPods Pro", kind: .audio, isConnected: true),
+            BluetoothDevice(id: "D3:6D:6C:40:A3:2E", name: "MX Keys", kind: .peripheral(.keyboard), isConnected: false),
+            BluetoothDevice(
+                id: "AA:BB:CC:DD:EE:FF",
+                name: "Ghost",
+                kind: .unknown,
+                isConnected: false,
+                isUnpairedGhost: true
+            )
+        ]
+        let controller = SettingsBluetoothTestFactory.makeController(devices: devices)
+        controller.activate()
+        await waitForDevices(controller)
+        defer { controller.deactivate() }
+
+        let localization = Localization(defaults: suite.defaults, preferredLanguages: ["en"])
+        let store = SettingsStore(defaults: suite.defaults)
+        let emptyStoreController = SettingsBluetoothTestFactory.makeController(devices: [])
+
+        store.replacesNetworkIconWithBluetoothAudio = false
+        let withToggleOff = renderBluetoothPane(
+            store: store,
+            storeController: emptyStoreController,
+            observedController: controller,
+            localization: localization
+        )
+        store.replacesNetworkIconWithBluetoothAudio = true
+        let withToggleOn = renderBluetoothPane(
+            store: store,
+            storeController: emptyStoreController,
+            observedController: controller,
+            localization: localization
+        )
+
+        XCTAssertGreaterThan(
+            withToggleOn.height,
+            withToggleOff.height + 40,
+            "the picker must render the audio-device row and two classified devices "
+                + "(on \(withToggleOn.height), off \(withToggleOff.height))"
+        )
+
+        // Picking the keyboard device records both halves of the choice; the
+        // ghost device never made it into the picker to be picked instead.
+        store.setBluetoothNetworkIconDevice(address: "d36d6c40a32e", symbolName: "keyboard")
+        XCTAssertEqual(store.bluetoothNetworkIconDeviceAddress, "d36d6c40a32e")
+        XCTAssertEqual(store.bluetoothNetworkIconSymbolName, "keyboard")
+        XCTAssertEqual(
+            store.bluetoothAudioIconOptions.networkIconSymbolOverride,
+            "keyboard"
+        )
+    }
+
     func testSettingsViewHostingViewRendersWithoutCrashing() {
         let name = "StatusTrioCoreTests.SettingsViewTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: name) ?? .standard

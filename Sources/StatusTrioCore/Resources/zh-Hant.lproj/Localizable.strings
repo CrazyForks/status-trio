@@ -59,6 +59,11 @@
 "settings.bluetooth.title" = "藍牙音訊";
 "settings.bluetooth.replaceNetworkIcon" = "使用藍牙音訊裝置圖示取代網路圖示";
 "settings.bluetooth.replaceNetworkIconDescription" = "藍牙輸出音訊時，以藍色裝置圖示取代 Wi‑Fi 圖示。";
+"settings.bluetooth.networkIconSourceGroup" = "圖示來源";
+"settings.bluetooth.networkIconSourceAudio" = "藍牙音訊裝置";
+"settings.bluetooth.networkIconSourceAudioDescription" = "跟隨目前藍牙音訊輸出裝置，預設選項。";
+"settings.bluetooth.networkIconSourceDevices" = "藍牙裝置";
+"settings.bluetooth.networkIconSourceDevicesEmpty" = "暫無已配對裝置。";
 "settings.bluetooth.volumeColor" = "藍牙音量使用藍色";
 "settings.bluetooth.volumeColorDescription" = "藍牙輸出音訊時，音量點或圓弧的作用部分會顯示為藍色。";
 "settings.bluetooth.networkErrorPriority" = "網路異常優先於藍牙圖示";

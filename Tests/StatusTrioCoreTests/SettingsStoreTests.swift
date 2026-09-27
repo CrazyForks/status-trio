@@ -136,6 +136,38 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(store.bluetoothAudioIconOptions, .standard)
     }
 
+    func testBluetoothNetworkIconDeviceDefaultsToTheAudioDevice() {
+        let store = SettingsStore(defaults: makeSuite().defaults)
+
+        XCTAssertNil(store.bluetoothNetworkIconDeviceAddress)
+        XCTAssertNil(store.bluetoothNetworkIconSymbolName)
+        XCTAssertNil(store.bluetoothAudioIconOptions.networkIconSymbolOverride)
+    }
+
+    /// Picking a device stores its address for the picker's highlight and the
+    /// symbol the icon draws, as one atomic choice; picking the audio device
+    /// again clears both.
+    func testBluetoothNetworkIconDeviceChoicePersistsAcrossStoreInstances() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+
+        let first = SettingsStore(defaults: suite.defaults)
+        first.setBluetoothNetworkIconDevice(address: "aa-bb-cc-dd-ee-ff", symbolName: "keyboard")
+
+        let second = SettingsStore(defaults: suite.defaults)
+        XCTAssertEqual(second.bluetoothNetworkIconDeviceAddress, "aa-bb-cc-dd-ee-ff")
+        XCTAssertEqual(second.bluetoothNetworkIconSymbolName, "keyboard")
+        XCTAssertEqual(
+            second.bluetoothAudioIconOptions.networkIconSymbolOverride,
+            "keyboard"
+        )
+
+        second.setBluetoothNetworkIconDevice(address: nil, symbolName: nil)
+        XCTAssertNil(second.bluetoothNetworkIconDeviceAddress)
+        XCTAssertNil(second.bluetoothNetworkIconSymbolName)
+        XCTAssertNil(second.bluetoothAudioIconOptions.networkIconSymbolOverride)
+    }
+
     func testBluetoothAudioDisplaySettingsPersistAcrossStoreInstances() {
         let suite = makeSuite()
         defer { clear(suite) }

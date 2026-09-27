@@ -61,6 +61,8 @@ final class SettingsStore: ObservableObject {
     static let hidesGhostBluetoothDevicesDefaultsKey = "hidesGhostBluetoothDevices"
     static let hiddenBluetoothDeviceAddressesDefaultsKey = "hiddenBluetoothDeviceAddresses"
     static let revealedGhostBluetoothDeviceAddressesDefaultsKey = "revealedGhostBluetoothDeviceAddresses"
+    static let bluetoothNetworkIconDeviceAddressDefaultsKey = "bluetoothNetworkIconDeviceAddress"
+    static let bluetoothNetworkIconSymbolNameDefaultsKey = "bluetoothNetworkIconSymbolName"
     static let bluetoothDeviceLimitRange: ClosedRange<Int> = 1...20
     static let alwaysShowsAllOutputDevicesDefaultsKey = "alwaysShowsAllOutputDevices"
     static let outputDeviceOrderDefaultsKey = "outputDeviceOrder"
@@ -383,6 +385,33 @@ final class SettingsStore: ObservableObject {
         }
     }
 
+    /// The Bluetooth device whose icon replaces the network icon, by its
+    /// normalized address. `nil` follows the current Bluetooth audio output —
+    /// the original behavior and the default. Only the picker's highlight reads
+    /// the address; the icon itself draws `bluetoothNetworkIconSymbolName`.
+    @Published var bluetoothNetworkIconDeviceAddress: String? {
+        didSet {
+            defaults.set(
+                bluetoothNetworkIconDeviceAddress,
+                forKey: Self.bluetoothNetworkIconDeviceAddressDefaultsKey
+            )
+        }
+    }
+
+    /// The SF Symbol the picked device resolved to when it was chosen, stored
+    /// so the icon pipeline needs no live device list: `iconAppearancePublisher`
+    /// stays settings-only, and the menu bar and the Dock draw what the picker
+    /// showed. Set together with the address through
+    /// `setBluetoothNetworkIconDevice(address:symbolName:)`.
+    @Published var bluetoothNetworkIconSymbolName: String? {
+        didSet {
+            defaults.set(
+                bluetoothNetworkIconSymbolName,
+                forKey: Self.bluetoothNetworkIconSymbolNameDefaultsKey
+            )
+        }
+    }
+
     @Published private(set) var popupSectionOrder: [PopupSection] {
         didSet {
             defaults.set(
@@ -609,8 +638,20 @@ final class SettingsStore: ObservableObject {
             replacesNetworkIcon: replacesNetworkIconWithBluetoothAudio,
             usesVolumeColor: usesBluetoothAudioVolumeColor,
             prioritizesNetworkErrors: prioritizesNetworkErrorsOverBluetoothAudio,
-            symbolScale: bluetoothSymbolScale
+            symbolScale: bluetoothSymbolScale,
+            networkIconSymbolOverride: bluetoothNetworkIconSymbolName
         )
+    }
+
+    /// Picks which Bluetooth device's icon replaces the network icon.
+    ///
+    /// The address and the resolved symbol are stored together so the choice is
+    /// atomic: the picker highlights by address while the icon draws the symbol
+    /// the device resolved to at pick time. `nil` for both returns to the
+    /// default — the current Bluetooth audio output.
+    func setBluetoothNetworkIconDevice(address: String?, symbolName: String?) {
+        bluetoothNetworkIconDeviceAddress = address
+        bluetoothNetworkIconSymbolName = symbolName
     }
 
     var volumeIconOptions: VolumeIconOptions {
@@ -756,6 +797,12 @@ final class SettingsStore: ObservableObject {
         self.hidesGhostBluetoothDevices = storedHidesGhostBluetoothDevices ?? true
         self.hiddenBluetoothDeviceAddresses = storedHiddenBluetoothDeviceAddresses
         self.revealedGhostBluetoothDeviceAddresses = storedRevealedGhostBluetoothDeviceAddresses
+        self.bluetoothNetworkIconDeviceAddress = defaults.string(
+            forKey: Self.bluetoothNetworkIconDeviceAddressDefaultsKey
+        )
+        self.bluetoothNetworkIconSymbolName = defaults.string(
+            forKey: Self.bluetoothNetworkIconSymbolNameDefaultsKey
+        )
         self.alwaysShowsAllOutputDevices = defaults.object(
             forKey: Self.alwaysShowsAllOutputDevicesDefaultsKey
         ) as? Bool ?? false

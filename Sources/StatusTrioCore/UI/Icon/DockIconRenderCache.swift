@@ -56,9 +56,13 @@ struct DockIconRenderKey: Equatable, Hashable {
             ? status.volume.scalar.flatMap(Self.clampedVolume)
             : nil
         self.bluetoothAudioOptions = bluetoothAudioOptions
-        self.bluetoothAudioDeviceIcon = status.volume.currentDevice?.isBluetoothAudio == true
-            ? status.volume.currentDevice.map { AudioOutputDeviceIcon.source(for: $0) }
-            : nil
+        // A picked device's symbol replaces the classified audio glyph; without
+        // one, the current Bluetooth audio output draws as before.
+        self.bluetoothAudioDeviceIcon = bluetoothAudioOptions.networkIconSymbolOverride
+            .map { AudioOutputDeviceIconSource.symbol($0) }
+            ?? (status.volume.currentDevice?.isBluetoothAudio == true
+                ? status.volume.currentDevice.map { AudioOutputDeviceIcon.source(for: $0) }
+                : nil)
         self.backgroundStyle = backgroundStyle
         self.pixelLength = pixelLength
     }

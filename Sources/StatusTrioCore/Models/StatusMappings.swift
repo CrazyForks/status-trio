@@ -105,10 +105,16 @@ enum StatusMappings {
         connection: NetworkConnection,
         options: BluetoothAudioIconOptions
     ) -> Bool {
-        guard options.replacesNetworkIcon,
-              currentDevice?.transport == .bluetooth
-                || currentDevice?.transport == .bluetoothLowEnergy else {
-            return false
+        guard options.replacesNetworkIcon else { return false }
+
+        // A picked device pins the glyph, so the current output is irrelevant
+        // to the decision. Without one, the replacement still requires the
+        // current output to be Bluetooth audio.
+        if options.networkIconSymbolOverride == nil {
+            guard currentDevice?.transport == .bluetooth
+                    || currentDevice?.transport == .bluetoothLowEnergy else {
+                return false
+            }
         }
 
         guard options.prioritizesNetworkErrors else { return true }

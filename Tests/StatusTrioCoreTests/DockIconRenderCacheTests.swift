@@ -321,6 +321,56 @@ struct DockIconRenderCacheTests {
         #expect(rendersAirPodsAgain == false)
     }
 
+    /// A picked device's symbol overrides the classified audio glyph, so the
+    /// key must differ from the same status rendered with the audio-device
+    /// behavior — including when there is no current audio output at all.
+    @Test func carriesTheNetworkIconOverrideInTheKey() {
+        var cache = DockIconRenderCache()
+        let audioDevice = DockIconRenderKey(
+            status: outputDeviceStatus(name: "小王的耳机", transport: .bluetooth),
+            options: .standard,
+            connectionOptions: .standard,
+            bluetoothAudioOptions: BluetoothAudioIconOptions(replacesNetworkIcon: true),
+            backgroundStyle: .dark
+        )
+        let overridden = DockIconRenderKey(
+            status: outputDeviceStatus(name: "小王的耳机", transport: .bluetooth),
+            options: .standard,
+            connectionOptions: .standard,
+            bluetoothAudioOptions: BluetoothAudioIconOptions(
+                replacesNetworkIcon: true,
+                networkIconSymbolOverride: "keyboard"
+            ),
+            backgroundStyle: .dark
+        )
+
+        let rendersAudioGlyph = cache.shouldRender(audioDevice)
+        let rendersOverrideGlyph = cache.shouldRender(overridden)
+        let rendersOverrideAgain = cache.shouldRender(overridden)
+        #expect(rendersAudioGlyph)
+        #expect(rendersOverrideGlyph)
+        #expect(rendersOverrideAgain == false)
+        #expect(overridden.bluetoothAudioDeviceIcon == .symbol("keyboard"))
+    }
+
+    /// The override stands in for the current output's glyph: the key carries
+    /// it even when no audio device is current, which is the state the picker
+    /// mode mostly runs in.
+    @Test func carriesTheOverrideEvenWithoutACurrentAudioDevice() {
+        let overridden = DockIconRenderKey(
+            status: volumeStatus(0.5),
+            options: .standard,
+            connectionOptions: .standard,
+            bluetoothAudioOptions: BluetoothAudioIconOptions(
+                replacesNetworkIcon: true,
+                networkIconSymbolOverride: "gamecontroller"
+            ),
+            backgroundStyle: .dark
+        )
+
+        #expect(overridden.bluetoothAudioDeviceIcon == .symbol("gamecontroller"))
+    }
+
     private func outputDeviceStatus(
         name: String,
         transport: AudioOutputTransport,

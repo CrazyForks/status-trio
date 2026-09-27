@@ -94,14 +94,16 @@ extension SettingsStore {
             $prioritizesNetworkErrorsOverBluetoothAudio,
             $bluetoothSymbolScale
         )
-        .map { replacesNetworkIcon, usesVolumeColor, prioritizesNetworkErrors, symbolScale in
+        .combineLatest($bluetoothNetworkIconSymbolName) { values, symbolOverride in
             BluetoothAudioIconOptions(
-                replacesNetworkIcon: replacesNetworkIcon,
-                usesVolumeColor: usesVolumeColor,
-                prioritizesNetworkErrors: prioritizesNetworkErrors,
-                symbolScale: symbolScale
+                replacesNetworkIcon: values.0,
+                usesVolumeColor: values.1,
+                prioritizesNetworkErrors: values.2,
+                symbolScale: values.3,
+                networkIconSymbolOverride: symbolOverride
             )
         }
+        .removeDuplicates()
         .eraseToAnyPublisher()
     }
 }

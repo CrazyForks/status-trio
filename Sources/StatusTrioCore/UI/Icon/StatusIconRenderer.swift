@@ -344,15 +344,15 @@ enum StatusIconRenderer {
             criticalColor: criticalColor,
             phase: phase
         )
-        if let currentDevice = menuBarStatus.volume.currentDevice,
-           StatusMappings.shouldReplaceNetworkIcon(
-               currentDevice: currentDevice,
-               wifi: menuBarStatus.wifi,
-               connection: menuBarStatus.connection,
-               options: bluetoothAudioOptions
-           ) {
+        if StatusMappings.shouldReplaceNetworkIcon(
+            currentDevice: menuBarStatus.volume.currentDevice,
+            wifi: menuBarStatus.wifi,
+            connection: menuBarStatus.connection,
+            options: bluetoothAudioOptions
+        ) {
             drawBluetoothAudioDevice(
-                currentDevice,
+                menuBarStatus.volume.currentDevice,
+                symbolOverride: bluetoothAudioOptions.networkIconSymbolOverride,
                 options: bluetoothAudioOptions,
                 in: context,
                 foreground: foreground
@@ -728,7 +728,8 @@ enum StatusIconRenderer {
     }
 
     private static func drawBluetoothAudioDevice(
-        _ device: AudioOutputDevice,
+        _ device: AudioOutputDevice?,
+        symbolOverride: String?,
         options: BluetoothAudioIconOptions,
         in context: CGContext,
         foreground: CGColor
@@ -738,6 +739,21 @@ enum StatusIconRenderer {
         let scale = pointSize / centerSymbolBasePointSize
         let maxDimension = 42 * scale
 
+        // A picked device draws the symbol it resolved to at pick time; the
+        // availability check reroutes a symbol the running system does not ship
+        // to the generic Bluetooth glyph, the same fallback a device row uses.
+        if let symbolOverride {
+            let available = NSImage(systemSymbolName: symbolOverride, accessibilityDescription: nil) != nil
+            drawOfficialSymbol(
+                name: available ? symbolOverride : BluetoothDeviceRowIcon.genericSymbol,
+                pointSize: pointSize,
+                foreground: tint,
+                in: context
+            )
+            return
+        }
+
+        guard let device else { return }
         switch AudioOutputDeviceIcon.source(for: device) {
         case let .symbol(name):
             drawOfficialSymbol(

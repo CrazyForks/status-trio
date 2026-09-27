@@ -159,6 +159,9 @@ final class IconAppearancePublisherTests: XCTestCase {
             $0.prioritizesNetworkErrorsOverBluetoothAudio = false
         },
         IconMutation(name: "bluetoothSymbolScale") { $0.bluetoothSymbolScale = 1.4 },
+        IconMutation(name: "bluetoothNetworkIconDevice") {
+            $0.setBluetoothNetworkIconDevice(address: "aa-bb-cc-dd-ee-ff", symbolName: "keyboard")
+        },
         IconMutation(name: "ringStrokeStyle") { $0.ringStrokeStyle = .bold },
         IconMutation(name: "volumeDisplayStyle") { $0.volumeDisplayStyle = .arc }
     ]

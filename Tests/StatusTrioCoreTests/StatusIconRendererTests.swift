@@ -1231,6 +1231,94 @@ final class StatusIconRendererTests: XCTestCase {
         ))
     }
 
+    /// The picker mode draws the picked device's glyph with no current audio
+    /// output at all — the state the mode mostly runs in, and the one the
+    /// original rule could never reach.
+    func testNetworkIconOverrideReplacesNetworkIconWithoutAnyAudioOutput() throws {
+        let snapshot = StatusSnapshot(
+            battery: .placeholder,
+            wifi: WiFiStatus(state: .connected, rssi: -55),
+            connection: .wifi,
+            volume: VolumeStatus(scalar: 0.5, isMuted: false, deviceName: nil)
+        )
+        let standard = try PixelBuffer(
+            image: try XCTUnwrap(StatusIconRenderer.render(
+                snapshot: snapshot,
+                size: 20,
+                scale: 8,
+                foreground: CGColor(gray: 1, alpha: 1)
+            ))
+        )
+        let overridden = try PixelBuffer(
+            image: try XCTUnwrap(StatusIconRenderer.render(
+                snapshot: snapshot,
+                size: 20,
+                scale: 8,
+                foreground: CGColor(gray: 1, alpha: 1),
+                bluetoothAudioOptions: BluetoothAudioIconOptions(
+                    replacesNetworkIcon: true,
+                    networkIconSymbolOverride: "keyboard"
+                )
+            ))
+        )
+
+        XCTAssertNotEqual(standard.bytes, overridden.bytes)
+        XCTAssertTrue(overridden.containsColor(
+            red: 77.0 / 255.0,
+            green: 163.0 / 255.0,
+            blue: 1,
+            tolerance: 0.08,
+            minimumAlpha: 0.9
+        ))
+    }
+
+    /// A symbol the running system does not ship must not blank the icon: the
+    /// fallback is the generic Bluetooth glyph, still in the Bluetooth blue.
+    func testNetworkIconOverrideFallsBackToTheGenericGlyphForUnknownSymbols() throws {
+        let snapshot = StatusSnapshot(
+            battery: .placeholder,
+            wifi: WiFiStatus(state: .connected, rssi: -55),
+            connection: .wifi,
+            volume: VolumeStatus(scalar: 0.5, isMuted: false, deviceName: nil)
+        )
+        let known = try PixelBuffer(
+            image: try XCTUnwrap(StatusIconRenderer.render(
+                snapshot: snapshot,
+                size: 20,
+                scale: 8,
+                foreground: CGColor(gray: 1, alpha: 1),
+                bluetoothAudioOptions: BluetoothAudioIconOptions(
+                    replacesNetworkIcon: true,
+                    networkIconSymbolOverride: "keyboard"
+                )
+            ))
+        )
+        let unknown = try PixelBuffer(
+            image: try XCTUnwrap(StatusIconRenderer.render(
+                snapshot: snapshot,
+                size: 20,
+                scale: 8,
+                foreground: CGColor(gray: 1, alpha: 1),
+                bluetoothAudioOptions: BluetoothAudioIconOptions(
+                    replacesNetworkIcon: true,
+                    networkIconSymbolOverride: "statustrio.nonexistent.symbol"
+                )
+            ))
+        )
+
+        // Both draw something blue, and the fallback is not the known glyph.
+        for buffer in [known, unknown] {
+            XCTAssertTrue(buffer.containsColor(
+                red: 77.0 / 255.0,
+                green: 163.0 / 255.0,
+                blue: 1,
+                tolerance: 0.08,
+                minimumAlpha: 0.9
+            ))
+        }
+        XCTAssertNotEqual(known.bytes, unknown.bytes)
+    }
+
     func testBluetoothOutputUsesDarkerBlueForLightMenuBar() throws {
         let snapshot = bluetoothAudioSnapshot(volumeScalar: 0.5)
         let bluetooth = try PixelBuffer(

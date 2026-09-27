@@ -42,6 +42,11 @@
 "settings.bluetooth.title" = "صوت Bluetooth";
 "settings.bluetooth.replaceNetworkIcon" = "استبدال أيقونة الشبكة بجهاز صوت Bluetooth";
 "settings.bluetooth.replaceNetworkIconDescription" = "عند تشغيل الصوت عبر Bluetooth، تحل أيقونة الجهاز الزرقاء محل أيقونة Wi-Fi.";
+"settings.bluetooth.networkIconSourceGroup" = "مصدر الأيقونة";
+"settings.bluetooth.networkIconSourceAudio" = "أجهزة الصوت عبر Bluetooth";
+"settings.bluetooth.networkIconSourceAudioDescription" = "يتبع مخرج صوت Bluetooth الحالي — الخيار الافتراضي.";
+"settings.bluetooth.networkIconSourceDevices" = "أجهزة Bluetooth";
+"settings.bluetooth.networkIconSourceDevicesEmpty" = "لا توجد أجهزة مقترنة.";
 "settings.bluetooth.volumeColor" = "استخدام اللون الأزرق لمستوى صوت Bluetooth";
 "settings.bluetooth.volumeColorDescription" = "تتحول نقاط مستوى الصوت النشطة أو القوس إلى الأزرق عند الإخراج عبر Bluetooth.";
 "settings.bluetooth.networkErrorPriority" = "إعطاء أولوية لأخطاء الشبكة";
