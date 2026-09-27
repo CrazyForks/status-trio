@@ -63,6 +63,7 @@
 "settings.bluetooth.networkIconSourceAudio" = "Bluetooth オーディオ機器";
 "settings.bluetooth.networkIconSourceAudioDescription" = "現在の Bluetooth オーディオ出力に従います（デフォルト）。";
 "settings.bluetooth.networkIconSourceDevices" = "Bluetooth 機器";
+"settings.bluetooth.networkIconSourceDevicesEmpty" = "Bluetooth 機器をまだ読み取れていません。上部で Bluetooth の権限を許可するか、機器をペアリングしてください。";
 "settings.bluetooth.volumeColor" = "Bluetooth の音量を青色で表示";
 "settings.bluetooth.volumeColorDescription" = "Bluetooth でオーディオを出力すると、音量の点または円弧のアクティブ部分が青色になります。";
 "settings.bluetooth.networkErrorPriority" = "ネットワークエラーを優先";

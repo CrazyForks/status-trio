@@ -19,6 +19,15 @@ struct BluetoothNetworkIconSourceOption: Identifiable, Equatable {
     ///
     /// Ghost devices are left out: they carry no class, so they have no glyph
     /// worth pinning and System Settings does not list them either.
+    /// Whether the menu can offer a device at all.
+    ///
+    /// A ghost device has no class and is not in System Settings, so a list of
+    /// nothing but ghosts is a list the menu cannot show — the same empty case
+    /// as no grant or nothing paired.
+    static func listsDevices(devices: [BluetoothDevice]) -> Bool {
+        devices.contains { !$0.isUnpairedGhost }
+    }
+
     static func options(
         devices: [BluetoothDevice],
         order: [String]

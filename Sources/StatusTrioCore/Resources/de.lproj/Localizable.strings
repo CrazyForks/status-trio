@@ -63,6 +63,7 @@
 "settings.bluetooth.networkIconSourceAudio" = "Bluetooth-Audiogeräte";
 "settings.bluetooth.networkIconSourceAudioDescription" = "Folgt der aktuellen Bluetooth-Audioausgabe — der Standard.";
 "settings.bluetooth.networkIconSourceDevices" = "Bluetooth-Geräte";
+"settings.bluetooth.networkIconSourceDevicesEmpty" = "Noch keine Bluetooth-Geräte gelesen. Erlaube oben den Bluetooth-Zugriff oder kopple ein Gerät.";
 "settings.bluetooth.volumeColor" = "Bluetooth-Lautstärke blau darstellen";
 "settings.bluetooth.volumeColorDescription" = "Die aktiven Lautstärkepunkte oder der Bogen werden bei Bluetooth-Audioausgabe blau.";
 "settings.bluetooth.networkErrorPriority" = "Netzwerkfehler priorisieren";

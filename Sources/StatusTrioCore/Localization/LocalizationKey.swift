@@ -114,6 +114,7 @@ enum LocalizationKey: String, CaseIterable, Hashable, Sendable {
     case settingsBluetoothNetworkIconSourceAudio = "settings.bluetooth.networkIconSourceAudio"
     case settingsBluetoothNetworkIconSourceAudioDescription = "settings.bluetooth.networkIconSourceAudioDescription"
     case settingsBluetoothNetworkIconSourceDevices = "settings.bluetooth.networkIconSourceDevices"
+    case settingsBluetoothNetworkIconSourceDevicesEmpty = "settings.bluetooth.networkIconSourceDevicesEmpty"
     case settingsBluetoothVolumeColor = "settings.bluetooth.volumeColor"
     case settingsBluetoothVolumeColorDescription = "settings.bluetooth.volumeColorDescription"
     case settingsBluetoothNetworkErrorPriority = "settings.bluetooth.networkErrorPriority"

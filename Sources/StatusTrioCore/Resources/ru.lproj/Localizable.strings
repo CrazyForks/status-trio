@@ -63,6 +63,7 @@
 "settings.bluetooth.networkIconSourceAudio" = "Bluetooth-аудиоустройства";
 "settings.bluetooth.networkIconSourceAudioDescription" = "Следует текущему аудиовыходу Bluetooth — значение по умолчанию.";
 "settings.bluetooth.networkIconSourceDevices" = "Bluetooth-устройства";
+"settings.bluetooth.networkIconSourceDevicesEmpty" = "Устройства Bluetooth ещё не прочитаны. Разрешите доступ к Bluetooth выше или сопрягите устройство.";
 "settings.bluetooth.volumeColor" = "Показывать громкость Bluetooth синим";
 "settings.bluetooth.volumeColorDescription" = "Активные точки громкости или дуга становятся синими при выводе звука через Bluetooth.";
 "settings.bluetooth.networkErrorPriority" = "Приоритет ошибок сети";

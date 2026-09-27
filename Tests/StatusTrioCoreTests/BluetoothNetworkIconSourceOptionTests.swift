@@ -67,6 +67,30 @@ struct BluetoothNetworkIconSourceOptionTests {
         #expect(options[1].source.id == "D36D6C40A32E")
     }
 
+    /// Whether the menu can offer a device at all. The pane uses this to
+    /// explain the single-entry menu: without a readable device — no grant yet,
+    /// nothing paired — the audio entry is the only row there is, and saying so
+    /// is what keeps that from reading as a broken menu.
+    @Test func listsDevicesIgnoresGhostsAndEmptyLists() {
+        #expect(BluetoothNetworkIconSourceOption.listsDevices(devices: []) == false)
+        #expect(
+            BluetoothNetworkIconSourceOption.listsDevices(devices: [
+                BluetoothDevice(
+                    id: "11:22:33:44:55:66",
+                    name: "Ghost",
+                    kind: .unknown,
+                    isConnected: false,
+                    isUnpairedGhost: true
+                )
+            ]) == false
+        )
+        #expect(
+            BluetoothNetworkIconSourceOption.listsDevices(devices: [
+                device("MX Keys", kind: .peripheral(.keyboard), isConnected: false)
+            ])
+        )
+    }
+
     private func device(
         _ name: String,
         kind: BluetoothDeviceKind,

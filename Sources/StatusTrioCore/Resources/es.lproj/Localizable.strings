@@ -63,6 +63,7 @@
 "settings.bluetooth.networkIconSourceAudio" = "Dispositivos de audio Bluetooth";
 "settings.bluetooth.networkIconSourceAudioDescription" = "Sigue la salida de audio Bluetooth actual, la opción predeterminada.";
 "settings.bluetooth.networkIconSourceDevices" = "Dispositivos Bluetooth";
+"settings.bluetooth.networkIconSourceDevicesEmpty" = "Aún no se han leído dispositivos Bluetooth. Concede el acceso Bluetooth arriba o empareja un dispositivo.";
 "settings.bluetooth.volumeColor" = "Usar azul para el volumen de Bluetooth";
 "settings.bluetooth.volumeColorDescription" = "Los puntos activos o el arco del volumen se vuelven azules al reproducir audio por Bluetooth.";
 "settings.bluetooth.networkErrorPriority" = "Dar prioridad a los errores de red";

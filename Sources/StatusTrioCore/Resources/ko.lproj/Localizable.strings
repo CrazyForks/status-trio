@@ -63,6 +63,7 @@
 "settings.bluetooth.networkIconSourceAudio" = "Bluetooth 오디오 기기";
 "settings.bluetooth.networkIconSourceAudioDescription" = "현재 Bluetooth 오디오 출력을 따릅니다(기본값).";
 "settings.bluetooth.networkIconSourceDevices" = "Bluetooth 기기";
+"settings.bluetooth.networkIconSourceDevicesEmpty" = "아직 Bluetooth 기기를 읽지 못했습니다. 위에서 Bluetooth 권한을 허용하거나 기기를 페어링하세요.";
 "settings.bluetooth.volumeColor" = "Bluetooth 볼륨을 파란색으로 표시";
 "settings.bluetooth.volumeColorDescription" = "Bluetooth 오디오 출력 중에는 활성 볼륨 점 또는 호가 파란색으로 표시됩니다.";
 "settings.bluetooth.networkErrorPriority" = "네트워크 오류 우선";

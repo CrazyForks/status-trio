@@ -63,6 +63,7 @@
 "settings.bluetooth.networkIconSourceAudio" = "藍牙音訊裝置";
 "settings.bluetooth.networkIconSourceAudioDescription" = "跟隨目前藍牙音訊輸出裝置，預設選項。";
 "settings.bluetooth.networkIconSourceDevices" = "藍牙裝置";
+"settings.bluetooth.networkIconSourceDevicesEmpty" = "尚未讀取到藍牙裝置。請在上方授予藍牙權限，或先配對裝置。";
 "settings.bluetooth.volumeColor" = "藍牙音量使用藍色";
 "settings.bluetooth.volumeColorDescription" = "藍牙輸出音訊時，音量點或圓弧的作用部分會顯示為藍色。";
 "settings.bluetooth.networkErrorPriority" = "網路異常優先於藍牙圖示";

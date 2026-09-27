@@ -79,6 +79,14 @@ struct BluetoothSectionView: View {
                     SettingsDivider()
 
                     networkIconSourceRow
+
+                    if !sourceOptionsOffersDevices {
+                        SettingsDivider()
+
+                        SettingsHintRow(
+                            text: localization.string(.settingsBluetoothNetworkIconSourceDevicesEmpty)
+                        )
+                    }
                 }
 
                 SettingsDivider()
@@ -181,6 +189,14 @@ struct BluetoothSectionView: View {
             devices: bluetoothDevices.devices,
             order: store.bluetoothDeviceOrder
         )
+    }
+
+    /// Whether the menu has anything to offer besides the audio entry. When it
+    /// does not, the pane says why — a grant that has not been given yet and a
+    /// Mac with nothing paired both leave the menu with one row, and without
+    /// the hint that reads as a broken menu.
+    private var sourceOptionsOffersDevices: Bool {
+        BluetoothNetworkIconSourceOption.listsDevices(devices: bluetoothDevices.devices)
     }
 
     /// The choice the menu shows as selected. A saved address whose device is
