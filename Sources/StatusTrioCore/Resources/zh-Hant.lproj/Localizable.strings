@@ -65,6 +65,8 @@
 "settings.bluetooth.networkErrorPriorityDescription" = "斷線或無網路時仍顯示網路圖示，不顯示藍牙裝置圖示。";
 "settings.bluetooth.batteryLevels" = "顯示藍牙裝置電量";
 "settings.bluetooth.batteryLevelsDescription" = "當狀態面板顯示藍牙裝置時讀取 AirPods 電量，不會額外要求權限。";
+"settings.bluetooth.nearbyBatteryDevices" = "顯示附近 BLE 裝置電量";
+"settings.bluetooth.nearbyBatteryDevicesDescription" = "開啟藍牙電量後，狀態面板開啟時會掃描提供標準電池服務的附近 BLE 裝置。支援情況因裝置而異。";
 "settings.bluetooth.showInStatusPanel" = "在狀態面板中顯示藍牙";
 "settings.bluetooth.showInStatusPanelDescription" = "控制狀態面板中的藍牙項目，並與狀態面板設定保持同步。";
 "settings.bluetooth.symbolScale" = "藍牙圖示大小";
@@ -269,6 +271,9 @@
 "wifi.security.enterprise" = "企業";
 "bluetooth.openDetails" = "打開詳細資訊以查看裝置狀態";
 "bluetooth.title" = "藍牙";
+"bluetooth.pairedDevices.title" = "已配對";
+"bluetooth.nearbyBattery.title" = "附近裝置";
+"bluetooth.nearbyDevice.fallback" = "藍牙裝置";
 "bluetooth.action.openSettings" = "打開藍牙設定";
 "bluetooth.action.requestAuthorization" = "允許藍牙以顯示裝置狀態";
 "bluetooth.refresh" = "重新整理裝置";

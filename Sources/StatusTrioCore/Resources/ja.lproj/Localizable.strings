@@ -65,6 +65,8 @@
 "settings.bluetooth.networkErrorPriorityDescription" = "接続エラーやオフライン状態では、Bluetooth 機器ではなくネットワークアイコンを表示します。";
 "settings.bluetooth.batteryLevels" = "Bluetooth のバッテリー残量を表示";
 "settings.bluetooth.batteryLevelsDescription" = "Bluetooth 項目の表示中に AirPods の残量を読み取ります。追加の権限確認は表示されません。";
+"settings.bluetooth.nearbyBatteryDevices" = "近くの BLE デバイスのバッテリー残量を表示";
+"settings.bluetooth.nearbyBatteryDevicesDescription" = "Bluetooth のバッテリー残量表示が有効な間、ステータスパネルを開くと標準 Battery Service を提供する近くの BLE デバイスをスキャンします。対応状況はデバイスによって異なります。";
 "settings.bluetooth.showInStatusPanel" = "ステータスパネルに Bluetooth を表示";
 "settings.bluetooth.showInStatusPanelDescription" = "ステータスパネルの Bluetooth 項目を切り替え、ステータスパネル設定と同期します。";
 "settings.bluetooth.symbolScale" = "Bluetooth アイコンサイズ";
@@ -269,6 +271,9 @@
 "wifi.security.enterprise" = "エンタープライズ";
 "bluetooth.openDetails" = "詳細を開いてデバイスの状態を表示";
 "bluetooth.title" = "Bluetooth";
+"bluetooth.pairedDevices.title" = "ペアリング済み";
+"bluetooth.nearbyBattery.title" = "近くのデバイス";
+"bluetooth.nearbyDevice.fallback" = "Bluetooth デバイス";
 "bluetooth.action.openSettings" = "Bluetooth 設定を開く";
 "bluetooth.action.requestAuthorization" = "デバイス状態を表示するために Bluetooth を許可";
 "bluetooth.refresh" = "デバイスを更新";

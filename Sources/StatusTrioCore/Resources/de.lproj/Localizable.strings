@@ -65,6 +65,8 @@
 "settings.bluetooth.networkErrorPriorityDescription" = "Bei Verbindungsfehlern oder Offline-Status bleibt das Netzwerksymbol sichtbar statt des Bluetooth-Gerätesymbols.";
 "settings.bluetooth.batteryLevels" = "Bluetooth-Batteriestände anzeigen";
 "settings.bluetooth.batteryLevelsDescription" = "Liest AirPods-Batteriestände, während der Bluetooth-Eintrag sichtbar ist. Es wird keine zusätzliche Berechtigung angefragt.";
+"settings.bluetooth.nearbyBatteryDevices" = "Akkustände naher BLE-Geräte anzeigen";
+"settings.bluetooth.nearbyBatteryDevicesDescription" = "Wenn Bluetooth-Akkustände aktiviert sind, sucht Status Trio bei geöffnetem Statusfenster nach nahen BLE-Geräten mit dem standardisierten Battery Service. Die Unterstützung hängt vom Gerät ab.";
 "settings.bluetooth.showInStatusPanel" = "Bluetooth im Statusbereich anzeigen";
 "settings.bluetooth.showInStatusPanelDescription" = "Steuert das Bluetooth-Element im Statusbereich und bleibt mit den Einstellungen des Statusbereichs synchron.";
 "settings.bluetooth.symbolScale" = "Bluetooth-Symbolgröße";
@@ -269,6 +271,9 @@
 "wifi.security.enterprise" = "Enterprise";
 "bluetooth.openDetails" = "Details öffnen, um den Gerätestatus anzuzeigen";
 "bluetooth.title" = "Bluetooth";
+"bluetooth.pairedDevices.title" = "Gekoppelt";
+"bluetooth.nearbyBattery.title" = "In der Nähe";
+"bluetooth.nearbyDevice.fallback" = "Bluetooth-Gerät";
 "bluetooth.action.openSettings" = "Bluetooth-Einstellungen öffnen";
 "bluetooth.action.requestAuthorization" = "Bluetooth erlauben, Gerätestatus anzuzeigen";
 "bluetooth.refresh" = "Geräte aktualisieren";

@@ -30,6 +30,7 @@ final class SettingsStore: ObservableObject {
     static let usesBluetoothAudioVolumeColorDefaultsKey = "usesBluetoothAudioVolumeColor"
     static let prioritizesNetworkErrorsOverBluetoothAudioDefaultsKey = "prioritizesNetworkErrorsOverBluetoothAudio"
     static let showsBluetoothBatteryLevelsDefaultsKey = "showsBluetoothBatteryLevels"
+    static let showsNearbyBluetoothBatteryDevicesDefaultsKey = "showsNearbyBluetoothBatteryDevices"
     static let statusCenterSymbolScaleRange: ClosedRange<Double> = 1.0...1.8
     static let defaultStatusCenterSymbolScale: Double = 1.6
     static let bluetoothSymbolScaleRange = statusCenterSymbolScaleRange
@@ -257,6 +258,15 @@ final class SettingsStore: ObservableObject {
             defaults.set(
                 showsBluetoothBatteryLevels,
                 forKey: Self.showsBluetoothBatteryLevelsDefaultsKey
+            )
+        }
+    }
+
+    @Published var showsNearbyBluetoothBatteryDevices: Bool {
+        didSet {
+            defaults.set(
+                showsNearbyBluetoothBatteryDevices,
+                forKey: Self.showsNearbyBluetoothBatteryDevicesDefaultsKey
             )
         }
     }
@@ -728,6 +738,9 @@ final class SettingsStore: ObservableObject {
         self.showsBluetoothBatteryLevels = defaults.object(
             forKey: Self.showsBluetoothBatteryLevelsDefaultsKey
         ) as? Bool ?? true
+        self.showsNearbyBluetoothBatteryDevices = defaults.object(
+            forKey: Self.showsNearbyBluetoothBatteryDevicesDefaultsKey
+        ) as? Bool ?? false
         self.bluetoothSymbolScale = Self.clampedBluetoothSymbolScale(
             storedBluetoothSymbolScale ?? Self.defaultBluetoothSymbolScale
         )

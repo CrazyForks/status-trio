@@ -1,3 +1,3 @@
 "NSLocationUsageDescription" = "用于在弹出窗口中显示当前 Wi-Fi 名称，并在打开 Wi-Fi 详情时读取网络名称、扫描结果和连接信息。";
 "NSLocationWhenInUseUsageDescription" = "用于在弹出窗口中显示当前 Wi-Fi 名称，并在打开 Wi-Fi 详情时读取网络名称、扫描结果和连接信息。";
-"NSBluetoothAlwaysUsageDescription" = "仅在打开蓝牙详情时用于显示已配对设备的连接状态。";
+"NSBluetoothAlwaysUsageDescription" = "用于显示蓝牙设备的连接状态。开启附近设备电量后，Status Trio 会在状态面板打开时扫描提供标准电池服务的附近 BLE 设备。";
