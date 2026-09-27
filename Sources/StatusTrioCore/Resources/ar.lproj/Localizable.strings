@@ -53,6 +53,8 @@
 "settings.bluetooth.networkErrorPriorityDescription" = "تبقى أيقونة الشبكة ظاهرة عند انقطاع الاتصال أو غياب الإنترنت بدلًا من أيقونة جهاز Bluetooth.";
 "settings.bluetooth.batteryLevels" = "عرض مستويات بطارية Bluetooth";
 "settings.bluetooth.batteryLevelsDescription" = "تقرأ مستويات بطارية AirPods أثناء عرض إدخال Bluetooth. لن يظهر طلب إذن إضافي.";
+"settings.bluetooth.nearbyBatteryDevices" = "عرض مستويات بطارية أجهزة BLE القريبة";
+"settings.bluetooth.nearbyBatteryDevicesDescription" = "عند تفعيل مستويات بطارية Bluetooth، يبحث التطبيق عن أجهزة BLE قريبة توفر خدمة البطارية القياسية أثناء فتح لوحة الحالة. يختلف الدعم حسب الجهاز.";
 "settings.bluetooth.showInStatusPanel" = "إظهار Bluetooth في لوحة الحالة";
 "settings.bluetooth.showInStatusPanelDescription" = "يتحكم في عنصر Bluetooth بلوحة الحالة ويبقى متزامنًا مع إعدادات لوحة الحالة.";
 "settings.bluetooth.symbolScale" = "حجم أيقونة Bluetooth";
@@ -274,6 +276,9 @@
 "wifi.security.enterprise" = "المؤسسات";
 "bluetooth.openDetails" = "افتح التفاصيل لعرض حالة الجهاز";
 "bluetooth.title" = "Bluetooth";
+"bluetooth.pairedDevices.title" = "مقترنة";
+"bluetooth.nearbyBattery.title" = "قريبة";
+"bluetooth.nearbyDevice.fallback" = "جهاز Bluetooth";
 "bluetooth.action.openSettings" = "فتح إعدادات Bluetooth";
 "bluetooth.action.requestAuthorization" = "السماح لـ Bluetooth بعرض حالة الأجهزة";
 "bluetooth.refresh" = "تحديث الأجهزة";

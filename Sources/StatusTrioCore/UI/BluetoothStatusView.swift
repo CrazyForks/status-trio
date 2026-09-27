@@ -15,17 +15,23 @@ struct BluetoothStatusView: View {
     @ObservedObject var controller: BluetoothDeviceController
     @EnvironmentObject private var localization: Localization
     let showsBatteryLevels: Bool
+    var showsNearbyBatteryDevices = false
     var listOptions: BluetoothDeviceListOptions = .standard
     let onRequestAuthorization: () -> Void
     let onOpenBluetoothSettings: () -> Void
     let onOpenBluetoothPermissionSettings: () -> Void
 
     var body: some View {
+        let nearbyDevices = BluetoothNearbyBatteryListPresentation.visibleDevices(
+            from: controller.nearbyBatteryDevices,
+            enabled: showsNearbyBatteryLevels
+        )
+
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 10) {
                 titleBlock
 
-                Button(action: { controller.refresh() }) {
+                Button(action: { controller.refreshFromUser() }) {
                     // Trailing-aligned inside the button's own box: the other
                     // rows end on their disclosure chevron itself, so its right
                     // edge is what sits ten points before the gear. A glyph
@@ -53,6 +59,13 @@ struct BluetoothStatusView: View {
             }
 
             if showsDeviceList {
+                if !nearbyDevices.isEmpty {
+                    Text(localization.string(.bluetoothPairedDevicesTitle))
+                        .font(.callout.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .accessibilityAddTraits(.isHeader)
+                }
+
                 BluetoothDeviceList(
                     devices: controller.devices,
                     batteryLevels: controller.batteryLevels,
@@ -73,9 +86,13 @@ struct BluetoothStatusView: View {
                         .foregroundStyle(.secondary)
                 }
             }
+
+            if !nearbyDevices.isEmpty {
+                NearbyBluetoothBatteryList(devices: nearbyDevices)
+            }
         }
         .onAppear {
-            controller.holdVisibleSurface(Self.summarySurfaceToken)
+            controller.holdVisibleSurface(BluetoothDeviceController.bluetoothSummarySurfaceToken)
         }
         .task(id: batteryReadTaskID) {
             // Reading levels launches system_profiler, so the claim is held only
@@ -91,8 +108,18 @@ struct BluetoothStatusView: View {
             }
             controller.requestBatteryLevels(Self.summaryBatteryLevelsToken)
         }
+        .task(id: showsNearbyBatteryLevels) {
+            guard showsNearbyBatteryLevels else {
+                controller.releaseNearbyBatteryDevices(Self.nearbyBatteryDevicesToken)
+                return
+            }
+            // This claim follows the saved opt-in across popover closes. The
+            // controller's popover token is the separate gate that stops the
+            // scanner immediately when the popover closes.
+            controller.requestNearbyBatteryDevices(Self.nearbyBatteryDevicesToken)
+        }
         .onDisappear {
-            controller.releaseVisibleSurface(Self.summarySurfaceToken)
+            controller.releaseVisibleSurface(BluetoothDeviceController.bluetoothSummarySurfaceToken)
             controller.releaseBatteryLevels(Self.summaryBatteryLevelsToken)
         }
     }
@@ -138,7 +165,11 @@ struct BluetoothStatusView: View {
     }
 
     private static let summaryBatteryLevelsToken = "bluetooth.summary"
-    private static let summarySurfaceToken = "bluetooth.summary.surface"
+    private static let nearbyBatteryDevicesToken = "bluetooth.summary.nearbyBatteryDevices"
+
+    private var showsNearbyBatteryLevels: Bool {
+        showsBatteryLevels && showsNearbyBatteryDevices
+    }
 
     private var showsDeviceList: Bool {
         BluetoothPanelListVisibility.showsList(
@@ -262,4 +293,3 @@ struct BluetoothStatusView: View {
         }
     }
 }
-

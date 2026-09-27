@@ -118,6 +118,16 @@ struct BluetoothSectionView: View {
                     subtitle: localization.string(.settingsBluetoothBatteryLevelsDescription),
                     isOn: $store.showsBluetoothBatteryLevels
                 )
+
+                SettingsDivider()
+
+                SettingsToggleRow(
+                    symbol: "dot.radiowaves.left.and.right",
+                    tint: .blue,
+                    title: localization.string(.settingsBluetoothNearbyBatteryDevices),
+                    subtitle: localization.string(.settingsBluetoothNearbyBatteryDevicesDescription),
+                    isOn: $store.showsNearbyBluetoothBatteryDevices
+                )
             }
 
             deviceListGroup

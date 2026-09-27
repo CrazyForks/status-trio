@@ -70,6 +70,8 @@
 "settings.bluetooth.networkErrorPriorityDescription" = "Les erreurs de connexion et l’état hors ligne conservent l’icône réseau au lieu du périphérique Bluetooth.";
 "settings.bluetooth.batteryLevels" = "Afficher les niveaux de batterie Bluetooth";
 "settings.bluetooth.batteryLevelsDescription" = "Lit les niveaux de batterie des AirPods lorsque l’entrée Bluetooth est affichée. Aucune autorisation supplémentaire n’est demandée.";
+"settings.bluetooth.nearbyBatteryDevices" = "Afficher les niveaux de batterie BLE à proximité";
+"settings.bluetooth.nearbyBatteryDevicesDescription" = "Lorsque les niveaux de batterie Bluetooth sont activés, recherche les appareils BLE à proximité qui fournissent le service Batterie standard pendant que le panneau d’état est ouvert. La compatibilité dépend de l’appareil.";
 "settings.bluetooth.showInStatusPanel" = "Afficher le Bluetooth dans le panneau d’état";
 "settings.bluetooth.showInStatusPanelDescription" = "Contrôle l’élément Bluetooth du panneau d’état et reste synchronisé avec les réglages du panneau d’état.";
 "settings.bluetooth.symbolScale" = "Taille de l’icône Bluetooth";
@@ -274,6 +276,9 @@
 "wifi.security.enterprise" = "Entreprise";
 "bluetooth.openDetails" = "Ouvrir les détails pour afficher l’état du périphérique";
 "bluetooth.title" = "Bluetooth";
+"bluetooth.pairedDevices.title" = "Appareils jumelés";
+"bluetooth.nearbyBattery.title" = "À proximité";
+"bluetooth.nearbyDevice.fallback" = "Appareil Bluetooth";
 "bluetooth.action.openSettings" = "Ouvrir les réglages Bluetooth";
 "bluetooth.action.requestAuthorization" = "Autoriser Bluetooth à afficher l’état des appareils";
 "bluetooth.refresh" = "Actualiser les périphériques";

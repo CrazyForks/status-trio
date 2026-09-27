@@ -121,6 +121,8 @@ enum LocalizationKey: String, CaseIterable, Hashable, Sendable {
     case settingsBluetoothNetworkErrorPriorityDescription = "settings.bluetooth.networkErrorPriorityDescription"
     case settingsBluetoothBatteryLevels = "settings.bluetooth.batteryLevels"
     case settingsBluetoothBatteryLevelsDescription = "settings.bluetooth.batteryLevelsDescription"
+    case settingsBluetoothNearbyBatteryDevices = "settings.bluetooth.nearbyBatteryDevices"
+    case settingsBluetoothNearbyBatteryDevicesDescription = "settings.bluetooth.nearbyBatteryDevicesDescription"
     case settingsBluetoothShowInStatusPanel = "settings.bluetooth.showInStatusPanel"
     case settingsBluetoothShowInStatusPanelDescription = "settings.bluetooth.showInStatusPanelDescription"
     case settingsBluetoothSymbolScale = "settings.bluetooth.symbolScale"
@@ -317,6 +319,9 @@ enum LocalizationKey: String, CaseIterable, Hashable, Sendable {
 
     case bluetoothOpenDetails = "bluetooth.openDetails"
     case bluetoothTitle = "bluetooth.title"
+    case bluetoothPairedDevicesTitle = "bluetooth.pairedDevices.title"
+    case bluetoothNearbyBatteryTitle = "bluetooth.nearbyBattery.title"
+    case bluetoothNearbyDeviceFallback = "bluetooth.nearbyDevice.fallback"
     case bluetoothActionOpenSettings = "bluetooth.action.openSettings"
     case bluetoothActionRequestAuthorization = "bluetooth.action.requestAuthorization"
     case bluetoothRefresh = "bluetooth.refresh"

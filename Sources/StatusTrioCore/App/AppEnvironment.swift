@@ -122,7 +122,11 @@ final class AppEnvironment {
                 // between the safety-net polls.
                 accessoryBatteryReader: PmsetAccessoryBatteryWorker(),
                 connectionEvents: IOBluetoothConnectionEventMonitor(),
-                accessoryBatteryEvents: AccessoryPowerNotifyEventMonitor()
+                accessoryBatteryEvents: AccessoryPowerNotifyEventMonitor(),
+                // Constructing the adapter is inert; its CBCentralManager is
+                // created only when the user has enabled Nearby results and the
+                // authorized Bluetooth popover is visible.
+                nearbyBatteryScanner: CoreBluetoothLEBatteryScanner()
             )
         )
     }

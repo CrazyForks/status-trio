@@ -70,6 +70,8 @@
 "settings.bluetooth.networkErrorPriorityDescription" = "При ошибке подключения или отсутствии сети остаётся значок сети вместо устройства Bluetooth.";
 "settings.bluetooth.batteryLevels" = "Показывать заряд устройств Bluetooth";
 "settings.bluetooth.batteryLevelsDescription" = "Заряд AirPods считывается, пока показан пункт Bluetooth. Дополнительный запрос разрешения не появляется.";
+"settings.bluetooth.nearbyBatteryDevices" = "Показывать заряд ближайших BLE-устройств";
+"settings.bluetooth.nearbyBatteryDevicesDescription" = "Если показ заряда Bluetooth включён, при открытой панели состояния выполняется поиск ближайших BLE-устройств со стандартной службой Battery Service. Поддержка зависит от устройства.";
 "settings.bluetooth.showInStatusPanel" = "Показывать Bluetooth на панели состояния";
 "settings.bluetooth.showInStatusPanelDescription" = "Управляет элементом Bluetooth на панели состояния и синхронизируется с настройками панели состояния.";
 "settings.bluetooth.symbolScale" = "Размер значка Bluetooth";
@@ -274,6 +276,9 @@
 "wifi.security.enterprise" = "Корпоративная";
 "bluetooth.openDetails" = "Откройте сведения, чтобы увидеть состояние устройств";
 "bluetooth.title" = "Bluetooth";
+"bluetooth.pairedDevices.title" = "Сопряжённые";
+"bluetooth.nearbyBattery.title" = "Рядом";
+"bluetooth.nearbyDevice.fallback" = "Устройство Bluetooth";
 "bluetooth.action.openSettings" = "Открыть настройки Bluetooth";
 "bluetooth.action.requestAuthorization" = "Разрешить Bluetooth показывать состояние устройств";
 "bluetooth.refresh" = "Обновить устройства";

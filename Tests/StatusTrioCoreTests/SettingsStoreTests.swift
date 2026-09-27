@@ -168,6 +168,23 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertNil(second.bluetoothAudioIconOptions.networkIconSymbolOverride)
     }
 
+    func testNearbyBluetoothBatteryDefaultsOff() {
+        let store = SettingsStore(defaults: makeSuite().defaults)
+
+        XCTAssertFalse(store.showsNearbyBluetoothBatteryDevices)
+    }
+
+    func testNearbyBluetoothBatteryChoicePersists() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+
+        let first = SettingsStore(defaults: suite.defaults)
+        XCTAssertFalse(first.showsNearbyBluetoothBatteryDevices)
+        first.showsNearbyBluetoothBatteryDevices = true
+
+        XCTAssertTrue(SettingsStore(defaults: suite.defaults).showsNearbyBluetoothBatteryDevices)
+    }
+
     func testBluetoothAudioDisplaySettingsPersistAcrossStoreInstances() {
         let suite = makeSuite()
         defer { clear(suite) }

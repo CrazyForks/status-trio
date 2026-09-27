@@ -404,6 +404,7 @@ struct StatusPopoverView: View {
             BluetoothStatusView(
                 controller: store.bluetoothDevices,
                 showsBatteryLevels: settings.showsBluetoothBatteryLevels,
+                showsNearbyBatteryDevices: settings.showsNearbyBluetoothBatteryDevices,
                 listOptions: settings.bluetoothDeviceListOptions,
                 onRequestAuthorization: requestBluetoothAuthorization,
                 onOpenBluetoothSettings: openBluetoothSettings,
