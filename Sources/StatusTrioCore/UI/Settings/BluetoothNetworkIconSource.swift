@@ -10,6 +10,11 @@ enum BluetoothNetworkIconSource: Hashable, Identifiable {
     case audioDevices
     case device(address: String)
 
+    /// The glyph the audio entry draws and the row falls back to. Apple's
+    /// AirPods symbol is the one macOS itself uses for a Bluetooth audio
+    /// output, and it ships on every release the app supports.
+    static let audioDeviceSymbol = "airpodspro"
+
     var id: String {
         switch self {
         case .audioDevices:
