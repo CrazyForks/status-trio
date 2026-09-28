@@ -29,7 +29,7 @@ struct ChargingEffectRenderingTests {
         // same anchor and its pixels change too — that is the expected effect
         // of the fix, not a regression.
         let knownPlatformFingerprints = [
-            "4d795d40269a978007765c4d4d20922982b140207d34d7ddcaeb25368c9a5591", // macOS 26 CI, pre-#30 anchor
+            "9f0c892e2602f4d4f9c541be1d93963e14d46e76f3ef24b46cd2dfbc25a22d1d", // macOS 26 CI, artworkCenterX anchor
             "0ef6d483e344f6056fa3799f9f33bac0092246e3dbfbb3619a4666d7e9e9c190", // macOS 27 local, artworkCenterX anchor
         ]
         #expect(knownPlatformFingerprints.contains(fingerprint))
