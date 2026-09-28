@@ -4,9 +4,19 @@ import Foundation
 enum StatusIconGeometry {
     static let canvas = CGRect(x: 0, y: 0, width: 120, height: 120)
 
+    /// The x coordinate every element of the icon is centred on.
+    ///
+    /// This is deliberately **not** `canvas.midX`. The artwork is drawn on a
+    /// 119-unit-wide box: `status-menubar.svg` runs the battery arc from
+    /// `x = 15.5` to `x = 103.5`, so `(15.5 + 103.5) / 2 = 59.5`. The canvas is
+    /// 120 wide, making `canvas.midX = 60.0`. Anchoring anything to the canvas
+    /// midpoint instead of this constant shifts it half a unit right of all the
+    /// hand-drawn art, which is what shipped in 1.3.x and is issue #30.
+    static let artworkCenterX: CGFloat = 59.5
+
     // Derived from the SVG battery endpoints and radius.
     private static let batteryRadius: CGFloat = 51.5
-    private static let batteryCenter = CGPoint(x: 59.5, y: 61.48715261785473)
+    private static let batteryCenter = CGPoint(x: artworkCenterX, y: 61.48715261785473)
     private static let batteryStart: CGFloat = 148.69008689281117 * .pi / 180
     private static let batterySweep: CGFloat = 242.6198262143777 * .pi / 180
     static let batteryValueTopGapWidth: CGFloat = 64
@@ -42,12 +52,12 @@ enum StatusIconGeometry {
         let currentBaseline: CGFloat = 24
         let slope = (currentBaseline - referenceBaseline) / (currentFontSize - referenceFontSize)
         return CGPoint(
-            x: 59.5,
+            x: artworkCenterX,
             y: referenceBaseline + (fontSize - referenceFontSize) * slope
         )
     }
 
-    private static let wifiOuterCenter = CGPoint(x: 59.5, y: 78.3)
+    private static let wifiOuterCenter = CGPoint(x: artworkCenterX, y: 78.3)
     private static let wifiOuterRadius: CGFloat = 31
     private static let wifiOuterStart: CGFloat = 227.35 * .pi / 180
     private static let wifiOuterEnd: CGFloat = 312.65 * .pi / 180
@@ -234,12 +244,12 @@ enum StatusIconGeometry {
         return path.copy(using: &transform) ?? path
     }
 
-    static let batteryChargingBoltPivot = CGPoint(x: 59.5, y: 2.1)
+    static let batteryChargingBoltPivot = CGPoint(x: artworkCenterX, y: 2.1)
 
     static func wifiArcs(level: Int) -> [CGPath] {
         let bars = min(3, max(0, level))
         let middle = arc(
-            center: CGPoint(x: 59.5, y: 78.89),
+            center: CGPoint(x: artworkCenterX, y: 78.89),
             radius: 18.5,
             start: 227.5 * .pi / 180,
             end: 312.5 * .pi / 180
@@ -327,7 +337,7 @@ enum StatusIconGeometry {
     static func temporaryWedge() -> CGPath {
         let path = CGMutablePath()
         path.addPath(wifiOuterArc())
-        path.addLine(to: CGPoint(x: 59.5, y: 77.45))
+        path.addLine(to: CGPoint(x: artworkCenterX, y: 77.45))
         path.closeSubpath()
         return path
     }
@@ -362,7 +372,7 @@ enum StatusIconGeometry {
 
     static func sharedArrowCutout() -> CGPath {
         let path = CGMutablePath()
-        path.move(to: CGPoint(x: 59.5, y: 51.5))
+        path.move(to: CGPoint(x: artworkCenterX, y: 51.5))
         path.addLine(to: CGPoint(x: 67.5, y: 59.5))
         path.addLine(to: CGPoint(x: 63, y: 59.5))
         path.addLine(to: CGPoint(x: 63, y: 72.5))
@@ -375,13 +385,13 @@ enum StatusIconGeometry {
 
     static func wifiDot() -> CGPath {
         let path = CGMutablePath()
-        path.move(to: CGPoint(x: 59.5, y: 69.9))
+        path.move(to: CGPoint(x: artworkCenterX, y: 69.9))
         path.addCurve(to: CGPoint(x: 66.5, y: 73), control1: CGPoint(x: 61.0, y: 69.9), control2: CGPoint(x: 65.2, y: 70.8))
         path.addCurve(to: CGPoint(x: 66.5, y: 75), control1: CGPoint(x: 66.7, y: 73.8), control2: CGPoint(x: 66.7, y: 74.3))
-        path.addCurve(to: CGPoint(x: 59.5, y: 80.95), control1: CGPoint(x: 63.8, y: 78.8), control2: CGPoint(x: 61.15, y: 80.95))
+        path.addCurve(to: CGPoint(x: artworkCenterX, y: 80.95), control1: CGPoint(x: 63.8, y: 78.8), control2: CGPoint(x: 61.15, y: 80.95))
         path.addCurve(to: CGPoint(x: 52.5, y: 75), control1: CGPoint(x: 57.85, y: 80.95), control2: CGPoint(x: 55.2, y: 78.8))
         path.addCurve(to: CGPoint(x: 52.5, y: 73), control1: CGPoint(x: 52.3, y: 74.3), control2: CGPoint(x: 52.3, y: 73.8))
-        path.addCurve(to: CGPoint(x: 59.5, y: 69.9), control1: CGPoint(x: 53.8, y: 70.8), control2: CGPoint(x: 58.0, y: 69.9))
+        path.addCurve(to: CGPoint(x: artworkCenterX, y: 69.9), control1: CGPoint(x: 53.8, y: 70.8), control2: CGPoint(x: 58.0, y: 69.9))
         path.closeSubpath()
         return path
     }
@@ -395,8 +405,8 @@ enum StatusIconGeometry {
 
     static func noInternetOverlay() -> (stem: CGPath, dot: CGPath) {
         let stem = CGMutablePath()
-        stem.move(to: CGPoint(x: 59.5, y: 54.5))
-        stem.addLine(to: CGPoint(x: 59.5, y: 67))
+        stem.move(to: CGPoint(x: artworkCenterX, y: 54.5))
+        stem.addLine(to: CGPoint(x: artworkCenterX, y: 67))
 
         let dot = CGMutablePath()
         dot.addEllipse(in: CGRect(x: 56.9, y: 72.9, width: 5.2, height: 5.2))

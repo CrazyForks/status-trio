@@ -5,17 +5,12 @@ import CoreText
 enum StatusIconRenderer {
     static let centerSymbolBasePointSize: CGFloat = 38
 
+    /// Anchored to the artwork's centre, not the canvas midpoint: the vector
+    /// art is drawn on a 119-unit box centred at 59.5, so `canvas.midX` (60.0)
+    /// puts every SF Symbol half a unit right of it. See issue #30.
     private static let wifiSymbolCenter = CGPoint(
-        x: StatusIconGeometry.canvas.midX,
+        x: StatusIconGeometry.artworkCenterX,
         y: 64.0
-    )
-
-    // Keep the 7pt rounded Wi-Fi strokes fully inside the bitmap.
-    private static let wifiCanvasBounds = CGRect(
-        x: 31.5,
-        y: 34.4,
-        width: 56,
-        height: 56
     )
 
     /// Unified optical alpha for all inactive tracks (battery groove, Wi-Fi muted signal, volume hidden dots).

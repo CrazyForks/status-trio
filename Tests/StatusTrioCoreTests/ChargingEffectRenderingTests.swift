@@ -22,9 +22,15 @@ struct ChargingEffectRenderingTests {
         // CoreGraphics rasterizes a few edge pixels differently across the
         // supported macOS 26 CI runner and the macOS 27 local toolchain. Keep
         // both observed static baselines so other pixel changes still fail.
+        //
+        // These baselines were re-recorded for the #30 fix, which moved the
+        // Wi-Fi symbol from `canvas.midX` (60.0) to `artworkCenterX` (59.5).
+        // `staticSnapshot` reports `.off`, so it draws `wifi.slash` through the
+        // same anchor and its pixels change too — that is the expected effect
+        // of the fix, not a regression.
         let knownPlatformFingerprints = [
-            "4d795d40269a978007765c4d4d20922982b140207d34d7ddcaeb25368c9a5591", // macOS 26 CI
-            "224850873cf3d786d2fe246a1b1f15c092e34297dfb944832284b2fbf671bd74", // macOS 27 local
+            "4d795d40269a978007765c4d4d20922982b140207d34d7ddcaeb25368c9a5591", // macOS 26 CI, pre-#30 anchor
+            "0ef6d483e344f6056fa3799f9f33bac0092246e3dbfbb3619a4666d7e9e9c190", // macOS 27 local, artworkCenterX anchor
         ]
         #expect(knownPlatformFingerprints.contains(fingerprint))
     }
