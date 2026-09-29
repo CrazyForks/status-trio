@@ -54,6 +54,34 @@ final class DDCVolumePresentationTests: XCTestCase {
         monitor.stop()
     }
 
+    func testSameOutputRefreshKeepsDDCMuteDisabledWhenCoreAudioReportsMute() async {
+        let row = AudioOutputDevice(id: 42, name: "XV272U", uid: "DISPLAY-A", isCurrent: true)
+        let reader = MutableAudioStatusReader(reading: VolumeReading(
+            scalar: nil, isMuted: false, deviceName: "XV272U", currentDevice: row,
+            canSetVolume: false, canMute: false
+        ), devices: [row])
+        let commands = MuteCommandRecorder()
+        let monitor = VolumeMonitor(statusReader: reader, eventMonitor: PresentationVolumeEvents(),
+                                   outputController: commands, ddcTransport: PresentationDDCTransport())
+        monitor.start()
+        var iterator = monitor.updates.makeAsyncIterator()
+        _ = await iterator.next()
+        let confirmed = await iterator.next()
+        XCTAssertEqual(confirmed?.scalar, 0.75)
+
+        reader.reading = VolumeReading(scalar: nil, isMuted: true, deviceName: "XV272U",
+                                       currentDevice: row, canSetVolume: true, canMute: true)
+        monitor.refresh()
+        let refreshed = await iterator.next()
+
+        XCTAssertEqual(refreshed?.scalar, 0.75)
+        XCTAssertFalse(refreshed?.isMuted == true)
+        XCTAssertFalse(refreshed?.canMute == true)
+        monitor.toggleMute()
+        XCTAssertEqual(commands.muteCount, 0)
+        monitor.stop()
+    }
+
     func testReadableWritableCoreAudioScalarKeepsPriorityOverDDC() async {
         let row = AudioOutputDevice(id: 42, name: "Speakers", uid: "DISPLAY-A", isCurrent: true, volume: 0.5)
         let reader = FixedAudioStatusReader(reading: VolumeReading(
@@ -233,6 +261,14 @@ private final class CapabilityFakeVolumeMonitor: VolumeMonitoring, VolumeControl
     func setVolume(_ scalar: Double) {}
     func toggleMute() { toggleMuteCount += 1 }
     func selectOutputDevice(_ deviceID: AudioDeviceID) {}
+}
+
+@MainActor
+private final class MuteCommandRecorder: AudioOutputControlling {
+    private(set) var muteCount = 0
+    func setVolume(_ scalar: Double) -> Bool { true }
+    func toggleMute() -> Bool { muteCount += 1; return true }
+    func selectOutputDevice(_ deviceID: AudioDeviceID) -> Bool { true }
 }
 
 @MainActor

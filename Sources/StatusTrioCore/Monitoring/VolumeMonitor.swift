@@ -1109,14 +1109,14 @@ final class VolumeMonitor: VolumeMonitoring, VolumeControlling {
             }
             latestStatus = VolumeStatus(
                 scalar: hasWritableScalar ? reading.scalar : retainedDDCScalar,
-                isMuted: reading.isMuted,
+                isMuted: retainedDDCScalar == nil ? reading.isMuted : false,
                 deviceName: reading.deviceName,
                 currentDevice: retainedDDCScalar == nil
                     ? reading.currentDevice
                     : reading.currentDevice?.replacingVolume(retainedDDCScalar),
                 outputDevices: mergedDevices,
                 canSetVolume: hasWritableScalar || retainedDDCScalar != nil,
-                canMute: reading.canMute
+                canMute: retainedDDCScalar == nil ? reading.canMute : false
             )
         } else {
             invalidateDDCSelection()
