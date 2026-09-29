@@ -339,7 +339,17 @@ enum StatusIconRenderer {
             criticalColor: criticalColor,
             phase: phase
         )
-        if StatusMappings.shouldReplaceNetworkIcon(
+        if connectionOptions.showsBatteryPercentageInConnectionSlot,
+           menuBarStatus.battery.isPresent {
+            drawConnectionBatteryPercentage(
+                menuBarStatus.battery.percentage,
+                color: foreground,
+                in: context
+            )
+        } else if StatusMappings.shouldReplaceNetworkIcon(
+            // The device stays optional here: a picked symbol overrides the
+            // glyph even with no current audio output at all, so binding it in
+            // this condition would drop that case.
             currentDevice: menuBarStatus.volume.currentDevice,
             wifi: menuBarStatus.wifi,
             connection: menuBarStatus.connection,
@@ -661,6 +671,44 @@ enum StatusIconRenderer {
         context.setFillColor(color)
         context.textMatrix = CGAffineTransform(scaleX: 1, y: -1)
         context.textPosition = CGPoint(x: baseline.x - width / 2, y: baseline.y)
+        CTLineDraw(line, context)
+    }
+
+    /// Centre of the middle connection slot, which the Wi-Fi, Ethernet and
+    /// Bluetooth glyphs all share.
+    ///
+    /// `y` is not `wifiSymbolCenter.y`: the Wi-Fi glyph's dense strokes sit
+    /// below the geometric middle of the slot, so text drawn from a centred
+    /// baseline reads low against them.
+    private static let connectionSlotCenter = CGPoint(
+        x: StatusIconGeometry.artworkCenterX,
+        y: 87
+    )
+
+    /// Uses the middle connection position for a large, label-free percentage.
+    private static func drawConnectionBatteryPercentage(
+        _ percentage: Int,
+        color: CGColor,
+        in context: CGContext
+    ) {
+        let fontSize = centerSymbolBasePointSize
+        let font = batteryValueFont(size: fontSize)
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: font,
+            .kern: -fontSize * 0.04,
+            .foregroundColor: NSColor(cgColor: color) ?? .white
+        ]
+        let line = CTLineCreateWithAttributedString(
+            NSAttributedString(string: String(percentage), attributes: attributes)
+        )
+        let glyphBounds = CTLineGetBoundsWithOptions(line, [.useGlyphPathBounds])
+
+        context.setFillColor(color)
+        context.textMatrix = CGAffineTransform(scaleX: 1, y: -1)
+        context.textPosition = CGPoint(
+            x: connectionSlotCenter.x - glyphBounds.midX,
+            y: connectionSlotCenter.y - glyphBounds.midY
+        )
         CTLineDraw(line, context)
     }
 
