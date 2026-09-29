@@ -1154,7 +1154,7 @@ final class VolumeMonitor: VolumeMonitoring, VolumeControlling {
               update.uid == selectedDDCUID,
               update.generation == ddcCoordinator.generation else { return }
         if let pendingDDCVolume {
-            guard update.commandID == pendingDDCVolume.commandID else { return }
+            guard update.commandID == pendingDDCVolume.commandID || update.scalar == nil else { return }
             self.pendingDDCVolume = nil
         }
         ddcStatusGeneration = update.scalar == nil ? nil : update.generation

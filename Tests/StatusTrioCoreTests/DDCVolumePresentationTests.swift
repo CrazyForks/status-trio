@@ -174,6 +174,41 @@ final class DDCVolumePresentationTests: XCTestCase {
         monitor.stop()
     }
 
+    func testPendingDDCVolumeClearsOnSleepAndConfirmedVolumeReturnsAfterWake() async {
+        let row = AudioOutputDevice(id: 42, name: "XV272U", uid: "DISPLAY-A", isCurrent: true)
+        let reader = FixedAudioStatusReader(reading: VolumeReading(
+            scalar: nil, isMuted: false, deviceName: "XV272U", currentDevice: row,
+            canSetVolume: false, canMute: false
+        ), devices: [row])
+        let monitor = VolumeMonitor(statusReader: reader, eventMonitor: PresentationVolumeEvents(),
+                                   ddcTransport: PresentationDDCTransport())
+        let observation = PendingDDCVolumeObservation()
+        let observer = Task { @MainActor in
+            for await status in monitor.updates {
+                observation.receive(status)
+            }
+        }
+
+        monitor.start()
+        await fulfillment(of: [observation.initialConfirmation], timeout: 1)
+        monitor.setVolume(0.4)
+        await fulfillment(of: [observation.optimisticTarget], timeout: 1)
+
+        observation.expectSleep()
+        monitor.setDisplayAsleep(true)
+        await fulfillment(of: [observation.sleepClearsControl], timeout: 1)
+        XCTAssertNil(observation.statusOnSleep?.scalar)
+        XCTAssertFalse(observation.statusOnSleep?.canSetVolume == true)
+
+        observation.expectWake()
+        monitor.setDisplayAsleep(false)
+        await fulfillment(of: [observation.wakeConfirmsVolume], timeout: 1)
+        XCTAssertEqual(observation.statusAfterWake?.scalar, 0.75)
+        XCTAssertTrue(observation.statusAfterWake?.canSetVolume == true)
+        monitor.stop()
+        observer.cancel()
+    }
+
     func testTopologyChangeClearsConfirmedDDCVolumeAndSelectedRowImmediately() async {
         let row = AudioOutputDevice(id: 42, name: "XV272U", uid: "DISPLAY-A", isCurrent: true)
         let reader = FixedAudioStatusReader(reading: VolumeReading(
@@ -187,6 +222,11 @@ final class DDCVolumePresentationTests: XCTestCase {
         _ = await iterator.next()
         let confirmed = await iterator.next()
         XCTAssertEqual(confirmed?.scalar, 0.75)
+
+        monitor.setVolume(0.4)
+        let pending = await iterator.next()
+        XCTAssertEqual(pending?.scalar, 0.4)
+        XCTAssertTrue(pending?.canSetVolume == true)
 
         monitor.topologyChanged()
         let invalidated = await iterator.next()
@@ -339,6 +379,39 @@ private final class PresentationDDCTransport: DDCVolumeTransport {
     func resolve(uid: String) -> DDCDisplayTarget? { DDCDisplayTarget(uid: uid, service: nil) }
     func read(_ target: DDCDisplayTarget) -> DDCVolumeReply? { DDCVolumeReply(current: 75, maximum: 100) }
     func write(_ target: DDCDisplayTarget, value: UInt16) -> Bool { true }
+}
+
+@MainActor
+private final class PendingDDCVolumeObservation {
+    let initialConfirmation = XCTestExpectation(description: "initial DDC volume is confirmed")
+    let optimisticTarget = XCTestExpectation(description: "pending target is published")
+    let sleepClearsControl = XCTestExpectation(description: "sleep clears pending volume")
+    let wakeConfirmsVolume = XCTestExpectation(description: "wake reads DDC volume again")
+    private var receivedInitialConfirmation = false
+    private var didSleep = false
+    private var didWake = false
+    private(set) var statusOnSleep: VolumeStatus?
+    private(set) var statusAfterWake: VolumeStatus?
+
+    func expectSleep() { didSleep = true }
+    func expectWake() { didWake = true }
+
+    func receive(_ status: VolumeStatus) {
+        if status.scalar == 0.75 {
+            if !receivedInitialConfirmation {
+                receivedInitialConfirmation = true
+                initialConfirmation.fulfill()
+            } else if didWake {
+                statusAfterWake = status
+                wakeConfirmsVolume.fulfill()
+            }
+        }
+        if status.scalar == 0.4 { optimisticTarget.fulfill() }
+        if didSleep, status.scalar == nil {
+            statusOnSleep = status
+            sleepClearsControl.fulfill()
+        }
+    }
 }
 
 private final class FailingWritePresentationDDCTransport: DDCVolumeTransport {
