@@ -527,6 +527,19 @@ enum BluetoothPanelActivation {
     }
 }
 
+/// How a device row lays out its battery level.
+///
+/// The decision comes from the level data, never from the device's brand or
+/// model: any device macOS reports a component channel for — left, right, or
+/// charging case — gets its level on a second line, so true-wireless headphones
+/// from any vendor share the layout without a per-model check.
+enum BluetoothBatteryLayout: Equatable, Sendable {
+    /// The whole-device level shares the name's line.
+    case inline
+    /// Component levels get a line of their own under the name.
+    case components
+}
+
 enum BluetoothDevicePresentation {
     /// Connected devices first, then the paired but disconnected ones; inside each
     /// group AirPods lead and everything else follows in the system's name order.
@@ -547,6 +560,20 @@ enum BluetoothDevicePresentation {
         )
     }
 
+    /// The level the report carries for one device, looked up by the same
+    /// normalized address the reader keys its levels by.
+    ///
+    /// This is the single place that normalizes the device identifier for a
+    /// lookup, so the layout policy and the drawn segments cannot each grow their
+    /// own copy of the rule and drift apart.
+    static func batteryLevel(
+        for device: BluetoothDevice,
+        batteryLevels: [String: BluetoothBatteryLevel]
+    ) -> BluetoothBatteryLevel? {
+        let address = BluetoothBatteryReader.normalizedAddress(device.id)
+        return batteryLevels[address]
+    }
+
     /// The level for one detail row as the pieces the row draws, or nil when the
     /// report carries no level for that device.
     ///
@@ -559,7 +586,27 @@ enum BluetoothDevicePresentation {
         for device: BluetoothDevice,
         batteryLevels: [String: BluetoothBatteryLevel]
     ) -> [BluetoothBatterySegment]? {
-        let address = BluetoothBatteryReader.normalizedAddress(device.id)
-        return batteryLevels[address]?.segments
+        batteryLevel(for: device, batteryLevels: batteryLevels)?.segments
+    }
+
+    /// Which layout a device's row uses, decided by its level data alone.
+    ///
+    /// Any component channel routes the level to its own line. A single
+    /// component is enough: TWS data arrives incrementally, so a row that only
+    /// went two-line once two channels were present would jump between one and
+    /// two lines as a partner earbud or the case reported in. `main` plus a
+    /// component is also `.components`, because the component deserves the whole
+    /// second line regardless of the aggregate level the report also carries.
+    static func batteryLayout(
+        for device: BluetoothDevice,
+        batteryLevels: [String: BluetoothBatteryLevel]
+    ) -> BluetoothBatteryLayout {
+        guard let level = batteryLevel(for: device, batteryLevels: batteryLevels) else {
+            return .inline
+        }
+        if level.left != nil || level.right != nil || level.caseLevel != nil {
+            return .components
+        }
+        return .inline
     }
 }

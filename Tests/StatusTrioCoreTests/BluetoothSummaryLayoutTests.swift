@@ -58,12 +58,14 @@ final class BluetoothSummaryLayoutTests: XCTestCase {
         }
     }
 
-    /// A device row draws the level from the same pieces the summary line does,
-    /// so the charging case is one glyph wherever it appears — and it stays
-    /// inside the row's single line. The same list with no level to draw is the
-    /// control: a glyph that grew the line box, or a word that wrapped, would
-    /// make the two renders different heights.
-    func testDeviceRowsDrawTheChargingCaseAsAGlyphOnOneLine() async throws {
+    /// A component-battery device moves its levels onto a second line, while an
+    /// ordinary whole-device level stays inline. The charging case is still drawn
+    /// as a single glyph, so the second line is one caption line tall and no
+    /// more: the level-bearing list comes out exactly the one extra line taller
+    /// than the same list with nothing to draw, and the inline mouse row adds
+    /// nothing. A level that wrapped into two visual lines — a raw word, or a
+    /// glyph that broke the line — would push the delta well past one line.
+    func testComponentDeviceAddsOneLineWhileInlineDeviceStaysPut() async throws {
         let devices = [
             BluetoothDevice(id: "AA", name: "AirPods Pro", kind: .audio, isConnected: true),
             BluetoothDevice(id: "BB", name: "MX Master 3", kind: .peripheral(.mouse), isConnected: true)
@@ -93,11 +95,19 @@ final class BluetoothSummaryLayoutTests: XCTestCase {
         )
 
         XCTAssertEqual(levelsShown.width, 330, accuracy: 0.5)
-        XCTAssertEqual(
+        // Only the component row grows the list; the inline row keeps its height.
+        XCTAssertGreaterThan(
             levelsShown.height,
             levelsHidden.height,
+            "a component device's levels have to take their own line"
+        )
+        // One extra caption line — the delta `BluetoothDeviceRowMetrics` models as
+        // componentHeight - inlineHeight — and not the runaway of a wrapped run.
+        XCTAssertEqual(
+            levelsShown.height - levelsHidden.height,
+            BluetoothDeviceRowMetrics.componentHeight - BluetoothDeviceRowMetrics.inlineHeight,
             accuracy: 1,
-            "the charging-case glyph has to stay inside the row's one line"
+            "the second line is exactly one line tall; the level must not wrap"
         )
     }
 
