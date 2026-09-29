@@ -348,6 +348,8 @@ final class SystemStatusStore: ObservableObject {
         volumeController != nil && liveVolume.canSetVolume
     }
 
+    var isVolumeControllerAvailable: Bool { volumeController != nil }
+
     func setVolume(_ scalar: Double) {
         guard !hasStopped,
               volumeController != nil,

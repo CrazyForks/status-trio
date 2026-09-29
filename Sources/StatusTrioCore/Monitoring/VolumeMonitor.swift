@@ -846,6 +846,7 @@ final class VolumeMonitor: VolumeMonitoring, VolumeControlling {
     private var screenObserver: NSObjectProtocol?
     private var selectedDDCOutputID: AudioDeviceID?
     private var selectedDDCUID: String?
+    private var ddcStatusGeneration: UInt64?
 
     init(
         statusReader: any AudioStatusReadingProviding = CoreAudioStatusReader(),
@@ -895,7 +896,7 @@ final class VolumeMonitor: VolumeMonitoring, VolumeControlling {
         screenObserver = NotificationCenter.default.addObserver(
             forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main
         ) { [weak self] _ in
-            Task { @MainActor [weak self] in self?.ddcCoordinator.topologyChanged() }
+            Task { @MainActor [weak self] in self?.topologyChanged() }
         }
 
         eventMonitor.start(
@@ -949,7 +950,10 @@ final class VolumeMonitor: VolumeMonitoring, VolumeControlling {
     }
 
     func setDisplayAsleep(_ asleep: Bool) { ddcCoordinator.setDisplayAsleep(asleep) }
-    func topologyChanged() { ddcCoordinator.topologyChanged() }
+    func topologyChanged() {
+        clearDDCStatus()
+        ddcCoordinator.topologyChanged()
+    }
 
     func refresh() {
         performRefresh(includeOutputDevices: detailsVisible)
@@ -1083,32 +1087,40 @@ final class VolumeMonitor: VolumeMonitoring, VolumeControlling {
                 devices = cachedOutputDevices
             }
 
-            latestStatus = VolumeStatus(
-                scalar: reading.scalar,
-                isMuted: reading.isMuted,
-                deviceName: reading.deviceName,
-                currentDevice: reading.currentDevice,
-                outputDevices: devices,
-                canSetVolume: reading.canSetVolume,
-                canMute: reading.canMute
-            )
-            if !reading.canSetVolume, let current = reading.currentDevice {
+            let hasWritableScalar = reading.scalar != nil && reading.canSetVolume
+            var retainedDDCScalar: Double?
+            if !hasWritableScalar, let current = reading.currentDevice {
                 if selectedDDCOutputID != current.id || selectedDDCUID != current.uid {
                     selectedDDCOutputID = current.id
                     selectedDDCUID = current.uid
+                    ddcStatusGeneration = nil
                     ddcCoordinator.select(outputID: current.id, uid: current.uid)
+                } else if ddcStatusGeneration == ddcCoordinator.generation {
+                    retainedDDCScalar = latestStatus.scalar
                 }
             } else {
-                if let selectedDDCOutputID {
-                    ddcCoordinator.select(outputID: selectedDDCOutputID, uid: nil)
-                }
-                selectedDDCOutputID = nil
-                selectedDDCUID = nil
+                invalidateDDCSelection()
             }
+
+            var mergedDevices = devices
+            if let selectedDDCOutputID, let retainedDDCScalar,
+               let row = mergedDevices.firstIndex(where: { $0.isCurrent && $0.id == selectedDDCOutputID }) {
+                mergedDevices[row] = mergedDevices[row].replacingVolume(retainedDDCScalar)
+            }
+            latestStatus = VolumeStatus(
+                scalar: hasWritableScalar ? reading.scalar : retainedDDCScalar,
+                isMuted: reading.isMuted,
+                deviceName: reading.deviceName,
+                currentDevice: retainedDDCScalar == nil
+                    ? reading.currentDevice
+                    : reading.currentDevice?.replacingVolume(retainedDDCScalar),
+                outputDevices: mergedDevices,
+                canSetVolume: hasWritableScalar || retainedDDCScalar != nil,
+                canMute: reading.canMute
+            )
         } else {
+            invalidateDDCSelection()
             latestStatus = .placeholder
-            selectedDDCOutputID = nil
-            selectedDDCUID = nil
         }
         continuation.yield(latestStatus)
     }
@@ -1119,6 +1131,7 @@ final class VolumeMonitor: VolumeMonitoring, VolumeControlling {
         guard update.outputID == selectedDDCOutputID,
               update.uid == selectedDDCUID,
               update.generation == ddcCoordinator.generation else { return }
+        ddcStatusGeneration = update.scalar == nil ? nil : update.generation
         var devices = latestStatus.outputDevices
         if let index = devices.firstIndex(where: { $0.isCurrent && $0.id == update.outputID }) {
             devices[index] = devices[index].replacingVolume(update.scalar)
@@ -1137,14 +1150,35 @@ final class VolumeMonitor: VolumeMonitoring, VolumeControlling {
 
     private func clearVolumeForDeviceTransition() {
         guard latestStatus.scalar != nil || latestStatus.currentDevice != nil else { return }
+        invalidateDDCSelection()
+        latestStatus = VolumeStatus(
+            scalar: nil, isMuted: false, deviceName: nil,
+            outputDevices: latestStatus.outputDevices, canSetVolume: false, canMute: false
+        )
+        continuation.yield(latestStatus)
+    }
+
+    private func invalidateDDCSelection() {
         if let selectedDDCOutputID {
             ddcCoordinator.select(outputID: selectedDDCOutputID, uid: nil)
         }
         selectedDDCOutputID = nil
         selectedDDCUID = nil
+        ddcStatusGeneration = nil
+    }
+
+    private func clearDDCStatus() {
+        guard selectedDDCUID != nil else { return }
+        ddcStatusGeneration = nil
+        var devices = latestStatus.outputDevices
+        if let id = selectedDDCOutputID,
+           let index = devices.firstIndex(where: { $0.isCurrent && $0.id == id }) {
+            devices[index] = devices[index].replacingVolume(nil)
+        }
         latestStatus = VolumeStatus(
-            scalar: nil, isMuted: false, deviceName: nil,
-            outputDevices: latestStatus.outputDevices, canSetVolume: false, canMute: false
+            scalar: nil, isMuted: false, deviceName: latestStatus.deviceName,
+            currentDevice: latestStatus.currentDevice?.replacingVolume(nil),
+            outputDevices: devices, canSetVolume: false, canMute: false
         )
         continuation.yield(latestStatus)
     }
