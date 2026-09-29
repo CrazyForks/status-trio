@@ -17,6 +17,7 @@ final class DDCVolumeCoordinator {
     private let sleep: Sleep
     private let onUpdate: @MainActor (DDCVolumeUpdate) -> Void
     private let debounce: Duration
+    private let readWatchdog: Duration
     private var outputID: AudioDeviceID?
     private var uid: String?
     private(set) var generation: UInt64 = 0
@@ -24,18 +25,24 @@ final class DDCVolumeCoordinator {
     private var displayAsleep = false
     private var stopped = false
     private var timerTask: Task<Void, Never>?
+    private var watchdogTask: Task<Void, Never>?
     private var debounceTask: Task<Void, Never>?
     private var pendingVolume: Double?
     private var failures = 0
+    private var readInFlight = false
+    private var refreshQueued = false
+    private var readToken: UInt64 = 0
 
     init(
         transport: DDCVolumeTransport = DDCDisplayTransport(),
         debounce: Duration = .milliseconds(150),
+        readWatchdog: Duration = .seconds(2),
         sleep: @escaping Sleep = { try await Task.sleep(for: $0) },
         onUpdate: @escaping @MainActor (DDCVolumeUpdate) -> Void
     ) {
         self.worker = DDCWorker(transport: transport)
         self.debounce = debounce
+        self.readWatchdog = readWatchdog
         self.sleep = sleep
         self.onUpdate = onUpdate
     }
@@ -76,8 +83,18 @@ final class DDCVolumeCoordinator {
         guard !stopped, displayAsleep != asleep else { return }
         displayAsleep = asleep
         timerTask?.cancel()
-        if asleep { emit(nil) }
-        else if outputID != nil, uid != nil { refresh() }
+        generation &+= 1
+        pendingVolume = nil
+        debounceTask?.cancel()
+        watchdogTask?.cancel()
+        refreshQueued = false
+        worker.setIdentity(outputID: asleep ? nil : outputID, uid: asleep ? nil : uid, generation: generation)
+        if asleep {
+            worker.invalidateTarget()
+            emit(nil)
+        } else if outputID != nil, uid != nil {
+            refresh()
+        }
     }
 
     func setVolume(_ scalar: Double) {
@@ -110,9 +127,27 @@ final class DDCVolumeCoordinator {
     func refresh() {
         guard !stopped, !displayAsleep, let outputID, let uid, !uid.isEmpty else { return }
         timerTask?.cancel()
+        guard !readInFlight else {
+            refreshQueued = true
+            scheduleWatchdog(request: readToken, outputID: outputID, uid: uid, generation: generation)
+            return
+        }
+        readInFlight = true
+        refreshQueued = false
+        readToken &+= 1
+        let request = readToken
         let token = generation
+        scheduleWatchdog(request: request, outputID: outputID, uid: uid, generation: token)
         worker.read(outputID: outputID, uid: uid, generation: token) { [weak self] reply in
-            guard let self, self.accepts(outputID: outputID, uid: uid, generation: token) else { return }
+            guard let self, self.readToken == request else { return }
+            self.readInFlight = false
+            self.watchdogTask?.cancel()
+            if self.refreshQueued && !self.stopped && !self.displayAsleep {
+                self.refreshQueued = false
+                self.refresh()
+                return
+            }
+            guard self.accepts(outputID: outputID, uid: uid, generation: token) else { return }
             if let reply {
                 self.failures = 0
                 self.onUpdate(DDCVolumeUpdate(outputID: outputID, uid: uid, generation: token, scalar: reply.scalar))
@@ -129,9 +164,23 @@ final class DDCVolumeCoordinator {
         stopped = true
         generation &+= 1
         timerTask?.cancel()
+        watchdogTask?.cancel()
         debounceTask?.cancel()
         pendingVolume = nil
+        refreshQueued = false
         worker.setIdentity(outputID: nil, uid: nil, generation: generation)
+    }
+
+    private func scheduleWatchdog(request: UInt64, outputID: AudioDeviceID, uid: String, generation: UInt64) {
+        watchdogTask?.cancel()
+        let sleep = self.sleep
+        let interval = readWatchdog
+        watchdogTask = Task { [weak self] in
+            do { try await sleep(interval) } catch { return }
+            guard !Task.isCancelled, let self, self.readToken == request,
+                  self.readInFlight, self.accepts(outputID: outputID, uid: uid, generation: generation) else { return }
+            self.emit(nil)
+        }
     }
 
     private func nextFailureInterval() -> Duration {

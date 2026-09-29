@@ -23,3 +23,26 @@ Verification:
 - Selection, topology generation changes, sleep, and stop suppress stale callbacks. Debounced writes retain only the latest scalar and are canceled on identity change.
 - Timer and callback seams are injectable. The fake transport gates a read to exercise late-generation suppression and serial access.
 - This task introduces actor-isolated code; the repo guidance requires a non-publishing release workflow before merge/publish. No workflow was dispatched because this task is a local commit for parent review, not a merge or publish.
+
+## Review round 1 fixes
+
+Updated `Sources/StatusTrioCore/Audio/DDCVolumeCoordinator.swift`:
+
+- Display sleep now advances the generation, clears and cancels pending slider work, cancels the read watchdog and poll timer, and clears the worker identity. Wake establishes a new identity and queues a fresh read. Any write queued with the earlier token fails the worker's identity check.
+- Read requests are tracked one at a time. Additional refresh requests are coalesced while the current physical read is running. A separately timed watchdog emits an unavailable (`scalar: nil`) update for the active identity after two seconds by default; it never starts a second transport operation. A read queued behind an older blocked operation gets a watchdog for the new generation too.
+- Completion handling releases the in-flight slot even when the result belongs to a stale generation, then starts a queued current-generation read when appropriate. Topology changes therefore cannot strand coordinator state behind a late callback.
+
+Reworked `Tests/StatusTrioCoreTests/DDCVolumeCoordinatorTests.swift`:
+
+- The gated transport protects all mutable fake state with its lock, tracks resolution and read overlap, and can block individual reads.
+- The manual clock now removes canceled continuations and can release an exact interval. Async waits report XCTest failures on timeout instead of silently continuing.
+- Tests verify actual worker reads and generation-matched callbacks across wake, same-UID topology re-resolution, queued write rejection after sleep/stop/topology changes, stale pre-sleep read suppression, a stalled read becoming unavailable without overlapping I2C, visible and hidden polling periods, backoff and success reset, the exact 150 ms debounce, and immediate `flushPendingVolume()`.
+
+Commands and outputs:
+
+- `swift test --filter DDCVolumeCoordinatorTests` — passed, 11 tests, 0 failures.
+- `git diff --check` — passed, no output.
+- `swift test` — passed, 387 tests in 64 suites.
+- `swift build -c release` — passed, `Build complete!`.
+
+The read watchdog is configurable for deterministic tests; production default is 2 seconds. A timed-out physical operation remains on the one serial worker until the transport returns, so status becomes unavailable without risking overlapping I2C requests.
