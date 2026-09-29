@@ -175,7 +175,7 @@ final class VolumeMonitorAsyncTests: XCTestCase {
     }
 
     func testCommandsDiscardOlderReadAndDebounceOwnsSingleFollowUp() async {
-        for command in AudioCommand.allCases {
+        for command in AudioCommand.allCases.filter({ $0 != .toggleMute }) {
             let reader = DeferredAudioStatusReader()
             let controller = RecordingAudioCommands()
             let sleeper = ManualEventSleeper()
@@ -204,6 +204,17 @@ final class VolumeMonitorAsyncTests: XCTestCase {
             let end = await iterator.next()
             XCTAssertNil(end, "A read from before the command must never be published")
         }
+    }
+
+    func testToggleMuteWithoutCapabilityDoesNotCallController() {
+        let reader = DeferredAudioStatusReader()
+        let controller = RecordingAudioCommands()
+        let monitor = makeMonitor(reader: reader, controller: controller)
+        monitor.start()
+        monitor.toggleMute()
+        XCTAssertTrue(controller.commands.isEmpty)
+        XCTAssertEqual(reader.requests, [true])
+        monitor.stop()
     }
 
     func testPendingEnumerationUpgradeSurvivesADebouncedLevelRefresh() async {

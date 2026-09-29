@@ -202,6 +202,7 @@ final class SystemStatusStore: ObservableObject {
                 // over-polling is the safe direction, permanent staleness is
                 // not.
                 self.isDisplayAsleep = false
+                self.volumeMonitor.setDisplayAsleep(false)
                 self.displayAsleepSkipCount = 0
                 self.recoverAll()
                 self.refreshAll()
@@ -215,6 +216,7 @@ final class SystemStatusStore: ObservableObject {
         ) { [weak self] _ in
             Task { @MainActor [weak self] in
                 self?.isDisplayAsleep = true
+                self?.volumeMonitor.setDisplayAsleep(true)
             }
         }
 
@@ -226,6 +228,7 @@ final class SystemStatusStore: ObservableObject {
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 self.isDisplayAsleep = false
+                self.volumeMonitor.setDisplayAsleep(false)
                 self.displayAsleepSkipCount = 0
                 self.recoverAll()
                 self.refreshAll()
@@ -342,12 +345,13 @@ final class SystemStatusStore: ObservableObject {
     }
 
     var isVolumeControlAvailable: Bool {
-        volumeController != nil && liveVolume.scalar != nil
+        volumeController != nil && liveVolume.canSetVolume
     }
 
     func setVolume(_ scalar: Double) {
         guard !hasStopped,
               volumeController != nil,
+              liveVolume.canSetVolume,
               scalar.isFinite else {
             return
         }
@@ -365,10 +369,12 @@ final class SystemStatusStore: ObservableObject {
         }
     }
 
+    func finishVolumeAdjustment() { volumeController?.flushPendingVolume() }
+
     func toggleMute() {
         guard !hasStopped,
               volumeController != nil,
-              liveVolume.scalar != nil else {
+              liveVolume.canMute else {
             return
         }
         liveVolume = liveVolume.replacingMuted(!liveVolume.isMuted)
@@ -791,7 +797,8 @@ private extension VolumeStatus {
             isMuted: isMuted,
             deviceName: deviceName,
             currentDevice: currentDevice,
-            outputDevices: outputDevices
+            outputDevices: outputDevices,
+            canSetVolume: canSetVolume, canMute: canMute
         )
     }
 
@@ -801,7 +808,8 @@ private extension VolumeStatus {
             isMuted: isMuted,
             deviceName: deviceName,
             currentDevice: currentDevice,
-            outputDevices: outputDevices
+            outputDevices: outputDevices,
+            canSetVolume: canSetVolume, canMute: canMute
         )
     }
 }

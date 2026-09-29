@@ -44,4 +44,9 @@ struct AudioOutputDevice: Identifiable, Hashable, Sendable {
     var isBluetoothAudio: Bool {
         transport?.isBluetooth == true
     }
+
+    func replacingVolume(_ volume: Double?) -> AudioOutputDevice {
+        AudioOutputDevice(id: id, name: name, uid: uid, isCurrent: isCurrent, volume: volume,
+                          transport: transport, dataSource: dataSource, iconURL: iconURL, modelUID: modelUID)
+    }
 }

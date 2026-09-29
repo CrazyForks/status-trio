@@ -417,6 +417,7 @@ struct StatusPopoverView: View {
                 volume: store.liveVolume,
                 isEnabled: store.isVolumeControlAvailable,
                 onVolumeChange: { store.setVolume($0) },
+                onVolumeEditingEnded: { store.finishVolumeAdjustment() },
                 onToggleMute: { store.toggleMute() },
                 onSelectOutputDevice: { store.selectOutputDevice($0) },
                 onOpenSoundSettings: openSoundSettings

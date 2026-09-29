@@ -238,6 +238,7 @@ final class VolumeMonitorTests: XCTestCase {
 
         reader.result = makeReading(scalar: 0.75)
         eventMonitor.sendDefaultDeviceChange()
+        _ = await iterator.next() // The old level clears while the new output is read.
         let status = await iterator.next()
 
         XCTAssertEqual(status?.scalar, 0.75)
@@ -484,7 +485,9 @@ final class VolumeMonitorTests: XCTestCase {
                     id: 42,
                     name: "USB Headset",
                     isCurrent: true
-                )
+                ),
+                canSetVolume: true,
+                canMute: true
             )
         )
     }
@@ -532,6 +535,21 @@ final class VolumeMonitorTests: XCTestCase {
         client.float32Values[client.propertyKey(objectID: 42, selector: kAudioDevicePropertyVolumeScalar, element: 4)] = 0.8
 
         XCTAssertEqual(CoreAudioVolumeReader(client: client).read()?.scalar ?? -1, 0.6, accuracy: 0.0001)
+    }
+
+    func testReaderIgnoresReadableButUnsettableVolumeScalar() {
+        let client = FakeCoreAudioClient()
+        client.configureDevice(42, scalar: 0.6, isMuted: true, name: "Display", uid: "DISPLAY-A")
+        client.settableProperties = client.settableProperties.filter {
+            $0.selector != kAudioDevicePropertyVolumeScalar && $0.selector != kAudioDevicePropertyMute
+        }
+
+        let reading = CoreAudioVolumeReader(client: client).read()
+
+        XCTAssertNil(reading?.scalar)
+        XCTAssertFalse(reading?.canSetVolume == true)
+        XCTAssertFalse(reading?.canMute == true)
+        XCTAssertTrue(reading?.isMuted == true, "Mute state remains readable even without mute write capability")
     }
 
     func testReaderUsesMuteValueFromFourthOutputChannel() {
@@ -1035,6 +1053,7 @@ private final class FakeCoreAudioClient: CoreAudioClient {
     var deviceClasses: [AudioDeviceID: AudioClassID] = [:]
     var aliveDevices: Set<AudioDeviceID> = []
     var availableProperties: Set<CoreAudioPropertyKey> = []
+    var settableProperties: Set<CoreAudioPropertyKey> = []
     var uint32Values: [CoreAudioPropertyKey: UInt32] = [:]
     var float32Values: [CoreAudioPropertyKey: Float32] = [:]
     var stringValues: [CoreAudioPropertyKey: String] = [:]
@@ -1097,6 +1116,8 @@ private final class FakeCoreAudioClient: CoreAudioClient {
             )
             availableProperties.insert(volumeKey)
             availableProperties.insert(muteKey)
+            settableProperties.insert(volumeKey)
+            settableProperties.insert(muteKey)
             if let scalar {
                 float32Values[volumeKey] = scalar
             }
@@ -1302,6 +1323,11 @@ private final class FakeCoreAudioClient: CoreAudioClient {
             scope: scope,
             element: element
         ))
+    }
+
+    func isPropertySettable(objectID: AudioObjectID, selector: AudioObjectPropertySelector,
+                            scope: AudioObjectPropertyScope, element: AudioObjectPropertyElement) -> Bool {
+        settableProperties.contains(propertyKey(objectID: objectID, selector: selector, scope: scope, element: element))
     }
 
     func addListener(

@@ -51,9 +51,13 @@ protocol VolumeMonitoring: AnyObject {
     func refresh()
     func recover()
     func setDetailsVisible(_ visible: Bool)
+    func setDisplayAsleep(_ asleep: Bool)
+    func topologyChanged()
 }
 
 @MainActor
 extension VolumeMonitoring {
     func setDetailsVisible(_ visible: Bool) {}
+    func setDisplayAsleep(_ asleep: Bool) {}
+    func topologyChanged() {}
 }
