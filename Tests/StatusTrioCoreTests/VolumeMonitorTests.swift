@@ -4,6 +4,19 @@ import XCTest
 
 @MainActor
 final class VolumeMonitorTests: XCTestCase {
+    func testFakeCoreAudioClientReportsConfiguredOutputChannelCount() {
+        let client = FakeCoreAudioClient()
+        client.configureDevice(
+            42,
+            scalar: nil,
+            isMuted: false,
+            name: "Four-channel output",
+            outputChannelElements: [1, 2, 3, 4]
+        )
+
+        XCTAssertEqual(client.outputChannelElements(deviceID: 42), [1, 2, 3, 4])
+    }
+
     func testSlowSnapshotDoesNotBlockMainActor() async {
         let started = expectation(description: "system read started")
         let blockedRead = BlockingAudioRead(onStart: { started.fulfill() })
@@ -818,6 +831,7 @@ private final class FakeCoreAudioClient: CoreAudioClient {
     var float32Values: [CoreAudioPropertyKey: Float32] = [:]
     var stringValues: [CoreAudioPropertyKey: String] = [:]
     var urlValues: [CoreAudioPropertyKey: URL] = [:]
+    var outputChannelsByDevice: [AudioDeviceID: [AudioObjectPropertyElement]] = [:]
     private(set) var deviceClassReadCount = 0
     private(set) var alivenessReadCount = 0
     private(set) var addAttempts: [ListenerOperation] = []
@@ -853,11 +867,13 @@ private final class FakeCoreAudioClient: CoreAudioClient {
         transport: UInt32? = nil,
         dataSource: UInt32? = nil,
         iconURL: URL? = nil,
+        outputChannelElements: [AudioObjectPropertyElement] = [1, 2],
         supportedElements: [AudioObjectPropertyElement] = CoreAudioVolumeReader.outputElements
     ) {
         defaultDeviceID = deviceID
         deviceClasses[deviceID] = kAudioDeviceClassID
         aliveDevices.insert(deviceID)
+        outputChannelsByDevice[deviceID] = outputChannelElements
 
         for element in supportedElements {
             let volumeKey = propertyKey(
@@ -971,6 +987,10 @@ private final class FakeCoreAudioClient: CoreAudioClient {
 
     func defaultOutputDevice() -> AudioDeviceID? {
         defaultDeviceID
+    }
+
+    func outputChannelElements(deviceID: AudioDeviceID) -> [AudioObjectPropertyElement] {
+        outputChannelsByDevice[deviceID] ?? [1, 2]
     }
 
     func deviceClass(of deviceID: AudioDeviceID) -> AudioClassID? {

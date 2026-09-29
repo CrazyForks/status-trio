@@ -32,6 +32,7 @@ protocol VolumeReadingProviding: AnyObject {
 
 protocol CoreAudioClient: AnyObject {
     func defaultOutputDevice() -> AudioDeviceID?
+    func outputChannelElements(deviceID: AudioDeviceID) -> [AudioObjectPropertyElement]
     func deviceClass(of deviceID: AudioDeviceID) -> AudioClassID?
     func isDeviceAlive(_ deviceID: AudioDeviceID) -> Bool
 
@@ -122,6 +123,10 @@ final class CoreAudioSystemClient: CoreAudioClient {
             deviceID != kAudioObjectUnknown
         else { return nil }
         return deviceID
+    }
+
+    func outputChannelElements(deviceID: AudioDeviceID) -> [AudioObjectPropertyElement] {
+        CoreAudioOutputChannelElements.channels(for: deviceID)
     }
 
     func deviceClass(of deviceID: AudioDeviceID) -> AudioClassID? {
