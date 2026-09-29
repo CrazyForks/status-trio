@@ -6,6 +6,7 @@ struct DDCVolumeUpdate: Sendable {
     let uid: String
     let generation: UInt64
     let scalar: Double?
+    let commandID: UInt64?
 }
 
 /// Serializes all display discovery and I2C operations away from the main actor.
@@ -30,9 +31,12 @@ final class DDCVolumeCoordinator {
     private var watchdogTask: Task<Void, Never>?
     private var debounceTask: Task<Void, Never>?
     private var pendingVolume: Double?
+    private var pendingVolumeCommandID: UInt64?
+    private var nextVolumeCommandID: UInt64 = 0
     private var failures = 0
     private var readInFlight = false
     private var refreshQueued = false
+    private var refreshQueuedCommandID: UInt64?
     private var readToken: UInt64 = 0
 
     init(
@@ -60,7 +64,9 @@ final class DDCVolumeCoordinator {
         self.outputID = outputID
         self.uid = uid
         pendingVolume = nil
+        pendingVolumeCommandID = nil
         debounceTask?.cancel()
+        refreshQueuedCommandID = nil
         worker.setIdentity(outputID: outputID, uid: uid, generation: generation)
         timerTask?.cancel()
         guard let uid, !uid.isEmpty, !displayAsleep else { emit(nil); return }
@@ -71,7 +77,9 @@ final class DDCVolumeCoordinator {
         guard !stopped else { return }
         generation &+= 1
         pendingVolume = nil
+        pendingVolumeCommandID = nil
         debounceTask?.cancel()
+        refreshQueuedCommandID = nil
         worker.setIdentity(outputID: outputID, uid: uid, generation: generation)
         worker.invalidateTarget()
         timerTask?.cancel()
@@ -92,9 +100,11 @@ final class DDCVolumeCoordinator {
         timerTask?.cancel()
         generation &+= 1
         pendingVolume = nil
+        pendingVolumeCommandID = nil
         debounceTask?.cancel()
         watchdogTask?.cancel()
         refreshQueued = false
+        refreshQueuedCommandID = nil
         worker.setIdentity(outputID: asleep ? nil : outputID, uid: asleep ? nil : uid, generation: generation)
         if asleep {
             worker.invalidateTarget()
@@ -104,9 +114,13 @@ final class DDCVolumeCoordinator {
         }
     }
 
-    func setVolume(_ scalar: Double) {
-        guard !stopped, !displayAsleep, uid != nil, scalar.isFinite else { return }
+    @discardableResult
+    func setVolume(_ scalar: Double) -> UInt64? {
+        guard !stopped, !displayAsleep, uid != nil, scalar.isFinite else { return nil }
+        nextVolumeCommandID &+= 1
+        let commandID = nextVolumeCommandID
         pendingVolume = min(1, max(0, scalar))
+        pendingVolumeCommandID = commandID
         debounceTask?.cancel()
         let delay = debounce
         let sleep = self.sleep
@@ -122,36 +136,48 @@ final class DDCVolumeCoordinator {
             self?.flushPendingVolume()
             self?.onDebounceSettled()
         }
+        return commandID
     }
 
     func flushPendingVolume() {
         guard !stopped, !displayAsleep, let scalar = pendingVolume,
+              let commandID = pendingVolumeCommandID,
               let outputID, let uid else { return }
         pendingVolume = nil
+        pendingVolumeCommandID = nil
         debounceTask?.cancel()
         let token = generation
         worker.write(scalar: scalar, outputID: outputID, uid: uid, generation: token) { [weak self] succeeded in
             guard let self else { return }
             guard self.accepts(outputID: outputID, uid: uid, generation: token) else { return }
-            if succeeded { self.refresh() }
-            else { self.emit(nil); self.schedulePoll(after: self.nextFailureInterval()) }
+            if succeeded { self.refresh(confirming: commandID) }
+            else { self.emit(nil, commandID: commandID); self.schedulePoll(after: self.nextFailureInterval()) }
         }
     }
 
-    func refresh() {
+    func refresh() { refresh(confirming: nil) }
+
+    private func refresh(confirming commandID: UInt64?) {
         guard !stopped, !displayAsleep, let outputID, let uid, !uid.isEmpty else { return }
         timerTask?.cancel()
         guard !readInFlight else {
             refreshQueued = true
-            scheduleWatchdog(request: readToken, outputID: outputID, uid: uid, generation: generation)
+            if let commandID { refreshQueuedCommandID = commandID }
+            scheduleWatchdog(request: readToken, outputID: outputID, uid: uid, generation: generation,
+                             commandID: commandID)
             return
         }
+        startRead(outputID: outputID, uid: uid, confirming: commandID)
+    }
+
+    private func startRead(outputID: AudioDeviceID, uid: String, confirming commandID: UInt64?) {
         readInFlight = true
         refreshQueued = false
         readToken &+= 1
         let request = readToken
         let token = generation
-        scheduleWatchdog(request: request, outputID: outputID, uid: uid, generation: token)
+        scheduleWatchdog(request: request, outputID: outputID, uid: uid, generation: token,
+                         commandID: commandID)
         worker.read(outputID: outputID, uid: uid, generation: token) { [weak self] reply in
             guard let self else { return }
             self.onReadCompletion(outputID, uid, token)
@@ -160,16 +186,19 @@ final class DDCVolumeCoordinator {
             self.watchdogTask?.cancel()
             if self.refreshQueued && !self.stopped && !self.displayAsleep {
                 self.refreshQueued = false
-                self.refresh()
+                let confirmingCommandID = self.refreshQueuedCommandID
+                self.refreshQueuedCommandID = nil
+                guard let currentOutputID = self.outputID, let currentUID = self.uid else { return }
+                self.startRead(outputID: currentOutputID, uid: currentUID, confirming: confirmingCommandID)
                 return
             }
             guard self.accepts(outputID: outputID, uid: uid, generation: token) else { return }
             if let reply {
                 self.failures = 0
-                self.onUpdate(DDCVolumeUpdate(outputID: outputID, uid: uid, generation: token, scalar: reply.scalar))
+                self.onUpdate(DDCVolumeUpdate(outputID: outputID, uid: uid, generation: token, scalar: reply.scalar, commandID: commandID))
                 self.schedulePoll(after: self.detailsVisible ? .seconds(2) : .seconds(10))
             } else {
-                self.emit(nil)
+                self.emit(nil, commandID: commandID)
                 self.schedulePoll(after: self.nextFailureInterval())
             }
         }
@@ -189,11 +218,14 @@ final class DDCVolumeCoordinator {
         watchdogTask?.cancel()
         debounceTask?.cancel()
         pendingVolume = nil
+        pendingVolumeCommandID = nil
         refreshQueued = false
+        refreshQueuedCommandID = nil
         worker.setIdentity(outputID: nil, uid: nil, generation: generation)
     }
 
-    private func scheduleWatchdog(request: UInt64, outputID: AudioDeviceID, uid: String, generation: UInt64) {
+    private func scheduleWatchdog(request: UInt64, outputID: AudioDeviceID, uid: String, generation: UInt64,
+                                  commandID: UInt64? = nil) {
         watchdogTask?.cancel()
         let sleep = self.sleep
         let interval = readWatchdog
@@ -201,7 +233,7 @@ final class DDCVolumeCoordinator {
             do { try await sleep(interval) } catch { return }
             guard !Task.isCancelled, let self, self.readToken == request,
                   self.readInFlight, self.accepts(outputID: outputID, uid: uid, generation: generation) else { return }
-            self.emit(nil)
+            self.emit(nil, commandID: commandID)
         }
     }
 
@@ -226,9 +258,9 @@ final class DDCVolumeCoordinator {
         !stopped && !displayAsleep && self.outputID == outputID && self.uid == uid && self.generation == generation
     }
 
-    private func emit(_ scalar: Double?) {
+    private func emit(_ scalar: Double?, commandID: UInt64? = nil) {
         guard let outputID, let uid else { return }
-        onUpdate(DDCVolumeUpdate(outputID: outputID, uid: uid, generation: generation, scalar: scalar))
+        onUpdate(DDCVolumeUpdate(outputID: outputID, uid: uid, generation: generation, scalar: scalar, commandID: commandID))
     }
 }
 

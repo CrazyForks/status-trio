@@ -847,6 +847,7 @@ final class VolumeMonitor: VolumeMonitoring, VolumeControlling {
     private var selectedDDCOutputID: AudioDeviceID?
     private var selectedDDCUID: String?
     private var ddcStatusGeneration: UInt64?
+    private var pendingDDCVolume: (commandID: UInt64, scalar: Double)?
 
     init(
         statusReader: any AudioStatusReadingProviding = CoreAudioStatusReader(),
@@ -961,8 +962,28 @@ final class VolumeMonitor: VolumeMonitoring, VolumeControlling {
 
     func setVolume(_ scalar: Double) {
         guard lifecycle != .stopped else { return }
-        if selectedDDCUID != nil { ddcCoordinator.setVolume(scalar) }
-        else { _ = outputController?.setVolume(scalar) }
+        if selectedDDCUID != nil {
+            guard let commandID = ddcCoordinator.setVolume(scalar) else { return }
+            let target = min(1, max(0, scalar))
+            pendingDDCVolume = (commandID, target)
+            var devices = latestStatus.outputDevices
+            if let selectedDDCOutputID,
+               let index = devices.firstIndex(where: { $0.isCurrent && $0.id == selectedDDCOutputID }) {
+                devices[index] = devices[index].replacingVolume(target)
+            }
+            latestStatus = VolumeStatus(
+                scalar: target,
+                isMuted: false,
+                deviceName: latestStatus.deviceName,
+                currentDevice: latestStatus.currentDevice?.replacingVolume(target),
+                outputDevices: devices,
+                canSetVolume: true,
+                canMute: false
+            )
+            continuation.yield(latestStatus)
+            return
+        }
+        _ = outputController?.setVolume(scalar)
         scheduleRefresh()
     }
 
@@ -1094,6 +1115,7 @@ final class VolumeMonitor: VolumeMonitoring, VolumeControlling {
                     selectedDDCOutputID = current.id
                     selectedDDCUID = current.uid
                     ddcStatusGeneration = nil
+                    pendingDDCVolume = nil
                     ddcCoordinator.select(outputID: current.id, uid: current.uid)
                 } else if ddcStatusGeneration == ddcCoordinator.generation {
                     retainedDDCScalar = latestStatus.scalar
@@ -1131,6 +1153,10 @@ final class VolumeMonitor: VolumeMonitoring, VolumeControlling {
         guard update.outputID == selectedDDCOutputID,
               update.uid == selectedDDCUID,
               update.generation == ddcCoordinator.generation else { return }
+        if let pendingDDCVolume {
+            guard update.commandID == pendingDDCVolume.commandID else { return }
+            self.pendingDDCVolume = nil
+        }
         ddcStatusGeneration = update.scalar == nil ? nil : update.generation
         var devices = latestStatus.outputDevices
         if let index = devices.firstIndex(where: { $0.isCurrent && $0.id == update.outputID }) {
@@ -1165,11 +1191,13 @@ final class VolumeMonitor: VolumeMonitoring, VolumeControlling {
         selectedDDCOutputID = nil
         selectedDDCUID = nil
         ddcStatusGeneration = nil
+        pendingDDCVolume = nil
     }
 
     private func clearDDCStatus() {
         guard selectedDDCUID != nil else { return }
         ddcStatusGeneration = nil
+        pendingDDCVolume = nil
         var devices = latestStatus.outputDevices
         if let id = selectedDDCOutputID,
            let index = devices.firstIndex(where: { $0.isCurrent && $0.id == id }) {
