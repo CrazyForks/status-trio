@@ -115,6 +115,206 @@ final class BluetoothDeviceRowLayoutTests: XCTestCase {
         XCTAssertEqual(connecting.spinners, 1, "the in-flight row must draw its spinner")
     }
 
+    /// An ordinary whole-device level is drawn inline, on the name's line, so a
+    /// mouse or keyboard with a single percentage stays exactly as tall as the same
+    /// device with nothing to draw. This is the regression guard for every device
+    /// that is not a component-battery one.
+    func testAnInlineLevelKeepsTheRowHeightUnchanged() async throws {
+        let device = rowDevice(name: "MX Keys")
+
+        let plain = try await renderRow(language: .english, device: device)
+        let inlineLevel = try await renderRow(
+            language: .english,
+            device: device,
+            batteryLevels: levels(main: 84)
+        )
+
+        XCTAssertEqual(
+            inlineLevel.size.height,
+            plain.size.height,
+            accuracy: 1,
+            "a single whole-device level must share the name's line, not add one"
+        )
+    }
+
+    /// A component device moves its levels to a second line and is therefore
+    /// taller than an inline row — by exactly the one line the height model
+    /// budgets, so the list can trust it.
+    func testAComponentRowIsTallerThanAnInlineRow() async throws {
+        let device = rowDevice(name: "Ling's AirPods Pro")
+
+        let inlineRow = try await renderRow(language: .english, device: device)
+        let componentRow = try await renderRow(
+            language: .english,
+            device: device,
+            batteryLevels: levels(left: 85, right: 80, caseLevel: 70)
+        )
+
+        XCTAssertGreaterThan(
+            componentRow.size.height,
+            inlineRow.size.height,
+            "component levels have to take their own line"
+        )
+        XCTAssertEqual(
+            componentRow.size.height - inlineRow.size.height,
+            BluetoothDeviceRowMetrics.componentHeight - BluetoothDeviceRowMetrics.inlineHeight,
+            accuracy: 1,
+            "the second line is one line tall"
+        )
+    }
+
+    /// A single component channel is enough for the second line. This pins the
+    /// rule against a future change back to `channelCount >= 2`: a lone earbud
+    /// reporting only `left` mid-connection must not flip the row between one and
+    /// two lines as its partner reports in.
+    func testASingleComponentChannelStillUsesTheComponentRow() async throws {
+        let device = rowDevice(name: "Sony WF-1000XM6")
+
+        let inlineRow = try await renderRow(language: .english, device: device)
+        let leftOnly = try await renderRow(
+            language: .english,
+            device: device,
+            batteryLevels: levels(left: 85)
+        )
+        let full = try await renderRow(
+            language: .english,
+            device: device,
+            batteryLevels: levels(left: 85, right: 80, caseLevel: 70)
+        )
+
+        XCTAssertGreaterThan(
+            leftOnly.size.height,
+            inlineRow.size.height,
+            "one component channel still takes the component row"
+        )
+        XCTAssertEqual(
+            leftOnly.size.height,
+            full.size.height,
+            accuracy: 1,
+            "a lone earbud sits at the same two-line height as a full set"
+        )
+    }
+
+    /// With the level on its own line the name gets the whole width back: a long
+    /// name truncates on the first line rather than wrapping or crowding the
+    /// battery out. The row stays at the two-line component height a short name
+    /// produces, and the battery still adds exactly one line over an inline row of
+    /// the same long name — proof the level was neither pushed off nor wrapped.
+    func testALongNameTruncatesWithoutPushingTheBatteryAway() async throws {
+        let longName = "EDIFIER LolliPods 2022版 Ultra Long Device Name"
+        let device = rowDevice(name: longName)
+
+        let shortComponent = try await renderRow(
+            language: .english,
+            device: rowDevice(name: "Air"),
+            batteryLevels: levels(left: 85, right: 80, caseLevel: 70)
+        )
+        let longInline = try await renderRow(language: .english, device: device)
+        let longComponent = try await renderRow(
+            language: .english,
+            device: device,
+            batteryLevels: levels(left: 85, right: 80, caseLevel: 70)
+        )
+
+        XCTAssertEqual(
+            longComponent.size.height,
+            shortComponent.size.height,
+            accuracy: 1,
+            "a long name must truncate, not wrap, and keep the two-line height"
+        )
+        XCTAssertEqual(
+            longComponent.size.height - longInline.size.height,
+            BluetoothDeviceRowMetrics.componentHeight - BluetoothDeviceRowMetrics.inlineHeight,
+            accuracy: 1,
+            "the battery keeps its own line even beside a truncated name"
+        )
+    }
+
+    /// A component device that is mid-action still lays out its levels on the
+    /// second line: the spinner lives on the name's line, so the row neither grows
+    /// nor loses its battery line, and it draws exactly one spinner.
+    func testAConnectingComponentRowStaysTwoLinesAndSpinsOnce() async throws {
+        let device = rowDevice(name: "AirPods Pro", isConnected: false)
+
+        let resting = try await renderRow(
+            language: .english,
+            device: device,
+            batteryLevels: levels(left: 85, right: 80, caseLevel: 70)
+        )
+        let connecting = try await renderRow(
+            language: .english,
+            device: device,
+            batteryLevels: levels(left: 85, right: 80, caseLevel: 70),
+            actionState: .connecting
+        )
+
+        XCTAssertEqual(
+            connecting.size.height,
+            resting.size.height,
+            accuracy: 1,
+            "an action in flight must not disturb the component row's two lines"
+        )
+        XCTAssertEqual(connecting.spinners, 1, "the in-flight component row draws one spinner")
+    }
+
+    /// The disconnect confirmation is a temporary operation state that needs the
+    /// whole horizontal width, so it stays on one line even for a component
+    /// device: the row collapses to the same single-line confirmation height an
+    /// ordinary device produces, and it still renders both Disconnect and Cancel.
+    func testTheConfirmationCollapsesAComponentRowToOneLine() async throws {
+        let device = rowDevice(name: "AirPods Pro")
+
+        let ordinaryConfirmation = try await renderRow(
+            language: .english,
+            device: device,
+            isConfirmingDisconnect: true
+        )
+        let componentConfirmation = try await renderRow(
+            language: .english,
+            device: device,
+            batteryLevels: levels(left: 85, right: 80, caseLevel: 70),
+            isConfirmingDisconnect: true
+        )
+
+        XCTAssertEqual(
+            componentConfirmation.size.height,
+            ordinaryConfirmation.size.height,
+            accuracy: 1,
+            "a confirming component device collapses to the single-line confirmation height"
+        )
+        XCTAssertEqual(
+            componentConfirmation.controls.count,
+            2,
+            "the confirming component row still renders Disconnect and Cancel"
+        )
+    }
+
+    private func rowDevice(name: String, isConnected: Bool = true) -> BluetoothDevice {
+        BluetoothDevice(
+            id: "AA:00:00:00:00:01",
+            name: name,
+            kind: .audio,
+            isConnected: isConnected
+        )
+    }
+
+    private func levels(
+        main: Int? = nil,
+        left: Int? = nil,
+        right: Int? = nil,
+        caseLevel: Int? = nil
+    ) -> [String: BluetoothBatteryLevel] {
+        [
+            BluetoothBatteryReader.normalizedAddress("AA:00:00:00:00:01"): BluetoothBatteryLevel(
+                deviceAddress: "AA:00:00:00:00:01",
+                main: main,
+                left: left,
+                right: right,
+                caseLevel: caseLevel
+            )
+        ]
+    }
+
     /// One rendered row, as the test can ask about it.
     private struct RenderedRow {
         /// The size the row asks the panel for.

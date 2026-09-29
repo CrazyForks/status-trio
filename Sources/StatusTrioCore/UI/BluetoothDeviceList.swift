@@ -26,12 +26,11 @@ struct BluetoothDeviceList: View {
     /// own bound so the two lists in the panel stop at the same place.
     static let maximumRowsHeight: CGFloat = 330
 
-    /// How tall one row is: the badge sets its height, because the name is a
-    /// single line and never taller. The list can therefore tell whether it needs
-    /// a scroll view at all without measuring anything.
+    /// The gap between two rows. The rows themselves are not all one height — an
+    /// inline row is a single line and a component row adds a second for its
+    /// levels — so the list can no longer multiply a fixed pitch by the device
+    /// count. `estimatedContentHeight` adds each row's own height up instead.
     private static let rowSpacing: CGFloat = 2
-    private static let rowPitch = BluetoothPanelMetrics.iconColumnWidth + rowSpacing
-    private static var rowsThatFit: Int { Int(maximumRowsHeight / rowPitch) }
 
     var body: some View {
         let model = BluetoothDeviceListModel.make(
@@ -89,12 +88,27 @@ struct BluetoothDeviceList: View {
     /// the volume.
     @ViewBuilder
     private func rows(_ visibleDevices: [BluetoothDevice]) -> some View {
-        if visibleDevices.count > Self.rowsThatFit {
+        if estimatedContentHeight(for: visibleDevices) > Self.maximumRowsHeight {
             ScrollView { rowStack(visibleDevices) }
                 .frame(maxHeight: Self.maximumRowsHeight)
         } else {
             rowStack(visibleDevices)
         }
+    }
+
+    /// How tall the given rows come to: each row's own estimated height, plus the
+    /// spacing between them. This is what decides whether the list scrolls, so a
+    /// device set of component rows — taller than the count-based model assumed —
+    /// reaches the bound at the right row, not several rows too late.
+    private func estimatedContentHeight(for visibleDevices: [BluetoothDevice]) -> CGFloat {
+        guard !visibleDevices.isEmpty else { return 0 }
+        let rowHeights = visibleDevices.reduce(CGFloat(0)) { total, device in
+            total + BluetoothDeviceRowMetrics.estimatedHeight(
+                for: device,
+                batteryLevels: batteryLevels
+            )
+        }
+        return rowHeights + Self.rowSpacing * CGFloat(visibleDevices.count - 1)
     }
 
     private func rowStack(_ visibleDevices: [BluetoothDevice]) -> some View {

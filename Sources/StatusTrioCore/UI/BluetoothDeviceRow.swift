@@ -49,18 +49,15 @@ struct BluetoothDeviceRow: View {
             .accessibilityElement(children: .contain)
         } else {
             Button(action: { handleTap() }) {
-                HStack(spacing: BluetoothPanelMetrics.iconTextSpacing) {
-                    badge
-                    name
-                    Spacer(minLength: 8)
-                    batteryText
-                    if status.drawsText {
-                        statusText(status)
-                    } else if device.isConnected {
-                        connectedMark
-                    }
+                switch BluetoothDevicePresentation.batteryLayout(
+                    for: device,
+                    batteryLevels: batteryLevels
+                ) {
+                case .inline:
+                    inlineContent(status)
+                case .components:
+                    componentContent(status)
                 }
-                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .disabled(isActionInFlight)
@@ -70,6 +67,62 @@ struct BluetoothDeviceRow: View {
             // screen reader still hears whether the device is connected.
             .accessibilityValue(rowAccessibilityValue)
             .accessibilityHint(actionHelp)
+        }
+    }
+
+    /// The ordinary single-line row: the whole-device level, if any, sits at the
+    /// trailing end of the name's line. A device with no component channels uses
+    /// this unchanged, so ordinary Bluetooth devices cannot regress.
+    private func inlineContent(_ status: BluetoothDeviceRowStatus) -> some View {
+        HStack(spacing: BluetoothPanelMetrics.iconTextSpacing) {
+            badge
+            name
+
+            Spacer(minLength: 8)
+
+            batteryText
+
+            trailingStatus(status)
+        }
+        .contentShape(Rectangle())
+    }
+
+    /// The two-line row a component-battery device gets. The badge owns the icon
+    /// column and the whole height; the name and the component levels stack in the
+    /// middle, the levels starting under the name rather than under the badge. The
+    /// trailing status sits beside that stack, so — like the badge — it is centred
+    /// on the whole row rather than pinned to the name's line. The level never
+    /// competes with the name for width.
+    private func componentContent(_ status: BluetoothDeviceRowStatus) -> some View {
+        HStack(alignment: .center, spacing: BluetoothPanelMetrics.iconTextSpacing) {
+            badge
+
+            VStack(alignment: .leading, spacing: BluetoothPanelMetrics.componentBatteryLineSpacing) {
+                name
+                batteryText
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            trailingStatus(status)
+        }
+        .contentShape(Rectangle())
+        // Only this row gets the extra bottom room; inline rows and the list's
+        // global spacing stay as compact as they are.
+        .padding(.bottom, BluetoothPanelMetrics.componentRowBottomPadding)
+    }
+
+    /// The row's trailing edge. A state the row has to say in words (an action in
+    /// flight, a failure) takes precedence; otherwise a connected device gets the
+    /// checkmark and a disconnected one nothing. Both layouts place this at the
+    /// trailing edge, vertically centred on the row: connection is the device's
+    /// primary state, and on a two-line row it belongs to the whole device, not to
+    /// the name's line alone.
+    @ViewBuilder
+    private func trailingStatus(_ status: BluetoothDeviceRowStatus) -> some View {
+        if status.drawsText {
+            statusText(status)
+        } else if device.isConnected {
+            connectedMark
         }
     }
 

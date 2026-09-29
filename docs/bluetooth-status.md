@@ -295,6 +295,18 @@ report carries one for that device
 device macOS cannot read stays silent instead of repeating a placeholder on
 every line.
 
+A paired device with only a whole-device battery level keeps that level on the
+same line as its name. When macOS reports a component level — left, right, or
+charging case — the row places those levels on a second line, so the name gets
+its width back instead of trading it against `L 85% · R 80% · Case 70%`. The
+decision is based on the battery data rather than the device brand or model
+(`BluetoothDevicePresentation.batteryLayout(for:batteryLevels:)`), so any
+true-wireless headphones that report component levels use the same layout, and a
+renamed AirPods is laid out no differently from one still carrying its name. A
+single component channel is enough to take the second line: waiting until two or
+more are present would make a row jump between one and two lines as the partner
+earbud and the case report in, so the layout is fixed by data, not by count.
+
 A report that could not be read is a different state from a report without
 levels, so `BluetoothBatteryReading.read(completion:)` answers with an optional
 dictionary: `nil` is a failed read, `[:]` is a successful read that carries
@@ -341,7 +353,11 @@ group can push every disconnected device out of the panel — the expansion
 control holds the rest.
 
 The rows stop at 330 points and scroll inside the panel beyond that, the same
-bound the Wi-Fi list uses. The summary popover has no scroll view of its own, so
+bound the Wi-Fi list uses. Whether they overflow it is decided by the summed
+height, not the device count: the list adds each row's own estimated height
+(`BluetoothDeviceRowMetrics.estimatedHeight(for:batteryLevels:)`), so a
+component-battery row counts for its two lines rather than the one an inline row
+occupies. The summary popover has no scroll view of its own, so
 without it an expanded list — or a limit the user raised to 20 — would keep
 growing the popover past the screen. The scroll view appears only past that
 bound: a list that fits is laid out directly, because a scroll view that is not
