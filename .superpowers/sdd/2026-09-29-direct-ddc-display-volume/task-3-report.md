@@ -65,3 +65,20 @@ Commands and outputs for this round:
 - `git diff --check` — passed, no output.
 - `swift test` — passed, 387 tests in 64 suites.
 - `swift build -c release` — passed, `Build complete!`.
+
+## Review round 3 fixes
+
+Added explicit MainActor acknowledgments to the coordinator's read-completion and debounce-task seams. Lifecycle tests now wait for these acknowledgments directly instead of treating a serial worker barrier as proof that independently scheduled MainActor tasks have run.
+
+Updated `Tests/StatusTrioCoreTests/DDCVolumeCoordinatorTests.swift`:
+
+- `testStopAndTopologyChangeInvalidateQueuedWrites` waits for the blocked read's old-generation completion acknowledgment. For topology, it also waits for the new-generation read completion and verifies the complete published update list contains only the current generation. The stop case confirms its acknowledged completion published no status update.
+- `testSleepCancelsDebouncedWriteBeforeWake` waits for the canceled debounce task to acknowledge termination, wakes and observes a fresh read, advances the manual clock by 150 ms, and verifies no write occurred.
+- The manual clock's `advance(by:)` gives the cancellation check an explicit post-wake clock advance.
+
+Commands and outputs for this round:
+
+- `swift test --filter DDCVolumeCoordinatorTests` — passed, 12 tests, 0 failures.
+- `git diff --check` — passed, no output.
+- `swift test` — passed, 387 tests in 64 suites.
+- `swift build -c release` — passed, `Build complete!`.

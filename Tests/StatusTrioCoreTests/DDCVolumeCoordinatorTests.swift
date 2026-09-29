@@ -178,15 +178,21 @@ final class DDCVolumeCoordinatorTests: XCTestCase {
         let clock = ManualDDCClock()
         let transport = FakeDDCTransport()
         transport.reply = DDCVolumeReply(current: 20, maximum: 100)
-        let coordinator = DDCVolumeCoordinator(transport: transport, sleep: { try await clock.sleep($0) }) { _ in }
+        var debounceSettledCount = 0
+        let coordinator = DDCVolumeCoordinator(
+            transport: transport,
+            onDebounceSettled: { debounceSettledCount += 1 },
+            sleep: { try await clock.sleep($0) }
+        ) { _ in }
         coordinator.select(outputID: 93, uid: "DISPLAY-A")
         await waitUntil("initial read") { transport.readCount == 1 }
         coordinator.setVolume(0.8)
         await waitForClock(clock, .milliseconds(150), "pending debounce")
         coordinator.setDisplayAsleep(true)
         coordinator.setDisplayAsleep(false)
+        await waitUntil("canceled debounce task acknowledges completion") { debounceSettledCount == 1 }
         await waitUntil("wake read") { transport.readCount >= 2 }
-        await clock.release(.milliseconds(150))
+        await clock.advance(by: .milliseconds(150))
         await coordinator.waitForWorkerIdle()
         XCTAssertTrue(transport.writeValues.isEmpty, "Advancing the canceled pre-sleep debounce after wake must not write")
         coordinator.stop()
@@ -199,19 +205,33 @@ final class DDCVolumeCoordinatorTests: XCTestCase {
             transport.reply = DDCVolumeReply(current: 20, maximum: 100)
             transport.blockNextRead()
             var updates: [DDCVolumeUpdate] = []
-            let coordinator = DDCVolumeCoordinator(transport: transport, readWatchdog: .seconds(30)) { updates.append($0) }
+            var readCompletions: [UInt64] = []
+            let coordinator = DDCVolumeCoordinator(
+                transport: transport,
+                readWatchdog: .seconds(30),
+                onReadCompletion: { _, _, generation in readCompletions.append(generation) }
+            ) { updates.append($0) }
             coordinator.select(outputID: 93, uid: "DISPLAY-A")
             await waitUntil("blocked read for \(action)") { transport.blockedReadCount == 1 }
+            let oldGeneration = coordinator.generation
             coordinator.setVolume(0.8)
             coordinator.flushPendingVolume()
             if action == "stop" { coordinator.stop() } else { coordinator.topologyChanged() }
+            let currentGeneration = coordinator.generation
             transport.releaseBlockedRead()
-            await coordinator.waitForWorkerIdle()
-            if action == "topology" {
-                await waitUntil("topology refresh callback") { updates.contains { $0.generation == coordinator.generation && $0.scalar == 0.2 } }
+            if action == "stop" {
+                await waitUntil("stopped read completion acknowledgment") { readCompletions.contains(oldGeneration) }
+                XCTAssertTrue(updates.isEmpty, "Stop must suppress the released read callback")
+            } else {
+                await waitUntil("topology refresh and stale completion acknowledgments") {
+                    readCompletions.contains(oldGeneration)
+                        && readCompletions.contains(currentGeneration)
+                        && updates.contains { $0.generation == currentGeneration && $0.scalar == 0.2 }
+                }
+                XCTAssertEqual(updates.map(\.generation), [currentGeneration], "No stale-generation topology update may be published")
             }
-            XCTAssertTrue(transport.writeValues.isEmpty, "Queued write must be invalidated by \(action) after queue drain")
-            if action == "stop" { XCTAssertTrue(updates.isEmpty, "Stop must suppress the released read callback") }
+            await coordinator.waitForWorkerIdle()
+            XCTAssertTrue(transport.writeValues.isEmpty, "Queued write must be invalidated by \(action) after completion acknowledgment")
             coordinator.stop()
             await coordinator.waitForWorkerIdle()
         }
@@ -379,6 +399,10 @@ private actor ManualDDCClock {
             try? await Task.sleep(for: .milliseconds(5))
         }
         return recordedDurations.contains(duration)
+    }
+
+    func advance(by duration: Duration) {
+        release(duration)
     }
 
     func release(_ duration: Duration) {

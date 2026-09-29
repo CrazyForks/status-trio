@@ -18,6 +18,8 @@ final class DDCVolumeCoordinator {
     private let onUpdate: @MainActor (DDCVolumeUpdate) -> Void
     private let debounce: Duration
     private let readWatchdog: Duration
+    private let onReadCompletion: @MainActor (AudioDeviceID, String, UInt64) -> Void
+    private let onDebounceSettled: @MainActor () -> Void
     private var outputID: AudioDeviceID?
     private var uid: String?
     private(set) var generation: UInt64 = 0
@@ -38,12 +40,16 @@ final class DDCVolumeCoordinator {
         debounce: Duration = .milliseconds(150),
         readWatchdog: Duration = .seconds(2),
         beforeReadValidation: @escaping @Sendable () -> Void = {},
+        onReadCompletion: @escaping @MainActor (AudioDeviceID, String, UInt64) -> Void = { _, _, _ in },
+        onDebounceSettled: @escaping @MainActor () -> Void = {},
         sleep: @escaping Sleep = { try await Task.sleep(for: $0) },
         onUpdate: @escaping @MainActor (DDCVolumeUpdate) -> Void
     ) {
         self.worker = DDCWorker(transport: transport, beforeReadValidation: beforeReadValidation)
         self.debounce = debounce
         self.readWatchdog = readWatchdog
+        self.onReadCompletion = onReadCompletion
+        self.onDebounceSettled = onDebounceSettled
         self.sleep = sleep
         self.onUpdate = onUpdate
     }
@@ -105,9 +111,16 @@ final class DDCVolumeCoordinator {
         let delay = debounce
         let sleep = self.sleep
         debounceTask = Task { [weak self] in
-            do { try await sleep(delay) } catch { return }
-            guard !Task.isCancelled else { return }
+            do { try await sleep(delay) } catch {
+                self?.onDebounceSettled()
+                return
+            }
+            guard !Task.isCancelled else {
+                self?.onDebounceSettled()
+                return
+            }
             self?.flushPendingVolume()
+            self?.onDebounceSettled()
         }
     }
 
@@ -140,7 +153,9 @@ final class DDCVolumeCoordinator {
         let token = generation
         scheduleWatchdog(request: request, outputID: outputID, uid: uid, generation: token)
         worker.read(outputID: outputID, uid: uid, generation: token) { [weak self] reply in
-            guard let self, self.readToken == request else { return }
+            guard let self else { return }
+            self.onReadCompletion(outputID, uid, token)
+            guard self.readToken == request else { return }
             self.readInFlight = false
             self.watchdogTask?.cancel()
             if self.refreshQueued && !self.stopped && !self.displayAsleep {
