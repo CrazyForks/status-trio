@@ -832,6 +832,25 @@ final class SystemStatusStoreTests: XCTestCase {
         store.stop()
     }
 
+    func testMuteToggleWithoutMuteCapabilityDoesNotMutateOrCallController() async {
+        let volume = FakeVolumeMonitor()
+        let store = SystemStatusStore(
+            batteryMonitor: FakeBatteryMonitor(), wifiMonitor: FakeWiFiMonitor(),
+            volumeMonitor: volume, refreshInterval: .seconds(60)
+        )
+        store.start()
+        let status = VolumeStatus(scalar: 0.75, isMuted: false, deviceName: "XV272U",
+                                  canSetVolume: true, canMute: false)
+        volume.send(status)
+        await waitUntil { store.liveVolume == status }
+
+        store.toggleMute()
+
+        XCTAssertEqual(store.liveVolume, status)
+        XCTAssertEqual(volume.toggleMuteCount, 0)
+        store.stop()
+    }
+
     func testSetVolumePreservesCurrentOutputDevice() async {
         let volume = FakeVolumeMonitor()
         let store = SystemStatusStore(

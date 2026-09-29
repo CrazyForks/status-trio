@@ -5,8 +5,9 @@ struct VolumeControlsView: View {
     @ObservedObject var settings: SettingsStore
     let scrollTargets: PopoverScrollTargets
     let volume: VolumeStatus
-    let isEnabled: Bool
+    let isControllerAvailable: Bool
     let onVolumeChange: (Double) -> Void
+    var onVolumeEditingEnded: () -> Void = {}
     let onToggleMute: () -> Void
     let onSelectOutputDevice: (AudioOutputDevice) -> Void
     let onOpenSoundSettings: () -> Void
@@ -41,7 +42,7 @@ struct VolumeControlsView: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .disabled(!isEnabled)
+                .disabled(!isControllerAvailable || !volume.canMute)
                 .help(volume.isMuted ? localization.string(.volumeUnmuted) : localization.string(.volumeMuted))
                 .accessibilityLabel(volume.isMuted ? localization.string(.volumeUnmuted) : localization.string(.volumeMuted))
 
@@ -51,7 +52,7 @@ struct VolumeControlsView: View {
                     onEditingChanged: { handleVolumeEditing($0) }
                 )
                 .tint(volume.isMuted ? Color.secondary : Color.accentColor)
-                .disabled(!isEnabled)
+                .disabled(!isControllerAvailable || !volume.canSetVolume)
                 .accessibilityLabel(localization.string(.volumeAccessibilityLabel))
                 .accessibilityValue(percentageText)
                 .padding(.horizontal, 2)
@@ -111,6 +112,7 @@ struct VolumeControlsView: View {
 
     private func handleVolumeEditing(_ isEditing: Bool) {
         isAdjusting = isEditing
+        if !isEditing { onVolumeEditingEnded() }
     }
 
     private func updateVolume(_ newValue: Double) {

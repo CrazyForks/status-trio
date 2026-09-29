@@ -62,7 +62,7 @@ final class CoreAudioOutputController: AudioOutputControlling {
         )
 
         if !didSetVolume {
-            for element in audioVolumeChannelElements(deviceID: deviceID) {
+            for element in CoreAudioOutputChannelElements.channels(for: deviceID) {
                 if setScalarProperty(
                     volume,
                     objectID: deviceID,
@@ -121,7 +121,7 @@ final class CoreAudioOutputController: AudioOutputControlling {
         )
 
         if !didSetMute {
-            for element in audioVolumeChannelElements(deviceID: deviceID) {
+            for element in CoreAudioOutputChannelElements.channels(for: deviceID) {
                 if setUInt32Property(
                     value,
                     objectID: deviceID,
@@ -138,7 +138,7 @@ final class CoreAudioOutputController: AudioOutputControlling {
     }
 
     private func isMuted(for deviceID: AudioDeviceID) -> Bool {
-        for element in [kAudioObjectPropertyElementMain] + audioVolumeChannelElements(deviceID: deviceID) {
+        for element in CoreAudioOutputChannelElements.all(for: deviceID) {
             guard let value = readUInt32Property(
                 objectID: deviceID,
                 selector: kAudioDevicePropertyMute,
@@ -320,22 +320,27 @@ final class CoreAudioOutputController: AudioOutputControlling {
             selector: kAudioDevicePropertyVolumeScalar,
             scope: kAudioObjectPropertyScopeOutput,
             element: kAudioObjectPropertyElementMain
-        ) {
+        ), isValidVolumeScalar(masterVolume) {
             return Double(masterVolume)
         }
 
-        let channelVolumes = audioVolumeChannelElements(deviceID: deviceID).compactMap { element in
-            readFloat32Property(
+        let channelVolumes = CoreAudioOutputChannelElements.channels(for: deviceID).compactMap { element -> Float32? in
+            guard let value = readFloat32Property(
                 objectID: deviceID,
                 selector: kAudioDevicePropertyVolumeScalar,
                 scope: kAudioObjectPropertyScopeOutput,
                 element: element
-            )
+            ), isValidVolumeScalar(value) else { return nil }
+            return value
         }
 
         guard !channelVolumes.isEmpty else { return nil }
         let total = channelVolumes.reduce(Float32(0), +)
         return Double(total / Float32(channelVolumes.count))
+    }
+
+    nonisolated private func isValidVolumeScalar(_ value: Float32) -> Bool {
+        value.isFinite && (0...1).contains(value)
     }
 
     nonisolated private func readFloat32Property(
@@ -419,56 +424,6 @@ final class CoreAudioOutputController: AudioOutputControlling {
         var isSettable = DarwinBoolean(false)
         return AudioObjectIsPropertySettable(objectID, &address, &isSettable) == noErr
             && isSettable.boolValue
-    }
-
-    nonisolated private func audioVolumeChannelElements(deviceID: AudioDeviceID) -> [AudioObjectPropertyElement] {
-        for _ in 0..<3 {
-            var address = propertyAddress(
-                selector: kAudioDevicePropertyStreamConfiguration,
-                scope: kAudioObjectPropertyScopeOutput
-            )
-            var requestedSize: UInt32 = 0
-
-            guard AudioObjectGetPropertyDataSize(
-                deviceID,
-                &address,
-                0,
-                nil,
-                &requestedSize
-            ) == noErr,
-                  requestedSize >= UInt32(MemoryLayout<AudioBufferList>.size) else {
-                continue
-            }
-
-            let storage = UnsafeMutableRawPointer.allocate(
-                byteCount: Int(requestedSize),
-                alignment: MemoryLayout<AudioBufferList>.alignment
-            )
-            defer { storage.deallocate() }
-
-            let bufferList = storage.bindMemory(to: AudioBufferList.self, capacity: 1)
-            var returnedSize = requestedSize
-            guard AudioObjectGetPropertyData(
-                deviceID,
-                &address,
-                0,
-                nil,
-                &returnedSize,
-                bufferList
-            ) == noErr,
-                  returnedSize <= requestedSize else {
-                continue
-            }
-
-            let channelCount = UnsafeMutableAudioBufferListPointer(bufferList).reduce(0) { count, buffer in
-                count + Int(buffer.mNumberChannels)
-            }
-            guard channelCount > 0 else { return [1, 2] }
-
-            return (1...channelCount).map(AudioObjectPropertyElement.init)
-        }
-
-        return [1, 2]
     }
 
     nonisolated private func audioDeviceCanBeDefault(_ deviceID: AudioDeviceID) -> Bool {

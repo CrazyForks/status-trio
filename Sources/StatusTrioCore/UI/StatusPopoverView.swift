@@ -415,8 +415,9 @@ struct StatusPopoverView: View {
                 settings: settings,
                 scrollTargets: scrollTargets,
                 volume: store.liveVolume,
-                isEnabled: store.isVolumeControlAvailable,
+                isControllerAvailable: store.isVolumeControllerAvailable,
                 onVolumeChange: { store.setVolume($0) },
+                onVolumeEditingEnded: { store.finishVolumeAdjustment() },
                 onToggleMute: { store.toggleMute() },
                 onSelectOutputDevice: { store.selectOutputDevice($0) },
                 onOpenSoundSettings: openSoundSettings

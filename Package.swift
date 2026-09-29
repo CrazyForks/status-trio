@@ -15,7 +15,8 @@ let package = Package(
         .target(
             name: "StatusTrioCore",
             dependencies: [
-                .product(name: "Sparkle", package: "Sparkle")
+                .product(name: "Sparkle", package: "Sparkle"),
+                "DDCPrivateAPI"
             ],
             path: "Sources/StatusTrioCore",
             resources: [.process("Resources")],
@@ -26,6 +27,7 @@ let package = Package(
                 .linkedFramework("CoreWLAN"),
                 .linkedFramework("CoreLocation"),
                 .linkedFramework("CoreAudio"),
+                .linkedFramework("CoreDisplay"),
                 .linkedFramework("CoreBluetooth"),
                 .linkedFramework("IOBluetooth"),
                 .linkedFramework("Network"),
@@ -33,6 +35,11 @@ let package = Package(
                 .linkedFramework("ServiceManagement"),
                 .linkedFramework("SystemConfiguration")
             ]
+        ),
+        .target(
+            name: "DDCPrivateAPI",
+            path: "Sources/DDCPrivateAPI",
+            publicHeadersPath: "include"
         ),
         .executableTarget(
             name: "StatusTrio",

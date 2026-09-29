@@ -4,6 +4,19 @@ import XCTest
 
 @MainActor
 final class VolumeMonitorTests: XCTestCase {
+    func testFakeCoreAudioClientReportsConfiguredOutputChannelCount() {
+        let client = FakeCoreAudioClient()
+        client.configureDevice(
+            42,
+            scalar: nil,
+            isMuted: false,
+            name: "Four-channel output",
+            outputChannelElements: [1, 2, 3, 4]
+        )
+
+        XCTAssertEqual(client.outputChannelElements(deviceID: 42), [1, 2, 3, 4])
+    }
+
     func testSlowSnapshotDoesNotBlockMainActor() async {
         let started = expectation(description: "system read started")
         let blockedRead = BlockingAudioRead(onStart: { started.fulfill() })
@@ -225,6 +238,7 @@ final class VolumeMonitorTests: XCTestCase {
 
         reader.result = makeReading(scalar: 0.75)
         eventMonitor.sendDefaultDeviceChange()
+        _ = await iterator.next() // The old level clears while the new output is read.
         let status = await iterator.next()
 
         XCTAssertEqual(status?.scalar, 0.75)
@@ -471,9 +485,119 @@ final class VolumeMonitorTests: XCTestCase {
                     id: 42,
                     name: "USB Headset",
                     isCurrent: true
-                )
+                ),
+                canSetVolume: true,
+                canMute: true
             )
         )
+    }
+
+    func testReaderAveragesValidFourthAndLaterOutputChannels() {
+        let client = FakeCoreAudioClient()
+        client.configureDevice(
+            42,
+            scalar: nil,
+            isMuted: false,
+            name: "Four-channel output",
+            outputChannelElements: [1, 2, 3, 4],
+            supportedElements: [3, 4]
+        )
+        client.float32Values[client.propertyKey(
+            objectID: 42,
+            selector: kAudioDevicePropertyVolumeScalar,
+            element: 3
+        )] = 0.2
+        client.float32Values[client.propertyKey(
+            objectID: 42,
+            selector: kAudioDevicePropertyVolumeScalar,
+            element: 4
+        )] = 0.8
+
+        XCTAssertEqual(CoreAudioVolumeReader(client: client).read()?.scalar, 0.5)
+    }
+
+    func testReaderPrefersValidMainVolumeToChannelAverage() {
+        let client = FakeCoreAudioClient()
+        client.configureDevice(
+            42,
+            scalar: nil,
+            isMuted: false,
+            name: "Four-channel output",
+            outputChannelElements: [1, 2, 3, 4],
+            supportedElements: [kAudioObjectPropertyElementMain, 3, 4]
+        )
+        client.float32Values[client.propertyKey(
+            objectID: 42,
+            selector: kAudioDevicePropertyVolumeScalar,
+            element: kAudioObjectPropertyElementMain
+        )] = 0.6
+        client.float32Values[client.propertyKey(objectID: 42, selector: kAudioDevicePropertyVolumeScalar, element: 3)] = 0.2
+        client.float32Values[client.propertyKey(objectID: 42, selector: kAudioDevicePropertyVolumeScalar, element: 4)] = 0.8
+
+        XCTAssertEqual(CoreAudioVolumeReader(client: client).read()?.scalar ?? -1, 0.6, accuracy: 0.0001)
+    }
+
+    func testReaderIgnoresReadableButUnsettableVolumeScalar() {
+        let client = FakeCoreAudioClient()
+        client.configureDevice(42, scalar: 0.6, isMuted: true, name: "Display", uid: "DISPLAY-A")
+        client.settableProperties = client.settableProperties.filter {
+            $0.selector != kAudioDevicePropertyVolumeScalar && $0.selector != kAudioDevicePropertyMute
+        }
+
+        let reading = CoreAudioVolumeReader(client: client).read()
+
+        XCTAssertNil(reading?.scalar)
+        XCTAssertFalse(reading?.canSetVolume == true)
+        XCTAssertFalse(reading?.canMute == true)
+        XCTAssertTrue(reading?.isMuted == true, "Mute state remains readable even without mute write capability")
+    }
+
+    func testReaderUsesMuteValueFromFourthOutputChannel() {
+        let client = FakeCoreAudioClient()
+        client.configureDevice(
+            42,
+            scalar: nil,
+            isMuted: true,
+            name: "Four-channel output",
+            outputChannelElements: [1, 2, 3, 4],
+            supportedElements: [4]
+        )
+
+        XCTAssertTrue(CoreAudioVolumeReader(client: client).read()?.isMuted == true)
+    }
+
+    func testReaderIgnoresInvalidChannelVolumes() {
+        let client = FakeCoreAudioClient()
+        client.configureDevice(
+            42,
+            scalar: nil,
+            isMuted: false,
+            name: "Four-channel output",
+            outputChannelElements: [1, 2, 3, 4],
+            supportedElements: [2, 3, 4]
+        )
+        client.float32Values[client.propertyKey(objectID: 42, selector: kAudioDevicePropertyVolumeScalar, element: 2)] = .nan
+        client.float32Values[client.propertyKey(objectID: 42, selector: kAudioDevicePropertyVolumeScalar, element: 3)] = .infinity
+        client.float32Values[client.propertyKey(objectID: 42, selector: kAudioDevicePropertyVolumeScalar, element: 4)] = 1.1
+
+        XCTAssertNil(CoreAudioVolumeReader(client: client).read()?.scalar)
+    }
+
+    func testReaderKeepsDeviceNameWhenNoVolumePropertiesExist() {
+        let client = FakeCoreAudioClient()
+        client.configureDevice(
+            42,
+            scalar: nil,
+            isMuted: false,
+            name: "Monitor Speakers",
+            outputChannelElements: [1, 2, 3, 4],
+            supportedElements: []
+        )
+
+        let reading = CoreAudioVolumeReader(client: client).read()
+
+        XCTAssertEqual(reading?.deviceName, "Monitor Speakers")
+        XCTAssertNil(reading?.scalar)
     }
 
     func testReaderLeavesMissingDeviceNameOptional() {
@@ -515,7 +639,7 @@ final class VolumeMonitorTests: XCTestCase {
     }
 
     func testFirstValueFallsBackThroughOutputElements() {
-        let value: Float32? = CoreAudioVolumeReader.firstValue { element in
+        let value: Float32? = CoreAudioVolumeReader.firstValue(from: [1, 2, 3, 4]) { element in
             element == 2 ? 0.42 : nil
         }
 
@@ -523,7 +647,7 @@ final class VolumeMonitorTests: XCTestCase {
     }
 
     func testMissingMuteValueMeansUnmuted() {
-        XCTAssertFalse(CoreAudioVolumeReader.isMuted { _ in nil })
+        XCTAssertFalse(CoreAudioVolumeReader.isMuted(from: [0, 1, 2, 3, 4]) { _ in nil })
     }
 
     func testEventMonitorReconcileIsNoOpBeforeStart() {
@@ -544,12 +668,16 @@ final class VolumeMonitorTests: XCTestCase {
             scalar: 0.5,
             isMuted: false,
             name: "Speakers",
-            supportedElements: [kAudioObjectPropertyElementMain]
+            outputChannelElements: [1, 2, 3, 4],
+            supportedElements: [4]
         )
         let monitor = CoreAudioVolumeEventMonitor(client: client)
         monitor.start(onDefaultDeviceChange: {}, onVolumeChange: {})
         let initialListeners = client.activeListeners
         let initialSuccessfulAdds = client.successfulAdds
+        XCTAssertTrue(initialListeners.contains {
+            $0.objectID == 42 && $0.element == 4
+        })
 
         monitor.recover()
 
@@ -557,6 +685,114 @@ final class VolumeMonitorTests: XCTestCase {
         XCTAssertEqual(client.successfulAdds.count, initialSuccessfulAdds.count * 2)
         XCTAssertEqual(Set(client.activeListeners), Set(initialListeners))
         XCTAssertTrue(initialListeners.allSatisfy { client.removals.contains($0) })
+        monitor.stop()
+    }
+
+    func testEventMonitorListensToFourthVolumeAndThirdMuteChannelOnly() {
+        let client = FakeCoreAudioClient()
+        client.configureDevice(
+            42,
+            scalar: nil,
+            isMuted: false,
+            name: "Four-channel output",
+            outputChannelElements: [1, 2, 3, 4],
+            supportedElements: [3, 4]
+        )
+        client.availableProperties.remove(client.propertyKey(
+            objectID: 42,
+            selector: kAudioDevicePropertyVolumeScalar,
+            element: 3
+        ))
+        client.availableProperties.remove(client.propertyKey(
+            objectID: 42,
+            selector: kAudioDevicePropertyMute,
+            element: 4
+        ))
+        let monitor = CoreAudioVolumeEventMonitor(client: client)
+        monitor.start(onDefaultDeviceChange: {}, onVolumeChange: {})
+
+        let expected = Set([
+            client.propertyKey(objectID: 42, selector: kAudioDevicePropertyVolumeScalar, element: 4),
+            client.propertyKey(objectID: 42, selector: kAudioDevicePropertyMute, element: 3)
+        ])
+        XCTAssertEqual(Set(client.successfulDeviceListenerKeys(for: 42)), expected)
+
+        let successfulAdds = client.successfulAdds.count
+        monitor.reconcile()
+        XCTAssertEqual(client.successfulAdds.count, successfulAdds)
+        monitor.stop()
+    }
+
+    func testFourthChannelVolumeListenerEmitsVolumeChange() async {
+        let client = FakeCoreAudioClient()
+        client.configureDevice(
+            42,
+            scalar: nil,
+            isMuted: false,
+            name: "Four-channel output",
+            outputChannelElements: [1, 2, 3, 4],
+            supportedElements: [4]
+        )
+        let changed = expectation(description: "fourth-channel volume callback")
+        let monitor = CoreAudioVolumeEventMonitor(client: client)
+        monitor.start(onDefaultDeviceChange: {}, onVolumeChange: { changed.fulfill() })
+
+        client.triggerDevicePropertyChange(
+            objectID: 42,
+            selector: kAudioDevicePropertyVolumeScalar,
+            element: 4
+        )
+        await fulfillment(of: [changed], timeout: 1)
+        monitor.stop()
+    }
+
+    func testEventMonitorRemovesListenersWhenChannelConfigurationShrinks() {
+        let client = FakeCoreAudioClient()
+        client.configureDevice(
+            42,
+            scalar: nil,
+            isMuted: false,
+            name: "Four-channel output",
+            outputChannelElements: [1, 2, 3, 4],
+            supportedElements: [3, 4]
+        )
+        let monitor = CoreAudioVolumeEventMonitor(client: client)
+        monitor.start(onDefaultDeviceChange: {}, onVolumeChange: {})
+        let oldChannelListeners = Set(client.activeDeviceListeners(for: 42))
+        XCTAssertFalse(oldChannelListeners.isEmpty)
+
+        client.outputChannelsByDevice[42] = [1, 2]
+        monitor.reconcile()
+
+        XCTAssertTrue(client.activeDeviceListeners(for: 42).isEmpty)
+        XCTAssertTrue(oldChannelListeners.allSatisfy { client.removals.contains($0) })
+        monitor.stop()
+    }
+
+    func testEventMonitorRetriesFailedFourthChannelRegistration() {
+        let client = FakeCoreAudioClient()
+        client.configureDevice(
+            42,
+            scalar: nil,
+            isMuted: false,
+            name: "Four-channel output",
+            outputChannelElements: [1, 2, 3, 4],
+            supportedElements: [4]
+        )
+        let volumeKey = client.propertyKey(
+            objectID: 42,
+            selector: kAudioDevicePropertyVolumeScalar,
+            element: 4
+        )
+        client.failNextAdd(for: volumeKey)
+        let monitor = CoreAudioVolumeEventMonitor(client: client)
+        monitor.start(onDefaultDeviceChange: {}, onVolumeChange: {})
+
+        XCTAssertFalse(client.activeDeviceListeners(for: 42).contains(volumeKey.operation))
+        monitor.reconcile()
+
+        XCTAssertTrue(client.activeDeviceListeners(for: 42).contains(volumeKey.operation))
+        XCTAssertEqual(client.addAttemptCount(for: volumeKey), 2)
         monitor.stop()
     }
 
@@ -625,14 +861,16 @@ final class VolumeMonitorTests: XCTestCase {
             scalar: 0.5,
             isMuted: false,
             name: "First",
-            supportedElements: [kAudioObjectPropertyElementMain]
+            outputChannelElements: [1, 2, 3, 4],
+            supportedElements: [4]
         )
         client.configureDevice(
             20,
             scalar: 0.5,
             isMuted: false,
             name: "Second",
-            supportedElements: [kAudioObjectPropertyElementMain]
+            outputChannelElements: [1, 2, 3, 4],
+            supportedElements: [4]
         )
         client.defaultDeviceID = 10
         let callbackExpectation = expectation(description: "default device callback")
@@ -644,6 +882,7 @@ final class VolumeMonitorTests: XCTestCase {
         )
         let firstDeviceListeners = client.activeDeviceListeners(for: 10)
         XCTAssertFalse(firstDeviceListeners.isEmpty)
+        XCTAssertEqual(Set(firstDeviceListeners.map(\.element)), [4])
 
         client.defaultDeviceID = 20
         client.triggerDefaultOutputDeviceChange()
@@ -814,10 +1053,12 @@ private final class FakeCoreAudioClient: CoreAudioClient {
     var deviceClasses: [AudioDeviceID: AudioClassID] = [:]
     var aliveDevices: Set<AudioDeviceID> = []
     var availableProperties: Set<CoreAudioPropertyKey> = []
+    var settableProperties: Set<CoreAudioPropertyKey> = []
     var uint32Values: [CoreAudioPropertyKey: UInt32] = [:]
     var float32Values: [CoreAudioPropertyKey: Float32] = [:]
     var stringValues: [CoreAudioPropertyKey: String] = [:]
     var urlValues: [CoreAudioPropertyKey: URL] = [:]
+    var outputChannelsByDevice: [AudioDeviceID: [AudioObjectPropertyElement]] = [:]
     private(set) var deviceClassReadCount = 0
     private(set) var alivenessReadCount = 0
     private(set) var addAttempts: [ListenerOperation] = []
@@ -826,6 +1067,7 @@ private final class FakeCoreAudioClient: CoreAudioClient {
     private(set) var activeListeners: [ListenerOperation] = []
     private var listenerFailures: [CoreAudioPropertyKey: Int] = [:]
     private var defaultDeviceListener: AudioObjectPropertyListenerBlock?
+    private var listenerCallbacks: [ListenerOperation: AudioObjectPropertyListenerBlock] = [:]
 
     var defaultDeviceListenerKey: CoreAudioPropertyKey {
         propertyKey(
@@ -853,11 +1095,13 @@ private final class FakeCoreAudioClient: CoreAudioClient {
         transport: UInt32? = nil,
         dataSource: UInt32? = nil,
         iconURL: URL? = nil,
-        supportedElements: [AudioObjectPropertyElement] = CoreAudioVolumeReader.outputElements
+        outputChannelElements: [AudioObjectPropertyElement] = [1, 2],
+        supportedElements: [AudioObjectPropertyElement] = [kAudioObjectPropertyElementMain, 1, 2]
     ) {
         defaultDeviceID = deviceID
         deviceClasses[deviceID] = kAudioDeviceClassID
         aliveDevices.insert(deviceID)
+        outputChannelsByDevice[deviceID] = outputChannelElements
 
         for element in supportedElements {
             let volumeKey = propertyKey(
@@ -872,6 +1116,8 @@ private final class FakeCoreAudioClient: CoreAudioClient {
             )
             availableProperties.insert(volumeKey)
             availableProperties.insert(muteKey)
+            settableProperties.insert(volumeKey)
+            settableProperties.insert(muteKey)
             if let scalar {
                 float32Values[volumeKey] = scalar
             }
@@ -936,6 +1182,28 @@ private final class FakeCoreAudioClient: CoreAudioClient {
         }
     }
 
+    func triggerDevicePropertyChange(
+        objectID: AudioObjectID,
+        selector: AudioObjectPropertySelector,
+        element: AudioObjectPropertyElement
+    ) {
+        let operation = ListenerOperation(
+            objectID: objectID,
+            selector: selector,
+            scope: kAudioObjectPropertyScopeOutput,
+            element: element
+        )
+        guard let callback = listenerCallbacks[operation] else { return }
+        var address = AudioObjectPropertyAddress(
+            mSelector: selector,
+            mScope: kAudioObjectPropertyScopeOutput,
+            mElement: element
+        )
+        withUnsafePointer(to: &address) { pointer in
+            callback(1, pointer)
+        }
+    }
+
     func propertyKey(
         objectID: AudioObjectID,
         selector: AudioObjectPropertySelector,
@@ -971,6 +1239,10 @@ private final class FakeCoreAudioClient: CoreAudioClient {
 
     func defaultOutputDevice() -> AudioDeviceID? {
         defaultDeviceID
+    }
+
+    func outputChannelElements(deviceID: AudioDeviceID) -> [AudioObjectPropertyElement] {
+        outputChannelsByDevice[deviceID] ?? [1, 2]
     }
 
     func deviceClass(of deviceID: AudioDeviceID) -> AudioClassID? {
@@ -1053,6 +1325,11 @@ private final class FakeCoreAudioClient: CoreAudioClient {
         ))
     }
 
+    func isPropertySettable(objectID: AudioObjectID, selector: AudioObjectPropertySelector,
+                            scope: AudioObjectPropertyScope, element: AudioObjectPropertyElement) -> Bool {
+        settableProperties.contains(propertyKey(objectID: objectID, selector: selector, scope: scope, element: element))
+    }
+
     func addListener(
         objectID: AudioObjectID,
         address: AudioObjectPropertyAddress,
@@ -1075,6 +1352,7 @@ private final class FakeCoreAudioClient: CoreAudioClient {
 
         successfulAdds.append(operation)
         activeListeners.append(operation)
+        listenerCallbacks[operation] = block
         if key == defaultDeviceListenerKey {
             defaultDeviceListener = block
         }
@@ -1096,6 +1374,7 @@ private final class FakeCoreAudioClient: CoreAudioClient {
         let operation = key.operation
         removals.append(operation)
         activeListeners.removeAll { $0 == operation }
+        listenerCallbacks[operation] = nil
         if key == defaultDeviceListenerKey {
             defaultDeviceListener = nil
         }
