@@ -317,12 +317,6 @@ final class CoreAudioSystemClient: CoreAudioClient {
 }
 
 final class CoreAudioVolumeReader: VolumeReadingProviding {
-    static let outputElements: [AudioObjectPropertyElement] = [
-        kAudioObjectPropertyElementMain,
-        1,
-        2
-    ]
-
     private let client: any CoreAudioClient
 
     init(client: any CoreAudioClient = CoreAudioSystemClient()) {
@@ -609,7 +603,31 @@ final class CoreAudioVolumeEventMonitor: VolumeEventMonitoring {
             }
         }
 
-        for element in CoreAudioVolumeReader.outputElements {
+        let elements = [kAudioObjectPropertyElementMain]
+            + client.outputChannelElements(deviceID: deviceID)
+        let selectors = [kAudioDevicePropertyVolumeScalar, kAudioDevicePropertyMute]
+        let desiredKeys = Set(elements.flatMap { element in
+            selectors.compactMap { selector -> DeviceListenerKey? in
+                guard client.hasProperty(
+                    objectID: deviceID,
+                    selector: selector,
+                    scope: kAudioObjectPropertyScopeOutput,
+                    element: element
+                ) else { return nil }
+                return DeviceListenerKey(selector: selector, element: element)
+            }
+        })
+        let staleRegistrations = deviceRegistrations.filter {
+            $0.objectID == deviceID && !desiredKeys.contains($0.key)
+        }
+        for registration in staleRegistrations {
+            removeListener(registration)
+        }
+        deviceRegistrations.removeAll { registration in
+            staleRegistrations.contains { $0.key == registration.key && $0.objectID == registration.objectID }
+        }
+
+        for element in elements {
             reconcileDeviceListener(
                 objectID: deviceID,
                 selector: kAudioDevicePropertyVolumeScalar,

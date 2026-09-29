@@ -650,12 +650,16 @@ final class VolumeMonitorTests: XCTestCase {
             scalar: 0.5,
             isMuted: false,
             name: "Speakers",
-            supportedElements: [kAudioObjectPropertyElementMain]
+            outputChannelElements: [1, 2, 3, 4],
+            supportedElements: [4]
         )
         let monitor = CoreAudioVolumeEventMonitor(client: client)
         monitor.start(onDefaultDeviceChange: {}, onVolumeChange: {})
         let initialListeners = client.activeListeners
         let initialSuccessfulAdds = client.successfulAdds
+        XCTAssertTrue(initialListeners.contains {
+            $0.objectID == 42 && $0.element == 4
+        })
 
         monitor.recover()
 
@@ -663,6 +667,114 @@ final class VolumeMonitorTests: XCTestCase {
         XCTAssertEqual(client.successfulAdds.count, initialSuccessfulAdds.count * 2)
         XCTAssertEqual(Set(client.activeListeners), Set(initialListeners))
         XCTAssertTrue(initialListeners.allSatisfy { client.removals.contains($0) })
+        monitor.stop()
+    }
+
+    func testEventMonitorListensToFourthVolumeAndThirdMuteChannelOnly() {
+        let client = FakeCoreAudioClient()
+        client.configureDevice(
+            42,
+            scalar: nil,
+            isMuted: false,
+            name: "Four-channel output",
+            outputChannelElements: [1, 2, 3, 4],
+            supportedElements: [3, 4]
+        )
+        client.availableProperties.remove(client.propertyKey(
+            objectID: 42,
+            selector: kAudioDevicePropertyVolumeScalar,
+            element: 3
+        ))
+        client.availableProperties.remove(client.propertyKey(
+            objectID: 42,
+            selector: kAudioDevicePropertyMute,
+            element: 4
+        ))
+        let monitor = CoreAudioVolumeEventMonitor(client: client)
+        monitor.start(onDefaultDeviceChange: {}, onVolumeChange: {})
+
+        let expected = Set([
+            client.propertyKey(objectID: 42, selector: kAudioDevicePropertyVolumeScalar, element: 4),
+            client.propertyKey(objectID: 42, selector: kAudioDevicePropertyMute, element: 3)
+        ])
+        XCTAssertEqual(Set(client.successfulDeviceListenerKeys(for: 42)), expected)
+
+        let successfulAdds = client.successfulAdds.count
+        monitor.reconcile()
+        XCTAssertEqual(client.successfulAdds.count, successfulAdds)
+        monitor.stop()
+    }
+
+    func testFourthChannelVolumeListenerEmitsVolumeChange() async {
+        let client = FakeCoreAudioClient()
+        client.configureDevice(
+            42,
+            scalar: nil,
+            isMuted: false,
+            name: "Four-channel output",
+            outputChannelElements: [1, 2, 3, 4],
+            supportedElements: [4]
+        )
+        let changed = expectation(description: "fourth-channel volume callback")
+        let monitor = CoreAudioVolumeEventMonitor(client: client)
+        monitor.start(onDefaultDeviceChange: {}, onVolumeChange: { changed.fulfill() })
+
+        client.triggerDevicePropertyChange(
+            objectID: 42,
+            selector: kAudioDevicePropertyVolumeScalar,
+            element: 4
+        )
+        await fulfillment(of: [changed], timeout: 1)
+        monitor.stop()
+    }
+
+    func testEventMonitorRemovesListenersWhenChannelConfigurationShrinks() {
+        let client = FakeCoreAudioClient()
+        client.configureDevice(
+            42,
+            scalar: nil,
+            isMuted: false,
+            name: "Four-channel output",
+            outputChannelElements: [1, 2, 3, 4],
+            supportedElements: [3, 4]
+        )
+        let monitor = CoreAudioVolumeEventMonitor(client: client)
+        monitor.start(onDefaultDeviceChange: {}, onVolumeChange: {})
+        let oldChannelListeners = Set(client.activeDeviceListeners(for: 42))
+        XCTAssertFalse(oldChannelListeners.isEmpty)
+
+        client.outputChannelsByDevice[42] = [1, 2]
+        monitor.reconcile()
+
+        XCTAssertTrue(client.activeDeviceListeners(for: 42).isEmpty)
+        XCTAssertTrue(oldChannelListeners.allSatisfy { client.removals.contains($0) })
+        monitor.stop()
+    }
+
+    func testEventMonitorRetriesFailedFourthChannelRegistration() {
+        let client = FakeCoreAudioClient()
+        client.configureDevice(
+            42,
+            scalar: nil,
+            isMuted: false,
+            name: "Four-channel output",
+            outputChannelElements: [1, 2, 3, 4],
+            supportedElements: [4]
+        )
+        let volumeKey = client.propertyKey(
+            objectID: 42,
+            selector: kAudioDevicePropertyVolumeScalar,
+            element: 4
+        )
+        client.failNextAdd(for: volumeKey)
+        let monitor = CoreAudioVolumeEventMonitor(client: client)
+        monitor.start(onDefaultDeviceChange: {}, onVolumeChange: {})
+
+        XCTAssertFalse(client.activeDeviceListeners(for: 42).contains(volumeKey.operation))
+        monitor.reconcile()
+
+        XCTAssertTrue(client.activeDeviceListeners(for: 42).contains(volumeKey.operation))
+        XCTAssertEqual(client.addAttemptCount(for: volumeKey), 2)
         monitor.stop()
     }
 
@@ -731,14 +843,16 @@ final class VolumeMonitorTests: XCTestCase {
             scalar: 0.5,
             isMuted: false,
             name: "First",
-            supportedElements: [kAudioObjectPropertyElementMain]
+            outputChannelElements: [1, 2, 3, 4],
+            supportedElements: [4]
         )
         client.configureDevice(
             20,
             scalar: 0.5,
             isMuted: false,
             name: "Second",
-            supportedElements: [kAudioObjectPropertyElementMain]
+            outputChannelElements: [1, 2, 3, 4],
+            supportedElements: [4]
         )
         client.defaultDeviceID = 10
         let callbackExpectation = expectation(description: "default device callback")
@@ -750,6 +864,7 @@ final class VolumeMonitorTests: XCTestCase {
         )
         let firstDeviceListeners = client.activeDeviceListeners(for: 10)
         XCTAssertFalse(firstDeviceListeners.isEmpty)
+        XCTAssertEqual(Set(firstDeviceListeners.map(\.element)), [4])
 
         client.defaultDeviceID = 20
         client.triggerDefaultOutputDeviceChange()
@@ -933,6 +1048,7 @@ private final class FakeCoreAudioClient: CoreAudioClient {
     private(set) var activeListeners: [ListenerOperation] = []
     private var listenerFailures: [CoreAudioPropertyKey: Int] = [:]
     private var defaultDeviceListener: AudioObjectPropertyListenerBlock?
+    private var listenerCallbacks: [ListenerOperation: AudioObjectPropertyListenerBlock] = [:]
 
     var defaultDeviceListenerKey: CoreAudioPropertyKey {
         propertyKey(
@@ -1042,6 +1158,28 @@ private final class FakeCoreAudioClient: CoreAudioClient {
         )
         withUnsafePointer(to: &address) { pointer in
             defaultDeviceListener(1, pointer)
+        }
+    }
+
+    func triggerDevicePropertyChange(
+        objectID: AudioObjectID,
+        selector: AudioObjectPropertySelector,
+        element: AudioObjectPropertyElement
+    ) {
+        let operation = ListenerOperation(
+            objectID: objectID,
+            selector: selector,
+            scope: kAudioObjectPropertyScopeOutput,
+            element: element
+        )
+        guard let callback = listenerCallbacks[operation] else { return }
+        var address = AudioObjectPropertyAddress(
+            mSelector: selector,
+            mScope: kAudioObjectPropertyScopeOutput,
+            mElement: element
+        )
+        withUnsafePointer(to: &address) { pointer in
+            callback(1, pointer)
         }
     }
 
@@ -1188,6 +1326,7 @@ private final class FakeCoreAudioClient: CoreAudioClient {
 
         successfulAdds.append(operation)
         activeListeners.append(operation)
+        listenerCallbacks[operation] = block
         if key == defaultDeviceListenerKey {
             defaultDeviceListener = block
         }
@@ -1209,6 +1348,7 @@ private final class FakeCoreAudioClient: CoreAudioClient {
         let operation = key.operation
         removals.append(operation)
         activeListeners.removeAll { $0 == operation }
+        listenerCallbacks[operation] = nil
         if key == defaultDeviceListenerKey {
             defaultDeviceListener = nil
         }
