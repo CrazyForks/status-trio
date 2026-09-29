@@ -357,7 +357,7 @@ final class CoreAudioVolumeReader: VolumeReadingProviding {
     }
 
     static func firstValue<Value>(
-        from elements: [AudioObjectPropertyElement] = outputElements,
+        from elements: [AudioObjectPropertyElement],
         using read: (AudioObjectPropertyElement) -> Value?
     ) -> Value? {
         for element in elements {
@@ -369,9 +369,10 @@ final class CoreAudioVolumeReader: VolumeReadingProviding {
     }
 
     static func isMuted(
+        from elements: [AudioObjectPropertyElement],
         using read: (AudioObjectPropertyElement) -> UInt32?
     ) -> Bool {
-        firstValue(using: read) == 1
+        firstValue(from: elements, using: read) == 1
     }
 
     static func fourCharacterCode(_ code: String) -> UInt32 {
@@ -379,18 +380,33 @@ final class CoreAudioVolumeReader: VolumeReadingProviding {
     }
 
     private func volumeScalar(for deviceID: AudioDeviceID) -> Float32? {
-        Self.firstValue { element in
+        let mainVolume = client.readFloat32(
+            objectID: deviceID,
+            selector: kAudioDevicePropertyVolumeScalar,
+            scope: kAudioObjectPropertyScopeOutput,
+            element: kAudioObjectPropertyElementMain
+        )
+        if let mainVolume, isValidVolumeScalar(mainVolume) {
+            return mainVolume
+        }
+
+        let channelVolumes = client.outputChannelElements(deviceID: deviceID).compactMap { element in
             client.readFloat32(
                 objectID: deviceID,
                 selector: kAudioDevicePropertyVolumeScalar,
                 scope: kAudioObjectPropertyScopeOutput,
                 element: element
             )
-        }
+        }.filter(isValidVolumeScalar)
+
+        guard !channelVolumes.isEmpty else { return nil }
+        return channelVolumes.reduce(Float32(0), +) / Float32(channelVolumes.count)
     }
 
     private func isMuted(for deviceID: AudioDeviceID) -> Bool {
-        Self.isMuted { element in
+        let elements = [kAudioObjectPropertyElementMain]
+            + client.outputChannelElements(deviceID: deviceID)
+        return Self.isMuted(from: elements) { element in
             client.readUInt32(
                 objectID: deviceID,
                 selector: kAudioDevicePropertyMute,
@@ -398,6 +414,10 @@ final class CoreAudioVolumeReader: VolumeReadingProviding {
                 element: element
             )
         }
+    }
+
+    private func isValidVolumeScalar(_ value: Float32) -> Bool {
+        value.isFinite && (0...1).contains(value)
     }
 
     private func deviceName(for deviceID: AudioDeviceID) -> String? {

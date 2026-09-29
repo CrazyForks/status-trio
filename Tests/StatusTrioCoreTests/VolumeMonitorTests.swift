@@ -489,6 +489,99 @@ final class VolumeMonitorTests: XCTestCase {
         )
     }
 
+    func testReaderAveragesValidFourthAndLaterOutputChannels() {
+        let client = FakeCoreAudioClient()
+        client.configureDevice(
+            42,
+            scalar: nil,
+            isMuted: false,
+            name: "Four-channel output",
+            outputChannelElements: [1, 2, 3, 4],
+            supportedElements: [3, 4]
+        )
+        client.float32Values[client.propertyKey(
+            objectID: 42,
+            selector: kAudioDevicePropertyVolumeScalar,
+            element: 3
+        )] = 0.2
+        client.float32Values[client.propertyKey(
+            objectID: 42,
+            selector: kAudioDevicePropertyVolumeScalar,
+            element: 4
+        )] = 0.8
+
+        XCTAssertEqual(CoreAudioVolumeReader(client: client).read()?.scalar, 0.5)
+    }
+
+    func testReaderPrefersValidMainVolumeToChannelAverage() {
+        let client = FakeCoreAudioClient()
+        client.configureDevice(
+            42,
+            scalar: nil,
+            isMuted: false,
+            name: "Four-channel output",
+            outputChannelElements: [1, 2, 3, 4],
+            supportedElements: [kAudioObjectPropertyElementMain, 3, 4]
+        )
+        client.float32Values[client.propertyKey(
+            objectID: 42,
+            selector: kAudioDevicePropertyVolumeScalar,
+            element: kAudioObjectPropertyElementMain
+        )] = 0.6
+        client.float32Values[client.propertyKey(objectID: 42, selector: kAudioDevicePropertyVolumeScalar, element: 3)] = 0.2
+        client.float32Values[client.propertyKey(objectID: 42, selector: kAudioDevicePropertyVolumeScalar, element: 4)] = 0.8
+
+        XCTAssertEqual(CoreAudioVolumeReader(client: client).read()?.scalar ?? -1, 0.6, accuracy: 0.0001)
+    }
+
+    func testReaderUsesMuteValueFromFourthOutputChannel() {
+        let client = FakeCoreAudioClient()
+        client.configureDevice(
+            42,
+            scalar: nil,
+            isMuted: true,
+            name: "Four-channel output",
+            outputChannelElements: [1, 2, 3, 4],
+            supportedElements: [4]
+        )
+
+        XCTAssertTrue(CoreAudioVolumeReader(client: client).read()?.isMuted == true)
+    }
+
+    func testReaderIgnoresInvalidChannelVolumes() {
+        let client = FakeCoreAudioClient()
+        client.configureDevice(
+            42,
+            scalar: nil,
+            isMuted: false,
+            name: "Four-channel output",
+            outputChannelElements: [1, 2, 3, 4],
+            supportedElements: [2, 3, 4]
+        )
+        client.float32Values[client.propertyKey(objectID: 42, selector: kAudioDevicePropertyVolumeScalar, element: 2)] = .nan
+        client.float32Values[client.propertyKey(objectID: 42, selector: kAudioDevicePropertyVolumeScalar, element: 3)] = .infinity
+        client.float32Values[client.propertyKey(objectID: 42, selector: kAudioDevicePropertyVolumeScalar, element: 4)] = 1.1
+
+        XCTAssertNil(CoreAudioVolumeReader(client: client).read()?.scalar)
+    }
+
+    func testReaderKeepsDeviceNameWhenNoVolumePropertiesExist() {
+        let client = FakeCoreAudioClient()
+        client.configureDevice(
+            42,
+            scalar: nil,
+            isMuted: false,
+            name: "Monitor Speakers",
+            outputChannelElements: [1, 2, 3, 4],
+            supportedElements: []
+        )
+
+        let reading = CoreAudioVolumeReader(client: client).read()
+
+        XCTAssertEqual(reading?.deviceName, "Monitor Speakers")
+        XCTAssertNil(reading?.scalar)
+    }
+
     func testReaderLeavesMissingDeviceNameOptional() {
         let client = FakeCoreAudioClient()
         client.configureDevice(42, scalar: 0.3, isMuted: false, name: nil)
@@ -528,7 +621,7 @@ final class VolumeMonitorTests: XCTestCase {
     }
 
     func testFirstValueFallsBackThroughOutputElements() {
-        let value: Float32? = CoreAudioVolumeReader.firstValue { element in
+        let value: Float32? = CoreAudioVolumeReader.firstValue(from: [1, 2, 3, 4]) { element in
             element == 2 ? 0.42 : nil
         }
 
@@ -536,7 +629,7 @@ final class VolumeMonitorTests: XCTestCase {
     }
 
     func testMissingMuteValueMeansUnmuted() {
-        XCTAssertFalse(CoreAudioVolumeReader.isMuted { _ in nil })
+        XCTAssertFalse(CoreAudioVolumeReader.isMuted(from: [0, 1, 2, 3, 4]) { _ in nil })
     }
 
     func testEventMonitorReconcileIsNoOpBeforeStart() {
@@ -868,7 +961,7 @@ private final class FakeCoreAudioClient: CoreAudioClient {
         dataSource: UInt32? = nil,
         iconURL: URL? = nil,
         outputChannelElements: [AudioObjectPropertyElement] = [1, 2],
-        supportedElements: [AudioObjectPropertyElement] = CoreAudioVolumeReader.outputElements
+        supportedElements: [AudioObjectPropertyElement] = [kAudioObjectPropertyElementMain, 1, 2]
     ) {
         defaultDeviceID = deviceID
         deviceClasses[deviceID] = kAudioDeviceClassID

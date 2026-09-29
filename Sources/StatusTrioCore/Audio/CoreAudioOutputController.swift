@@ -320,22 +320,27 @@ final class CoreAudioOutputController: AudioOutputControlling {
             selector: kAudioDevicePropertyVolumeScalar,
             scope: kAudioObjectPropertyScopeOutput,
             element: kAudioObjectPropertyElementMain
-        ) {
+        ), isValidVolumeScalar(masterVolume) {
             return Double(masterVolume)
         }
 
-        let channelVolumes = CoreAudioOutputChannelElements.channels(for: deviceID).compactMap { element in
-            readFloat32Property(
+        let channelVolumes = CoreAudioOutputChannelElements.channels(for: deviceID).compactMap { element -> Float32? in
+            guard let value = readFloat32Property(
                 objectID: deviceID,
                 selector: kAudioDevicePropertyVolumeScalar,
                 scope: kAudioObjectPropertyScopeOutput,
                 element: element
-            )
+            ), isValidVolumeScalar(value) else { return nil }
+            return value
         }
 
         guard !channelVolumes.isEmpty else { return nil }
         let total = channelVolumes.reduce(Float32(0), +)
         return Double(total / Float32(channelVolumes.count))
+    }
+
+    nonisolated private func isValidVolumeScalar(_ value: Float32) -> Bool {
+        value.isFinite && (0...1).contains(value)
     }
 
     nonisolated private func readFloat32Property(
