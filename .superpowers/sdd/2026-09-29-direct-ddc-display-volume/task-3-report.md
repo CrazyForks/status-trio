@@ -46,3 +46,22 @@ Commands and outputs:
 - `swift build -c release` — passed, `Build complete!`.
 
 The read watchdog is configurable for deterministic tests; production default is 2 seconds. A timed-out physical operation remains on the one serial worker until the transport returns, so status becomes unavailable without risking overlapping I2C requests.
+
+## Review round 2 fixes
+
+Updated `Sources/StatusTrioCore/Audio/DDCVolumeCoordinator.swift` so every dispatched read invokes its completion, including a read rejected by the worker's generation/identity guard. This releases `readInFlight`; if a newer selection, wake, or topology event requested a refresh while the old request was queued, the completion starts that current-generation read.
+
+Added an injectable `beforeReadValidation` worker hook and `ReadValidationGate` in `Tests/StatusTrioCoreTests/DDCVolumeCoordinatorTests.swift` to deterministically pause a queued request before the identity check. The new test runs selection A→B, sleep/wake, and topology change through the same race and asserts that each reaches a current-generation callback without touching DDC for the stale queued request.
+
+Strengthened lifecycle verification in the same test file:
+
+- The sleep/debounce test advances the canceled 150 ms timer after wake, drains the worker queue, and confirms no write occurred.
+- Stop and topology tests capture updates, release the blocked I/O, await a serial worker barrier, and then assert callback suppression for stop or a current-generation refresh for topology before checking that no queued write ran.
+- `waitForWorkerIdle()` exposes a serial queue barrier for deterministic lifecycle assertions. The fake transport uses locked backing state for every field.
+
+Commands and outputs for this round:
+
+- `swift test --filter DDCVolumeCoordinatorTests` — passed, 12 tests, 0 failures.
+- `git diff --check` — passed, no output.
+- `swift test` — passed, 387 tests in 64 suites.
+- `swift build -c release` — passed, `Build complete!`.

@@ -37,10 +37,11 @@ final class DDCVolumeCoordinator {
         transport: DDCVolumeTransport = DDCDisplayTransport(),
         debounce: Duration = .milliseconds(150),
         readWatchdog: Duration = .seconds(2),
+        beforeReadValidation: @escaping @Sendable () -> Void = {},
         sleep: @escaping Sleep = { try await Task.sleep(for: $0) },
         onUpdate: @escaping @MainActor (DDCVolumeUpdate) -> Void
     ) {
-        self.worker = DDCWorker(transport: transport)
+        self.worker = DDCWorker(transport: transport, beforeReadValidation: beforeReadValidation)
         self.debounce = debounce
         self.readWatchdog = readWatchdog
         self.sleep = sleep
@@ -159,6 +160,12 @@ final class DDCVolumeCoordinator {
         }
     }
 
+    func waitForWorkerIdle() async {
+        await withCheckedContinuation { continuation in
+            worker.barrier { continuation.resume() }
+        }
+    }
+
     func stop() {
         guard !stopped else { return }
         stopped = true
@@ -214,6 +221,7 @@ final class DDCVolumeCoordinator {
 private final class DDCWorker: @unchecked Sendable {
     private let queue = DispatchQueue(label: "com.status-trio.ddc-volume", qos: .utility)
     private let transport: DDCVolumeTransport
+    private let beforeReadValidation: @Sendable () -> Void
     private var target: DDCDisplayTarget?
     private var lastReply: DDCVolumeReply?
     private let identityLock = NSLock()
@@ -221,7 +229,14 @@ private final class DDCWorker: @unchecked Sendable {
     private var currentUID: String?
     private var currentGeneration: UInt64 = 0
 
-    init(transport: DDCVolumeTransport) { self.transport = transport }
+    init(transport: DDCVolumeTransport, beforeReadValidation: @escaping @Sendable () -> Void) {
+        self.transport = transport
+        self.beforeReadValidation = beforeReadValidation
+    }
+
+    func barrier(completion: @escaping @MainActor () -> Void) {
+        queue.async { Task { @MainActor in completion() } }
+    }
 
     func setIdentity(outputID: AudioDeviceID?, uid: String?, generation: UInt64) {
         identityLock.lock()
@@ -240,7 +255,11 @@ private final class DDCWorker: @unchecked Sendable {
 
     func read(outputID: AudioDeviceID, uid: String, generation: UInt64, completion: @escaping @MainActor (DDCVolumeReply?) -> Void) {
         queue.async { [self] in
-            guard matches(outputID: outputID, uid: uid, generation: generation) else { return }
+            beforeReadValidation()
+            guard matches(outputID: outputID, uid: uid, generation: generation) else {
+                Task { @MainActor in completion(nil) }
+                return
+            }
             if target?.uid != uid { target = transport.resolve(uid: uid) }
             let reply = target.flatMap { transport.read($0) }
             lastReply = reply

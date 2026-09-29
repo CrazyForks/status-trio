@@ -141,6 +141,39 @@ final class DDCVolumeCoordinatorTests: XCTestCase {
         coordinator.stop()
     }
 
+    func testInvalidatedQueuedReadCompletesAcrossSelectionSleepAndTopology() async {
+        for action in ["selection", "sleep-wake", "topology"] {
+            let validationGate = ReadValidationGate()
+            let transport = FakeDDCTransport()
+            transport.reply = DDCVolumeReply(current: 55, maximum: 100)
+            var updates: [DDCVolumeUpdate] = []
+            let coordinator = DDCVolumeCoordinator(
+                transport: transport,
+                beforeReadValidation: { validationGate.enterAndWait() }
+            ) { updates.append($0) }
+            coordinator.select(outputID: 93, uid: "DISPLAY-A")
+            await waitUntil("first read paused before identity validation") { validationGate.hasEntered }
+
+            if action == "selection" {
+                coordinator.select(outputID: 94, uid: "DISPLAY-B")
+            } else if action == "sleep-wake" {
+                coordinator.setDisplayAsleep(true)
+                coordinator.setDisplayAsleep(false)
+            } else {
+                coordinator.topologyChanged()
+            }
+            validationGate.release()
+            await waitUntil("fresh \(action) read completes") {
+                updates.contains { $0.generation == coordinator.generation && $0.scalar == 0.55 }
+            }
+            XCTAssertEqual(transport.readCount, 1, "The stale queued request must be rejected before DDC I/O")
+            XCTAssertEqual(transport.resolveCount, 1)
+            XCTAssertEqual(updates.last?.uid, action == "selection" ? "DISPLAY-B" : "DISPLAY-A")
+            coordinator.stop()
+            await coordinator.waitForWorkerIdle()
+        }
+    }
+
     func testSleepCancelsDebouncedWriteBeforeWake() async {
         let clock = ManualDDCClock()
         let transport = FakeDDCTransport()
@@ -153,7 +186,9 @@ final class DDCVolumeCoordinatorTests: XCTestCase {
         coordinator.setDisplayAsleep(true)
         coordinator.setDisplayAsleep(false)
         await waitUntil("wake read") { transport.readCount >= 2 }
-        XCTAssertTrue(transport.writeValues.isEmpty)
+        await clock.release(.milliseconds(150))
+        await coordinator.waitForWorkerIdle()
+        XCTAssertTrue(transport.writeValues.isEmpty, "Advancing the canceled pre-sleep debounce after wake must not write")
         coordinator.stop()
         await clock.cancelAll()
     }
@@ -163,16 +198,22 @@ final class DDCVolumeCoordinatorTests: XCTestCase {
             let transport = FakeDDCTransport()
             transport.reply = DDCVolumeReply(current: 20, maximum: 100)
             transport.blockNextRead()
-            let coordinator = DDCVolumeCoordinator(transport: transport, readWatchdog: .seconds(30)) { _ in }
+            var updates: [DDCVolumeUpdate] = []
+            let coordinator = DDCVolumeCoordinator(transport: transport, readWatchdog: .seconds(30)) { updates.append($0) }
             coordinator.select(outputID: 93, uid: "DISPLAY-A")
             await waitUntil("blocked read for \(action)") { transport.blockedReadCount == 1 }
             coordinator.setVolume(0.8)
             coordinator.flushPendingVolume()
             if action == "stop" { coordinator.stop() } else { coordinator.topologyChanged() }
             transport.releaseBlockedRead()
-            if action == "topology" { await waitUntil("topology refresh") { transport.readCount >= 2 } }
-            XCTAssertTrue(transport.writeValues.isEmpty, "Queued write must be invalidated by \(action)")
+            await coordinator.waitForWorkerIdle()
+            if action == "topology" {
+                await waitUntil("topology refresh callback") { updates.contains { $0.generation == coordinator.generation && $0.scalar == 0.2 } }
+            }
+            XCTAssertTrue(transport.writeValues.isEmpty, "Queued write must be invalidated by \(action) after queue drain")
+            if action == "stop" { XCTAssertTrue(updates.isEmpty, "Stop must suppress the released read callback") }
             coordinator.stop()
+            await coordinator.waitForWorkerIdle()
         }
     }
 
@@ -218,6 +259,26 @@ final class DDCVolumeCoordinatorTests: XCTestCase {
         let result = await clock.waitForPending(duration)
         XCTAssertTrue(result, "Timed out waiting for \(description)", file: file, line: line)
     }
+}
+
+private final class ReadValidationGate: @unchecked Sendable {
+    private let lock = NSLock()
+    private let releaseSemaphore = DispatchSemaphore(value: 0)
+    private var shouldBlock = true
+    private var entered = false
+    var hasEntered: Bool { lock.withLock { entered } }
+
+    func enterAndWait() {
+        let shouldWait = lock.withLock { () -> Bool in
+            guard shouldBlock else { return false }
+            shouldBlock = false
+            entered = true
+            return true
+        }
+        if shouldWait { releaseSemaphore.wait() }
+    }
+
+    func release() { releaseSemaphore.signal() }
 }
 
 private final class FakeDDCTransport: DDCVolumeTransport, @unchecked Sendable {
