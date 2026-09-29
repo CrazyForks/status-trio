@@ -51,6 +51,24 @@ final class DDCDisplayTransport: DDCVolumeTransport {
         return (edidUUID: candidate.edidUUID, handle: opened)
     }
 
+    /// The current Apple Silicon registry exposes the display EDID UUID on a
+    /// framebuffer branch separate from its DDC proxy. Until a stable direct
+    /// relation is available, accept only the unambiguous one-framebuffer,
+    /// one-external-service topology.
+    static func uniqueFramebufferServiceMatch<Identity, Handle>(
+        uid: String,
+        framebufferUUIDs: [String],
+        externalServices: [Identity],
+        open: (Identity) -> Handle?
+    ) -> (edidUUID: String, handle: Handle)? {
+        guard !uid.isEmpty,
+              framebufferUUIDs.count == 1,
+              framebufferUUIDs[0] == uid,
+              externalServices.count == 1,
+              let opened = open(externalServices[0]) else { return nil }
+        return (edidUUID: uid, handle: opened)
+    }
+
     func resolve(uid: String) -> DDCDisplayTarget? {
         #if arch(arm64)
         guard !uid.isEmpty else { return nil }
@@ -64,23 +82,33 @@ final class DDCDisplayTransport: DDCVolumeTransport {
         }
         defer { IOObjectRelease(iterator) }
 
-        var proxies: [(edidUUID: String, handle: io_service_t)] = []
+        var framebufferUUIDs: [String] = []
+        var externalServices: [io_service_t] = []
         while true {
             let entry = IOIteratorNext(iterator)
             guard entry != IO_OBJECT_NULL else { break }
-            if Self.registryName(entry) == "DCPAVServiceProxy",
-               Self.stringProperty("Location", entry: entry) == "External",
-               let edidUUID = Self.parentEDIDUUID(entry) {
-                proxies.append((edidUUID: edidUUID, handle: entry))
-            } else {
+            switch Self.registryName(entry) {
+            case "IOMobileFramebufferShim":
+                if let uuid = Self.stringProperty("EDID UUID", entry: entry, recursive: true) {
+                    framebufferUUIDs.append(uuid)
+                }
+                IOObjectRelease(entry)
+            case "DCPAVServiceProxy" where Self.stringProperty("Location", entry: entry) == "External":
+                externalServices.append(entry)
+            default:
                 IOObjectRelease(entry)
             }
         }
-        defer { proxies.forEach { IOObjectRelease($0.handle) } }
+        defer { externalServices.forEach { _ = IOObjectRelease($0) } }
 
-        guard let candidate = Self.uniqueOpenedMatch(uid: uid, services: proxies, open: { entry in
-            IOAVServiceCreateWithService(kCFAllocatorDefault, entry)?.takeRetainedValue()
-        }) else { return nil }
+        guard let candidate = Self.uniqueFramebufferServiceMatch(
+            uid: uid,
+            framebufferUUIDs: framebufferUUIDs,
+            externalServices: externalServices,
+            open: { entry in
+                IOAVServiceCreateWithService(kCFAllocatorDefault, entry)?.takeRetainedValue()
+            }
+        ) else { return nil }
         return DDCDisplayTarget(uid: uid, service: candidate.handle)
         #else
         return nil
@@ -149,25 +177,10 @@ final class DDCDisplayTransport: DDCVolumeTransport {
         return String(decoding: bytes, as: UTF8.self)
     }
 
-    private static func stringProperty(_ key: String, entry: io_registry_entry_t) -> String? {
-        guard let value = IORegistryEntryCreateCFProperty(entry, key as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue() else { return nil }
+    private static func stringProperty(_ key: String, entry: io_registry_entry_t, recursive: Bool = false) -> String? {
+        let options = recursive ? IOOptionBits(kIORegistryIterateRecursively) : 0
+        guard let value = IORegistryEntryCreateCFProperty(entry, key as CFString, kCFAllocatorDefault, options)?.takeRetainedValue() else { return nil }
         return value as? String
-    }
-
-    private static func parentEDIDUUID(_ entry: io_registry_entry_t) -> String? {
-        var current = entry
-        var ownsCurrent = false
-        defer { if ownsCurrent { IOObjectRelease(current) } }
-        for _ in 0..<12 {
-            if let uuid = stringProperty("EDID UUID", entry: current) { return uuid }
-            var parent: io_registry_entry_t = IO_OBJECT_NULL
-            guard IORegistryEntryGetParentEntry(current, kIOServicePlane, &parent) == KERN_SUCCESS,
-                  parent != IO_OBJECT_NULL else { return nil }
-            if ownsCurrent { IOObjectRelease(current) }
-            current = parent
-            ownsCurrent = true
-        }
-        return nil
     }
     #endif
 }

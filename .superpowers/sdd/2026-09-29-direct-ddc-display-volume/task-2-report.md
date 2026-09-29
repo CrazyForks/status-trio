@@ -42,3 +42,19 @@ The discovery path now gathers external proxy registry entries and their ancesto
 - `swift test --filter DDCDisplayTransportTests`: passed, 3 tests, 0 failures.
 - `swift test`: passed, 387 tests in 64 suites, 0 failures.
 - `swift build -c release`: passed.
+
+## Follow-up hardware correction: associate the separate framebuffer and DDC branches
+
+### RED/GREEN evidence
+
+The hardware brief's read-only registry probe showed one external `DCPAVServiceProxy`, with no `EDID UUID` on it or its first 12 IOService ancestors. The UUID was available on a separate `IOMobileFramebufferShim` branch. Added deterministic tests for exact framebuffer UID association, duplicate framebuffer identities, multiple framebuffer/service ambiguity, and confirming that ambiguous cases never call the opener. Before the association boundary was implemented, the new tests failed to compile because `uniqueFramebufferServiceMatch` did not exist; after implementation, the focused suite passed.
+
+Discovery now collects the `EDID UUID` from `IOMobileFramebufferShim` entries and external DDC proxy handles independently. It opens a service only after the requested CoreAudio UID exactly matches the sole framebuffer UUID and the registry contains exactly one external service. Multiple UUID-bearing framebuffer entries, multiple external services, missing/mismatched UIDs, or failed service creation return nil. The earlier duplicate-UUID-before-open regression remains in place.
+
+### Read-only hardware evidence
+
+Product-path probe result: `match=true`, `current=100`, `max=100`. It invoked `DDCDisplayTransport.resolve(uid:)` and `read(_:)`; no volume write was issued. The full device UID was not recorded. The temporary gated probe test was removed before commit.
+
+- `swift test --filter DDCDisplayTransportTests`: passed, 5 tests, 0 failures.
+- `swift test`: passed, 387 tests in 64 suites, 0 failures.
+- `swift build -c release`: passed.
