@@ -29,4 +29,15 @@
 
 ## DDC/CI 分流结论
 
-没有 BenQ 实机观察，故**DDC/CI 的可行性与 `VCP 0x62` 均未验证**，不满足第二阶段门槛。本次仅修复 CoreAudio 模拟覆盖；不据此声称已解决该显示器的实际音量控制问题，也不添加 DDC 代码。
+原 BenQ 报告没有实机观察，故**该 BenQ 的 DDC/CI 可行性与 `VCP 0x62` 均未验证**。本 PR 仅修复 CoreAudio 覆盖；不据此声称已解决原报告，也不添加 DDC 代码。
+
+## 2026-09-29 后续实机诊断：XV272U
+
+用户在开发版中选择本机外接 XV272U 后，看到音量为「—」、滑杆无法控制；macOS 系统音量滑杆也不可用，但键盘音量键能改变实际声音。此设备与原报告中的 BenQ 尚未确认是同一型号，不能把以下结果推广到 BenQ。
+
+- `system_profiler` 显示 XV272U 是当前默认 HDMI 音频输出，制造商代码 `ACR`，有两个输出通道；同名外接显示器在线。
+- 对当前 CoreAudio 设备逐个检查输出 `Main` 和通道 1–8：`kAudioDevicePropertyVolumeScalar` 与 `kAudioDevicePropertyMute` 全部不存在，也不可写。Status Trio 的 `scalar == nil` 因而符合设备能力，并非多通道监听修复失效。
+- 本机 BetterDisplay 4.3.4 正在运行。其 CLI 对 XV272U 的 DDC/CI `audioSpeakerVolume` (`VCP 0x62`) 读出 `100/100`，写入 `95` 后读回 `95/100`，再写回并读到 `100/100`。
+- 在 `/tmp` 编译的 MIT 许可 `AppleSiliconDDC` 示例 CLI 独立于 BetterDisplay 读取 `0x62`，得到最大值 100、当前值 100；写入 95 后读回当前值 95，再恢复到 100 并读回 100。该工具的输出将此面板响应标为 `Non-interpretable by this tool`，但实际 VCP 低字节读写与 BetterDisplay 一致。
+
+**结论：**XV272U 的可调音量位于显示器 DDC/CI 硬件层，CoreAudio 不暴露该属性。已验证本机可独立读写 `VCP 0x62`，但 Status Trio 尚未实现显示器匹配和 DDC 后端；键盘操作很可能由正在运行的 BetterDisplay 处理，尚未通过退出该应用作排他验证。保持原 PR 的 CoreAudio 修复范围；DDC 支持需要单独设计与测试。
