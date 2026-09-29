@@ -57,16 +57,29 @@ final class DDCDisplayTransport: DDCVolumeTransport {
     /// one-external-service topology.
     static func uniqueFramebufferServiceMatch<Identity, Handle>(
         uid: String,
-        framebufferUUIDs: [String],
+        externalFramebufferUUIDs: [String?],
         externalServices: [Identity],
         open: (Identity) -> Handle?
     ) -> (edidUUID: String, handle: Handle)? {
         guard !uid.isEmpty,
-              framebufferUUIDs.count == 1,
-              framebufferUUIDs[0] == uid,
+              externalFramebufferUUIDs.count == 1,
+              let framebufferUUID = externalFramebufferUUIDs[0],
+              framebufferUUID == uid,
               externalServices.count == 1,
               let opened = open(externalServices[0]) else { return nil }
-        return (edidUUID: uid, handle: opened)
+        return (edidUUID: framebufferUUID, handle: opened)
+    }
+
+    static func isConnectedExternalFramebuffer(
+        ioNameMatched: String?,
+        displayWidth: Int?,
+        displayHeight: Int?
+    ) -> Bool {
+        guard let ioNameMatched,
+              ioNameMatched.hasPrefix("dispext"),
+              let displayWidth,
+              let displayHeight else { return false }
+        return displayWidth > 0 && displayHeight > 0
     }
 
     func resolve(uid: String) -> DDCDisplayTarget? {
@@ -82,15 +95,22 @@ final class DDCDisplayTransport: DDCVolumeTransport {
         }
         defer { IOObjectRelease(iterator) }
 
-        var framebufferUUIDs: [String] = []
+        var framebufferUUIDs: [String?] = []
         var externalServices: [io_service_t] = []
         while true {
             let entry = IOIteratorNext(iterator)
             guard entry != IO_OBJECT_NULL else { break }
             switch Self.registryName(entry) {
             case "IOMobileFramebufferShim":
-                if let uuid = Self.stringProperty("EDID UUID", entry: entry, recursive: true) {
-                    framebufferUUIDs.append(uuid)
+                let ioNameMatched = Self.stringProperty("IONameMatched", entry: entry)
+                let displayWidth = Self.integerProperty("DisplayWidth", entry: entry)
+                let displayHeight = Self.integerProperty("DisplayHeight", entry: entry)
+                if Self.isConnectedExternalFramebuffer(
+                    ioNameMatched: ioNameMatched,
+                    displayWidth: displayWidth,
+                    displayHeight: displayHeight
+                ) {
+                    framebufferUUIDs.append(Self.stringProperty("EDID UUID", entry: entry, recursive: true))
                 }
                 IOObjectRelease(entry)
             case "DCPAVServiceProxy" where Self.stringProperty("Location", entry: entry) == "External":
@@ -103,7 +123,7 @@ final class DDCDisplayTransport: DDCVolumeTransport {
 
         guard let candidate = Self.uniqueFramebufferServiceMatch(
             uid: uid,
-            framebufferUUIDs: framebufferUUIDs,
+            externalFramebufferUUIDs: framebufferUUIDs,
             externalServices: externalServices,
             open: { entry in
                 IOAVServiceCreateWithService(kCFAllocatorDefault, entry)?.takeRetainedValue()
@@ -181,6 +201,11 @@ final class DDCDisplayTransport: DDCVolumeTransport {
         let options = recursive ? IOOptionBits(kIORegistryIterateRecursively) : 0
         guard let value = IORegistryEntryCreateCFProperty(entry, key as CFString, kCFAllocatorDefault, options)?.takeRetainedValue() else { return nil }
         return value as? String
+    }
+
+    private static func integerProperty(_ key: String, entry: io_registry_entry_t) -> Int? {
+        guard let value = IORegistryEntryCreateCFProperty(entry, key as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue() else { return nil }
+        return value as? Int
     }
     #endif
 }

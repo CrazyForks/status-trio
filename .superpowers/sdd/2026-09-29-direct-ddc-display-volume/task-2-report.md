@@ -58,3 +58,26 @@ Product-path probe result: `match=true`, `current=100`, `max=100`. It invoked `D
 - `swift test --filter DDCDisplayTransportTests`: passed, 5 tests, 0 failures.
 - `swift test`: passed, 387 tests in 64 suites, 0 failures.
 - `swift build -c release`: passed.
+
+## Follow-up fix: count connected external framebuffers without UUIDs
+
+### Registry evidence and relevance rule
+
+Inspected live IORegistry properties without displaying any display UID. This Mac reported five `IOMobileFramebufferShim` entries:
+
+- `IONameMatched=disp0,t603x`: built-in panel; has dimensions but is not an external display.
+- `IONameMatched=dispext0,t603x`: connected external display; dimensions are `2560x1440` and recursive `EDID UUID` is present.
+- `IONameMatched=dispext1,t603x`, `dispext2,t603x`, and `dispext3,t603x`: inactive external ports; display dimensions and UUID are absent.
+- One `DCPAVServiceProxy` reports `Location=External`.
+
+The code now treats an `IOMobileFramebufferShim` as a connected external framebuffer when `IONameMatched` begins with `dispext` and both direct `DisplayWidth` and `DisplayHeight` properties are positive. This excludes the built-in `disp0` panel and inactive `dispext` ports on the observed host. It appends every relevant framebuffer, including a `nil` UUID for an unreadable identity, so any second connected external framebuffer fails closed.
+
+### RED/GREEN and hardware evidence
+
+Added regression coverage for `[matching UUID, missing UUID]` with one external service, asserting `nil` and zero opener calls. Added property relevance tests for the active external output, inactive external port, built-in panel, and invalid dimensions. Before implementation, the new tests could not compile against the previous `[String]`-only framebuffer API, which could not represent a connected framebuffer with missing identity. After implementation:
+
+- `swift test --filter DDCDisplayTransportTests`: passed, 6 tests, 0 failures.
+- Read-only product probe through `DDCDisplayTransport.resolve(uid:)` and `read(_:)`: `match=true current=100 max=100`. No volume write was issued; the temporary gated test was removed.
+- `swift build -c release`: passed.
+
+Full suite command: `swift test`. Its 387 Swift Testing cases passed, but the command exited 1 because XCTest failed at `Tests/StatusTrioCoreTests/DDCVolumeCoordinatorTests.swift:267`: `testSwitchBeforeDebounceDropsQueuedWrite` asserted that the old debounce had been cancelled. Re-running only `swift test --filter DDCVolumeCoordinatorTests.testSwitchBeforeDebounceDropsQueuedWrite` reproduced the failure. This test and coordinator code are outside the transport correction; no unrelated files were changed.

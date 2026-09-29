@@ -29,7 +29,7 @@ final class DDCDisplayTransportTests: XCTestCase {
         var opened: [Int] = []
         let matched = DDCDisplayTransport.uniqueFramebufferServiceMatch(
             uid: "XV272U-UUID",
-            framebufferUUIDs: ["XV272U-UUID"],
+            externalFramebufferUUIDs: ["XV272U-UUID"],
             externalServices: [20]
         ) { service in
             opened.append(service)
@@ -46,29 +46,58 @@ final class DDCDisplayTransportTests: XCTestCase {
 
         XCTAssertNil(DDCDisplayTransport.uniqueFramebufferServiceMatch(
             uid: "XV272U-UUID",
-            framebufferUUIDs: ["XV272U-UUID", "OTHER"],
+            externalFramebufferUUIDs: ["XV272U-UUID", "OTHER"],
             externalServices: [20],
             open: open
         ))
         XCTAssertNil(DDCDisplayTransport.uniqueFramebufferServiceMatch(
             uid: "XV272U-UUID",
-            framebufferUUIDs: ["XV272U-UUID", "XV272U-UUID"],
+            externalFramebufferUUIDs: ["XV272U-UUID", "XV272U-UUID"],
             externalServices: [20],
             open: open
         ))
         XCTAssertNil(DDCDisplayTransport.uniqueFramebufferServiceMatch(
             uid: "XV272U-UUID",
-            framebufferUUIDs: ["XV272U-UUID"],
+            externalFramebufferUUIDs: ["XV272U-UUID", nil],
+            externalServices: [20],
+            open: open
+        ))
+        XCTAssertNil(DDCDisplayTransport.uniqueFramebufferServiceMatch(
+            uid: "XV272U-UUID",
+            externalFramebufferUUIDs: ["XV272U-UUID"],
             externalServices: [20, 21],
             open: open
         ))
         XCTAssertNil(DDCDisplayTransport.uniqueFramebufferServiceMatch(
             uid: "OTHER",
-            framebufferUUIDs: ["XV272U-UUID"],
+            externalFramebufferUUIDs: ["XV272U-UUID"],
             externalServices: [20],
             open: open
         ))
         XCTAssertEqual(openAttempts, 0)
+    }
+
+    func testOnlyConnectedExternalFramebufferEntriesAreRelevant() {
+        XCTAssertTrue(DDCDisplayTransport.isConnectedExternalFramebuffer(
+            ioNameMatched: "dispext0,t603x",
+            displayWidth: 2560,
+            displayHeight: 1440
+        ))
+        XCTAssertFalse(DDCDisplayTransport.isConnectedExternalFramebuffer(
+            ioNameMatched: "dispext1,t603x",
+            displayWidth: nil,
+            displayHeight: nil
+        ))
+        XCTAssertFalse(DDCDisplayTransport.isConnectedExternalFramebuffer(
+            ioNameMatched: "disp0,t603x",
+            displayWidth: 3456,
+            displayHeight: 2234
+        ))
+        XCTAssertFalse(DDCDisplayTransport.isConnectedExternalFramebuffer(
+            ioNameMatched: "dispext2,t603x",
+            displayWidth: 0,
+            displayHeight: 1440
+        ))
     }
 
     func testInvalidReplyIsRejectedByDecoder() {
