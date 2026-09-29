@@ -24,7 +24,8 @@
 - `swift test --filter VolumeMonitorTests`：42 项通过。
 - `swift test`：通过，387 项测试、64 个 suite，0 失败。
 - `swift build -c release`：通过，退出码 0。
-- 本机工具链：Swift 6.4、Xcode 27.0、macOS SDK 27.0；高于仓库 CI 目标（Swift 6.3.3、Xcode 26.6、macos-26）。尚未在 CI 工具链上验证。
+- 本机工具链：Swift 6.4、Xcode 27.0、macOS SDK 27.0。
+- CI 非发布预检：[release.yml run 36519010623](https://github.com/lingyired/status-trio/actions/runs/36519010623) 通过，head SHA `14ae1ba6724dcdaf88046f2651e258dfabf3a247`；使用 macos-26、Xcode 26.6、Swift 6.3.3，版本 1.3.4 build 17，`publish=false`，构建成功且未发布。
 
 ## DDC/CI 分流结论
 
