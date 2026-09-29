@@ -848,6 +848,7 @@ final class VolumeMonitor: VolumeMonitoring, VolumeControlling {
     private var selectedDDCUID: String?
     private var ddcStatusGeneration: UInt64?
     private var pendingDDCVolume: (commandID: UInt64, scalar: Double)?
+    private var displayAsleep = false
 
     init(
         statusReader: any AudioStatusReadingProviding = CoreAudioStatusReader(),
@@ -950,7 +951,12 @@ final class VolumeMonitor: VolumeMonitoring, VolumeControlling {
         }
     }
 
-    func setDisplayAsleep(_ asleep: Bool) { ddcCoordinator.setDisplayAsleep(asleep) }
+    func setDisplayAsleep(_ asleep: Bool) {
+        guard lifecycle != .stopped, displayAsleep != asleep else { return }
+        displayAsleep = asleep
+        if asleep { clearDDCStatus() }
+        ddcCoordinator.setDisplayAsleep(asleep)
+    }
     func topologyChanged() {
         clearDDCStatus()
         ddcCoordinator.topologyChanged()
@@ -1150,11 +1156,12 @@ final class VolumeMonitor: VolumeMonitoring, VolumeControlling {
     private var latestStatus = VolumeStatus.placeholder
 
     private func receiveDDCUpdate(_ update: DDCVolumeUpdate) {
-        guard update.outputID == selectedDDCOutputID,
+        guard !displayAsleep,
+              update.outputID == selectedDDCOutputID,
               update.uid == selectedDDCUID,
               update.generation == ddcCoordinator.generation else { return }
         if let pendingDDCVolume {
-            guard update.commandID == pendingDDCVolume.commandID || update.scalar == nil else { return }
+            guard update.commandID == pendingDDCVolume.commandID else { return }
             self.pendingDDCVolume = nil
         }
         ddcStatusGeneration = update.scalar == nil ? nil : update.generation

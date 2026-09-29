@@ -209,6 +209,32 @@ final class DDCVolumePresentationTests: XCTestCase {
         observer.cancel()
     }
 
+    func testWatchdogAndLateReadCannotReplacePendingDDCTarget() async {
+        let row = AudioOutputDevice(id: 42, name: "XV272U", uid: "DISPLAY-A", isCurrent: true)
+        let reader = FixedAudioStatusReader(reading: VolumeReading(
+            scalar: nil, isMuted: false, deviceName: "XV272U", currentDevice: row,
+            canSetVolume: false, canMute: false
+        ), devices: [row])
+        let transport = SlowFirstReadPresentationDDCTransport()
+        let monitor = VolumeMonitor(statusReader: reader, eventMonitor: PresentationVolumeEvents(),
+                                   ddcTransport: transport)
+        let history = PendingDDCCommandHistory()
+        let observer = Task { @MainActor in
+            for await status in monitor.updates {
+                history.receive(status)
+            }
+        }
+
+        monitor.start()
+        monitor.setVolume(0.4)
+        await fulfillment(of: [history.optimisticTarget, history.confirmedReadback], timeout: 4)
+
+        XCTAssertEqual(history.updatesDuringPending.map(\.scalar), [])
+        XCTAssertTrue(history.confirmedReadbackStatus?.canSetVolume == true)
+        monitor.stop()
+        observer.cancel()
+    }
+
     func testTopologyChangeClearsConfirmedDDCVolumeAndSelectedRowImmediately() async {
         let row = AudioOutputDevice(id: 42, name: "XV272U", uid: "DISPLAY-A", isCurrent: true)
         let reader = FixedAudioStatusReader(reading: VolumeReading(
@@ -414,10 +440,69 @@ private final class PendingDDCVolumeObservation {
     }
 }
 
+@MainActor
+private final class PendingDDCCommandHistory {
+    let optimisticTarget = XCTestExpectation(description: "DDC target remains optimistic")
+    let confirmedReadback = XCTestExpectation(description: "DDC write readback is confirmed")
+    private var hasPendingTarget = false
+    private var targetCount = 0
+    private(set) var updatesDuringPending: [VolumeStatus] = []
+    private(set) var confirmedReadbackStatus: VolumeStatus?
+
+    func receive(_ status: VolumeStatus) {
+        if hasPendingTarget, status.scalar != 0.4 {
+            updatesDuringPending.append(status)
+        }
+        if status.scalar == 0.4 {
+            targetCount += 1
+            hasPendingTarget = true
+            if targetCount == 1 {
+                optimisticTarget.fulfill()
+            } else {
+                confirmedReadbackStatus = status
+                confirmedReadback.fulfill()
+                hasPendingTarget = false
+            }
+        }
+    }
+}
+
 private final class FailingWritePresentationDDCTransport: DDCVolumeTransport {
     func resolve(uid: String) -> DDCDisplayTarget? { DDCDisplayTarget(uid: uid, service: nil) }
     func read(_ target: DDCDisplayTarget) -> DDCVolumeReply? { DDCVolumeReply(current: 75, maximum: 100) }
     func write(_ target: DDCDisplayTarget, value: UInt16) -> Bool { false }
+}
+
+private final class SlowFirstReadPresentationDDCTransport: DDCVolumeTransport, @unchecked Sendable {
+    private let lock = NSLock()
+    private var readCount = 0
+    private var currentValue: UInt16 = 75
+
+    func resolve(uid: String) -> DDCDisplayTarget? { DDCDisplayTarget(uid: uid, service: nil) }
+
+    func read(_ target: DDCDisplayTarget) -> DDCVolumeReply? {
+        lock.lock()
+        readCount += 1
+        let isFirstRead = readCount == 1
+        let initialValue = currentValue
+        lock.unlock()
+
+        if isFirstRead { Thread.sleep(forTimeInterval: 2.2) }
+        return DDCVolumeReply(current: isFirstRead ? initialValue : currentValueSnapshot(), maximum: 100)
+    }
+
+    func write(_ target: DDCDisplayTarget, value: UInt16) -> Bool {
+        lock.lock()
+        currentValue = value
+        lock.unlock()
+        return true
+    }
+
+    private func currentValueSnapshot() -> UInt16 {
+        lock.lock()
+        defer { lock.unlock() }
+        return currentValue
+    }
 }
 
 private final class TrackingPresentationDDCTransport: DDCVolumeTransport {
