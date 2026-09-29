@@ -1,0 +1,32 @@
+# Task 2 report: exact display identity and direct transport
+
+## RED evidence
+
+Added `DDCDisplayTransportTests` first, with exact UID selection cases for blank UID, no match, duplicate exact UUIDs, a single exact match among nonmatches, and a name-only resemblance. Added a fake transport that passes malformed VCP `0x62` bytes through `DDCVolumeReply.decode`.
+
+Ran `swift test --filter DDCDisplayTransportTests` before production implementation. It failed at compile time as expected: `cannot find 'DDCDisplayTransport' in scope` at each selector assertion. The failure established that the transport and selector API were absent.
+
+## GREEN evidence
+
+Implemented the transport, pure unique selector, IORegistry resolution, I2C read/write bridge, test fake, C target, framework link, and upstream MIT license.
+
+- `swift test --filter DDCDisplayTransportTests`: passed, 2 tests, 0 failures.
+- `swift test`: passed, 387 tests in 64 suites, 0 failures.
+- `swift build -c release`: passed.
+- `otool -L .build/out/Products/Release/StatusTrio`: includes `/System/Library/Frameworks/CoreDisplay.framework/Versions/A/CoreDisplay`.
+- `find .build -iname '*ASDDC*' -print`: no matches.
+- `git diff --check`: clean.
+
+## Self-review
+
+- Resolution rejects blank UIDs, requires exactly one case-sensitive EDID UUID match, and does not use display names.
+- Discovery only accepts external `DCPAVServiceProxy` entries and searches ancestors for `EDID UUID`.
+- IOKit service references are created, examined, and discarded on the calling serial worker. `DDCDisplayTarget` has no `Sendable` conformance; the raw service handle is not wrapped for cross-queue transfer.
+- Reads use VCP `0x62`, chip address `0x37`, data address `0x51`, bounded five attempts, an 11-byte response, and the existing validating decoder. Writes use bounded retries and two write cycles.
+- Non-arm64 paths return `nil`/`false`.
+- The bridge declares only the needed private IOKit calls. CoreDisplay is linked on StatusTrioCore. Upstream attribution and its MIT license are included.
+- No ASDDC subprocess, name scoring, capability scan, CLI, or probe output was added.
+
+## Concerns
+
+Hardware enumeration and DDC read/write were not exercised against a physical external display in this automated run. The service and target must continue to be created, used, and released exclusively on the DDC worker as the worker is integrated.
