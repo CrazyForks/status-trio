@@ -31,6 +31,26 @@ enum ChargingEffectPalette {
         return contrastingMix(from: base, toward: destination)
     }
 
+    static func chargingBoltHighlight(
+        for fillColor: CGColor,
+        using automaticHighlight: CGColor
+    ) -> CGColor {
+        guard let base = components(of: fillColor) else { return fillColor }
+        guard let highlighted = components(of: automaticHighlight),
+              relativeLuminance(highlighted) > relativeLuminance(base) else {
+            return blend(fillColor, with: CGColor(gray: 1, alpha: 1), amount: 0.35)
+        }
+        return automaticHighlight
+    }
+
+    static func blend(_ first: CGColor, with second: CGColor, amount: Double) -> CGColor {
+        guard let firstRGB = components(of: first), let secondRGB = components(of: second) else {
+            return amount >= 0.5 ? second : first
+        }
+        let result = mix(firstRGB, secondRGB, amount: min(1, max(0, amount)))
+        return makeColor(result)
+    }
+
     private struct RGB {
         let red: Double
         let green: Double
@@ -65,10 +85,14 @@ enum ChargingEffectPalette {
             }
         }
         let result = mix(base, destination, amount: high)
+        return makeColor(result)
+    }
+
+    private static func makeColor(_ color: RGB) -> CGColor {
         let values: [CGFloat] = [
-            CGFloat(result.red),
-            CGFloat(result.green),
-            CGFloat(result.blue),
+            CGFloat(color.red),
+            CGFloat(color.green),
+            CGFloat(color.blue),
             1
         ]
         return CGColor(colorSpace: sRGBColorSpace, components: values)

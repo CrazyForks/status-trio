@@ -422,20 +422,28 @@ enum StatusIconRenderer {
         ))
         context.strokePath()
 
-        if options.showsChargingEffect,
-           battery.isPresent,
-           battery.isCharging,
-           !battery.isCharged,
-           let phase,
-           let frame = ChargingEffectPolicy.frame(
+        let chargingEffectFrame: ChargingEffectFrame? = {
+            guard options.showsChargingEffect,
+                  battery.isPresent,
+                  battery.isCharging,
+                  !battery.isCharged,
+                  let phase else {
+                return nil
+            }
+            return ChargingEffectPolicy.frame(
                 progress: StatusMappings.batteryProgress(battery),
                 phase: phase,
                 hasTopGap: hasTopGap,
                 topGapWidth: topGapWidth
-           ) {
+            )
+        }()
+        let effectHighlight = chargingEffectFrame.map { _ in
+            ChargingEffectPalette.automaticHighlight(for: arcColor)
+        }
+        if let chargingEffectFrame, let effectHighlight {
             drawChargingEffect(
-                frame,
-                fillColor: arcColor,
+                chargingEffectFrame,
+                highlightColor: effectHighlight,
                 lineWidth: 8 * CGFloat(options.ringStrokeScale),
                 hasTopGap: hasTopGap,
                 topGapWidth: topGapWidth,
@@ -455,10 +463,37 @@ enum StatusIconRenderer {
 
         switch gapContent {
         case .bolt:
-            context.setFillColor(foreground)
-            context.addPath(StatusIconGeometry.batteryChargingBolt(
-                scale: indicatorScale
-            ))
+            let baseBolt = StatusIconGeometry.batteryChargingBolt(scale: indicatorScale)
+            let boltHeartbeatFrame = options.showsChargingBoltHeartbeat
+                ? chargingEffectFrame
+                : nil
+            let bolt = boltHeartbeatFrame.map { frame in
+                StatusIconGeometry.batteryChargingBolt(
+                    basePath: baseBolt,
+                    centeredScale: CGFloat(frame.boltScale),
+                    fitting: StatusIconGeometry.canvas
+                )
+            } ?? baseBolt
+            let boltColor = boltHeartbeatFrame.map { frame in
+                let highlightColor: CGColor
+                if options.usesStatusColors,
+                   role != .foreground,
+                   let effectHighlight {
+                    highlightColor = ChargingEffectPalette.chargingBoltHighlight(
+                        for: arcColor,
+                        using: effectHighlight
+                    )
+                } else {
+                    highlightColor = foreground
+                }
+                return ChargingEffectPalette.blend(
+                    foreground,
+                    with: highlightColor,
+                    amount: frame.boltArcColorAmount
+                )
+            } ?? foreground
+            context.setFillColor(boltColor)
+            context.addPath(bolt)
             context.fillPath()
         case .plug:
             drawBatteryPlug(
@@ -480,14 +515,12 @@ enum StatusIconRenderer {
 
     private static func drawChargingEffect(
         _ frame: ChargingEffectFrame,
-        fillColor: CGColor,
+        highlightColor: CGColor,
         lineWidth: CGFloat,
         hasTopGap: Bool,
         topGapWidth: CGFloat,
         in context: CGContext
     ) {
-        let highlight = ChargingEffectPalette.automaticHighlight(for: fillColor)
-
         if let tailRange = frame.tailRange {
             let tailPath = StatusIconGeometry.batteryHighlight(
                 from: tailRange.lowerBound,
@@ -501,8 +534,8 @@ enum StatusIconRenderer {
                 lineJoin: .round,
                 miterLimit: 10
             )
-            let transparent = highlight.copy(alpha: 0) ?? highlight
-            let bright = highlight.copy(alpha: min(1, max(0, frame.tailAlpha))) ?? highlight
+            let transparent = highlightColor.copy(alpha: 0) ?? highlightColor
+            let bright = highlightColor.copy(alpha: min(1, max(0, frame.tailAlpha))) ?? highlightColor
             if let gradient = CGGradient(
                 colorsSpace: CGColorSpaceCreateDeviceRGB(),
                 colors: [transparent, bright, transparent] as CFArray,
@@ -524,7 +557,7 @@ enum StatusIconRenderer {
         if frame.headIsVisible, frame.beadAlpha > 0 {
             let center = StatusIconGeometry.batteryPoint(forProgress: frame.headProgress)
             let radius = lineWidth * 0.5 * 1.18
-            context.setFillColor(highlight.copy(alpha: min(1, frame.beadAlpha)) ?? highlight)
+            context.setFillColor(highlightColor.copy(alpha: min(1, frame.beadAlpha)) ?? highlightColor)
             context.fillEllipse(in: CGRect(
                 x: center.x - radius,
                 y: center.y - radius,
@@ -536,7 +569,7 @@ enum StatusIconRenderer {
         if frame.headIsVisible, frame.heartbeatAlpha > 0 {
             let center = StatusIconGeometry.batteryPoint(forProgress: frame.headProgress)
             let radius = lineWidth * 0.95 * frame.heartbeatScale
-            context.setFillColor(highlight.copy(alpha: min(1, frame.heartbeatAlpha)) ?? highlight)
+            context.setFillColor(highlightColor.copy(alpha: min(1, frame.heartbeatAlpha)) ?? highlightColor)
             context.fillEllipse(in: CGRect(
                 x: center.x - radius,
                 y: center.y - radius,
@@ -635,7 +668,7 @@ enum StatusIconRenderer {
         StatusIconGeometry.batteryValueBaseFontSize * CGFloat(scale)
     }
 
-    private static func batteryChargingBoltScale(textScale: Double) -> CGFloat {
+    static func batteryChargingBoltScale(textScale: Double) -> CGFloat {
         let boltHeight = StatusIconGeometry.batteryChargingBolt().boundingBoxOfPath.height
         let targetHeight = batteryTopIndicatorHeight(textScale: textScale)
         guard boltHeight.isFinite, boltHeight > 0, targetHeight > 0 else {
