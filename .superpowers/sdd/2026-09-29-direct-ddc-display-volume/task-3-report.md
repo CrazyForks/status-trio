@@ -82,3 +82,15 @@ Commands and outputs for this round:
 - `git diff --check` — passed, no output.
 - `swift test` — passed, 387 tests in 64 suites.
 - `swift build -c release` — passed, `Build complete!`.
+
+## Review round 4: debounce cancellation race
+
+Updated only `Tests/StatusTrioCoreTests/DDCVolumeCoordinatorTests.swift` in this round. `testSwitchBeforeDebounceDropsQueuedWrite` now awaits the existing `onDebounceSettled` acknowledgment after switching outputs, verifies the canceled 150 ms timer is gone, advances the manual clock by 150 ms, drains the worker, and confirms no write occurred. This preserves the regression while waiting for the asynchronous cancellation handler to finish before inspecting actor-owned clock state.
+
+Commands and outputs:
+
+- `swift test --filter DDCVolumeCoordinatorTests.testSwitchBeforeDebounceDropsQueuedWrite` — passed, 1 test, 0 failures.
+- `swift test --filter DDCVolumeCoordinatorTests` — passed, 12 tests, 0 failures.
+- `git diff --check` — passed, no output.
+- `swift test` — passed, 387 tests in 64 suites.
+- `swift build -c release` — passed, `Build complete!`.

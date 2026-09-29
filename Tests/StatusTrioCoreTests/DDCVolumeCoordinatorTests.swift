@@ -257,15 +257,23 @@ final class DDCVolumeCoordinatorTests: XCTestCase {
     func testSwitchBeforeDebounceDropsQueuedWrite() async {
         let clock = ManualDDCClock()
         let transport = FakeDDCTransport()
-        let coordinator = DDCVolumeCoordinator(transport: transport, sleep: { try await clock.sleep($0) }) { _ in }
+        var debounceSettledCount = 0
+        let coordinator = DDCVolumeCoordinator(
+            transport: transport,
+            onDebounceSettled: { debounceSettledCount += 1 },
+            sleep: { try await clock.sleep($0) }
+        ) { _ in }
         coordinator.select(outputID: 93, uid: "DISPLAY-A")
         coordinator.setVolume(0.8)
         let debounceStarted = await clock.waitForRecorded(.milliseconds(150))
         XCTAssertTrue(debounceStarted, "Debounce timer must start before output switching")
         coordinator.select(outputID: 94, uid: "DISPLAY-B")
+        await waitUntil("canceled output debounce acknowledgment") { debounceSettledCount == 1 }
         let oldDebounceRemains = await clock.hasPending(.milliseconds(150))
         XCTAssertFalse(oldDebounceRemains, "Selection must cancel the old output debounce")
-        XCTAssertTrue(transport.writeValues.isEmpty)
+        await clock.advance(by: .milliseconds(150))
+        await coordinator.waitForWorkerIdle()
+        XCTAssertTrue(transport.writeValues.isEmpty, "Advancing the settled old-output debounce must not write")
         coordinator.stop()
         await clock.cancelAll()
     }
