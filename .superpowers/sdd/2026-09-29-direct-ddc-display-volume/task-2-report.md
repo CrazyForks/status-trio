@@ -30,3 +30,15 @@ Implemented the transport, pure unique selector, IORegistry resolution, I2C read
 ## Concerns
 
 Hardware enumeration and DDC read/write were not exercised against a physical external display in this automated run. The service and target must continue to be created, used, and released exclusively on the DDC worker as the worker is integrated.
+
+## Follow-up fix: reject duplicate identity before service creation
+
+### RED/GREEN evidence
+
+Added `testDuplicateIdentityIsRejectedBeforeOpeningAnyService`, which supplies two external proxy identities with the same EDID UUID and a fake opener that succeeds for the first identity. The test asserts that the result is nil and the opener was never called. Before adding the generic `uniqueOpenedMatch` boundary, the focused test failed to compile because that testable ordering API was absent. After implementation, the test passes.
+
+The discovery path now gathers external proxy registry entries and their ancestor EDID UUIDs before creating any `IOAVService`. It rejects zero or multiple exact UUID matches using the pure selector, then opens only the uniquely selected proxy. A failed open therefore returns nil without hiding another proxy identity.
+
+- `swift test --filter DDCDisplayTransportTests`: passed, 3 tests, 0 failures.
+- `swift test`: passed, 387 tests in 64 suites, 0 failures.
+- `swift build -c release`: passed.

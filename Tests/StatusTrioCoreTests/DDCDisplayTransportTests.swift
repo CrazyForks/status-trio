@@ -10,6 +10,21 @@ final class DDCDisplayTransportTests: XCTestCase {
         XCTAssertNil(DDCDisplayTransport.uniqueMatch(uid: "Monitor A", services: [(edidUUID: "Monitor A renamed", handle: 1)]))
     }
 
+    func testDuplicateIdentityIsRejectedBeforeOpeningAnyService() {
+        var openAttempts: [Int] = []
+
+        let result = DDCDisplayTransport.uniqueOpenedMatch(
+            uid: "A",
+            services: [(edidUUID: "A", handle: 1), (edidUUID: "A", handle: 2)]
+        ) { handle in
+            openAttempts.append(handle)
+            return handle == 1 ? "opened" : nil
+        }
+
+        XCTAssertNil(result)
+        XCTAssertTrue(openAttempts.isEmpty)
+    }
+
     func testInvalidReplyIsRejectedByDecoder() {
         let transport = InvalidReplyTransport()
         XCTAssertNil(transport.read(DDCDisplayTarget(uid: "display", service: nil)))

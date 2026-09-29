@@ -39,6 +39,18 @@ final class DDCDisplayTransport: DDCVolumeTransport {
         return matches.count == 1 ? matches[0] : nil
     }
 
+    /// Selects identity before calling the opener, so a failed open cannot hide
+    /// a second registry entry with the same UID.
+    static func uniqueOpenedMatch<Identity, Handle>(
+        uid: String,
+        services: [(edidUUID: String, handle: Identity)],
+        open: (Identity) -> Handle?
+    ) -> (edidUUID: String, handle: Handle)? {
+        guard let candidate = uniqueMatch(uid: uid, services: services),
+              let opened = open(candidate.handle) else { return nil }
+        return (edidUUID: candidate.edidUUID, handle: opened)
+    }
+
     func resolve(uid: String) -> DDCDisplayTarget? {
         #if arch(arm64)
         guard !uid.isEmpty else { return nil }
@@ -52,28 +64,24 @@ final class DDCDisplayTransport: DDCVolumeTransport {
         }
         defer { IOObjectRelease(iterator) }
 
-        var candidates: [(edidUUID: String, handle: IOAVService)] = []
+        var proxies: [(edidUUID: String, handle: io_service_t)] = []
         while true {
             let entry = IOIteratorNext(iterator)
             guard entry != IO_OBJECT_NULL else { break }
-            defer { IOObjectRelease(entry) }
-            guard Self.registryName(entry) == "DCPAVServiceProxy",
-                  Self.stringProperty("Location", entry: entry) == "External",
-                  let edidUUID = Self.parentEDIDUUID(entry),
-                  let unmanagedService = IOAVServiceCreateWithService(kCFAllocatorDefault, entry) else { continue }
-            let service = unmanagedService.takeRetainedValue()
-            candidates.append((edidUUID: edidUUID, handle: service))
+            if Self.registryName(entry) == "DCPAVServiceProxy",
+               Self.stringProperty("Location", entry: entry) == "External",
+               let edidUUID = Self.parentEDIDUUID(entry) {
+                proxies.append((edidUUID: edidUUID, handle: entry))
+            } else {
+                IOObjectRelease(entry)
+            }
         }
+        defer { proxies.forEach { IOObjectRelease($0.handle) } }
 
-        guard let candidate = Self.uniqueMatch(uid: uid, services: candidates) else {
-            // Release all retained service references on this worker.
-            candidates.removeAll()
-            return nil
-        }
-        // Drop all non-selected handles here, still on the worker.
-        let target = DDCDisplayTarget(uid: uid, service: candidate.handle)
-        candidates.removeAll()
-        return target
+        guard let candidate = Self.uniqueOpenedMatch(uid: uid, services: proxies, open: { entry in
+            IOAVServiceCreateWithService(kCFAllocatorDefault, entry)?.takeRetainedValue()
+        }) else { return nil }
+        return DDCDisplayTarget(uid: uid, service: candidate.handle)
         #else
         return nil
         #endif
