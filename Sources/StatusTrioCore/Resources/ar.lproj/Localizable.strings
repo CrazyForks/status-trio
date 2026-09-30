@@ -55,6 +55,14 @@
 "settings.bluetooth.batteryLevelsDescription" = "تقرأ مستويات بطارية AirPods أثناء عرض إدخال Bluetooth. لن يظهر طلب إذن إضافي.";
 "settings.bluetooth.nearbyBatteryDevices" = "عرض مستويات بطارية أجهزة BLE القريبة";
 "settings.bluetooth.nearbyBatteryDevicesDescription" = "عند تفعيل مستويات بطارية Bluetooth، يبحث التطبيق عن أجهزة BLE قريبة توفر خدمة البطارية القياسية أثناء فتح لوحة الحالة. يختلف الدعم حسب الجهاز.";
+"settings.bluetooth.listeningModePreview" = "معاينة مُبدِّل وضع السمع";
+"settings.bluetooth.listeningModePreviewDescription" = "اعرض كبسولات الوضع على جميع AirPods المتصلة لاختبار الواجهة. النقر على كبسولة يُحركها كما على الجهاز الفعلي لكن دون تغيير أي إعداد في AirPods.";
+"settings.bluetooth.listeningModePreviewDeviceName" = "اسم جهاز المعاينة";
+"settings.bluetooth.listeningModePreviewDeviceNameDescription" = "الاسم الظاهر على صفوف المعاينة. اتركه فارغًا لاستخدام الاسم الافتراضي، أو اكتب اسمًا طويلًا جدًا لاختبار الاقتطاع.";
+"settings.bluetooth.listeningModePreviewDeviceCount" = "عدد صفوف المعاينة";
+"settings.bluetooth.listeningModePreviewDeviceCountDescription" = "كم صف AirPods اصطناعي يُضاف. 0 يبقي الصفوف الحقيقية فقط؛ 2 يغطي الحالة الشائعة ويفحص حد التمرير في اللوحة.";
+"settings.bluetooth.listeningModePreviewLanguage" = "لغة المعاينة";
+"settings.bluetooth.listeningModePreviewLanguageDescription" = "اعرض أسماء الكبسولات في صفوف المعاينة بلغة مختارة مع إبقاء بقية اللوحة بلغة النظام. مفيد لمقارنة كيف تلتف كلمة ألمانية طويلة أو نص عربي من اليمين إلى اليسار.";
 "settings.bluetooth.showInStatusPanel" = "إظهار Bluetooth في لوحة الحالة";
 "settings.bluetooth.showInStatusPanelDescription" = "يتحكم في عنصر Bluetooth بلوحة الحالة ويبقى متزامنًا مع إعدادات لوحة الحالة.";
 "settings.bluetooth.symbolScale" = "حجم أيقونة Bluetooth";
@@ -387,3 +395,10 @@
 "settings.bluetooth.permissionRequired" = "يلزم إذن Bluetooth";
 "settings.bluetooth.permissionNotDeterminedDescription" = "يحتاج Status Trio إلى الوصول إلى Bluetooth لعرض أجهزتك. انقر الزر أدناه لمنح الإذن.";
 "settings.bluetooth.permissionDeniedDescription" = "تم رفض الوصول إلى Bluetooth. قم بتفعيله في إعدادات النظام لاستخدام هذه الميزة.";
+
+"bluetooth.listeningMode.noiseCancellation" = "إلغاء الضوضاء";
+"bluetooth.listeningMode.transparency" = "الشفافية";
+"bluetooth.listeningMode.adaptive" = "تكيّفي";
+"bluetooth.listeningMode.off" = "إيقاف";
+"bluetooth.listeningMode.changeFailed" = "تعذّر تغيير وضع السمع.";
+"bluetooth.listeningMode.accessibility" = "وضع السمع";

@@ -72,6 +72,14 @@
 "settings.bluetooth.batteryLevelsDescription" = "Lit les niveaux de batterie des AirPods lorsque l’entrée Bluetooth est affichée. Aucune autorisation supplémentaire n’est demandée.";
 "settings.bluetooth.nearbyBatteryDevices" = "Afficher les niveaux de batterie BLE à proximité";
 "settings.bluetooth.nearbyBatteryDevicesDescription" = "Lorsque les niveaux de batterie Bluetooth sont activés, recherche les appareils BLE à proximité qui fournissent le service Batterie standard pendant que le panneau d’état est ouvert. La compatibilité dépend de l’appareil.";
+"settings.bluetooth.listeningModePreview" = "Aperçu du sélecteur de mode d'écoute";
+"settings.bluetooth.listeningModePreviewDescription" = "Affiche les pastilles de mode sur tous les AirPods connectés pour tester l'interface. Le toucher d'une pastille s'anime comme sur un vrai appareil, mais ne modifie rien sur les AirPods.";
+"settings.bluetooth.listeningModePreviewDeviceName" = "Nom du périphérique d'aperçu";
+"settings.bluetooth.listeningModePreviewDeviceNameDescription" = "Nom affiché sur les lignes d'aperçu. Laissez vide pour la valeur par défaut ; saisissez un nom très long pour tester la troncature.";
+"settings.bluetooth.listeningModePreviewDeviceCount" = "Nombre de lignes d'aperçu";
+"settings.bluetooth.listeningModePreviewDeviceCountDescription" = "Nombre de lignes AirPods synthétiques à injecter. 0 garde uniquement les lignes réelles ; 2 couvre le cas courant et teste la limite de défilement du panneau.";
+"settings.bluetooth.listeningModePreviewLanguage" = "Langue d'aperçu";
+"settings.bluetooth.listeningModePreviewLanguageDescription" = "Affichez les noms des pastilles des lignes d'aperçu dans la langue choisie, en laissant le reste du panneau dans la langue système. Utile pour comparer le retour à la ligne d'un nom long en allemand ou d'une écriture de droite à gauche en arabe.";
 "settings.bluetooth.showInStatusPanel" = "Afficher le Bluetooth dans le panneau d’état";
 "settings.bluetooth.showInStatusPanelDescription" = "Contrôle l’élément Bluetooth du panneau d’état et reste synchronisé avec les réglages du panneau d’état.";
 "settings.bluetooth.symbolScale" = "Taille de l’icône Bluetooth";
@@ -387,3 +395,10 @@
 "settings.bluetooth.permissionRequired" = "Autorisation Bluetooth requise";
 "settings.bluetooth.permissionNotDeterminedDescription" = "Status Trio a besoin de l'accès Bluetooth pour afficher vos appareils. Cliquez sur le bouton ci-dessous pour l'accorder.";
 "settings.bluetooth.permissionDeniedDescription" = "L'accès Bluetooth a été refusé. Activez-le dans les Réglages Système pour utiliser cette fonctionnalité.";
+
+"bluetooth.listeningMode.noiseCancellation" = "Réduction de bruit";
+"bluetooth.listeningMode.transparency" = "Transparence";
+"bluetooth.listeningMode.adaptive" = "Adaptatif";
+"bluetooth.listeningMode.off" = "Désactivé";
+"bluetooth.listeningMode.changeFailed" = "Impossible de modifier le mode d'écoute.";
+"bluetooth.listeningMode.accessibility" = "Mode d'écoute";

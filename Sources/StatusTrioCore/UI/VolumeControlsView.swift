@@ -3,6 +3,8 @@ import SwiftUI
 struct VolumeControlsView: View {
     @EnvironmentObject private var localization: Localization
     @ObservedObject var settings: SettingsStore
+    @ObservedObject var bluetoothController: BluetoothDeviceController
+    @ObservedObject var listeningModes: BluetoothListeningModeController
     let scrollTargets: PopoverScrollTargets
     let volume: VolumeStatus
     let isControllerAvailable: Bool
@@ -65,14 +67,24 @@ struct VolumeControlsView: View {
                     .accessibilityHidden(true)
             }
 
-            if volume.outputDevices.count > 1 {
+            if showsOutputList {
                 Divider()
                     .padding(.top, 2)
 
                 OutputDeviceList(
                     settings: settings,
                     devices: volume.outputDevices,
-                    onSelect: onSelectOutputDevice
+                    onSelect: onSelectOutputDevice,
+                    previewDevices: previewOutputRows,
+                    previewLocalization: previewLocalization,
+                    controlProvider: { device in
+                        listeningModes.control(forEndpoint: device.id)?.presentation
+                    },
+                    onSelectListeningMode: { device, mode in
+                        if let control = listeningModes.control(forEndpoint: device.id) {
+                            listeningModes.setMode(mode, forAddress: control.address)
+                        }
+                    }
                 )
             }
         }
@@ -84,6 +96,63 @@ struct VolumeControlsView: View {
             guard !isAdjusting else { return }
             synchronizeVolume()
         }
+        .task(id: listeningModeTaskID) {
+            // The AirPods listening-mode control lives on this list, so the volume
+            // section owns the controller's discovery: one pass per change of the
+            // connected AirPods, the preview toggle, or the preview device set —
+            // never on a timer. The preview flag is pushed immediately before
+            // `refresh` so a mid-session toggle takes effect on the next publish.
+            listeningModes.previewMode = previewConfig.isEnabled
+            listeningModes.refresh(
+                devices: bluetoothController.devices + ListeningModePreview.devices(for: previewConfig)
+            )
+        }
+        .onDisappear {
+            listeningModes.stop()
+        }
+    }
+
+    private var previewConfig: ListeningModePreview.Configuration {
+        ListeningModePreview.Configuration(
+            isEnabled: settings.previewsBluetoothListeningMode,
+            deviceName: settings.bluetoothListeningModePreviewDeviceName,
+            deviceCount: settings.bluetoothListeningModePreviewDeviceCount,
+            languageCode: settings.bluetoothListeningModePreviewLanguage
+        )
+    }
+
+    private var previewOutputRows: [AudioOutputDevice] {
+        ListeningModePreview.outputRows(for: previewConfig, volume: volume.scalar)
+    }
+
+    /// The list is worth showing when there is more than one real output device, or
+    /// when the preview injects synthetic AirPods rows to exercise the control.
+    private var showsOutputList: Bool {
+        volume.outputDevices.count > 1 || !previewOutputRows.isEmpty
+    }
+
+    /// The language the preview rows render in, or `nil` to follow the panel. Only
+    /// the synthetic rows pick this up, so a language override never restyles the
+    /// real output devices above them.
+    private var previewLocalization: Localization? {
+        PreviewLocalization.forCode(previewConfig.languageCode)
+    }
+
+    /// The connected AirPods, by normalized address, plus the preview flag and the
+    /// synthetic preview device addresses. Discovery re-runs only when this changes,
+    /// so it does not repeat while the same devices sit unchanged on screen, and a
+    /// preview count / name / toggle change re-runs it rather than leaving a stale
+    /// capsule set.
+    private var listeningModeTaskID: String {
+        let connected = BluetoothDevicePresentation.grouped(bluetoothController.devices).connected
+            .filter(\.isAirPods)
+            .map { BluetoothBatteryReader.normalizedAddress($0.id) }
+            .joined(separator: ",")
+        let preview = previewConfig.isEnabled ? "|preview" : ""
+        let synthetic = ListeningModePreview.devices(for: previewConfig)
+            .map { BluetoothBatteryReader.normalizedAddress($0.id) }
+            .joined(separator: ",")
+        return connected + preview + (synthetic.isEmpty ? "" : "|\(synthetic)")
     }
 
     private var volumeSymbolName: String {

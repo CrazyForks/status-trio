@@ -463,3 +463,63 @@ alive for a minute after a close, which is why the cancellation cannot be left t
 a view's own disappear hook. The prompt carries no device name — the
 row already shows it — and it disappears on its own if the device stops being a
 connected input device while it is open.
+
+## Switching an AirPods listening mode from its row
+
+A connected AirPods row whose listening mode the system exposes carries a small
+capsule switch under the battery line: one capsule per mode the device reports it
+supports — noise cancellation, transparency, adaptive, and the silent `off` state.
+The modes and the current selection come from undocumented CoreAudio HAL
+properties read off the device's own audio endpoint: `lsms` lists the modes the
+device supports, `lstm` reports (and sets) the active one. Both are Global scope on
+the Main element. Because these selectors are not a public API, the whole feature is
+fail-closed: a device that does not answer them, one that exposes only a single
+mode, one the property says is not settable, an identity the controller cannot pin
+to one device, or an endpoint it cannot resolve — all render the ordinary row with
+no control. An ordinary Bluetooth device can therefore never regress into a broken
+half-switch.
+
+Identity is matched on the normalized address exactly like connect/disconnect, never
+on the device name. When a connected AirPods is the only controllable candidate the
+controller resolves, a conservative single-device fallback maps the presentation to
+it; more than one candidate and no exact address match means no control is published
+for any of them, because guessing which pair a mode write belongs to is not a
+decision the row should make.
+
+Discovery and the mode write are governed by the `BluetoothListeningModeController`,
+kept separate from `BluetoothDeviceController` so neither the delicate 1300-line
+device controller nor its timings are disturbed. There is no polling: endpoints are
+probed only when the panel becomes visible or the user refreshes, one pass per
+`refresh(devices:)`, keyed by the joined addresses of connected AirPods. A mode tap
+issues exactly one write. That write is not trusted blindly — the controller reads
+`lstm` back within a bounded window, and only a read-back that equals the requested
+mode counts as confirmed. An accepted-but-unverified write rolls the highlight back
+to the last observed mode; a refused or unreadable one marks the capsule group with
+a warning for a moment (the failure clears shortly after, on its own timer) and then
+reverts to a fresh read of the device's actual mode. Nothing is presented as the
+selection that the device has not confirmed.
+
+The layout adapts rather than being fixed-width tuned. `BluetoothBatteryAndListeningModeRow`
+uses `ViewThatFits` to keep the capsules on the battery's line when there is room
+and wrap them to their own line when there is not — which is what a longer German or
+Russian mode name does inside the panel's 302-point content width. The row is
+measured, not guessed: `BluetoothDeviceRowMetrics.listeningModeContentHeight` is 54,
+and `BluetoothListeningModeRowMetricsTests` renders the real row at the panel width
+and asserts it still agrees, so a layout change fails the test instead of silently
+drifting the list's scroll height away from what is drawn. The tall row is what
+makes the list decide to scroll when the rows together outgrow the panel.
+
+Accessibility is the point of the split-button row. The primary connect/disconnect
+action stays a button over the name line, and the mode capsules are its *siblings*,
+never nested inside it — SwiftUI swallows an inner button's tap when it lives inside
+another `Button`, so nesting would make the capsules dead. The row is one
+`.accessibilityElement(children: .contain)` (not `.combine`), so each capsule keeps
+its own focus target and VoiceOver or the keyboard can land on a single mode;
+selection rides on the `.isSelected` trait and an accent ring, not colour alone, and
+a capsule already selected or already settling into a change is disabled rather than
+firing a redundant write. The in-flight marker honours the system's Reduce Motion:
+an animated progress dot normally, a static dot when Reduce Motion is on. All of the
+mode names, the group label, and the failure message ship in every language
+(`bluetooth.listeningMode.*`), guarded by the localization parity and
+every-key-every-language tests.
+

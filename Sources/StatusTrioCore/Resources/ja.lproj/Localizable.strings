@@ -72,6 +72,14 @@
 "settings.bluetooth.batteryLevelsDescription" = "Bluetooth 項目の表示中に AirPods の残量を読み取ります。追加の権限確認は表示されません。";
 "settings.bluetooth.nearbyBatteryDevices" = "近くの BLE デバイスのバッテリー残量を表示";
 "settings.bluetooth.nearbyBatteryDevicesDescription" = "Bluetooth のバッテリー残量表示が有効な間、ステータスパネルを開くと標準 Battery Service を提供する近くの BLE デバイスをスキャンします。対応状況はデバイスによって異なります。";
+"settings.bluetooth.listeningModePreview" = "ヒアリングモード切り替えをプレビュー表示";
+"settings.bluetooth.listeningModePreviewDescription" = "UI の確認用に、接続中のすべての AirPods にモード切り替えのボタンを表示します。タップすると実機と同じアニメーションが動きますが、AirPods の設定は変更されません。";
+"settings.bluetooth.listeningModePreviewDeviceName" = "プレビュー表示名";
+"settings.bluetooth.listeningModePreviewDeviceNameDescription" = "プレビュー行に表示するデバイス名です。空欄は既定値。長い名前を入力すれば省略表示を確認できます。";
+"settings.bluetooth.listeningModePreviewDeviceCount" = "プレビュー行数";
+"settings.bluetooth.listeningModePreviewDeviceCountDescription" = "合成 AirPods 行を何行表示するか。0 は実機のみ。2 行なら通常のレイアウトと、パネルが 302pt 幅でスクロールへ切り替わる境目の両方を確認できます。";
+"settings.bluetooth.listeningModePreviewLanguage" = "プレビュー言語";
+"settings.bluetooth.listeningModePreviewLanguageDescription" = "プレビュー行のモード名だけを選択言語で表示します。パネルの他部分はシステム言語のまま。ドイツ語の長い単語やアラビア語の RTL 表示でカプセルがどう折り返されるかの比較に便利です。";
 "settings.bluetooth.showInStatusPanel" = "ステータスパネルに Bluetooth を表示";
 "settings.bluetooth.showInStatusPanelDescription" = "ステータスパネルの Bluetooth 項目を切り替え、ステータスパネル設定と同期します。";
 "settings.bluetooth.symbolScale" = "Bluetooth アイコンサイズ";
@@ -387,3 +395,10 @@
 "settings.bluetooth.permissionRequired" = "Bluetooth の権限が必要です";
 "settings.bluetooth.permissionNotDeterminedDescription" = "Status Trio がデバイスを表示するには Bluetooth へのアクセス権限が必要です。下のボタンをクリックして許可してください。";
 "settings.bluetooth.permissionDeniedDescription" = "Bluetooth へのアクセスが拒否されています。この機能を使用するには「システム設定」で有効にしてください。";
+
+"bluetooth.listeningMode.noiseCancellation" = "ノイズキャンセル";
+"bluetooth.listeningMode.transparency" = "外音取り込み";
+"bluetooth.listeningMode.adaptive" = "アダプティブ";
+"bluetooth.listeningMode.off" = "オフ";
+"bluetooth.listeningMode.changeFailed" = "ヒアリングモードを変更できませんでした。";
+"bluetooth.listeningMode.accessibility" = "ヒアリングモード";

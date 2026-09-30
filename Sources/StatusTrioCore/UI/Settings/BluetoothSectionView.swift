@@ -128,6 +128,82 @@ struct BluetoothSectionView: View {
                     subtitle: localization.string(.settingsBluetoothNearbyBatteryDevicesDescription),
                     isOn: $store.showsNearbyBluetoothBatteryDevices
                 )
+
+                SettingsDivider()
+
+                SettingsToggleRow(
+                    symbol: "eyeglasses",
+                    tint: .purple,
+                    title: localization.string(.settingsBluetoothListeningModePreview),
+                    subtitle: localization.string(.settingsBluetoothListeningModePreviewDescription),
+                    isOn: $store.previewsBluetoothListeningMode
+                )
+
+                if store.previewsBluetoothListeningMode {
+                    SettingsDivider()
+
+                    SettingsRow(
+                        "character.cursor.ibeam",
+                        tint: .purple,
+                        title: localization.string(.settingsBluetoothListeningModePreviewDeviceName),
+                        subtitle: localization.string(.settingsBluetoothListeningModePreviewDeviceNameDescription)
+                    ) {
+                        TextField(
+                            localization.string(.settingsBluetoothListeningModePreviewDeviceName),
+                            text: $store.bluetoothListeningModePreviewDeviceName
+                        )
+                        .textFieldStyle(.roundedBorder)
+                        .multilineTextAlignment(.trailing)
+                        .frame(width: 150)
+                        .labelsHidden()
+                    }
+
+                    SettingsDivider()
+
+                    SettingsRow(
+                        "number.square",
+                        tint: .purple,
+                        title: localization.string(.settingsBluetoothListeningModePreviewDeviceCount),
+                        subtitle: localization.string(.settingsBluetoothListeningModePreviewDeviceCountDescription)
+                    ) {
+                        HStack(spacing: 10) {
+                            Text("\(store.bluetoothListeningModePreviewDeviceCount)")
+                                .font(.system(size: 13, design: .monospaced))
+                                .frame(minWidth: 22, alignment: .trailing)
+
+                            Stepper(
+                                localization.string(.settingsBluetoothListeningModePreviewDeviceCount),
+                                value: $store.bluetoothListeningModePreviewDeviceCount,
+                                in: SettingsStore.bluetoothListeningModePreviewDeviceCountRange
+                            )
+                            .labelsHidden()
+                        }
+                    }
+
+                    SettingsDivider()
+
+                    SettingsRow(
+                        "translate",
+                        tint: .purple,
+                        title: localization.string(.settingsBluetoothListeningModePreviewLanguage),
+                        subtitle: localization.string(.settingsBluetoothListeningModePreviewLanguageDescription)
+                    ) {
+                        Picker(
+                            localization.string(.settingsBluetoothListeningModePreviewLanguage),
+                            selection: $store.bluetoothListeningModePreviewLanguage
+                        ) {
+                            Text(localization.string(.settingsLanguageFollowSystem))
+                                .tag("")
+
+                            ForEach(AppLanguage.allCases) { lang in
+                                Text(lang.nativeName)
+                                    .tag(lang.rawValue)
+                            }
+                        }
+                        .labelsHidden()
+                        .fixedSize()
+                    }
+                }
             }
 
             deviceListGroup

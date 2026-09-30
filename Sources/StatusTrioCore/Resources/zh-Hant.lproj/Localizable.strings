@@ -72,6 +72,14 @@
 "settings.bluetooth.batteryLevelsDescription" = "當狀態面板顯示藍牙裝置時讀取 AirPods 電量，不會額外要求權限。";
 "settings.bluetooth.nearbyBatteryDevices" = "顯示附近 BLE 裝置電量";
 "settings.bluetooth.nearbyBatteryDevicesDescription" = "開啟藍牙電量後，狀態面板開啟時會掃描提供標準電池服務的附近 BLE 裝置。支援情況因裝置而異。";
+"settings.bluetooth.listeningModePreview" = "預試聆聽模式切換";
+"settings.bluetooth.listeningModePreviewDescription" = "在每台已連結的 AirPods 上顯示模式膠囊，用於介面測試。點擊膠囊的動畫與真機一致，但不會變更 AirPods 的任何設定。";
+"settings.bluetooth.listeningModePreviewDeviceName" = "預試裝置名";
+"settings.bluetooth.listeningModePreviewDeviceNameDescription" = "預試列顯示的名字。留空使用預設；填入超長名稱可測試截斷。";
+"settings.bluetooth.listeningModePreviewDeviceCount" = "預試列數";
+"settings.bluetooth.listeningModePreviewDeviceCountDescription" = "要注入多少台合成 AirPods。0 僅保留實際裝置；2 可覆蓋常見情況並測試面板到達 330pt 時的捲動邊界。";
+"settings.bluetooth.listeningModePreviewLanguage" = "預試語言";
+"settings.bluetooth.listeningModePreviewLanguageDescription" = "僅讓預試列的模式名以指定語言渲染，面板其他部分維持系統語言。方便比較德語長詞或阿拉伯語由右至左時膠囊如何換行。";
 "settings.bluetooth.showInStatusPanel" = "在狀態面板中顯示藍牙";
 "settings.bluetooth.showInStatusPanelDescription" = "控制狀態面板中的藍牙項目，並與狀態面板設定保持同步。";
 "settings.bluetooth.symbolScale" = "藍牙圖示大小";
@@ -387,3 +395,10 @@
 "settings.bluetooth.permissionRequired" = "需要藍牙權限";
 "settings.bluetooth.permissionNotDeterminedDescription" = "狀態列需要藍牙權限才能顯示你的裝置。點擊下面的按鈕以授予權限。";
 "settings.bluetooth.permissionDeniedDescription" = "藍牙權限已被拒絕。請在系統設定中開啟以使用此功能。";
+
+"bluetooth.listeningMode.noiseCancellation" = "降噪";
+"bluetooth.listeningMode.transparency" = "通透模式";
+"bluetooth.listeningMode.adaptive" = "自適應";
+"bluetooth.listeningMode.off" = "關閉";
+"bluetooth.listeningMode.changeFailed" = "無法變更聆聽模式。";
+"bluetooth.listeningMode.accessibility" = "聆聽模式";

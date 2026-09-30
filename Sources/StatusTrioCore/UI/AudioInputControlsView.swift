@@ -480,23 +480,21 @@ struct AudioInputControlsView: View {
             onSelect(device.id)
         } label: {
             HStack(spacing: 10) {
-                Image(systemName: isCurrent ? "mic.fill" : "mic")
-                    .foregroundStyle(isCurrent ? Color.accentColor : Color.secondary)
-                    .frame(width: 24, height: 24)
-                    .accessibilityHidden(true)
+                ZStack {
+                    Circle()
+                        .fill(isCurrent ? Color.accentColor : Color.secondary.opacity(0.14))
+
+                    Image(systemName: isCurrent ? "mic.fill" : "mic")
+                        .foregroundStyle(isCurrent ? Color.white : Color.secondary)
+                }
+                .frame(width: 24, height: 24)
+                .accessibilityHidden(true)
 
                 Text(displayName)
                     .font(.body.weight(isCurrent ? .semibold : .regular))
                     .lineLimit(1)
                     .truncationMode(.middle)
                     .frame(maxWidth: .infinity, alignment: .leading)
-
-                if isCurrent {
-                    Image(systemName: "checkmark")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(Color.accentColor)
-                        .accessibilityHidden(true)
-                }
             }
             .padding(.vertical, 3)
             .contentShape(Rectangle())

@@ -9,11 +9,10 @@ import SwiftUI
 /// disconnect. The controller owns that confirmation, so the question cannot
 /// outlive the panel that asked it.
 ///
-/// A connected device is drawn the way the volume output list draws the device
-/// in use: its glyph ringed in the accent colour, its name in semibold, and a
-/// checkmark after it. That is what says "connected" — the row does not also
-/// spell it out, which leaves its trailing space to the battery level and to
-/// whatever an action is doing.
+/// A connected device is drawn the way Apple marks the control in use: its glyph
+/// on a solid accent tile, its name in semibold. That is what says "connected" —
+/// the row does not also spell it out or repeat it with a checkmark, which leaves
+/// its trailing space to the battery level and to whatever an action is doing.
 struct BluetoothDeviceRow: View {
     @EnvironmentObject private var localization: Localization
     let device: BluetoothDevice
@@ -111,34 +110,33 @@ struct BluetoothDeviceRow: View {
         .padding(.bottom, BluetoothPanelMetrics.componentRowBottomPadding)
     }
 
-    /// The row's trailing edge. A state the row has to say in words (an action in
-    /// flight, a failure) takes precedence; otherwise a connected device gets the
-    /// checkmark and a disconnected one nothing. Both layouts place this at the
-    /// trailing edge, vertically centred on the row: connection is the device's
-    /// primary state, and on a two-line row it belongs to the whole device, not to
+    /// The row's trailing edge. Only a state the row has to say in words (an action
+    /// in flight, a failure) draws here; a plain connected device shows nothing,
+    /// because the left badge's solid accent tile already says "connected" and a
+    /// checkmark would only repeat it. Both layouts place this text at the trailing
+    /// edge, vertically centred on the row: it belongs to the whole device, not to
     /// the name's line alone.
     @ViewBuilder
     private func trailingStatus(_ status: BluetoothDeviceRowStatus) -> some View {
         if status.drawsText {
             statusText(status)
-        } else if device.isConnected {
-            connectedMark
         }
     }
 
-    /// The device's glyph in the section's own icon column, ringed when the
-    /// device is connected — the volume output list's treatment for the device in
-    /// use, scaled to the column the section icon already uses.
+    /// The device's glyph in the section's own icon column. A connected device is
+    /// drawn the way Apple marks the control in use — a solid accent fill with a
+    /// white glyph — rather than a faint accent tint under an accent glyph, which
+    /// read as low-contrast whenever the accent was dark or pale.
     private var badge: some View {
         ZStack {
             Circle()
                 .fill(
                     device.isConnected
-                        ? Color.accentColor.opacity(0.15)
+                        ? Color.accentColor
                         : Color.secondary.opacity(0.14)
                 )
             Image(systemName: BluetoothDeviceRowIcon.symbolName(for: device))
-                .foregroundStyle(device.isConnected ? Color.accentColor : Color.secondary)
+                .foregroundStyle(device.isConnected ? Color.white : Color.secondary)
         }
         .frame(
             width: BluetoothPanelMetrics.iconColumnWidth,
@@ -152,16 +150,6 @@ struct BluetoothDeviceRow: View {
             .font(.body.weight(device.isConnected ? .semibold : .regular))
             .lineLimit(1)
             .truncationMode(.tail)
-    }
-
-    /// Says the device is connected without a word, the way the volume list marks
-    /// the device in use. The badge already carries the colour, so this is not
-    /// the only indicator.
-    private var connectedMark: some View {
-        Image(systemName: "checkmark")
-            .font(.caption.weight(.semibold))
-            .foregroundStyle(Color.accentColor)
-            .accessibilityHidden(true)
     }
 
     /// The level as the report's pieces. The charging case is drawn as its glyph

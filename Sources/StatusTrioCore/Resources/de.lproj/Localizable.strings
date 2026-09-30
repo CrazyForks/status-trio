@@ -72,6 +72,14 @@
 "settings.bluetooth.batteryLevelsDescription" = "Liest AirPods-Batteriestände, während der Bluetooth-Eintrag sichtbar ist. Es wird keine zusätzliche Berechtigung angefragt.";
 "settings.bluetooth.nearbyBatteryDevices" = "Akkustände naher BLE-Geräte anzeigen";
 "settings.bluetooth.nearbyBatteryDevicesDescription" = "Wenn Bluetooth-Akkustände aktiviert sind, sucht Status Trio bei geöffnetem Statusfenster nach nahen BLE-Geräten mit dem standardisierten Battery Service. Die Unterstützung hängt vom Gerät ab.";
+"settings.bluetooth.listeningModePreview" = "Hörmodus-Umschaltung Vorschau anzeigen";
+"settings.bluetooth.listeningModePreviewDescription" = "Für UI-Tests die Modi-Kapseln auf allen verbundenen AirPods anzeigen. Das Antippen einer Kapsel animiert wie auf einem echten Gerät, ändert aber nichts an den AirPods.";
+"settings.bluetooth.listeningModePreviewDeviceName" = "Vorschau-Gerätename";
+"settings.bluetooth.listeningModePreviewDeviceNameDescription" = "Der in den Vorschauzeilen angezeigte Name. Leer lässt den Standardtext, ein langer Name prüft die Kürzung.";
+"settings.bluetooth.listeningModePreviewDeviceCount" = "Anzahl Vorschauzeilen";
+"settings.bluetooth.listeningModePreviewDeviceCountDescription" = "Wie viele synthetische AirPods-Zeilen eingefügt werden. 0 behält nur echte Zeilen; 2 deckt den Regelfall ab und prüft die Scrollgrenze des Panels.";
+"settings.bluetooth.listeningModePreviewLanguage" = "Vorschau-Sprache";
+"settings.bluetooth.listeningModePreviewLanguageDescription" = "Rendernt die Kapselnamen der Vorschauzeilen in einer gewählten Sprache, während der Rest des Panels die Systemsprache behält. Hilfreich, um zu vergleichen, wie ein langes deutsches oder ein von rechts nach links geschriebenes arabisches Modi-Wort umbrochen wird.";
 "settings.bluetooth.showInStatusPanel" = "Bluetooth im Statusbereich anzeigen";
 "settings.bluetooth.showInStatusPanelDescription" = "Steuert das Bluetooth-Element im Statusbereich und bleibt mit den Einstellungen des Statusbereichs synchron.";
 "settings.bluetooth.symbolScale" = "Bluetooth-Symbolgröße";
@@ -387,3 +395,10 @@
 "settings.bluetooth.permissionRequired" = "Bluetooth-Berechtigung erforderlich";
 "settings.bluetooth.permissionNotDeterminedDescription" = "Status Trio benötigt Bluetooth-Zugriff, um deine Geräte anzuzeigen. Klicke unten auf die Schaltfläche, um sie zu erteilen.";
 "settings.bluetooth.permissionDeniedDescription" = "Der Bluetooth-Zugriff wurde verweigert. Aktiviere ihn in den Systemeinstellungen, um diese Funktion zu nutzen.";
+
+"bluetooth.listeningMode.noiseCancellation" = "Geräuschunterdrückung";
+"bluetooth.listeningMode.transparency" = "Transparenz";
+"bluetooth.listeningMode.adaptive" = "Adaptiv";
+"bluetooth.listeningMode.off" = "Aus";
+"bluetooth.listeningMode.changeFailed" = "Der Hörmodus konnte nicht geändert werden.";
+"bluetooth.listeningMode.accessibility" = "Hörmodus";

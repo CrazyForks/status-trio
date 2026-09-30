@@ -72,6 +72,14 @@
 "settings.bluetooth.batteryLevelsDescription" = "Заряд AirPods считывается, пока показан пункт Bluetooth. Дополнительный запрос разрешения не появляется.";
 "settings.bluetooth.nearbyBatteryDevices" = "Показывать заряд ближайших BLE-устройств";
 "settings.bluetooth.nearbyBatteryDevicesDescription" = "Если показ заряда Bluetooth включён, при открытой панели состояния выполняется поиск ближайших BLE-устройств со стандартной службой Battery Service. Поддержка зависит от устройства.";
+"settings.bluetooth.listeningModePreview" = "Предпросмотр переключателя режима прослушивания";
+"settings.bluetooth.listeningModePreviewDescription" = "Показывать переключатели режима на всех подключённых AirPods для проверки интерфейса. Нажатие анимируется как на настоящем устройстве, но ничего в AirPods не меняет.";
+"settings.bluetooth.listeningModePreviewDeviceName" = "Имя устройства предпросмотра";
+"settings.bluetooth.listeningModePreviewDeviceNameDescription" = "Имя, отображаемое в тестовых строках. Оставьте пустым, чтобы использовать значение по умолчанию; введите очень длинное имя, чтобы проверить обрезку.";
+"settings.bluetooth.listeningModePreviewDeviceCount" = "Количество строк предпросмотра";
+"settings.bluetooth.listeningModePreviewDeviceCountDescription" = "Сколько синтетических строк AirPods добавить. 0 оставляет только реальные устройства; 2 покрывает обычный случай и проверяет границу прокрутки панели.";
+"settings.bluetooth.listeningModePreviewLanguage" = "Язык предпросмотра";
+"settings.bluetooth.listeningModePreviewLanguageDescription" = "Отображать названия режимов в тестовых строках на выбранном языке, оставляя остальную панель на системном. Полезно для сравнения переноса длинного немецкого или арабского текста справа налево.";
 "settings.bluetooth.showInStatusPanel" = "Показывать Bluetooth на панели состояния";
 "settings.bluetooth.showInStatusPanelDescription" = "Управляет элементом Bluetooth на панели состояния и синхронизируется с настройками панели состояния.";
 "settings.bluetooth.symbolScale" = "Размер значка Bluetooth";
@@ -387,3 +395,10 @@
 "settings.bluetooth.permissionRequired" = "Требуется разрешение Bluetooth";
 "settings.bluetooth.permissionNotDeterminedDescription" = "Status Trio нужен доступ к Bluetooth, чтобы показывать ваши устройства. Нажмите кнопку ниже, чтобы разрешить.";
 "settings.bluetooth.permissionDeniedDescription" = "Доступ к Bluetooth запрещён. Включите его в системных настройках, чтобы использовать эту функцию.";
+
+"bluetooth.listeningMode.noiseCancellation" = "Шумоподавление";
+"bluetooth.listeningMode.transparency" = "Прозрачность";
+"bluetooth.listeningMode.adaptive" = "Адаптивный";
+"bluetooth.listeningMode.off" = "Выкл.";
+"bluetooth.listeningMode.changeFailed" = "Не удалось изменить режим прослушивания.";
+"bluetooth.listeningMode.accessibility" = "Режим прослушивания";

@@ -75,6 +75,8 @@ final class CompactAudioLayoutTests: XCTestCase {
             VStack(alignment: .leading, spacing: 12) {
                 VolumeControlsView(
                     settings: settings,
+                    bluetoothController: BluetoothDeviceController(),
+                    listeningModes: BluetoothListeningModeController.emptyForTesting(),
                     scrollTargets: PopoverScrollTargets(),
                     volume: VolumeStatus(scalar: 0.19, isMuted: false, deviceName: devices[0].name, outputDevices: devices),
                     isControllerAvailable: true,
