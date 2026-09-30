@@ -59,17 +59,30 @@ enum BluetoothPanelMapper {
         let accessibilitySummary = summary == .requestAuthorization
             ? localization.string(.bluetoothAuthorizationNotDetermined)
             : summaryText
+        let summaryIntent: PanelSummaryIntent
+        let subtitle: String
+        switch summary.rowAction {
+        case .requestAuthorization:
+            summaryIntent = .requestBluetoothAuthorization
+            subtitle = localization.string(.bluetoothActionRequestAuthorization)
+        case .openPermissionSettings:
+            summaryIntent = .openBluetoothPermissionSettings
+            subtitle = localization.string(.bluetoothActionOpenPermissionSettings)
+        case nil:
+            summaryIntent = .none
+            subtitle = summaryText
+        }
         let title = localization.string(.bluetoothTitle)
         let summaryState = PanelSummaryState(
             title: title,
-            subtitle: hideSubtitle ? "" : summaryText,
+            subtitle: hideSubtitle ? "" : subtitle,
             measurements: nil,
             symbol: .symbol(name: "bluetooth", variableValue: nil, fallback: "antenna.radiowaves.left.and.right"),
             tint: .secondary,
             accessibilityLabel: hideSubtitle ? title : "\(title), \(accessibilitySummary)",
             accessibilityValue: accessibilitySummary,
             showsSettings: true,
-            intent: .none
+            intent: summaryIntent
         )
         let normalizedConfirmation = confirmingAddress.map { BluetoothBatteryReader.normalizedAddress($0) }
 
@@ -114,20 +127,32 @@ enum BluetoothPanelMapper {
         case .connecting, .disconnecting: isBusy = true
         case .failed, .none: isBusy = false
         }
-        let subtitle: String?
+        let statusText: String?
         switch status {
-        case .connecting: subtitle = localization.string(.bluetoothStateConnecting)
-        case .disconnecting: subtitle = localization.string(.bluetoothStateDisconnecting)
-        case .connectFailed: subtitle = localization.string(.bluetoothStateConnectFailed)
-        case .disconnectFailed: subtitle = localization.string(.bluetoothStateDisconnectFailed)
-        case .connected, .notConnected: subtitle = nil
+        case .connecting: statusText = localization.string(.bluetoothStateConnecting)
+        case .disconnecting: statusText = localization.string(.bluetoothStateDisconnecting)
+        case .connectFailed: statusText = localization.string(.bluetoothStateConnectFailed)
+        case .disconnectFailed: statusText = localization.string(.bluetoothStateDisconnectFailed)
+        case .connected, .notConnected: statusText = nil
+        }
+        let statusTint: PanelTint
+        switch status {
+        case .connectFailed, .disconnectFailed: statusTint = .critical
+        case .connected, .notConnected, .connecting, .disconnecting: statusTint = .secondary
         }
         return PanelBluetoothDeviceRow(
             address: address,
             title: device.name,
-            subtitle: subtitle,
+            subtitle: statusText,
             icon: .symbol(name: BluetoothDeviceRowIcon.symbolName(for: device), variableValue: nil, fallback: "dot.radiowaves.left.and.right"),
             batteryText: batterySegments?.plainText,
+            batteryLayout: BluetoothDevicePresentation.batteryLayout(for: device, batteryLevels: batteryLevels),
+            batterySegments: batterySegments,
+            isConnected: device.isConnected,
+            status: status,
+            statusText: statusText,
+            statusTint: statusTint,
+            requiresConfirmation: BluetoothDeviceActionPolicy.requiresConfirmation(for: device),
             actionTitle: localization.string(action == .connect ? .bluetoothActionConnect : .bluetoothActionDisconnect),
             actionEnabled: !isBusy,
             isBusy: isBusy,
@@ -148,6 +173,13 @@ enum BluetoothPanelMapper {
             subtitle: nil,
             icon: .symbol(name: "dot.radiowaves.left.and.right", variableValue: nil, fallback: nil),
             batteryText: "\(device.batteryLevel)%",
+            batteryLayout: .inline,
+            batterySegments: [.text("\(device.batteryLevel)%")],
+            isConnected: false,
+            status: .notConnected,
+            statusText: nil,
+            statusTint: .secondary,
+            requiresConfirmation: false,
             actionTitle: "",
             actionEnabled: false,
             isBusy: false,

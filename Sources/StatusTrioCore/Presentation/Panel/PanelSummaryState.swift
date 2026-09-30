@@ -15,6 +15,8 @@ enum PanelSummaryIntent: Equatable, Sendable {
     case requestWiFiNameAccess
     case locationSettings
     case wiredDetails
+    case requestBluetoothAuthorization
+    case openBluetoothPermissionSettings
 }
 
 struct PanelSummaryState: Equatable, Sendable {

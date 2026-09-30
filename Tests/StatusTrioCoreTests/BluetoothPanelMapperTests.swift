@@ -143,8 +143,131 @@ final class BluetoothPanelMapperTests: XCTestCase {
         XCTAssertTrue(busy.pairedRows[0].isBusy)
     }
 
-    private func device(_ address: String, _ name: String, connected: Bool, ghost: Bool = false) -> BluetoothDevice {
-        BluetoothDevice(id: address, name: name, kind: .audio, isConnected: connected, isUnpairedGhost: ghost)
+    func testSummaryResolvesPermissionActionsAndKeepsRequestAccessibilityCopyDistinct() {
+        let localization = makeLocalization()
+        let request = mapSummary(.authorizationNotDetermined, localization: localization)
+        XCTAssertEqual(request.summary.intent, .requestBluetoothAuthorization)
+        XCTAssertEqual(request.summary.subtitle, localization.string(.bluetoothActionRequestAuthorization))
+        XCTAssertEqual(request.summary.accessibilityValue, localization.string(.bluetoothAuthorizationNotDetermined))
+
+        let denied = mapSummary(.authorizationDenied, localization: localization)
+        XCTAssertEqual(denied.summary.intent, .openBluetoothPermissionSettings)
+        XCTAssertEqual(denied.summary.subtitle, localization.string(.bluetoothActionOpenPermissionSettings))
+        XCTAssertEqual(denied.summary.accessibilityValue, localization.string(.bluetoothActionOpenPermissionSettings))
+
+        let restricted = mapSummary(.authorizationRestricted, localization: localization)
+        XCTAssertEqual(restricted.summary.intent, .none)
+        XCTAssertEqual(restricted.summary.subtitle, localization.string(.bluetoothAuthorizationRestricted))
+
+        let ordinary = mapSummary(.poweredOff, localization: localization)
+        XCTAssertEqual(ordinary.summary.intent, .none)
+        XCTAssertEqual(ordinary.summary.subtitle, localization.string(.bluetoothOff))
+    }
+
+    func testPairedRowsKeepConnectedBatteryLayoutSegmentsFailureTintAndTapPolicy() {
+        let localization = makeLocalization()
+        let keyboard = device(
+            "AA:00:00:00:00:01",
+            "Keyboard",
+            connected: true,
+            kind: .peripheral(.keyboard)
+        )
+        let caseLevel = BluetoothBatteryLevel(
+            deviceAddress: keyboard.id,
+            main: nil,
+            left: 88,
+            right: 76,
+            caseLevel: 45
+        )
+        let connected = mapRows(
+            [keyboard],
+            batteryLevels: ["AA0000000001": caseLevel],
+            actionStates: [:],
+            localization: localization
+        ).pairedRows[0]
+
+        XCTAssertTrue(connected.isConnected)
+        XCTAssertEqual(
+            connected.icon,
+            .symbol(name: BluetoothDeviceRowIcon.symbolName(for: keyboard), variableValue: nil, fallback: "dot.radiowaves.left.and.right")
+        )
+        XCTAssertEqual(connected.batteryLayout, .components)
+        XCTAssertEqual(connected.batterySegments, caseLevel.segments)
+        XCTAssertTrue(connected.batterySegments?.contains(.symbol(
+            name: BluetoothBatteryLevel.caseSymbolName,
+            label: BluetoothBatteryLevel.caseTextLabel
+        )) == true)
+        XCTAssertTrue(connected.requiresConfirmation)
+        XCTAssertEqual(connected.status, .connected)
+        XCTAssertNil(connected.statusText)
+        XCTAssertEqual(connected.statusTint, .secondary)
+
+        let disconnected = device("AA:00:00:00:00:02", "Headphones", connected: false)
+        let failure = mapRows(
+            [disconnected],
+            batteryLevels: [:],
+            actionStates: ["AA0000000002": .failed(.connect)],
+            localization: localization
+        ).pairedRows[0]
+        XCTAssertFalse(failure.isConnected)
+        XCTAssertEqual(failure.batteryLayout, .inline)
+        XCTAssertNil(failure.batterySegments)
+        XCTAssertFalse(failure.requiresConfirmation)
+        XCTAssertEqual(failure.status, .connectFailed)
+        XCTAssertEqual(failure.statusText, localization.string(.bluetoothStateConnectFailed))
+        XCTAssertEqual(failure.statusTint, .critical)
+    }
+
+    private func mapSummary(
+        _ availability: BluetoothAvailability,
+        localization: Localization
+    ) -> BluetoothPanelState {
+        BluetoothPanelMapper.map(
+            availability: availability,
+            devices: [],
+            batteryLevels: [:],
+            actionStates: [:],
+            nearbyDevices: [],
+            batteryLevelsReadFailed: false,
+            isExpanded: false,
+            options: .standard,
+            showsBatteryLevels: false,
+            showsNearbyBatteryDevices: false,
+            confirmingAddress: nil,
+            localization: localization
+        )
+    }
+
+    private func mapRows(
+        _ devices: [BluetoothDevice],
+        batteryLevels: [String: BluetoothBatteryLevel],
+        actionStates: [String: BluetoothDeviceActionState],
+        localization: Localization
+    ) -> BluetoothPanelState {
+        BluetoothPanelMapper.map(
+            availability: .available,
+            devices: devices,
+            batteryLevels: batteryLevels,
+            actionStates: actionStates,
+            nearbyDevices: [],
+            batteryLevelsReadFailed: false,
+            isExpanded: true,
+            options: .standard,
+            showsBatteryLevels: true,
+            showsNearbyBatteryDevices: false,
+            confirmingAddress: nil,
+            localization: localization
+        )
+    }
+
+    private func device(
+        _ address: String,
+        _ name: String,
+        connected: Bool,
+        ghost: Bool = false,
+        kind: BluetoothDeviceKind = .audio
+    ) -> BluetoothDevice {
+        BluetoothDevice(id: address, name: name, kind: kind, isConnected: connected, isUnpairedGhost: ghost)
     }
 
     private func nearby(_ name: String, level: Int) -> NearbyBluetoothBatteryDevice {

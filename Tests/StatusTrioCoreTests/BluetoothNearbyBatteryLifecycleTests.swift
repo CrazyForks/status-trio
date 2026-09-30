@@ -84,6 +84,41 @@ final class BluetoothNearbyBatteryLifecycleTests: XCTestCase {
         controller.deactivate()
     }
 
+    func testSummaryDisappearanceStopsScannerButKeepsSummaryAndSettingsNearbyClaims() async {
+        let scanner = NearbyBatteryScannerSpy()
+        let monitor = NearbyBatteryStateMonitorSpy()
+        let controller = makeReadyController(scanner: scanner, monitor: monitor)
+        let settingsToken = "settings.nearbyBattery"
+        controller.requestNearbyBatteryDevices(settingsToken)
+        let actions = StatusPanelActions(
+            requestNearbyBatteryDevices: { controller.requestNearbyBatteryDevices($0) },
+            releaseNearbyBatteryDevices: { controller.releaseNearbyBatteryDevices($0) },
+            holdBluetoothSummary: {
+                controller.holdVisibleSurface(BluetoothDeviceController.bluetoothSummarySurfaceToken)
+            },
+            releaseBluetoothSummary: {
+                controller.releaseVisibleSurface(BluetoothDeviceController.bluetoothSummarySurfaceToken)
+            }
+        )
+        actions.updateBluetoothNearbyBatteryClaim(enabled: true)
+        let cachedDevice = nearbyDevice(name: "Sensor", level: 52)
+        scanner.publish([cachedDevice])
+        await waitUntil { controller.nearbyBatteryDevices == [cachedDevice] }
+
+        actions.bluetoothSummaryDisappeared()
+
+        XCTAssertEqual(scanner.stopCount, 1)
+        XCTAssertFalse(scanner.isRunning)
+        XCTAssertEqual(controller.nearbyBatteryDevices, [cachedDevice])
+
+        controller.releaseNearbyBatteryDevices(settingsToken)
+        XCTAssertEqual(controller.nearbyBatteryDevices, [cachedDevice], "the summary opt-in remains held after its view disappears")
+
+        actions.updateBluetoothNearbyBatteryClaim(enabled: false)
+        XCTAssertTrue(controller.nearbyBatteryDevices.isEmpty, "explicitly disabling the preference releases the retained opt-in")
+        controller.deactivate()
+    }
+
     func testReleasingLastNearbyRequestClearsCacheAndStopsScanner() {
         let scanner = NearbyBatteryScannerSpy()
         let monitor = NearbyBatteryStateMonitorSpy()

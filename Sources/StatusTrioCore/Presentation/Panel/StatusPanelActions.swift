@@ -14,10 +14,14 @@ final class StatusPanelActions {
     private let toggleInputMuteCommand: () -> Void
     private let outputPreferences: () -> AudioOutputListPreferences
     private let bluetoothDevices: () -> [BluetoothDevice]
+    private let bluetoothListOptions: () -> BluetoothDeviceListOptions
     private let bluetoothAvailability: () -> BluetoothAvailability
     private let refreshBluetoothCommand: () -> Void
+    private let requestBluetoothAuthorizationCommand: () -> Void
+    private let openBluetoothPermissionSettingsCommand: () -> Void
     private let performBluetoothActionCommand: (BluetoothDevice) -> Void
     private let requestDisconnectCommand: (BluetoothDevice) -> Void
+    private let disconnectConfirmationAddress: () -> String?
     private let cancelDisconnectCommand: () -> Void
     private let requestBatteryLevelsCommand: (String) -> Void
     private let releaseBatteryLevelsCommand: (String) -> Void
@@ -41,7 +45,7 @@ final class StatusPanelActions {
     private let refreshVolumeListeningModes: () -> Void
     private let stopVolumeListeningModes: () -> Void
     private let moveOutputDevicesCommand: (IndexSet, Int) -> Void
-    private let moveBluetoothDevicesCommand: (IndexSet, Int) -> Void
+    private let moveBluetoothDevicesCommand: (IndexSet, Int, [String]) -> Void
 
     private static let summaryBatteryLevelsToken = "bluetooth.summary"
     private static let nearbyBatteryDevicesToken = "bluetooth.summary.nearbyBatteryDevices"
@@ -64,10 +68,14 @@ final class StatusPanelActions {
         toggleInputMute: @escaping () -> Void = {},
         outputPreferences: @escaping () -> AudioOutputListPreferences = { .default },
         bluetoothDevices: @escaping () -> [BluetoothDevice] = { [] },
+        bluetoothListOptions: @escaping () -> BluetoothDeviceListOptions = { .standard },
         bluetoothAvailability: @escaping () -> BluetoothAvailability = { .idle },
         refreshBluetooth: @escaping () -> Void = {},
+        requestBluetoothAuthorization: @escaping () -> Void = {},
+        openBluetoothPermissionSettings: @escaping () -> Void = {},
         performBluetoothAction: @escaping (BluetoothDevice) -> Void = { _ in },
         requestDisconnect: @escaping (BluetoothDevice) -> Void = { _ in },
+        disconnectConfirmationAddress: @escaping () -> String? = { nil },
         cancelDisconnect: @escaping () -> Void = {},
         requestBatteryLevels: @escaping (String) -> Void = { _ in },
         releaseBatteryLevels: @escaping (String) -> Void = { _ in },
@@ -91,7 +99,8 @@ final class StatusPanelActions {
         refreshVolumeListeningModes: @escaping () -> Void = {},
         stopVolumeListeningModes: @escaping () -> Void = {},
         moveOutputDevices: @escaping (IndexSet, Int) -> Void = { _, _ in },
-        moveBluetoothDevices: @escaping (IndexSet, Int) -> Void = { _, _ in }
+        moveBluetoothDevices: @escaping (IndexSet, Int) -> Void = { _, _ in },
+        moveResolvedBluetoothDevices: ((IndexSet, Int, [String]) -> Void)? = nil
     ) {
         self.outputDevices = outputDevices
         self.selectOutputDevice = selectOutput
@@ -104,10 +113,14 @@ final class StatusPanelActions {
         self.toggleInputMuteCommand = toggleInputMute
         self.outputPreferences = outputPreferences
         self.bluetoothDevices = bluetoothDevices
+        self.bluetoothListOptions = bluetoothListOptions
         self.bluetoothAvailability = bluetoothAvailability
         self.refreshBluetoothCommand = refreshBluetooth
+        self.requestBluetoothAuthorizationCommand = requestBluetoothAuthorization
+        self.openBluetoothPermissionSettingsCommand = openBluetoothPermissionSettings
         self.performBluetoothActionCommand = performBluetoothAction
         self.requestDisconnectCommand = requestDisconnect
+        self.disconnectConfirmationAddress = disconnectConfirmationAddress
         self.cancelDisconnectCommand = cancelDisconnect
         self.requestBatteryLevelsCommand = requestBatteryLevels
         self.releaseBatteryLevelsCommand = releaseBatteryLevels
@@ -131,7 +144,9 @@ final class StatusPanelActions {
         self.refreshVolumeListeningModes = refreshVolumeListeningModes
         self.stopVolumeListeningModes = stopVolumeListeningModes
         self.moveOutputDevicesCommand = moveOutputDevices
-        self.moveBluetoothDevicesCommand = moveBluetoothDevices
+        self.moveBluetoothDevicesCommand = moveResolvedBluetoothDevices ?? { offsets, destination, _ in
+            moveBluetoothDevices(offsets, destination)
+        }
     }
 
     convenience init(store: SystemStatusStore, settings: SettingsStore) {
@@ -152,10 +167,14 @@ final class StatusPanelActions {
                 )
             },
             bluetoothDevices: { store.bluetoothDevices.devices },
+            bluetoothListOptions: { settings.bluetoothDeviceListOptions },
             bluetoothAvailability: { store.bluetoothDevices.availability },
             refreshBluetooth: { store.bluetoothDevices.refreshFromUser() },
+            requestBluetoothAuthorization: { store.requestBluetoothAuthorization() },
+            openBluetoothPermissionSettings: { store.openBluetoothPermissionSettings() },
             performBluetoothAction: { store.bluetoothDevices.performDeviceAction(for: $0) },
             requestDisconnect: { store.bluetoothDevices.requestDisconnectConfirmation(for: $0) },
+            disconnectConfirmationAddress: { store.bluetoothDevices.pendingDisconnectConfirmation },
             cancelDisconnect: { store.bluetoothDevices.cancelDisconnectConfirmation() },
             requestBatteryLevels: { store.bluetoothDevices.requestBatteryLevels($0) },
             releaseBatteryLevels: { store.bluetoothDevices.releaseBatteryLevels($0) },
@@ -204,12 +223,15 @@ final class StatusPanelActions {
                     in: settings.orderedOutputDevices(store.liveVolume.outputDevices)
                 )
             },
-            moveBluetoothDevices: { offsets, destination in
-                let ordered = BluetoothDeviceListPresentation.orderedDevices(
-                    store.bluetoothDevices.devices,
-                    using: settings.bluetoothDeviceOrder
+            moveResolvedBluetoothDevices: { offsets, destination, displayedAddresses in
+                Self.movePanelBluetoothDevices(
+                    fromOffsets: offsets,
+                    toOffset: destination,
+                    displayedAddresses: displayedAddresses,
+                    devices: store.bluetoothDevices.devices,
+                    options: settings.bluetoothDeviceListOptions,
+                    settings: settings
                 )
-                settings.moveBluetoothDevices(fromOffsets: offsets, toOffset: destination, in: ordered)
             }
         )
     }
@@ -251,9 +273,30 @@ final class StatusPanelActions {
     }
 
     func refreshBluetooth() { refreshBluetoothCommand() }
+    func requestBluetoothAuthorization() { requestBluetoothAuthorizationCommand() }
+    func openBluetoothPermissionSettings() { openBluetoothPermissionSettingsCommand() }
 
     func performBluetoothAction(address: String) {
+        guard let device = bluetoothDevice(address: address),
+              !BluetoothDeviceActionPolicy.requiresConfirmation(for: device) else { return }
+        performBluetoothActionCommand(device)
+    }
+
+    func rowTapped(address: String) {
         guard let device = bluetoothDevice(address: address) else { return }
+        if BluetoothDeviceActionPolicy.requiresConfirmation(for: device) {
+            requestDisconnectCommand(device)
+        } else {
+            performBluetoothActionCommand(device)
+        }
+    }
+
+    func confirmBluetoothDisconnect(address: String) {
+        let key = BluetoothBatteryReader.normalizedAddress(address)
+        guard !key.isEmpty,
+              BluetoothBatteryReader.normalizedAddress(disconnectConfirmationAddress() ?? "") == key,
+              let device = bluetoothDevice(address: key),
+              BluetoothDeviceActionPolicy.requiresConfirmation(for: device) else { return }
         performBluetoothActionCommand(device)
     }
 
@@ -306,7 +349,6 @@ final class StatusPanelActions {
     func bluetoothSummaryDisappeared() {
         releaseBluetoothSummary()
         releaseBatteryLevelsCommand(Self.summaryBatteryLevelsToken)
-        releaseNearbyBatteryDevicesCommand(Self.nearbyBatteryDevicesToken)
     }
 
     func volumeListAppeared() { refreshVolumeListeningModes() }
@@ -318,11 +360,75 @@ final class StatusPanelActions {
     func setWiFiPower(_ enabled: Bool) { setWiFiPowerCommand(enabled) }
     func refreshWiFi() { refreshWiFiCommand(wifiNameAccess()) }
     func moveOutputDevices(from offsets: IndexSet, to destination: Int) { moveOutputDevicesCommand(offsets, destination) }
-    func moveBluetoothDevices(from offsets: IndexSet, to destination: Int) { moveBluetoothDevicesCommand(offsets, destination) }
+    func moveBluetoothDevices(from offsets: IndexSet, to destination: Int) {
+        let options = bluetoothListOptions()
+        let rows = BluetoothDeviceListPresentation.orderedDevices(
+            BluetoothDeviceListPresentation.filteredDevices(bluetoothDevices(), options: options),
+            using: options.order
+        )
+        moveBluetoothDevicesCommand(offsets, destination, rows.map(\.id))
+    }
+
+    func moveBluetoothDevices(from offsets: IndexSet, to destination: Int, displayedAddresses: [String]) {
+        moveBluetoothDevicesCommand(offsets, destination, displayedAddresses)
+    }
 
     private func bluetoothDevice(address: String) -> BluetoothDevice? {
         let key = BluetoothBatteryReader.normalizedAddress(address)
         guard !key.isEmpty else { return nil }
         return bluetoothDevices().first { BluetoothBatteryReader.normalizedAddress($0.id) == key }
+    }
+
+    private static func movePanelBluetoothDevices(
+        fromOffsets offsets: IndexSet,
+        toOffset destination: Int,
+        displayedAddresses: [String],
+        devices: [BluetoothDevice],
+        options: BluetoothDeviceListOptions,
+        settings: SettingsStore
+    ) {
+        let displayedKeys = displayedAddresses.map { BluetoothBatteryReader.normalizedAddress($0) }
+        guard !displayedKeys.isEmpty,
+              Set(displayedKeys).count == displayedKeys.count,
+              !displayedKeys.contains(where: \.isEmpty),
+              offsets.allSatisfy({ displayedKeys.indices.contains($0) }),
+              (0...displayedKeys.count).contains(destination) else { return }
+
+        let resolved = BluetoothDeviceListPresentation.orderedDevices(
+            BluetoothDeviceListPresentation.filteredDevices(devices, options: options),
+            using: options.order
+        )
+        let resolvedPrefix = Array(resolved.prefix(displayedKeys.count)).map {
+            BluetoothBatteryReader.normalizedAddress($0.id)
+        }
+        guard displayedKeys == resolvedPrefix else { return }
+
+        let movedKeys = offsets.map { displayedKeys[$0] }
+        let remainingKeys = displayedKeys.enumerated()
+            .filter { !offsets.contains($0.offset) }
+            .map(\.element)
+        let insertionOffset = destination - offsets.filter { $0 < destination }.count
+        var reorderedKeys = remainingKeys
+        reorderedKeys.insert(contentsOf: movedKeys, at: min(insertionOffset, remainingKeys.count))
+
+        let rawOrdered = BluetoothDeviceListPresentation.orderedDevices(devices, using: options.order)
+        let deviceByKey = Dictionary(
+            devices.map { (BluetoothBatteryReader.normalizedAddress($0.id), $0) },
+            uniquingKeysWith: { first, _ in first }
+        )
+        let movedSet = Set(displayedKeys)
+        var reorderedIterator = reorderedKeys.makeIterator()
+        let merged = rawOrdered.map { device in
+            let key = BluetoothBatteryReader.normalizedAddress(device.id)
+            guard movedSet.contains(key), let replacementKey = reorderedIterator.next(),
+                  let replacement = deviceByKey[replacementKey] else { return device }
+            return replacement
+        }
+        guard !merged.isEmpty else { return }
+        settings.moveBluetoothDevices(
+            fromOffsets: IndexSet(integersIn: merged.indices),
+            toOffset: merged.count,
+            in: merged
+        )
     }
 }

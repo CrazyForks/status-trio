@@ -502,6 +502,10 @@ struct PanelDetailState: Equatable, Sendable {
 struct PanelBluetoothDeviceRow: Equatable, Sendable {
     let address: String; let title: String; let subtitle: String?
     let icon: IconSymbolSource; let batteryText: String?
+    let batteryLayout: BluetoothBatteryLayout; let batterySegments: [BluetoothBatterySegment]?
+    let isConnected: Bool; let status: BluetoothDeviceRowStatus
+    let statusText: String?; let statusTint: PanelTint
+    let requiresConfirmation: Bool
     let actionTitle: String; let actionEnabled: Bool; let isBusy: Bool
     let accessibilityLabel: String; let accessibilityValue: String
 }
@@ -522,14 +526,17 @@ struct BluetoothPanelState: Equatable, Sendable {
 
 `WiFiPanelState` 提供完整的已解析无线详情行、默认 collapsed row count、`visibleDetailRows(expanded:)` 和现有本地化 More／Less 文案。默认行数只控制显示切片，不丢弃剩余八行；展开状态继续留在 view。
 
-`StatusPanelActions` 扩展 `refreshBluetooth()`、`performBluetoothAction(address:)`、`requestDisconnect(address:)`、`cancelDisconnect()`、`setListeningMode(address:mode:)`，`mode` 使用现有 `BluetoothListeningMode`。扩展 `batteryDetailsAppeared()`／`batteryDetailsClosed()`、`wifiDetailsOpened()`／`wifiDetailsClosed()`、`wiredDetailsOpened()`／`wiredDetailsClosed()`、`bluetoothSummaryAppeared()`／`bluetoothSummaryDisappeared()`、`volumeListAppeared()`／`volumeListDisappeared()`。settings／permission callbacks 保留独立命名的注入 closure，不并入视觉 Mapper。
+`StatusPanelActions` 扩展 `refreshBluetooth()`、`rowTapped(address:)`、`performBluetoothAction(address:)`、`requestDisconnect(address:)`、`confirmBluetoothDisconnect(address:)`、`cancelDisconnect()`、`setListeningMode(address:mode:)`，`mode` 使用现有 `BluetoothListeningMode`。普通 row tap 复用 `BluetoothDeviceActionPolicy`：键盘／鼠标断开先请求确认，确认动作再验证当前 pending address；view 不解释设备类型。摘要 permission intent 明确区分 request authorization 与 open permission settings，并由独立命名的 action closure 执行。扩展 `batteryDetailsAppeared()`／`batteryDetailsClosed()`、`wifiDetailsOpened()`／`wifiDetailsClosed()`、`wiredDetailsOpened()`／`wiredDetailsClosed()`、`bluetoothSummaryAppeared()`／`bluetoothSummaryDisappeared()`、`volumeListAppeared()`／`volumeListDisappeared()`。settings／permission callbacks 保留独立命名的注入 closure，不并入视觉 Mapper。
 
-补齐 `setWiFiPower(_ enabled: Bool)`、`refreshWiFi()`，直接调用现有 `wifiNetworks.setPower`／`refreshNow(nameAccess:)`；网络行由解析后的 `opensSettings` 决定 callback。`batteryDetailsAppeared()` 从当前 battery 构造 `BatteryPowerState` 再 activate，电源状态变化由协调器更新激活状态。新增 `moveOutputDevices(from: IndexSet, to: Int)`／`moveBluetoothDevices(from: IndexSet, to: Int)`，在协调器中把当前展示排序对应回现有 SettingsStore move 方法，保留列表拖动、展开和 saved order。无参数的方法均返回 Void。
+补齐 `setWiFiPower(_ enabled: Bool)`、`refreshWiFi()`，直接调用现有 `wifiNetworks.setPower`／`refreshNow(nameAccess:)`；网络行由解析后的 `opensSettings` 决定 callback。`batteryDetailsAppeared()` 从当前 battery 构造 `BatteryPowerState` 再 activate，电源状态变化由协调器更新激活状态。新增 `moveOutputDevices(from: IndexSet, to: Int)` 和 `moveBluetoothDevices(from: IndexSet, to: Int, displayedAddresses: [String])`；Task 11 必须传当前实际显示的 pairedRows 地址切片（包含 collapsed limit），offsets 与该切片一致。collapsed destination `count` 插入在当前可见 slice 的末尾、未显示行之前；协调器重新解析并验证当前显示前缀，过期前缀无操作，再合并到全量设置顺序时保留 hidden／ghost／collapsed 行的 saved ranks。Settings 原始列表仍直接调用 SettingsStore move，不改变其语义。summary disappear 释放可见 surface 和 paired battery claim，Nearby opt-in 留到偏好显式关闭时再释放。无参数的方法均返回 Void。
 
 - [ ] 新失败 Mapper tests 覆盖连接组排序、saved order、ghost／hidden filter、battery display 开关、nearby 开关、refresh 失败及 disconnect confirmation；与原 helper 输出比较，不重新定义规则。
 - [ ] detail tests 覆盖 battery power 行 tint／timestamp／解释文字，wired 不可用仍显示既有五行；Wi-Fi poweredOff／noInterface／denied／failed／scanning／empty、power toggle、refresh capability、known grouping 和系统设置 action。听音模式优先复用已有 `BluetoothListeningModePresentation`；如将文案移入新状态，新增 `PanelListeningModeState`，含每个 mode 的原 action value、title、selected／target／enabled、group accessibility label 和 failure text，不能丢失 enabled selected capsule 语义。
 - [ ] Run `swift test --filter 'BluetoothPanelMapperTests|PanelDetailMapperTests|PanelActionRoutingTests'`。从当前 view 解出设备行和 details 的最终文字、符号、能力，原控制器不改所有权。
 - [ ] 动作按 normalized address 查找当前设备并执行现有 action targeting，未找到不发出命令；听音模式在当前 controller control 仍存在时调用 `setMode`。预览 synthetic devices 的现有规则由 Mapper／协调器复用 `ListeningModePreview`，不让真实设备被 preview language 覆盖。
+- [ ] Bluetooth row tap／confirm 使用明确 action callback；permission request 与 Privacy & Security 打开路径由已解析 intent 区分。行 state 保留 connected、inline／component、battery segments（包括 charging-case glyph）、failure tint 和 confirmation policy。
+- [ ] Nearby summary disappear 停止 surface scan但保留 summary opt-in 与 cache；popover／summary／Settings visibility tokens 仍独立，显式关闭 nearby preference 才释放 summary opt-in。
+- [ ] 生产 reordering 测试通过 settings-backed actions 验证 hidden、ghost、saved ranks 和 collapsed slice destination，而 Settings 原始列表调用仍保留旧行为。
 - [ ] 将原 `.onAppear`、`.task(id:)`、`.onDisappear` 的 claim／refresh 逻辑逐条搬进 actions 的具名方法：
 
 ```swift
@@ -555,6 +562,8 @@ controller 保存到 actions 可以，保存到展示 state 不可以。battery�
 detail 属性明确为 `batteryDetails: PanelDetailState`、`wifiDetails: WiFiPanelState`、`wiredDetails: PanelDetailState`。`PanelDetailRow.isCopyable` 携带现有 LinkDetailPresentation 的地址行资格，SwiftUI 通过显式 copy-value callback 处理点击，不在 view 重算地址策略。保留多个区域 publisher，不能对大型联合 state 每次任何变化都重新发布所有区域。
 
 Wi-Fi details 保留 view-local More／Less toggle：通过 `wifiDetails.visibleDetailRows(expanded:)` 显示完整解析行集的折叠／展开切片，并使用 state 的 `showMoreTitle`／`showLessTitle`，不在 view 重映射 `WiFiConnectionDetails`。
+
+Bluetooth summary 根据 `PanelSummaryIntent.requestBluetoothAuthorization`／`.openBluetoothPermissionSettings` 路由到独立 action callbacks；Bluetooth device row 普通点击调用 `rowTapped(address:)`，确认按钮调用 `confirmBluetoothDisconnect(address:)`，取消调用 `cancelDisconnect()`。呈现使用 state 的 connected、battery layout／segments、status text／tint 和 confirmation fields，不在 view 检查设备类别或重算 battery policy。列表拖动把 `pairedRows.map(\.address)` 同 offsets／destination 传给 filtered reorder action；collapsed destination count 是可见 slice 末尾。
 
 - [ ] 新失败测试确保按独立源更新：`popupSnapshot` 更新 battery／network；`liveVolume` 立即更新 volume；`liveInput` 更新 input；VPN 更新不触发 icon。使用既有 mock monitors／store fixtures，重用当前测试的 ManualEventSleeper，不新增固定睡眠。
 - [ ] Run `swift test --filter 'StatusPanelViewModelTests|PanelPresentationWiringTests'`。按区域 Combine delivered values，`removeDuplicates` 后发布；controller 多字段如只支持 `objectWillChange`，安排主 actor coalescer 在变更落地后读一致的 controller 快照，不在 willChange 回调读旧值。
