@@ -11,8 +11,16 @@ enum AudioPanelMapper {
     ) -> VolumePanelState {
         let scalar = readableScalar(status.scalar)
         let percentageText = percentage(scalar, locale: localization.resolvedLanguage.locale)
-        let currentDevice = status.currentDevice
-            ?? status.outputDevices.first(where: \.isCurrent)
+        let currentDevice = status.outputDevices.first(where: \.isCurrent)
+        let summaryIconDevice: AudioOutputDevice?
+        if let currentDevice,
+           let liveName = status.deviceName,
+           let cachedName = currentDevice.name,
+           liveName != cachedName {
+            summaryIconDevice = nil
+        } else {
+            summaryIconDevice = currentDevice
+        }
         let name = cleanedName(status.deviceName)
             ?? cleanedName(currentDevice?.name)
             ?? localization.string(.volumeNoDefaultDevice)
@@ -29,8 +37,8 @@ enum AudioPanelMapper {
             title: name,
             subtitle: subtitle,
             measurements: nil,
-            symbol: currentDevice.map { outputSymbolSource(for: $0) }
-                ?? .symbol(name: volumeSymbol(scalar: scalar, muted: status.isMuted), variableValue: nil, fallback: nil),
+            symbol: summaryIconDevice.map { outputSymbolSource(for: $0) }
+                ?? .symbol(name: "speaker.wave.2.fill", variableValue: nil, fallback: nil),
             tint: .secondary,
             accessibilityLabel: localization.format(.commonLabelValue, name, subtitle),
             accessibilityValue: subtitle,

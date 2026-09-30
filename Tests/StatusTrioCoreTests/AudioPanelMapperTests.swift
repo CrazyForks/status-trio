@@ -133,6 +133,85 @@ final class AudioPanelMapperTests: XCTestCase {
         XCTAssertEqual(state.summary.title, "No default output device")
     }
 
+    func testOutputSummaryRejectsCachedIconWhenLiveDeviceNameHasChanged() {
+        let localization = makeLocalization(.english)
+        let cachedDevice = AudioOutputDevice(
+            id: AudioDeviceID(42),
+            name: "Cached headphones",
+            uid: "headphones",
+            isCurrent: true,
+            transport: .bluetooth
+        )
+        let state = AudioPanelMapper.volume(
+            VolumeStatus(
+                scalar: 0.5,
+                isMuted: false,
+                deviceName: "Renamed output",
+                outputDevices: [cachedDevice],
+                canSetVolume: true,
+                canMute: true
+            ),
+            controllerAvailable: true,
+            localization: localization
+        )
+
+        XCTAssertEqual(state.summary.title, "Renamed output")
+        XCTAssertEqual(
+            state.summary.symbol,
+            .symbol(name: "speaker.wave.2.fill", variableValue: nil, fallback: nil)
+        )
+    }
+
+    func testOutputSummaryUsesStaticSpeakerFallbackWithoutDeviceMetadata() {
+        let localization = makeLocalization(.english)
+        let state = AudioPanelMapper.volume(
+            VolumeStatus(
+                scalar: 0.2,
+                isMuted: true,
+                deviceName: "Live output",
+                outputDevices: [],
+                canSetVolume: true,
+                canMute: true
+            ),
+            controllerAvailable: true,
+            localization: localization
+        )
+
+        XCTAssertEqual(
+            state.summary.symbol,
+            .symbol(name: "speaker.wave.2.fill", variableValue: nil, fallback: nil)
+        )
+        XCTAssertEqual(state.muteSymbol, "speaker.slash.fill")
+    }
+
+    func testOutputSummaryUsesMatchingCurrentDeviceIcon() {
+        let localization = makeLocalization(.english)
+        let device = AudioOutputDevice(
+            id: AudioDeviceID(43),
+            name: "Bluetooth Headphones",
+            uid: "headphones",
+            isCurrent: true,
+            transport: .bluetooth
+        )
+        let state = AudioPanelMapper.volume(
+            VolumeStatus(
+                scalar: 0.5,
+                isMuted: false,
+                deviceName: device.name,
+                outputDevices: [device],
+                canSetVolume: true,
+                canMute: true
+            ),
+            controllerAvailable: true,
+            localization: localization
+        )
+
+        XCTAssertNotEqual(
+            state.summary.symbol,
+            .symbol(name: "speaker.wave.2.fill", variableValue: nil, fallback: nil)
+        )
+    }
+
     func testOutputRowsUseStableUIDKeysOrderingAndLocalExpansionProjection() {
         let localization = makeLocalization(.english)
         let first = AudioOutputDevice(
