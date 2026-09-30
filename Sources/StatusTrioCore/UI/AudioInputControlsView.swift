@@ -5,6 +5,7 @@ struct AudioInputVolumeDraft {
     private(set) var value = 0.0
     private(set) var isEditing = false
     private var latestSystemScalar: Double?
+    private var selectedDeviceIdentity: PanelAudioInputIdentity?
 
     mutating func receiveSystemScalar(_ scalar: Double?) {
         latestSystemScalar = scalar
@@ -35,6 +36,19 @@ struct AudioInputVolumeDraft {
     mutating func resetForDevice(_ scalar: Double?) {
         isEditing = false
         receiveSystemScalar(scalar)
+    }
+
+    mutating func receiveSystemState(
+        deviceIdentity: PanelAudioInputIdentity?,
+        scalar: Double?
+    ) {
+        let deviceChanged = selectedDeviceIdentity != deviceIdentity
+        selectedDeviceIdentity = deviceIdentity
+        if deviceChanged {
+            resetForDevice(scalar)
+        } else {
+            receiveSystemScalar(scalar)
+        }
     }
 
     func accessibilityValue(systemScalar: Double?, locale: Locale) -> String {
@@ -91,7 +105,15 @@ struct AudioInputControlsView: View {
                 }
             }
         }
-        .onAppear { volumeDraft.receiveSystemScalar(state.scalar) }
+        .onAppear {
+            volumeDraft.receiveSystemState(
+                deviceIdentity: state.selectedDeviceIdentity,
+                scalar: state.scalar
+            )
+        }
+        .onChange(of: state.selectedDeviceIdentity) { _, identity in
+            volumeDraft.receiveSystemState(deviceIdentity: identity, scalar: state.scalar)
+        }
         .onChange(of: state.scalar) { _, scalar in
             volumeDraft.receiveSystemScalar(scalar)
         }

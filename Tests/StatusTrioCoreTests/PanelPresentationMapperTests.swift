@@ -1,3 +1,4 @@
+import CoreAudio
 import XCTest
 @testable import StatusTrioCore
 
@@ -198,6 +199,30 @@ final class PanelPresentationMapperTests: XCTestCase {
         XCTAssertEqual(german.title, "Batterie · 68%")
         XCTAssertNotEqual(english.title, chinese.title)
         XCTAssertNotEqual(chinese.title, german.title)
+    }
+
+    func testInputIdentityTracksOnlyDefaultDeviceID() {
+        var status = AudioInputStatus.empty
+        status.devices = [AudioInputDevice(id: AudioDeviceID(11), uid: nil, name: "USB Mic")]
+        status.defaultDeviceID = AudioDeviceID(11)
+        status.deviceName = "USB Mic"
+        status.scalar = 0.55
+        status.canSetVolume = true
+
+        let english = AudioPanelMapper.input(status, localization: makeLocalization(.english))
+
+        status.devices = [AudioInputDevice(id: AudioDeviceID(11), uid: "late-uid", name: "Updated Mic Label")]
+        status.deviceName = "Updated Mic Label"
+        let metadataUpdated = AudioPanelMapper.input(status, localization: makeLocalization(.english))
+        let languageUpdated = AudioPanelMapper.input(status, localization: makeLocalization(.simplifiedChinese))
+
+        XCTAssertEqual(english.selectedDeviceIdentity, metadataUpdated.selectedDeviceIdentity)
+        XCTAssertEqual(english.selectedDeviceIdentity, languageUpdated.selectedDeviceIdentity)
+
+        status.defaultDeviceID = AudioDeviceID(22)
+        status.devices.append(AudioInputDevice(id: AudioDeviceID(22), uid: "second", name: "Second Mic"))
+        let selectedDeviceChanged = AudioPanelMapper.input(status, localization: makeLocalization(.english))
+        XCTAssertNotEqual(english.selectedDeviceIdentity, selectedDeviceChanged.selectedDeviceIdentity)
     }
 
     private func makeLocalization(_ language: AppLanguage) -> Localization {

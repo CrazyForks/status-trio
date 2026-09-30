@@ -144,6 +144,9 @@ enum AudioPanelMapper {
 
         return AudioInputPanelState(
             summary: summary,
+            selectedDeviceIdentity: status.defaultDeviceID.map {
+                PanelAudioInputIdentity(rawValue: $0)
+            },
             scalar: presentation.hasReadableVolume ? status.scalar : nil,
             percentageText: presentation.visibleVolumeValue,
             muteSymbol: muteSymbol,
