@@ -396,32 +396,50 @@ does not turn the panel's enabled flag off.
 ## Nearby standard BLE battery readings
 
 `Settings › Bluetooth › Show nearby BLE battery levels` is an opt-in source,
-off by default. It supplements the paired-device report and appears in its own
-**Nearby** group. The existing Bluetooth battery-level setting must also be on.
-Nearby rows are read-only: scanning and GATT reads never change paired-device
-identity, paired battery readings, or connect/disconnect actions. The same name
-can appear once in each group because the two sources do not share a reliable
-identity key; rows are not merged by name.
+off by default. It supplements the paired-device report. The existing Bluetooth
+battery-level setting must also be on. Nearby readings are read-only: scanning
+and GATT reads never change paired-device identity, paired battery readings, or
+connect/disconnect actions.
 
 While the app is active and the Bluetooth summary is visible in the open status
-popover, the scanner looks for peripherals that advertise the standard Bluetooth
-Battery Service (`180F`). It listens for five seconds per scan window, starts no
-more than two GATT reads at once, and retries automatically no more often than
-once per minute. Each connection attempt is limited to four seconds. Closing the
-popover or leaving the Bluetooth summary stops scanning and cancels active
-connections. Recent readings are kept in memory for up to two minutes so the
-summary can reopen without an immediate empty state; they are not persisted.
+popover, the scanner looks for peripherals worth a GATT read. It does not filter
+the scan by service, because that filter is applied by the Bluetooth stack: an
+advertisement that does not name a service is never delivered to the app at all.
+Two advertisements are instead accepted in the delegate — one that names the
+standard Battery Service (`180F`), and Apple's Continuity payload carrying a
+Nearby Info or Handoff message type together with a name. The name is what keeps
+the second route to the user's own devices: the system reports one only for a
+device it already knows.
+
+Each scan listens for five seconds, starts no more than two GATT reads at once,
+and retries automatically no more often than once per minute. Each connection
+attempt is limited to four seconds. Closing the popover or leaving the Bluetooth
+summary stops scanning and cancels active connections. Recent readings are kept
+in memory for up to two minutes, so a panel reopened inside that window draws its
+rows from the last reading and refreshes them behind the panel. Nothing is
+persisted, and switching the setting off drops the readings immediately.
 
 The scanner reads the standard Battery Level characteristic (`2A19`) and accepts
 only a single byte in the range `0...100`. Model and manufacturer strings from
 the optional Device Information Service can add a name, but they do not delay a
 valid battery reading. The app does not infer charging from a level change.
 
-The scan filter only finds devices that advertise `180F`; a device can expose
-that service to connected clients without advertising it, in which case it will
-not be discovered by this feature. Device support varies. The app does not use
-manufacturer-specific parsers, and this feature does not promise battery readings
-from iPhone or iPad. See
+An iPhone, an iPad or a Watch never advertises `180F`; it answers with the
+Battery Service only after the connection, so it arrives through the Continuity
+route. Its Device Information Service also answers with a model string
+(`iPhone14,3`), which is the class the paired-device report leaves out for these
+devices. The reading is folded onto the row the same device already has, matched
+by exact name, because the report keys a device by its classic address and a scan
+by the CoreBluetooth identifier and the two cannot be converted into one
+another. A mobile device the report does not carry at all gets a row of its own.
+A reading also lifts its row to the front of the disconnected group: it is the
+only row the panel has live information about, and the report appends it wherever
+its own scan found it. These rows cannot appear before the read answers, so the
+first one after a cold start costs a scan window, a connect and a GATT read. On
+every other device the panel shows a level the system report already carried.
+
+Device support still varies, and the app does not use manufacturer-specific
+parsers. See
 [`nearby-ble-battery-observations.md`](nearby-ble-battery-observations.md) for
 the hardware validation status.
 

@@ -84,6 +84,8 @@ final class BluetoothNearbyBatteryLifecycleTests: XCTestCase {
         controller.deactivate()
     }
 
+    /// Switching the feature off is the one release that also drops what the
+    /// scan read: the surface is no longer entitled to it.
     func testReleasingLastNearbyRequestClearsCacheAndStopsScanner() {
         let scanner = NearbyBatteryScannerSpy()
         let monitor = NearbyBatteryStateMonitorSpy()
@@ -94,6 +96,53 @@ final class BluetoothNearbyBatteryLifecycleTests: XCTestCase {
         controller.releaseNearbyBatteryDevices("settings")
 
         XCTAssertEqual(scanner.stopCount, 1)
+        XCTAssertTrue(controller.nearbyBatteryDevices.isEmpty)
+        controller.deactivate()
+    }
+
+    /// Closing the panel is not switching the feature off. The reading is the
+    /// only thing that can draw an iPhone row — the report has no entry for the
+    /// phone at all — so dropping it here made every reopen wait out a scan, a
+    /// connect and a GATT read before the row could exist, while the paired rows
+    /// appeared at once off a report that survives the close.
+    func testReopeningThePanelKeepsTheLastReadingInsteadOfRescanningFromScratch() async {
+        let scanner = NearbyBatteryScannerSpy()
+        let monitor = NearbyBatteryStateMonitorSpy()
+        let controller = makeReadyController(scanner: scanner, monitor: monitor)
+        controller.requestNearbyBatteryDevices("settings")
+        let device = nearbyDevice(name: "Ling's iPhone", level: 31)
+        scanner.publish([device])
+        await waitUntil { controller.nearbyBatteryDevices == [device] }
+
+        controller.releaseNearbyBatteryDevices("settings", keepingResults: true)
+
+        XCTAssertEqual(scanner.stopCount, 1, "the radio still stops with the panel")
+        XCTAssertFalse(scanner.isRunning)
+        XCTAssertEqual(
+            controller.nearbyBatteryDevices,
+            [device],
+            "the reading outlives the panel for its own lifetime"
+        )
+        controller.deactivate()
+    }
+
+    /// Kept is not kept forever: the cache's lifetime still takes it, so a panel
+    /// left shut does not leave a reading behind.
+    func testAReadingKeptForAReopenStillExpiresOnItsOwnLifetime() async {
+        let scanner = NearbyBatteryScannerSpy()
+        let monitor = NearbyBatteryStateMonitorSpy()
+        let controller = makeReadyController(
+            scanner: scanner,
+            monitor: monitor,
+            cacheLifetime: 0.1
+        )
+        controller.requestNearbyBatteryDevices("settings")
+        scanner.publish([nearbyDevice(name: "Ling's iPhone", level: 31)])
+        await waitUntil { controller.nearbyBatteryDevices.count == 1 }
+
+        controller.releaseNearbyBatteryDevices("settings", keepingResults: true)
+
+        await waitUntil(timeout: .seconds(1)) { controller.nearbyBatteryDevices.isEmpty }
         XCTAssertTrue(controller.nearbyBatteryDevices.isEmpty)
         controller.deactivate()
     }

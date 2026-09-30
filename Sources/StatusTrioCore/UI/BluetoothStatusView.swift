@@ -14,7 +14,6 @@ import SwiftUI
 struct BluetoothStatusView: View {
     @ObservedObject var controller: BluetoothDeviceController
     @EnvironmentObject private var localization: Localization
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let showsBatteryLevels: Bool
     var showsNearbyBatteryDevices = false
     var listOptions: BluetoothDeviceListOptions = .standard
@@ -34,17 +33,6 @@ struct BluetoothStatusView: View {
             batteryLevels: controller.batteryLevels,
             nearbyDevices: scanResults
         )
-    }
-
-    /// What the section animates on: the identity of every row it draws.
-    ///
-    /// A paired device is keyed by its address and a nearby one by its
-    /// CoreBluetooth identifier, so both are spelled as strings before they are
-    /// combined — the two are different types, and the popover has to see one
-    /// list.
-    private var rowIdentities: [String] {
-        let merged = mergedDeviceList
-        return merged.devices.map(\.id) + merged.remainingNearby.map(\.id.uuidString)
     }
 
     var body: some View {
@@ -100,15 +88,6 @@ struct BluetoothStatusView: View {
                     onRequestDisconnect: { controller.requestDisconnectConfirmation(for: $0) },
                     onCancelDisconnect: { controller.cancelDisconnectConfirmation() }
                 )
-                // Identity, not the default fade. The list arrives a moment after
-                // the popover opens — the paired-device report lands late, and a
-                // level read over the air folds a device in later still — and the
-                // panel has already grown to its new height by the time the fade
-                // would run, because SwiftUI animates presentation and never
-                // layout. Fading the list in over an already-taller panel is the
-                // flash this removes: the list is there the moment it is drawn,
-                // and what animates is where the rows sit.
-                .transition(.identity)
 
                 if controller.batteryLevelsReadFailed {
                     // The list is where the levels are, so this is where a report
@@ -124,18 +103,6 @@ struct BluetoothStatusView: View {
                 NearbyBluetoothBatteryList(devices: nearbyDevices)
             }
         }
-        // The rows and the section around them settle into place rather than
-        // being cut in, and a level changing on a row already on screen never
-        // restarts it because the key is the row identities, not the devices.
-        //
-        // This animates what SwiftUI owns — where the rows sit and how tall the
-        // section is inside the panel. The panel window itself takes its height
-        // from this view through `preferredContentSize`, and that resize is
-        // AppKit's to animate; no modifier here can reach it.
-        .animation(
-            reduceMotion ? nil : .snappy(duration: 0.25),
-            value: rowIdentities
-        )
         .onAppear {
             controller.holdVisibleSurface(BluetoothDeviceController.bluetoothSummarySurfaceToken)
         }
@@ -155,6 +122,9 @@ struct BluetoothStatusView: View {
         }
         .task(id: showsNearbyBatteryLevels) {
             guard showsNearbyBatteryLevels else {
+                // The setting is off, so the surface is no longer entitled to
+                // what the scan read: these go now rather than at the end of
+                // their lifetime.
                 controller.releaseNearbyBatteryDevices(Self.nearbyBatteryDevicesToken)
                 return
             }
@@ -166,6 +136,16 @@ struct BluetoothStatusView: View {
         .onDisappear {
             controller.releaseVisibleSurface(BluetoothDeviceController.bluetoothSummarySurfaceToken)
             controller.releaseBatteryLevels(Self.summaryBatteryLevelsToken)
+            // The panel closing is not the feature being switched off: it is the
+            // same surface coming back in a moment, so what it read stays for the
+            // cache's own lifetime. Dropping it here made every reopen pay for a
+            // fresh scan, connect and GATT read before an iPhone row could be
+            // drawn at all, while the paired rows — whose report survives the
+            // close — appeared at once.
+            controller.releaseNearbyBatteryDevices(
+                Self.nearbyBatteryDevicesToken,
+                keepingResults: true
+            )
         }
     }
 

@@ -762,12 +762,22 @@ final class BluetoothDeviceController: ObservableObject {
         updateNearbyBatteryScanner()
     }
 
-    /// Releases a Nearby opt-in claim. Releasing the last claim disables the
-    /// feature and clears its in-memory cache.
-    func releaseNearbyBatteryDevices(_ token: String) {
+    /// Releases a Nearby opt-in claim. The scan always stops with the last claim;
+    /// what happens to what it read depends on why the claim went away.
+    ///
+    /// A surface that goes away because its setting was turned off is no longer
+    /// entitled to the readings, so they go with it. A surface that goes away
+    /// because the panel closed is the same surface coming back a moment later,
+    /// and the reading is the only way to draw the row at all: a level read over
+    /// the air is not in the system report, so clearing it here would make the
+    /// user wait out a whole scan, connect and GATT read again every time they
+    /// reopen the panel — the delay the paired devices never show, because their
+    /// report survives the panel closing. `keepingResults` keeps them instead,
+    /// and the cache's own lifetime expires them if the panel stays shut.
+    func releaseNearbyBatteryDevices(_ token: String, keepingResults: Bool = false) {
         guard nearbyBatteryRequests.remove(token) != nil else { return }
         if nearbyBatteryRequests.isEmpty {
-            stopNearbyBatteryScanner(clearResults: true)
+            stopNearbyBatteryScanner(clearResults: !keepingResults)
         } else {
             updateNearbyBatteryScanner()
         }
