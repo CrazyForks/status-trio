@@ -121,6 +121,39 @@ final class IconAppearancePublisherTests: XCTestCase {
         XCTAssertEqual(appearance?.volumeOptions.ringStrokeScale, RingStrokeStyle.bold.scale)
     }
 
+    func testIconPresentationPublisherIncludesEveryAppearanceSettingAndTestMode() throws {
+        let settings = makeSettings()
+        var values: [IconPresentationSettings] = []
+        let cancellable = settings.iconPresentationPublisher.sink { values.append($0) }
+        defer { cancellable.cancel() }
+
+        for mutation in Self.iconMutations {
+            let previousCount = values.count
+            mutation.apply(settings)
+            XCTAssertEqual(values.count, previousCount + 1, "\(mutation.name) publishes once")
+            let value = try XCTUnwrap(values.last)
+            let appearance = StatusIconAppearance(settings: settings)
+            XCTAssertEqual(value.menuBarSize, appearance.iconSize)
+            XCTAssertEqual(value.configuration.battery, appearance.batteryOptions)
+            XCTAssertEqual(value.configuration.connection, appearance.connectionOptions)
+            XCTAssertEqual(value.configuration.volume, appearance.volumeOptions)
+            XCTAssertEqual(value.configuration.bluetooth, appearance.bluetoothAudioOptions)
+        }
+
+        settings.showsChargingEffect = true
+        let previousCount = values.count
+        settings.setChargingEffectTestEnabled(true)
+        XCTAssertEqual(values.count, previousCount + 1)
+        XCTAssertEqual(values.last?.testsChargingEffect, true)
+
+        let afterIconSettingCount = values.count
+        settings.refreshIntervalSeconds = 30
+        settings.showsBluetoothBatteryLevels = true
+        settings.hasCompletedIconGuideOnboarding = true
+        settings.dockIconBackgroundPreference = .dark
+        XCTAssertEqual(values.count, afterIconSettingCount)
+    }
+
     // MARK: - Helpers
 
     private static let menuBarOnlyMutationName = "iconSize"
@@ -134,11 +167,15 @@ final class IconAppearancePublisherTests: XCTestCase {
         IconMutation(name: menuBarOnlyMutationName) { $0.iconSize = 32 },
         IconMutation(name: "showsBatteryPercentage") { $0.showsBatteryPercentage = false },
         IconMutation(name: "showsChargingIndicator") { $0.showsChargingIndicator = false },
+        IconMutation(name: "showsChargingEffect") { $0.showsChargingEffect = false },
         IconMutation(name: "showsChargingBoltHeartbeat") { $0.showsChargingBoltHeartbeat = false },
         IconMutation(name: "usesBatteryStatusColors") { $0.usesBatteryStatusColors = false },
         IconMutation(name: "batteryCriticalThreshold") { $0.batteryCriticalThreshold = 35 },
         IconMutation(name: "showsPercentageWhenConnected") {
             $0.showsPercentageWhenConnected = true
+        },
+        IconMutation(name: "showsBatteryPercentageInConnectionSlot") {
+            $0.showsBatteryPercentageInConnectionSlot = true
         },
         IconMutation(name: "batterySymbolScale") { $0.batterySymbolScale = 1.05 },
         IconMutation(name: "showsWiFiIconForEthernet") { $0.showsWiFiIconForEthernet = true },
