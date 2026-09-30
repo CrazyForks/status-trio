@@ -16,6 +16,32 @@ final class StatusIconRendererTests: XCTestCase {
         XCTAssertEqual(image.height, 40)
     }
 
+    func testSceneRendererUsesLogicalSizeAndBackingScale() throws {
+        let scene = IconSceneState(outerRing: OuterRingState(
+            segments: [RingSegmentState(progress: 0.5, color: .primary)],
+            gap: .closed
+        ))
+        let image = try XCTUnwrap(StatusIconRenderer.render(
+            scene: scene,
+            environment: StatusIconRenderEnvironment(
+                size: 20,
+                scale: 2,
+                foreground: CGColor(gray: 1, alpha: 1),
+                criticalColor: StatusIconRenderer.defaultCriticalColor
+            )
+        ))
+
+        XCTAssertEqual(image.width, 40)
+        XCTAssertEqual(image.height, 40)
+        let nsImage = try XCTUnwrap(StatusIconRenderer.image(
+            scene: scene,
+            size: 20,
+            scale: 2,
+            appearance: nil
+        ))
+        XCTAssertEqual(nsImage.size, NSSize(width: 20, height: 20))
+    }
+
     func testRendererRejectsNonPositiveSizeOrScale() {
         let snapshot = StatusSnapshot.placeholder
         let foreground = CGColor(gray: 1, alpha: 1)

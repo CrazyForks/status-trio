@@ -65,9 +65,9 @@ final class IconPresentationMapperTests: XCTestCase {
         let absentScene = scene(snapshot: snapshot(battery: absent), batteryOptions: options)
 
         XCTAssertEqual(fullScene.outerRing?.gap, RingGapStyle.value)
-        XCTAssertEqual(fullScene.outerRing?.accessory, RingAccessoryState.text(IconTextState(text: "100%", color: .primary, scale: 1.8)))
+        XCTAssertEqual(fullScene.outerRing?.accessory, RingAccessoryState.text(IconTextState(text: "100", color: .primary, scale: 1.8)))
         XCTAssertEqual(absentScene.outerRing?.gap, RingGapStyle.value)
-        XCTAssertEqual(absentScene.outerRing?.accessory, RingAccessoryState.text(IconTextState(text: "100%", color: .primary, scale: 1.8)))
+        XCTAssertEqual(absentScene.outerRing?.accessory, RingAccessoryState.text(IconTextState(text: "100", color: .primary, scale: 1.8)))
         XCTAssertNil(absentScene.outerRing?.effect)
     }
 
@@ -171,7 +171,7 @@ final class IconPresentationMapperTests: XCTestCase {
             inputs: IconPresentationInputs(snapshot: snapshot, audioIcon: .symbol(name: "airpods.pro", variableValue: nil, fallback: "headphones")),
             configuration: configuration).center
 
-        XCTAssertEqual(center, .text(IconTextState(text: "45%", color: .primary, scale: 1)))
+        XCTAssertEqual(center, .text(IconTextState(text: "45", color: .primary, scale: 1)))
     }
 
     func testConnectionMappingHandlesEthernetSignalAndWiFiStateOverrides() {
@@ -198,7 +198,7 @@ final class IconPresentationMapperTests: XCTestCase {
     func testConnectionSlotToggleShowsPresentBatteryPercentage() {
         let config = ConnectionIconOptions(showsBatteryPercentageInConnectionSlot: true)
         let output = scene(snapshot: PresentationFixtures.snapshot(), connectionOptions: config).center
-        XCTAssertEqual(output, .text(IconTextState(text: "68%", color: .primary, scale: 1)))
+        XCTAssertEqual(output, .text(IconTextState(text: "68", color: .primary, scale: 1)))
     }
 
     func testOffAndUnavailableWifiShareOneVisualState() {

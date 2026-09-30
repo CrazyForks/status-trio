@@ -16,6 +16,20 @@ final class DockIconRendererTests: XCTestCase {
         XCTAssertFalse(image.isTemplate)
     }
 
+    func testSceneRendererHonorsPixelLengthAndRejectsOversize() throws {
+        let scene = IconSceneState(outerRing: OuterRingState(
+            segments: [RingSegmentState(progress: 0.5, color: .primary)],
+            gap: .closed
+        ))
+        let image = try XCTUnwrap(DockIconRenderer.image(scene: scene, pixelLength: 128))
+        let representation = try XCTUnwrap(image.representations.first as? NSBitmapImageRep)
+
+        XCTAssertEqual(representation.pixelsWide, 128)
+        XCTAssertEqual(representation.pixelsHigh, 128)
+        XCTAssertNil(DockIconRenderer.image(scene: scene, pixelLength: 0))
+        XCTAssertNil(DockIconRenderer.image(scene: scene, pixelLength: 513))
+    }
+
     func testDockIconKeepsTransparentMarginAndDarkBody() throws {
         let pixels = try pixels(for: .placeholder)
         let corner = pixels.rgba(x: 0, y: 0)

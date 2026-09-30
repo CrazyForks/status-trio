@@ -766,7 +766,7 @@ enum StatusIconRenderer {
         return pointSize.isFinite && pointSize > 0 ? pointSize : fallbackPointSize
     }
 
-    private static var defaultCriticalColor: CGColor {
+    static var defaultCriticalColor: CGColor {
         CGColor(red: 255.0 / 255.0, green: 59.0 / 255.0, blue: 48.0 / 255.0, alpha: 1)
     }
 
@@ -1182,5 +1182,416 @@ enum StatusIconRenderer {
             context.addPath(StatusIconGeometry.volumeArcFill(progress: scalar))
             context.strokePath()
         }
+    }
+}
+
+extension StatusIconRenderer {
+    static func render(
+        scene: IconSceneState,
+        environment: StatusIconRenderEnvironment,
+        phase: ChargingEffectPhase? = nil
+    ) -> CGImage? {
+        let size = environment.size
+        let scale = environment.scale
+        guard size.isFinite, scale.isFinite, size > 0, scale > 0 else { return nil }
+
+        let pixelLength = (size * scale).rounded(.up)
+        guard pixelLength.isFinite,
+              let pixelDimension = Int(exactly: pixelLength),
+              pixelDimension > 0,
+              pixelDimension <= Int.max / 4,
+              let context = CGContext(
+                  data: nil,
+                  width: pixelDimension,
+                  height: pixelDimension,
+                  bitsPerComponent: 8,
+                  bytesPerRow: pixelDimension * 4,
+                  space: CGColorSpaceCreateDeviceRGB(),
+                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+              )
+        else {
+            return nil
+        }
+
+        context.scaleBy(x: scale, y: scale)
+        guard draw(
+            scene: scene,
+            in: context,
+            size: size,
+            foreground: environment.foreground,
+            criticalColor: environment.criticalColor,
+            phase: phase
+        ) else {
+            return nil
+        }
+        return context.makeImage()
+    }
+
+    static func image(
+        scene: IconSceneState,
+        size: CGFloat,
+        scale: CGFloat,
+        appearance: NSAppearance? = nil,
+        phase: ChargingEffectPhase? = nil
+    ) -> NSImage? {
+        var foreground = CGColor(gray: 1, alpha: 1)
+        var criticalColor = defaultCriticalColor
+        let resolveAppearance = {
+            foreground = NSColor.labelColor.usingColorSpace(.deviceRGB)?.cgColor
+                ?? CGColor(gray: 1, alpha: 1)
+            criticalColor = NSColor.systemRed.usingColorSpace(.deviceRGB)?.cgColor
+                ?? defaultCriticalColor
+        }
+        if let appearance {
+            appearance.performAsCurrentDrawingAppearance(resolveAppearance)
+        } else {
+            resolveAppearance()
+        }
+
+        let environment = StatusIconRenderEnvironment(
+            size: size,
+            scale: scale,
+            foreground: foreground,
+            criticalColor: criticalColor
+        )
+        guard let cgImage = render(scene: scene, environment: environment, phase: phase) else { return nil }
+        return NSImage(cgImage: cgImage, size: NSSize(width: size, height: size))
+    }
+
+    /// Draws only the resolved visual state. The current renderer supports the
+    /// one continuous ring produced by the mapper; empty or segmented ring
+    /// arrays return false so unsupported scenes cannot masquerade as blank or
+    /// partial output.
+    @discardableResult
+    static func draw(
+        scene: IconSceneState,
+        in context: CGContext,
+        size: CGFloat,
+        foreground: CGColor,
+        criticalColor: CGColor,
+        phase: ChargingEffectPhase? = nil
+    ) -> Bool {
+        guard size.isFinite, size > 0, supports(scene) else { return false }
+
+        context.saveGState()
+        defer { context.restoreGState() }
+
+        let scale = size / StatusIconGeometry.canvas.width
+        context.translateBy(x: 0, y: size)
+        context.scaleBy(x: scale, y: -scale)
+        context.setLineCap(.round)
+        context.setLineJoin(.round)
+
+        if let ring = scene.outerRing {
+            drawSceneRing(ring, in: context, foreground: foreground, criticalColor: criticalColor, phase: phase)
+        }
+        if let center = scene.center {
+            drawSceneCenter(center, in: context, foreground: foreground, criticalColor: criticalColor)
+        }
+        if let footer = scene.footer {
+            drawSceneFooter(footer, in: context, foreground: foreground, criticalColor: criticalColor)
+        }
+        return true
+    }
+
+    private static func supports(_ scene: IconSceneState) -> Bool {
+        if let ring = scene.outerRing, ring.segments.count != 1 { return false }
+        if case let .dots(dots) = scene.footer,
+           dots.count > StatusIconGeometry.volumeDots().count {
+            return false
+        }
+        return true
+    }
+
+    private static func drawSceneRing(
+        _ ring: OuterRingState,
+        in context: CGContext,
+        foreground: CGColor,
+        criticalColor: CGColor,
+        phase: ChargingEffectPhase?
+    ) {
+        guard let segment = ring.segments.first else { return }
+        let hasTopGap = ring.gap != .closed
+        let topGapWidth = ring.gap == .indicator
+            ? StatusIconGeometry.batteryChargingBoltTopGapWidth
+            : StatusIconGeometry.batteryValueTopGapWidth
+        let lineWidth = 8 * CGFloat(ring.strokeScale)
+
+        context.setLineWidth(lineWidth)
+        context.setStrokeColor(foreground.copy(alpha: inactiveTrackAlpha) ?? foreground)
+        context.addPath(StatusIconGeometry.batteryTrack(hasTopGap: hasTopGap, topGapWidth: topGapWidth))
+        context.strokePath()
+
+        let arcColor = sceneColor(for: segment.color, foreground: foreground, criticalColor: criticalColor)
+        context.setStrokeColor(arcColor)
+        context.addPath(StatusIconGeometry.batteryFill(
+            progress: segment.progress,
+            hasTopGap: hasTopGap,
+            topGapWidth: topGapWidth
+        ))
+        context.strokePath()
+
+        let effectFrame = ring.effect.flatMap { _ in
+            phase.flatMap {
+                ChargingEffectPolicy.frame(
+                    progress: segment.progress,
+                    phase: $0,
+                    hasTopGap: hasTopGap,
+                    topGapWidth: topGapWidth
+                )
+            }
+        }
+        let effectHighlight = effectFrame.map { _ in ChargingEffectPalette.automaticHighlight(for: arcColor) }
+        if let effectFrame, let effectHighlight {
+            drawChargingEffect(
+                effectFrame,
+                highlightColor: effectHighlight,
+                lineWidth: lineWidth,
+                hasTopGap: hasTopGap,
+                topGapWidth: topGapWidth,
+                in: context
+            )
+        }
+
+        guard let accessory = ring.accessory else { return }
+        context.saveGState()
+        context.setShadow(
+            offset: CGSize(width: 0, height: 0.75),
+            blur: 0.75,
+            color: CGColor(gray: 0, alpha: 0.38)
+        )
+        defer { context.restoreGState() }
+
+        switch accessory {
+        case let .text(text):
+            drawSceneText(
+                text.text,
+                color: sceneColor(for: text.color, foreground: foreground, criticalColor: criticalColor),
+                fontSize: batteryValueFontSize(scale: text.scale),
+                baseline: StatusIconGeometry.batteryValueBaseline(fontSize: batteryValueFontSize(scale: text.scale)),
+                in: context
+            )
+        case let .symbol(symbol):
+            if case .primitive(.bolt) = symbol.source {
+                let indicatorScale = batteryChargingBoltScale(textScale: symbol.scale)
+                let heartbeatFrame = ring.effect?.pulsesAccessory == true ? effectFrame : nil
+                let bolt = heartbeatFrame.map { frame in
+                    StatusIconGeometry.batteryChargingBolt(
+                        basePath: StatusIconGeometry.batteryChargingBolt(scale: indicatorScale),
+                        centeredScale: CGFloat(frame.boltScale),
+                        fitting: StatusIconGeometry.canvas
+                    )
+                } ?? StatusIconGeometry.batteryChargingBolt(scale: indicatorScale)
+                var boltColor = foreground
+                if let heartbeatFrame {
+                    let highlight = ring.effect?.tintsAccessory == true
+                        ? ChargingEffectPalette.chargingBoltHighlight(for: arcColor, using: effectHighlight ?? arcColor)
+                        : foreground
+                    boltColor = ChargingEffectPalette.blend(
+                        foreground,
+                        with: highlight,
+                        amount: heartbeatFrame.boltArcColorAmount
+                    )
+                }
+                context.setFillColor(boltColor)
+                context.addPath(bolt)
+                context.fillPath()
+            } else if case .primitive(.plug) = symbol.source {
+                drawBatteryPlug(
+                    boltScale: batteryChargingBoltScale(textScale: symbol.scale),
+                    foreground: foreground,
+                    in: context
+                )
+            } else {
+                drawSceneSymbol(
+                    symbol,
+                    center: StatusIconGeometry.batteryTopIndicatorCenter(
+                        boltScale: batteryChargingBoltScale(textScale: symbol.scale)
+                    ),
+                    foreground: foreground,
+                    criticalColor: criticalColor,
+                    in: context
+                )
+            }
+        }
+    }
+
+    private static func drawSceneCenter(
+        _ center: CenterState,
+        in context: CGContext,
+        foreground: CGColor,
+        criticalColor: CGColor
+    ) {
+        switch center {
+        case let .text(text):
+            let fontSize = centerSymbolBasePointSize * CGFloat(text.scale)
+            let color = sceneColor(for: text.color, foreground: foreground, criticalColor: criticalColor)
+            let line = sceneTextLine(text.text, color: color, fontSize: fontSize)
+            let bounds = CTLineGetBoundsWithOptions(line, [.useGlyphPathBounds])
+            context.setFillColor(color)
+            context.textMatrix = CGAffineTransform(scaleX: 1, y: -1)
+            context.textPosition = CGPoint(
+                x: connectionSlotCenter.x - bounds.midX,
+                y: connectionSlotCenter.y - bounds.midY
+            )
+            CTLineDraw(line, context)
+        case let .symbol(symbol):
+            drawSceneSymbol(
+                symbol,
+                center: wifiSymbolCenter,
+                foreground: foreground,
+                criticalColor: criticalColor,
+                in: context
+            )
+        }
+    }
+
+    private static func drawSceneSymbol(
+        _ symbol: IconSymbolState,
+        center: CGPoint,
+        foreground: CGColor,
+        criticalColor: CGColor,
+        in context: CGContext
+    ) {
+        let tint = sceneColor(for: symbol.color, foreground: foreground, criticalColor: criticalColor)
+        let pointSize = centerSymbolPointSize(for: symbol.scale)
+        switch symbol.source {
+        case let .primitive(primitive):
+            switch primitive {
+            case .wiredPort:
+                drawEthernet(in: context, foreground: tint)
+            case .screenWedge:
+                drawTemporaryConnectionMark(wifiScale: symbol.scale, in: context, foreground: tint)
+            case .arrowWedge:
+                drawSharedConnectionMark(wifiScale: symbol.scale, in: context, foreground: tint)
+            case .bolt:
+                let path = StatusIconGeometry.batteryChargingBolt(scale: CGFloat(symbol.scale))
+                context.setFillColor(tint)
+                context.addPath(path)
+                context.fillPath()
+            case .plug:
+                drawBatteryPlug(boltScale: CGFloat(symbol.scale), foreground: tint, in: context)
+            }
+        case let .symbol(name, variableValue, fallback):
+            let chosen = availableSymbol(name) ? name : fallback.flatMap { availableSymbol($0) ? $0 : nil }
+            let resolved = chosen ?? (symbol.color == .bluetooth ? BluetoothDeviceRowIcon.genericSymbol : "wifi")
+            drawOfficialSymbol(
+                name: resolved,
+                variableValue: chosen == nil ? 1 : (variableValue ?? 1),
+                pointSize: pointSize,
+                center: center,
+                foreground: tint,
+                in: context
+            )
+        case let .image(url, fallbackSymbol):
+            if let image = NSImage(contentsOf: url) {
+                drawTintedImage(image, maxDimension: 42 * (pointSize / centerSymbolBasePointSize),
+                                center: center, tint: tint, in: context)
+            } else {
+                let fallback = availableSymbol(fallbackSymbol)
+                    ? fallbackSymbol
+                    : BluetoothDeviceRowIcon.genericSymbol
+                drawOfficialSymbol(name: fallback, pointSize: pointSize, center: center,
+                                   foreground: tint, in: context)
+            }
+        }
+    }
+
+    private static func availableSymbol(_ name: String) -> Bool {
+        NSImage(systemSymbolName: name, accessibilityDescription: nil) != nil
+    }
+
+    private static func drawSceneFooter(
+        _ footer: FooterState,
+        in context: CGContext,
+        foreground: CGColor,
+        criticalColor: CGColor
+    ) {
+        switch footer {
+        case let .dots(dots):
+            let points = StatusIconGeometry.volumeDots()
+            let dotRadiusScale = 1 + (dots.strokeScale - 1) * 0.5
+            let radius = StatusIconGeometry.volumeDotRadius * CGFloat(dotRadiusScale)
+            let active = sceneColor(for: dots.color, foreground: foreground, criticalColor: criticalColor)
+            let inactive = foreground.copy(alpha: inactiveTrackAlpha) ?? foreground
+            for (index, point) in points.prefix(dots.count).enumerated() {
+                context.setFillColor(index < dots.activeCount ? active : inactive)
+                context.fillEllipse(in: CGRect(
+                    x: point.x - radius,
+                    y: point.y - radius,
+                    width: radius * 2,
+                    height: radius * 2
+                ))
+            }
+        case let .arc(arc):
+            let hidden = foreground.copy(alpha: inactiveTrackAlpha) ?? foreground
+            let active = sceneColor(for: arc.color, foreground: foreground, criticalColor: criticalColor)
+            context.setLineWidth(7 * CGFloat(arc.strokeScale))
+            context.setLineCap(.round)
+            context.setStrokeColor(hidden)
+            context.addPath(StatusIconGeometry.volumeArcTrack())
+            context.strokePath()
+            guard arc.progress > 0 else { return }
+            context.setStrokeColor(active)
+            context.addPath(StatusIconGeometry.volumeArcFill(progress: arc.progress))
+            context.strokePath()
+        }
+    }
+
+    private static func sceneColor(
+        for role: IconColorRole,
+        foreground: CGColor,
+        criticalColor: CGColor
+    ) -> CGColor {
+        switch role {
+        case .primary:
+            foreground
+        case .inactive:
+            foreground.copy(alpha: inactiveTrackAlpha) ?? foreground
+        case .critical:
+            criticalColor
+        case .lowPower:
+            if usesDarkStatusPalette(foreground: foreground) {
+                CGColor(red: 201.0 / 255.0, green: 151.0 / 255.0, blue: 0, alpha: 1)
+            } else {
+                CGColor(red: 242.0 / 255.0, green: 185.0 / 255.0, blue: 0, alpha: 1)
+            }
+        case .powered:
+            if usesDarkStatusPalette(foreground: foreground) {
+                CGColor(red: 31.0 / 255.0, green: 143.0 / 255.0, blue: 61.0 / 255.0, alpha: 1)
+            } else {
+                CGColor(red: 52.0 / 255.0, green: 199.0 / 255.0, blue: 89.0 / 255.0, alpha: 1)
+            }
+        case .bluetooth:
+            bluetoothColor(foreground: foreground)
+        }
+    }
+
+    private static func drawSceneText(
+        _ text: String,
+        color: CGColor,
+        fontSize: CGFloat,
+        baseline: CGPoint,
+        in context: CGContext
+    ) {
+        let line = sceneTextLine(text, color: color, fontSize: fontSize)
+        var ascent: CGFloat = 0
+        var descent: CGFloat = 0
+        var leading: CGFloat = 0
+        let width = CGFloat(CTLineGetTypographicBounds(line, &ascent, &descent, &leading))
+        context.setFillColor(color)
+        context.textMatrix = CGAffineTransform(scaleX: 1, y: -1)
+        context.textPosition = CGPoint(x: baseline.x - width / 2, y: baseline.y)
+        CTLineDraw(line, context)
+    }
+
+    private static func sceneTextLine(_ text: String, color: CGColor, fontSize: CGFloat) -> CTLine {
+        let font = batteryValueFont(size: fontSize)
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: font,
+            .kern: -fontSize * 0.04,
+            .foregroundColor: NSColor(cgColor: color) ?? .white
+        ]
+        return CTLineCreateWithAttributedString(NSAttributedString(string: text, attributes: attributes))
     }
 }

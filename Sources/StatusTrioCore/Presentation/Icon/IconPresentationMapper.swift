@@ -32,7 +32,7 @@ enum IconPresentationMapper {
         let accessory: RingAccessoryState? = switch gapContent {
         case .empty: nil
         case .percentage:
-            .text(IconTextState(text: "\(battery.percentage)%", color: .primary, scale: options.textScale))
+            .text(IconTextState(text: "\(battery.percentage)", color: .primary, scale: options.textScale))
         case .bolt:
             .symbol(IconSymbolState(
                 source: .primitive(.bolt),
@@ -78,7 +78,7 @@ enum IconPresentationMapper {
         let bluetoothOptions = configuration.bluetooth
 
         if connectionOptions.showsBatteryPercentageInConnectionSlot, battery.isPresent {
-            return .text(IconTextState(text: "\(battery.percentage)%", color: .primary, scale: 1))
+            return .text(IconTextState(text: "\(battery.percentage)", color: .primary, scale: 1))
         }
 
         if StatusMappings.shouldReplaceNetworkIcon(
