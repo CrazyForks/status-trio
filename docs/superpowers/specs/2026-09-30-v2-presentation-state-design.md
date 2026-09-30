@@ -184,7 +184,7 @@ Dock 在当前基准版本保持静态绘制策略；无需为本次重构新建
 
 ### 7.2 视图与控制器
 
-视图负责布局、焦点和局部交互状态，不判断领域错误优先级、产品可用性或本地化规则。`PopupSection` 继续表示区域可见性和顺序，`popupSection(_:)` 可以保留为内建组合 switch。
+音频输出排序及可见数量使用设置的已投递值作为窄配置输入；展示状态提供已解析的完整／收起行集合及展开文案，展开开关仍属于局部交互状态。视图负责布局、焦点和局部交互状态，不判断领域错误优先级、产品可用性或本地化规则。`PopupSection` 继续表示区域可见性和顺序，`popupSection(_:)` 可以保留为内建组合 switch。
 
 `BatteryDetailsController`、`WiFiNetworkController`、`PrimaryLinkController`、`BluetoothDeviceController` 和听音模式控制器保持当前领域所有权与生命周期。展示状态可以从其已发布数据派生；UI 若需要出现／消失事件，应经协调接口转交，不把监控器直接塞入展示状态。
 

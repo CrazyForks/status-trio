@@ -107,6 +107,29 @@ final class AudioInputPresentationTests: XCTestCase {
         XCTAssertEqual(label, "Unknown input device, Input device 2, Current")
     }
 
+    func testSharedNameDisambiguationAlsoFindsDuplicateOutputDeviceNames() {
+        let duplicate = AudioInputPresentation.needsDevicePosition(
+            name: "Studio Speaker",
+            id: AudioDeviceID(1),
+            among: [
+                (id: AudioDeviceID(1), name: "Studio Speaker"),
+                (id: AudioDeviceID(2), name: " studio speaker ")
+            ],
+            unknownName: "Unknown output device",
+            locale: Locale(identifier: "en_US")
+        )
+        let unnamed = AudioInputPresentation.needsDevicePosition(
+            name: nil,
+            id: AudioDeviceID(3),
+            among: [(id: AudioDeviceID(3), name: nil)],
+            unknownName: "Unknown output device",
+            locale: Locale(identifier: "en_US")
+        )
+
+        XCTAssertTrue(duplicate)
+        XCTAssertTrue(unnamed)
+    }
+
     func testDeviceListShowsWithoutDefaultAndForASingleDevice() {
         let device = AudioInputDevice(id: AudioDeviceID(7), uid: "built-in", name: "Built-in Microphone")
         let noDefault = makeStatus(devices: [device])

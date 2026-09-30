@@ -447,7 +447,7 @@ struct PanelSummaryState: Equatable, Sendable {
 
 **Interfaces:** `PanelAudioDeviceID` 为 `(id: UInt32, uid: String?)` 的 Equatable／Hashable／Sendable struct；它同时校验瞬态 ID 和已知 UID。`PanelAudioDeviceRow` 保存 key、最终 name、symbol、selected、enabled、accessibilityLabel。`VolumePanelState` 保存 summary、scalar、percentageText、muted、canAdjust、canMute、muteSymbol、muteHelp、sliderLabel、showsDeviceList、rows。`AudioInputPanelState` 保存 summary、scalar、percentageText、muteSymbol、muteHelp、canAdjust、canMute、isBusy、errorText、rows、sliderLabel、usageText。
 
-`@MainActor AudioPanelMapper.volume(_:controllerAvailable:localization:) -> VolumePanelState`；`input(_:localization:) -> AudioInputPanelState`。所有 row 名称排序、重复／缺失名称、current marker、错误、输入使用标记由这里或现有被复用 helper 解析。
+`@MainActor AudioPanelMapper.volume(_:controllerAvailable:localization:) -> VolumePanelState` 保留可调用默认；增加默认化的窄值 preferences 参数承载现有 outputDeviceOrder／visibleOutputDeviceLimit（沿用原值类型及默认）。VolumePanelState 提供已解析的完整／收起行集合、可展开信息及现有文案；展开开关保持视图局部交互状态，不能在视图重排领域设备或本地化。`input(_:localization:) -> AudioInputPanelState`。所有 row 名称排序、重复／缺失名称、current marker、错误、输入使用标记由这里或现有被复用 helper 解析。
 
 `StatusPanelActions` 接收现有 store 和 settings，并对外提供：`setVolume(_:)`、`finishVolumeAdjustment()`、`toggleMute()`、`selectOutput(_ key: PanelAudioDeviceID)`、`setInputScalar(_:)`、`toggleInputMute()`、`selectInput(_ key: PanelAudioDeviceID)`。为单测注入读取当前 devices 和执行命令的窄闭包，而非新建巨大的 monitor protocol。状态另保存实际需要的 input mute tint、list expansion 和可见行信息；不能用单一 bool 丢失 partial mute 的现有显示。
 
