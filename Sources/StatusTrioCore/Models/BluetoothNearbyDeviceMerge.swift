@@ -46,8 +46,11 @@ enum BluetoothNearbyDeviceMerge {
         // disconnected row carries a number macOS wrote down at some earlier
         // point. The report appends it wherever its own scan found it, which is
         // in the middle of the disconnected rows, and a device with a fresh
-        // reading is not served by that position. A connected device still leads
-        // it, because the group a row belongs to is decided before this order is.
+        // reading is not served by that position. This is the order the list
+        // works from, not the last word on it: a connected device still leads,
+        // because the group a row belongs to is decided after this, and a saved
+        // order of the user's own still reorders within the group, because that
+        // is what the user asked for when they dragged the rows.
         var promoted: [BluetoothDevice] = []
 
         for nearby in nearbyDevices {
