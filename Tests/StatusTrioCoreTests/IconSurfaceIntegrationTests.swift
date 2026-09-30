@@ -309,14 +309,16 @@ struct IconSurfaceIntegrationTests {
             { harness.settings.showsChargingBoltHeartbeat = false },
             matches: { $0.outerRing?.effect?.pulsesAccessory == false },
             latestMenuBarScene: { menuBarScenes.last },
-            harness: harness
+            harness: harness,
+            expectsDockSceneParity: false
         )
         try await verifySetting(
             "charging effect",
             { harness.settings.showsChargingEffect = false },
             matches: { $0.outerRing?.effect == nil },
             latestMenuBarScene: { menuBarScenes.last },
-            harness: harness
+            harness: harness,
+            expectsDockSceneParity: false
         )
     }
 
@@ -464,6 +466,72 @@ struct IconSurfaceIntegrationTests {
         #expect(harness.application.applicationIconImage === originalDockImage)
     }
 
+    @Test func chargingEffectPreferenceChangesUpdateMenuBarWithoutRerasterizingStaticDock() async throws {
+        let harness = try AppIconControllerHarness(
+            initialPlacement: .both,
+            initialBattery: BatteryStatus(
+                rawPercentage: 62,
+                isPresent: true,
+                isCharging: true,
+                isLowPowerMode: false,
+                isConnectedToPower: true
+            ),
+            snapshotScheduler: ManualIconPresentationScheduler()
+        )
+        defer { harness.cleanUp() }
+        var menuBarScenes: [IconSceneState] = []
+        let menuBar = StatusBarController(
+            store: harness.store,
+            settings: harness.settings,
+            iconPresentation: harness.iconPresentation,
+            localization: Localization(preferredLanguages: ["en"]),
+            openSettings: {},
+            quitAction: {},
+            renderMenuBarIcon: { scene, _, _, _, _ in
+                menuBarScenes.append(scene)
+                return NSImage(size: NSSize(width: 32, height: 32))
+            }
+        )
+        defer { menuBar.setVisible(false) }
+        harness.controller.start()
+        try await waitUntil {
+            harness.log.renderCount > 0
+                && menuBarScenes.last == harness.iconPresentation.output.scene
+                && harness.iconPresentation.output.scene.outerRing?.effect?.pulsesAccessory == true
+        }
+        let initialDockRenders = harness.log.renderCount
+        let initialDockImage = harness.application.applicationIconImage
+
+        harness.settings.showsChargingBoltHeartbeat = false
+        try await waitUntil {
+            harness.iconPresentation.output.scene.outerRing?.effect?.pulsesAccessory == false
+                && menuBarScenes.last == harness.iconPresentation.output.scene
+        }
+        harness.controller.flushPendingPresentationForTesting()
+        #expect(menuBarScenes.last?.outerRing?.effect?.pulsesAccessory == false)
+        #expect(harness.log.renderCount == initialDockRenders)
+        #expect(harness.application.applicationIconImage === initialDockImage)
+
+        harness.settings.showsChargingEffect = false
+        try await waitUntil {
+            harness.iconPresentation.output.scene.outerRing?.effect == nil
+                && menuBarScenes.last == harness.iconPresentation.output.scene
+        }
+        harness.controller.flushPendingPresentationForTesting()
+        #expect(menuBarScenes.last?.outerRing?.effect == nil)
+        #expect(harness.log.renderCount == initialDockRenders)
+        #expect(harness.application.applicationIconImage === initialDockImage)
+
+        harness.settings.ringStrokeStyle = .bold
+        try await waitUntil {
+            harness.iconPresentation.output.scene.outerRing?.strokeScale == RingStrokeStyle.bold.scale
+                && menuBarScenes.last == harness.iconPresentation.output.scene
+        }
+        harness.controller.flushPendingPresentationForTesting()
+        #expect(harness.log.renderCount > initialDockRenders)
+        #expect(harness.log.lastScene?.outerRing?.strokeScale == RingStrokeStyle.bold.scale)
+    }
+
     private func waitUntil(
         timeout: Duration = .seconds(5),
         failureMessage: String = "The surface update did not arrive.",
@@ -482,19 +550,24 @@ struct IconSurfaceIntegrationTests {
         _ update: @escaping @MainActor () -> Void,
         matches: @escaping @MainActor (IconSceneState) -> Bool,
         latestMenuBarScene: @escaping @MainActor () -> IconSceneState?,
-        harness: AppIconControllerHarness
+        harness: AppIconControllerHarness,
+        expectsDockSceneParity: Bool = true
     ) async throws {
+        let dockRenderCount = harness.log.renderCount
         update()
         try await waitUntil(failureMessage: "Model did not map \(label).") {
             matches(harness.iconPresentation.output.scene)
         }
-        try await waitUntil(failureMessage: "Surfaces did not render \(label) in parity.") {
+        try await waitUntil(failureMessage: "Surface presentation did not update for \(label).") {
             guard let scene = latestMenuBarScene() else { return false }
-            return matches(scene)
-                && scene == harness.log.lastScene
-                && scene == harness.iconPresentation.output.scene
+            guard matches(scene), scene == harness.iconPresentation.output.scene else { return false }
+            return !expectsDockSceneParity || scene == harness.log.lastScene
         }
-        #expect(latestMenuBarScene() == harness.log.lastScene)
+        if expectsDockSceneParity {
+            #expect(latestMenuBarScene() == harness.log.lastScene)
+        } else {
+            #expect(harness.log.renderCount == dockRenderCount)
+        }
     }
 
 }

@@ -12,7 +12,7 @@ enum AccessibilityPresentation {
         let batterySummary: String
         if battery.isPresent {
             let percentage = localization.format(.batteryAccessibilityValue, battery.percentage)
-            let subtitle = StatusPresentation.batterySubtitle(battery, localization: localization)
+            let subtitle = PanelPresentationMapper.batterySubtitle(battery, localization: localization)
             if isOrdinaryBatteryState(battery) {
                 batterySummary = percentage
             } else {
@@ -27,7 +27,7 @@ enum AccessibilityPresentation {
             : wifiAccessibilitySummary(snapshot.wifi, localization: localization)
         let volumeSummary = localization.format(
             .accessibilityVolume,
-            StatusPresentation.volumeValue(snapshot.volume, localization: localization)
+            volumeValue(snapshot.volume, localization: localization)
         )
 
         return localization.format(.accessibilityStatus, batterySummary, networkSummary, volumeSummary)
@@ -37,7 +37,7 @@ enum AccessibilityPresentation {
         _ wifi: WiFiStatus,
         localization: Localization
     ) -> String {
-        let value = StatusPresentation.wifiValue(wifi, localization: localization)
+        let value = PanelPresentationMapper.wifiValue(wifi, localization: localization)
         if let ssid = wifi.ssid, !ssid.isEmpty {
             return localization.format(.wifiAccessibilityWithSSID, ssid, value)
         }
@@ -54,5 +54,14 @@ enum AccessibilityPresentation {
             && !battery.isCharging
             && !battery.isLowPowerMode
             && !battery.isConnectedToPower
+    }
+
+    static func volumeValue(_ volume: VolumeStatus, localization: Localization) -> String {
+        guard let scalar = volume.scalar, scalar.isFinite else { return "—" }
+        let clampedScalar = min(1, max(0, scalar))
+        let percentage = Int((clampedScalar * 100).rounded())
+        guard !volume.isMuted else { return localization.string(.volumeMuted) }
+        let steps = StatusMappings.volumeSteps(scalar: clampedScalar, isMuted: false) ?? 0
+        return localization.format(.volumeValue, percentage, steps)
     }
 }

@@ -1,10 +1,37 @@
 import AppKit
 
 /// Identifies only the scene and Dock inputs that affect its raster.
-struct DockIconRenderKey: Equatable, Hashable {
+struct DockIconRenderKey: Hashable {
     let scene: IconSceneState
     let backgroundStyle: DockIconBackgroundStyle
     let pixelLength: Int
+
+    private var staticScene: IconSceneState {
+        guard let ring = scene.outerRing, ring.effect != nil else { return scene }
+        return IconSceneState(
+            outerRing: OuterRingState(
+                segments: ring.segments,
+                gap: ring.gap,
+                accessory: ring.accessory,
+                effect: nil,
+                strokeScale: ring.strokeScale
+            ),
+            center: scene.center,
+            footer: scene.footer
+        )
+    }
+
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.staticScene == rhs.staticScene
+            && lhs.backgroundStyle == rhs.backgroundStyle
+            && lhs.pixelLength == rhs.pixelLength
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(staticScene)
+        hasher.combine(backgroundStyle)
+        hasher.combine(pixelLength)
+    }
 }
 
 struct DockIconRenderCache {

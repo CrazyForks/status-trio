@@ -14,7 +14,6 @@ final class StatusPanelActions {
     private let toggleInputMuteCommand: () -> Void
     private let outputPreferences: () -> AudioOutputListPreferences
     private let bluetoothDevices: () -> [BluetoothDevice]
-    private let bluetoothListOptions: () -> BluetoothDeviceListOptions
     private let bluetoothAvailability: () -> BluetoothAvailability
     private let refreshBluetoothCommand: () -> Void
     private let requestBluetoothAuthorizationCommand: () -> Void
@@ -44,8 +43,6 @@ final class StatusPanelActions {
     private let releaseBluetoothSummary: () -> Void
     private let refreshVolumeListeningModes: () -> Void
     private let stopVolumeListeningModes: () -> Void
-    private let moveOutputDevicesCommand: (IndexSet, Int) -> Void
-    private let moveBluetoothDevicesCommand: (IndexSet, Int, [String]) -> Void
 
     private static let summaryBatteryLevelsToken = "bluetooth.summary"
     private static let nearbyBatteryDevicesToken = "bluetooth.summary.nearbyBatteryDevices"
@@ -68,7 +65,6 @@ final class StatusPanelActions {
         toggleInputMute: @escaping () -> Void = {},
         outputPreferences: @escaping () -> AudioOutputListPreferences = { .default },
         bluetoothDevices: @escaping () -> [BluetoothDevice] = { [] },
-        bluetoothListOptions: @escaping () -> BluetoothDeviceListOptions = { .standard },
         bluetoothAvailability: @escaping () -> BluetoothAvailability = { .idle },
         refreshBluetooth: @escaping () -> Void = {},
         requestBluetoothAuthorization: @escaping () -> Void = {},
@@ -97,10 +93,7 @@ final class StatusPanelActions {
         holdBluetoothSummary: @escaping () -> Void = {},
         releaseBluetoothSummary: @escaping () -> Void = {},
         refreshVolumeListeningModes: @escaping () -> Void = {},
-        stopVolumeListeningModes: @escaping () -> Void = {},
-        moveOutputDevices: @escaping (IndexSet, Int) -> Void = { _, _ in },
-        moveBluetoothDevices: @escaping (IndexSet, Int) -> Void = { _, _ in },
-        moveResolvedBluetoothDevices: ((IndexSet, Int, [String]) -> Void)? = nil
+        stopVolumeListeningModes: @escaping () -> Void = {}
     ) {
         self.outputDevices = outputDevices
         self.selectOutputDevice = selectOutput
@@ -113,7 +106,6 @@ final class StatusPanelActions {
         self.toggleInputMuteCommand = toggleInputMute
         self.outputPreferences = outputPreferences
         self.bluetoothDevices = bluetoothDevices
-        self.bluetoothListOptions = bluetoothListOptions
         self.bluetoothAvailability = bluetoothAvailability
         self.refreshBluetoothCommand = refreshBluetooth
         self.requestBluetoothAuthorizationCommand = requestBluetoothAuthorization
@@ -143,10 +135,6 @@ final class StatusPanelActions {
         self.releaseBluetoothSummary = releaseBluetoothSummary
         self.refreshVolumeListeningModes = refreshVolumeListeningModes
         self.stopVolumeListeningModes = stopVolumeListeningModes
-        self.moveOutputDevicesCommand = moveOutputDevices
-        self.moveBluetoothDevicesCommand = moveResolvedBluetoothDevices ?? { offsets, destination, _ in
-            moveBluetoothDevices(offsets, destination)
-        }
     }
 
     convenience init(store: SystemStatusStore, settings: SettingsStore) {
@@ -167,7 +155,6 @@ final class StatusPanelActions {
                 )
             },
             bluetoothDevices: { store.bluetoothDevices.devices },
-            bluetoothListOptions: { settings.bluetoothDeviceListOptions },
             bluetoothAvailability: { store.bluetoothDevices.availability },
             refreshBluetooth: { store.bluetoothDevices.refreshFromUser() },
             requestBluetoothAuthorization: { store.requestBluetoothAuthorization() },
@@ -215,24 +202,7 @@ final class StatusPanelActions {
                     devices: store.bluetoothDevices.devices + ListeningModePreview.devices(for: config)
                 )
             },
-            stopVolumeListeningModes: { store.bluetoothListeningModes.stop() },
-            moveOutputDevices: { offsets, destination in
-                settings.moveOutputDevices(
-                    fromOffsets: offsets,
-                    toOffset: destination,
-                    in: settings.orderedOutputDevices(store.liveVolume.outputDevices)
-                )
-            },
-            moveResolvedBluetoothDevices: { offsets, destination, displayedAddresses in
-                Self.movePanelBluetoothDevices(
-                    fromOffsets: offsets,
-                    toOffset: destination,
-                    displayedAddresses: displayedAddresses,
-                    devices: store.bluetoothDevices.devices,
-                    options: settings.bluetoothDeviceListOptions,
-                    settings: settings
-                )
-            }
+            stopVolumeListeningModes: { store.bluetoothListeningModes.stop() }
         )
     }
 
@@ -359,76 +329,9 @@ final class StatusPanelActions {
     func volumeListDisappeared() { stopVolumeListeningModes() }
     func setWiFiPower(_ enabled: Bool) { setWiFiPowerCommand(enabled) }
     func refreshWiFi() { refreshWiFiCommand(wifiNameAccess()) }
-    func moveOutputDevices(from offsets: IndexSet, to destination: Int) { moveOutputDevicesCommand(offsets, destination) }
-    func moveBluetoothDevices(from offsets: IndexSet, to destination: Int) {
-        let options = bluetoothListOptions()
-        let rows = BluetoothDeviceListPresentation.orderedDevices(
-            BluetoothDeviceListPresentation.filteredDevices(bluetoothDevices(), options: options),
-            using: options.order
-        )
-        moveBluetoothDevicesCommand(offsets, destination, rows.map(\.id))
-    }
-
-    func moveBluetoothDevices(from offsets: IndexSet, to destination: Int, displayedAddresses: [String]) {
-        moveBluetoothDevicesCommand(offsets, destination, displayedAddresses)
-    }
-
     private func bluetoothDevice(address: String) -> BluetoothDevice? {
         let key = BluetoothBatteryReader.normalizedAddress(address)
         guard !key.isEmpty else { return nil }
         return bluetoothDevices().first { BluetoothBatteryReader.normalizedAddress($0.id) == key }
-    }
-
-    private static func movePanelBluetoothDevices(
-        fromOffsets offsets: IndexSet,
-        toOffset destination: Int,
-        displayedAddresses: [String],
-        devices: [BluetoothDevice],
-        options: BluetoothDeviceListOptions,
-        settings: SettingsStore
-    ) {
-        let displayedKeys = displayedAddresses.map { BluetoothBatteryReader.normalizedAddress($0) }
-        guard !displayedKeys.isEmpty,
-              Set(displayedKeys).count == displayedKeys.count,
-              !displayedKeys.contains(where: \.isEmpty),
-              offsets.allSatisfy({ displayedKeys.indices.contains($0) }),
-              (0...displayedKeys.count).contains(destination) else { return }
-
-        let resolved = BluetoothDeviceListPresentation.orderedDevices(
-            BluetoothDeviceListPresentation.filteredDevices(devices, options: options),
-            using: options.order
-        )
-        let resolvedPrefix = Array(resolved.prefix(displayedKeys.count)).map {
-            BluetoothBatteryReader.normalizedAddress($0.id)
-        }
-        guard displayedKeys == resolvedPrefix else { return }
-
-        let movedKeys = offsets.map { displayedKeys[$0] }
-        let remainingKeys = displayedKeys.enumerated()
-            .filter { !offsets.contains($0.offset) }
-            .map(\.element)
-        let insertionOffset = destination - offsets.filter { $0 < destination }.count
-        var reorderedKeys = remainingKeys
-        reorderedKeys.insert(contentsOf: movedKeys, at: min(insertionOffset, remainingKeys.count))
-
-        let rawOrdered = BluetoothDeviceListPresentation.orderedDevices(devices, using: options.order)
-        let deviceByKey = Dictionary(
-            devices.map { (BluetoothBatteryReader.normalizedAddress($0.id), $0) },
-            uniquingKeysWith: { first, _ in first }
-        )
-        let movedSet = Set(displayedKeys)
-        var reorderedIterator = reorderedKeys.makeIterator()
-        let merged = rawOrdered.map { device in
-            let key = BluetoothBatteryReader.normalizedAddress(device.id)
-            guard movedSet.contains(key), let replacementKey = reorderedIterator.next(),
-                  let replacement = deviceByKey[replacementKey] else { return device }
-            return replacement
-        }
-        guard !merged.isEmpty else { return }
-        settings.moveBluetoothDevices(
-            fromOffsets: IndexSet(integersIn: merged.indices),
-            toOffset: merged.count,
-            in: merged
-        )
     }
 }
