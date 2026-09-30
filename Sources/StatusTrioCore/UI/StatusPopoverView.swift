@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 private enum PopoverPanel {
@@ -8,8 +9,7 @@ private enum PopoverPanel {
 }
 
 struct StatusPopoverView: View {
-    @ObservedObject var store: SystemStatusStore
-    @ObservedObject var settings: SettingsStore
+    @ObservedObject var panel: StatusPanelViewModel
     let scrollTargets: PopoverScrollTargets
     @EnvironmentObject private var localization: Localization
     let requestWiFiNameAccess: () -> Void
@@ -23,44 +23,48 @@ struct StatusPopoverView: View {
     let openSettings: () -> Void
     let openSoundSettings: () -> Void
     let quit: () -> Void
-    @State private var panel: PopoverPanel = .summary
+    @State private var currentPanel: PopoverPanel = .summary
 
     var body: some View {
         Group {
-            switch panel {
+            switch currentPanel {
             case .summary:
                 summary
             case .battery:
                 BatteryDetailsView(
-                    controller: store.batteryDetails,
-                    battery: store.popupSnapshot.battery,
+                    state: panel.batteryDetails,
                     onBack: {
-                        store.closeBatteryDetails()
-                        panel = .summary
+                        panel.actions.batteryDetailsClosed()
+                        currentPanel = .summary
                     },
-                    onOpenBatterySettings: openBatterySettings
+                    onOpenBatterySettings: openBatterySettings,
+                    onCopyValue: { copyValue($0) },
+                    onAppear: { panel.actions.batteryDetailsAppeared() }
                 )
             case .wifi(let showDetails):
                 WiFiNetworkListView(
-                    controller: store.wifiNetworks,
-                    wifi: store.popupSnapshot.wifi,
+                    state: panel.wifiDetails,
                     onBack: {
-                        store.closeWiFiDetails()
-                        panel = .summary
+                        panel.actions.wifiDetailsClosed()
+                        currentPanel = .summary
                     },
                     onRequestNameAccess: requestWiFiNameAccess,
                     onOpenWiFiSettings: openWiFiSettings,
                     onOpenLocationSettings: openLocationSettings,
+                    onSetPower: { panel.actions.setWiFiPower($0) },
+                    onRefresh: { panel.actions.refreshWiFi() },
+                    onCopyValue: { copyValue($0) },
                     showsDetailsInitially: showDetails
                 )
             case .ethernet:
                 EthernetLinkView(
-                    primaryLink: store.primaryLink,
+                    state: panel.wiredDetails,
                     onBack: {
-                        store.closePrimaryLinkPanel()
-                        panel = .summary
+                        panel.actions.wiredDetailsClosed()
+                        currentPanel = .summary
                     },
-                    onOpenNetworkSettings: openNetworkSettings
+                    onOpenNetworkSettings: openNetworkSettings,
+                    onCopyValue: { copyValue($0) }
                 )
             }
         }
@@ -70,15 +74,15 @@ struct StatusPopoverView: View {
 
     private var summary: some View {
         VStack(alignment: .leading, spacing: 12) {
-            ForEach(settings.visiblePopupSections) { section in
+            ForEach(panel.visiblePopupSections) { section in
                 popupSection(section)
 
-                if section != settings.visiblePopupSections.last {
+                if section != panel.visiblePopupSections.last {
                     Divider()
                 }
             }
 
-            if !settings.visiblePopupSections.isEmpty {
+            if !panel.visiblePopupSections.isEmpty {
                 Divider()
                     .opacity(0.6)
                     .padding(.vertical, 2)
@@ -93,24 +97,23 @@ struct StatusPopoverView: View {
         switch section {
         case .battery:
             BatteryStatusView(
-                battery: store.popupSnapshot.battery,
-                onOpenBatteryDetails: { panel = .battery },
+                state: panel.battery,
+                cautionColor: .yellow,
+                onOpenBatteryDetails: {
+                    currentPanel = .battery
+                },
                 onOpenBatterySettings: openBatterySettings
             )
         case .network:
             NetworkStatusView(
-                primaryLink: store.primaryLink,
-                connection: store.popupSnapshot.connection,
-                isConstrained: store.isNetworkConstrained,
-                wifi: store.popupSnapshot.wifi,
-                isResolvingName: store.isResolvingWiFiName,
+                state: panel.network,
                 onOpenWiFiDetails: { showDetails in
-                    store.activateWiFiPanel()
-                    panel = .wifi(showDetails: showDetails)
+                    panel.actions.wifiDetailsOpened()
+                    currentPanel = .wifi(showDetails: showDetails)
                 },
                 onOpenWiredDetails: {
-                    store.activatePrimaryLinkPanel()
-                    panel = .ethernet
+                    panel.actions.wiredDetailsOpened()
+                    currentPanel = .ethernet
                 },
                 onRequestNameAccess: requestWiFiNameAccess,
                 onOpenWiFiSettings: openWiFiSettings,
@@ -118,39 +121,34 @@ struct StatusPopoverView: View {
                 onOpenLocationSettings: openLocationSettings
             )
         case .vpn:
-            VPNStatusView(vpn: store.vpnStatus)
+            VPNStatusView(state: panel.vpn)
         case .bluetooth:
             BluetoothStatusView(
-                controller: store.bluetoothDevices,
-                showsBatteryLevels: settings.showsBluetoothBatteryLevels,
-                showsNearbyBatteryDevices: settings.showsNearbyBluetoothBatteryDevices,
-                listOptions: settings.bluetoothDeviceListOptions,
+                state: panel.bluetooth,
+                actions: panel.actions,
+                onSetExpanded: { panel.setBluetoothExpanded($0) },
                 onRequestAuthorization: requestBluetoothAuthorization,
                 onOpenBluetoothSettings: openBluetoothSettings,
                 onOpenBluetoothPermissionSettings: openBluetoothPermissionSettings
             )
         case .volume:
             VolumeControlsView(
-                settings: settings,
-                bluetoothController: store.bluetoothDevices,
-                listeningModes: store.bluetoothListeningModes,
+                state: panel.volume,
+                actions: panel.actions,
                 scrollTargets: scrollTargets,
-                volume: store.liveVolume,
-                isControllerAvailable: store.isVolumeControllerAvailable,
-                onVolumeChange: { store.setVolume($0) },
-                onVolumeEditingEnded: { store.finishVolumeAdjustment() },
-                onToggleMute: { store.toggleMute() },
-                onSelectOutputDevice: { store.selectOutputDevice($0) },
                 onOpenSoundSettings: openSoundSettings
             )
         case .audioInput:
             AudioInputControlsView(
-                status: store.liveInput,
-                onSelect: { store.selectInputDevice($0) },
-                onScalarChange: { store.setInputScalar($0) },
-                onToggleMute: { store.toggleInputMute() },
+                state: panel.audioInput,
+                actions: panel.actions,
                 onOpenSoundSettings: openSoundSettings
             )
         }
+    }
+
+    private func copyValue(_ value: String) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(value, forType: .string)
     }
 }

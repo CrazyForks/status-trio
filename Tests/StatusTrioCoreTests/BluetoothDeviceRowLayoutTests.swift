@@ -366,13 +366,27 @@ final class BluetoothDeviceRowLayoutTests: XCTestCase {
         let localization = Localization(defaults: defaults, preferredLanguages: ["en"])
         localization.setPreference(.language(language))
 
-        let view = BluetoothDeviceRow(
-            device: device,
+        let address = BluetoothBatteryReader.normalizedAddress(device.id)
+        let panelState = BluetoothPanelMapper.map(
+            availability: .available,
+            devices: [device],
             batteryLevels: batteryLevels,
-            actionState: actionState,
+            actionStates: actionState.map { [address: $0] } ?? [:],
+            nearbyDevices: [],
+            batteryLevelsReadFailed: false,
+            isExpanded: false,
+            options: BluetoothDeviceListOptions(showsList: true, maxVisibleDevices: 1, order: []),
+            showsBatteryLevels: true,
+            showsNearbyBatteryDevices: false,
+            confirmingAddress: isConfirmingDisconnect ? address : nil,
+            localization: localization
+        )
+        let rowState = try XCTUnwrap(panelState.pairedRows.first)
+        let view = BluetoothDeviceRow(
+            state: rowState,
             isConfirmingDisconnect: isConfirmingDisconnect,
-            onPerformAction: {},
-            onRequestDisconnect: {},
+            onRowTapped: { _ in },
+            onConfirmDisconnect: { _ in },
             onCancelDisconnect: {}
         )
         .padding(14)

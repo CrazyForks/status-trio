@@ -7,6 +7,11 @@ enum AudioPanelMapper {
         _ status: VolumeStatus,
         controllerAvailable: Bool,
         deviceList: AudioOutputListPreferences = .default,
+        listeningModes: BluetoothListeningModeController? = nil,
+        listeningModeTaskID: String = "",
+        previewDevices: [AudioOutputDevice] = [],
+        previewLanguageCode: String = "",
+        previewLocalization: Localization? = nil,
         localization: Localization
     ) -> VolumePanelState {
         let scalar = readableScalar(status.scalar)
@@ -37,7 +42,7 @@ enum AudioPanelMapper {
             title: name,
             subtitle: subtitle,
             measurements: nil,
-            symbol: summaryIconDevice.map { outputSymbolSource(for: $0) }
+            symbol: summaryIconDevice.map { iconSource(for: $0) }
                 ?? .symbol(name: "speaker.wave.2.fill", variableValue: nil, fallback: nil),
             tint: .secondary,
             accessibilityLabel: localization.format(.commonLabelValue, name, subtitle),
@@ -50,7 +55,13 @@ enum AudioPanelMapper {
             status.outputDevices,
             using: deviceList.order
         )
-        let rows = outputRows(orderedDevices, localization: localization)
+        let rows = outputRows(orderedDevices, listeningModes: listeningModes, localization: localization)
+        let previewRows = outputRows(
+            previewDevices,
+            listeningModes: listeningModes,
+            isPreview: true,
+            localization: previewLocalization ?? localization
+        )
 
         return VolumePanelState(
             summary: summary,
@@ -62,11 +73,14 @@ enum AudioPanelMapper {
             muteSymbol: volumeSymbol(scalar: scalar, muted: status.isMuted),
             muteHelp: localization.string(status.isMuted ? .volumeUnmuted : .volumeMuted),
             sliderLabel: localization.string(.volumeAccessibilityLabel),
-            showsDeviceList: status.outputDevices.count > 1,
+            showsDeviceList: status.outputDevices.count > 1 || !previewRows.isEmpty,
             rows: rows,
+            previewRows: previewRows,
             visibleLimit: deviceList.visibleLimit,
             expandLabel: localization.string(.volumeOutputExpand),
-            collapseLabel: localization.string(.volumeOutputCollapse)
+            collapseLabel: localization.string(.volumeOutputCollapse),
+            listeningModeTaskID: listeningModeTaskID,
+            previewLanguageCode: previewLanguageCode
         )
     }
 
@@ -149,6 +163,8 @@ enum AudioPanelMapper {
 
     private static func outputRows(
         _ devices: [AudioOutputDevice],
+        listeningModes: BluetoothListeningModeController?,
+        isPreview: Bool = false,
         localization: Localization
     ) -> [PanelAudioDeviceRow] {
         devices.enumerated().map { index, device in
@@ -172,10 +188,20 @@ enum AudioPanelMapper {
             return PanelAudioDeviceRow(
                 key: PanelAudioDeviceID(id: device.id, uid: device.uid),
                 name: name,
-                symbol: outputSymbolSource(for: device),
+                symbol: iconSource(for: device),
                 selected: device.isCurrent,
                 enabled: true,
-                accessibilityLabel: label
+                accessibilityLabel: label,
+                helpText: device.isCurrent
+                    ? localization.format(.commonLabelValue, name, localization.string(.volumeOutputCurrent))
+                    : localization.format(.volumeOutputSwitchTo, name),
+                volumeText: device.volume.flatMap { value in
+                    guard value.isFinite else { return nil }
+                    return value.formatted(.percent.precision(.fractionLength(0)).locale(localization.resolvedLanguage.locale))
+                },
+                listeningModeAddress: listeningModes?.control(forEndpoint: device.id)?.address,
+                listeningMode: listeningModes?.control(forEndpoint: device.id)?.presentation,
+                isPreview: isPreview
             )
         }
     }
@@ -242,7 +268,7 @@ enum AudioPanelMapper {
         return "speaker.wave.3.fill"
     }
 
-    private static func outputSymbolSource(for device: AudioOutputDevice) -> IconSymbolSource {
+    static func iconSource(for device: AudioOutputDevice) -> IconSymbolSource {
         switch AudioOutputDeviceIcon.source(for: device) {
         case .image(let url):
             .image(url: url, fallbackSymbol: AudioOutputDeviceIcon.symbolName(for: device))

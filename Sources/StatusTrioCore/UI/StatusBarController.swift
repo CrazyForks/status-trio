@@ -33,6 +33,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     private let popover = NSPopover()
     private let store: SystemStatusStore
     private let settings: SettingsStore
+    private let panelActions: StatusPanelActions
+    private let panelViewModel: StatusPanelViewModel
     private let iconPresentation: IconPresentationViewModel
     private let localization: Localization
     private let renderMenuBarIcon: MenuBarRenderer
@@ -93,6 +95,14 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     ) {
         self.store = store
         self.settings = settings
+        let panelActions = StatusPanelActions(store: store, settings: settings)
+        self.panelActions = panelActions
+        self.panelViewModel = StatusPanelViewModel(
+            store: store,
+            settings: settings,
+            localization: localization,
+            actions: panelActions
+        )
         self.iconPresentation = iconPresentation
         self.localization = localization
         self.renderMenuBarIcon = renderMenuBarIcon
@@ -235,8 +245,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         guard popover.contentViewController == nil else { return }
         let rootView = LocalizedRootView(localization: localization) {
             StatusPopoverView(
-                store: store,
-                settings: settings,
+                panel: panelViewModel,
                 scrollTargets: popoverScrollTargets,
                 requestWiFiNameAccess: { self.handleRequestWiFiNameAccess() },
                 requestBluetoothAuthorization: { self.handleRequestBluetoothAuthorization() },
@@ -251,6 +260,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
                 quit: quitAction
             )
         }
+        panelViewModel.start()
         let hostingController = NSHostingController(rootView: rootView)
         hostingController.sizingOptions = [.preferredContentSize]
         popover.contentViewController = hostingController
@@ -467,6 +477,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         if hadOpenDetails {
             cancelPopoverContentRelease()
             popover.contentViewController = nil
+            panelViewModel.stop()
         } else {
             schedulePopoverContentRelease()
         }
@@ -483,6 +494,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             guard !Task.isCancelled, let self else { return }
             guard popoverContentRetention.shouldRelease(at: Date()), !popover.isShown else { return }
             popover.contentViewController = nil
+            panelViewModel.stop()
             popoverContentReleaseTask = nil
         }
     }

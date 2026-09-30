@@ -50,10 +50,11 @@ enum BluetoothDeviceRowMetrics {
         for device: BluetoothDevice,
         batteryLevels: [String: BluetoothBatteryLevel]
     ) -> CGFloat {
-        BluetoothDevicePresentation.batteryLayout(
-            for: device,
-            batteryLevels: batteryLevels
-        ) == .components
+        estimatedHeight(for: BluetoothDevicePresentation.batteryLayout(for: device, batteryLevels: batteryLevels))
+    }
+
+    static func estimatedHeight(for layout: BluetoothBatteryLayout) -> CGFloat {
+        layout == .components
             ? componentHeight
             : inlineHeight
     }

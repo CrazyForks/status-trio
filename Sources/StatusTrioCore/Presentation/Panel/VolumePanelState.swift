@@ -12,6 +12,11 @@ struct PanelAudioDeviceRow: Equatable, Identifiable, Sendable {
     let selected: Bool
     let enabled: Bool
     let accessibilityLabel: String
+    var helpText: String = ""
+    var volumeText: String? = nil
+    var listeningModeAddress: String? = nil
+    var listeningMode: BluetoothListeningModePresentation? = nil
+    var isPreview: Bool = false
 
     var id: PanelAudioDeviceID { key }
 }
@@ -42,9 +47,12 @@ struct VolumePanelState: Equatable, Sendable {
     /// Complete rows stay resolved in display order. The view owns only whether
     /// its local disclosure is expanded.
     let rows: [PanelAudioDeviceRow]
+    let previewRows: [PanelAudioDeviceRow]
     let visibleLimit: Int?
     let expandLabel: String
     let collapseLabel: String
+    let listeningModeTaskID: String
+    let previewLanguageCode: String
 
     var hasHiddenRows: Bool {
         OutputDeviceListPresentation.canToggleExpansion(for: rows, limit: visibleLimit)

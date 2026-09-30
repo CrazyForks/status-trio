@@ -654,11 +654,38 @@ final class BluetoothSummaryLayoutTests: XCTestCase {
             controller.holdVisibleSurface(BluetoothDeviceController.popoverSurfaceToken)
         }
 
-        let view = BluetoothStatusView(
-            controller: controller,
+        let panelState = BluetoothPanelMapper.map(
+            availability: BluetoothAvailabilityMapper.preliminary(
+                authorization: authorization,
+                managerState: authorization == .allowed ? .poweredOn : .unknown
+            ),
+            devices: devices,
+            batteryLevels: batteryLevels,
+            actionStates: [:],
+            nearbyDevices: nearbyDevices,
+            batteryLevelsReadFailed: false,
+            isExpanded: false,
+            options: listOptions,
             showsBatteryLevels: showsBatteryLevels,
             showsNearbyBatteryDevices: showsNearbyBatteryDevices,
-            listOptions: listOptions,
+            confirmingAddress: nil,
+            localization: localization
+        )
+        let actions = StatusPanelActions(
+            bluetoothDevices: { controller.devices },
+            bluetoothAvailability: { controller.availability },
+            refreshBluetooth: { controller.refreshFromUser() },
+            requestBatteryLevels: { controller.requestBatteryLevels($0) },
+            releaseBatteryLevels: { controller.releaseBatteryLevels($0) },
+            requestNearbyBatteryDevices: { controller.requestNearbyBatteryDevices($0) },
+            releaseNearbyBatteryDevices: { controller.releaseNearbyBatteryDevices($0) },
+            holdBluetoothSummary: { controller.holdVisibleSurface(BluetoothDeviceController.bluetoothSummarySurfaceToken) },
+            releaseBluetoothSummary: { controller.releaseVisibleSurface(BluetoothDeviceController.bluetoothSummarySurfaceToken) }
+        )
+        let view = BluetoothStatusView(
+            state: panelState,
+            actions: actions,
+            onSetExpanded: { _ in },
             onRequestAuthorization: {},
             onOpenBluetoothSettings: {},
             onOpenBluetoothPermissionSettings: {}

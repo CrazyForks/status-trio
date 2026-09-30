@@ -22,10 +22,15 @@ struct PanelBluetoothDeviceRow: Equatable, Sendable {
 
 struct BluetoothPanelState: Equatable, Sendable {
     let summary: PanelSummaryState
+    let summaryBatterySegments: [BluetoothBatterySegment]?
+    let hasConnectedDevices: Bool
+    let batteryReadTaskID: String
     let pairedRows: [PanelBluetoothDeviceRow]
     let nearbyRows: [PanelBluetoothDeviceRow]
     let errorText: String?
     let showsPairedHeading: Bool
     let canExpand: Bool
     let confirmationAddress: String?
+    let showsBatteryLevels: Bool
+    let showsNearbyBatteryDevices: Bool
 }

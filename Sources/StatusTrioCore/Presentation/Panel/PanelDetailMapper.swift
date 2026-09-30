@@ -56,7 +56,8 @@ enum PanelDetailMapper {
             rows: rows,
             isLoading: details == nil,
             errorText: nil,
-            explanation: localization.string(.batteryDetailsExplanation)
+            explanation: localization.string(.batteryDetailsExplanation),
+            lifecycleIdentity: "\(battery.isPresent)-\(battery.isConnectedToPower)-\(battery.isCharging)"
         )
     }
 
@@ -141,7 +142,8 @@ enum PanelDetailMapper {
             canRefresh: listState.allowsRefresh,
             isScanning: listState.isScanning,
             message: message,
-            messageIntent: intent
+            messageIntent: intent,
+            showsConnectionDetails: details.ssid != nil || knownRows.contains(where: \.selected)
         )
     }
 

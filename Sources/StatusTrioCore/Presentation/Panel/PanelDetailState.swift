@@ -31,6 +31,7 @@ struct PanelDetailState: Equatable, Sendable {
     let isLoading: Bool
     let errorText: String?
     let explanation: String?
+    var lifecycleIdentity: String? = nil
 }
 
 struct PanelWiFiNetworkRow: Equatable, Sendable {
@@ -56,6 +57,7 @@ struct WiFiPanelState: Equatable, Sendable {
     let isScanning: Bool
     let message: String?
     let messageIntent: PanelSummaryIntent
+    let showsConnectionDetails: Bool
 
     init(
         detail: PanelDetailState,
@@ -69,7 +71,8 @@ struct WiFiPanelState: Equatable, Sendable {
         canRefresh: Bool,
         isScanning: Bool,
         message: String?,
-        messageIntent: PanelSummaryIntent
+        messageIntent: PanelSummaryIntent,
+        showsConnectionDetails: Bool = false
     ) {
         self.detail = detail
         self.collapsedDetailRowCount = collapsedDetailRowCount
@@ -83,6 +86,7 @@ struct WiFiPanelState: Equatable, Sendable {
         self.isScanning = isScanning
         self.message = message
         self.messageIntent = messageIntent
+        self.showsConnectionDetails = showsConnectionDetails
     }
 
     func visibleDetailRows(expanded: Bool) -> [PanelDetailRow] {

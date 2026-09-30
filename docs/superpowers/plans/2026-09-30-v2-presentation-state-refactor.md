@@ -563,7 +563,7 @@ detail 属性明确为 `batteryDetails: PanelDetailState`、`wifiDetails: WiFiPa
 
 Wi-Fi details 保留 view-local More／Less toggle：通过 `wifiDetails.visibleDetailRows(expanded:)` 显示完整解析行集的折叠／展开切片，并使用 state 的 `showMoreTitle`／`showLessTitle`，不在 view 重映射 `WiFiConnectionDetails`。
 
-Bluetooth summary 根据 `PanelSummaryIntent.requestBluetoothAuthorization`／`.openBluetoothPermissionSettings` 路由到独立 action callbacks；Bluetooth device row 普通点击调用 `rowTapped(address:)`，确认按钮调用 `confirmBluetoothDisconnect(address:)`，取消调用 `cancelDisconnect()`。呈现使用 state 的 connected、battery layout／segments、status text／tint 和 confirmation fields，不在 view 检查设备类别或重算 battery policy。列表拖动把 `pairedRows.map(\.address)` 同 offsets／destination 传给 filtered reorder action；collapsed destination count 是可见 slice 末尾。
+Bluetooth summary 根据 `PanelSummaryIntent.requestBluetoothAuthorization`／`.openBluetoothPermissionSettings` 路由到独立 action callbacks；Bluetooth device row 普通点击调用 `rowTapped(address:)`，确认按钮调用 `confirmBluetoothDisconnect(address:)`，取消调用 `cancelDisconnect()`。呈现使用 state 的 connected、battery layout／segments、status text／tint 和 confirmation fields，不在 view 检查设备类别或重算 battery policy。当前 Bluetooth panel 和 output panel 均无拖放／`.onMove` 控件，保留原有堆叠布局且不新增排序交互；Settings 中已存在的 output reorder UI 保持不变。`moveBluetoothDevices` 与 panel 未使用的 `moveOutputDevices` 列入 Task 12 API 清理审计，不为使用 API 新增 UI。
 
 - [ ] 新失败测试确保按独立源更新：`popupSnapshot` 更新 battery／network；`liveVolume` 立即更新 volume；`liveInput` 更新 input；VPN 更新不触发 icon。使用既有 mock monitors／store fixtures，重用当前测试的 ManualEventSleeper，不新增固定睡眠。
 - [ ] Run `swift test --filter 'StatusPanelViewModelTests|PanelPresentationWiringTests'`。按区域 Combine delivered values，`removeDuplicates` 后发布；controller 多字段如只支持 `objectWillChange`，安排主 actor coalescer 在变更落地后读一致的 controller 快照，不在 willChange 回调读旧值。

@@ -171,18 +171,33 @@ private struct HandoffRoot: View {
                     .id("detail")
             } else {
                 BluetoothStatusView(
-                    controller: controller,
-                    showsBatteryLevels: model.showsBatteryLevels,
-                    // These tests pin the pre-list summary shape and the level
-                    // claim it makes, so the list is explicitly off. Leaving it
-                    // on (the `.standard` default) would render the device list
-                    // under the row and stop the summary from being the shape
-                    // these assertions were written for.
-                    listOptions: BluetoothDeviceListOptions(
-                        showsList: false,
-                        maxVisibleDevices: 5,
-                        order: []
+                    state: BluetoothPanelMapper.map(
+                        availability: controller.availability,
+                        devices: controller.devices,
+                        batteryLevels: controller.batteryLevels,
+                        actionStates: controller.deviceActionStates,
+                        nearbyDevices: controller.nearbyBatteryDevices,
+                        batteryLevelsReadFailed: controller.batteryLevelsReadFailed,
+                        isExpanded: false,
+                        options: BluetoothDeviceListOptions(
+                            showsList: false,
+                            maxVisibleDevices: 5,
+                            order: []
+                        ),
+                        showsBatteryLevels: model.showsBatteryLevels,
+                        showsNearbyBatteryDevices: false,
+                        confirmingAddress: controller.pendingDisconnectConfirmation,
+                        localization: localization
                     ),
+                    actions: StatusPanelActions(
+                        bluetoothDevices: { controller.devices },
+                        bluetoothAvailability: { controller.availability },
+                        requestBatteryLevels: { controller.requestBatteryLevels($0) },
+                        releaseBatteryLevels: { controller.releaseBatteryLevels($0) },
+                        holdBluetoothSummary: { controller.holdVisibleSurface(BluetoothDeviceController.bluetoothSummarySurfaceToken) },
+                        releaseBluetoothSummary: { controller.releaseVisibleSurface(BluetoothDeviceController.bluetoothSummarySurfaceToken) }
+                    ),
+                    onSetExpanded: { _ in },
                     onRequestAuthorization: {}, onOpenBluetoothSettings: {},
                     onOpenBluetoothPermissionSettings: {}
                 )

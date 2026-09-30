@@ -136,14 +136,25 @@ final class BluetoothDeviceListLayoutTests: XCTestCase {
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
         let localization = Localization(defaults: defaults, preferredLanguages: ["en"])
 
-        let list = BluetoothDeviceList(
+        let state = BluetoothPanelMapper.map(
+            availability: .available,
             devices: devices,
             batteryLevels: batteryLevels,
             actionStates: [:],
-            confirmingAddress: nil,
+            nearbyDevices: [],
+            batteryLevelsReadFailed: false,
+            isExpanded: false,
             options: BluetoothDeviceListOptions(showsList: true, maxVisibleDevices: devices.count, order: []),
-            onPerformAction: { _ in },
-            onRequestDisconnect: { _ in },
+            showsBatteryLevels: true,
+            showsNearbyBatteryDevices: false,
+            confirmingAddress: nil,
+            localization: localization
+        )
+        let list = BluetoothDeviceList(
+            state: state,
+            onExpandedChange: { _ in },
+            onRowTapped: { _ in },
+            onConfirmDisconnect: { _ in },
             onCancelDisconnect: {}
         )
         .padding(14)

@@ -88,6 +88,9 @@ enum BluetoothPanelMapper {
 
         return BluetoothPanelState(
             summary: summaryState,
+            summaryBatterySegments: summary.deviceSegments,
+            hasConnectedDevices: summary.hasConnectedDevices,
+            batteryReadTaskID: "\(showsBatteryLevels)-" + BluetoothDevicePresentation.grouped(devices).connected.map(\.name).joined(separator: "、"),
             pairedRows: pairedRows,
             nearbyRows: nearbyRows,
             errorText: listIsVisible && batteryLevelsReadFailed
@@ -95,7 +98,9 @@ enum BluetoothPanelMapper {
                 : nil,
             showsPairedHeading: !pairedRows.isEmpty && !nearbyRows.isEmpty,
             canExpand: listIsVisible && list.canToggleExpansion,
-            confirmationAddress: normalizedConfirmation
+            confirmationAddress: normalizedConfirmation,
+            showsBatteryLevels: showsBatteryLevels,
+            showsNearbyBatteryDevices: showsNearbyBatteryDevices
         )
     }
 
