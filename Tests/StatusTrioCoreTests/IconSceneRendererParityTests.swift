@@ -32,6 +32,20 @@ final class IconSceneRendererParityTests: XCTestCase {
         for (name, phase) in phases {
             try assertMenuBarParity(for: snapshot, phase: phase, label: name)
         }
+        let charged = makeSnapshot(
+            battery: battery(percentage: 100, charging: true, connected: true),
+            wifi: WiFiStatus(state: .connected, rssi: -62),
+            volume: VolumeStatus(scalar: 0.5, isMuted: false, deviceName: "Output")
+        )
+        try assertMenuBarParity(for: charged,
+                                phase: ChargingEffectPhase(step: 4, stepsPerCycle: 12, kind: .burst),
+                                label: "charged completion")
+        try assertMenuBarParity(
+            for: snapshot,
+            configuration: configuration(battery: BatteryIconOptions(showsChargingEffect: false)),
+            phase: ChargingEffectPhase(step: 4, stepsPerCycle: 12, kind: .burst),
+            label: "charging effect disabled"
+        )
         let configurations: [(String, BatteryIconOptions)] = [
             ("heartbeat enabled with status tint", .standard),
             ("heartbeat disabled", BatteryIconOptions(showsChargingBoltHeartbeat: false)),
@@ -137,6 +151,98 @@ final class IconSceneRendererParityTests: XCTestCase {
             bluetoothAudioOptions: bluetooth
         ))
         assertPixelsEqual(expected, actual, label: "unreadable image fallback")
+    }
+
+    func testKnownPickedSymbolWithoutDeviceMatchesLegacyOnBothSurfaces() throws {
+        let snapshot = PresentationFixtures.snapshot()
+        let symbol = "headphones"
+        XCTAssertNotNil(NSImage(systemSymbolName: symbol, accessibilityDescription: nil))
+        let picked = configuration(bluetooth: BluetoothAudioIconOptions(
+            replacesNetworkIcon: true,
+            networkIconSymbolOverride: symbol
+        ))
+        let fixture = VisualCase(name: "picked headphones without device", snapshot: snapshot,
+                                 configuration: picked)
+        try assertMenuBarParity(for: snapshot, configuration: picked, label: fixture.name)
+        for style in DockIconBackgroundStyle.allCases {
+            try assertDockParity(for: fixture, style: style)
+        }
+    }
+
+    func testReadableDeviceImageMatchesLegacyOnBothSurfaces() throws {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("status-trio-readable-device-\(UUID().uuidString).png")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let bitmap = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 16, pixelsHigh: 16,
+                                      bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true,
+                                      isPlanar: false, colorSpaceName: .deviceRGB,
+                                      bytesPerRow: 0, bitsPerPixel: 0)!
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: bitmap)
+        NSColor.systemPurple.setFill()
+        NSBezierPath(rect: CGRect(x: 0, y: 0, width: 16, height: 16)).fill()
+        NSGraphicsContext.restoreGraphicsState()
+        try XCTUnwrap(bitmap.representation(using: .png, properties: [:])).write(to: url)
+
+        let device = AudioOutputDevice(id: 42, name: "Custom Bluetooth", isCurrent: true,
+                                       volume: 0.6, transport: .bluetooth, iconURL: url)
+        let snapshot = makeSnapshot(
+            wifi: WiFiStatus(state: .connected, rssi: -62),
+            volume: VolumeStatus(scalar: 0.6, isMuted: false, deviceName: device.name, currentDevice: device)
+        )
+        let bluetooth = BluetoothAudioIconOptions(replacesNetworkIcon: true)
+        let fixture = VisualCase(name: "readable device resource", snapshot: snapshot,
+                                 configuration: configuration(bluetooth: bluetooth))
+        XCTAssertEqual(IconPresentationResourceResolver.inputs(snapshot: snapshot).audioIcon,
+                       .image(url: url, fallbackSymbol: "headphones"))
+        try assertMenuBarParity(for: snapshot, configuration: fixture.configuration, label: fixture.name)
+        for style in DockIconBackgroundStyle.allCases {
+            try assertDockParity(for: fixture, style: style)
+        }
+    }
+
+    func testColoredBoltAndPlugPrimitivesUseDeclaredColor() throws {
+        let foreground = CGColor(gray: 1, alpha: 1)
+        let environment = StatusIconRenderEnvironment(size: 28, scale: 2, foreground: foreground,
+                                                      criticalColor: StatusIconRenderer.defaultCriticalColor)
+        for primitive in [IconPrimitive.bolt, .plug] {
+            let primary = IconSceneState(outerRing: OuterRingState(
+                segments: [RingSegmentState(progress: 0.43, color: .primary)],
+                gap: .indicator,
+                accessory: .symbol(IconSymbolState(source: .primitive(primitive), color: .primary, scale: 1)),
+                effect: primitive == .bolt ? RingEffectState(pulsesAccessory: true, tintsAccessory: true) : nil
+            ))
+            let critical = IconSceneState(outerRing: OuterRingState(
+                segments: [RingSegmentState(progress: 0.43, color: .primary)],
+                gap: .indicator,
+                accessory: .symbol(IconSymbolState(source: .primitive(primitive), color: .critical, scale: 1)),
+                effect: primitive == .bolt ? RingEffectState(pulsesAccessory: true, tintsAccessory: true) : nil
+            ))
+            let phase = ChargingEffectPhase(step: 5, stepsPerCycle: 12, kind: .burst)
+            let primaryImage = try XCTUnwrap(StatusIconRenderer.render(scene: primary, environment: environment,
+                                                                        phase: phase))
+            let criticalImage = try XCTUnwrap(StatusIconRenderer.render(scene: critical, environment: environment,
+                                                                        phase: phase))
+            XCTAssertNotEqual(try PixelBuffer(image: primaryImage).bytes,
+                              try PixelBuffer(image: criticalImage).bytes,
+                              "\(primitive) must use its declared scene color")
+        }
+    }
+
+    func testBluetoothVolumeArcTintMatchesLegacyOnBothSurfaces() throws {
+        let volume = VolumeStatus(scalar: 0.72, isMuted: false, deviceName: "Headphones",
+                                 currentDevice: PresentationFixtures.bluetoothDevice)
+        let snapshot = makeSnapshot(volume: volume)
+        let options = configuration(
+            volume: VolumeIconOptions(displayStyle: .arc),
+            bluetooth: BluetoothAudioIconOptions(usesVolumeColor: true)
+        )
+        let fixture = VisualCase(name: "Bluetooth tinted volume arc", snapshot: snapshot,
+                                 configuration: options)
+        try assertMenuBarParity(for: snapshot, configuration: options, label: fixture.name)
+        for style in DockIconBackgroundStyle.allCases {
+            try assertDockParity(for: fixture, style: style)
+        }
     }
 
     private struct VisualCase {
@@ -328,14 +434,17 @@ final class IconSceneRendererParityTests: XCTestCase {
         file: StaticString = #filePath,
         line: UInt = #line
     ) {
+        XCTAssertEqual(expected.width, actual.width, "image width: \(label)", file: file, line: line)
+        XCTAssertEqual(expected.height, actual.height, "image height: \(label)", file: file, line: line)
         guard let expectedBytes = try? PixelBuffer(image: expected).bytes,
               let actualBytes = try? PixelBuffer(image: actual).bytes else {
             XCTFail("could not read pixel buffers: \(label)", file: file, line: line)
             return
         }
         let firstDifference = zip(expectedBytes, actualBytes).enumerated().first { $0.element.0 != $0.element.1 }
-        XCTAssertNil(firstDifference,
-                     "pixel mismatch: \(label), first byte \(String(describing: firstDifference))",
-                     file: file, line: line)
+        XCTAssertEqual(expectedBytes.count, actualBytes.count, "pixel byte count: \(label)", file: file, line: line)
+        XCTAssertEqual(expectedBytes, actualBytes,
+                       "pixel mismatch: \(label), first byte \(String(describing: firstDifference))",
+                       file: file, line: line)
     }
 }

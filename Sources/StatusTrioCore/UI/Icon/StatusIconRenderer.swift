@@ -1373,6 +1373,7 @@ extension StatusIconRenderer {
             )
         case let .symbol(symbol):
             if case .primitive(.bolt) = symbol.source {
+                let baseColor = sceneColor(for: symbol.color, foreground: foreground, criticalColor: criticalColor)
                 let indicatorScale = batteryChargingBoltScale(textScale: symbol.scale)
                 let heartbeatFrame = ring.effect?.pulsesAccessory == true ? effectFrame : nil
                 let bolt = heartbeatFrame.map { frame in
@@ -1382,13 +1383,13 @@ extension StatusIconRenderer {
                         fitting: StatusIconGeometry.canvas
                     )
                 } ?? StatusIconGeometry.batteryChargingBolt(scale: indicatorScale)
-                var boltColor = foreground
+                var boltColor = baseColor
                 if let heartbeatFrame {
                     let highlight = ring.effect?.tintsAccessory == true
                         ? ChargingEffectPalette.chargingBoltHighlight(for: arcColor, using: effectHighlight ?? arcColor)
-                        : foreground
+                        : baseColor
                     boltColor = ChargingEffectPalette.blend(
-                        foreground,
+                        baseColor,
                         with: highlight,
                         amount: heartbeatFrame.boltArcColorAmount
                     )
@@ -1399,7 +1400,7 @@ extension StatusIconRenderer {
             } else if case .primitive(.plug) = symbol.source {
                 drawBatteryPlug(
                     boltScale: batteryChargingBoltScale(textScale: symbol.scale),
-                    foreground: foreground,
+                    foreground: sceneColor(for: symbol.color, foreground: foreground, criticalColor: criticalColor),
                     in: context
                 )
             } else {
