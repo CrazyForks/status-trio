@@ -5,6 +5,7 @@ import Foundation
 import Testing
 @testable import StatusTrioCore
 
+@MainActor
 struct ChargingEffectRenderingTests {
     @Test func nilPhaseKeepsThePreEffectStaticPixelFingerprint() throws {
         let pixels = try renderPixels(

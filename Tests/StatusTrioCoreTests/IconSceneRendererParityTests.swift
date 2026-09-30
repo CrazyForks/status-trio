@@ -16,16 +16,37 @@ final class IconSceneRendererParityTests: XCTestCase {
     func testTaskOneVisualMatrixKeepsFixedGeometryAndDockPaletteConventions() throws {
         for fixture in visualCases() {
             let scene = mappedScene(for: fixture.snapshot, configuration: fixture.configuration)
+            XCTAssertEqual(scene, fixture.expectedScene, "literal scene fields: \(fixture.name)")
             for foreground in [CGColor(gray: 1, alpha: 1), CGColor(gray: 0, alpha: 1)] {
                 let pixels = try menuBarPixels(scene: scene, foreground: foreground, size: 28, scale: 2)
                 assertMenuBarPixelConventions(pixels, size: 28, scale: 2, label: fixture.name)
+                let expectedPixels = try menuBarPixels(
+                    scene: fixture.expectedScene,
+                    foreground: foreground,
+                    size: 28,
+                    scale: 2
+                )
+                XCTAssertTrue(
+                    pixels.bytes.elementsEqual(expectedPixels.bytes),
+                    "independent ring/center/footer reference: \(fixture.name)"
+                )
             }
             for style in DockIconBackgroundStyle.allCases {
                 let image = try XCTUnwrap(DockIconRenderer.image(scene: scene, backgroundStyle: style, pixelLength: 96))
                 let pixels = try cgPixels(from: image)
+                let expectedImage = try XCTUnwrap(DockIconRenderer.image(
+                    scene: fixture.expectedScene,
+                    backgroundStyle: style,
+                    pixelLength: 96
+                ))
+                let expectedPixels = try cgPixels(from: expectedImage)
                 XCTAssertEqual(pixels.width, 96, "Dock width: \(fixture.name), \(style)")
                 XCTAssertEqual(pixels.height, 96, "Dock height: \(fixture.name), \(style)")
                 XCTAssertEqual(pixels.bytes.count, 96 * 96 * 4, "Dock full buffer: \(fixture.name), \(style)")
+                XCTAssertTrue(
+                    pixels.bytes.elementsEqual(expectedPixels.bytes),
+                    "independent ring/center/footer reference: \(fixture.name), \(style)"
+                )
                 XCTAssertEqual(pixels.rgba(x: 0, y: 0).alpha, 0, "Dock transparent corner: \(fixture.name), \(style)")
                 XCTAssertEqual(pixels.rgba(x: 48, y: 2).alpha, 0, "Dock transparent margin: \(fixture.name), \(style)")
                 let body = pixels.rgba(x: 12, y: 48)
@@ -48,6 +69,47 @@ final class IconSceneRendererParityTests: XCTestCase {
                     XCTAssertLessThan(body.alpha, 240, "Dock clear body: \(fixture.name)")
                     XCTAssertTrue(pixels.containsColor(red: 29.0 / 255.0, green: 29.0 / 255.0, blue: 31.0 / 255.0,
                                                        tolerance: 0.08, minimumAlpha: 0.9), fixture.name)
+                }
+            }
+        }
+    }
+
+    func testOrdinarySceneSubstitutionFailsEveryMaterialVisualCategory() throws {
+        let fixtures = visualCases()
+        let ordinary = try XCTUnwrap(fixtures.first { $0.name == "ordinary" })
+        for fixture in fixtures where fixture.name != "ordinary" {
+            let actualScene = mappedScene(for: fixture.snapshot, configuration: fixture.configuration)
+            for foreground in [CGColor(gray: 1, alpha: 1), CGColor(gray: 0, alpha: 1)] {
+                let actual = try menuBarPixels(scene: actualScene, foreground: foreground, size: 28, scale: 2)
+                let substitution = try menuBarPixels(
+                    scene: ordinary.expectedScene,
+                    foreground: foreground,
+                    size: 28,
+                    scale: 2
+                )
+                for region in fixture.distinctRegions where !region.isEmpty {
+                    XCTAssertTrue(
+                        pixelsDiffer(actual, substitution, inSVGRect: region, size: 28, scale: 2),
+                        "ordinary menu-bar substitution must fail in \(region) for \(fixture.name)"
+                    )
+                }
+            }
+            for style in DockIconBackgroundStyle.allCases {
+                let actual = try cgPixels(from: XCTUnwrap(DockIconRenderer.image(
+                    scene: actualScene,
+                    backgroundStyle: style,
+                    pixelLength: 96
+                )))
+                let substitution = try cgPixels(from: XCTUnwrap(DockIconRenderer.image(
+                    scene: ordinary.expectedScene,
+                    backgroundStyle: style,
+                    pixelLength: 96
+                )))
+                for region in fixture.distinctRegions where !region.isEmpty {
+                    XCTAssertTrue(
+                        pixelsDiffer(actual, substitution, inDockSVGRect: region, pixelLength: 96),
+                        "ordinary Dock substitution must fail in \(region) for \(fixture.name), \(style)"
+                    )
                 }
             }
         }
@@ -346,95 +408,249 @@ final class IconSceneRendererParityTests: XCTestCase {
         let name: String
         let snapshot: StatusSnapshot
         let configuration: IconPresentationConfiguration
+        let expectedScene: IconSceneState
+        let distinctRegions: [CGRect]
+    }
+
+    private func pixelsDiffer(
+        _ lhs: PixelBuffer,
+        _ rhs: PixelBuffer,
+        inSVGRect rect: CGRect,
+        size: CGFloat,
+        scale: CGFloat
+    ) -> Bool {
+        let pixelsPerSVGUnit = size * scale / StatusIconGeometry.canvas.width
+        let minX = max(0, Int((rect.minX * pixelsPerSVGUnit).rounded(.down)))
+        let maxX = min(lhs.width, Int((rect.maxX * pixelsPerSVGUnit).rounded(.up)))
+        let minY = max(0, Int((rect.minY * pixelsPerSVGUnit).rounded(.down)))
+        let maxY = min(lhs.height, Int((rect.maxY * pixelsPerSVGUnit).rounded(.up)))
+        for y in minY..<maxY {
+            for x in minX..<maxX where lhs.rgba(x: x, y: y) != rhs.rgba(x: x, y: y) {
+                return true
+            }
+        }
+        return false
+    }
+
+    private func pixelsDiffer(
+        _ lhs: PixelBuffer,
+        _ rhs: PixelBuffer,
+        inDockSVGRect rect: CGRect,
+        pixelLength: Int
+    ) -> Bool {
+        let dockScale = CGFloat(pixelLength) / 1024
+        let glyphOrigin = CGPoint(x: 194.8 * dockScale, y: 171.84 * dockScale)
+        let glyphScale = 672 * dockScale / StatusIconGeometry.canvas.width
+        let xMin = Int((glyphOrigin.x + rect.minX * glyphScale).rounded(.down))
+        let xMax = Int((glyphOrigin.x + rect.maxX * glyphScale).rounded(.up))
+        let yMin = Int((glyphOrigin.y + rect.minY * glyphScale).rounded(.down))
+        let yMax = Int((glyphOrigin.y + rect.maxY * glyphScale).rounded(.up))
+        for y in max(0, yMin)..<min(lhs.height, yMax) {
+            for x in max(0, xMin)..<min(lhs.width, xMax) where lhs.rgba(x: x, y: y) != rhs.rgba(x: x, y: y) {
+                return true
+            }
+        }
+        return false
     }
 
     private func visualCases() -> [VisualCase] {
-        let ordinary = PresentationFixtures.snapshot()
-        var cases = [VisualCase(name: "ordinary", snapshot: ordinary, configuration: .standard)]
+        let ordinary = PresentationFixtures.snapshot(rssi: -60)
+        let mediumWiFi = symbol("wifi", value: 0.66)
+        let ordinaryRing = ring(progress: 0.68, color: .primary, gap: .value,
+                                accessory: .text(IconTextState(text: "68", color: .primary, scale: 1.8)))
+        let slash = CenterState.symbol(IconSymbolState(source: .symbol(name: "wifi.slash", variableValue: 1, fallback: nil), color: .primary, scale: 1))
+        let placeholderRing = ring(progress: 1, color: .primary, gap: .value,
+                                   accessory: .text(IconTextState(text: "100", color: .primary, scale: 1.8)))
+        let ordinaryFooter = FooterState.dots(DotsState(count: 4, activeCount: 3, color: .primary, strokeScale: 1.25))
+        let inactiveFooter = FooterState.dots(DotsState(count: 4, activeCount: 0, color: .primary, strokeScale: 1.25))
 
-        let batteryCases: [(String, BatteryStatus, BatteryIconOptions)] = [
-            ("low battery critical", battery(percentage: 12), .standard),
+        func scene(
+            ring: OuterRingState,
+            center: CenterState = mediumWiFi,
+            footer: FooterState = ordinaryFooter
+        ) -> IconSceneState {
+            IconSceneState(outerRing: ring, center: center, footer: footer)
+        }
+
+        func visualCase(
+            _ name: String,
+            snapshot: StatusSnapshot,
+            configuration: IconPresentationConfiguration = .standard,
+            expected: IconSceneState,
+            distinctRegion: CGRect
+        ) -> VisualCase {
+            VisualCase(
+                name: name,
+                snapshot: snapshot,
+                configuration: configuration,
+                expectedScene: expected,
+                distinctRegions: [distinctRegion]
+            )
+        }
+
+        let batteryRegion = CGRect(x: 0, y: 0, width: 120, height: 100)
+        let centerRegion = CGRect(x: 30, y: 40, width: 60, height: 52)
+        let footerRegion = CGRect(x: 25, y: 98, width: 70, height: 22)
+        var cases = [visualCase(
+            "ordinary",
+            snapshot: ordinary,
+            expected: scene(ring: ordinaryRing, center: symbol("wifi", value: 1)),
+            distinctRegion: batteryRegion
+        )]
+
+        let batteryCases: [(String, BatteryStatus, BatteryIconOptions, OuterRingState)] = [
+            ("low battery critical", battery(percentage: 12), .standard,
+             ring(progress: 0.12, color: .critical, gap: .value, accessory: .text(IconTextState(text: "12", color: .primary, scale: 1.8)))),
             ("low power", BatteryStatus(rawPercentage: 34, isPresent: true, isCharging: false,
-                                         isLowPowerMode: true, isConnectedToPower: false), .standard),
-            ("charging bolt", battery(percentage: 43, charging: true, connected: true), .standard),
-            ("connected plug", battery(percentage: 73, connected: true), .standard),
+                                         isLowPowerMode: true, isConnectedToPower: false), .standard,
+             ring(progress: 0.34, color: .lowPower, gap: .value, accessory: .text(IconTextState(text: "34", color: .primary, scale: 1.8)))),
+            ("charging bolt", battery(percentage: 43, charging: true, connected: true), .standard,
+             ring(progress: 0.43, color: .powered, gap: .indicator, accessory: .symbol(IconSymbolState(source: .primitive(.bolt), color: .primary, scale: 1.8)), effect: RingEffectState(pulsesAccessory: true, tintsAccessory: true))),
+            ("connected plug", battery(percentage: 73, connected: true), .standard,
+             ring(progress: 0.73, color: .powered, gap: .indicator, accessory: .symbol(IconSymbolState(source: .primitive(.plug), color: .primary, scale: 1.8)))),
             ("present battery closed ring", battery(percentage: 68), BatteryIconOptions(
                 showsPercentage: false, showsChargingIndicator: false, usesStatusColors: false
-            )),
+            ), ring(progress: 0.68, color: .primary, gap: .closed, accessory: nil)),
             ("scaled battery text and bold ring", battery(percentage: 54), BatteryIconOptions(
-                textScale: 1.35, ringStrokeScale: RingStrokeStyle.bold.scale
-            )),
+                textScale: 1.35, ringStrokeScale: 1.5
+            ), ring(progress: 0.54, color: .primary, gap: .value, accessory: .text(IconTextState(text: "54", color: .primary, scale: 1.35)), strokeScale: 1.5)),
             ("custom critical threshold", battery(percentage: 28), BatteryIconOptions(
-                criticalThreshold: 30, ringStrokeScale: RingStrokeStyle.light.scale
-            )),
+                criticalThreshold: 30, ringStrokeScale: 1
+            ), ring(progress: 0.28, color: .critical, gap: .value, accessory: .text(IconTextState(text: "28", color: .primary, scale: 1.8)), strokeScale: 1)),
             ("absent battery", BatteryStatus(rawPercentage: nil, isPresent: false, isCharging: false,
-                                              isLowPowerMode: false, isConnectedToPower: false), .standard)
+                                              isLowPowerMode: false, isConnectedToPower: false), .standard,
+             placeholderRing)
         ]
-        for (name, status, options) in batteryCases {
-            cases.append(VisualCase(name: name,
-                                    snapshot: makeSnapshot(battery: status),
-                                    configuration: configuration(battery: options)))
+        for (name, status, options, expectedRing) in batteryCases {
+            cases.append(visualCase(
+                name,
+                snapshot: makeSnapshot(battery: status),
+                configuration: configuration(battery: options),
+                expected: scene(ring: expectedRing, center: slash, footer: inactiveFooter),
+                distinctRegion: batteryRegion
+            ))
         }
 
-        let wifiCases: [(String, WiFiStatus, NetworkConnection, ConnectionIconOptions)] = [
-            ("connected full signal", WiFiStatus(state: .connected, rssi: -60), .wifi, .standard),
-            ("connected medium signal", WiFiStatus(state: .connected, rssi: -70), .wifi, .standard),
-            ("connected weak signal", WiFiStatus(state: .connected, rssi: -85), .wifi, .standard),
-            ("connected no signal", WiFiStatus(state: .connected, rssi: nil), .wifi, .standard),
-            ("not associated", WiFiStatus(state: .notAssociated, rssi: nil), .wifi, .standard),
-            ("wifi off", WiFiStatus(state: .off, rssi: nil), .wifi, .standard),
-            ("wifi unavailable", WiFiStatus(state: .unavailable, rssi: nil), .wifi, .standard),
-            ("no internet", WiFiStatus(state: .noInternet, rssi: -45), .wifi, .standard),
-            ("hotspot mark", WiFiStatus(state: .hotspot, rssi: -65), .wifi, .standard),
+        let noInternet = CenterState.symbol(IconSymbolState(source: .symbol(name: "wifi.exclamationmark", variableValue: 1, fallback: nil), color: .primary, scale: 1))
+        let wifiCases: [(String, WiFiStatus, NetworkConnection, ConnectionIconOptions, CenterState)] = [
+            ("connected full signal", WiFiStatus(state: .connected, rssi: -60), .wifi, .standard, symbol("wifi", value: 1)),
+            ("connected medium signal", WiFiStatus(state: .connected, rssi: -70), .wifi, .standard, mediumWiFi),
+            ("connected weak signal", WiFiStatus(state: .connected, rssi: -85), .wifi, .standard, symbol("wifi", value: 0.33)),
+            ("connected no signal", WiFiStatus(state: .connected, rssi: nil), .wifi, .standard, symbol("wifi", value: 0, color: .inactive)),
+            ("not associated", WiFiStatus(state: .notAssociated, rssi: nil), .wifi, .standard, symbol("wifi", value: 0)),
+            ("wifi off", WiFiStatus(state: .off, rssi: nil), .wifi, .standard, slash),
+            ("wifi unavailable", WiFiStatus(state: .unavailable, rssi: nil), .wifi, .standard, slash),
+            ("no internet", WiFiStatus(state: .noInternet, rssi: -45), .wifi, .standard, noInternet),
+            ("hotspot mark", WiFiStatus(state: .hotspot, rssi: -65), .wifi, .standard,
+             symbol("personalhotspot", value: 1)),
             ("hotspot signal", WiFiStatus(state: .hotspot, rssi: -65), .wifi,
-             ConnectionIconOptions(showsWiFiIconForHotspot: true)),
-            ("temporary mark", WiFiStatus(state: .temporary, rssi: -65), .wifi, .standard),
+             ConnectionIconOptions(showsWiFiIconForHotspot: true), mediumWiFi),
+            ("temporary mark", WiFiStatus(state: .temporary, rssi: -65), .wifi, .standard,
+             .symbol(IconSymbolState(source: .primitive(.screenWedge), color: .primary, scale: 1))),
             ("temporary signal", WiFiStatus(state: .temporary, rssi: -65), .wifi,
-             ConnectionIconOptions(showsWiFiIconForTemporaryConnection: true, wifiScale: 1.4)),
-            ("shared mark", WiFiStatus(state: .shared, rssi: -65), .wifi, .standard),
+             ConnectionIconOptions(showsWiFiIconForTemporaryConnection: true, wifiScale: 1.4), symbol("wifi", value: 0.66, scale: 1.4)),
+            ("shared mark", WiFiStatus(state: .shared, rssi: -65), .wifi, .standard,
+             .symbol(IconSymbolState(source: .primitive(.arrowWedge), color: .primary, scale: 1))),
             ("shared signal", WiFiStatus(state: .shared, rssi: -65), .wifi,
-             ConnectionIconOptions(showsWiFiIconForInternetSharing: true, wifiScale: 0.8)),
-            ("ethernet", WiFiStatus(state: .off, rssi: nil), .ethernet, .standard),
+             ConnectionIconOptions(showsWiFiIconForInternetSharing: true, wifiScale: 0.8), symbol("wifi", value: 0.66, scale: 0.8)),
+            ("ethernet", WiFiStatus(state: .off, rssi: nil), .ethernet, .standard,
+             .symbol(IconSymbolState(source: .primitive(.wiredPort), color: .primary, scale: 1))),
             ("ethernet as full wifi", WiFiStatus(state: .off, rssi: nil), .ethernet,
-             ConnectionIconOptions(showsWiFiIconForEthernet: true, wifiScale: 1.3))
+             ConnectionIconOptions(showsWiFiIconForEthernet: true, wifiScale: 1.3), symbol("wifi", value: 1, scale: 1.3))
         ]
-        for (name, wifi, connection, options) in wifiCases {
-            cases.append(VisualCase(name: name,
-                                    snapshot: makeSnapshot(wifi: wifi, connection: connection),
-                                    configuration: configuration(connection: options)))
+        for (name, wifi, connection, options, expectedCenter) in wifiCases {
+            cases.append(visualCase(
+                name,
+                snapshot: makeSnapshot(wifi: wifi, connection: connection),
+                configuration: configuration(connection: options),
+                expected: scene(ring: placeholderRing, center: expectedCenter, footer: inactiveFooter),
+                distinctRegion: name == "connected full signal" ? .zero : centerRegion
+            ))
         }
-        cases.append(VisualCase(
-            name: "battery percentage in center slot",
+        cases.append(visualCase(
+            "battery percentage in center slot",
             snapshot: ordinary,
-            configuration: configuration(connection: ConnectionIconOptions(showsBatteryPercentageInConnectionSlot: true))
+            configuration: configuration(connection: ConnectionIconOptions(showsBatteryPercentageInConnectionSlot: true)),
+            expected: scene(ring: ordinaryRing, center: .text(IconTextState(text: "68", color: .primary, scale: 1))),
+            distinctRegion: centerRegion
         ))
 
-        let volumeCases: [(String, VolumeStatus, VolumeIconOptions, BluetoothAudioIconOptions)] = [
-            ("volume silent dots", VolumeStatus(scalar: 0, isMuted: false, deviceName: "Output"), .standard, .standard),
-            ("volume partial dots", VolumeStatus(scalar: 0.5, isMuted: false, deviceName: "Output"), .standard, .standard),
-            ("volume full dots", VolumeStatus(scalar: 1, isMuted: false, deviceName: "Output"), .standard, .standard),
-            ("volume muted", VolumeStatus(scalar: 0.82, isMuted: true, deviceName: "Output"), .standard, .standard),
-            ("volume unavailable", .placeholder, .standard, .standard),
+        let volumeCenter = slash
+        let volumeCases: [(String, VolumeStatus, VolumeIconOptions, BluetoothAudioIconOptions, FooterState, CenterState)] = [
+            ("volume silent dots", VolumeStatus(scalar: 0, isMuted: false, deviceName: "Output"), .standard, .standard,
+             .dots(DotsState(count: 4, activeCount: 0, color: .primary, strokeScale: 1.25)), volumeCenter),
+            ("volume partial dots", VolumeStatus(scalar: 0.5, isMuted: false, deviceName: "Output"), .standard, .standard,
+             .dots(DotsState(count: 4, activeCount: 2, color: .primary, strokeScale: 1.25)), volumeCenter),
+            ("volume full dots", VolumeStatus(scalar: 1, isMuted: false, deviceName: "Output"), .standard, .standard,
+             .dots(DotsState(count: 4, activeCount: 4, color: .primary, strokeScale: 1.25)), volumeCenter),
+            ("volume muted", VolumeStatus(scalar: 0.82, isMuted: true, deviceName: "Output"), .standard, .standard,
+             .dots(DotsState(count: 4, activeCount: 0, color: .primary, strokeScale: 1.25)), volumeCenter),
+            ("volume unavailable", .placeholder, .standard, .standard,
+             .dots(DotsState(count: 4, activeCount: 0, color: .primary, strokeScale: 1.25)), volumeCenter),
             ("volume arc", VolumeStatus(scalar: 0.63, isMuted: false, deviceName: "Output"),
-             VolumeIconOptions(displayStyle: .arc, ringStrokeScale: RingStrokeStyle.bold.scale), .standard),
+             VolumeIconOptions(displayStyle: .arc, ringStrokeScale: 1.5), .standard,
+             .arc(ArcState(progress: 0.63, color: .primary, strokeScale: 1.5)), volumeCenter),
             ("bold volume dots", VolumeStatus(scalar: 0.5, isMuted: false, deviceName: "Output"),
-             VolumeIconOptions(ringStrokeScale: RingStrokeStyle.bold.scale), .standard),
+             VolumeIconOptions(ringStrokeScale: 1.5), .standard,
+             .dots(DotsState(count: 4, activeCount: 2, color: .primary, strokeScale: 1.5)), volumeCenter),
             ("volume muted arc", VolumeStatus(scalar: 0.63, isMuted: true, deviceName: "Output"),
-             VolumeIconOptions(displayStyle: .arc), .standard),
+             VolumeIconOptions(displayStyle: .arc), .standard,
+             .arc(ArcState(progress: 0, color: .primary, strokeScale: 1.25)), volumeCenter),
             ("Bluetooth tinted volume", VolumeStatus(scalar: 0.75, isMuted: false, deviceName: "Output",
                                                        currentDevice: PresentationFixtures.bluetoothDevice),
-             .standard, BluetoothAudioIconOptions(usesVolumeColor: true)),
+             .standard, BluetoothAudioIconOptions(usesVolumeColor: true),
+             .dots(DotsState(count: 4, activeCount: 3, color: .bluetooth, strokeScale: 1.25)), volumeCenter),
             ("Bluetooth replaced center", VolumeStatus(scalar: 0.75, isMuted: false, deviceName: "Output",
                                                          currentDevice: PresentationFixtures.bluetoothDevice),
-             .standard, BluetoothAudioIconOptions(replacesNetworkIcon: true, usesVolumeColor: true))
+             .standard, BluetoothAudioIconOptions(replacesNetworkIcon: true, usesVolumeColor: true),
+             .dots(DotsState(count: 4, activeCount: 3, color: .bluetooth, strokeScale: 1.25)),
+             .symbol(IconSymbolState(source: .symbol(name: "airpods.pro", variableValue: nil, fallback: "headphones"),
+                                     color: .bluetooth, scale: 1.6)))
         ]
-        for (name, volume, options, bluetooth) in volumeCases {
-            cases.append(VisualCase(name: name,
-                                    snapshot: makeSnapshot(volume: volume),
-                                    configuration: configuration(volume: options, bluetooth: bluetooth)))
+        for (name, volume, options, bluetooth, expectedFooter, expectedCenter) in volumeCases {
+            let wifi = name == "Bluetooth replaced center"
+                ? WiFiStatus(state: .connected, rssi: -60)
+                : WiFiStatus.placeholder
+            cases.append(visualCase(
+                name,
+                snapshot: makeSnapshot(wifi: wifi, volume: volume),
+                configuration: configuration(volume: options, bluetooth: bluetooth),
+                expected: scene(ring: placeholderRing, center: expectedCenter, footer: expectedFooter),
+                distinctRegion: name == "Bluetooth replaced center" ? centerRegion : footerRegion
+            ))
         }
 
         return cases
+    }
+
+    private func ring(
+        progress: Double,
+        color: IconColorRole,
+        gap: RingGapStyle,
+        accessory: RingAccessoryState?,
+        strokeScale: Double = 1.25,
+        effect: RingEffectState? = nil
+    ) -> OuterRingState {
+        OuterRingState(
+            segments: [RingSegmentState(progress: progress, color: color)],
+            gap: gap,
+            accessory: accessory,
+            effect: effect,
+            strokeScale: strokeScale
+        )
+    }
+
+    private func symbol(
+        _ name: String,
+        value: Double,
+        color: IconColorRole = .primary,
+        scale: Double = 1
+    ) -> CenterState {
+        .symbol(IconSymbolState(
+            source: .symbol(name: name, variableValue: value, fallback: nil),
+            color: color,
+            scale: scale
+        ))
     }
 
     private func menuBarPixels(

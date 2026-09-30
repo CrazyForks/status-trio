@@ -5,6 +5,7 @@ import CoreGraphics
 /// Domain fixtures for raster tests that assert independent geometry or color
 /// conventions. Product mapping is still exercised through the canonical mapper;
 /// these helpers contain no selection or drawing rules.
+@MainActor
 func renderMenuBarFixture(
     snapshot: StatusSnapshot,
     size: CGFloat,
@@ -15,18 +16,17 @@ func renderMenuBarFixture(
     connectionOptions: ConnectionIconOptions = .standard,
     volumeOptions: VolumeIconOptions = .standard,
     bluetoothAudioOptions: BluetoothAudioIconOptions = .standard,
-    audioIcon: IconSymbolSource? = nil,
+    inputs: IconPresentationInputs? = nil,
     phase: ChargingEffectPhase? = nil
 ) -> CGImage? {
-    let scene = IconPresentationMapper.scene(
-        inputs: IconPresentationInputs(snapshot: snapshot, audioIcon: audioIcon),
-        configuration: IconPresentationConfiguration(
-            battery: options,
-            connection: connectionOptions,
-            volume: volumeOptions,
-            bluetooth: bluetoothAudioOptions
-        )
+    let configuration = IconPresentationConfiguration(
+        battery: options,
+        connection: connectionOptions,
+        volume: volumeOptions,
+        bluetooth: bluetoothAudioOptions
     )
+    let resolvedInputs = inputs ?? IconPresentationResourceResolver.inputs(snapshot: snapshot)
+    let scene = IconPresentationMapper.scene(inputs: resolvedInputs, configuration: configuration)
     return StatusIconRenderer.render(
         scene: scene,
         environment: StatusIconRenderEnvironment(
@@ -39,6 +39,7 @@ func renderMenuBarFixture(
     )
 }
 
+@MainActor
 func renderMenuBarFixture(
     menuBarStatus: MenuBarStatus,
     size: CGFloat,
@@ -49,7 +50,7 @@ func renderMenuBarFixture(
     connectionOptions: ConnectionIconOptions = .standard,
     volumeOptions: VolumeIconOptions = .standard,
     bluetoothAudioOptions: BluetoothAudioIconOptions = .standard,
-    audioIcon: IconSymbolSource? = nil,
+    inputs: IconPresentationInputs? = nil,
     phase: ChargingEffectPhase? = nil
 ) -> CGImage? {
     renderMenuBarFixture(
@@ -62,11 +63,12 @@ func renderMenuBarFixture(
         connectionOptions: connectionOptions,
         volumeOptions: volumeOptions,
         bluetoothAudioOptions: bluetoothAudioOptions,
-        audioIcon: audioIcon,
+        inputs: inputs,
         phase: phase
     )
 }
 
+@MainActor
 func menuBarFixtureImage(
     menuBarStatus: MenuBarStatus,
     size: CGFloat,
@@ -80,7 +82,7 @@ func menuBarFixtureImage(
 ) -> NSImage {
     guard let image = StatusIconRenderer.image(
         scene: IconPresentationMapper.scene(
-            inputs: IconPresentationInputs(snapshot: snapshotFromMenuBarStatus(menuBarStatus), audioIcon: nil),
+            inputs: IconPresentationResourceResolver.inputs(snapshot: snapshotFromMenuBarStatus(menuBarStatus)),
             configuration: IconPresentationConfiguration(
                 battery: options,
                 connection: connectionOptions,
@@ -98,6 +100,7 @@ func menuBarFixtureImage(
     return image
 }
 
+@MainActor
 func menuBarFixtureImage(
     snapshot: StatusSnapshot,
     size: CGFloat,
@@ -111,7 +114,7 @@ func menuBarFixtureImage(
 ) -> NSImage {
     guard let image = StatusIconRenderer.image(
         scene: IconPresentationMapper.scene(
-            inputs: IconPresentationInputs(snapshot: snapshot, audioIcon: nil),
+            inputs: IconPresentationResourceResolver.inputs(snapshot: snapshot),
             configuration: IconPresentationConfiguration(
                 battery: options,
                 connection: connectionOptions,

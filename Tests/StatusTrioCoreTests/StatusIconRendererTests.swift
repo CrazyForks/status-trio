@@ -1821,7 +1821,7 @@ final class StatusIconRendererTests: XCTestCase {
                 scale: 8,
                 foreground: CGColor(gray: 1, alpha: 1),
                 bluetoothAudioOptions: BluetoothAudioIconOptions(replacesNetworkIcon: true),
-                audioIcon: audioIcon
+                inputs: IconPresentationInputs(snapshot: snapshot, audioIcon: audioIcon)
             ))
         )
     }

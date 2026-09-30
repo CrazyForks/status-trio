@@ -53,6 +53,18 @@ struct MenuBarPreviewBar<TrailingAccessory: View>: View {
     /// needing a reserved trailing inset that its localized width cannot match.
     var trailingAccessory: () -> TrailingAccessory
 
+    var scene: IconSceneState {
+        IconPreviewScene.make(
+            status: status,
+            configuration: IconPresentationConfiguration(
+                battery: batteryOptions,
+                connection: connectionOptions,
+                volume: volumeOptions,
+                bluetooth: bluetoothAudioOptions
+            )
+        )
+    }
+
     init(
         status: MenuBarStatus,
         iconSize: CGFloat = 24,
@@ -90,15 +102,7 @@ struct MenuBarPreviewBar<TrailingAccessory: View>: View {
 
                 ZStack {
                     Image(nsImage: StatusIconRenderer.image(
-                        scene: IconPreviewScene.make(
-                            status: status,
-                            configuration: IconPresentationConfiguration(
-                                battery: batteryOptions,
-                                connection: connectionOptions,
-                                volume: volumeOptions,
-                                bluetooth: bluetoothAudioOptions
-                            )
-                        ),
+                        scene: scene,
                         size: iconSize,
                         scale: NSScreen.main?.backingScaleFactor ?? 2,
                         appearance: NSAppearance(

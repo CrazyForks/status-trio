@@ -70,23 +70,27 @@ struct VolumeIndicatorPreview: View {
     @ObservedObject var store: SettingsStore
     @ObservedObject var statusStore: SystemStatusStore
 
+    var previewScene: IconSceneState {
+        IconPreviewScene.make(
+            status: menuBarPreviewStatus(from: statusStore),
+            configuration: IconPresentationConfiguration(
+                battery: store.batteryIconOptions,
+                connection: store.connectionIconOptions,
+                volume: VolumeIconOptions(
+                    displayStyle: style,
+                    ringStrokeScale: store.ringStrokeStyle.scale
+                ),
+                bluetooth: .standard
+            )
+        )
+    }
+
     var body: some View {
         ZStack {
             MenuBarPreviewBackdrop(isDarkBackground: isDarkBackground)
 
             Image(nsImage: StatusIconRenderer.image(
-                scene: IconPreviewScene.make(
-                    status: menuBarPreviewStatus(from: statusStore),
-                    configuration: IconPresentationConfiguration(
-                        battery: store.batteryIconOptions,
-                        connection: store.connectionIconOptions,
-                        volume: VolumeIconOptions(
-                            displayStyle: style,
-                            ringStrokeScale: store.ringStrokeStyle.scale
-                        ),
-                        bluetooth: store.bluetoothAudioIconOptions
-                    )
-                ),
+                scene: previewScene,
                 size: 28,
                 scale: NSScreen.main?.backingScaleFactor ?? 2,
                 appearance: MenuBarPreviewBackdrop.appearance(isDarkBackground: isDarkBackground)
@@ -255,31 +259,35 @@ struct RingStrokeStylePreview: View {
     @ObservedObject var store: SettingsStore
     @ObservedObject var statusStore: SystemStatusStore
 
+    var previewScene: IconSceneState {
+        IconPreviewScene.make(
+            status: menuBarPreviewStatus(from: statusStore),
+            configuration: IconPresentationConfiguration(
+                battery: BatteryIconOptions(
+                    showsPercentage: store.showsBatteryPercentage,
+                    showsChargingIndicator: store.showsChargingIndicator,
+                    usesStatusColors: store.usesBatteryStatusColors,
+                    criticalThreshold: Int(store.batteryCriticalThreshold.rounded()),
+                    showsPercentageWhenConnected: store.showsPercentageWhenConnected,
+                    textScale: store.batterySymbolScale * BatteryIconOptions.defaultTextScale,
+                    ringStrokeScale: style.scale
+                ),
+                connection: store.connectionIconOptions,
+                volume: VolumeIconOptions(
+                    displayStyle: store.volumeDisplayStyle,
+                    ringStrokeScale: style.scale
+                ),
+                bluetooth: .standard
+            )
+        )
+    }
+
     var body: some View {
         ZStack {
             MenuBarPreviewBackdrop(isDarkBackground: isDarkBackground)
 
             Image(nsImage: StatusIconRenderer.image(
-                scene: IconPreviewScene.make(
-                    status: menuBarPreviewStatus(from: statusStore),
-                    configuration: IconPresentationConfiguration(
-                        battery: BatteryIconOptions(
-                            showsPercentage: store.showsBatteryPercentage,
-                            showsChargingIndicator: store.showsChargingIndicator,
-                            usesStatusColors: store.usesBatteryStatusColors,
-                            criticalThreshold: Int(store.batteryCriticalThreshold.rounded()),
-                            showsPercentageWhenConnected: store.showsPercentageWhenConnected,
-                            textScale: store.batterySymbolScale * BatteryIconOptions.defaultTextScale,
-                            ringStrokeScale: style.scale
-                        ),
-                        connection: store.connectionIconOptions,
-                        volume: VolumeIconOptions(
-                            displayStyle: store.volumeDisplayStyle,
-                            ringStrokeScale: style.scale
-                        ),
-                        bluetooth: store.bluetoothAudioIconOptions
-                    )
-                ),
+                scene: previewScene,
                 size: 28,
                 scale: NSScreen.main?.backingScaleFactor ?? 2,
                 appearance: MenuBarPreviewBackdrop.appearance(isDarkBackground: isDarkBackground)
