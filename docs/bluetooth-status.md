@@ -415,9 +415,14 @@ Each scan listens for five seconds, starts no more than two GATT reads at once,
 and retries automatically no more often than once per minute. Each connection
 attempt is limited to four seconds. Closing the popover or leaving the Bluetooth
 summary stops scanning and cancels active connections. Recent readings are kept
-in memory for up to two minutes, so a panel reopened inside that window draws its
-rows from the last reading and refreshes them behind the panel. Nothing is
-persisted, and switching the setting off drops the readings immediately.
+in memory for up to thirty minutes, so a panel reopened inside that window draws
+its rows from the last reading at once instead of waiting out a scan, a connect
+and a GATT read before the row can exist. That lifetime decides only whether the
+reading may still draw a row: every open scans again, and the level it reads
+replaces the cached one as soon as it lands, so what is on screen is always the
+last answer. A device that leaves keeps its row, with the level it last gave,
+until the reading expires. Nothing is persisted, and switching the setting off
+drops the readings immediately.
 
 The scanner reads the standard Battery Level characteristic (`2A19`) and accepts
 only a single byte in the range `0...100`. Model and manufacturer strings from

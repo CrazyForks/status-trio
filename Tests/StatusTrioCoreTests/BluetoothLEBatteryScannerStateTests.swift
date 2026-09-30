@@ -8,7 +8,7 @@ struct BluetoothLEBatteryScannerStateTests {
         #expect(BluetoothLEBatteryScanPolicy.automaticScanInterval == 60)
         #expect(BluetoothLEBatteryScanPolicy.successfulConnectionCooldown == 60)
         #expect(BluetoothLEBatteryScanPolicy.failedConnectionCooldown == 30)
-        #expect(BluetoothLEBatteryScanPolicy.resultLifetime == 120)
+        #expect(BluetoothLEBatteryScanPolicy.resultLifetime == 1800)
         #expect(BluetoothLEBatteryScanPolicy.maxQueuedCandidates == 8)
         #expect(BluetoothLEBatteryScanPolicy.maxConcurrentConnections == 2)
         #expect(BluetoothLEBatteryScanPolicy.connectionTimeout == .seconds(4))

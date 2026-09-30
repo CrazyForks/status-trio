@@ -6,7 +6,18 @@ struct BluetoothLEBatteryScanPolicy {
     static let automaticScanInterval: TimeInterval = 60
     static let successfulConnectionCooldown: TimeInterval = 60
     static let failedConnectionCooldown: TimeInterval = 30
-    static let resultLifetime: TimeInterval = 120
+    /// How long a reading stays usable, in the scanner's own results and in the
+    /// panel's cache of them behind a closed panel.
+    ///
+    /// It only decides whether the reading may still draw a row: every panel open
+    /// starts a fresh scan, and what it reads replaces the cached level the moment
+    /// it lands. So the number on screen is always the last one read, and this
+    /// governs the other thing — whether a device known a moment ago is drawn at
+    /// once or has to be re-discovered, re-connected and re-read before it can
+    /// appear. Half an hour covers a working session of opening and closing the
+    /// panel; in exchange, a device that leaves the room keeps its row, with the
+    /// level it last answered, until the reading expires.
+    static let resultLifetime: TimeInterval = 1800
     static let maxQueuedCandidates = 8
     static let maxConcurrentConnections = 2
     static let connectionTimeout: Duration = .seconds(4)
