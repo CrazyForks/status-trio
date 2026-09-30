@@ -3,7 +3,8 @@
 @MainActor
 func makeTestIconPresentation(
     store: SystemStatusStore,
-    settings: SettingsStore
+    settings: SettingsStore,
+    snapshotScheduler: any IconPresentationScheduling = TestTaskIconPresentationScheduler()
 ) -> IconPresentationViewModel {
     let appearance = StatusIconAppearance(settings: settings)
     return IconPresentationViewModel(
@@ -20,8 +21,55 @@ func makeTestIconPresentation(
         ),
         snapshots: store.$snapshot.eraseToAnyPublisher(),
         preferences: settings.iconPresentationPublisher,
-        resolveInputs: { IconPresentationResourceResolver.inputs(snapshot: $0) }
+        resolveInputs: { IconPresentationResourceResolver.inputs(snapshot: $0) },
+        snapshotScheduler: snapshotScheduler
     )
+}
+
+@MainActor
+final class TestTaskIconPresentationScheduler: IconPresentationScheduling {
+    private var task: Task<Void, Never>?
+
+    func schedule(after delay: Duration, action: @escaping @MainActor () -> Void) {
+        cancel()
+        task = Task { @MainActor [weak self] in
+            do {
+                try await Task.sleep(for: delay)
+            } catch {
+                return
+            }
+            guard let self, !Task.isCancelled else { return }
+            self.task = nil
+            action()
+        }
+    }
+
+    func cancel() {
+        task?.cancel()
+        task = nil
+    }
+}
+
+@MainActor
+final class ManualIconPresentationScheduler: IconPresentationScheduling {
+    private(set) var scheduledDelays: [Duration] = []
+    private var action: (@MainActor () -> Void)?
+    var hasPendingAction: Bool { action != nil }
+
+    func schedule(after delay: Duration, action: @escaping @MainActor () -> Void) {
+        scheduledDelays.append(delay)
+        self.action = action
+    }
+
+    func cancel() {
+        action = nil
+    }
+
+    func runScheduled() {
+        let scheduledAction = action
+        action = nil
+        scheduledAction?()
+    }
 }
 
 @MainActor

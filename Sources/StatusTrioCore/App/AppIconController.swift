@@ -117,6 +117,14 @@ final class AppIconController {
         clearDockIcon()
     }
 
+    func refreshCurrentPresentation() {
+        renderLatestDockIcon()
+    }
+
+    func flushPendingPresentationForTesting() {
+        renderCoalescer.flushPending()
+    }
+
     private func dockTileVisibilityChanged() {
         guard isDockTileVisible else {
             clearDockIcon()

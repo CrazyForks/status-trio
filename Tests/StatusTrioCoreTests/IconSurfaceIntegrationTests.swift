@@ -35,7 +35,11 @@ struct IconSurfaceIntegrationTests {
     }
 
     @Test func hiddenMenuBarRestoresWithLatestSceneAndFailedRasterRetries() async throws {
-        let harness = try AppIconControllerHarness(initialPlacement: .both)
+        let scheduler = ManualIconPresentationScheduler()
+        let harness = try AppIconControllerHarness(
+            initialPlacement: .both,
+            snapshotScheduler: scheduler
+        )
         defer { harness.cleanUp() }
         let rasterSpy = MenuBarRasterSpy()
         let menuBar = StatusBarController(
@@ -45,13 +49,16 @@ struct IconSurfaceIntegrationTests {
             localization: Localization(preferredLanguages: ["en"]),
             openSettings: {},
             quitAction: {},
-            renderMenuBarIcon: { scene, _, _, _, _ in
-                rasterSpy.render(scene)
+            renderMenuBarIcon: { scene, size, _, _, _ in
+                rasterSpy.render(scene, size: size)
             }
         )
         defer { menuBar.setVisible(false) }
         harness.controller.start()
         try await waitUntil { rasterSpy.calls > 0 }
+        menuBar.flushPendingPresentationForTesting()
+        harness.controller.flushPendingPresentationForTesting()
+        let settledVisibleCalls = rasterSpy.calls
 
         menuBar.setVisible(false)
         harness.settings.iconSize = 32
@@ -60,17 +67,127 @@ struct IconSurfaceIntegrationTests {
             harness.iconPresentation.output.menuBarSize == 32
                 && harness.iconPresentation.output.scene.outerRing?.strokeScale == RingStrokeStyle.bold.scale
         }
-        let hiddenCallCount = rasterSpy.calls
-        #expect(hiddenCallCount > 0)
+        harness.publishWiFi(WiFiStatus(state: .connected, rssi: -20))
+        try await waitUntil { harness.store.snapshot.wifi.rssi == -20 }
+        #expect(scheduler.hasPendingAction)
+        scheduler.runScheduled()
+        menuBar.flushPendingPresentationForTesting()
+        harness.controller.flushPendingPresentationForTesting()
+        #expect(rasterSpy.calls == settledVisibleCalls)
 
         rasterSpy.allowSuccess = true
         menuBar.setVisible(true)
-        try await waitUntil { rasterSpy.calls > hiddenCallCount }
+        try await waitUntil { rasterSpy.calls > settledVisibleCalls }
+        menuBar.flushPendingPresentationForTesting()
         try await waitUntil {
             harness.log.lastScene?.outerRing?.strokeScale == RingStrokeStyle.bold.scale
         }
-        #expect(rasterSpy.scenes.last?.outerRing?.strokeScale == RingStrokeStyle.bold.scale)
+        #expect(rasterSpy.scenes.last == harness.iconPresentation.output.scene)
+        #expect(rasterSpy.sizes.last == 32)
         #expect(harness.log.lastScene?.outerRing?.strokeScale == RingStrokeStyle.bold.scale)
+    }
+
+    @Test func bothSurfacesKeepLastSuccessAndRetryFailedKeyWithoutVisibilityReset() async throws {
+        let harness = try AppIconControllerHarness(initialPlacement: .both)
+        defer { harness.cleanUp() }
+        let rasterSpy = MenuBarRasterSpy()
+        rasterSpy.allowSuccess = true
+        let menuBar = StatusBarController(
+            store: harness.store,
+            settings: harness.settings,
+            iconPresentation: harness.iconPresentation,
+            localization: Localization(preferredLanguages: ["en"]),
+            openSettings: {},
+            quitAction: {},
+            renderMenuBarIcon: { scene, size, _, _, _ in rasterSpy.render(scene, size: size) }
+        )
+        defer { menuBar.setVisible(false) }
+        harness.controller.start()
+        try await waitUntil {
+            rasterSpy.successfulImage != nil && harness.application.applicationIconImage != nil
+                && rasterSpy.scenes.last == harness.iconPresentation.output.scene
+                && harness.log.lastScene == harness.iconPresentation.output.scene
+        }
+        menuBar.flushPendingPresentationForTesting()
+        harness.controller.flushPendingPresentationForTesting()
+        let sceneA = harness.iconPresentation.output.scene
+        let imageA = try #require(rasterSpy.successfulImage)
+        let dockImageA = try #require(harness.application.applicationIconImage)
+        let menuCallsBeforeB = rasterSpy.calls
+        let dockCallsBeforeB = harness.log.renderCount
+
+        rasterSpy.allowSuccess = false
+        harness.log.failDockRenders = true
+        harness.settings.ringStrokeStyle = .bold
+        try await waitUntil {
+            harness.iconPresentation.output.scene != sceneA
+                && rasterSpy.scenes.last == harness.iconPresentation.output.scene
+                && harness.log.lastScene == harness.iconPresentation.output.scene
+        }
+        menuBar.flushPendingPresentationForTesting()
+        harness.controller.flushPendingPresentationForTesting()
+        let sceneB = harness.iconPresentation.output.scene
+        #expect(rasterSpy.calls > menuCallsBeforeB)
+        #expect(harness.log.renderCount > dockCallsBeforeB)
+        #expect(menuBar.presentedImageForTesting === imageA)
+        #expect(harness.application.applicationIconImage === dockImageA)
+
+        let menuCallsAfterB = rasterSpy.calls
+        let dockCallsAfterB = harness.log.renderCount
+        menuBar.refreshCurrentPresentation()
+        harness.controller.refreshCurrentPresentation()
+        #expect(rasterSpy.calls == menuCallsAfterB + 1)
+        #expect(harness.log.renderCount == dockCallsAfterB + 1)
+        #expect(rasterSpy.scenes.last == sceneB)
+        #expect(harness.log.lastScene == sceneB)
+        #expect(menuBar.presentedImageForTesting === imageA)
+        #expect(harness.application.applicationIconImage === dockImageA)
+
+        harness.log.failDockRenders = false
+        rasterSpy.allowSuccess = true
+        harness.settings.ringStrokeStyle = .regular
+        try await waitUntil {
+            harness.iconPresentation.output.scene == sceneA
+                && menuBar.presentedImageForTesting === imageA
+                && harness.application.applicationIconImage === dockImageA
+        }
+        menuBar.flushPendingPresentationForTesting()
+        harness.controller.flushPendingPresentationForTesting()
+        #expect(rasterSpy.calls == menuCallsAfterB + 1)
+        #expect(menuBar.presentedImageForTesting === imageA)
+        #expect(harness.application.applicationIconImage === dockImageA)
+    }
+
+    @Test func latestSceneIsUsedAfterBackgroundPlacementAndControllerRestart() async throws {
+        let harness = try AppIconControllerHarness(initialPlacement: .both)
+        defer { harness.cleanUp() }
+        harness.controller.start()
+        try await waitUntil { harness.log.lastScene == harness.iconPresentation.output.scene }
+
+        harness.settings.ringStrokeStyle = .bold
+        try await waitUntil { harness.iconPresentation.output.scene.outerRing?.strokeScale == RingStrokeStyle.bold.scale }
+        let sceneAfterSettings = harness.iconPresentation.output.scene
+
+        harness.settings.dockIconBackgroundPreference = .dark
+        try await waitUntil {
+            harness.log.dockRenderKeys.last?.scene == sceneAfterSettings
+                && harness.log.dockRenderKeys.last?.backgroundStyle == .dark
+        }
+
+        harness.settings.appIconPlacement = .dock
+        try await waitUntil { harness.log.events.contains("menu:false") }
+        #expect(harness.log.dockRenderKeys.last?.scene == sceneAfterSettings)
+        #expect(harness.log.dockRenderKeys.last?.backgroundStyle == .dark)
+
+        harness.controller.stop()
+        harness.settings.ringStrokeStyle = .regular
+        let sceneWhileStopped = harness.iconPresentation.output.scene
+        #expect(sceneWhileStopped != sceneAfterSettings)
+        harness.controller.start()
+        try await waitUntil {
+            harness.log.dockRenderKeys.last?.scene == sceneWhileStopped
+                && harness.log.dockRenderKeys.last?.backgroundStyle == .dark
+        }
     }
 
     @Test func mappedSettingsStayInParityAcrossMenuBarAndDock() async throws {
@@ -181,6 +298,7 @@ struct IconSurfaceIntegrationTests {
             isLowPowerMode: false,
             isConnectedToPower: true
         ))
+        try await waitUntil { harness.store.snapshot.battery.isCharging }
         try await waitUntil {
             harness.iconPresentation.output.scene.outerRing?.effect?.pulsesAccessory == true
                 && menuBarScenes.last == harness.iconPresentation.output.scene
@@ -209,10 +327,12 @@ struct IconSurfaceIntegrationTests {
             ssid: "Office",
             nameAccess: .authorized
         )
+        let scheduler = ManualIconPresentationScheduler()
         let harness = try AppIconControllerHarness(
             initialPlacement: .both,
             initialWiFi: initialWiFi,
-            initialVolume: VolumeStatus(scalar: 0.60, isMuted: false, deviceName: "Speakers")
+            initialVolume: VolumeStatus(scalar: 0.60, isMuted: false, deviceName: "Speakers"),
+            snapshotScheduler: scheduler
         )
         defer { harness.cleanUp() }
         harness.settings.volumeDisplayStyle = .dots
@@ -286,6 +406,10 @@ struct IconSurfaceIntegrationTests {
         try await waitUntil { spokenValues.last != exactVolumeSpokenValue }
         let localizedSpokenValue = try #require(spokenValues.last)
         #expect(localizedSpokenValue != exactVolumeSpokenValue)
+
+        scheduler.runScheduled()
+        menuBar.flushPendingPresentationForTesting()
+        harness.controller.flushPendingPresentationForTesting()
 
         #expect(harness.iconPresentation.output.scene == initialScene)
         var precedingKey = initialMenuBarKey
@@ -388,11 +512,16 @@ private final class MenuBarRasterSpy {
     var allowSuccess = false
     private(set) var calls = 0
     private(set) var scenes: [IconSceneState] = []
+    private(set) var sizes: [Double] = []
+    private(set) var successfulImage: NSImage?
 
-    func render(_ scene: IconSceneState) -> NSImage? {
+    func render(_ scene: IconSceneState, size: Double = 28) -> NSImage? {
         calls += 1
         scenes.append(scene)
+        sizes.append(size)
         guard allowSuccess else { return nil }
-        return NSImage(size: NSSize(width: 32, height: 32))
+        let image = NSImage(size: NSSize(width: 32, height: 32))
+        successfulImage = image
+        return image
     }
 }

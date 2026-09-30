@@ -53,6 +53,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     private let renderCoalescer = IconRenderCoalescer()
     var cachedChargingFrameCount: Int { chargingFrameCache.frameCount }
     var hasLayerBackedAnimation: Bool { animationLayerPresenter.isInstalled }
+    var presentedImageForTesting: NSImage? { statusItem.button?.image }
     private var isStatusItemVisible: Bool
     private var accessibilityKey: StatusBarAccessibilityKey?
     private var latestIconOutput: IconPresentationOutput
@@ -176,6 +177,14 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             store.setPopoverVisible(false)
             statusItem.isVisible = false
         }
+    }
+
+    func refreshCurrentPresentation() {
+        renderLatestScene()
+    }
+
+    func flushPendingPresentationForTesting() {
+        renderCoalescer.flushPending()
     }
 
     private func configureButton() {
@@ -487,9 +496,6 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     private func render(scene: IconSceneState, iconSize: Double, phase: ChargingEffectPhase?) {
         guard isStatusItemVisible, let button = statusItem.button else { return }
 
-        if phase == nil {
-            clearAnimationPresentation()
-        }
         let backingScale =
             button.window?.backingScaleFactor
             ?? NSScreen.main?.backingScaleFactor
@@ -501,11 +507,6 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             appearanceName: button.effectiveAppearance.name.rawValue,
             phase: phase
         )
-        if let phase, phase.kind == .steady,
-            chargingFrameCache.needsFrames(for: phase, key: key, backingScale: backingScale)
-        {
-            animationLayerPresenter.clear()
-        }
         guard renderCache.needsRender(key) else { return }
 
         let renderedImage: NSImage?
@@ -533,7 +534,6 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             )
             renderedImage = cachedImage
         } else {
-            animationLayerPresenter.clear()
             renderedImage = renderMenuBarIcon(
                 scene,
                 iconSize,
@@ -541,9 +541,15 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
                 button.effectiveAppearance,
                 phase
             )
-            button.image = renderedImage
+            if let renderedImage {
+                animationLayerPresenter.clear()
+                button.image = renderedImage
+            }
         }
-        if renderedImage != nil { renderCache.recordSuccessfulRender(key) }
+        if renderedImage != nil {
+            if phase == nil { clearAnimationPresentation() }
+            renderCache.recordSuccessfulRender(key)
+        }
     }
 
     private func clearAnimationPresentation() {

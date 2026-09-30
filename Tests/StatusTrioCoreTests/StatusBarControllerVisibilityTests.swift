@@ -44,6 +44,7 @@ struct StatusBarControllerVisibilityTests {
         let iconPresentation = makeTestIconPresentation(store: store, settings: settings)
         iconPresentation.start()
         defer { iconPresentation.stop() }
+        let rasterFailure = RasterFailureSwitch()
         let controller = StatusBarController(
             store: store,
             settings: settings,
@@ -51,7 +52,17 @@ struct StatusBarControllerVisibilityTests {
             localization: Localization(defaults: defaults, preferredLanguages: ["en"]),
             openSettings: {},
             quitAction: {},
-            chargingEffectClock: clock
+            chargingEffectClock: clock,
+            renderMenuBarIcon: { scene, size, scale, appearance, phase in
+                guard !rasterFailure.isEnabled else { return nil }
+                return StatusIconRenderer.image(
+                    scene: scene,
+                    size: CGFloat(size),
+                    scale: scale,
+                    appearance: appearance,
+                    phase: phase
+                )
+            }
         )
         defer { controller.setVisible(false) }
         await Task.yield()
@@ -62,9 +73,16 @@ struct StatusBarControllerVisibilityTests {
         #expect(controller.hasLayerBackedAnimation)
 
         settings.setChargingEffectTestEnabled(false)
+        rasterFailure.isEnabled = true
         clock.update(battery: battery, enabled: true, reduceMotion: false, displayAsleep: false)
         #expect(!clock.isRunning)
+        #expect(controller.cachedChargingFrameCount == 36)
+        #expect(controller.hasLayerBackedAnimation)
+
+        rasterFailure.isEnabled = false
+        controller.refreshCurrentPresentation()
         #expect(controller.cachedChargingFrameCount == 0)
+        #expect(controller.hasLayerBackedAnimation == false)
     }
 
     @Test func hiddenStatusItemReleasesAnimationResourcesWhenChargingStops() async throws {
@@ -140,6 +158,11 @@ struct StatusBarControllerVisibilityTests {
         #expect(controller.cachedChargingFrameCount == 0)
         #expect(controller.hasLayerBackedAnimation == false)
     }
+}
+
+@MainActor
+private final class RasterFailureSwitch {
+    var isEnabled = false
 }
 
 @MainActor

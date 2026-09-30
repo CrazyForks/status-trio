@@ -86,20 +86,18 @@ struct ChargingEffectFrameCacheTests {
             volume: MenuBarVolumeStatus(scalar: 0.4, isMuted: false, deviceName: "Speakers")
         )
         let phase = steadyPhase(step: 7)
-        let foreground = CGColor(gray: 1, alpha: 1)
+        let appearance = try #require(NSAppearance(named: .aqua))
         let key = makeKey(phase: phase)
+        let scene = makeIconPresentationScene(status: status)
 
         let renderFrame: (ChargingEffectPhase) -> NSImage? = { framePhase in
-            guard let cgImage = StatusIconRenderer.render(
-                menuBarStatus: status,
+            StatusIconRenderer.preRenderedMenuBarImage(
+                scene: scene,
                 size: 22,
                 scale: 2,
-                foreground: foreground,
+                appearance: appearance,
                 phase: framePhase
-            ) else {
-                return nil
-            }
-            return NSImage(cgImage: cgImage, size: NSSize(width: 22, height: 22))
+            )
         }
         let cachedImage = try #require(cache.image(
             for: phase,
@@ -107,12 +105,17 @@ struct ChargingEffectFrameCacheTests {
             backingScale: 2,
             renderFrame: renderFrame
         ))
-        let directImage = try #require(StatusIconRenderer.render(
-            menuBarStatus: status,
+        let directImage = try #require(StatusIconRenderer.image(
+            scene: scene,
             size: 22,
             scale: 2,
-            foreground: foreground,
+            appearance: appearance,
             phase: phase
+        ))
+        let directCGImage = try #require(directImage.cgImage(
+            forProposedRect: nil,
+            context: nil,
+            hints: nil
         ))
         let cachedCGImage = try #require(cachedImage.cgImage(
             forProposedRect: nil,
@@ -121,7 +124,7 @@ struct ChargingEffectFrameCacheTests {
         ))
 
         let cachedPixels = try PixelBuffer(image: cachedCGImage)
-        let directPixels = try PixelBuffer(image: directImage)
+        let directPixels = try PixelBuffer(image: directCGImage)
         #expect(cachedPixels.bytes == directPixels.bytes)
     }
 
@@ -149,8 +152,9 @@ struct ChargingEffectFrameCacheTests {
                 ?? criticalColor
         }
 
+        let scene = makeIconPresentationScene(status: status)
         let preRendered = try #require(StatusIconRenderer.preRenderedMenuBarImage(
-            menuBarStatus: status,
+            scene: scene,
             size: 22,
             scale: 2,
             appearance: appearance,
@@ -161,12 +165,15 @@ struct ChargingEffectFrameCacheTests {
             context: nil,
             hints: nil
         ))
-        let directCGImage = try #require(StatusIconRenderer.render(
-            menuBarStatus: status,
+        let environment = StatusIconRenderEnvironment(
             size: 22,
             scale: 2,
             foreground: foreground,
             criticalColor: criticalColor,
+        )
+        let directCGImage = try #require(StatusIconRenderer.render(
+            scene: scene,
+            environment: environment,
             phase: phase
         ))
 

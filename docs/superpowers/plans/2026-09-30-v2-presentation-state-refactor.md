@@ -325,25 +325,9 @@ model.stop()
 
 `initialSettings` 在测试内构造为 `.standard` configuration、28 size、false testMode，不能引用测试外隐含值。
 
-- [ ] Run `swift test --filter IconPresentationViewModelTests`；预期缺失接口失败。实现 init／start／stop、CombineLatest 与完整输出去重：
+- [ ] Run `swift test --filter IconPresentationViewModelTests`；预期缺失接口失败。实现 init／start／stop 与完整输出去重。分别订阅 snapshots／preferences，缓存最新**已投递**值；领域更新用可注入 main-actor scheduler 做 0.5 秒 trailing debounce，设置更新立即按最新 raw snapshot 解析。init 立即生成 output；start 幂等，stop 取消订阅及待执行 debounce，restart 从当前输入刷新。
 
-```swift
-snapshots.combineLatest(preferences)
-    .map { snapshot, settings in
-        let scene = IconPresentationMapper.scene(
-            inputs: resolveInputs(snapshot), configuration: settings.configuration)
-        let testScene = settings.testsChargingEffect ? IconPresentationMapper.scene(
-            inputs: resolveInputs(ChargingEffectTestMode.snapshot(snapshot, enabled: true)),
-            configuration: settings.configuration) : nil
-        return IconPresentationOutput(scene: scene, menuBarSize: settings.menuBarSize,
-            menuBarTestScene: testScene)
-    }
-    .removeDuplicates()
-    .sink { [weak self] next in
-        guard let self, self.output != next else { return }
-        self.output = next
-    }
-```
+每次解析 canonical scene 使用真实 snapshot；仅在 testsChargingEffect 开启时，同一个 Mapper／configuration 另生成 menuBarTestScene。发布前比较完整 output，避免重复发布。不要在 controller 内重做领域映射。用控制调度器测试领域 burst 只在 500 ms settled 边界输出，设置更改仍快速生效。
 
 `ChargingEffectTestMode.snapshot(_:enabled:)` 是本任务在现有 `UI/Icon/ChargingEffectTestMode.swift` 添加的便捷投影，使用已存在的 `battery(_:enabled:)` 和 `StatusSnapshot.replacingBattery`；不写回 store。canonical scene 始终来自真实 snapshot，测试投影仅进入可选 menuBarTestScene；Dock 不消费测试投影。迁入 Presentation 前确认旧测试模式 API 的其他消费者。
 

@@ -1,6 +1,36 @@
 import Combine
 import Foundation
 
+@MainActor
+protocol IconPresentationScheduling: AnyObject {
+    func schedule(after delay: Duration, action: @escaping @MainActor () -> Void)
+    func cancel()
+}
+
+@MainActor
+private final class TaskIconPresentationScheduler: IconPresentationScheduling {
+    private var task: Task<Void, Never>?
+
+    func schedule(after delay: Duration, action: @escaping @MainActor () -> Void) {
+        cancel()
+        task = Task { @MainActor [weak self] in
+            do {
+                try await Task.sleep(for: delay)
+            } catch {
+                return
+            }
+            guard let self, !Task.isCancelled else { return }
+            self.task = nil
+            action()
+        }
+    }
+
+    func cancel() {
+        task?.cancel()
+        task = nil
+    }
+}
+
 struct IconPresentationSettings: Equatable, Sendable {
     let configuration: IconPresentationConfiguration
     let menuBarSize: Double
@@ -15,46 +45,110 @@ struct IconPresentationOutput: Equatable, Sendable {
 
 @MainActor
 final class IconPresentationViewModel: ObservableObject {
+    static let snapshotDebounceInterval: Duration = .milliseconds(500)
+
     @Published private(set) var output: IconPresentationOutput
 
     private let snapshots: AnyPublisher<StatusSnapshot, Never>
     private let preferences: AnyPublisher<IconPresentationSettings, Never>
     private let resolveInputs: @MainActor (StatusSnapshot) -> IconPresentationInputs
-    private var subscription: AnyCancellable?
+    private let snapshotScheduler: any IconPresentationScheduling
+    private var snapshotSubscription: AnyCancellable?
+    private var preferencesSubscription: AnyCancellable?
+    private var latestSnapshot: StatusSnapshot
+    private var latestSettings: IconPresentationSettings
+    private var receivedSnapshotForStart = false
+    private var receivedSettingsForStart = false
+    private var synchronizedStart = false
 
     init(
         snapshot: StatusSnapshot,
         settings: IconPresentationSettings,
         snapshots: AnyPublisher<StatusSnapshot, Never>,
         preferences: AnyPublisher<IconPresentationSettings, Never>,
-        resolveInputs: @escaping @MainActor (StatusSnapshot) -> IconPresentationInputs
+        resolveInputs: @escaping @MainActor (StatusSnapshot) -> IconPresentationInputs,
+        snapshotScheduler: any IconPresentationScheduling = TaskIconPresentationScheduler()
     ) {
         self.snapshots = snapshots
         self.preferences = preferences
         self.resolveInputs = resolveInputs
+        self.snapshotScheduler = snapshotScheduler
+        self.latestSnapshot = snapshot
+        self.latestSettings = settings
         self.output = Self.output(snapshot: snapshot, settings: settings, resolveInputs: resolveInputs)
     }
 
     func start() {
-        guard subscription == nil else { return }
+        guard snapshotSubscription == nil, preferencesSubscription == nil else { return }
+        receivedSnapshotForStart = false
+        receivedSettingsForStart = false
+        synchronizedStart = false
 
-        subscription = snapshots
-            .combineLatest(preferences)
-            .map { [resolveInputs] snapshot, settings in
-                Self.output(snapshot: snapshot, settings: settings, resolveInputs: resolveInputs)
+        snapshotSubscription = snapshots.sink { [weak self] deliveredSnapshot in
+            MainActor.assumeIsolated {
+                self?.receive(deliveredSnapshot)
             }
-            .removeDuplicates()
-            .sink { [weak self] next in
-                MainActor.assumeIsolated {
-                    guard let self, self.output != next else { return }
-                    self.output = next
-                }
+        }
+        preferencesSubscription = preferences.sink { [weak self] deliveredSettings in
+            MainActor.assumeIsolated {
+                self?.receive(deliveredSettings)
             }
+        }
     }
 
     func stop() {
-        subscription?.cancel()
-        subscription = nil
+        snapshotScheduler.cancel()
+        snapshotSubscription?.cancel()
+        preferencesSubscription?.cancel()
+        snapshotSubscription = nil
+        preferencesSubscription = nil
+        receivedSnapshotForStart = false
+        receivedSettingsForStart = false
+        synchronizedStart = false
+    }
+
+    private func receive(_ snapshot: StatusSnapshot) {
+        latestSnapshot = snapshot
+        if !receivedSnapshotForStart {
+            receivedSnapshotForStart = true
+            publishWhenStartInputsAreReady()
+            return
+        }
+        guard synchronizedStart else { return }
+
+        snapshotScheduler.schedule(after: Self.snapshotDebounceInterval) { [weak self] in
+            self?.publishLatestOutput()
+        }
+    }
+
+    private func receive(_ settings: IconPresentationSettings) {
+        latestSettings = settings
+        if !receivedSettingsForStart {
+            receivedSettingsForStart = true
+            publishWhenStartInputsAreReady()
+            return
+        }
+        guard synchronizedStart else { return }
+
+        snapshotScheduler.cancel()
+        publishLatestOutput()
+    }
+
+    private func publishWhenStartInputsAreReady() {
+        guard receivedSnapshotForStart, receivedSettingsForStart else { return }
+        synchronizedStart = true
+        snapshotScheduler.cancel()
+        publishLatestOutput()
+    }
+
+    private func publishLatestOutput() {
+        let next = Self.output(
+            snapshot: latestSnapshot,
+            settings: latestSettings,
+            resolveInputs: resolveInputs
+        )
+        guard output != next else { return }
+        output = next
     }
 
     private static func output(

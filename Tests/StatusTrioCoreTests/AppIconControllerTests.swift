@@ -471,7 +471,8 @@ final class AppIconControllerHarness {
         initialShowsChargingEffect: Bool = true,
         initialWiFi: WiFiStatus = .placeholder,
         initialVolume: VolumeStatus = .placeholder,
-        initialReplacesNetworkIcon: Bool = false
+        initialReplacesNetworkIcon: Bool = false,
+        snapshotScheduler: any IconPresentationScheduling = TestTaskIconPresentationScheduler()
     ) throws {
         suiteName = "StatusTrioCoreTests.AppIconController.\(UUID().uuidString)"
         guard let defaults = UserDefaults(suiteName: suiteName) else {
@@ -507,7 +508,11 @@ final class AppIconControllerHarness {
             )
         )
         self.store = store
-        let iconPresentation = makeTestIconPresentation(store: store, settings: settings)
+        let iconPresentation = makeTestIconPresentation(
+            store: store,
+            settings: settings,
+            snapshotScheduler: snapshotScheduler
+        )
         iconPresentation.start()
         self.iconPresentation = iconPresentation
 
@@ -535,6 +540,7 @@ final class AppIconControllerHarness {
                     backgroundStyle: backgroundStyle,
                     pixelLength: pixelLength
                 ))
+                guard !log.failDockRenders else { return nil }
                 return NSImage(size: NSSize(width: 512, height: 512))
             },
             theme: systemTheme,
@@ -585,6 +591,7 @@ final class AppIconEventLog {
     var backgroundStyles: [DockIconBackgroundStyle] = []
     var dockRenderKeys: [DockRenderSurfaceKey] = []
     var scenes: [IconSceneState] = []
+    var failDockRenders = false
     var lastScene: IconSceneState? { scenes.last }
     var lastCenterScale: Double? {
         guard case let .symbol(symbol) = lastScene?.center else { return nil }

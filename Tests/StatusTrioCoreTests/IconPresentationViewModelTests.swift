@@ -13,12 +13,14 @@ final class IconPresentationViewModelTests: XCTestCase {
             testsChargingEffect: false
         )
         let preferences = CurrentValueSubject<IconPresentationSettings, Never>(initialSettings)
+        let scheduler = ManualIconPresentationScheduler()
         let model = IconPresentationViewModel(
             snapshot: snapshots.value,
             settings: preferences.value,
             snapshots: snapshots.eraseToAnyPublisher(),
             preferences: preferences.eraseToAnyPublisher(),
-            resolveInputs: { IconPresentationInputs(snapshot: $0, audioIcon: nil) }
+            resolveInputs: { IconPresentationInputs(snapshot: $0, audioIcon: nil) },
+            snapshotScheduler: scheduler
         )
 
         var delivered: [IconPresentationOutput] = []
@@ -26,16 +28,93 @@ final class IconPresentationViewModelTests: XCTestCase {
         XCTAssertEqual(delivered, [model.output])
 
         model.start()
-        snapshots.send(PresentationFixtures.snapshot(rssi: -62, scalar: 0.74))
+        snapshots.send(PresentationFixtures.snapshot(rssi: -80, scalar: 0.74))
 
         XCTAssertEqual(delivered.count, 1)
-        snapshots.send(PresentationFixtures.snapshot(rssi: -80, scalar: 0.1))
+        XCTAssertEqual(model.output.scene, delivered.first?.scene)
+        scheduler.runScheduled()
+        XCTAssertEqual(delivered.count, 2)
+        snapshots.send(PresentationFixtures.snapshot(rssi: -40, scalar: 0.1))
 
         XCTAssertEqual(delivered.count, 2)
+        scheduler.runScheduled()
+        XCTAssertEqual(delivered.count, 3)
         XCTAssertEqual(delivered.last?.menuBarSize, 28)
         XCTAssertNotEqual(delivered.last?.scene, delivered.first?.scene)
         subscription.cancel()
         model.stop()
+    }
+
+    func testDomainBurstDebouncesButSettingsMapImmediatelyToLatestSnapshot() {
+        let initial = PresentationFixtures.snapshot(rssi: -40, scalar: 0.1)
+        let snapshots = CurrentValueSubject<StatusSnapshot, Never>(initial)
+        let initialSettings = IconPresentationSettings(configuration: .standard, menuBarSize: 28, testsChargingEffect: false)
+        let preferences = CurrentValueSubject<IconPresentationSettings, Never>(initialSettings)
+        let scheduler = ManualIconPresentationScheduler()
+        let model = IconPresentationViewModel(
+            snapshot: initial,
+            settings: initialSettings,
+            snapshots: snapshots.eraseToAnyPublisher(),
+            preferences: preferences.eraseToAnyPublisher(),
+            resolveInputs: { IconPresentationInputs(snapshot: $0, audioIcon: nil) },
+            snapshotScheduler: scheduler
+        )
+        var delivered: [IconPresentationOutput] = []
+        let subscription = model.$output.dropFirst().sink { delivered.append($0) }
+        model.start()
+
+        let first = PresentationFixtures.snapshot(rssi: -61, scalar: 0.2)
+        let settled = PresentationFixtures.snapshot(rssi: -79, scalar: 0.8)
+        snapshots.send(first)
+        snapshots.send(settled)
+        XCTAssertEqual(delivered.count, 0, "Domain output waits for the 500 ms quiet period.")
+        XCTAssertEqual(scheduler.scheduledDelays, [.milliseconds(500), .milliseconds(500)])
+
+        let fastSetting = IconPresentationSettings(
+            configuration: IconPresentationConfiguration(
+                battery: BatteryIconOptions(showsPercentage: false),
+                connection: .standard,
+                volume: .standard,
+                bluetooth: .standard
+            ),
+            menuBarSize: 30,
+            testsChargingEffect: false
+        )
+        preferences.send(fastSetting)
+        XCTAssertEqual(delivered.last, expectedOutput(snapshot: settled, settings: fastSetting))
+        XCTAssertEqual(delivered.count, 1, "A settings change maps immediately using the latest raw snapshot.")
+
+        scheduler.runScheduled()
+        XCTAssertEqual(delivered.count, 1, "The pending domain map deduplicates after settings already mapped it.")
+        subscription.cancel()
+        model.stop()
+    }
+
+    func testStopCancelsPendingDomainDebounce() {
+        let initial = PresentationFixtures.snapshot(rssi: -40)
+        let snapshots = CurrentValueSubject<StatusSnapshot, Never>(initial)
+        let settings = IconPresentationSettings(configuration: .standard, menuBarSize: 28, testsChargingEffect: false)
+        let preferences = CurrentValueSubject<IconPresentationSettings, Never>(settings)
+        let scheduler = ManualIconPresentationScheduler()
+        let model = IconPresentationViewModel(
+            snapshot: initial,
+            settings: settings,
+            snapshots: snapshots.eraseToAnyPublisher(),
+            preferences: preferences.eraseToAnyPublisher(),
+            resolveInputs: { IconPresentationInputs(snapshot: $0, audioIcon: nil) },
+            snapshotScheduler: scheduler
+        )
+        var delivered: [IconPresentationOutput] = []
+        let subscription = model.$output.dropFirst().sink { delivered.append($0) }
+        model.start()
+
+        snapshots.send(PresentationFixtures.snapshot(rssi: -80))
+        XCTAssertTrue(scheduler.hasPendingAction)
+        model.stop()
+        XCTAssertFalse(scheduler.hasPendingAction)
+        scheduler.runScheduled()
+        XCTAssertTrue(delivered.isEmpty)
+        subscription.cancel()
     }
 
     func testStartIsIdempotentStopCancelsAndRestartUsesCurrentValues() {
@@ -59,12 +138,14 @@ final class IconPresentationViewModelTests: XCTestCase {
                 receiveCancel: { preferenceCancellations += 1 }
             )
             .eraseToAnyPublisher()
+        let scheduler = ManualIconPresentationScheduler()
         let model = IconPresentationViewModel(
             snapshot: snapshots.value,
             settings: preferences.value,
             snapshots: snapshotPublisher,
             preferences: preferencePublisher,
-            resolveInputs: { IconPresentationInputs(snapshot: $0, audioIcon: nil) }
+            resolveInputs: { IconPresentationInputs(snapshot: $0, audioIcon: nil) },
+            snapshotScheduler: scheduler
         )
         var delivered: [IconPresentationOutput] = []
         let subscription = model.$output.dropFirst().sink { delivered.append($0) }
@@ -76,6 +157,7 @@ final class IconPresentationViewModelTests: XCTestCase {
         XCTAssertEqual(snapshotSubscriptions, 1)
         XCTAssertEqual(preferenceSubscriptions, 1)
         snapshots.send(PresentationFixtures.snapshot(rssi: -80))
+        scheduler.runScheduled()
         XCTAssertEqual(delivered.count, 1)
 
         model.stop()
