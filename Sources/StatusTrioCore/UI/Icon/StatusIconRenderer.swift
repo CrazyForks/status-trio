@@ -472,13 +472,14 @@ extension StatusIconRenderer {
         appearance: NSAppearance,
         phase: ChargingEffectPhase
     ) -> NSImage? {
-        image(
+        guard let cgImage = render(
             scene: scene,
-            size: size,
-            scale: scale,
-            appearance: appearance,
+            environment: renderEnvironment(size: size, scale: scale, appearance: appearance),
             phase: phase
-        )
+        ) else {
+            return nil
+        }
+        return NSImage(cgImage: cgImage, size: NSSize(width: size, height: size))
     }
 
     static func render(

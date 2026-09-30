@@ -12,6 +12,7 @@
 
 | Run | 失败阶段 | 根因 | 修复方式 |
 | --- | --- | --- | --- |
+| [`36754822292`](https://github.com/lingyired/status-trio/actions/runs/36754822292) | `Run tests`：`ChargingEffectFrameCacheTests.testPreRenderedMenuBarImagePreservesPixelsAtTheRequestedBackingScale` | presentation refactor 把专用于缓存帧的预渲染路径改成通用 `image()`，后者返回仅有绘制处理器的 22pt `NSImage`，没有固定像素表示。macOS 26 / Xcode 26.6 / Swift 6.3.3 将其转换为 `CGImage` 时得到 22×22，而断言要求 scale 2 的 44×44；像素数组也因此不同。基准实现直接按请求 scale 生成 `CGImage`，再用 22pt 逻辑尺寸包装。 | 已恢复缓存帧的 eager `CGImage` → 22pt `NSImage` 路径；通用 `image()` 保持 appearance 自适应。新增断言验证 backing representation、22pt 逻辑尺寸、scale 1/2 像素尺寸及 scale 2 像素一致性；focused RED 确认 lazy handler 没有 backing rep，修复后 frame-cache、renderer、controller focused tests、本地全套 410/71、release build 和 SDK guard 均通过。旧 oracle 已恢复为基准的 raw `render(...)` CGImage 比较，保持像素精确相等；由 general `image()` 验证 appearance 自适应的测试仍独立且未修改。CI retry 尚待独立修复审阅。本次 run 的测试失败导致 release build / DMG 未运行；artifact upload 明确报告无文件，未发布 Release 或更新 appcast。 |
 | `34753548674` | `Run tests` | `isolated deinit` 在 Swift 6.1.2 需要实验开关，默认不可用 | 移除 `isolated deinit`，改为普通 `deinit` 和显式清理 |
 | `34753630833` | `Run tests` | 尝试启用 `IsolatedDeinit`，生产编译器不允许 | 不依赖该实验特性，直接改写生命周期清理 |
 | `34753843803` | `Run tests` | 测试中的 `weak let` 在 Swift 6.1.2 非法 | 改为 `weak var` |

@@ -89,6 +89,14 @@ struct ChargingEffectFrameCacheTests {
         let appearance = try #require(NSAppearance(named: .aqua))
         let key = makeKey(phase: phase)
         let scene = makeIconPresentationScene(status: status)
+        var foreground = CGColor(gray: 1, alpha: 1)
+        var criticalColor = StatusIconRenderer.defaultCriticalColor
+        appearance.performAsCurrentDrawingAppearance {
+            foreground = NSColor.labelColor.usingColorSpace(.deviceRGB)?.cgColor
+                ?? foreground
+            criticalColor = NSColor.systemRed.usingColorSpace(.deviceRGB)?.cgColor
+                ?? criticalColor
+        }
 
         let renderFrame: (ChargingEffectPhase) -> NSImage? = { framePhase in
             StatusIconRenderer.preRenderedMenuBarImage(
@@ -105,17 +113,15 @@ struct ChargingEffectFrameCacheTests {
             backingScale: 2,
             renderFrame: renderFrame
         ))
-        let directImage = try #require(StatusIconRenderer.image(
+        let directCGImage = try #require(StatusIconRenderer.render(
             scene: scene,
-            size: 22,
-            scale: 2,
-            appearance: appearance,
+            environment: StatusIconRenderEnvironment(
+                size: 22,
+                scale: 2,
+                foreground: foreground,
+                criticalColor: criticalColor
+            ),
             phase: phase
-        ))
-        let directCGImage = try #require(directImage.cgImage(
-            forProposedRect: nil,
-            context: nil,
-            hints: nil
         ))
         let cachedCGImage = try #require(cachedImage.cgImage(
             forProposedRect: nil,
@@ -160,6 +166,24 @@ struct ChargingEffectFrameCacheTests {
             appearance: appearance,
             phase: phase
         ))
+        #expect(preRendered.size == NSSize(width: 22, height: 22))
+        #expect(preRendered.representations.contains { $0.pixelsWide > 0 && $0.pixelsHigh > 0 })
+        let scaleOneImage = try #require(StatusIconRenderer.preRenderedMenuBarImage(
+            scene: scene,
+            size: 22,
+            scale: 1,
+            appearance: appearance,
+            phase: phase
+        ))
+        #expect(scaleOneImage.size == NSSize(width: 22, height: 22))
+        #expect(scaleOneImage.representations.contains { $0.pixelsWide > 0 && $0.pixelsHigh > 0 })
+        let scaleOneCGImage = try #require(scaleOneImage.cgImage(
+            forProposedRect: nil,
+            context: nil,
+            hints: nil
+        ))
+        #expect(scaleOneCGImage.width == 22)
+        #expect(scaleOneCGImage.height == 22)
         let cachedCGImage = try #require(preRendered.cgImage(
             forProposedRect: nil,
             context: nil,
