@@ -1,0 +1,198 @@
+import Foundation
+import Testing
+@testable import StatusTrioCore
+
+struct BluetoothMobileDeviceModelTests {
+    @Test func readsTheFamilyOutOfTheModelNumber() {
+        #expect(BluetoothMobileDeviceModel.kind(forModel: "iPhone14,3") == .mobile(.phone))
+        #expect(BluetoothMobileDeviceModel.kind(forModel: "iPhone17,1") == .mobile(.phone))
+        #expect(BluetoothMobileDeviceModel.kind(forModel: "iPad11,1") == .mobile(.tablet))
+        #expect(BluetoothMobileDeviceModel.kind(forModel: "Watch6,1") == .mobile(.watch))
+    }
+
+    /// The number after the family is the hardware revision, which changes every
+    /// release and has no glyph of its own, so only the family prefix is read.
+    @Test func ignoresTheHardwareRevisionAndSurroundingWhitespace() {
+        #expect(BluetoothMobileDeviceModel.kind(forModel: "  iPad8,9 ") == .mobile(.tablet))
+        #expect(BluetoothMobileDeviceModel.kind(forModel: "watch4,4") == .mobile(.watch))
+    }
+
+    @Test func readsANameThatOnlyContainsTheFamilyAsNoModel() {
+        #expect(BluetoothMobileDeviceModel.kind(forModel: "My iPhone") == nil)
+        #expect(BluetoothMobileDeviceModel.kind(forModel: "iPhone") == .mobile(.phone))
+    }
+
+    /// An iPod is a media player rather than a phone, and the app's mobile forms
+    /// are only phone, tablet and watch, so it keeps whatever class it had.
+    @Test func doesNotClassifyAFamilyTheAppHasNoFormFor() {
+        #expect(BluetoothMobileDeviceModel.kind(forModel: "iPod9,1") == nil)
+        #expect(BluetoothMobileDeviceModel.kind(forModel: "MacBookPro18,3") == nil)
+        #expect(BluetoothMobileDeviceModel.kind(forModel: "") == nil)
+        #expect(BluetoothMobileDeviceModel.kind(forModel: "   ") == nil)
+        #expect(BluetoothMobileDeviceModel.kind(forModel: nil) == nil)
+    }
+}
+
+struct BluetoothNearbyDeviceMergeTests {
+    private func nearbyDevice(
+        name: String,
+        level: Int,
+        model: String? = "iPhone14,3"
+    ) -> NearbyBluetoothBatteryDevice {
+        NearbyBluetoothBatteryDevice(
+            id: UUID(),
+            name: name,
+            batteryLevel: level,
+            model: model,
+            manufacturer: "Apple Inc.",
+            lastUpdated: Date(timeIntervalSince1970: 1_000)
+        )
+    }
+
+    private func pairedDevice(
+        id: String = "AC-CF-5C-ED-1D-CE",
+        name: String,
+        kind: BluetoothDeviceKind = .unknown,
+        isUnpairedGhost: Bool = false
+    ) -> BluetoothDevice {
+        BluetoothDevice(
+            id: id,
+            name: name,
+            kind: kind,
+            isConnected: true,
+            isUnpairedGhost: isUnpairedGhost
+        )
+    }
+
+    @Test func foldsALevelOntoTheRowTheSameDeviceAlreadyHas() {
+        let device = pairedDevice(name: "Ling's iPhone")
+        let result = BluetoothNearbyDeviceMerge.merged(
+            devices: [device],
+            batteryLevels: [:],
+            nearbyDevices: [nearbyDevice(name: "Ling's iPhone", level: 31)]
+        )
+
+        #expect(result.devices.count == 1)
+        #expect(result.devices[0].kind == .mobile(.phone))
+        let key = BluetoothBatteryReader.normalizedAddress(device.id)
+        #expect(result.batteryLevels[key]?.main == 31)
+        #expect(result.remainingNearby.isEmpty)
+    }
+
+    /// An iPhone the profiler could not classify is a ghost, and the panel hides
+    /// ghosts by default. The model string has just classified it, so the flag
+    /// has to go with the class or the row carrying the level stays hidden.
+    @Test func clearsTheGhostFlagOnceTheModelIdentifiesTheRow() {
+        let device = pairedDevice(name: "Ling's iPhone", isUnpairedGhost: true)
+        let result = BluetoothNearbyDeviceMerge.merged(
+            devices: [device],
+            batteryLevels: [:],
+            nearbyDevices: [nearbyDevice(name: "Ling's iPhone", level: 31)]
+        )
+
+        #expect(result.devices.count == 1)
+        #expect(result.devices[0].kind == .mobile(.phone))
+        #expect(!result.devices[0].isUnpairedGhost)
+    }
+
+    /// The name is the only identity the two sources share, so the comparison
+    /// drops case and surrounding whitespace and stops there.
+    @Test func matchesTheNameIgnoringCaseAndSurroundingWhitespace() {
+        let result = BluetoothNearbyDeviceMerge.merged(
+            devices: [pairedDevice(name: "  ling's IPHONE ")],
+            batteryLevels: [:],
+            nearbyDevices: [nearbyDevice(name: "Ling's iPhone", level: 44)]
+        )
+
+        #expect(result.devices.count == 1)
+        #expect(result.batteryLevels.values.first?.main == 44)
+    }
+
+    @Test func addsARowForAMobileDeviceTheReportDoesNotCarryAtAll() {
+        let result = BluetoothNearbyDeviceMerge.merged(
+            devices: [],
+            batteryLevels: [:],
+            nearbyDevices: [nearbyDevice(name: "Lingsipad", level: 23, model: "iPad11,1")]
+        )
+
+        #expect(result.devices.count == 1)
+        #expect(result.devices[0].name == "Lingsipad")
+        #expect(result.devices[0].kind == .mobile(.tablet))
+        #expect(result.batteryLevels.values.first?.main == 23)
+    }
+
+    /// A reading taken over the air is what makes a row worth seeing: it is the
+    /// one row the panel has live information about, while every other
+    /// disconnected row carries a number macOS wrote down earlier. The report
+    /// appends the device wherever its own scan found it — in the middle of the
+    /// disconnected rows — so the fold moves the matched row to the front.
+    @Test func movesTheRowALevelWasFoldedOntoAheadOfTheReportOrder() {
+        let keys = pairedDevice(id: "AA-00-00-00-00-01", name: "MX Keys", kind: .peripheral(.keyboard))
+        let phone = pairedDevice(id: "AA-00-00-00-00-02", name: "Ling's iPhone")
+        let speaker = pairedDevice(id: "AA-00-00-00-00-03", name: "EDIFIER", kind: .audio)
+
+        let result = BluetoothNearbyDeviceMerge.merged(
+            devices: [keys, phone, speaker],
+            batteryLevels: [:],
+            nearbyDevices: [nearbyDevice(name: "Ling's iPhone", level: 31)]
+        )
+
+        #expect(result.devices.map(\.name) == ["Ling's iPhone", "MX Keys", "EDIFIER"])
+    }
+
+    /// A new row leads for the same reason a moved one does, and the rows it
+    /// leads keep the order the report gave them.
+    @Test func leadsTheListWithARowItHadToAdd() {
+        let keys = pairedDevice(id: "AA-00-00-00-00-01", name: "MX Keys", kind: .peripheral(.keyboard))
+        let speaker = pairedDevice(id: "AA-00-00-00-00-03", name: "EDIFIER", kind: .audio)
+
+        let result = BluetoothNearbyDeviceMerge.merged(
+            devices: [keys, speaker],
+            batteryLevels: [:],
+            nearbyDevices: [nearbyDevice(name: "Lingsipad", level: 23, model: "iPad11,1")]
+        )
+
+        #expect(result.devices.map(\.name) == ["Lingsipad", "MX Keys", "EDIFIER"])
+    }
+
+    /// The paired-device report is the primary source and it also carries the
+    /// per-channel parts a scan reading cannot describe, so it is never
+    /// overwritten and a class it declared is never replaced.
+    @Test func neverOverwritesTheReportsOwnLevelOrDeclaredClass() {
+        let device = pairedDevice(name: "Ling's iPhone", kind: .audio)
+        let key = BluetoothBatteryReader.normalizedAddress(device.id)
+        let reported = BluetoothBatteryLevel(
+            deviceAddress: device.id,
+            main: 88,
+            left: 80,
+            right: 81,
+            caseLevel: nil
+        )
+
+        let result = BluetoothNearbyDeviceMerge.merged(
+            devices: [device],
+            batteryLevels: [key: reported],
+            nearbyDevices: [nearbyDevice(name: "Ling's iPhone", level: 31)]
+        )
+
+        #expect(result.batteryLevels[key] == reported)
+        #expect(result.devices[0].kind == .audio)
+    }
+
+    /// A BLE thermometer is not an iOS device, so it keeps the section it
+    /// arrived in rather than being folded into the paired-device list.
+    @Test func leavesAScanResultTheModelDoesNotIdentifyInTheNearbySection() {
+        let sensor = nearbyDevice(name: "Temperature Sensor", level: 52, model: "TH-02")
+        let nameless = nearbyDevice(name: "  ", level: 60)
+
+        let result = BluetoothNearbyDeviceMerge.merged(
+            devices: [],
+            batteryLevels: [:],
+            nearbyDevices: [sensor, nameless]
+        )
+
+        #expect(result.devices.isEmpty)
+        #expect(result.batteryLevels.isEmpty)
+        #expect(result.remainingNearby.map(\.id) == [sensor.id, nameless.id])
+    }
+}

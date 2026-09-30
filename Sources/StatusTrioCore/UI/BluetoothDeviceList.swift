@@ -72,6 +72,13 @@ struct BluetoothDeviceList: View {
                 .buttonStyle(.plain)
             }
         }
+        // A row can arrive after the list is already on screen — a battery level
+        // read over the air folds a device in, and the profiler report lands a
+        // moment after the panel opens. Without this the row is inserted in one
+        // frame and the rows below it jump; the animation is on the row
+        // identities rather than on the devices so a level changing on an
+        // existing row never restarts it.
+        .animation(reduceMotion ? nil : .snappy(duration: 0.2), value: model.visibleDevices.map(\.id))
     }
 
     /// The rows, bounded.

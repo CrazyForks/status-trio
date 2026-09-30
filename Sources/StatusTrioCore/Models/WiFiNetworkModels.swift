@@ -379,6 +379,32 @@ struct BluetoothDevice: Identifiable, Equatable, Sendable {
         )
     }
 
+    /// A copy of the device as the BLE read identified it.
+    ///
+    /// Two fields change together, and they have to. The class comes from the
+    /// model string the Device Information Service answered with, and the ghost
+    /// flag is cleared because that flag means the profiler could not classify
+    /// the device — and the model just did. The panel hides unclassified devices
+    /// by default, so leaving the flag set would hide the very row the level was
+    /// folded onto, which is the one shape this correction exists for.
+    ///
+    /// Everything else — the name, the address, the connection state — still
+    /// comes from the profiler report. An advertised name and a CoreBluetooth
+    /// identifier are not the report's, so they are not carried here.
+    func identifiedByModel(_ kind: BluetoothDeviceKind) -> BluetoothDevice {
+        BluetoothDevice(
+            id: id,
+            name: name,
+            kind: kind,
+            isConnected: isConnected,
+            airPodsModel: airPodsModel,
+            vendorID: vendorID,
+            productID: productID,
+            appleBluetoothAudioDiagnostic: appleBluetoothAudioDiagnostic,
+            isUnpairedGhost: false
+        )
+    }
+
     /// Whether this is an AirPods, which is what decides the order: AirPods lead
     /// the row and the list whatever they are called.
     ///

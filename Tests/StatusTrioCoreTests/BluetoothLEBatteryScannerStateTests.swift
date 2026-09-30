@@ -167,4 +167,39 @@ struct BluetoothLEBatteryScannerStateTests {
         #expect(policy.inFlightConnectionCount == 0)
         #expect(policy.startQueuedConnections().isEmpty)
     }
+
+    /// A cooldown belongs to the session that earned it, so the next session
+    /// must not inherit it. The panel closing and reopening is exactly that
+    /// case: the devices read a moment ago have to be readable again rather
+    /// than skipped until their cooldown runs out.
+    @Test func connectionCooldownsDoNotSurviveStop() {
+        let start = Date(timeIntervalSince1970: 5_500)
+        let successfulID = UUID()
+        let failedID = UUID()
+        var policy = BluetoothLEBatteryScanPolicy()
+
+        _ = policy.beginScan(at: start, manual: true)
+        _ = policy.enqueueCandidate(successfulID, at: start)
+        _ = policy.enqueueCandidate(failedID, at: start)
+        _ = policy.startQueuedConnections()
+        policy.completeConnection(successfulID, succeeded: true, at: start)
+        policy.completeConnection(failedID, succeeded: false, at: start)
+
+        // Still inside both cooldowns, and still skipped while the session runs.
+        let duringSession = start.addingTimeInterval(1)
+        _ = policy.beginScan(at: duringSession, manual: true)
+        let successfulDuringSession = policy.enqueueCandidate(successfulID, at: duringSession)
+        let failedDuringSession = policy.enqueueCandidate(failedID, at: duringSession)
+        #expect(!successfulDuringSession)
+        #expect(!failedDuringSession)
+
+        policy.stop()
+
+        let nextSession = start.addingTimeInterval(2)
+        _ = policy.beginScan(at: nextSession, manual: true)
+        let successfulInNextSession = policy.enqueueCandidate(successfulID, at: nextSession)
+        let failedInNextSession = policy.enqueueCandidate(failedID, at: nextSession)
+        #expect(successfulInNextSession)
+        #expect(failedInNextSession)
+    }
 }

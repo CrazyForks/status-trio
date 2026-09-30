@@ -87,6 +87,13 @@ struct BluetoothLEBatteryScanPolicy {
         discoveredCandidates.removeAll(keepingCapacity: false)
         queuedCandidates.removeAll(keepingCapacity: false)
         inFlightConnections.removeAll(keepingCapacity: false)
+        // The cooldowns belong to the session that earned them. A session ends
+        // when the panel closes or the radio goes away, and the next one starts
+        // with nothing to stay away from: without this, a panel reopened a moment
+        // after it closed would skip every device it read the last time and come
+        // up empty until the cooldown ran out — a minute of showing nothing for
+        // the devices the user had just seen.
+        retryAfter.removeAll(keepingCapacity: false)
         queuedCandidateCount = 0
         inFlightConnectionCount = 0
     }
@@ -217,9 +224,15 @@ final class CoreBluetoothLEBatteryScanner: NSObject,
         advertisementData: [String: Any],
         rssi RSSI: NSNumber
     ) {
+        let advertisedName = advertisementData[CBAdvertisementDataLocalNameKey] as? String
         guard isRunning,
               isScanning,
-              advertisementIncludesBatteryService(advertisementData),
+              BluetoothLEBatteryAdvertisement.isCandidate(
+                  serviceUUIDs: advertisementData[CBAdvertisementDataServiceUUIDsKey] as? [CBUUID],
+                  manufacturerData: advertisementData[CBAdvertisementDataManufacturerDataKey] as? Data,
+                  name: advertisedName ?? peripheral.name,
+                  batteryService: Self.batteryServiceUUID
+              ),
               policy.acceptsCallback(from: currentScanGeneration) else {
             return
         }
@@ -229,7 +242,7 @@ final class CoreBluetoothLEBatteryScanner: NSObject,
         candidatePeripherals[identifier] = peripheral
         // The advertisement name is transient, kept only in this in-memory
         // session and never logged or persisted.
-        candidateNames[identifier] = advertisementData[CBAdvertisementDataLocalNameKey] as? String
+        candidateNames[identifier] = advertisedName
         startQueuedConnections()
     }
 
@@ -412,8 +425,16 @@ final class CoreBluetoothLEBatteryScanner: NSObject,
         candidateNames.removeAll(keepingCapacity: true)
         isScanning = true
         currentScanGeneration = policy.generation
+        // The scan is unfiltered on purpose. `withServices` is applied by the
+        // stack, not by this delegate: an advertisement that does not name the
+        // service is never delivered at all, so a `180F`-filtered scan cannot
+        // see a device that reveals its Battery Service only after the
+        // connection — which is every iOS device, and every iPhone row the
+        // nearby list is meant to show. CoreBluetooth therefore hands over
+        // everything and `BluetoothLEBatteryAdvertisement` decides, in
+        // `didDiscover`, which of those are worth a connection.
         centralManager.scanForPeripherals(
-            withServices: [Self.batteryServiceUUID],
+            withServices: nil,
             options: [CBCentralManagerScanOptionAllowDuplicatesKey: false]
         )
         scheduleAutomaticRefresh()
@@ -532,13 +553,6 @@ final class CoreBluetoothLEBatteryScanner: NSObject,
             return nil
         }
         return session
-    }
-
-    private func advertisementIncludesBatteryService(_ data: [String: Any]) -> Bool {
-        guard let services = data[CBAdvertisementDataServiceUUIDsKey] as? [CBUUID] else {
-            return false
-        }
-        return services.contains { isUUID($0, Self.batteryServiceUUID) }
     }
 
     private func stopActiveWork(clearResults: Bool = false) {
