@@ -11,7 +11,7 @@ struct BluetoothDeviceRowIconTests {
         (.computer(.desktop), "desktopcomputer"),
         (.computer(.unclassified), "desktopcomputer"),
         (.mobile(.phone), "smartphone"),
-        (.mobile(.tablet), "ipad"),
+        (.mobile(.tablet), "ipad.landscape"),
         (.mobile(.watch), "watch.analog"),
         (.peripheral(.keyboard), "keyboard"),
         (.peripheral(.mouse), "computermouse"),
