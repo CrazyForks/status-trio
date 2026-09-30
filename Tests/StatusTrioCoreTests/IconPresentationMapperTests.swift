@@ -20,6 +20,21 @@ final class IconPresentationMapperTests: XCTestCase {
                        IconPresentationMapper.scene(inputs: b, configuration: configuration))
     }
 
+    func testUnmutedArcPreservesContinuousScalarChanges() {
+        let configuration = IconPresentationConfiguration(battery: .standard,
+            connection: .standard, volume: VolumeIconOptions(displayStyle: .arc), bluetooth: .standard)
+        let a = IconPresentationInputs(snapshot: PresentationFixtures.snapshot(scalar: 0.51, muted: false), audioIcon: nil)
+        let b = IconPresentationInputs(snapshot: PresentationFixtures.snapshot(scalar: 0.74, muted: false), audioIcon: nil)
+        let sceneA = IconPresentationMapper.scene(inputs: a, configuration: configuration)
+        let sceneB = IconPresentationMapper.scene(inputs: b, configuration: configuration)
+
+        XCTAssertEqual(sceneA.footer, .arc(ArcState(progress: 0.51, color: .primary,
+                                                    strokeScale: VolumeIconOptions.standard.ringStrokeScale)))
+        XCTAssertEqual(sceneB.footer, .arc(ArcState(progress: 0.74, color: .primary,
+                                                    strokeScale: VolumeIconOptions.standard.ringStrokeScale)))
+        XCTAssertNotEqual(sceneA, sceneB)
+    }
+
     func testBatteryRingMapsProgressColorGapAndChargingEffect() {
         let battery = BatteryStatus(rawPercentage: 19, isPresent: true, isCharging: true,
                                     isLowPowerMode: true, isConnectedToPower: true)
@@ -97,7 +112,11 @@ final class IconPresentationMapperTests: XCTestCase {
 
         let tintedOnly = scene(snapshot: snapshot(battery: active), batteryOptions: BatteryIconOptions(
             showsChargingEffect: true, showsChargingBoltHeartbeat: false, usesStatusColors: true)).outerRing?.effect
-        XCTAssertEqual(tintedOnly, RingEffectState(pulsesAccessory: false, tintsAccessory: true))
+        XCTAssertEqual(tintedOnly, RingEffectState(pulsesAccessory: false, tintsAccessory: false))
+
+        let noHeartbeatNoStatusColors = scene(snapshot: snapshot(battery: active), batteryOptions: BatteryIconOptions(
+            showsChargingEffect: true, showsChargingBoltHeartbeat: false, usesStatusColors: false)).outerRing?.effect
+        XCTAssertEqual(tintedOnly, noHeartbeatNoStatusColors)
     }
 
     func testChargingEffectDoesNotTargetPercentageOrMissingAccessory() {

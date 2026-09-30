@@ -53,3 +53,30 @@ The local machine uses macOS 27 / Xcode 27 / Swift 6.4. This does not establish 
 The required `publish=false` release preflight has not been dispatched. `git ls-remote --heads origin codex/2.0-presentation-refactor` returned no ref, so GitHub cannot run the workflow against this local commit without first publishing the branch. The latest published release is v1.3.3, build 16; Task 13 owns the preflight and should run it on the shared remote branch with the next explicit build number when available. This task did not push the branch or dispatch the workflow. No workflow failure occurred in this task.
 
 No implementation ambiguity remains. `IconPresentationResourceResolver` is `@MainActor` because it owns the AppKit `NSImage` availability check; all injectable closures are call-scoped.
+
+## Fix round 1: review findings
+
+Review findings are recorded in `task-3-review.md`. The mapper now sets `tintsAccessory` only when the active accessory is a bolt, bolt heartbeat is enabled, status colors are enabled, and the battery role has a status tint. This matches the legacy renderer, where bolt tint is computed only when `boltHeartbeatFrame` is present. The effect remains available to animate the ring when the gap contains text or no accessory, while both accessory flags stay false.
+
+Added `testUnmutedArcPreservesContinuousScalarChanges` with exact expected arc progress `0.51` and `0.74` and unequal scene assertions. This is a characterization test: it passed before the production fix because continuous arc progress was already preserved. The heartbeat finding produced the expected RED: the focused run failed on both the `tintedOnly` false/false expectation and the status-color-toggle equality assertion. After adding the heartbeat gate, both pass.
+
+Fix round verification on local macOS 27 / Xcode 27 / Swift 6.4:
+
+```text
+$ swift test --filter 'IconPresentation(Mapper|ResourceResolver)Tests'
+Executed 23 tests, with 0 failures (0 unexpected).
+EXIT_CODE=0
+
+$ swift test
+✔ Test run with 410 tests in 69 suites passed after 2.186 seconds.
+EXIT_CODE=0
+
+$ swift build -c release
+Build complete! (19.07秒)
+EXIT_CODE=0
+
+$ git diff --check
+EXIT_CODE=0
+```
+
+The Task 13 `publish=false` CI preflight remains the integration gate.

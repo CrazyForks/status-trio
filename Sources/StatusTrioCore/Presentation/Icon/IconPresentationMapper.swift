@@ -52,7 +52,10 @@ enum IconPresentationMapper {
                 && !battery.isCharged
             ? RingEffectState(
                 pulsesAccessory: gapContent == .bolt && options.showsChargingBoltHeartbeat,
-                tintsAccessory: gapContent == .bolt && options.usesStatusColors && role != .foreground
+                tintsAccessory: gapContent == .bolt
+                    && options.showsChargingBoltHeartbeat
+                    && options.usesStatusColors
+                    && role != .foreground
             )
             : nil
 
