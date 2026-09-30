@@ -18,6 +18,7 @@ struct StatusBarControllerVisibilityTests {
         )
         let settings = SettingsStore(defaults: defaults)
         settings.setChargingEffectTestEnabled(true)
+        settings.iconSize = 28
         let start = Date(timeIntervalSince1970: 1_000)
         var firstTimeRead = true
         let clock = ChargingEffectClock(
@@ -71,6 +72,12 @@ struct StatusBarControllerVisibilityTests {
         #expect(clock.isRunning)
         #expect(controller.cachedChargingFrameCount == 36)
         #expect(controller.hasLayerBackedAnimation)
+        #expect(controller.presentedImageForTesting?.size.width == 28)
+
+        settings.iconSize = 32
+        controller.flushPendingPresentationForTesting()
+        #expect(controller.hasLayerBackedAnimation)
+        #expect(controller.presentedImageForTesting?.size.width == 32)
 
         settings.setChargingEffectTestEnabled(false)
         rasterFailure.isEnabled = true

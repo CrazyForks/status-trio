@@ -568,13 +568,26 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
                 forProposedRect: nil,
                 context: nil,
                 hints: nil
-            ),
-            let result = animationLayerPresenter.display(
-                cgImage,
-                in: button,
-                backingScale: backingScale
             )
         else {
+            animationLayerPresenter.clear()
+            button.image = image
+            return
+        }
+
+        let targetImageSize = NSSize(width: iconSize, height: iconSize)
+        if button.image?.size != targetImageSize {
+            // The frame set has already rendered successfully. Update AppKit's
+            // button allocation before reinstalling the layer into its bounds.
+            animationLayerPresenter.clear()
+            button.image = image
+        }
+
+        guard let result = animationLayerPresenter.display(
+            cgImage,
+            in: button,
+            backingScale: backingScale
+        ) else {
             animationLayerPresenter.clear()
             button.image = image
             return
