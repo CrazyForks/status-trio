@@ -8,7 +8,7 @@ struct BluetoothLEBatteryScannerStateTests {
         #expect(BluetoothLEBatteryScanPolicy.automaticScanInterval == 60)
         #expect(BluetoothLEBatteryScanPolicy.successfulConnectionCooldown == 60)
         #expect(BluetoothLEBatteryScanPolicy.failedConnectionCooldown == 30)
-        #expect(BluetoothLEBatteryScanPolicy.resultLifetime == 120)
+        #expect(BluetoothLEBatteryScanPolicy.resultLifetime == 1800)
         #expect(BluetoothLEBatteryScanPolicy.maxQueuedCandidates == 8)
         #expect(BluetoothLEBatteryScanPolicy.maxConcurrentConnections == 2)
         #expect(BluetoothLEBatteryScanPolicy.connectionTimeout == .seconds(4))
@@ -166,5 +166,86 @@ struct BluetoothLEBatteryScannerStateTests {
         #expect(policy.queuedCandidateCount == 0)
         #expect(policy.inFlightConnectionCount == 0)
         #expect(policy.startQueuedConnections().isEmpty)
+    }
+
+    /// A cooldown belongs to the session that earned it, so the next session
+    /// must not inherit it. The panel closing and reopening is exactly that
+    /// case: the devices read a moment ago have to be readable again rather
+    /// than skipped until their cooldown runs out.
+    @Test func connectionCooldownsDoNotSurviveStop() {
+        let start = Date(timeIntervalSince1970: 5_500)
+        let successfulID = UUID()
+        let failedID = UUID()
+        var policy = BluetoothLEBatteryScanPolicy()
+
+        _ = policy.beginScan(at: start, manual: true)
+        _ = policy.enqueueCandidate(successfulID, at: start)
+        _ = policy.enqueueCandidate(failedID, at: start)
+        _ = policy.startQueuedConnections()
+        policy.completeConnection(successfulID, succeeded: true, at: start)
+        policy.completeConnection(failedID, succeeded: false, at: start)
+
+        // Still inside both cooldowns, and still skipped while the session runs.
+        let duringSession = start.addingTimeInterval(1)
+        _ = policy.beginScan(at: duringSession, manual: true)
+        let successfulDuringSession = policy.enqueueCandidate(successfulID, at: duringSession)
+        let failedDuringSession = policy.enqueueCandidate(failedID, at: duringSession)
+        #expect(!successfulDuringSession)
+        #expect(!failedDuringSession)
+
+        policy.stop()
+
+        let nextSession = start.addingTimeInterval(2)
+        _ = policy.beginScan(at: nextSession, manual: true)
+        let successfulInNextSession = policy.enqueueCandidate(successfulID, at: nextSession)
+        let failedInNextSession = policy.enqueueCandidate(failedID, at: nextSession)
+        #expect(successfulInNextSession)
+        #expect(failedInNextSession)
+    }
+
+    /// A level is the whole reading for a device that only advertises `180F`, and
+    /// it goes out as soon as it arrives.
+    @Test func aLevelWithNoModelReadBehindItPublishesAtOnce() {
+        #expect(BluetoothLEBatteryPublishGate.shouldPublish(
+            batteryLevel: 31,
+            modelReadPending: false,
+            sessionIsEnding: false
+        ))
+    }
+
+    /// A device that also answers the model characteristic is not settled yet:
+    /// the string it returns is what decides whether the row is folded onto a
+    /// paired device or left in the nearby list, so the row must not be drawn in
+    /// one and moved to the other a tenth of a second later — which is what put
+    /// the panel's "paired devices" header on screen and took it off again.
+    @Test func aLevelHeldBackWhileTheModelReadIsInFlight() {
+        #expect(!BluetoothLEBatteryPublishGate.shouldPublish(
+            batteryLevel: 31,
+            modelReadPending: true,
+            sessionIsEnding: false
+        ))
+    }
+
+    /// The wait is bounded by the session: a device that never answers the model
+    /// read still publishes the level it did answer.
+    @Test func aSessionEndingStillPublishesTheLevelItHas() {
+        #expect(BluetoothLEBatteryPublishGate.shouldPublish(
+            batteryLevel: 31,
+            modelReadPending: true,
+            sessionIsEnding: true
+        ))
+    }
+
+    /// No level is no reading, whatever else the session answered.
+    @Test func nothingPublishesWithoutALevel() {
+        for modelReadPending in [true, false] {
+            for sessionIsEnding in [true, false] {
+                #expect(!BluetoothLEBatteryPublishGate.shouldPublish(
+                    batteryLevel: nil,
+                    modelReadPending: modelReadPending,
+                    sessionIsEnding: sessionIsEnding
+                ))
+            }
+        }
     }
 }

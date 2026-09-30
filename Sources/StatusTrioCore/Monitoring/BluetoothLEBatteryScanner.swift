@@ -6,7 +6,18 @@ struct BluetoothLEBatteryScanPolicy {
     static let automaticScanInterval: TimeInterval = 60
     static let successfulConnectionCooldown: TimeInterval = 60
     static let failedConnectionCooldown: TimeInterval = 30
-    static let resultLifetime: TimeInterval = 120
+    /// How long a reading stays usable, in the scanner's own results and in the
+    /// panel's cache of them behind a closed panel.
+    ///
+    /// It only decides whether the reading may still draw a row: every panel open
+    /// starts a fresh scan, and what it reads replaces the cached level the moment
+    /// it lands. So the number on screen is always the last one read, and this
+    /// governs the other thing — whether a device known a moment ago is drawn at
+    /// once or has to be re-discovered, re-connected and re-read before it can
+    /// appear. Half an hour covers a working session of opening and closing the
+    /// panel; in exchange, a device that leaves the room keeps its row, with the
+    /// level it last answered, until the reading expires.
+    static let resultLifetime: TimeInterval = 1800
     static let maxQueuedCandidates = 8
     static let maxConcurrentConnections = 2
     static let connectionTimeout: Duration = .seconds(4)
@@ -87,8 +98,41 @@ struct BluetoothLEBatteryScanPolicy {
         discoveredCandidates.removeAll(keepingCapacity: false)
         queuedCandidates.removeAll(keepingCapacity: false)
         inFlightConnections.removeAll(keepingCapacity: false)
+        // The cooldowns belong to the session that earned them. A session ends
+        // when the panel closes or the radio goes away, and the next one starts
+        // with nothing to stay away from: without this, a panel reopened a moment
+        // after it closed would skip every device it read the last time and come
+        // up empty until the cooldown ran out — a minute of showing nothing for
+        // the devices the user had just seen.
+        retryAfter.removeAll(keepingCapacity: false)
         queuedCandidateCount = 0
         inFlightConnectionCount = 0
+    }
+}
+
+/// When a session's reading is settled enough to publish.
+///
+/// A battery byte on its own is the whole answer for a device that advertises
+/// `180F` and nothing else, so it goes out as soon as it arrives. It is not the
+/// whole answer for a device that also answers with a model string: that string
+/// is what decides which list the row belongs in — a model the app draws is
+/// folded onto the row the device already has in the paired list, and a model it
+/// does not draw leaves the device in the nearby list. Publishing the level
+/// first showed the phone in the nearby list for the tenth of a second the model
+/// read needs and then moved it into the paired list, which put the panel's
+/// "paired devices" header on screen and took it off again in the same moment.
+///
+/// The wait is bounded by the session, not by the read: a device that stops
+/// answering the model characteristic still publishes what it did answer when
+/// the session ends.
+enum BluetoothLEBatteryPublishGate {
+    static func shouldPublish(
+        batteryLevel: Int?,
+        modelReadPending: Bool,
+        sessionIsEnding: Bool
+    ) -> Bool {
+        guard batteryLevel != nil else { return false }
+        return sessionIsEnding || !modelReadPending
     }
 }
 
@@ -217,9 +261,15 @@ final class CoreBluetoothLEBatteryScanner: NSObject,
         advertisementData: [String: Any],
         rssi RSSI: NSNumber
     ) {
+        let advertisedName = advertisementData[CBAdvertisementDataLocalNameKey] as? String
         guard isRunning,
               isScanning,
-              advertisementIncludesBatteryService(advertisementData),
+              BluetoothLEBatteryAdvertisement.isCandidate(
+                  serviceUUIDs: advertisementData[CBAdvertisementDataServiceUUIDsKey] as? [CBUUID],
+                  manufacturerData: advertisementData[CBAdvertisementDataManufacturerDataKey] as? Data,
+                  name: advertisedName ?? peripheral.name,
+                  batteryService: Self.batteryServiceUUID
+              ),
               policy.acceptsCallback(from: currentScanGeneration) else {
             return
         }
@@ -229,7 +279,7 @@ final class CoreBluetoothLEBatteryScanner: NSObject,
         candidatePeripherals[identifier] = peripheral
         // The advertisement name is transient, kept only in this in-memory
         // session and never logged or persisted.
-        candidateNames[identifier] = advertisementData[CBAdvertisementDataLocalNameKey] as? String
+        candidateNames[identifier] = advertisedName
         startQueuedConnections()
     }
 
@@ -368,7 +418,13 @@ final class CoreBluetoothLEBatteryScanner: NSObject,
         }
 
         sessions[identifier] = session
-        publishDeviceIfAvailable(session)
+        if BluetoothLEBatteryPublishGate.shouldPublish(
+            batteryLevel: session.batteryLevel,
+            modelReadPending: session.pendingReads.contains(Self.modelNumberUUID),
+            sessionIsEnding: false
+        ) {
+            publishDeviceIfAvailable(session)
+        }
         finishSessionIfReady(identifier)
     }
 
@@ -412,8 +468,16 @@ final class CoreBluetoothLEBatteryScanner: NSObject,
         candidateNames.removeAll(keepingCapacity: true)
         isScanning = true
         currentScanGeneration = policy.generation
+        // The scan is unfiltered on purpose. `withServices` is applied by the
+        // stack, not by this delegate: an advertisement that does not name the
+        // service is never delivered at all, so a `180F`-filtered scan cannot
+        // see a device that reveals its Battery Service only after the
+        // connection — which is every iOS device, and every iPhone row the
+        // nearby list is meant to show. CoreBluetooth therefore hands over
+        // everything and `BluetoothLEBatteryAdvertisement` decides, in
+        // `didDiscover`, which of those are worth a connection.
         centralManager.scanForPeripherals(
-            withServices: [Self.batteryServiceUUID],
+            withServices: nil,
             options: [CBCentralManagerScanOptionAllowDuplicatesKey: false]
         )
         scheduleAutomaticRefresh()
@@ -499,6 +563,15 @@ final class CoreBluetoothLEBatteryScanner: NSObject,
 
     private func completeSession(for identifier: UUID, succeeded: Bool) {
         guard let session = sessions.removeValue(forKey: identifier) else { return }
+        // The session ending is the last chance to publish: a read that never
+        // answered must not take the level that did with it.
+        if BluetoothLEBatteryPublishGate.shouldPublish(
+            batteryLevel: session.batteryLevel,
+            modelReadPending: false,
+            sessionIsEnding: true
+        ) {
+            publishDeviceIfAvailable(session)
+        }
         session.timeoutTask?.cancel()
         session.peripheral.delegate = nil
         centralManager?.cancelPeripheralConnection(session.peripheral)
@@ -532,13 +605,6 @@ final class CoreBluetoothLEBatteryScanner: NSObject,
             return nil
         }
         return session
-    }
-
-    private func advertisementIncludesBatteryService(_ data: [String: Any]) -> Bool {
-        guard let services = data[CBAdvertisementDataServiceUUIDsKey] as? [CBUUID] else {
-            return false
-        }
-        return services.contains { isUUID($0, Self.batteryServiceUUID) }
     }
 
     private func stopActiveWork(clearResults: Bool = false) {

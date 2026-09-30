@@ -96,7 +96,11 @@ enum BluetoothDeviceRowIcon {
         case .mobile(.phone):
             ["smartphone", "iphone"]
         case .mobile(.tablet):
-            ["ipad"]
+            // Landscape, so the tablet is told apart from the phone at a glance
+            // in a column that draws both: portrait, an iPad and an iPhone are
+            // nearly the same rounded rectangle. The portrait glyph stays as the
+            // fallback because it is the older of the two.
+            ["ipad.landscape", "ipad"]
         // A wristwatch class covers every brand, so the generic watch leads and
         // the Apple one is only the fallback.
         case .mobile(.watch):

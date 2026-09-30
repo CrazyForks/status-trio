@@ -21,11 +21,23 @@ struct BluetoothStatusView: View {
     let onOpenBluetoothSettings: () -> Void
     let onOpenBluetoothPermissionSettings: () -> Void
 
-    var body: some View {
-        let nearbyDevices = BluetoothNearbyBatteryListPresentation.visibleDevices(
+    /// The paired-device list with the iOS devices the BLE scan found folded
+    /// into it, derived once per body evaluation.
+    private var mergedDeviceList: BluetoothNearbyDeviceMerge.Result {
+        let scanResults = BluetoothNearbyBatteryListPresentation.visibleDevices(
             from: controller.nearbyBatteryDevices,
             enabled: showsNearbyBatteryLevels
         )
+        return BluetoothNearbyDeviceMerge.merged(
+            devices: controller.devices,
+            batteryLevels: controller.batteryLevels,
+            nearbyDevices: scanResults
+        )
+    }
+
+    var body: some View {
+        let merged = mergedDeviceList
+        let nearbyDevices = merged.remainingNearby
 
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 10) {
@@ -67,8 +79,8 @@ struct BluetoothStatusView: View {
                 }
 
                 BluetoothDeviceList(
-                    devices: controller.devices,
-                    batteryLevels: controller.batteryLevels,
+                    devices: merged.devices,
+                    batteryLevels: merged.batteryLevels,
                     actionStates: controller.deviceActionStates,
                     confirmingAddress: controller.pendingDisconnectConfirmation,
                     options: listOptions,
@@ -110,6 +122,9 @@ struct BluetoothStatusView: View {
         }
         .task(id: showsNearbyBatteryLevels) {
             guard showsNearbyBatteryLevels else {
+                // The setting is off, so the surface is no longer entitled to
+                // what the scan read: these go now rather than at the end of
+                // their lifetime.
                 controller.releaseNearbyBatteryDevices(Self.nearbyBatteryDevicesToken)
                 return
             }
@@ -121,6 +136,16 @@ struct BluetoothStatusView: View {
         .onDisappear {
             controller.releaseVisibleSurface(BluetoothDeviceController.bluetoothSummarySurfaceToken)
             controller.releaseBatteryLevels(Self.summaryBatteryLevelsToken)
+            // The panel closing is not the feature being switched off: it is the
+            // same surface coming back in a moment, so what it read stays for the
+            // cache's own lifetime. Dropping it here made every reopen pay for a
+            // fresh scan, connect and GATT read before an iPhone row could be
+            // drawn at all, while the paired rows — whose report survives the
+            // close — appeared at once.
+            controller.releaseNearbyBatteryDevices(
+                Self.nearbyBatteryDevicesToken,
+                keepingResults: true
+            )
         }
     }
 

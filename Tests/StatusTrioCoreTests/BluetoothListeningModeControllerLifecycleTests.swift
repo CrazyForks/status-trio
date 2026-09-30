@@ -81,8 +81,13 @@ final class BluetoothListeningModeControllerLifecycleTests: XCTestCase {
     }
 
     /// A controller whose HAL writes through a scripted backend and settles the
-    /// read-back instantly, with a short failure linger so rollback tests can
-    /// observe the failure before it clears.
+    /// read-back instantly. The failure linger is the app's own, not a shortened
+    /// one: `.failed` is the state this suite asserts on that clears itself, and
+    /// a test can only see it by polling, so the window it lives in and the
+    /// interval the poll runs at must not be able to disagree — at the 30 ms this
+    /// helper used to pass, a runner whose main actor resumes the poll loop less
+    /// often than that never looked inside the window at all (runs `36681666541`
+    /// and `36687697162`).
     ///
     /// The listener seam defaults to a fresh fake so a test can drive it directly;
     /// passing `nil` for `listenerBackend` opts out and installs a bare fake.
@@ -103,15 +108,25 @@ final class BluetoothListeningModeControllerLifecycleTests: XCTestCase {
             hal: hal,
             endpointProvider: provider,
             listenerBackend: listenerBackend,
-            failureClearDelay: .milliseconds(30)
+            failureClearDelay: Self.failureClearDelay
         )
         return (controller, provider, listenerBackend)
     }
 
+    /// The linger a failure stays published for. It is what the app uses, and the
+    /// window a poll has to land inside, so the two cannot disagree.
+    private static let failureClearDelay: Duration = .seconds(2)
+
     /// Polls the main actor until `condition` holds, so a spawned write task gets a
     /// chance to run and publish before the assertion. Fails if it never settles.
+    ///
+    /// The deadline is generous because the write it waits for runs on a spawned
+    /// task: locally all of these settle in about a quarter of a second together,
+    /// and a `macos-26` runner has taken several seconds for the same work. It is
+    /// only a bound on a genuinely stuck write; what a state can be *seen* in is
+    /// the linger above, not this.
     private func waitUntil(
-        timeout: Duration = .seconds(2),
+        timeout: Duration = .seconds(5),
         _ condition: @MainActor () -> Bool
     ) async {
         let deadline = ContinuousClock.now.advanced(by: timeout)
