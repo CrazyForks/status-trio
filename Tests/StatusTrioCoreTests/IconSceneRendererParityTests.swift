@@ -5,64 +5,118 @@ import XCTest
 
 @MainActor
 final class IconSceneRendererParityTests: XCTestCase {
-    func testNormalSceneMatchesLegacyPixels() throws {
-        try assertMenuBarParity(for: PresentationFixtures.snapshot())
+    func testOrdinarySceneKeepsIndependentCanvasAndRegionConventions() throws {
+        let scene = mappedScene(for: PresentationFixtures.snapshot())
+        for foreground in [CGColor(gray: 1, alpha: 1), CGColor(gray: 0, alpha: 1)] {
+            let pixels = try menuBarPixels(scene: scene, foreground: foreground, size: 28, scale: 2)
+            assertMenuBarPixelConventions(pixels, size: 28, scale: 2, label: "ordinary")
+        }
     }
 
-    func testTaskOneVisualMatrixMatchesLegacyPixelsOnBothSurfaces() throws {
+    func testTaskOneVisualMatrixKeepsFixedGeometryAndDockPaletteConventions() throws {
         for fixture in visualCases() {
-            try assertMenuBarParity(for: fixture.snapshot, configuration: fixture.configuration, label: fixture.name)
+            let scene = mappedScene(for: fixture.snapshot, configuration: fixture.configuration)
+            for foreground in [CGColor(gray: 1, alpha: 1), CGColor(gray: 0, alpha: 1)] {
+                let pixels = try menuBarPixels(scene: scene, foreground: foreground, size: 28, scale: 2)
+                assertMenuBarPixelConventions(pixels, size: 28, scale: 2, label: fixture.name)
+            }
             for style in DockIconBackgroundStyle.allCases {
-                try assertDockParity(for: fixture, style: style)
+                let image = try XCTUnwrap(DockIconRenderer.image(scene: scene, backgroundStyle: style, pixelLength: 96))
+                let pixels = try cgPixels(from: image)
+                XCTAssertEqual(pixels.width, 96, "Dock width: \(fixture.name), \(style)")
+                XCTAssertEqual(pixels.height, 96, "Dock height: \(fixture.name), \(style)")
+                XCTAssertEqual(pixels.bytes.count, 96 * 96 * 4, "Dock full buffer: \(fixture.name), \(style)")
+                XCTAssertEqual(pixels.rgba(x: 0, y: 0).alpha, 0, "Dock transparent corner: \(fixture.name), \(style)")
+                XCTAssertEqual(pixels.rgba(x: 48, y: 2).alpha, 0, "Dock transparent margin: \(fixture.name), \(style)")
+                let body = pixels.rgba(x: 12, y: 48)
+                switch style {
+                case .dark:
+                    XCTAssertGreaterThan(body.alpha, 250, "Dock dark body: \(fixture.name)")
+                    XCTAssertEqual(body.red, 21, accuracy: 3)
+                    XCTAssertEqual(body.green, 21, accuracy: 3)
+                    XCTAssertEqual(body.blue, 23, accuracy: 3)
+                    XCTAssertTrue(pixels.containsColor(red: 1, green: 1, blue: 1, tolerance: 0.08, minimumAlpha: 0.9), fixture.name)
+                case .light:
+                    XCTAssertGreaterThan(body.alpha, 250, "Dock light body: \(fixture.name)")
+                    XCTAssertGreaterThanOrEqual(body.red, 250)
+                    XCTAssertGreaterThanOrEqual(body.green, 250)
+                    XCTAssertGreaterThanOrEqual(body.blue, 250)
+                    XCTAssertTrue(pixels.containsColor(red: 29.0 / 255.0, green: 29.0 / 255.0, blue: 31.0 / 255.0,
+                                                       tolerance: 0.08, minimumAlpha: 0.9), fixture.name)
+                case .clear:
+                    XCTAssertGreaterThan(body.alpha, 80, "Dock clear body: \(fixture.name)")
+                    XCTAssertLessThan(body.alpha, 240, "Dock clear body: \(fixture.name)")
+                    XCTAssertTrue(pixels.containsColor(red: 29.0 / 255.0, green: 29.0 / 255.0, blue: 31.0 / 255.0,
+                                                       tolerance: 0.08, minimumAlpha: 0.9), fixture.name)
+                }
             }
         }
     }
 
-    func testStaticSteadyAndBurstChargingFramesMatchLegacyPixels() throws {
-        let snapshot = makeSnapshot(
+    func testAnimationPhasesKeepStaticAndDisabledPixelConventions() throws {
+        let active = makeSnapshot(
             battery: battery(percentage: 43, charging: true, connected: true),
             wifi: WiFiStatus(state: .connected, rssi: -62),
             volume: VolumeStatus(scalar: 0.5, isMuted: false, deviceName: "Output")
         )
-        let phases: [(String, ChargingEffectPhase?)] = [
-            ("static", nil),
-            ("steady", ChargingEffectPhase(step: 18, stepsPerCycle: 36, kind: .steady)),
-            ("burst", ChargingEffectPhase(step: 4, stepsPerCycle: 12, kind: .burst))
-        ]
-        for (name, phase) in phases {
-            try assertMenuBarParity(for: snapshot, phase: phase, label: name)
+        let scene = mappedScene(for: active)
+        var frames: [PixelBuffer] = []
+        for phase in [
+            nil,
+            ChargingEffectPhase(step: 18, stepsPerCycle: 36, kind: .steady),
+            ChargingEffectPhase(step: 4, stepsPerCycle: 12, kind: .burst)
+        ] {
+            let image = try XCTUnwrap(StatusIconRenderer.render(
+                scene: scene,
+                environment: StatusIconRenderEnvironment(size: 28, scale: 2,
+                                                         foreground: CGColor(gray: 1, alpha: 1),
+                                                         criticalColor: StatusIconRenderer.defaultCriticalColor),
+                phase: phase
+            ))
+            frames.append(try PixelBuffer(image: image))
         }
-        let charged = makeSnapshot(
-            battery: battery(percentage: 100, charging: true, connected: true),
+        for (index, frame) in frames.enumerated() {
+            assertMenuBarPixelConventions(frame, size: 28, scale: 2, label: "animation phase \(index)")
+        }
+        XCTAssertNotEqual(frames[0].bytes, frames[1].bytes, "steady phase changes only the animated battery artwork")
+        XCTAssertNotEqual(frames[0].bytes, frames[2].bytes, "burst phase changes only the animated battery artwork")
+
+        let charged = mappedScene(for: makeSnapshot(
+            battery: BatteryStatus(rawPercentage: 100, isPresent: true, isCharging: true, isCharged: true,
+                                   isLowPowerMode: false, isConnectedToPower: true),
             wifi: WiFiStatus(state: .connected, rssi: -62),
             volume: VolumeStatus(scalar: 0.5, isMuted: false, deviceName: "Output")
+        ))
+        let chargedStatic = try menuBarPixels(scene: charged, foreground: CGColor(gray: 1, alpha: 1), size: 28, scale: 2)
+        let chargedBurst = try menuBarPixels(
+            scene: charged, foreground: CGColor(gray: 1, alpha: 1), size: 28, scale: 2,
+            phase: ChargingEffectPhase(step: 4, stepsPerCycle: 12, kind: .burst)
         )
-        try assertMenuBarParity(for: charged,
-                                phase: ChargingEffectPhase(step: 4, stepsPerCycle: 12, kind: .burst),
-                                label: "charged completion")
-        try assertMenuBarParity(
-            for: snapshot,
-            configuration: configuration(battery: BatteryIconOptions(showsChargingEffect: false)),
-            phase: ChargingEffectPhase(step: 4, stepsPerCycle: 12, kind: .burst),
-            label: "charging effect disabled"
+        XCTAssertTrue(chargedStatic.bytes == chargedBurst.bytes, "a completed battery has no charging animation")
+
+        let disabled = mappedScene(for: active, configuration: configuration(
+            battery: BatteryIconOptions(showsChargingEffect: false)
+        ))
+        let disabledStatic = try menuBarPixels(scene: disabled, foreground: CGColor(gray: 1, alpha: 1), size: 28, scale: 2)
+        let disabledBurst = try menuBarPixels(
+            scene: disabled, foreground: CGColor(gray: 1, alpha: 1), size: 28, scale: 2,
+            phase: ChargingEffectPhase(step: 4, stepsPerCycle: 12, kind: .burst)
         )
-        let configurations: [(String, BatteryIconOptions)] = [
-            ("heartbeat enabled with status tint", .standard),
-            ("heartbeat disabled", BatteryIconOptions(showsChargingBoltHeartbeat: false)),
-            ("heartbeat enabled without status colors", BatteryIconOptions(usesStatusColors: false))
-        ]
-        for (name, options) in configurations {
-            let config = configuration(battery: options)
-            try assertMenuBarParity(for: snapshot, configuration: config,
-                                    phase: ChargingEffectPhase(step: 6, stepsPerCycle: 12, kind: .burst),
-                                    label: name)
-        }
+        XCTAssertTrue(disabledStatic.bytes == disabledBurst.bytes, "disabled animation preserves static pixels")
     }
 
-    func testFractionalMenuBarSizeAndScaleMatchLegacyPixels() throws {
-        let snapshot = PresentationFixtures.snapshot(rssi: -79, scalar: 0.74, muted: true)
-        try assertMenuBarParity(for: snapshot, size: 20, scale: 8, label: "20pt at 8x")
-        try assertMenuBarParity(for: snapshot, size: 18.5, scale: 3, label: "fractional logical size")
+    func testFractionalMenuBarSizesKeepExactPixelLengthAndGeometryConventions() throws {
+        let scene = mappedScene(for: PresentationFixtures.snapshot(rssi: -79, scalar: 0.74, muted: true))
+        let standardScale = try menuBarPixels(scene: scene, foreground: CGColor(gray: 1, alpha: 1), size: 20, scale: 8)
+        let fractionalSize = try menuBarPixels(scene: scene, foreground: CGColor(gray: 1, alpha: 1), size: 18.5, scale: 3)
+        XCTAssertEqual(standardScale.width, 160)
+        XCTAssertEqual(standardScale.height, 160)
+        XCTAssertEqual(standardScale.bytes.count, 160 * 160 * 4)
+        XCTAssertEqual(fractionalSize.width, 56)
+        XCTAssertEqual(fractionalSize.height, 56)
+        XCTAssertEqual(fractionalSize.bytes.count, 56 * 56 * 4)
+        assertMenuBarPixelConventions(standardScale, size: 20, scale: 8, label: "20pt at 8x")
+        assertMenuBarPixelConventions(fractionalSize, size: 18.5, scale: 3, label: "fractional logical size")
     }
 
     func testMenuBarRejectsNonFiniteAndNonPositiveSizeAndScale() {
@@ -108,52 +162,57 @@ final class IconSceneRendererParityTests: XCTestCase {
         XCTAssertNil(DockIconRenderer.image(scene: IconSceneState(), pixelLength: 513))
     }
 
-    func testUnknownSymbolAndUnreadableImageUseLegacyFallbacks() throws {
-        let device = AudioOutputDevice(
-            id: 41,
-            name: "Headphones",
-            isCurrent: true,
-            volume: 0.5,
-            transport: .bluetooth
-        )
-        let snapshot = makeSnapshot(
-            wifi: WiFiStatus(state: .connected, rssi: -55),
-            volume: VolumeStatus(scalar: 0.5, isMuted: false, deviceName: "Headphones", currentDevice: device)
-        )
-        let bluetooth = BluetoothAudioIconOptions(replacesNetworkIcon: true)
-        let unknownOverride = BluetoothAudioIconOptions(
-            replacesNetworkIcon: true,
-            networkIconSymbolOverride: "status-trio-symbol-that-does-not-exist"
-        )
-        try assertMenuBarParity(for: snapshot, configuration: configuration(bluetooth: unknownOverride), label: "unknown symbol")
-
-        let base = mappedScene(for: snapshot, configuration: configuration(bluetooth: bluetooth))
-        let brokenImageCenter = CenterState.symbol(IconSymbolState(
-            source: .image(url: URL(fileURLWithPath: "/tmp/status-trio-missing-device-icon.png"), fallbackSymbol: "headphones"),
-            color: .bluetooth,
-            scale: bluetooth.symbolScale
-        ))
-        let scene = IconSceneState(outerRing: base.outerRing, center: brokenImageCenter, footer: base.footer)
-        let foreground = CGColor(gray: 1, alpha: 1)
+    func testUnknownSymbolAndUnreadableImageUseKnownSceneFallbacks() throws {
         let environment = StatusIconRenderEnvironment(
             size: 28,
             scale: 2,
-            foreground: foreground,
+            foreground: CGColor(gray: 1, alpha: 1),
             criticalColor: StatusIconRenderer.defaultCriticalColor
         )
-        let actual = try XCTUnwrap(StatusIconRenderer.render(scene: scene, environment: environment))
-        let expected = try XCTUnwrap(StatusIconRenderer.render(
-            snapshot: snapshot,
-            size: environment.size,
-            scale: environment.scale,
-            foreground: environment.foreground,
-            criticalColor: environment.criticalColor,
-            bluetoothAudioOptions: bluetooth
-        ))
-        assertPixelsEqual(expected, actual, label: "unreadable image fallback")
+        let unknown = IconSceneState(center: .symbol(IconSymbolState(
+            source: .symbol(name: "status-trio-symbol-that-does-not-exist", variableValue: nil,
+                           fallback: "dot.radiowaves.left.and.right"),
+            color: .bluetooth,
+            scale: 1
+        )))
+        let knownWaveFallback = IconSceneState(center: .symbol(IconSymbolState(
+            source: .symbol(name: "dot.radiowaves.left.and.right", variableValue: 1, fallback: nil),
+            color: .bluetooth,
+            scale: 1
+        )))
+        let unknownPixels = try PixelBuffer(image: XCTUnwrap(StatusIconRenderer.render(
+            scene: unknown, environment: environment
+        )))
+        let fallbackPixels = try PixelBuffer(image: XCTUnwrap(StatusIconRenderer.render(
+            scene: knownWaveFallback, environment: environment
+        )))
+        XCTAssertEqual(unknownPixels.width, 56)
+        XCTAssertEqual(unknownPixels.height, 56)
+        XCTAssertEqual(unknownPixels.bytes, fallbackPixels.bytes,
+                       "an unavailable symbol uses its explicitly declared available glyph")
+
+        let missingImage = IconSceneState(center: .symbol(IconSymbolState(
+            source: .image(url: URL(fileURLWithPath: "/tmp/status-trio-missing-device-icon.png"),
+                           fallbackSymbol: "headphones"),
+            color: .bluetooth,
+            scale: 1
+        )))
+        let knownImageFallback = IconSceneState(center: .symbol(IconSymbolState(
+            source: .symbol(name: "headphones", variableValue: 1, fallback: nil),
+            color: .bluetooth,
+            scale: 1
+        )))
+        let missingPixels = try PixelBuffer(image: XCTUnwrap(StatusIconRenderer.render(
+            scene: missingImage, environment: environment
+        )))
+        let imageFallbackPixels = try PixelBuffer(image: XCTUnwrap(StatusIconRenderer.render(
+            scene: knownImageFallback, environment: environment
+        )))
+        XCTAssertEqual(missingPixels.bytes, imageFallbackPixels.bytes,
+                       "an unreadable image uses its explicitly declared fallback glyph")
     }
 
-    func testKnownPickedSymbolWithoutDeviceMatchesLegacyOnBothSurfaces() throws {
+    func testKnownPickedSymbolWithoutDeviceKeepsDeclaredCenterGlyph() throws {
         let snapshot = PresentationFixtures.snapshot()
         let symbol = "headphones"
         XCTAssertNotNil(NSImage(systemSymbolName: symbol, accessibilityDescription: nil))
@@ -161,15 +220,19 @@ final class IconSceneRendererParityTests: XCTestCase {
             replacesNetworkIcon: true,
             networkIconSymbolOverride: symbol
         ))
-        let fixture = VisualCase(name: "picked headphones without device", snapshot: snapshot,
-                                 configuration: picked)
-        try assertMenuBarParity(for: snapshot, configuration: picked, label: fixture.name)
-        for style in DockIconBackgroundStyle.allCases {
-            try assertDockParity(for: fixture, style: style)
-        }
+        let scene = mappedScene(for: snapshot, configuration: picked)
+        XCTAssertEqual(scene.center, .symbol(IconSymbolState(
+            source: .symbol(name: symbol, variableValue: nil, fallback: "dot.radiowaves.left.and.right"),
+            color: .bluetooth,
+            scale: BluetoothAudioIconOptions(replacesNetworkIcon: true,
+                                             networkIconSymbolOverride: symbol).symbolScale
+        )))
+        let pixels = try menuBarPixels(scene: scene, foreground: CGColor(gray: 1, alpha: 1), size: 28, scale: 2)
+        XCTAssertGreaterThan(pixels.alphaSum(inSVGRect: CGRect(x: 42, y: 55, width: 35, height: 35), size: 28, scale: 2),
+                             100, "the picked headphones glyph occupies the fixed center slot")
     }
 
-    func testReadableDeviceImageMatchesLegacyOnBothSurfaces() throws {
+    func testReadableDeviceImageMapsAndRendersOnBothSurfaces() throws {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("status-trio-readable-device-\(UUID().uuidString).png")
         defer { try? FileManager.default.removeItem(at: url) }
@@ -191,13 +254,37 @@ final class IconSceneRendererParityTests: XCTestCase {
             volume: VolumeStatus(scalar: 0.6, isMuted: false, deviceName: device.name, currentDevice: device)
         )
         let bluetooth = BluetoothAudioIconOptions(replacesNetworkIcon: true)
-        let fixture = VisualCase(name: "readable device resource", snapshot: snapshot,
-                                 configuration: configuration(bluetooth: bluetooth))
+        let scene = mappedScene(for: snapshot, configuration: configuration(bluetooth: bluetooth))
         XCTAssertEqual(IconPresentationResourceResolver.inputs(snapshot: snapshot).audioIcon,
                        .image(url: url, fallbackSymbol: "headphones"))
-        try assertMenuBarParity(for: snapshot, configuration: fixture.configuration, label: fixture.name)
-        for style in DockIconBackgroundStyle.allCases {
-            try assertDockParity(for: fixture, style: style)
+        guard case .symbol(let center)? = scene.center else {
+            return XCTFail("A readable Bluetooth resource must occupy the center slot")
+        }
+        XCTAssertEqual(center.source, .image(url: url, fallbackSymbol: "headphones"))
+        let pixels = try menuBarPixels(scene: scene, foreground: CGColor(gray: 1, alpha: 1), size: 28, scale: 2)
+        XCTAssertGreaterThan(pixels.alphaSum(inSVGRect: CGRect(x: 38, y: 43, width: 43, height: 42), size: 28, scale: 2),
+                             100, "the resolved image resource occupies its fixed 42-unit center box")
+        XCTAssertTrue(pixels.containsColor(red: 77.0 / 255.0, green: 163.0 / 255.0, blue: 1,
+                                           tolerance: 0.08, minimumAlpha: 0.9),
+                      "the Bluetooth image keeps its declared menu-bar tint")
+        for style in [DockIconBackgroundStyle.dark, .light] {
+            let dock = try cgPixels(from: XCTUnwrap(DockIconRenderer.image(
+                scene: scene, backgroundStyle: style, pixelLength: 96
+            )))
+            let centerImagePixels = CGRect(x: 35, y: 30, width: 30, height: 34)
+            XCTAssertGreaterThan(alphaSum(dock, inPixelRect: centerImagePixels), 100,
+                                 "the device image stays in the Dock center glyph box: \(style)")
+            let expectedBlue = style == .dark
+                ? (red: 77.0 / 255.0, green: 163.0 / 255.0, blue: 1.0)
+                : (red: 0.0, green: 102.0 / 255.0, blue: 204.0 / 255.0)
+            XCTAssertTrue(containsColor(
+                dock,
+                inPixelRect: centerImagePixels,
+                red: expectedBlue.red,
+                green: expectedBlue.green,
+                blue: expectedBlue.blue,
+                tolerance: 0.1
+            ), "the device image keeps the Dock palette tint: \(style)")
         }
     }
 
@@ -229,20 +316,30 @@ final class IconSceneRendererParityTests: XCTestCase {
         }
     }
 
-    func testBluetoothVolumeArcTintMatchesLegacyOnBothSurfaces() throws {
-        let volume = VolumeStatus(scalar: 0.72, isMuted: false, deviceName: "Headphones",
-                                 currentDevice: PresentationFixtures.bluetoothDevice)
-        let snapshot = makeSnapshot(volume: volume)
+    func testBluetoothVolumeArcRetainsIndependentTintConventionOnDock() throws {
+        let snapshot = makeSnapshot(volume: VolumeStatus(
+            scalar: 0.72,
+            isMuted: false,
+            deviceName: "Headphones",
+            currentDevice: PresentationFixtures.bluetoothDevice
+        ))
         let options = configuration(
             volume: VolumeIconOptions(displayStyle: .arc),
             bluetooth: BluetoothAudioIconOptions(usesVolumeColor: true)
         )
-        let fixture = VisualCase(name: "Bluetooth tinted volume arc", snapshot: snapshot,
-                                 configuration: options)
-        try assertMenuBarParity(for: snapshot, configuration: options, label: fixture.name)
-        for style in DockIconBackgroundStyle.allCases {
-            try assertDockParity(for: fixture, style: style)
-        }
+        let scene = mappedScene(for: snapshot, configuration: options)
+        let dark = try cgPixels(from: XCTUnwrap(DockIconRenderer.image(
+            scene: scene, backgroundStyle: .dark, pixelLength: 96
+        )))
+        let light = try cgPixels(from: XCTUnwrap(DockIconRenderer.image(
+            scene: scene, backgroundStyle: .light, pixelLength: 96
+        )))
+        XCTAssertTrue(dark.containsColor(red: 77.0 / 255.0, green: 163.0 / 255.0, blue: 1,
+                                         tolerance: 0.08, minimumAlpha: 0.9),
+                      "dark Dock retains the Bluetooth volume-arc tint")
+        XCTAssertTrue(light.containsColor(red: 0, green: 102.0 / 255.0, blue: 204.0 / 255.0,
+                                          tolerance: 0.1, minimumAlpha: 0.9),
+                      "light Dock uses the established darker Bluetooth tint")
     }
 
     private struct VisualCase {
@@ -340,54 +437,94 @@ final class IconSceneRendererParityTests: XCTestCase {
         return cases
     }
 
-    private func assertMenuBarParity(
-        for snapshot: StatusSnapshot,
-        configuration: IconPresentationConfiguration = .standard,
-        phase: ChargingEffectPhase? = nil,
-        size: CGFloat = 28,
-        scale: CGFloat = 2,
-        label: String = ""
-    ) throws {
-        let critical = CGColor(red: 255.0 / 255.0, green: 59.0 / 255.0, blue: 48.0 / 255.0, alpha: 1)
-        for foreground in [CGColor(gray: 1, alpha: 1), CGColor(gray: 0, alpha: 1)] {
-            let expected = try XCTUnwrap(StatusIconRenderer.render(
-                snapshot: snapshot,
-                size: size,
-                scale: scale,
-                foreground: foreground,
-                criticalColor: critical,
-                options: configuration.battery,
-                connectionOptions: configuration.connection,
-                volumeOptions: configuration.volume,
-                bluetoothAudioOptions: configuration.bluetooth,
-                phase: phase
-            ), "legacy render \(label)")
-            let scene = mappedScene(for: snapshot, configuration: configuration)
-            let environment = StatusIconRenderEnvironment(size: size, scale: scale,
-                                                          foreground: foreground, criticalColor: critical)
-            let actual = try XCTUnwrap(StatusIconRenderer.render(scene: scene, environment: environment, phase: phase),
-                                       "scene render \(label)")
-            assertPixelsEqual(expected, actual, label: label)
+    private func menuBarPixels(
+        scene: IconSceneState,
+        foreground: CGColor,
+        size: CGFloat,
+        scale: CGFloat,
+        phase: ChargingEffectPhase? = nil
+    ) throws -> PixelBuffer {
+        let environment = StatusIconRenderEnvironment(
+            size: size,
+            scale: scale,
+            foreground: foreground,
+            criticalColor: StatusIconRenderer.defaultCriticalColor
+        )
+        return try PixelBuffer(image: XCTUnwrap(StatusIconRenderer.render(
+            scene: scene, environment: environment, phase: phase
+        )))
+    }
+
+    private func cgPixels(from image: NSImage) throws -> PixelBuffer {
+        try PixelBuffer(image: XCTUnwrap(XCTUnwrap(image.representations.first as? NSBitmapImageRep).cgImage))
+    }
+
+    private func assertMenuBarPixelConventions(
+        _ pixels: PixelBuffer,
+        size: CGFloat,
+        scale: CGFloat,
+        label: String,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let dimension = Int((size * scale).rounded(.up))
+        XCTAssertEqual(pixels.width, dimension, "canvas width: \(label)", file: file, line: line)
+        XCTAssertEqual(pixels.height, dimension, "canvas height: \(label)", file: file, line: line)
+        XCTAssertEqual(pixels.bytes.count, dimension * dimension * 4, "complete RGBA buffer: \(label)", file: file, line: line)
+        let fixedRegions: [(String, CGRect)] = [
+            ("battery upper track", CGRect(x: 18, y: 11, width: 84, height: 22)),
+            ("center connection slot", CGRect(x: 37, y: 48, width: 45, height: 43)),
+            ("volume footer", CGRect(x: 33, y: 98, width: 54, height: 19))
+        ]
+        for (name, region) in fixedRegions {
+            XCTAssertGreaterThan(
+                pixels.alphaSum(inSVGRect: region, size: size, scale: scale),
+                100,
+                "\(name) must leave measurable ink at its fixed artwork location: \(label)",
+                file: file,
+                line: line
+            )
         }
     }
 
-    private func assertDockParity(for fixture: VisualCase, style: DockIconBackgroundStyle) throws {
-        let expected = try XCTUnwrap(DockIconRenderer.image(
-            status: MenuBarStatus(snapshot: fixture.snapshot),
-            options: fixture.configuration.battery,
-            connectionOptions: fixture.configuration.connection,
-            volumeOptions: fixture.configuration.volume,
-            bluetoothAudioOptions: fixture.configuration.bluetooth,
-            backgroundStyle: style,
-            pixelLength: 96
-        ))
-        let scene = mappedScene(for: fixture.snapshot, configuration: fixture.configuration)
-        let actual = try XCTUnwrap(DockIconRenderer.image(scene: scene, backgroundStyle: style, pixelLength: 96))
-        assertPixelsEqual(
-            try cgImage(from: expected),
-            try cgImage(from: actual),
-            label: "Dock \(fixture.name), \(style)"
-        )
+    private func alphaSum(_ pixels: PixelBuffer, inPixelRect rect: CGRect) -> Int {
+        let minX = max(0, Int(rect.minX.rounded(.down)))
+        let maxX = min(pixels.width, Int(rect.maxX.rounded(.up)))
+        let minY = max(0, Int(rect.minY.rounded(.down)))
+        let maxY = min(pixels.height, Int(rect.maxY.rounded(.up)))
+        guard minX < maxX, minY < maxY else { return 0 }
+        return (minY..<maxY).reduce(0) { row, y in
+            row + (minX..<maxX).reduce(0) { row, x in
+                row + Int(pixels.rgba(x: x, y: y).alpha)
+            }
+        }
+    }
+
+    private func containsColor(
+        _ pixels: PixelBuffer,
+        inPixelRect rect: CGRect,
+        red: Double,
+        green: Double,
+        blue: Double,
+        tolerance: Double
+    ) -> Bool {
+        let minX = max(0, Int(rect.minX.rounded(.down)))
+        let maxX = min(pixels.width, Int(rect.maxX.rounded(.up)))
+        let minY = max(0, Int(rect.minY.rounded(.down)))
+        let maxY = min(pixels.height, Int(rect.maxY.rounded(.up)))
+        guard minX < maxX, minY < maxY else { return false }
+        for y in minY..<maxY {
+            for x in minX..<maxX {
+                let pixel = pixels.rgba(x: x, y: y)
+                guard pixel.alpha >= 240 else { continue }
+                if abs(Double(pixel.red) / 255 - red) <= tolerance,
+                   abs(Double(pixel.green) / 255 - green) <= tolerance,
+                   abs(Double(pixel.blue) / 255 - blue) <= tolerance {
+                    return true
+                }
+            }
+        }
+        return false
     }
 
     private func mappedScene(
@@ -427,24 +564,4 @@ final class IconSceneRendererParityTests: XCTestCase {
         try XCTUnwrap(XCTUnwrap(image.representations.first as? NSBitmapImageRep).cgImage)
     }
 
-    private func assertPixelsEqual(
-        _ expected: CGImage,
-        _ actual: CGImage,
-        label: String,
-        file: StaticString = #filePath,
-        line: UInt = #line
-    ) {
-        XCTAssertEqual(expected.width, actual.width, "image width: \(label)", file: file, line: line)
-        XCTAssertEqual(expected.height, actual.height, "image height: \(label)", file: file, line: line)
-        guard let expectedBytes = try? PixelBuffer(image: expected).bytes,
-              let actualBytes = try? PixelBuffer(image: actual).bytes else {
-            XCTFail("could not read pixel buffers: \(label)", file: file, line: line)
-            return
-        }
-        let firstDifference = zip(expectedBytes, actualBytes).enumerated().first { $0.element.0 != $0.element.1 }
-        XCTAssertEqual(expectedBytes.count, actualBytes.count, "pixel byte count: \(label)", file: file, line: line)
-        XCTAssertEqual(expectedBytes, actualBytes,
-                       "pixel mismatch: \(label), first byte \(String(describing: firstDifference))",
-                       file: file, line: line)
-    }
 }

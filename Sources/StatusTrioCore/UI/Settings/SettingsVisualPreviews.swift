@@ -75,16 +75,22 @@ struct VolumeIndicatorPreview: View {
             MenuBarPreviewBackdrop(isDarkBackground: isDarkBackground)
 
             Image(nsImage: StatusIconRenderer.image(
-                menuBarStatus: menuBarPreviewStatus(from: statusStore),
-                size: 28,
-                options: store.batteryIconOptions,
-                connectionOptions: store.connectionIconOptions,
-                volumeOptions: VolumeIconOptions(
-                    displayStyle: style,
-                    ringStrokeScale: store.ringStrokeStyle.scale
+                scene: IconPreviewScene.make(
+                    status: menuBarPreviewStatus(from: statusStore),
+                    configuration: IconPresentationConfiguration(
+                        battery: store.batteryIconOptions,
+                        connection: store.connectionIconOptions,
+                        volume: VolumeIconOptions(
+                            displayStyle: style,
+                            ringStrokeScale: store.ringStrokeStyle.scale
+                        ),
+                        bluetooth: store.bluetoothAudioIconOptions
+                    )
                 ),
+                size: 28,
+                scale: NSScreen.main?.backingScaleFactor ?? 2,
                 appearance: MenuBarPreviewBackdrop.appearance(isDarkBackground: isDarkBackground)
-            ))
+            ) ?? NSImage(size: NSSize(width: 28, height: 28)))
             .accessibilityHidden(true)
         }
     }
@@ -254,26 +260,31 @@ struct RingStrokeStylePreview: View {
             MenuBarPreviewBackdrop(isDarkBackground: isDarkBackground)
 
             Image(nsImage: StatusIconRenderer.image(
-                menuBarStatus: menuBarPreviewStatus(from: statusStore),
+                scene: IconPreviewScene.make(
+                    status: menuBarPreviewStatus(from: statusStore),
+                    configuration: IconPresentationConfiguration(
+                        battery: BatteryIconOptions(
+                            showsPercentage: store.showsBatteryPercentage,
+                            showsChargingIndicator: store.showsChargingIndicator,
+                            usesStatusColors: store.usesBatteryStatusColors,
+                            criticalThreshold: Int(store.batteryCriticalThreshold.rounded()),
+                            showsPercentageWhenConnected: store.showsPercentageWhenConnected,
+                            textScale: store.batterySymbolScale * BatteryIconOptions.defaultTextScale,
+                            ringStrokeScale: style.scale
+                        ),
+                        connection: store.connectionIconOptions,
+                        volume: VolumeIconOptions(
+                            displayStyle: store.volumeDisplayStyle,
+                            ringStrokeScale: style.scale
+                        ),
+                        bluetooth: store.bluetoothAudioIconOptions
+                    )
+                ),
                 size: 28,
-                options: BatteryIconOptions(
-                    showsPercentage: store.showsBatteryPercentage,
-                    showsChargingIndicator: store.showsChargingIndicator,
-                    usesStatusColors: store.usesBatteryStatusColors,
-                    criticalThreshold: Int(store.batteryCriticalThreshold.rounded()),
-                    showsPercentageWhenConnected: store.showsPercentageWhenConnected,
-                    textScale: store.batterySymbolScale * BatteryIconOptions.defaultTextScale,
-                    ringStrokeScale: style.scale
-                ),
-                connectionOptions: store.connectionIconOptions,
-                volumeOptions: VolumeIconOptions(
-                    displayStyle: store.volumeDisplayStyle,
-                    ringStrokeScale: style.scale
-                ),
+                scale: NSScreen.main?.backingScaleFactor ?? 2,
                 appearance: MenuBarPreviewBackdrop.appearance(isDarkBackground: isDarkBackground)
-            ))
+            ) ?? NSImage(size: NSSize(width: 28, height: 28)))
             .accessibilityHidden(true)
         }
     }
 }
-

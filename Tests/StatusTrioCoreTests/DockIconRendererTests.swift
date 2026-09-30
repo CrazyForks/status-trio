@@ -5,7 +5,8 @@ import XCTest
 @MainActor
 final class DockIconRendererTests: XCTestCase {
     func testDockIconHasExpectedLogicalAndPixelSize() throws {
-        let image = try XCTUnwrap(DockIconRenderer.image(status: .placeholder))
+        let image = try XCTUnwrap(renderDockFixture(
+                status: .placeholder))
         let representation = try XCTUnwrap(
             image.representations.first as? NSBitmapImageRep
         )
@@ -225,7 +226,8 @@ final class DockIconRendererTests: XCTestCase {
     }
 
     func testRendererProducesImageForEveryPlacementPreviewState() throws {
-        XCTAssertNotNil(DockIconRenderer.image(status: .placeholder))
+        XCTAssertNotNil(renderDockFixture(
+                status: .placeholder))
     }
 
     /// The Dock tile follows the menu bar: AirPods (2nd generation,
@@ -302,8 +304,8 @@ final class DockIconRendererTests: XCTestCase {
         bluetoothAudioOptions: BluetoothAudioIconOptions = .standard,
         backgroundStyle: DockIconBackgroundStyle = .dark
     ) throws -> PixelBuffer {
-        let image = try XCTUnwrap(DockIconRenderer.image(
-            status: status,
+        let image = try XCTUnwrap(renderDockFixture(
+                status: status,
             options: options,
             connectionOptions: connectionOptions,
             volumeOptions: volumeOptions,

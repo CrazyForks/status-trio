@@ -11,6 +11,7 @@ import XCTest
 /// STATUS_TRIO_ICON_SHEET_DARK=/tmp/status-trio-icon-states-dark.png \
 ///   swift test --filter IconStateSheetTests
 /// ```
+@MainActor
 final class IconStateSheetTests: XCTestCase {
     func testWritesIconStateSheet() throws {
         let environment = ProcessInfo.processInfo.environment

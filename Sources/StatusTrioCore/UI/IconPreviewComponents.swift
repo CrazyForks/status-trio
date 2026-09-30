@@ -1,6 +1,41 @@
 import AppKit
 import SwiftUI
 
+/// The single mapping entry point shared by settings and guide artwork.
+@MainActor
+enum IconPreviewScene {
+    static func make(
+        snapshot: StatusSnapshot,
+        configuration: IconPresentationConfiguration
+    ) -> IconSceneState {
+        IconPresentationMapper.scene(
+            inputs: IconPresentationResourceResolver.inputs(snapshot: snapshot),
+            configuration: configuration
+        )
+    }
+
+    static func make(
+        status: MenuBarStatus,
+        configuration: IconPresentationConfiguration
+    ) -> IconSceneState {
+        make(snapshot: snapshot(from: status), configuration: configuration)
+    }
+
+    static func snapshot(from status: MenuBarStatus) -> StatusSnapshot {
+        StatusSnapshot(
+            battery: status.battery,
+            wifi: status.wifi,
+            connection: status.connection,
+            volume: VolumeStatus(
+                scalar: status.volume.scalar,
+                isMuted: status.volume.isMuted,
+                deviceName: status.volume.deviceName,
+                currentDevice: status.volume.currentDevice
+            )
+        )
+    }
+}
+
 /// Reusable menu bar simulation used by Settings and the icon guide.
 struct MenuBarPreviewBar<TrailingAccessory: View>: View {
     let status: MenuBarStatus
@@ -55,17 +90,22 @@ struct MenuBarPreviewBar<TrailingAccessory: View>: View {
 
                 ZStack {
                     Image(nsImage: StatusIconRenderer.image(
-                        menuBarStatus: status,
+                        scene: IconPreviewScene.make(
+                            status: status,
+                            configuration: IconPresentationConfiguration(
+                                battery: batteryOptions,
+                                connection: connectionOptions,
+                                volume: volumeOptions,
+                                bluetooth: bluetoothAudioOptions
+                            )
+                        ),
                         size: iconSize,
-                        options: batteryOptions,
-                        connectionOptions: connectionOptions,
-                        volumeOptions: volumeOptions,
-                        bluetoothAudioOptions: bluetoothAudioOptions,
+                        scale: NSScreen.main?.backingScaleFactor ?? 2,
                         appearance: NSAppearance(
                             named: isDarkBackground ? .darkAqua : .aqua
                         ),
                         phase: phase
-                    ))
+                    ) ?? NSImage(size: NSSize(width: iconSize, height: iconSize)))
 
                     if let highlightedPart {
                         StatusIconPartHighlight(
@@ -317,20 +357,8 @@ struct DockIconTile: View {
 
     @MainActor
     private var previewScene: IconSceneState {
-        let snapshot = StatusSnapshot(
-            battery: status.battery,
-            wifi: status.wifi,
-            connection: status.connection,
-            volume: VolumeStatus(
-                scalar: status.volume.scalar,
-                isMuted: status.volume.isMuted,
-                deviceName: status.volume.deviceName,
-                currentDevice: status.volume.currentDevice
-            )
-        )
-        let inputs = IconPresentationResourceResolver.inputs(snapshot: snapshot)
-        return IconPresentationMapper.scene(
-            inputs: inputs,
+        IconPreviewScene.make(
+            status: status,
             configuration: IconPresentationConfiguration(
                 battery: batteryOptions,
                 connection: connectionOptions,
@@ -346,11 +374,7 @@ struct DockIconTile: View {
         let cache = previewCache ?? DockIconPreviewCache.shared
         return cache.image(for: renderKey) {
             DockIconRenderer.image(
-                status: status,
-                options: batteryOptions,
-                connectionOptions: connectionOptions,
-                volumeOptions: volumeOptions,
-                bluetoothAudioOptions: bluetoothAudioOptions,
+                scene: previewScene,
                 backgroundStyle: backgroundStyle,
                 pixelLength: pixelLength
             )

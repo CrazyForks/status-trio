@@ -2,6 +2,7 @@ import CoreGraphics
 import XCTest
 @testable import StatusTrioCore
 
+@MainActor
 final class PresentationBaselineTests: XCTestCase {
     func testDotBucketAndSignalBucketBaseline() {
         XCTAssertEqual(StatusMappings.wifiBars(rssi: -61), 2)
@@ -111,8 +112,8 @@ final class PresentationBaselineTests: XCTestCase {
         showsBatteryPercentageInConnectionSlot: Bool = false,
         bluetoothOptions: BluetoothAudioIconOptions = .standard
     ) throws -> PixelBuffer {
-        let image = try XCTUnwrap(StatusIconRenderer.render(
-            snapshot: snapshot,
+        let image = try XCTUnwrap(renderMenuBarFixture(
+                snapshot: snapshot,
             size: 20,
             scale: 8,
             foreground: CGColor(gray: 1, alpha: 1),

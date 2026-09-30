@@ -181,11 +181,12 @@ struct DockIconPreviewCacheTests {
         let cache = DockIconPreviewCache(limit: 2)
         let status = MenuBarStatus.placeholder
         let key = previewKey(pixelLength: DockIconRenderer.pixelSize)
-        let dock = try #require(DockIconRenderer.image(status: status))
+        let dock = try #require(renderDockFixture(
+                status: status))
         let throughTheCache = try #require(
             cache.image(for: key) {
-                DockIconRenderer.image(
-                    status: status,
+                renderDockFixture(
+                status: status,
                     pixelLength: DockIconRenderer.pixelSize
                 )
             }

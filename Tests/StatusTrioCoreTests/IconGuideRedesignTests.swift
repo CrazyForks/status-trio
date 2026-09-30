@@ -136,8 +136,8 @@ final class IconGuideRedesignTests: XCTestCase {
     func testBluetoothGuideStatesRequestTheirOwnVolumeExample() throws {
         for state in Self.bluetoothStates {
             let dockImage = try XCTUnwrap(
-                DockIconRenderer.image(
-                    status: state.status,
+                renderDockFixture(
+                status: state.status,
                     volumeOptions: VolumeIconOptions(
                         displayStyle: try XCTUnwrap(state.volumeDisplayStyleOverride),
                         ringStrokeScale: RingStrokeStyle.regular.scale
@@ -153,14 +153,15 @@ final class IconGuideRedesignTests: XCTestCase {
 
     func testEveryGuideStateRendersInMenuBarAndDock() throws {
         for state in IconGuideState.all {
-            let menuBarImage = StatusIconRenderer.image(
+            let menuBarImage = try XCTUnwrap(menuBarFixtureImage(
                 menuBarStatus: state.status,
                 size: 56
-            )
+            ))
             XCTAssertGreaterThan(menuBarImage.size.width, 0)
 
             let dockImage = try XCTUnwrap(
-                DockIconRenderer.image(status: state.status)
+                renderDockFixture(
+                status: state.status)
             )
             XCTAssertEqual(dockImage.size, NSSize(width: 256, height: 256))
         }
@@ -223,8 +224,8 @@ final class IconGuideRedesignTests: XCTestCase {
 
         for appearance in IconGuidePreviewAppearance.allCases {
             let dockImage = try XCTUnwrap(
-                DockIconRenderer.image(
-                    status: IconGuideState.charging.status,
+                renderDockFixture(
+                status: IconGuideState.charging.status,
                     backgroundStyle: appearance.dockBackgroundStyle
                 )
             )

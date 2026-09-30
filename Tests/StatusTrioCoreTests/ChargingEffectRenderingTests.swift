@@ -276,7 +276,8 @@ struct ChargingEffectRenderingTests {
 
     @MainActor @Test func dockRendererProducesStaticChargingArtwork() throws {
         let status = MenuBarStatus(snapshot: chargingSnapshot)
-        let image = try #require(DockIconRenderer.image(status: status))
+        let image = try #require(renderDockFixture(
+                status: status))
         #expect(image.size == NSSize(width: 256, height: 256))
     }
 
@@ -337,8 +338,8 @@ struct ChargingEffectRenderingTests {
         foreground: CGColor = CGColor(gray: 1, alpha: 1),
         phase: ChargingEffectPhase?
     ) throws -> PixelBuffer {
-        let image = try #require(StatusIconRenderer.render(
-            snapshot: snapshot,
+        let image = try #require(renderMenuBarFixture(
+                snapshot: snapshot,
             size: 20,
             scale: 2,
             foreground: foreground,

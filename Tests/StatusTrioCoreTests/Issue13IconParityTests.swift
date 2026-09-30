@@ -93,10 +93,19 @@ struct Issue13IconParityTests {
         _ state: WiFiState,
         minimumAlpha: UInt8
     ) throws {
-        let image = StatusIconRenderer.wifiImage(
+        let snapshot = StatusSnapshot(
+            battery: .placeholder,
             wifi: WiFiStatus(state: state, rssi: nil),
-            size: 16
+            volume: .placeholder
         )
+        let image = try #require(StatusIconRenderer.image(
+            scene: IconPresentationMapper.scene(
+                inputs: IconPresentationInputs(snapshot: snapshot, audioIcon: nil),
+                configuration: .standard
+            ),
+            size: 16,
+            scale: 2
+        ))
         let pixels = try pixels(from: image)
 
         // SF Symbol hierarchical rendering and anti-aliasing vary by toolchain.
@@ -114,8 +123,8 @@ struct Issue13IconParityTests {
             wifi: WiFiStatus(state: state, rssi: -50),
             volume: .placeholder
         )
-        let image = try #require(StatusIconRenderer.render(
-            snapshot: snapshot,
+        let image = try #require(renderMenuBarFixture(
+                snapshot: snapshot,
             size: 20,
             scale: 8,
             foreground: CGColor(gray: 1, alpha: 1),
@@ -129,8 +138,8 @@ struct Issue13IconParityTests {
         volumeOptions: VolumeIconOptions = .standard,
         backgroundStyle: DockIconBackgroundStyle = .dark
     ) throws -> PixelBuffer {
-        let image = try #require(DockIconRenderer.image(
-            status: status,
+        let image = try #require(renderDockFixture(
+                status: status,
             volumeOptions: volumeOptions,
             backgroundStyle: backgroundStyle
         ))
