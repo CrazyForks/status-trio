@@ -202,4 +202,50 @@ struct BluetoothLEBatteryScannerStateTests {
         #expect(successfulInNextSession)
         #expect(failedInNextSession)
     }
+
+    /// A level is the whole reading for a device that only advertises `180F`, and
+    /// it goes out as soon as it arrives.
+    @Test func aLevelWithNoModelReadBehindItPublishesAtOnce() {
+        #expect(BluetoothLEBatteryPublishGate.shouldPublish(
+            batteryLevel: 31,
+            modelReadPending: false,
+            sessionIsEnding: false
+        ))
+    }
+
+    /// A device that also answers the model characteristic is not settled yet:
+    /// the string it returns is what decides whether the row is folded onto a
+    /// paired device or left in the nearby list, so the row must not be drawn in
+    /// one and moved to the other a tenth of a second later — which is what put
+    /// the panel's "paired devices" header on screen and took it off again.
+    @Test func aLevelHeldBackWhileTheModelReadIsInFlight() {
+        #expect(!BluetoothLEBatteryPublishGate.shouldPublish(
+            batteryLevel: 31,
+            modelReadPending: true,
+            sessionIsEnding: false
+        ))
+    }
+
+    /// The wait is bounded by the session: a device that never answers the model
+    /// read still publishes the level it did answer.
+    @Test func aSessionEndingStillPublishesTheLevelItHas() {
+        #expect(BluetoothLEBatteryPublishGate.shouldPublish(
+            batteryLevel: 31,
+            modelReadPending: true,
+            sessionIsEnding: true
+        ))
+    }
+
+    /// No level is no reading, whatever else the session answered.
+    @Test func nothingPublishesWithoutALevel() {
+        for modelReadPending in [true, false] {
+            for sessionIsEnding in [true, false] {
+                #expect(!BluetoothLEBatteryPublishGate.shouldPublish(
+                    batteryLevel: nil,
+                    modelReadPending: modelReadPending,
+                    sessionIsEnding: sessionIsEnding
+                ))
+            }
+        }
+    }
 }

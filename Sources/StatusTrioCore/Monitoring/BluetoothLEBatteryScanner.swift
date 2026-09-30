@@ -99,6 +99,32 @@ struct BluetoothLEBatteryScanPolicy {
     }
 }
 
+/// When a session's reading is settled enough to publish.
+///
+/// A battery byte on its own is the whole answer for a device that advertises
+/// `180F` and nothing else, so it goes out as soon as it arrives. It is not the
+/// whole answer for a device that also answers with a model string: that string
+/// is what decides which list the row belongs in — a model the app draws is
+/// folded onto the row the device already has in the paired list, and a model it
+/// does not draw leaves the device in the nearby list. Publishing the level
+/// first showed the phone in the nearby list for the tenth of a second the model
+/// read needs and then moved it into the paired list, which put the panel's
+/// "paired devices" header on screen and took it off again in the same moment.
+///
+/// The wait is bounded by the session, not by the read: a device that stops
+/// answering the model characteristic still publishes what it did answer when
+/// the session ends.
+enum BluetoothLEBatteryPublishGate {
+    static func shouldPublish(
+        batteryLevel: Int?,
+        modelReadPending: Bool,
+        sessionIsEnding: Bool
+    ) -> Bool {
+        guard batteryLevel != nil else { return false }
+        return sessionIsEnding || !modelReadPending
+    }
+}
+
 @MainActor
 protocol BluetoothLEBatteryScanning: AnyObject {
     var onDevicesChanged: (([NearbyBluetoothBatteryDevice]) -> Void)? { get set }
@@ -381,7 +407,13 @@ final class CoreBluetoothLEBatteryScanner: NSObject,
         }
 
         sessions[identifier] = session
-        publishDeviceIfAvailable(session)
+        if BluetoothLEBatteryPublishGate.shouldPublish(
+            batteryLevel: session.batteryLevel,
+            modelReadPending: session.pendingReads.contains(Self.modelNumberUUID),
+            sessionIsEnding: false
+        ) {
+            publishDeviceIfAvailable(session)
+        }
         finishSessionIfReady(identifier)
     }
 
@@ -520,6 +552,15 @@ final class CoreBluetoothLEBatteryScanner: NSObject,
 
     private func completeSession(for identifier: UUID, succeeded: Bool) {
         guard let session = sessions.removeValue(forKey: identifier) else { return }
+        // The session ending is the last chance to publish: a read that never
+        // answered must not take the level that did with it.
+        if BluetoothLEBatteryPublishGate.shouldPublish(
+            batteryLevel: session.batteryLevel,
+            modelReadPending: false,
+            sessionIsEnding: true
+        ) {
+            publishDeviceIfAvailable(session)
+        }
         session.timeoutTask?.cancel()
         session.peripheral.delegate = nil
         centralManager?.cancelPeripheralConnection(session.peripheral)
