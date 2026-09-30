@@ -71,14 +71,16 @@ final class OutputDeviceListeningModeRowTests: XCTestCase {
         XCTAssertEqual(row.controls.count, 1, "an ordinary output row is a single button")
     }
 
-    /// With the environment at its harness default (Reduce Motion off), the
-    /// in-flight capsule draws a real spinner. The control count is unchanged: a busy
-    /// capsule is still a button, it just carries the animated mark. (The Reduce
-    /// Motion swap to a static dot lives in `busyMark` and cannot be driven through
-    /// `@Environment(\.accessibilityReduceMotion)` from this `NSHostingView` harness
-    /// — the key is read-only and there is no SwiftUI modifier to inject it — so it
-    /// is verified by that branch's code, not a render assertion.)
-    func testInFlightCapsuleDrawsASpinnerNormally() async throws {
+    /// The in-flight capsule stays its own focusable button. Whether it marks itself
+    /// with a spinner or a static dot depends on `@Environment(\.accessibilityReduceMotion)`
+    /// — `busyMark` draws a `ProgressView` normally and a static `Circle` under Reduce
+    /// Motion — and that key is read-only, so this `NSHostingView` harness inherits
+    /// whatever the host has set (CI runners enable Reduce Motion, so no
+    /// `NSProgressIndicator` appears there). The marker choice is therefore not a
+    /// stable render assertion; what is stable, and what this test exists to lock, is
+    /// that a busy capsule is still a separate button the keyboard and VoiceOver can
+    /// land on rather than ink folded into another control.
+    func testInFlightCapsuleRemainsItsOwnButton() async throws {
         let row = try await render(
             device: currentAirPodsOutput(),
             listeningMode: BluetoothListeningModePresentation(
@@ -86,7 +88,6 @@ final class OutputDeviceListeningModeRowTests: XCTestCase {
                 selectedMode: .noiseCancellation
             ).changing(to: .transparency)
         )
-        XCTAssertEqual(row.spinners, 1, "the tapped capsule marks itself with a spinner")
         XCTAssertEqual(row.controls.count, 4, "the busy capsule is still its own button")
     }
 
