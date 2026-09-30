@@ -91,6 +91,123 @@ final class StatusPanelViewModelTests: XCTestCase {
         fixture.store.stop()
     }
 
+    func testWiFiDetailsUseTheWiFiValueDeliveredWithThePopupSnapshot() async {
+        let fixture = PanelStoreFixture()
+        let panel = fixture.makePanel()
+        panel.start()
+        fixture.store.start()
+        fixture.store.setPopoverVisible(true)
+        defer { panel.stop(); fixture.store.setPopoverVisible(false); fixture.store.stop() }
+
+        XCTAssertTrue(panel.wifiDetails.powerIsOn)
+        XCTAssertEqual(panel.wifiDetails.messageIntent, .none)
+
+        fixture.wifi.send(WiFiStatus(state: .off, rssi: nil, nameAccess: .authorized))
+        let offSnapshotQueued = await fixture.popupSleeper.waitForCallCount(1, timeout: .seconds(1))
+        XCTAssertTrue(offSnapshotQueued)
+        fixture.popupSleeper.releaseAll()
+        let offValueDelivered = await waitForYields { fixture.store.popupSnapshot.wifi.state == .off }
+        XCTAssertTrue(offValueDelivered)
+        XCTAssertFalse(panel.wifiDetails.powerIsOn, "Wi-Fi details must consume the delivered off status")
+
+        fixture.wifi.send(WiFiStatus(state: .connected, rssi: -48, nameAccess: .notDetermined))
+        let connectedSnapshotQueued = await fixture.popupSleeper.waitForCallCount(2, timeout: .seconds(1))
+        XCTAssertTrue(connectedSnapshotQueued)
+        fixture.popupSleeper.releaseAll()
+        let connectedValueDelivered = await waitForYields {
+            fixture.store.popupSnapshot.wifi.nameAccess == .notDetermined
+        }
+        XCTAssertTrue(connectedValueDelivered)
+        XCTAssertTrue(panel.wifiDetails.powerIsOn)
+        XCTAssertEqual(panel.wifiDetails.messageIntent, .requestWiFiNameAccess)
+    }
+
+    func testListeningModeAndDevicePublicationsCoalesceToLatestVolumeStateAndRespectStop() async {
+        let firstDevice = BluetoothDevice(
+            id: "AA:BB:CC:DD:EE:01",
+            name: "AirPods Pro",
+            kind: .audio,
+            isConnected: true
+        )
+        let latestDevice = BluetoothDevice(
+            id: "AA:BB:CC:DD:EE:02",
+            name: "AirPods Pro",
+            kind: .audio,
+            isConnected: true
+        )
+        let previewID = "PREVIEW:1"
+        let previewDevice = BluetoothDevice(id: previewID, name: "AirPods Pro", kind: .audio, isConnected: true)
+        let previewEndpoint = try! XCTUnwrap(BluetoothListeningModeController.syntheticEndpoint(for: previewID))
+        let outputDevices = [
+            AudioOutputDevice(id: 1, name: "Built-in Output", uid: "builtin", isCurrent: true),
+            AudioOutputDevice(id: previewEndpoint, name: "AirPods Pro", uid: previewID, isCurrent: false)
+        ]
+        let fixture = PanelStoreFixture(outputDevices: outputDevices, pairedDevices: [firstDevice])
+        fixture.bluetoothListeningModes.previewMode = true
+        fixture.bluetoothListeningModes.refresh(devices: [previewDevice])
+        let panel = fixture.makePanel()
+        panel.start()
+        defer {
+            panel.stop()
+            fixture.bluetoothDevices.deactivate()
+            fixture.bluetoothListeningModes.stop()
+            fixture.store.stop()
+        }
+
+        let previewRow = try! XCTUnwrap(panel.volume.rows.first { $0.key.id == previewEndpoint })
+        XCTAssertEqual(previewRow.listeningMode?.selectedMode, .noiseCancellation)
+        fixture.bluetoothDevices.activate()
+        let firstDeviceDelivered = await waitForYields { fixture.bluetoothDevices.devices == [firstDevice] }
+        XCTAssertTrue(firstDeviceDelivered)
+        XCTAssertEqual(fixture.updateScheduler.pendingCount, 1)
+        fixture.updateScheduler.runScheduled()
+        XCTAssertEqual(panel.volume.listeningModeTaskID, "AABBCCDDEE01")
+
+        fixture.bluetoothWorker.devices = [latestDevice]
+        fixture.bluetoothDevices.refresh()
+        let previewAddress = try! XCTUnwrap(
+            panel.volume.rows.first { $0.key.id == previewEndpoint }?.listeningModeAddress
+        )
+        let latestModePublished = expectation(description: "latest settled listening mode is delivered")
+        var deliveredMode: BluetoothListeningModePresentation?
+        var cancellables: Set<AnyCancellable> = []
+        fixture.bluetoothListeningModes.$presentations
+            .dropFirst()
+            .sink { presentations in
+                guard let presentation = presentations[previewAddress],
+                      presentation.selectedMode == .transparency,
+                      presentation.actionState == .idle else { return }
+                deliveredMode = presentation
+                latestModePublished.fulfill()
+            }
+            .store(in: &cancellables)
+        fixture.bluetoothListeningModes.setMode(.transparency, forAddress: previewAddress)
+        await fulfillment(of: [latestModePublished], timeout: 1)
+        let latestControllerValuesDelivered = await waitForYields {
+            fixture.bluetoothDevices.devices == [latestDevice]
+        }
+        XCTAssertTrue(latestControllerValuesDelivered)
+        XCTAssertEqual(fixture.updateScheduler.pendingCount, 1, "device and mode publications share one refresh")
+        fixture.updateScheduler.runScheduled()
+
+        let changingRow = try! XCTUnwrap(panel.volume.rows.first { $0.key.id == previewEndpoint })
+        XCTAssertEqual(panel.volume.listeningModeTaskID, "AABBCCDDEE02")
+        XCTAssertEqual(deliveredMode?.selectedMode, .transparency)
+        XCTAssertEqual(changingRow.listeningMode?.selectedMode, .transparency)
+        XCTAssertEqual(changingRow.listeningMode?.actionState, .idle)
+
+        fixture.bluetoothListeningModes.refresh(devices: [])
+        XCTAssertEqual(fixture.updateScheduler.pendingCount, 1)
+        panel.stop()
+        fixture.updateScheduler.runScheduled()
+        let unchangedWhileStopped = try! XCTUnwrap(panel.volume.rows.first { $0.key.id == previewEndpoint })
+        XCTAssertEqual(unchangedWhileStopped.listeningMode?.selectedMode, .transparency)
+
+        panel.start()
+        XCTAssertEqual(panel.volume.listeningModeTaskID, "AABBCCDDEE02")
+        XCTAssertNil(panel.volume.rows.first { $0.key.id == previewEndpoint }?.listeningMode)
+    }
+
     func testLiveInputUpdatesOnlyTheInputRegion() async throws {
         let fixture = PanelStoreFixture()
         fixture.settings.setPopupSection(.audioInput, enabled: true)
@@ -292,22 +409,49 @@ private final class PanelStoreFixture {
     let scanner = PanelWiFiScanner()
     let vpn = PanelVPNMonitor()
     let updateScheduler = ManualPanelUpdateScheduler()
+    let bluetoothWorker: PanelBluetoothWorker
+    let bluetoothDevices: BluetoothDeviceController
+    let bluetoothListeningModes: BluetoothListeningModeController
     let settings: SettingsStore
     let localization: Localization
     let store: SystemStatusStore
     let initialSnapshot: StatusSnapshot
 
-    init() {
+    init(outputDevices: [AudioOutputDevice] = [], pairedDevices: [BluetoothDevice] = []) {
         let suiteName = "StatusPanelViewModelTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
         let sleeper = ManualEventSleeper()
         settings = SettingsStore(defaults: defaults)
         localization = Localization(defaults: defaults, preferredLanguages: ["en"])
         popupSleeper = sleeper
+        bluetoothWorker = PanelBluetoothWorker(devices: pairedDevices)
+        bluetoothDevices = BluetoothDeviceController(
+            worker: bluetoothWorker,
+            stateMonitor: PanelBluetoothStateMonitor(),
+            notificationCenter: NotificationCenter(),
+            workspaceNotificationCenter: NotificationCenter()
+        )
+        bluetoothListeningModes = BluetoothListeningModeController(
+            hal: BluetoothListeningModeHAL(
+                backend: FakeListeningModeBackend(),
+                sleeper: ImmediateListeningModeSleeper(),
+                retryAttempts: 1,
+                retryDelay: .milliseconds(1)
+            ),
+            endpointProvider: EmptyListeningModeEndpointProvider(),
+            failureClearDelay: .milliseconds(30),
+            previewSettleDelay: .milliseconds(0)
+        )
         initialSnapshot = StatusSnapshot(
             battery: BatteryStatus(rawPercentage: 72, isPresent: true, isCharging: false, isLowPowerMode: false, isConnectedToPower: false),
             wifi: WiFiStatus(state: .connected, rssi: -54, ssid: "Studio", nameAccess: .authorized),
-            volume: VolumeStatus(scalar: 0.4, isMuted: false, deviceName: "Desk speakers")
+            volume: VolumeStatus(
+                scalar: 0.4,
+                isMuted: false,
+                deviceName: "Desk speakers",
+                currentDevice: outputDevices.first(where: \.isCurrent),
+                outputDevices: outputDevices
+            )
         )
         store = SystemStatusStore(
             batteryMonitor: battery,
@@ -317,6 +461,8 @@ private final class PanelStoreFixture {
             inputMonitor: input,
             popupDebounceSleep: { duration in await sleeper.sleep(duration) },
             wifiNetworks: WiFiNetworkController(scanWorker: scanner),
+            bluetoothDevices: bluetoothDevices,
+            bluetoothListeningModes: bluetoothListeningModes,
             initialSnapshot: initialSnapshot
         )
         store.bindInputSettings(settings)
@@ -411,6 +557,36 @@ private final class PanelWiFiScanner: WiFiNetworkScanning, @unchecked Sendable {
     func setPower(_ isOn: Bool, completion: @escaping @Sendable (Bool) -> Void) {
         completion(false)
     }
+}
+
+private final class PanelBluetoothWorker: BluetoothPairedDeviceReading, @unchecked Sendable {
+    private let lock = NSLock()
+    private var storedDevices: [BluetoothDevice]
+
+    init(devices: [BluetoothDevice]) {
+        storedDevices = devices
+    }
+
+    var devices: [BluetoothDevice] {
+        get { lock.withLock { storedDevices } }
+        set { lock.withLock { storedDevices = newValue } }
+    }
+
+    func read(completion: @escaping @Sendable (BluetoothWorkerResult) -> Void) {
+        completion(.success(devices))
+    }
+}
+
+@MainActor
+private final class PanelBluetoothStateMonitor: BluetoothStateMonitoring {
+    var onStateChange: ((BluetoothAuthorizationStatus, BluetoothManagerState) -> Void)?
+    let authorization: BluetoothAuthorizationStatus = .allowed
+
+    func start() {
+        onStateChange?(.allowed, .poweredOn)
+    }
+
+    func stop() {}
 }
 
 @MainActor

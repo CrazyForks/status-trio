@@ -25,6 +25,7 @@ final class StatusPanelViewModel: ObservableObject {
         static let wiredDetailsAndNetwork = Self(rawValue: 1 << 2)
         static let bluetooth = Self(rawValue: 1 << 3)
         static let all = Self(rawValue: 1 << 4)
+        static let volume = Self(rawValue: 1 << 5)
     }
     @Published private(set) var battery: PanelSummaryState
     @Published private(set) var network: PanelSummaryState
@@ -153,11 +154,11 @@ final class StatusPanelViewModel: ObservableObject {
             .sink { [weak self] _ in self?.coalesceControllerUpdate(.wiredDetailsAndNetwork) }
             .store(in: &cancellables)
         store.bluetoothDevices.objectWillChange
-            .sink { [weak self] in self?.coalesceControllerUpdate(.bluetooth) }
+            .sink { [weak self] in self?.coalesceControllerUpdate([.bluetooth, .volume]) }
             .store(in: &cancellables)
         store.bluetoothListeningModes.$presentations
             .dropFirst()
-            .sink { [weak self] _ in self?.coalesceControllerUpdate(.bluetooth) }
+            .sink { [weak self] _ in self?.coalesceControllerUpdate([.bluetooth, .volume]) }
             .store(in: &cancellables)
 
         settings.objectWillChange
@@ -297,7 +298,7 @@ final class StatusPanelViewModel: ObservableObject {
             localization: localization
         )
         if batteryDetails != detailsState { batteryDetails = detailsState }
-        refreshWiFiDetails()
+        refreshWiFiDetails(status: snapshot.wifi)
     }
 
     private func refreshBatteryDetails() {
@@ -309,9 +310,9 @@ final class StatusPanelViewModel: ObservableObject {
         if batteryDetails != state { batteryDetails = state }
     }
 
-    private func refreshWiFiDetails() {
+    private func refreshWiFiDetails(status deliveredStatus: WiFiStatus? = nil) {
         let state = PanelDetailMapper.wifi(
-            status: store.popupSnapshot.wifi,
+            status: deliveredStatus ?? store.popupSnapshot.wifi,
             networks: store.wifiNetworks.networks,
             details: store.wifiNetworks.details,
             listState: store.wifiNetworks.state,
@@ -354,6 +355,7 @@ final class StatusPanelViewModel: ObservableObject {
             if regions.contains(.wifiDetails) { refreshWiFiDetails() }
             if regions.contains(.wiredDetailsAndNetwork) { refreshWiredDetailsAndNetwork() }
             if regions.contains(.bluetooth) { refreshBluetooth() }
+            if regions.contains(.volume) { publishVolume(mapVolume(store.liveVolume)) }
         }
     }
 
