@@ -9,6 +9,7 @@ struct IconPresentationSettings: Equatable, Sendable {
 
 struct IconPresentationOutput: Equatable, Sendable {
     let scene: IconSceneState
+    var menuBarTestScene: IconSceneState? = nil
     let menuBarSize: Double
 }
 
@@ -61,12 +62,23 @@ final class IconPresentationViewModel: ObservableObject {
         settings: IconPresentationSettings,
         resolveInputs: @MainActor (StatusSnapshot) -> IconPresentationInputs
     ) -> IconPresentationOutput {
-        let projected = ChargingEffectTestMode.snapshot(snapshot, enabled: settings.testsChargingEffect)
-        return IconPresentationOutput(
-            scene: IconPresentationMapper.scene(
+        let scene = IconPresentationMapper.scene(
+            inputs: resolveInputs(snapshot),
+            configuration: settings.configuration
+        )
+        let menuBarTestScene: IconSceneState?
+        if settings.testsChargingEffect {
+            let projected = ChargingEffectTestMode.snapshot(snapshot, enabled: true)
+            menuBarTestScene = IconPresentationMapper.scene(
                 inputs: resolveInputs(projected),
                 configuration: settings.configuration
-            ),
+            )
+        } else {
+            menuBarTestScene = nil
+        }
+        return IconPresentationOutput(
+            scene: scene,
+            menuBarTestScene: menuBarTestScene,
             menuBarSize: settings.menuBarSize
         )
     }

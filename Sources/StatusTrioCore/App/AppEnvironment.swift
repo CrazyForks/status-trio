@@ -6,6 +6,7 @@ final class AppEnvironment {
     let store: SystemStatusStore
     let settings: SettingsStore
     let localization: Localization
+    let iconPresentation: IconPresentationViewModel
     let statusBarController: StatusBarController
     let settingsWindowController: SettingsWindowController
     let onboardingWindowController: OnboardingWindowController
@@ -22,6 +23,7 @@ final class AppEnvironment {
         store: SystemStatusStore,
         settings: SettingsStore,
         localization: Localization,
+        iconPresentation: IconPresentationViewModel,
         statusBarController: StatusBarController,
         settingsWindowController: SettingsWindowController,
         onboardingWindowController: OnboardingWindowController,
@@ -34,6 +36,7 @@ final class AppEnvironment {
         self.store = store
         self.settings = settings
         self.localization = localization
+        self.iconPresentation = iconPresentation
         self.statusBarController = statusBarController
         self.settingsWindowController = settingsWindowController
         self.onboardingWindowController = onboardingWindowController
@@ -45,6 +48,7 @@ final class AppEnvironment {
     }
 
     func start() {
+        iconPresentation.start()
         onboardingWindowController.showIfNeeded()
         chargingEffectMotionMonitor.onChange = { [weak self] _ in
             self?.updateChargingEffectClock()
@@ -70,6 +74,7 @@ final class AppEnvironment {
         appIconController.stop()
         mainMenuController.stop()
         store.stop()
+        iconPresentation.stop()
     }
 
     private func subscribeToChargingEffectInputs() {
@@ -149,6 +154,25 @@ final class AppEnvironment {
             refreshInterval: settings.refreshInterval
         )
         let localization = Localization()
+        let appearance = StatusIconAppearance(settings: settings)
+        let iconPresentation = IconPresentationViewModel(
+            snapshot: store.snapshot,
+            settings: IconPresentationSettings(
+                configuration: IconPresentationConfiguration(
+                    battery: appearance.batteryOptions,
+                    connection: appearance.connectionOptions,
+                    volume: appearance.volumeOptions,
+                    bluetooth: appearance.bluetoothAudioOptions
+                ),
+                menuBarSize: appearance.iconSize,
+                testsChargingEffect: settings.testsChargingEffect
+            ),
+            snapshots: store.$snapshot.eraseToAnyPublisher(),
+            preferences: settings.iconPresentationPublisher,
+            resolveInputs: { snapshot in
+                IconPresentationResourceResolver.inputs(snapshot: snapshot)
+            }
+        )
         let chargingEffectClock = ChargingEffectClock()
         let chargingEffectMotionMonitor = ChargingEffectMotionMonitor()
         let activationPolicy = AppActivationPolicy()
@@ -173,6 +197,7 @@ final class AppEnvironment {
         let controller = StatusBarController(
             store: store,
             settings: settings,
+            iconPresentation: iconPresentation,
             localization: localization,
             isVisible: settings.appIconPlacement.showsMenuBarIcon,
             openSettings: { settingsWindowController.show() },
@@ -182,24 +207,19 @@ final class AppEnvironment {
         let appIconController = AppIconController(
             store: store,
             settings: settings,
+            iconPresentation: iconPresentation,
             activationPolicy: activationPolicy,
             setMenuBarVisible: { isVisible in
                 controller.setVisible(isVisible)
             },
             renderDockIcon: {
-                status,
-                options,
-                connectionOptions,
-                volumeOptions,
-                bluetoothAudioOptions,
-                backgroundStyle in
+                scene,
+                backgroundStyle,
+                pixelLength in
                 DockIconRenderer.image(
-                    status: status,
-                    options: options,
-                    connectionOptions: connectionOptions,
-                    volumeOptions: volumeOptions,
-                    bluetoothAudioOptions: bluetoothAudioOptions,
-                    backgroundStyle: backgroundStyle
+                    scene: scene,
+                    backgroundStyle: backgroundStyle,
+                    pixelLength: pixelLength
                 )
             }
         )
@@ -212,6 +232,7 @@ final class AppEnvironment {
             store: store,
             settings: settings,
             localization: localization,
+            iconPresentation: iconPresentation,
             statusBarController: controller,
             settingsWindowController: settingsWindowController,
             onboardingWindowController: onboardingWindowController,

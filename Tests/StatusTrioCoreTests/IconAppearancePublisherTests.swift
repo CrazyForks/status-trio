@@ -29,27 +29,26 @@ final class IconAppearancePublisherTests: XCTestCase {
             )
 
             var menuBarCache = StatusBarRenderCache()
-            XCTAssertTrue(menuBarCache.shouldRender(menuBarKey(baseline)))
-            XCTAssertTrue(
-                menuBarCache.shouldRender(menuBarKey(updated)),
-                "\(mutation.name) must invalidate the cached menu bar image"
+            let baselineMenuKey = menuBarKey(baseline)
+            let updatedMenuKey = menuBarKey(updated)
+            XCTAssertTrue(menuBarCache.needsRender(baselineMenuKey))
+            menuBarCache.recordSuccessfulRender(baselineMenuKey)
+            XCTAssertEqual(
+                menuBarCache.needsRender(updatedMenuKey),
+                updatedMenuKey != baselineMenuKey,
+                "\(mutation.name) redraws only when its mapped scene or menu-bar size changes"
             )
 
             var dockCache = DockIconRenderCache()
-            XCTAssertTrue(dockCache.shouldRender(dockKey(baseline)))
-            if mutation.name == Self.menuBarOnlyMutationName {
-                // Documented limitation: the icon size slider is menu bar only,
-                // so it must not disturb the Dock tile.
-                XCTAssertFalse(
-                    dockCache.shouldRender(dockKey(updated)),
-                    "\(mutation.name) must not invalidate the cached Dock image"
-                )
-            } else {
-                XCTAssertTrue(
-                    dockCache.shouldRender(dockKey(updated)),
-                    "\(mutation.name) must invalidate the cached Dock image"
-                )
-            }
+            let baselineDockKey = dockKey(baseline)
+            let updatedDockKey = dockKey(updated)
+            XCTAssertTrue(dockCache.needsRender(baselineDockKey))
+            dockCache.recordSuccessfulRender(baselineDockKey)
+            XCTAssertEqual(
+                dockCache.needsRender(updatedDockKey),
+                updatedDockKey != baselineDockKey,
+                "\(mutation.name) invalidates Dock only when its mapped scene changes"
+            )
         }
     }
 
@@ -221,24 +220,42 @@ final class IconAppearancePublisherTests: XCTestCase {
 
     private func menuBarKey(_ appearance: StatusIconAppearance) -> StatusBarRenderKey {
         StatusBarRenderKey(
-            status: status,
+            scene: scene(appearance),
             iconSize: appearance.iconSize,
-            options: appearance.batteryOptions,
-            connectionOptions: appearance.connectionOptions,
-            volumeOptions: appearance.volumeOptions,
-            bluetoothAudioOptions: appearance.bluetoothAudioOptions,
-            appearanceName: "darkAqua"
+            backingScale: 2,
+            appearanceName: "darkAqua",
+            phase: nil
         )
     }
 
     private func dockKey(_ appearance: StatusIconAppearance) -> DockIconRenderKey {
         DockIconRenderKey(
-            status: status,
-            options: appearance.batteryOptions,
-            connectionOptions: appearance.connectionOptions,
-            volumeOptions: appearance.volumeOptions,
-            bluetoothAudioOptions: appearance.bluetoothAudioOptions,
-            backgroundStyle: .dark
+            scene: scene(appearance),
+            backgroundStyle: .dark,
+            pixelLength: DockIconRenderer.pixelSize
+        )
+    }
+
+    private func scene(_ appearance: StatusIconAppearance) -> IconSceneState {
+        let snapshot = StatusSnapshot(
+            battery: status.battery,
+            wifi: status.wifi,
+            connection: status.connection,
+            volume: VolumeStatus(
+                scalar: status.volume.scalar,
+                isMuted: status.volume.isMuted,
+                deviceName: status.volume.deviceName,
+                currentDevice: status.volume.currentDevice
+            )
+        )
+        return IconPresentationMapper.scene(
+            inputs: IconPresentationInputs(snapshot: snapshot, audioIcon: nil),
+            configuration: IconPresentationConfiguration(
+                battery: appearance.batteryOptions,
+                connection: appearance.connectionOptions,
+                volume: appearance.volumeOptions,
+                bluetooth: appearance.bluetoothAudioOptions
+            )
         )
     }
 

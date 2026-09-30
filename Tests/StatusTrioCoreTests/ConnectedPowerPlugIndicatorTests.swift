@@ -107,20 +107,27 @@ final class ConnectedPowerPlugIndicatorTests: XCTestCase {
 
     func testDockRenderKeyDistinguishesChargingFromConnectedPower() {
         let charging = DockIconRenderKey(
-            status: MenuBarStatus(snapshot: snapshot(for: chargingBattery())),
-            options: .standard,
-            connectionOptions: .standard,
-            backgroundStyle: .dark
+            scene: makeIconPresentationScene(
+                status: MenuBarStatus(snapshot: snapshot(for: chargingBattery()))
+            ),
+            backgroundStyle: .dark,
+            pixelLength: DockIconRenderer.pixelSize
         )
         let connected = DockIconRenderKey(
-            status: MenuBarStatus(snapshot: snapshot(for: connectedBattery())),
-            options: .standard,
-            connectionOptions: .standard,
-            backgroundStyle: .dark
+            scene: makeIconPresentationScene(
+                status: MenuBarStatus(snapshot: snapshot(for: connectedBattery()))
+            ),
+            backgroundStyle: .dark,
+            pixelLength: DockIconRenderer.pixelSize
         )
 
-        XCTAssertEqual(charging.gapContent, .bolt)
-        XCTAssertEqual(connected.gapContent, .plug)
+        guard case let .symbol(chargingSymbol)? = charging.scene.outerRing?.accessory,
+              case let .symbol(connectedSymbol)? = connected.scene.outerRing?.accessory else {
+            XCTFail("Expected charging accessories in both scenes.")
+            return
+        }
+        XCTAssertEqual(chargingSymbol.source, .primitive(.bolt))
+        XCTAssertEqual(connectedSymbol.source, .primitive(.plug))
     }
 
     private func connectedBattery() -> BatteryStatus {

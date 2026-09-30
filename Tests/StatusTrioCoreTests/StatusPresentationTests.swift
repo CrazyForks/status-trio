@@ -178,7 +178,7 @@ final class StatusPresentationTests: XCTestCase {
         )
 
         XCTAssertEqual(
-            StatusPresentation.statusItemAccessibilityValue(
+            AccessibilityPresentation.statusItemValue(
                 snapshot,
                 localization: localization
             ),
@@ -204,7 +204,7 @@ final class StatusPresentationTests: XCTestCase {
         )
 
         XCTAssertEqual(
-            StatusPresentation.statusItemAccessibilityValue(
+            AccessibilityPresentation.statusItemValue(
                 snapshot,
                 localization: localization
             ),
@@ -226,7 +226,7 @@ final class StatusPresentationTests: XCTestCase {
         )
 
         XCTAssertEqual(
-            StatusPresentation.statusItemAccessibilityValue(
+            AccessibilityPresentation.statusItemValue(
                 snapshot,
                 localization: localization
             ),

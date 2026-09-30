@@ -209,7 +209,7 @@ struct ChargingEffectFrameCacheTests {
         volumeScalar: Double = 0.5
     ) -> StatusBarRenderKey {
         StatusBarRenderKey(
-            status: MenuBarStatus(
+            scene: makeIconPresentationScene(status: MenuBarStatus(
                 battery: .placeholder,
                 wifi: .placeholder,
                 connection: .wifi,
@@ -218,10 +218,9 @@ struct ChargingEffectFrameCacheTests {
                     isMuted: false,
                     deviceName: "Speakers"
                 )
-            ),
+            )),
             iconSize: 22,
-            options: .standard,
-            connectionOptions: .standard,
+            backingScale: 2,
             appearanceName: "darkAqua",
             phase: phase
         )

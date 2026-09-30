@@ -309,13 +309,34 @@ struct DockIconTile: View {
     @MainActor
     var renderKey: DockIconRenderKey {
         DockIconRenderKey(
-            status: status,
-            options: batteryOptions,
-            connectionOptions: connectionOptions,
-            volumeOptions: volumeOptions,
-            bluetoothAudioOptions: bluetoothAudioOptions,
+            scene: previewScene,
             backgroundStyle: backgroundStyle,
             pixelLength: pixelLength
+        )
+    }
+
+    @MainActor
+    private var previewScene: IconSceneState {
+        let snapshot = StatusSnapshot(
+            battery: status.battery,
+            wifi: status.wifi,
+            connection: status.connection,
+            volume: VolumeStatus(
+                scalar: status.volume.scalar,
+                isMuted: status.volume.isMuted,
+                deviceName: status.volume.deviceName,
+                currentDevice: status.volume.currentDevice
+            )
+        )
+        let inputs = IconPresentationResourceResolver.inputs(snapshot: snapshot)
+        return IconPresentationMapper.scene(
+            inputs: inputs,
+            configuration: IconPresentationConfiguration(
+                battery: batteryOptions,
+                connection: connectionOptions,
+                volume: volumeOptions,
+                bluetooth: bluetoothAudioOptions
+            )
         )
     }
 

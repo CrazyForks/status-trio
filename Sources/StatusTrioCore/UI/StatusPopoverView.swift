@@ -2,59 +2,6 @@ import SwiftUI
 
 @MainActor
 enum StatusPresentation {
-    static let statusItemAccessibilityLabel = "Status Trio"
-
-    static func statusItemAccessibilityValue(
-        _ snapshot: StatusSnapshot,
-        localization: Localization
-    ) -> String {
-        statusItemAccessibilityValue(
-            MenuBarStatus(snapshot: snapshot),
-            localization: localization
-        )
-    }
-
-    static func statusItemAccessibilityValue(
-        _ status: MenuBarStatus,
-        localization: Localization
-    ) -> String {
-        let battery = status.battery
-        let batterySummary: String
-        if battery.isPresent {
-            let percentage = localization.format(
-                .batteryAccessibilityValue,
-                battery.percentage
-            )
-            let subtitle = batterySubtitle(battery, localization: localization)
-            if isOrdinaryBatteryState(battery) {
-                batterySummary = percentage
-            } else {
-                batterySummary = localization.format(
-                    .commonParenthetical,
-                    percentage,
-                    subtitle
-                )
-            }
-        } else {
-            batterySummary = localization.string(.batteryStateNotPresent)
-        }
-
-        let networkSummary = status.connection == .ethernet
-            ? localization.string(.ethernetAccessibilityConnected)
-            : wifiAccessibilitySummary(status.wifi, localization: localization)
-        let volumeSummary = localization.format(
-            .accessibilityVolume,
-            volumeValue(status.volume, localization: localization)
-        )
-
-        return localization.format(
-            .accessibilityStatus,
-            batterySummary,
-            networkSummary,
-            volumeSummary
-        )
-    }
-
     static func batteryTitle(
         _ battery: BatteryStatus,
         localization: Localization
@@ -256,28 +203,6 @@ enum StatusPresentation {
         volume.deviceName ?? localization.string(.volumeNoDefaultDevice)
     }
 
-    private static func wifiAccessibilitySummary(
-        _ wifi: WiFiStatus,
-        localization: Localization
-    ) -> String {
-        let value = wifiValue(wifi, localization: localization)
-        if let ssid = wifi.ssid, !ssid.isEmpty {
-            return localization.format(.wifiAccessibilityWithSSID, ssid, value)
-        }
-        return localization.format(
-            .commonLabelValue,
-            localization.string(.wifiTitle),
-            value
-        )
-    }
-
-    private static func isOrdinaryBatteryState(_ battery: BatteryStatus) -> Bool {
-        battery.isPresent
-            && !battery.isCharged
-            && !battery.isCharging
-            && !battery.isLowPowerMode
-            && !battery.isConnectedToPower
-    }
 }
 
 

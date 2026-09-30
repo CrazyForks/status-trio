@@ -139,7 +139,7 @@ Mapper 保持现有产品规则，包括中心电池百分比、蓝牙指定符�
 
 ### 6.1 状态发布
 
-共享所有者从领域快照、完整设置配置和现有充电测试模式输入解析场景，并在发布前去重。沿用设置 publisher 从已投递值构造配置的方式：`@Published` 在字段写入前发送值，不能在 sink 中回读存储来拼出旧配置。
+共享所有者从真实领域快照和完整设置配置解析 canonical `scene`，并在发布前去重。既有充电测试模式仅用于 Menu Bar：同一个所有者通过同一个 Mapper 派生可选 `menuBarTestScene`，Menu Bar 消费该值或 canonical scene，Dock 始终消费 canonical scene。测试模式不建立第二个所有者或独立配置。沿用设置 publisher 从已投递值构造配置的方式：`@Published` 在字段写入前发送值，不能在 sink 中回读存储来拼出旧配置。
 
 保持现有快速设置反馈及领域快照更新节流行为。调度／合并策略可留在 surface 层，但不能在那里再次解析领域视觉。初始渲染、显示器变化、外观变化、隐藏后恢复和停止后重启均消费共享所有者的最新完整值。
 
@@ -149,7 +149,7 @@ Mapper 保持现有产品规则，包括中心电池百分比、蓝牙指定符�
 
 场景表达充电及心跳效果意图；`ChargingEffectPhase`、时钟、瞬态强度、帧索引均不进入场景。保留 `ChargingEffectClock`、Reduce Motion、显示器休眠、测试模式和现有 Menu Bar 动画行为。
 
-Dock 在当前基准版本保持静态绘制策略；无需为本次重构新建 Dock 动画功能。surface 禁用动画不更改逻辑场景，只影响绘制策略。充电测试模式继续使用现有测试投影，不修改真实领域快照或面板状态。
+Dock 在当前基准版本保持静态绘制策略；无需为本次重构新建 Dock 动画功能。surface 禁用动画不更改逻辑场景，只影响绘制策略。充电测试模式继续使用现有测试投影，仅改变 Menu Bar 测试展示，不改变 Dock 图片、真实领域快照或面板状态；测试开关不会触发 Dock 栅格渲染。
 
 `StatusBarChargingFrameCache` 的整组帧 identity 包含场景、有效渲染环境和影响整组帧像素的效果参数（包括 heartbeat multiplier），排除每次 tick 的帧索引。单帧 identity 只在实际需要时包含 phase。保持预渲染帧复用及动画图层行为。
 

@@ -7,15 +7,22 @@ private struct UncheckedSendableNSEvent: @unchecked Sendable {
 }
 
 private struct StatusBarAccessibilityKey: Equatable {
-    let status: MenuBarStatus
+    let snapshot: StatusSnapshot
     let language: AppLanguage
 }
 
 @MainActor
 final class StatusBarController: NSObject, NSPopoverDelegate {
-    static let iconSnapshotDebounceInterval: TimeInterval = 0.5
     static let popoverToggleLockoutInterval: TimeInterval = 0.25
     static let popoverContentReleaseDelay: TimeInterval = 60
+
+    typealias MenuBarRenderer = @MainActor (
+        _ scene: IconSceneState,
+        _ size: Double,
+        _ scale: CGFloat,
+        _ appearance: NSAppearance,
+        _ phase: ChargingEffectPhase?
+    ) -> NSImage?
 
     enum ClickKind: Equatable {
         case left
@@ -26,15 +33,15 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     private let popover = NSPopover()
     private let store: SystemStatusStore
     private let settings: SettingsStore
+    private let iconPresentation: IconPresentationViewModel
     private let localization: Localization
+    private let renderMenuBarIcon: MenuBarRenderer
+    private let accessibilityValueDidChange: @MainActor (String) -> Void
     let chargingEffectClock: ChargingEffectClock
-    private var cancellable: AnyCancellable?
-    private var localizationCancellable: AnyCancellable?
-    private var appearanceCancellable: AnyCancellable?
+    private var iconPresentationCancellable: AnyCancellable?
+    private var accessibilityCancellable: AnyCancellable?
     private var chargingEffectCancellable: AnyCancellable?
     private var currentChargingEffectPhase: ChargingEffectPhase?
-    private var testsChargingEffect: Bool
-    private var chargingEffectTestCancellable: AnyCancellable?
     private var screenParametersCancellable: AnyCancellable?
     private var refreshIntervalCancellable: AnyCancellable?
     private let openSettings: () -> Void
@@ -48,6 +55,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     var hasLayerBackedAnimation: Bool { animationLayerPresenter.isInstalled }
     private var isStatusItemVisible: Bool
     private var accessibilityKey: StatusBarAccessibilityKey?
+    private var latestIconOutput: IconPresentationOutput
     private var popoverDismissMonitor: Any?
     private var volumeScrollMonitor: Any?
     private let volumeScrollAdjustment = PopupVolumeScrollAdjustment()
@@ -65,20 +73,34 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     init(
         store: SystemStatusStore,
         settings: SettingsStore,
+        iconPresentation: IconPresentationViewModel,
         localization: Localization,
         isVisible: Bool = true,
         openSettings: @escaping () -> Void,
         quitAction: @escaping () -> Void,
-        chargingEffectClock: ChargingEffectClock = ChargingEffectClock()
+        chargingEffectClock: ChargingEffectClock = ChargingEffectClock(),
+        accessibilityValueDidChange: @escaping @MainActor (String) -> Void = { _ in },
+        renderMenuBarIcon: @escaping MenuBarRenderer = { scene, size, scale, appearance, phase in
+            StatusIconRenderer.image(
+                scene: scene,
+                size: CGFloat(size),
+                scale: scale,
+                appearance: appearance,
+                phase: phase
+            )
+        }
     ) {
         self.store = store
         self.settings = settings
+        self.iconPresentation = iconPresentation
         self.localization = localization
+        self.renderMenuBarIcon = renderMenuBarIcon
+        self.accessibilityValueDidChange = accessibilityValueDidChange
         self.chargingEffectClock = chargingEffectClock
         self.openSettings = openSettings
         self.quitAction = quitAction
         self.isStatusItemVisible = isVisible
-        self.testsChargingEffect = settings.testsChargingEffect
+        self.latestIconOutput = iconPresentation.output
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         super.init()
 
@@ -88,33 +110,13 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         observeAppearanceChanges()
         scheduleInitialRender()
 
-        cancellable = store.$snapshot
-            .map { MenuBarStatus(snapshot: $0) }
+        iconPresentationCancellable = iconPresentation.$output
             .removeDuplicates()
-            .dropFirst()
-            .debounce(
-                for: .seconds(Self.iconSnapshotDebounceInterval),
-                scheduler: RunLoop.main
-            )
-            .sink { [weak self] _ in
-                self?.renderLatestSnapshot()
-            }
-
-        // One subscription carries every icon option. Adding a setting to
-        // `SettingsStore.iconAppearancePublisher` is enough to reach the menu
-        // bar; the scattered subscriptions this replaced could silently miss
-        // one, and the icon then stayed stale until the next status poll.
-        appearanceCancellable = settings.iconAppearancePublisher
-            .dropFirst()
-            .sink { [weak self] appearance in
+            .sink { [weak self] output in
                 guard let self else { return }
-                self.renderCoalescer.submit { [weak self] in
-                    guard let self else { return }
-                    self.render(
-                        appearance,
-                        status: MenuBarStatus(snapshot: self.store.snapshot),
-                        phase: currentChargingEffectPhase
-                    )
+                latestIconOutput = output
+                renderCoalescer.submit { [weak self] in
+                    self?.renderLatestScene()
                 }
             }
 
@@ -124,22 +126,15 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
                 self?.renderAnimationPhase(phase)
             }
 
-        chargingEffectTestCancellable = settings.$testsChargingEffect
-            .removeDuplicates()
-            .dropFirst()
-            .sink { [weak self] enabled in
-                guard let self else { return }
-                testsChargingEffect = enabled
-                renderLatestSnapshot()
+        accessibilityCancellable = Publishers.CombineLatest(
+            store.$snapshot,
+            localization.$resolvedLanguage
+        )
+        .sink { [weak self] snapshot, language in
+            Task { @MainActor [weak self] in
+                self?.updateAccessibility(snapshot: snapshot, language: language)
             }
-
-        localizationCancellable = localization.$resolvedLanguage
-            .removeDuplicates()
-            .sink { [weak self] _ in
-                Task { @MainActor [weak self] in
-                    self?.renderLatestSnapshot()
-                }
-            }
+        }
 
         refreshIntervalCancellable = settings.$refreshIntervalSeconds
             .removeDuplicates()
@@ -153,7 +148,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         )
         .receive(on: RunLoop.main)
         .sink { [weak self] _ in
-            self?.renderLatestSnapshot()
+            self?.renderLatestScene()
         }
     }
 
@@ -174,7 +169,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         if isVisible {
             statusItem.isVisible = true
             renderCache = StatusBarRenderCache()
-            renderLatestSnapshot()
+            renderLatestScene()
         } else {
             clearAnimationPresentation()
             popover.performClose(nil)
@@ -195,7 +190,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         guard let button = statusItem.button else { return }
         appearanceObservations.append(button.observe(\.effectiveAppearance, options: [.new]) { [weak self] _, _ in
             Task { @MainActor in
-                self?.renderLatestSnapshot()
+                self?.renderLatestScene()
             }
         })
     }
@@ -203,7 +198,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     private func scheduleInitialRender() {
         Task { @MainActor [weak self] in
             await Task.yield()
-            self?.renderLatestSnapshot()
+            self?.renderLatestScene()
         }
     }
 
@@ -489,14 +484,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         popoverContentRetention.markOpened()
     }
 
-    private func render(
-        _ appearance: StatusIconAppearance,
-        status: MenuBarStatus,
-        phase: ChargingEffectPhase?
-    ) {
+    private func render(scene: IconSceneState, iconSize: Double, phase: ChargingEffectPhase?) {
         guard isStatusItemVisible, let button = statusItem.button else { return }
-
-        let status = ChargingEffectTestMode.status(status, enabled: testsChargingEffect)
 
         if phase == nil {
             clearAnimationPresentation()
@@ -506,24 +495,20 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             ?? NSScreen.main?.backingScaleFactor
             ?? 1
         let key = StatusBarRenderKey(
-            status: status,
-            iconSize: appearance.iconSize,
-            options: appearance.batteryOptions,
-            connectionOptions: appearance.connectionOptions,
-            volumeOptions: appearance.volumeOptions,
-            bluetoothAudioOptions: appearance.bluetoothAudioOptions,
+            scene: scene,
+            iconSize: iconSize,
+            backingScale: backingScale,
             appearanceName: button.effectiveAppearance.name.rawValue,
             phase: phase
         )
         if let phase, phase.kind == .steady,
             chargingFrameCache.needsFrames(for: phase, key: key, backingScale: backingScale)
         {
-            // A backing-scale change is not in the existing render key. Reset on
-            // any frame-set rebuild so the current phase is displayed immediately.
-            renderCache = StatusBarRenderCache()
+            animationLayerPresenter.clear()
         }
-        guard renderCache.shouldRender(key) else { return }
+        guard renderCache.needsRender(key) else { return }
 
+        let renderedImage: NSImage?
         if let phase, phase.kind == .steady,
             let cachedImage = chargingFrameCache.image(
                 for: phase,
@@ -531,15 +516,11 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
                 backingScale: backingScale,
                 renderFrame: { framePhase in
                     StatusIconRenderer.preRenderedMenuBarImage(
-                        menuBarStatus: status,
-                        size: appearance.iconSize,
+                        scene: scene,
+                        size: CGFloat(iconSize),
                         scale: backingScale,
                         appearance: button.effectiveAppearance,
-                        phase: framePhase,
-                        options: appearance.batteryOptions,
-                        connectionOptions: appearance.connectionOptions,
-                        volumeOptions: appearance.volumeOptions,
-                        bluetoothAudioOptions: appearance.bluetoothAudioOptions
+                        phase: framePhase
                     )
                 }
             )
@@ -547,35 +528,22 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             presentCachedAnimationFrame(
                 cachedImage,
                 button: button,
-                iconSize: appearance.iconSize,
+                iconSize: CGFloat(iconSize),
                 backingScale: backingScale
             )
+            renderedImage = cachedImage
         } else {
             animationLayerPresenter.clear()
-            button.image = StatusIconRenderer.image(
-                menuBarStatus: status,
-                size: appearance.iconSize,
-                options: appearance.batteryOptions,
-                connectionOptions: appearance.connectionOptions,
-                volumeOptions: appearance.volumeOptions,
-                bluetoothAudioOptions: appearance.bluetoothAudioOptions,
-                phase: phase
+            renderedImage = renderMenuBarIcon(
+                scene,
+                iconSize,
+                backingScale,
+                button.effectiveAppearance,
+                phase
             )
+            button.image = renderedImage
         }
-
-        let nextAccessibilityKey = StatusBarAccessibilityKey(
-            status: status,
-            language: localization.resolvedLanguage
-        )
-        guard nextAccessibilityKey != accessibilityKey else { return }
-        accessibilityKey = nextAccessibilityKey
-        button.setAccessibilityLabel(StatusPresentation.statusItemAccessibilityLabel)
-        button.setAccessibilityValue(
-            StatusPresentation.statusItemAccessibilityValue(
-                status,
-                localization: localization
-            )
-        )
+        if renderedImage != nil { renderCache.recordSuccessfulRender(key) }
     }
 
     private func clearAnimationPresentation() {
@@ -625,8 +593,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     private func renderAnimationPhase(_ phase: ChargingEffectPhase?) {
         currentChargingEffectPhase = phase
         render(
-            StatusIconAppearance(settings: settings),
-            status: MenuBarStatus(snapshot: store.snapshot),
+            scene: latestIconOutput.menuBarTestScene ?? latestIconOutput.scene,
+            iconSize: latestIconOutput.menuBarSize,
             phase: phase
         )
     }
@@ -634,15 +602,23 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     /// The status, the appearance, and the window's effective appearance all feed
     /// one cached render, so the newest state wins over a redraw that is still
     /// waiting out the coalescing interval.
-    private func renderLatestSnapshot() {
-        renderCoalescer.submit { [weak self] in
-            guard let self else { return }
-            self.render(
-                StatusIconAppearance(settings: self.settings),
-                status: MenuBarStatus(snapshot: self.store.snapshot),
-                phase: self.currentChargingEffectPhase
-            )
-        }
+    private func renderLatestScene() {
+        render(
+            scene: latestIconOutput.menuBarTestScene ?? latestIconOutput.scene,
+            iconSize: latestIconOutput.menuBarSize,
+            phase: currentChargingEffectPhase
+        )
+    }
+
+    private func updateAccessibility(snapshot: StatusSnapshot, language: AppLanguage) {
+        let key = StatusBarAccessibilityKey(snapshot: snapshot, language: language)
+        guard key != accessibilityKey else { return }
+        accessibilityKey = key
+        guard let button = statusItem.button else { return }
+        button.setAccessibilityLabel(AccessibilityPresentation.statusItemLabel)
+        let value = AccessibilityPresentation.statusItemValue(snapshot, localization: localization)
+        button.setAccessibilityValue(value)
+        accessibilityValueDidChange(value)
     }
 
     private static var appVersion: String {

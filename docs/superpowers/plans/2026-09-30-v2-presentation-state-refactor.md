@@ -290,6 +290,7 @@ struct IconPresentationSettings: Equatable, Sendable {
 struct IconPresentationOutput: Equatable, Sendable {
     let scene: IconSceneState
     let menuBarSize: Double
+    let menuBarTestScene: IconSceneState? // default nil; existing Menu Bar-only test projection
 }
 // SettingsStore.iconPresentationPublisher: AnyPublisher<IconPresentationSettings, Never>
 @MainActor final class IconPresentationViewModel: ObservableObject {
@@ -329,10 +330,13 @@ model.stop()
 ```swift
 snapshots.combineLatest(preferences)
     .map { snapshot, settings in
-        let projected = ChargingEffectTestMode.snapshot(snapshot, enabled: settings.testsChargingEffect)
-        return IconPresentationOutput(scene: IconPresentationMapper.scene(
-            inputs: resolveInputs(projected), configuration: settings.configuration),
-            menuBarSize: settings.menuBarSize)
+        let scene = IconPresentationMapper.scene(
+            inputs: resolveInputs(snapshot), configuration: settings.configuration)
+        let testScene = settings.testsChargingEffect ? IconPresentationMapper.scene(
+            inputs: resolveInputs(ChargingEffectTestMode.snapshot(snapshot, enabled: true)),
+            configuration: settings.configuration) : nil
+        return IconPresentationOutput(scene: scene, menuBarSize: settings.menuBarSize,
+            menuBarTestScene: testScene)
     }
     .removeDuplicates()
     .sink { [weak self] next in
@@ -341,7 +345,7 @@ snapshots.combineLatest(preferences)
     }
 ```
 
-`ChargingEffectTestMode.snapshot(_:enabled:)` 是本任务在现有 `UI/Icon/ChargingEffectTestMode.swift` 添加的便捷投影，使用已存在的 `battery(_:enabled:)` 和 `StatusSnapshot.replacingBattery`；不写回 store。迁入 Presentation 前确认旧测试模式 API 的其他消费者。
+`ChargingEffectTestMode.snapshot(_:enabled:)` 是本任务在现有 `UI/Icon/ChargingEffectTestMode.swift` 添加的便捷投影，使用已存在的 `battery(_:enabled:)` 和 `StatusSnapshot.replacingBattery`；不写回 store。canonical scene 始终来自真实 snapshot，测试投影仅进入可选 menuBarTestScene；Dock 不消费测试投影。迁入 Presentation 前确认旧测试模式 API 的其他消费者。
 
 - [ ] 设置 publisher 复用当前聚合已投递字段，转换为新设置值，再 combine `$testsChargingEffect`；共享 ringStroke 只聚合一次。覆盖每个现有开关、缩放、模式和无关设置不发布。不要在 sink 读取 `settings.iconAppearance` 拼新值。
 - [ ] 测试 start 两次只一份订阅、stop 后无输出、restart 当前值刷新、连续 settings 发送完整新值、测试模式不改变原 snapshot、output 中没有 phase、仅 size 变化不改变 scene。
@@ -371,6 +375,7 @@ func testFailedRasterDoesNotBecomeSuccessfulKey() {
 `scene` 在函数内由 Task 3 fixture 解析。两种 cache 均产生 `needsRender(_:) -> Bool`、`recordSuccessfulRender(_:)`、`reset()`；imageCache LRU 只在成功生成图片后写入。
 
 - [ ] Run `swift test --filter 'IconSurfaceIntegrationTests|StatusBarRenderCacheTests|DockIconRenderCacheTests'`，确认缺口。再由 AppEnvironment 创建、start／stop 同一个 model，先启用共享输出，再启动消费者／领域监控，初始值不能依赖首个 poll。
+- [ ] 保留既有 Menu Bar-only 充电测试模式：同一 owner 的 canonical scene 驱动 Dock，Menu Bar 消费 `menuBarTestScene ?? scene`；开关测试模式不得改变 Dock 图片或增加 Dock raster，须有集成测试。正常模式两端使用同一 scene。
 - [ ] 两 controller sink 使用**投递的 output**，更新各自 latest output，再调度渲染；不得在 `$output` sink 回读尚未写入的 model.output。替换两个独立领域视觉订阅，保留 surface appearance、placement、background 和 interaction 订阅。
 - [ ] UI Controller 保留领域操作和 popover 所有权；只从图标绘制链移除领域输入。Menu Bar 滚轮控制在后续 Task 11 连接面板动作，不提前删除。
 - [ ] Cache identity 包含 backingScale；整组帧移除单次 phase，保留 heartbeat multiplier。将 pre-rendered／animation image API 改为 scene 输入；Dock 无 phase 订阅。无可见表面时 model 可算值，但不得栅格化；隐藏／恢复和 render failure 重试有测试。

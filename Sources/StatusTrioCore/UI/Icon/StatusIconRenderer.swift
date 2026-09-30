@@ -1186,6 +1186,22 @@ enum StatusIconRenderer {
 }
 
 extension StatusIconRenderer {
+    static func preRenderedMenuBarImage(
+        scene: IconSceneState,
+        size: CGFloat,
+        scale: CGFloat,
+        appearance: NSAppearance,
+        phase: ChargingEffectPhase
+    ) -> NSImage? {
+        image(
+            scene: scene,
+            size: size,
+            scale: scale,
+            appearance: appearance,
+            phase: phase
+        )
+    }
+
     static func render(
         scene: IconSceneState,
         environment: StatusIconRenderEnvironment,

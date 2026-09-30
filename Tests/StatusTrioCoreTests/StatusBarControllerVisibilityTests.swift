@@ -41,9 +41,13 @@ struct StatusBarControllerVisibilityTests {
             volumeMonitor: IdleVolumeMonitor(),
             initialSnapshot: StatusSnapshot(battery: battery, wifi: .placeholder, volume: .placeholder)
         )
+        let iconPresentation = makeTestIconPresentation(store: store, settings: settings)
+        iconPresentation.start()
+        defer { iconPresentation.stop() }
         let controller = StatusBarController(
             store: store,
             settings: settings,
+            iconPresentation: iconPresentation,
             localization: Localization(defaults: defaults, preferredLanguages: ["en"]),
             openSettings: {},
             quitAction: {},
@@ -99,9 +103,14 @@ struct StatusBarControllerVisibilityTests {
                 volume: .placeholder
             )
         )
+        let settings = SettingsStore(defaults: defaults)
+        let iconPresentation = makeTestIconPresentation(store: store, settings: settings)
+        iconPresentation.start()
+        defer { iconPresentation.stop() }
         let controller = StatusBarController(
             store: store,
-            settings: SettingsStore(defaults: defaults),
+            settings: settings,
+            iconPresentation: iconPresentation,
             localization: Localization(defaults: defaults, preferredLanguages: ["en"]),
             openSettings: {},
             quitAction: {},
