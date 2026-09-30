@@ -23,6 +23,10 @@ enum BluetoothNearbyDeviceMerge {
     struct Result: Equatable {
         /// The paired-device list, with a row added for a mobile device the
         /// report does not carry at all.
+        ///
+        /// The order is the report's own, with an added row appended. Where the
+        /// panel draws a row a reading created is the panel's rule, not this
+        /// one's: see `BluetoothDeviceListPresentation.orderedDevices`.
         let devices: [BluetoothDevice]
         /// The paired-device levels, with a level added for every device the
         /// report carried none for.
@@ -39,19 +43,6 @@ enum BluetoothNearbyDeviceMerge {
         var mergedDevices = devices
         var mergedLevels = batteryLevels
         var remaining: [NearbyBluetoothBatteryDevice] = []
-        // A device a reading was just taken from leads the list.
-        //
-        // It is the one kind of row the panel has live information about: its
-        // level was read over the air a moment ago, while every other
-        // disconnected row carries a number macOS wrote down at some earlier
-        // point. The report appends it wherever its own scan found it, which is
-        // in the middle of the disconnected rows, and a device with a fresh
-        // reading is not served by that position. This is the order the list
-        // works from, not the last word on it: a connected device still leads,
-        // because the group a row belongs to is decided after this, and a saved
-        // order of the user's own still reorders within the group, because that
-        // is what the user asked for when they dragged the rows.
-        var promoted: [BluetoothDevice] = []
 
         for nearby in nearbyDevices {
             guard let kind = BluetoothMobileDeviceModel.kind(forModel: nearby.model),
@@ -61,11 +52,13 @@ enum BluetoothNearbyDeviceMerge {
             }
 
             if let index = mergedDevices.firstIndex(where: { $0.name.matchesDeviceName(nearby.name) }) {
-                let device = mergedDevices.remove(at: index)
+                let device = mergedDevices[index]
                 // The report's own class wins when it declared one. Only a row it
                 // could not classify is corrected, so a device macOS described
                 // keeps the class macOS gave it.
-                promoted.append(device.kind == .unknown ? device.identifiedByModel(kind) : device)
+                mergedDevices[index] = device.kind == .unknown
+                    ? device.identifiedByModel(kind)
+                    : device
                 let key = BluetoothBatteryReader.normalizedAddress(device.id)
                 addIfAbsent(&mergedLevels, key: key, level: nearby.batteryLevel, address: device.id)
             } else {
@@ -76,14 +69,14 @@ enum BluetoothNearbyDeviceMerge {
                     isConnected: false,
                     isReadOverTheAir: true
                 )
-                promoted.append(device)
+                mergedDevices.append(device)
                 let key = BluetoothBatteryReader.normalizedAddress(device.id)
                 addIfAbsent(&mergedLevels, key: key, level: nearby.batteryLevel, address: device.id)
             }
         }
 
         return Result(
-            devices: promoted + mergedDevices,
+            devices: mergedDevices,
             batteryLevels: mergedLevels,
             remainingNearby: remaining
         )

@@ -262,6 +262,70 @@ final class BluetoothDeviceListPresentationTests: XCTestCase {
         )
     }
 
+    /// A row a reading created leads its group. It is the only row the panel has
+    /// live information about — a level read over the air seconds ago — and the
+    /// report lists it wherever its own scan found it, sorted among the rest by
+    /// name, which is the middle of the group where the user looks past it.
+    func testRowsAReadingCreatedLeadTheirGroup() {
+        let devices = [
+            makeDevice(address: "AA:00:00:00:00:01", name: "AirPods", isConnected: false),
+            makeReadingDevice(address: "CB-1", name: "Ling's iPhone"),
+            makeDevice(address: "AA:00:00:00:00:02", name: "MX Keys", isConnected: false),
+            makeReadingDevice(address: "CB-2", name: "Lingsipad")
+        ]
+
+        let ordered = BluetoothDeviceListPresentation.orderedDevices(devices, using: [])
+
+        XCTAssertEqual(
+            Set(ordered.prefix(2).map(\.name)),
+            ["Ling's iPhone", "Lingsipad"],
+            "both readings lead, ahead of the AirPods rule and the name sort"
+        )
+        XCTAssertEqual(ordered.suffix(2).map(\.name), ["AirPods", "MX Keys"])
+    }
+
+    /// The saved order arranges the rest of the group; it cannot push a reading
+    /// row back among them, which is what dragging it there would ask for.
+    func testASavedOrderCannotPushAReadingRowBackIntoTheGroup() {
+        let devices = [
+            makeDevice(address: "AA:00:00:00:00:01", name: "Mouse", isConnected: false),
+            makeReadingDevice(address: "CB-1", name: "Ling's iPhone")
+        ]
+
+        XCTAssertEqual(
+            BluetoothDeviceListPresentation.orderedDevices(
+                devices,
+                using: ["AA0000000001", "CB-1"]
+            ).map(\.name),
+            ["Ling's iPhone", "Mouse"]
+        )
+    }
+
+    /// A reading leads its own group and no further: a device the report has
+    /// connected is still connected, and still first.
+    func testAConnectedDeviceStillLeadsAReading() {
+        let devices = [
+            makeReadingDevice(address: "CB-1", name: "Ling's iPhone"),
+            makeDevice(address: "AA:00:00:00:00:01", name: "MX Keys", isConnected: true)
+        ]
+
+        XCTAssertEqual(
+            BluetoothDeviceListPresentation.orderedDevices(devices, using: []).map(\.name),
+            ["MX Keys", "Ling's iPhone"]
+        )
+    }
+
+    /// A row a reading created, in the shape the merge builds it.
+    private func makeReadingDevice(address: String, name: String) -> BluetoothDevice {
+        BluetoothDevice(
+            id: address,
+            name: name,
+            kind: .mobile(.phone),
+            isConnected: false,
+            isReadOverTheAir: true
+        )
+    }
+
     private func makeDevice(
         address: String,
         name: String,

@@ -167,40 +167,6 @@ struct BluetoothNearbyDeviceMergeTests {
         #expect(result.batteryLevels.values.first?.main == 23)
     }
 
-    /// A reading taken over the air is what makes a row worth seeing: it is the
-    /// one row the panel has live information about, while every other
-    /// disconnected row carries a number macOS wrote down earlier. The report
-    /// appends the device wherever its own scan found it — in the middle of the
-    /// disconnected rows — so the fold moves the matched row to the front.
-    @Test func movesTheRowALevelWasFoldedOntoAheadOfTheReportOrder() {
-        let keys = pairedDevice(id: "AA-00-00-00-00-01", name: "MX Keys", kind: .peripheral(.keyboard))
-        let phone = pairedDevice(id: "AA-00-00-00-00-02", name: "Ling's iPhone")
-        let speaker = pairedDevice(id: "AA-00-00-00-00-03", name: "EDIFIER", kind: .audio)
-
-        let result = BluetoothNearbyDeviceMerge.merged(
-            devices: [keys, phone, speaker],
-            batteryLevels: [:],
-            nearbyDevices: [nearbyDevice(name: "Ling's iPhone", level: 31)]
-        )
-
-        #expect(result.devices.map(\.name) == ["Ling's iPhone", "MX Keys", "EDIFIER"])
-    }
-
-    /// A new row leads for the same reason a moved one does, and the rows it
-    /// leads keep the order the report gave them.
-    @Test func leadsTheListWithARowItHadToAdd() {
-        let keys = pairedDevice(id: "AA-00-00-00-00-01", name: "MX Keys", kind: .peripheral(.keyboard))
-        let speaker = pairedDevice(id: "AA-00-00-00-00-03", name: "EDIFIER", kind: .audio)
-
-        let result = BluetoothNearbyDeviceMerge.merged(
-            devices: [keys, speaker],
-            batteryLevels: [:],
-            nearbyDevices: [nearbyDevice(name: "Lingsipad", level: 23, model: "iPad11,1")]
-        )
-
-        #expect(result.devices.map(\.name) == ["Lingsipad", "MX Keys", "EDIFIER"])
-    }
-
     /// The paired-device report is the primary source and it also carries the
     /// per-channel parts a scan reading cannot describe, so it is never
     /// overwritten and a class it declared is never replaced.

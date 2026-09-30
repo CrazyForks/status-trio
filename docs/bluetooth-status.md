@@ -432,11 +432,14 @@ devices. The reading is folded onto the row the same device already has, matched
 by exact name, because the report keys a device by its classic address and a scan
 by the CoreBluetooth identifier and the two cannot be converted into one
 another. A mobile device the report does not carry at all gets a row of its own.
-A reading also lifts its row to the front of the disconnected group: it is the
-only row the panel has live information about, and the report appends it wherever
-its own scan found it. These rows cannot appear before the read answers, so the
-first one after a cold start costs a scan window, a connect and a GATT read. On
-every other device the panel shows a level the system report already carried.
+A reading also lifts its row to the front of its group, ahead of the AirPods
+rule and the name sort and ahead of anything the user dragged: it is the only row
+the panel has live information about, and the report appends it wherever its own
+scan found it, which is the middle of the group. A connected device still leads
+it, because the group a row belongs to is decided first. These rows cannot appear
+before the read answers, so the first one after a cold start costs a scan window,
+a connect and a GATT read. On every other device the panel shows a level the
+system report already carried.
 
 A row a reading created is the reading's, and it is drawn as such. It is never
 marked connected: the report calls the phone connected because the read connected
