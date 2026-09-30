@@ -43,26 +43,50 @@ final class IconPresentationViewModelTests: XCTestCase {
         let preferences = CurrentValueSubject<IconPresentationSettings, Never>(
             IconPresentationSettings(configuration: .standard, menuBarSize: 28, testsChargingEffect: false)
         )
+        var snapshotSubscriptions = 0
+        var snapshotCancellations = 0
+        var preferenceSubscriptions = 0
+        var preferenceCancellations = 0
+        let snapshotPublisher = snapshots
+            .handleEvents(
+                receiveSubscription: { _ in snapshotSubscriptions += 1 },
+                receiveCancel: { snapshotCancellations += 1 }
+            )
+            .eraseToAnyPublisher()
+        let preferencePublisher = preferences
+            .handleEvents(
+                receiveSubscription: { _ in preferenceSubscriptions += 1 },
+                receiveCancel: { preferenceCancellations += 1 }
+            )
+            .eraseToAnyPublisher()
         let model = IconPresentationViewModel(
             snapshot: snapshots.value,
             settings: preferences.value,
-            snapshots: snapshots.eraseToAnyPublisher(),
-            preferences: preferences.eraseToAnyPublisher(),
+            snapshots: snapshotPublisher,
+            preferences: preferencePublisher,
             resolveInputs: { IconPresentationInputs(snapshot: $0, audioIcon: nil) }
         )
         var delivered: [IconPresentationOutput] = []
         let subscription = model.$output.dropFirst().sink { delivered.append($0) }
 
+        XCTAssertEqual(snapshotSubscriptions, 0)
+        XCTAssertEqual(preferenceSubscriptions, 0)
         model.start()
         model.start()
+        XCTAssertEqual(snapshotSubscriptions, 1)
+        XCTAssertEqual(preferenceSubscriptions, 1)
         snapshots.send(PresentationFixtures.snapshot(rssi: -80))
         XCTAssertEqual(delivered.count, 1)
 
         model.stop()
+        XCTAssertEqual(snapshotCancellations, 1)
+        XCTAssertEqual(preferenceCancellations, 1)
         snapshots.send(PresentationFixtures.snapshot(rssi: -50))
         XCTAssertEqual(delivered.count, 1)
 
         model.start()
+        XCTAssertEqual(snapshotSubscriptions, 2)
+        XCTAssertEqual(preferenceSubscriptions, 2)
         XCTAssertEqual(delivered.count, 2)
         XCTAssertEqual(delivered.last?.scene, IconPresentationMapper.scene(
             inputs: IconPresentationInputs(snapshot: snapshots.value, audioIcon: nil),
@@ -71,6 +95,8 @@ final class IconPresentationViewModelTests: XCTestCase {
 
         subscription.cancel()
         model.stop()
+        XCTAssertEqual(snapshotCancellations, 2)
+        XCTAssertEqual(preferenceCancellations, 2)
     }
 
     func testSettingsPublishWholeLatestValueAndSizeDoesNotChangeScene() {
@@ -90,25 +116,37 @@ final class IconPresentationViewModelTests: XCTestCase {
         model.start()
 
         let initialScene = model.output.scene
-        preferences.send(IconPresentationSettings(configuration: .standard, menuBarSize: 30, testsChargingEffect: false))
+        let sizeOnly = IconPresentationSettings(configuration: .standard, menuBarSize: 30, testsChargingEffect: false)
+        preferences.send(sizeOnly)
 
         XCTAssertEqual(delivered.count, 1)
-        XCTAssertEqual(delivered.last?.menuBarSize, 30)
+        XCTAssertEqual(delivered.last, expectedOutput(snapshot: snapshot, settings: sizeOnly))
         XCTAssertEqual(delivered.last?.scene, initialScene)
 
-        preferences.send(IconPresentationSettings(
+        let configurationOnly = IconPresentationSettings(
             configuration: IconPresentationConfiguration(
                 battery: BatteryIconOptions(showsPercentage: false),
                 connection: .standard,
                 volume: .standard,
                 bluetooth: .standard
             ),
+            menuBarSize: 30,
+            testsChargingEffect: false
+        )
+        preferences.send(configurationOnly)
+        XCTAssertEqual(delivered.count, 2)
+        XCTAssertEqual(delivered.last, expectedOutput(snapshot: snapshot, settings: configurationOnly))
+        XCTAssertNotEqual(delivered.last?.scene, delivered.first?.scene)
+
+        let chargingTestMode = IconPresentationSettings(
+            configuration: configurationOnly.configuration,
             menuBarSize: 32,
             testsChargingEffect: true
-        ))
-        XCTAssertEqual(delivered.last?.menuBarSize, 32)
-        XCTAssertEqual(model.output, delivered.last)
-        XCTAssertNotEqual(delivered.last?.scene, delivered.first?.scene)
+        )
+        preferences.send(chargingTestMode)
+        XCTAssertEqual(delivered.count, 3)
+        XCTAssertEqual(delivered.last, expectedOutput(snapshot: snapshot, settings: chargingTestMode))
+        XCTAssertEqual(model.output, expectedOutput(snapshot: snapshot, settings: chargingTestMode))
 
         subscription.cancel()
         model.stop()
@@ -130,5 +168,17 @@ final class IconPresentationViewModelTests: XCTestCase {
         XCTAssertNotNil(model.output.scene.outerRing?.effect)
         XCTAssertFalse(original.battery.isCharging)
         XCTAssertFalse(model.output.scene.outerRing?.accessory == nil)
+    }
+
+    private func expectedOutput(
+        snapshot: StatusSnapshot,
+        settings: IconPresentationSettings
+    ) -> IconPresentationOutput {
+        let projected = ChargingEffectTestMode.snapshot(snapshot, enabled: settings.testsChargingEffect)
+        let inputs = IconPresentationInputs(snapshot: projected, audioIcon: nil)
+        return IconPresentationOutput(
+            scene: IconPresentationMapper.scene(inputs: inputs, configuration: settings.configuration),
+            menuBarSize: settings.menuBarSize
+        )
     }
 }
