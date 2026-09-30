@@ -105,8 +105,16 @@ final class BluetoothListeningModeControllerLifecycleTests: XCTestCase {
 
     /// Polls the main actor until `condition` holds, so a spawned write task gets a
     /// chance to run and publish before the assertion. Fails if it never settles.
+    ///
+    /// The deadline is generous on purpose. The write the poll waits for runs on a
+    /// background task and publishes back here, and a loaded CI runner can hold it
+    /// off for far longer than the work itself takes: locally all thirteen of these
+    /// tests settle in about a quarter of a second together, while a `macos-26`
+    /// runner once starved this one past a two-second deadline (run `36681666541`).
+    /// The wait is bounded either way, so the extra headroom costs a failing test
+    /// three more seconds and nothing on a passing one.
     private func waitUntil(
-        timeout: Duration = .seconds(2),
+        timeout: Duration = .seconds(5),
         _ condition: @MainActor () -> Bool
     ) async {
         let deadline = ContinuousClock.now.advanced(by: timeout)
