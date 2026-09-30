@@ -88,6 +88,13 @@ final class BluetoothListeningModeControllerLifecycleTests: XCTestCase {
         backend: FakeListeningModeBackend = FakeListeningModeBackend(),
         attempts: Int = 16
     ) -> (BluetoothListeningModeController, FakeEndpointProvider) {
+        // The production linger, not a shortened one. `.failed` is the only
+        // state this suite asserts on that clears itself, and a test can only
+        // see it by polling: at the 30 ms this helper used to pass, a runner
+        // whose main actor resumes the poll loop less often than that never
+        // looks inside the window at all, and the test fails on a product
+        // behaviour that never changed. Two CI runs failed exactly that way
+        // (`36681666541`, `36687697162`) before this was the reason.
         let hal = BluetoothListeningModeHAL(
             backend: backend,
             sleeper: ImmediateListeningModeSleeper(),
@@ -98,21 +105,23 @@ final class BluetoothListeningModeControllerLifecycleTests: XCTestCase {
         let controller = BluetoothListeningModeController(
             hal: hal,
             endpointProvider: provider,
-            failureClearDelay: .milliseconds(30)
+            failureClearDelay: Self.failureClearDelay
         )
         return (controller, provider)
     }
 
+    /// The linger a failure stays published for. It is what the app uses, and the
+    /// window a poll has to land inside, so the two cannot disagree.
+    private static let failureClearDelay: Duration = .seconds(2)
+
     /// Polls the main actor until `condition` holds, so a spawned write task gets a
     /// chance to run and publish before the assertion. Fails if it never settles.
     ///
-    /// The deadline is generous on purpose. The write the poll waits for runs on a
-    /// background task and publishes back here, and a loaded CI runner can hold it
-    /// off for far longer than the work itself takes: locally all thirteen of these
-    /// tests settle in about a quarter of a second together, while a `macos-26`
-    /// runner once starved this one past a two-second deadline (run `36681666541`).
-    /// The wait is bounded either way, so the extra headroom costs a failing test
-    /// three more seconds and nothing on a passing one.
+    /// The deadline is generous because the write it waits for runs on a spawned
+    /// task: locally all of these settle in about a quarter of a second together,
+    /// and a `macos-26` runner has taken several seconds for the same work. It is
+    /// only a bound on a genuinely stuck write; what a state can be *seen* in is
+    /// the linger above, not this.
     private func waitUntil(
         timeout: Duration = .seconds(5),
         _ condition: @MainActor () -> Bool
