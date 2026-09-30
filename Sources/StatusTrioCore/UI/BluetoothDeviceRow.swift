@@ -46,17 +46,9 @@ struct BluetoothDeviceRow: View {
                     .lineLimit(1)
             }
             .accessibilityElement(children: .contain)
-        } else {
+        } else if BluetoothDeviceActionPolicy.isActionable(device) {
             Button(action: { handleTap() }) {
-                switch BluetoothDevicePresentation.batteryLayout(
-                    for: device,
-                    batteryLevels: batteryLevels
-                ) {
-                case .inline:
-                    inlineContent(status)
-                case .components:
-                    componentContent(status)
-                }
+                rowContent(status)
             }
             .buttonStyle(.plain)
             .disabled(isActionInFlight)
@@ -66,6 +58,28 @@ struct BluetoothDeviceRow: View {
             // screen reader still hears whether the device is connected.
             .accessibilityValue(rowAccessibilityValue)
             .accessibilityHint(actionHelp)
+        } else {
+            // Read-only: a row a reading created has no paired connection to
+            // make or break, so it is not a button and offers no action. The
+            // level it carries is the whole of what it has to say.
+            rowContent(status)
+                .accessibilityElement(children: .combine)
+                .accessibilityValue(rowAccessibilityValue)
+        }
+    }
+
+    /// The row's content, whichever of the two layouts it uses. The interactive
+    /// and read-only forms share it so they cannot drift.
+    @ViewBuilder
+    private func rowContent(_ status: BluetoothDeviceRowStatus) -> some View {
+        switch BluetoothDevicePresentation.batteryLayout(
+            for: device,
+            batteryLevels: batteryLevels
+        ) {
+        case .inline:
+            inlineContent(status)
+        case .components:
+            componentContent(status)
         }
     }
 

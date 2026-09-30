@@ -73,7 +73,8 @@ enum BluetoothNearbyDeviceMerge {
                     id: nearby.id.uuidString,
                     name: nearby.name,
                     kind: kind,
-                    isConnected: false
+                    isConnected: false,
+                    isReadOverTheAir: true
                 )
                 promoted.append(device)
                 let key = BluetoothBatteryReader.normalizedAddress(device.id)

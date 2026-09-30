@@ -41,6 +41,23 @@ final class BluetoothDeviceActionsTests: XCTestCase {
         XCTFail("Timed out waiting for the controller to settle")
     }
 
+    /// A row a reading created is not a paired device, so there is nothing for a
+    /// tap to ask the system: the app knows it by a CoreBluetooth identifier,
+    /// which is not a Bluetooth address the action could be aimed at. Its row is
+    /// read-only, and the view reads this rule rather than deciding for itself.
+    func testAPolicyOffersNoActionForARowAReadingCreated() {
+        let reading = BluetoothDevice(
+            id: UUID().uuidString,
+            name: "Ling's iPhone",
+            kind: .mobile(.phone),
+            isConnected: false,
+            isReadOverTheAir: true
+        )
+
+        XCTAssertFalse(BluetoothDeviceActionPolicy.isActionable(reading))
+        XCTAssertTrue(BluetoothDeviceActionPolicy.isActionable(makeDevice(isConnected: true)))
+    }
+
     func testTapOnAnUnconnectedDeviceAsksToConnectAndShowsConnecting() async {
         let device = makeDevice(isConnected: false)
         let performer = BluetoothActionPerformerStub()

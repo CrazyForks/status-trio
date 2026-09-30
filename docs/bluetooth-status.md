@@ -438,6 +438,16 @@ its own scan found it. These rows cannot appear before the read answers, so the
 first one after a cold start costs a scan window, a connect and a GATT read. On
 every other device the panel shows a level the system report already carried.
 
+A row a reading created is the reading's, and it is drawn as such. It is never
+marked connected: the report calls the phone connected because the read connected
+to it, within a fifth of a second of the read, and takes it back when the panel
+closes and the read ends — drawing that would turn the row blue a few seconds
+after the panel opens, every time. It is also read-only: the app knows such a
+device only by its CoreBluetooth identifier, which is not a Bluetooth address, so
+there is no paired connection for it to make or break. A row the paired-device
+report classified itself is untouched by both rules: the reading only adds a
+level to it.
+
 Device support still varies, and the app does not use manufacturer-specific
 parsers. See
 [`nearby-ble-battery-observations.md`](nearby-ble-battery-observations.md) for

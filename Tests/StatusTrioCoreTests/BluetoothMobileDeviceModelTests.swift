@@ -95,6 +95,52 @@ struct BluetoothNearbyDeviceMergeTests {
         #expect(!result.devices[0].isUnpairedGhost)
     }
 
+    /// The row the reading created is the reading's, including its connection
+    /// state. The report calls this phone connected only because the read
+    /// connected to it — the state appears within a fifth of a second of the
+    /// read and goes when the panel closes and the read ends — so drawing it
+    /// would make the row turn blue a few seconds after the panel opens.
+    @Test func takesTheConnectionStateAwayFromARowTheReadingIdentified() {
+        let device = pairedDevice(name: "Ling's iPhone", isUnpairedGhost: true)
+        #expect(device.isConnected, "the report carried it as connected")
+
+        let result = BluetoothNearbyDeviceMerge.merged(
+            devices: [device],
+            batteryLevels: [:],
+            nearbyDevices: [nearbyDevice(name: "Ling's iPhone", level: 31)]
+        )
+
+        #expect(!result.devices[0].isConnected)
+        #expect(result.devices[0].isReadOverTheAir)
+    }
+
+    /// A row the report classified itself is a paired device the user has, and
+    /// the reading only adds a level to it: its connection state stays the
+    /// report's, and it keeps its connect and disconnect action.
+    @Test func leavesARowTheReportClassifiedAlone() {
+        let device = pairedDevice(name: "MX Keys", kind: .peripheral(.keyboard))
+        let result = BluetoothNearbyDeviceMerge.merged(
+            devices: [device],
+            batteryLevels: [:],
+            nearbyDevices: [nearbyDevice(name: "MX Keys", level: 50, model: "iPad11,1")]
+        )
+
+        #expect(result.devices[0].isConnected)
+        #expect(!result.devices[0].isReadOverTheAir)
+    }
+
+    /// A row the report does not carry at all is the reading's from the start.
+    @Test func marksARowItHadToAddAsTheReadingsOwn() {
+        let result = BluetoothNearbyDeviceMerge.merged(
+            devices: [],
+            batteryLevels: [:],
+            nearbyDevices: [nearbyDevice(name: "Lingsipad", level: 23, model: "iPad11,1")]
+        )
+
+        #expect(result.devices[0].isReadOverTheAir)
+        #expect(!result.devices[0].isConnected)
+    }
+
     /// The name is the only identity the two sources share, so the comparison
     /// drops case and surrounding whitespace and stops there.
     @Test func matchesTheNameIgnoringCaseAndSurroundingWhitespace() {
