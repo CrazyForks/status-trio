@@ -413,6 +413,8 @@ struct StatusPopoverView: View {
         case .volume:
             VolumeControlsView(
                 settings: settings,
+                bluetoothController: store.bluetoothDevices,
+                listeningModes: store.bluetoothListeningModes,
                 scrollTargets: scrollTargets,
                 volume: store.liveVolume,
                 isEnabled: store.isVolumeControlAvailable,

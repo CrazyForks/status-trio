@@ -72,6 +72,14 @@
 "settings.bluetooth.batteryLevelsDescription" = "Legge i livelli batteria degli AirPods mentre la voce Bluetooth è visibile. Non viene richiesta un’autorizzazione aggiuntiva.";
 "settings.bluetooth.nearbyBatteryDevices" = "Mostra i livelli batteria BLE nelle vicinanze";
 "settings.bluetooth.nearbyBatteryDevicesDescription" = "Con i livelli batteria Bluetooth attivi, cerca dispositivi BLE vicini che offrono il servizio batteria standard mentre il pannello di stato è aperto. Il supporto dipende dal dispositivo.";
+"settings.bluetooth.listeningModePreview" = "Anteprima del selettore modalità di ascolto";
+"settings.bluetooth.listeningModePreviewDescription" = "Mostra le capsule di modalità su tutti gli AirPods collegati per provare l'interfaccia. Il tocco di una capsula si anima come su un dispositivo reale, ma non cambia nulla negli AirPods.";
+"settings.bluetooth.listeningModePreviewDeviceName" = "Nome dispositivo anteprima";
+"settings.bluetooth.listeningModePreviewDeviceNameDescription" = "Nome mostrato nelle righe di anteprima. Lascia vuoto per il default, oppure inserisci un nome molto lungo per verificare la troncatura.";
+"settings.bluetooth.listeningModePreviewDeviceCount" = "Numero di righe anteprima";
+"settings.bluetooth.listeningModePreviewDeviceCountDescription" = "Quante righe AirPods sintetiche inserire. 0 mantiene solo le righe reali; 2 copre il caso comune e prova il limite di scorrimento del pannello.";
+"settings.bluetooth.listeningModePreviewLanguage" = "Lingua anteprima";
+"settings.bluetooth.listeningModePreviewLanguageDescription" = "Mostra i nomi delle capsule nelle righe di anteprima in una lingua scelta, lasciando il resto del pannello nella lingua di sistema. Utile per confrontare il capo di una parola lunga in tedesco o una scrittura da destra a sinistra in arabo.";
 "settings.bluetooth.showInStatusPanel" = "Mostra Bluetooth nel pannello di stato";
 "settings.bluetooth.showInStatusPanelDescription" = "Controlla l’elemento Bluetooth nel pannello di stato e resta sincronizzato con le impostazioni del pannello di stato.";
 "settings.bluetooth.symbolScale" = "Dimensione icona Bluetooth";
@@ -387,3 +395,10 @@
 "settings.bluetooth.permissionRequired" = "Autorizzazione Bluetooth richiesta";
 "settings.bluetooth.permissionNotDeterminedDescription" = "Status Trio necessita dell'accesso Bluetooth per mostrare i tuoi dispositivi. Clicca il pulsante qui sotto per concederlo.";
 "settings.bluetooth.permissionDeniedDescription" = "L'accesso Bluetooth è stato negato. Abilitalo in Impostazioni di Sistema per usare questa funzione.";
+
+"bluetooth.listeningMode.noiseCancellation" = "Cancellazione del rumore";
+"bluetooth.listeningMode.transparency" = "Trasparenza";
+"bluetooth.listeningMode.adaptive" = "Adattiva";
+"bluetooth.listeningMode.off" = "Disattivato";
+"bluetooth.listeningMode.changeFailed" = "Impossibile modificare la modalità di ascolto.";
+"bluetooth.listeningMode.accessibility" = "Modalità di ascolto";

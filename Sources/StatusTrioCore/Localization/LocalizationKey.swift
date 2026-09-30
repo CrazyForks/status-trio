@@ -123,6 +123,14 @@ enum LocalizationKey: String, CaseIterable, Hashable, Sendable {
     case settingsBluetoothBatteryLevelsDescription = "settings.bluetooth.batteryLevelsDescription"
     case settingsBluetoothNearbyBatteryDevices = "settings.bluetooth.nearbyBatteryDevices"
     case settingsBluetoothNearbyBatteryDevicesDescription = "settings.bluetooth.nearbyBatteryDevicesDescription"
+    case settingsBluetoothListeningModePreview = "settings.bluetooth.listeningModePreview"
+    case settingsBluetoothListeningModePreviewDescription = "settings.bluetooth.listeningModePreviewDescription"
+    case settingsBluetoothListeningModePreviewDeviceName = "settings.bluetooth.listeningModePreviewDeviceName"
+    case settingsBluetoothListeningModePreviewDeviceNameDescription = "settings.bluetooth.listeningModePreviewDeviceNameDescription"
+    case settingsBluetoothListeningModePreviewDeviceCount = "settings.bluetooth.listeningModePreviewDeviceCount"
+    case settingsBluetoothListeningModePreviewDeviceCountDescription = "settings.bluetooth.listeningModePreviewDeviceCountDescription"
+    case settingsBluetoothListeningModePreviewLanguage = "settings.bluetooth.listeningModePreviewLanguage"
+    case settingsBluetoothListeningModePreviewLanguageDescription = "settings.bluetooth.listeningModePreviewLanguageDescription"
     case settingsBluetoothShowInStatusPanel = "settings.bluetooth.showInStatusPanel"
     case settingsBluetoothShowInStatusPanelDescription = "settings.bluetooth.showInStatusPanelDescription"
     case settingsBluetoothSymbolScale = "settings.bluetooth.symbolScale"
@@ -352,6 +360,18 @@ enum LocalizationKey: String, CaseIterable, Hashable, Sendable {
     case bluetoothStateDisconnecting = "bluetooth.state.disconnecting"
     case bluetoothStateConnectFailed = "bluetooth.state.connectFailed"
     case bluetoothStateDisconnectFailed = "bluetooth.state.disconnectFailed"
+
+    // AirPods Listening Mode quick-switch. Only the three selectable modes get a
+    // visible capsule; `off` is an observable current state with no button, so its
+    // key exists for the accessibility wording only and never for a label.
+    case bluetoothListeningModeNoiseCancellation = "bluetooth.listeningMode.noiseCancellation"
+    case bluetoothListeningModeTransparency = "bluetooth.listeningMode.transparency"
+    case bluetoothListeningModeAdaptive = "bluetooth.listeningMode.adaptive"
+    case bluetoothListeningModeOff = "bluetooth.listeningMode.off"
+    case bluetoothListeningModeChangeFailed = "bluetooth.listeningMode.changeFailed"
+    /// The label on the mode control as a group, so VoiceOver names what the
+    /// capsules are before it reads each one.
+    case bluetoothListeningModeGroup = "bluetooth.listeningMode.accessibility"
 
     case volumeTitle = "volume.title"
     case volumeTitleUnavailable = "volume.titleUnavailable"

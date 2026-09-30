@@ -33,6 +33,12 @@ final class SettingsStore: ObservableObject {
     static let prioritizesNetworkErrorsOverBluetoothAudioDefaultsKey = "prioritizesNetworkErrorsOverBluetoothAudio"
     static let showsBluetoothBatteryLevelsDefaultsKey = "showsBluetoothBatteryLevels"
     static let showsNearbyBluetoothBatteryDevicesDefaultsKey = "showsNearbyBluetoothBatteryDevices"
+    static let previewsBluetoothListeningModeDefaultsKey = "previewsBluetoothListeningMode"
+    static let bluetoothListeningModePreviewDeviceNameDefaultsKey = "bluetoothListeningModePreviewDeviceName"
+    static let bluetoothListeningModePreviewDeviceCountDefaultsKey = "bluetoothListeningModePreviewDeviceCount"
+    static let bluetoothListeningModePreviewLanguageDefaultsKey = "bluetoothListeningModePreviewLanguage"
+    static let bluetoothListeningModePreviewDeviceCountRange: ClosedRange<Int> = 0...3
+    static let defaultBluetoothListeningModePreviewDeviceCount = 2
     static let statusCenterSymbolScaleRange: ClosedRange<Double> = 1.0...1.8
     static let defaultStatusCenterSymbolScale: Double = 1.6
     static let bluetoothSymbolScaleRange = statusCenterSymbolScaleRange
@@ -289,6 +295,69 @@ final class SettingsStore: ObservableObject {
             defaults.set(
                 showsNearbyBluetoothBatteryDevices,
                 forKey: Self.showsNearbyBluetoothBatteryDevicesDefaultsKey
+            )
+        }
+    }
+
+    /// Interface preview for the AirPods listening-mode switch. When on, every
+    /// connected AirPods row shows the three mode capsules and tapping them
+    /// drives the same busy → settled animation, but no CoreAudio write is
+    /// issued. The toggle exists so the row's layout, focus order, and tap
+    /// feedback can be exercised on a Mac that has no controllable AirPods
+    /// attached; it is off by default so a normal user never sees a
+    /// non-functional capsule.
+    @Published var previewsBluetoothListeningMode: Bool {
+        didSet {
+            defaults.set(
+                previewsBluetoothListeningMode,
+                forKey: Self.previewsBluetoothListeningModeDefaultsKey
+            )
+        }
+    }
+
+    /// Optional override for the synthetic preview rows' device name. Empty means
+    /// "use the built-in default", which already contains the string "AirPods"
+    /// — an override without that substring still works because the synthetic
+    /// addresses are prefixed, and the preview controller admits any
+    /// preview-prefixed device regardless of `isAirPods`.
+    @Published var bluetoothListeningModePreviewDeviceName: String {
+        didSet {
+            defaults.set(
+                bluetoothListeningModePreviewDeviceName,
+                forKey: Self.bluetoothListeningModePreviewDeviceNameDefaultsKey
+            )
+        }
+    }
+
+    /// How many synthetic AirPods rows to inject in preview. 0...3. Default 2,
+    /// which is enough to check both the wrapped layout on one row and the list's
+    /// 330pt scroll boundary on two.
+    @Published var bluetoothListeningModePreviewDeviceCount: Int {
+        didSet {
+            let range = Self.bluetoothListeningModePreviewDeviceCountRange
+            let clamped = min(max(bluetoothListeningModePreviewDeviceCount, range.lowerBound), range.upperBound)
+            guard clamped == bluetoothListeningModePreviewDeviceCount else {
+                bluetoothListeningModePreviewDeviceCount = clamped
+                return
+            }
+            defaults.set(
+                clamped,
+                forKey: Self.bluetoothListeningModePreviewDeviceCountDefaultsKey
+            )
+        }
+    }
+
+    /// Empty string means "follow the current system / app language", and the
+    /// preview block inherits the panel's localization. Any other value is an
+    /// `AppLanguage.rawValue`, and the synthetic block renders its capsule names
+    /// in that language while the rest of the panel keeps the real one. This is
+    /// the whole point: side-by-side comparison of the same layout across two
+    /// languages without leaving the panel.
+    @Published var bluetoothListeningModePreviewLanguage: String {
+        didSet {
+            defaults.set(
+                bluetoothListeningModePreviewLanguage,
+                forKey: Self.bluetoothListeningModePreviewLanguageDefaultsKey
             )
         }
     }
@@ -810,6 +879,24 @@ final class SettingsStore: ObservableObject {
         self.showsNearbyBluetoothBatteryDevices = defaults.object(
             forKey: Self.showsNearbyBluetoothBatteryDevicesDefaultsKey
         ) as? Bool ?? false
+        self.previewsBluetoothListeningMode = defaults.object(
+            forKey: Self.previewsBluetoothListeningModeDefaultsKey
+        ) as? Bool ?? false
+        self.bluetoothListeningModePreviewDeviceName = defaults.string(
+            forKey: Self.bluetoothListeningModePreviewDeviceNameDefaultsKey
+        ) ?? ""
+        let storedPreviewCount = defaults.object(
+            forKey: Self.bluetoothListeningModePreviewDeviceCountDefaultsKey
+        ) as? Int
+        let previewCountRange = Self.bluetoothListeningModePreviewDeviceCountRange
+        self.bluetoothListeningModePreviewDeviceCount = min(
+            max(storedPreviewCount ?? Self.defaultBluetoothListeningModePreviewDeviceCount,
+                previewCountRange.lowerBound),
+            previewCountRange.upperBound
+        )
+        self.bluetoothListeningModePreviewLanguage = defaults.string(
+            forKey: Self.bluetoothListeningModePreviewLanguageDefaultsKey
+        ) ?? ""
         self.bluetoothSymbolScale = Self.clampedBluetoothSymbolScale(
             storedBluetoothSymbolScale ?? Self.defaultBluetoothSymbolScale
         )

@@ -72,6 +72,14 @@
 "settings.bluetooth.batteryLevelsDescription" = "当状态面板显示蓝牙设备时读取 AirPods 电量，不会额外请求权限。";
 "settings.bluetooth.nearbyBatteryDevices" = "显示附近 BLE 设备电量";
 "settings.bluetooth.nearbyBatteryDevicesDescription" = "开启蓝牙电量后，状态面板打开时会扫描提供标准电池服务的附近 BLE 设备。支持情况因设备而异。";
+"settings.bluetooth.listeningModePreview" = "预览聆听模式开关";
+"settings.bluetooth.listeningModePreviewDescription" = "在每台已连接的 AirPods 上显示模式胶囊，用于界面测试。点击胶囊的动画与真机一致，但不会更改 AirPods 的任何设置。";
+"settings.bluetooth.listeningModePreviewDeviceName" = "预览设备名";
+"settings.bluetooth.listeningModePreviewDeviceNameDescription" = "预览行显示的名字。留空走默认；填一个超长的可以测截断。";
+"settings.bluetooth.listeningModePreviewDeviceCount" = "预览行数";
+"settings.bluetooth.listeningModePreviewDeviceCountDescription" = "注入多少台合成 AirPods。0 只保留真实设备；2 覆盖常见场景，也能测面板到达 330pt 时的滚动边界。";
+"settings.bluetooth.listeningModePreviewLanguage" = "预览语言";
+"settings.bluetooth.listeningModePreviewLanguageDescription" = "只让预览行的模式名用指定语言渲染，面板其他部分保持系统语言。方便比较德语长词或阿拉伯语从右往左时胶囊如何换行。";
 "settings.bluetooth.showInStatusPanel" = "在状态面板中显示蓝牙";
 "settings.bluetooth.showInStatusPanelDescription" = "控制状态面板里的蓝牙项目，并与状态面板设置保持同步。";
 "settings.bluetooth.symbolScale" = "蓝牙图标大小";
@@ -387,3 +395,10 @@
 "settings.bluetooth.permissionRequired" = "需要蓝牙权限";
 "settings.bluetooth.permissionNotDeterminedDescription" = "状态栏需要蓝牙权限才能显示你的设备。点击下面的按钮以授予权限。";
 "settings.bluetooth.permissionDeniedDescription" = "蓝牙权限已被拒绝。请在系统设置中开启以使用此功能。";
+
+"bluetooth.listeningMode.noiseCancellation" = "降噪";
+"bluetooth.listeningMode.transparency" = "通透模式";
+"bluetooth.listeningMode.adaptive" = "自适应";
+"bluetooth.listeningMode.off" = "关闭";
+"bluetooth.listeningMode.changeFailed" = "无法更改聆听模式。";
+"bluetooth.listeningMode.accessibility" = "聆听模式";

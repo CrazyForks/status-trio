@@ -58,6 +58,11 @@ final class SystemStatusStore: ObservableObject {
     /// row never shows the address of a link the user has left.
     let primaryLink: PrimaryLinkController
     let bluetoothDevices: BluetoothDeviceController
+    /// The AirPods listening-mode surface. A separate owner from `bluetoothDevices`
+    /// (the plan's Option B): its own discovery/write lifecycle, so the delicate
+    /// paired-device controller is not widened by it. The Bluetooth view drives it
+    /// from the same appear/disappear and refresh hooks the device list uses.
+    let bluetoothListeningModes: BluetoothListeningModeController
 
     private let batteryMonitor: any BatteryMonitoring
     private let wifiMonitor: any WiFiMonitoring
@@ -140,6 +145,7 @@ final class SystemStatusStore: ObservableObject {
         wifiNetworks: WiFiNetworkController = WiFiNetworkController(),
         primaryLink: PrimaryLinkController = PrimaryLinkController(),
         bluetoothDevices: BluetoothDeviceController = BluetoothDeviceController(),
+        bluetoothListeningModes: BluetoothListeningModeController = BluetoothListeningModeController(),
         initialSnapshot: StatusSnapshot = .placeholder
     ) {
         self.batteryMonitor = batteryMonitor
@@ -159,6 +165,7 @@ final class SystemStatusStore: ObservableObject {
         self.wifiNetworks = wifiNetworks
         self.primaryLink = primaryLink
         self.bluetoothDevices = bluetoothDevices
+        self.bluetoothListeningModes = bluetoothListeningModes
         self.snapshot = initialSnapshot
         self.popupSnapshot = initialSnapshot
         self.vpnStatus = .placeholder
@@ -339,6 +346,7 @@ final class SystemStatusStore: ObservableObject {
         wifiNetworks.deactivate()
         primaryLink.deactivate()
         bluetoothDevices.deactivate()
+        bluetoothListeningModes.stop()
     }
 
     var isVolumeControlAvailable: Bool {
