@@ -493,6 +493,7 @@ func selectOutput(_ key: PanelAudioDeviceID) {
 struct PanelDetailRow: Equatable, Sendable {
     let id: String; let label: String; let value: String
     let accessibilityValue: String; let tint: PanelTint
+    let isCopyable: Bool = false
 }
 struct PanelDetailState: Equatable, Sendable {
     let title: String; let rows: [PanelDetailRow]
@@ -518,6 +519,8 @@ struct BluetoothPanelState: Equatable, Sendable {
 `@MainActor PanelDetailMapper.battery(status: BatteryStatus, details: BatteryDetails?, localization: Localization) -> PanelDetailState`、`wired(details: PrimaryLinkDetails?, localization: Localization) -> PanelDetailState`。Wi-Fi 需要列表和控制，不能仅用文本详情行代替：新增 `WiFiPanelState`，含 `detail: PanelDetailState`、`knownRows`／`otherRows: [PanelWiFiNetworkRow]`、`powerIsOn`、`canSetPower`、`canRefresh`、`isScanning`、`message`、`messageIntent: PanelSummaryIntent`；row 含稳定 `key: WiFiNetworkIdentity`、已解析 name／signal symbol／security marker／selected／accessibilityLabel 及 `opensSettings`。identity 只是稳定动作标识，不能让 view 再解释 SSID 或 security。
 
 对应 Mapper 接口为 `PanelDetailMapper.wifi(status: WiFiStatus, networks: [WiFiNetwork], details: WiFiConnectionDetails, listState: WiFiListState, localization: Localization) -> WiFiPanelState`。保留原已知／其他网络分组及 SSID 空白身份，不 trim SSID；当前未连接行打开系统设置，不能趁重构新增 app 内 join 行为。
+
+`WiFiPanelState` 提供完整的已解析无线详情行、默认 collapsed row count、`visibleDetailRows(expanded:)` 和现有本地化 More／Less 文案。默认行数只控制显示切片，不丢弃剩余八行；展开状态继续留在 view。
 
 `StatusPanelActions` 扩展 `refreshBluetooth()`、`performBluetoothAction(address:)`、`requestDisconnect(address:)`、`cancelDisconnect()`、`setListeningMode(address:mode:)`，`mode` 使用现有 `BluetoothListeningMode`。扩展 `batteryDetailsAppeared()`／`batteryDetailsClosed()`、`wifiDetailsOpened()`／`wifiDetailsClosed()`、`wiredDetailsOpened()`／`wiredDetailsClosed()`、`bluetoothSummaryAppeared()`／`bluetoothSummaryDisappeared()`、`volumeListAppeared()`／`volumeListDisappeared()`。settings／permission callbacks 保留独立命名的注入 closure，不并入视觉 Mapper。
 
@@ -549,7 +552,9 @@ controller 保存到 actions 可以，保存到展示 state 不可以。battery�
 
 **Interfaces:** `@MainActor StatusPanelViewModel: ObservableObject` initializer 为 `(store: SystemStatusStore, settings: SettingsStore, localization: Localization, actions: StatusPanelActions)`；公开 private(set) published `battery: PanelSummaryState`、`network: PanelSummaryState`、`vpn: PanelSummaryState`、`bluetooth: BluetoothPanelState`、`volume: VolumePanelState`、`audioInput: AudioInputPanelState`、三种 detail 状态。`start()`／`stop()` 只负责展示订阅，不启动／停止领域监控。views 改为 `state:` + callbacks；Settings 的 UI 偏好可以由 ViewModel 投递，不能再让 view 解读设备领域对象。
 
-detail 属性明确为 `batteryDetails: PanelDetailState`、`wifiDetails: WiFiPanelState`、`wiredDetails: PanelDetailState`。保留多个区域 publisher，不能对大型联合 state 每次任何变化都重新发布所有区域。
+detail 属性明确为 `batteryDetails: PanelDetailState`、`wifiDetails: WiFiPanelState`、`wiredDetails: PanelDetailState`。`PanelDetailRow.isCopyable` 携带现有 LinkDetailPresentation 的地址行资格，SwiftUI 通过显式 copy-value callback 处理点击，不在 view 重算地址策略。保留多个区域 publisher，不能对大型联合 state 每次任何变化都重新发布所有区域。
+
+Wi-Fi details 保留 view-local More／Less toggle：通过 `wifiDetails.visibleDetailRows(expanded:)` 显示完整解析行集的折叠／展开切片，并使用 state 的 `showMoreTitle`／`showLessTitle`，不在 view 重映射 `WiFiConnectionDetails`。
 
 - [ ] 新失败测试确保按独立源更新：`popupSnapshot` 更新 battery／network；`liveVolume` 立即更新 volume；`liveInput` 更新 input；VPN 更新不触发 icon。使用既有 mock monitors／store fixtures，重用当前测试的 ManualEventSleeper，不新增固定睡眠。
 - [ ] Run `swift test --filter 'StatusPanelViewModelTests|PanelPresentationWiringTests'`。按区域 Combine delivered values，`removeDuplicates` 后发布；controller 多字段如只支持 `objectWillChange`，安排主 actor coalescer 在变更落地后读一致的 controller 快照，不在 willChange 回调读旧值。

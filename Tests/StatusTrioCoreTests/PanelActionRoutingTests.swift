@@ -70,6 +70,159 @@ final class PanelActionRoutingTests: XCTestCase {
         XCTAssertEqual(inputMuteToggles, 1)
     }
 
+    func testBluetoothActionsResolveCurrentAddressesAndRequireExistingListeningControl() {
+        var devices = [
+            BluetoothDevice(id: "AA:00:00:00:00:01", name: "Keyboard", kind: .peripheral(.keyboard), isConnected: true),
+            BluetoothDevice(id: "AA:00:00:00:00:02", name: "Headphones", kind: .audio, isConnected: true)
+        ]
+        var performed: [String] = []
+        var confirmed: [String] = []
+        var modes: [(BluetoothListeningMode, String)] = []
+        let actions = StatusPanelActions(
+            bluetoothDevices: { devices },
+            performBluetoothAction: { performed.append($0.id) },
+            requestDisconnect: { confirmed.append($0.id) },
+            setListeningMode: { modes.append(($0, $1)) },
+            listeningModePresentations: {
+                ["AA0000000002": BluetoothListeningModePresentation(
+                    availableModes: [.noiseCancellation, .transparency],
+                    selectedMode: .noiseCancellation
+                )]
+            }
+        )
+
+        actions.performBluetoothAction(address: "aa-00-00-00-00-02")
+        actions.performBluetoothAction(address: "AA:00:00:00:00:09")
+        actions.requestDisconnect(address: "AA:00:00:00:00:02")
+        actions.requestDisconnect(address: "AA:00:00:00:00:01")
+        actions.setListeningMode(address: "aa-00-00-00-00-02", mode: .transparency)
+        actions.setListeningMode(address: "aa-00-00-00-00-02", mode: .adaptive)
+        actions.setListeningMode(address: "AA:00:00:00:00:01", mode: .transparency)
+
+        devices.removeAll()
+        actions.performBluetoothAction(address: "AA:00:00:00:00:02")
+
+        XCTAssertEqual(performed, ["AA:00:00:00:00:02"])
+        XCTAssertEqual(confirmed, ["AA:00:00:00:00:01"])
+        XCTAssertEqual(modes.count, 1)
+        XCTAssertEqual(modes.first?.0, .transparency)
+        XCTAssertEqual(modes.first?.1, "AA0000000002")
+    }
+
+    func testDetailAndVisibleSurfaceActionsRouteLifecycleAndWiFiCommands() {
+        var activatedBattery: BatteryPowerState?
+        var batteryCloseCount = 0
+        var wifiActivations: [WiFiNameAccess] = []
+        var wifiCloseCount = 0
+        var wifiPower: [Bool] = []
+        var wifiRefresh: [WiFiNameAccess] = []
+        var heldSummary = 0
+        var releasedSummary = 0
+        var refreshedModes = 0
+        var stoppedModes = 0
+        let battery = BatteryStatus(
+            rawPercentage: 42,
+            isPresent: true,
+            isCharging: false,
+            isLowPowerMode: false,
+            isConnectedToPower: true
+        )
+        let actions = StatusPanelActions(
+            batteryStatus: { battery },
+            activateBatteryDetails: { activatedBattery = $0 },
+            closeBatteryDetails: { batteryCloseCount += 1 },
+            wifiNameAccess: { .denied },
+            activateWiFiDetails: { wifiActivations.append($0) },
+            closeWiFiDetails: { wifiCloseCount += 1 },
+            setWiFiPower: { wifiPower.append($0) },
+            refreshWiFi: { wifiRefresh.append($0) },
+            openWiredDetails: { heldSummary += 1 },
+            closeWiredDetails: { releasedSummary += 1 },
+            holdBluetoothSummary: { heldSummary += 1 },
+            releaseBluetoothSummary: { releasedSummary += 1 },
+            refreshVolumeListeningModes: { refreshedModes += 1 },
+            stopVolumeListeningModes: { stoppedModes += 1 }
+        )
+
+        actions.batteryDetailsAppeared()
+        actions.batteryDetailsClosed()
+        actions.wifiDetailsOpened()
+        actions.wifiDetailsClosed()
+        actions.setWiFiPower(false)
+        actions.refreshWiFi()
+        actions.wiredDetailsOpened()
+        actions.wiredDetailsClosed()
+        actions.bluetoothSummaryAppeared()
+        actions.bluetoothSummaryDisappeared()
+        actions.volumeListAppeared()
+        actions.volumeListDisappeared()
+
+        XCTAssertEqual(activatedBattery, BatteryPowerState(battery))
+        XCTAssertEqual(batteryCloseCount, 1)
+        XCTAssertEqual(wifiActivations, [.denied])
+        XCTAssertEqual(wifiCloseCount, 1)
+        XCTAssertEqual(wifiPower, [false])
+        XCTAssertEqual(wifiRefresh, [.denied])
+        XCTAssertEqual(heldSummary, 2)
+        XCTAssertEqual(releasedSummary, 2)
+        XCTAssertEqual(refreshedModes, 1)
+        XCTAssertEqual(stoppedModes, 1)
+    }
+
+    func testBluetoothSummaryClaimsStayIndependentAndOnlyReadLevelsForConnectedAvailableDevices() {
+        let connected = BluetoothDevice(id: "AA:00:00:00:00:01", name: "AirPods", kind: .audio, isConnected: true)
+        var availability: BluetoothAvailability = .available
+        var devices = [connected]
+        var batteryClaims: [String] = []
+        var batteryReleases: [String] = []
+        var nearbyClaims: [String] = []
+        var nearbyReleases: [String] = []
+        let actions = StatusPanelActions(
+            bluetoothDevices: { devices },
+            bluetoothAvailability: { availability },
+            requestBatteryLevels: { batteryClaims.append($0) },
+            releaseBatteryLevels: { batteryReleases.append($0) },
+            requestNearbyBatteryDevices: { nearbyClaims.append($0) },
+            releaseNearbyBatteryDevices: { nearbyReleases.append($0) }
+        )
+
+        actions.updateBluetoothBatteryLevelsClaim(enabled: true)
+        actions.updateBluetoothNearbyBatteryClaim(enabled: true)
+        availability = .poweredOff
+        actions.updateBluetoothBatteryLevelsClaim(enabled: true)
+        availability = .available
+        devices.removeAll()
+        actions.updateBluetoothBatteryLevelsClaim(enabled: true)
+        actions.updateBluetoothNearbyBatteryClaim(enabled: false)
+        actions.bluetoothSummaryAppeared()
+        actions.bluetoothSummaryDisappeared()
+
+        XCTAssertEqual(batteryClaims, ["bluetooth.summary"])
+        XCTAssertEqual(batteryReleases, ["bluetooth.summary", "bluetooth.summary", "bluetooth.summary"])
+        XCTAssertEqual(nearbyClaims, ["bluetooth.summary.nearbyBatteryDevices"])
+        XCTAssertEqual(nearbyReleases, [
+            "bluetooth.summary.nearbyBatteryDevices",
+            "bluetooth.summary.nearbyBatteryDevices"
+        ])
+    }
+
+    func testDeviceMovesForwardCurrentOffsetsToTheSettingsOrderWriters() {
+        var outputMove: (IndexSet, Int)?
+        var bluetoothMove: (IndexSet, Int)?
+        let actions = StatusPanelActions(
+            moveOutputDevices: { outputMove = ($0, $1) },
+            moveBluetoothDevices: { bluetoothMove = ($0, $1) }
+        )
+
+        actions.moveOutputDevices(from: IndexSet(integer: 1), to: 3)
+        actions.moveBluetoothDevices(from: IndexSet(integer: 0), to: 2)
+
+        XCTAssertEqual(outputMove?.0, IndexSet(integer: 1))
+        XCTAssertEqual(outputMove?.1, 3)
+        XCTAssertEqual(bluetoothMove?.0, IndexSet(integer: 0))
+        XCTAssertEqual(bluetoothMove?.1, 2)
+    }
+
     private func makeOutput(id: UInt32, uid: String?) -> AudioOutputDevice {
         AudioOutputDevice(id: AudioDeviceID(id), name: "Speaker", uid: uid, isCurrent: false)
     }
