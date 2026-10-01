@@ -337,6 +337,19 @@ struct BluetoothDevice: Identifiable, Equatable, Sendable {
     /// option off. A device the stack has classified always carries one of those
     /// two keys, so their joint absence is the signal.
     let isUnpairedGhost: Bool
+    /// Whether this row exists because of a battery reading this app took over
+    /// the air, rather than because the paired-device report described a device
+    /// the user has.
+    ///
+    /// Such a row is one the report could not describe: either it carries no
+    /// entry for the device at all, or it carries one with no class, which is a
+    /// ghost the panel hides. Two things follow, and they are the same thing
+    /// seen twice. Its connection state cannot be reported, because connecting
+    /// to read a level is what makes the system call it connected in the first
+    /// place. And it cannot be acted on, because there is no paired connection
+    /// for this app to make or break — the device is known here by a
+    /// CoreBluetooth identifier, which is not a Bluetooth address.
+    let isReadOverTheAir: Bool
 
     init(
         id: String,
@@ -347,7 +360,8 @@ struct BluetoothDevice: Identifiable, Equatable, Sendable {
         vendorID: Int? = nil,
         productID: Int? = nil,
         appleBluetoothAudioDiagnostic: AppleBluetoothAudioDiagnosticRecord? = nil,
-        isUnpairedGhost: Bool = false
+        isUnpairedGhost: Bool = false,
+        isReadOverTheAir: Bool = false
     ) {
         self.id = id
         self.name = name
@@ -358,6 +372,7 @@ struct BluetoothDevice: Identifiable, Equatable, Sendable {
         self.vendorID = vendorID
         self.productID = productID
         self.isUnpairedGhost = isUnpairedGhost
+        self.isReadOverTheAir = isReadOverTheAir
     }
 
     /// A copy of the device with a class another source established.
@@ -375,7 +390,39 @@ struct BluetoothDevice: Identifiable, Equatable, Sendable {
             vendorID: vendorID,
             productID: productID,
             appleBluetoothAudioDiagnostic: appleBluetoothAudioDiagnostic,
-            isUnpairedGhost: isUnpairedGhost
+            isUnpairedGhost: isUnpairedGhost,
+            isReadOverTheAir: isReadOverTheAir
+        )
+    }
+
+    /// A copy of the device as the BLE read identified it.
+    ///
+    /// Three fields change together. The class comes from the model string the
+    /// Device Information Service answered with, and the ghost flag is cleared
+    /// because that flag means the profiler could not classify the device — and
+    /// the model just did. The panel hides unclassified devices by default, so
+    /// leaving the flag set would hide the very row the level was folded onto,
+    /// which is the one shape this correction exists for.
+    ///
+    /// The row then belongs to the reading rather than to the report, so the
+    /// connection state goes with it. The report's answer here is one this app
+    /// produced: it calls the device connected because the read connected to it,
+    /// and takes it back when the panel closes and the read ends.
+    ///
+    /// The name and the address are still the report's. An advertised name and a
+    /// CoreBluetooth identifier are not, so they are not carried here.
+    func identifiedByModel(_ kind: BluetoothDeviceKind) -> BluetoothDevice {
+        BluetoothDevice(
+            id: id,
+            name: name,
+            kind: kind,
+            isConnected: false,
+            airPodsModel: airPodsModel,
+            vendorID: vendorID,
+            productID: productID,
+            appleBluetoothAudioDiagnostic: appleBluetoothAudioDiagnostic,
+            isUnpairedGhost: false,
+            isReadOverTheAir: true
         )
     }
 

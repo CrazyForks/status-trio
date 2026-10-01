@@ -9,6 +9,7 @@ struct PanelBluetoothDeviceRow: Equatable, Sendable {
     let batteryLayout: BluetoothBatteryLayout
     let batterySegments: [BluetoothBatterySegment]?
     let isConnected: Bool
+    let isActionable: Bool
     let status: BluetoothDeviceRowStatus
     let statusText: String?
     let statusTint: PanelTint

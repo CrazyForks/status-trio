@@ -37,12 +37,33 @@ enum BluetoothDeviceListPresentation {
     /// **within** their own group, so a drag can never lift a disconnected
     /// device above a connected one. Devices with no saved rank keep the
     /// group's own order and land after the ranked ones.
+    ///
+    /// A row a reading created leads its group, ahead of everything else in it.
+    /// See `leading`.
     static func orderedDevices(
         _ devices: [BluetoothDevice],
         using order: [String]
     ) -> [BluetoothDevice] {
         let groups = BluetoothDevicePresentation.grouped(devices)
-        return ranked(groups.connected, using: order) + ranked(groups.disconnected, using: order)
+        return leading(groups.connected, using: order) + leading(groups.disconnected, using: order)
+    }
+
+    /// One group, with the rows a reading created in front.
+    ///
+    /// Those rows are the only ones the panel has live information about: a
+    /// level read over the air seconds ago, where every other row carries what
+    /// macOS wrote down at some earlier point. The report knows nothing about
+    /// where they belong, so it lists them wherever its own scan found them —
+    /// the middle of the group, sorted among the rest by name — which is where
+    /// the user was looking past them. The saved order arranges the rest and
+    /// cannot push a reading row back among them.
+    private static func leading(
+        _ group: [BluetoothDevice],
+        using order: [String]
+    ) -> [BluetoothDevice] {
+        let readings = group.filter(\.isReadOverTheAir)
+        guard !readings.isEmpty else { return ranked(group, using: order) }
+        return readings + ranked(group.filter { !$0.isReadOverTheAir }, using: order)
     }
 
     /// Drops devices the user cannot act on or has chosen to hide: unpaired

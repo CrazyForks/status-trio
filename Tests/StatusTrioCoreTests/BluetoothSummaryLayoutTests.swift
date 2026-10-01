@@ -678,7 +678,7 @@ final class BluetoothSummaryLayoutTests: XCTestCase {
             requestBatteryLevels: { controller.requestBatteryLevels($0) },
             releaseBatteryLevels: { controller.releaseBatteryLevels($0) },
             requestNearbyBatteryDevices: { controller.requestNearbyBatteryDevices($0) },
-            releaseNearbyBatteryDevices: { controller.releaseNearbyBatteryDevices($0) },
+            releaseNearbyBatteryDevices: { controller.releaseNearbyBatteryDevices($0, keepingResults: $1) },
             holdBluetoothSummary: { controller.holdVisibleSurface(BluetoothDeviceController.bluetoothSummarySurfaceToken) },
             releaseBluetoothSummary: { controller.releaseVisibleSurface(BluetoothDeviceController.bluetoothSummarySurfaceToken) }
         )

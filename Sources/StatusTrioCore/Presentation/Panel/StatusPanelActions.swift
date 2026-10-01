@@ -25,7 +25,7 @@ final class StatusPanelActions {
     private let requestBatteryLevelsCommand: (String) -> Void
     private let releaseBatteryLevelsCommand: (String) -> Void
     private let requestNearbyBatteryDevicesCommand: (String) -> Void
-    private let releaseNearbyBatteryDevicesCommand: (String) -> Void
+    private let releaseNearbyBatteryDevicesCommand: (String, Bool) -> Void
     private let setListeningModeCommand: (BluetoothListeningMode, String) -> Void
     private let listeningModePresentations: () -> [String: BluetoothListeningModePresentation]
     private let listeningModeDevices: () -> [BluetoothDevice]
@@ -76,7 +76,7 @@ final class StatusPanelActions {
         requestBatteryLevels: @escaping (String) -> Void = { _ in },
         releaseBatteryLevels: @escaping (String) -> Void = { _ in },
         requestNearbyBatteryDevices: @escaping (String) -> Void = { _ in },
-        releaseNearbyBatteryDevices: @escaping (String) -> Void = { _ in },
+        releaseNearbyBatteryDevices: @escaping (String, Bool) -> Void = { _, _ in },
         setListeningMode: @escaping (BluetoothListeningMode, String) -> Void = { _, _ in },
         listeningModePresentations: @escaping () -> [String: BluetoothListeningModePresentation] = { [:] },
         listeningModeDevices: (() -> [BluetoothDevice])? = nil,
@@ -166,7 +166,7 @@ final class StatusPanelActions {
             requestBatteryLevels: { store.bluetoothDevices.requestBatteryLevels($0) },
             releaseBatteryLevels: { store.bluetoothDevices.releaseBatteryLevels($0) },
             requestNearbyBatteryDevices: { store.bluetoothDevices.requestNearbyBatteryDevices($0) },
-            releaseNearbyBatteryDevices: { store.bluetoothDevices.releaseNearbyBatteryDevices($0) },
+            releaseNearbyBatteryDevices: { store.bluetoothDevices.releaseNearbyBatteryDevices($0, keepingResults: $1) },
             setListeningMode: { store.bluetoothListeningModes.setMode($0, forAddress: $1) },
             listeningModePresentations: { store.bluetoothListeningModes.presentations },
             listeningModeDevices: {
@@ -248,12 +248,14 @@ final class StatusPanelActions {
 
     func performBluetoothAction(address: String) {
         guard let device = bluetoothDevice(address: address),
+              BluetoothDeviceActionPolicy.isActionable(device),
               !BluetoothDeviceActionPolicy.requiresConfirmation(for: device) else { return }
         performBluetoothActionCommand(device)
     }
 
     func rowTapped(address: String) {
-        guard let device = bluetoothDevice(address: address) else { return }
+        guard let device = bluetoothDevice(address: address),
+              BluetoothDeviceActionPolicy.isActionable(device) else { return }
         if BluetoothDeviceActionPolicy.requiresConfirmation(for: device) {
             requestDisconnectCommand(device)
         } else {
@@ -266,12 +268,14 @@ final class StatusPanelActions {
         guard !key.isEmpty,
               BluetoothBatteryReader.normalizedAddress(disconnectConfirmationAddress() ?? "") == key,
               let device = bluetoothDevice(address: key),
+              BluetoothDeviceActionPolicy.isActionable(device),
               BluetoothDeviceActionPolicy.requiresConfirmation(for: device) else { return }
         performBluetoothActionCommand(device)
     }
 
     func requestDisconnect(address: String) {
         guard let device = bluetoothDevice(address: address),
+              BluetoothDeviceActionPolicy.isActionable(device),
               BluetoothDeviceActionPolicy.requiresConfirmation(for: device) else { return }
         requestDisconnectCommand(device)
     }
@@ -295,14 +299,17 @@ final class StatusPanelActions {
         if enabled {
             requestNearbyBatteryDevicesCommand(Self.nearbyBatteryDevicesToken)
         } else {
-            releaseNearbyBatteryDevicesCommand(Self.nearbyBatteryDevicesToken)
+            releaseNearbyBatteryDevicesCommand(Self.nearbyBatteryDevicesToken, false)
         }
     }
 
     func setListeningMode(address: String, mode: BluetoothListeningMode) {
         let key = BluetoothBatteryReader.normalizedAddress(address)
         guard !key.isEmpty,
-              listeningModeDevices().contains(where: { BluetoothBatteryReader.normalizedAddress($0.id) == key }),
+              listeningModeDevices().contains(where: {
+                  BluetoothBatteryReader.normalizedAddress($0.id) == key
+                      && BluetoothDeviceActionPolicy.isActionable($0)
+              }),
               let presentation = listeningModePresentations()[key],
               presentation.availableModes.contains(mode) else { return }
         setListeningModeCommand(mode, key)
@@ -319,6 +326,7 @@ final class StatusPanelActions {
     func bluetoothSummaryDisappeared() {
         releaseBluetoothSummary()
         releaseBatteryLevelsCommand(Self.summaryBatteryLevelsToken)
+        releaseNearbyBatteryDevicesCommand(Self.nearbyBatteryDevicesToken, true)
     }
 
     func volumeListAppeared() { refreshVolumeListeningModes() }

@@ -271,6 +271,94 @@ final class BluetoothPanelMapperTests: XCTestCase {
         XCTAssertEqual(failure.statusTint, .critical)
     }
 
+    func testMapperFoldsNearbyMobileReadingsIntoReadOnlyRowsAndKeepsReportedBattery() {
+        let iphone = nearby("Ling's iPhone", level: 31, model: "iPhone14,3")
+        let tracker = nearby("Scale", level: 52, model: "Scale-1")
+        let pairedIPhone = device("AA:00:00:00:00:09", "Ling's iPhone", connected: false, kind: .unknown)
+        let reported = BluetoothBatteryLevel(
+            deviceAddress: pairedIPhone.id,
+            main: 88,
+            left: nil,
+            right: nil,
+            caseLevel: nil
+        )
+
+        let state = BluetoothPanelMapper.map(
+            availability: .available,
+            devices: [pairedIPhone],
+            batteryLevels: ["AA0000000009": reported],
+            actionStates: [:],
+            nearbyDevices: [iphone, tracker],
+            batteryLevelsReadFailed: false,
+            isExpanded: true,
+            options: .standard,
+            showsBatteryLevels: true,
+            showsNearbyBatteryDevices: true,
+            confirmingAddress: nil,
+            localization: makeLocalization()
+        )
+
+        XCTAssertEqual(state.pairedRows.map(\.title), ["Ling's iPhone"])
+        XCTAssertEqual(state.pairedRows[0].batteryText, "88%")
+        XCTAssertEqual(state.pairedRows[0].icon, .symbol(name: BluetoothDeviceRowIcon.symbolName(for: pairedIPhone.identifiedByModel(.mobile(.phone))), variableValue: nil, fallback: "dot.radiowaves.left.and.right"))
+        XCTAssertFalse(state.pairedRows[0].isActionable)
+        XCTAssertFalse(state.pairedRows[0].actionEnabled)
+        XCTAssertEqual(state.nearbyRows.map(\.title), ["Scale"])
+    }
+
+    func testMapperPlacesSynthesizedMobileRowsFirstWithinTheirConnectedGroup() {
+        let nearbyPhone = nearby("Travel Phone", level: 67, model: "iPhone15,2")
+        let disconnected = device("AA:00:00:00:00:01", "Headphones", connected: false)
+        let pairedUnknown = device("AA:00:00:00:00:02", "Travel Phone", connected: false, kind: .unknown)
+        let laterDisconnected = device("AA:00:00:00:00:03", "Mouse", connected: false)
+
+        let state = BluetoothPanelMapper.map(
+            availability: .available,
+            devices: [disconnected, pairedUnknown, laterDisconnected],
+            batteryLevels: [:],
+            actionStates: [:],
+            nearbyDevices: [nearbyPhone],
+            batteryLevelsReadFailed: false,
+            isExpanded: true,
+            options: BluetoothDeviceListOptions(
+                showsList: true,
+                maxVisibleDevices: 5,
+                order: ["AA0000000003", "AA0000000001"]
+            ),
+            showsBatteryLevels: true,
+            showsNearbyBatteryDevices: true,
+            confirmingAddress: nil,
+            localization: makeLocalization()
+        )
+
+        XCTAssertEqual(state.pairedRows.map(\.title), ["Travel Phone", "Mouse", "Headphones"])
+        XCTAssertFalse(state.pairedRows[0].isActionable)
+        XCTAssertFalse(state.pairedRows[0].actionEnabled)
+    }
+
+    func testMapperUsesNearbyIPadModelToSupplyTabletGlyph() {
+        let nearbyTablet = nearby("Family iPad", level: 74, model: "iPad11,1")
+        let state = BluetoothPanelMapper.map(
+            availability: .available,
+            devices: [],
+            batteryLevels: [:],
+            actionStates: [:],
+            nearbyDevices: [nearbyTablet],
+            batteryLevelsReadFailed: false,
+            isExpanded: true,
+            options: .standard,
+            showsBatteryLevels: true,
+            showsNearbyBatteryDevices: true,
+            confirmingAddress: nil,
+            localization: makeLocalization()
+        )
+
+        XCTAssertEqual(state.pairedRows.map(\.title), ["Family iPad"])
+        XCTAssertEqual(state.pairedRows[0].icon, .symbol(name: "ipad.landscape", variableValue: nil, fallback: "dot.radiowaves.left.and.right"))
+        XCTAssertEqual(state.pairedRows[0].batteryText, "74%")
+        XCTAssertFalse(state.pairedRows[0].isActionable)
+    }
+
     private func mapSummary(
         _ availability: BluetoothAvailability,
         localization: Localization
@@ -323,8 +411,8 @@ final class BluetoothPanelMapperTests: XCTestCase {
         BluetoothDevice(id: address, name: name, kind: kind, isConnected: connected, isUnpairedGhost: ghost)
     }
 
-    private func nearby(_ name: String, level: Int) -> NearbyBluetoothBatteryDevice {
-        NearbyBluetoothBatteryDevice(id: UUID(), name: name, batteryLevel: level, model: nil, manufacturer: nil, lastUpdated: Date())
+    private func nearby(_ name: String, level: Int, model: String? = nil) -> NearbyBluetoothBatteryDevice {
+        NearbyBluetoothBatteryDevice(id: UUID(), name: name, batteryLevel: level, model: model, manufacturer: nil, lastUpdated: Date())
     }
 
     private func makeLocalization() -> Localization {

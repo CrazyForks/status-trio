@@ -18,6 +18,20 @@ import XCTest
 /// row's `ProgressView`.
 @MainActor
 final class BluetoothDeviceRowLayoutTests: XCTestCase {
+    func testReadOverTheAirDeviceRendersAsANonInteractiveRow() async throws {
+        let device = BluetoothDevice(
+            id: UUID().uuidString,
+            name: "Family iPhone",
+            kind: .mobile(.phone),
+            isConnected: false,
+            isReadOverTheAir: true
+        )
+
+        let row = try await renderRow(language: .english, device: device)
+
+        XCTAssertTrue(row.controls.isEmpty, "a row synthesized from a BLE reading has no Button or action affordance")
+    }
+
     func testTheConfirmingRowStaysOnOneLine() async throws {
         let device = BluetoothDevice(
             id: "AA:00:00:00:00:01",

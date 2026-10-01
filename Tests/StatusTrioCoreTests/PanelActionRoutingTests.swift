@@ -111,6 +111,30 @@ final class PanelActionRoutingTests: XCTestCase {
         XCTAssertEqual(modes.first?.1, "AA0000000002")
     }
 
+    func testBluetoothActionsIgnoreSynthesizedReadOnlyRows() {
+        let synthesized = BluetoothDevice(
+            id: "peripheral-id",
+            name: "Travel Phone",
+            kind: .mobile(.phone),
+            isConnected: false,
+            isReadOverTheAir: true
+        )
+        var performed: [String] = []
+        var confirmations: [String] = []
+        let actions = StatusPanelActions(
+            bluetoothDevices: { [synthesized] },
+            performBluetoothAction: { performed.append($0.id) },
+            requestDisconnect: { confirmations.append($0.id) }
+        )
+
+        actions.rowTapped(address: synthesized.id)
+        actions.performBluetoothAction(address: synthesized.id)
+        actions.requestDisconnect(address: synthesized.id)
+
+        XCTAssertTrue(performed.isEmpty)
+        XCTAssertTrue(confirmations.isEmpty)
+    }
+
     func testBluetoothRowTapRequestsInputConfirmationAndConfirmedActionChecksCurrentPendingAddress() {
         let keyboard = BluetoothDevice(id: "AA:00:00:00:00:01", name: "Keyboard", kind: .peripheral(.keyboard), isConnected: true)
         let headphones = BluetoothDevice(id: "AA:00:00:00:00:02", name: "Headphones", kind: .audio, isConnected: true)
@@ -222,7 +246,7 @@ final class PanelActionRoutingTests: XCTestCase {
             requestBatteryLevels: { batteryClaims.append($0) },
             releaseBatteryLevels: { batteryReleases.append($0) },
             requestNearbyBatteryDevices: { nearbyClaims.append($0) },
-            releaseNearbyBatteryDevices: { nearbyReleases.append($0) }
+            releaseNearbyBatteryDevices: { address, _ in nearbyReleases.append(address) }
         )
 
         actions.updateBluetoothBatteryLevelsClaim(enabled: true)
@@ -239,7 +263,24 @@ final class PanelActionRoutingTests: XCTestCase {
         XCTAssertEqual(batteryClaims, ["bluetooth.summary"])
         XCTAssertEqual(batteryReleases, ["bluetooth.summary", "bluetooth.summary", "bluetooth.summary"])
         XCTAssertEqual(nearbyClaims, ["bluetooth.summary.nearbyBatteryDevices"])
-        XCTAssertEqual(nearbyReleases, ["bluetooth.summary.nearbyBatteryDevices"])
+        XCTAssertEqual(nearbyReleases, [
+            "bluetooth.summary.nearbyBatteryDevices",
+            "bluetooth.summary.nearbyBatteryDevices"
+        ])
+    }
+
+    func testBluetoothSummaryDisappearanceReleasesNearbyClaimAndKeepsItsCache() {
+        var releasedNearby: [(String, Bool)] = []
+        let actions = StatusPanelActions(
+            releaseNearbyBatteryDevices: { releasedNearby.append(($0, $1)) }
+        )
+
+        actions.bluetoothSummaryDisappeared()
+
+        XCTAssertEqual(releasedNearby.map(\.0), ["bluetooth.summary.nearbyBatteryDevices"])
+        XCTAssertEqual(releasedNearby.map(\.1), [true])
+        actions.updateBluetoothNearbyBatteryClaim(enabled: false)
+        XCTAssertEqual(releasedNearby.map(\.1), [true, false])
     }
 
     private func makeOutput(id: UInt32, uid: String?) -> AudioOutputDevice {

@@ -1,22 +1,34 @@
 # Status Trio 2.0 presentation architecture handoff
 
-Branch: `codex/2.0-presentation-refactor`  
-Product baseline: `4176b78`  
-Reviewed product/test commit: `ef4e4c74dee4b67f64cf07ea6f22191d4586ba69`
+Branch: `codex/2.0-presentation-refactor`
+
+2.0 refactor starting baseline: `4176b78`
+
+Integrated latest main: `fb76626326117a86a982a959a10016de1788d67f` (v1.4.0)
+Integration merge commit: recorded in the merge report after verification
 
 The approved architecture-only, gradual migration is implemented: shared icon presentation mapping for Menu Bar, Dock and previews; scene-only rendering; panel value states and action coordination; obsolete adapters removed. Existing UI and behavior remain the acceptance contract.
 
-## Verification
+## Pre-integration verification
 
 - Local final `swift test`: 1,225 XCTest, 6 skipped, 0 failures; Swift Testing 410 tests / 71 suites passed.
 - Local `swift build -c release`, app packaging, and platform guard passed; packaged `LC_BUILD_VERSION` SDK is 26.0.
 - Whole-branch review identified two stale panel state regressions. One fix wave corrected listening-mode/device invalidation of volume state and delivered Wi-Fi snapshot mapping. Scoped rereview confirms both addressed, with no new findings.
 - Cached Menu Bar frames again have eager backing bitmaps at the requested scale. General image rendering remains appearance adaptive.
-- Remote acceptance: [run 36762652467](https://github.com/lingyired/status-trio/actions/runs/36762652467) succeeded on exact reviewed code SHA `ef4e4c74dee4b67f64cf07ea6f22191d4586ba69` with version 2.0.0 / build 31 / publish=false. CI used Xcode 26.6 / Swift 6.3.3; 1,225 XCTest (6 skipped, 0 failures) and 410 Swift Testing / 71 suites passed. Universal app build and SDK 26.0 guard passed for arm64 and x86_64. DMG creation and artifact upload passed ([artifact 11118314933](https://github.com/lingyired/status-trio/actions/runs/36762652467/artifacts/11118314933)). Release/appcast publication did not run. Later handoff/compatibility edits are documentation only; no source, test or build inputs changed.
+- Remote acceptance: [run 36762652467](https://github.com/lingyired/status-trio/actions/runs/36762652467) succeeded on exact pre-integration code SHA `ef4e4c74dee4b67f64cf07ea6f22191d4586ba69` with version 2.0.0 / build 31 / publish=false. This historical run does not validate the integrated branch.
 
-## Integration limits
+## Integrated verification
 
-The branch retains approved baseline `4176b78`. Concurrent main advanced to v1.4.0 (`2137675`), with other product changes. This branch does not automatically include those changes. Before merging or releasing 2.0, reconcile current main and repeat tests and any required preflight on the integrated result.
+- `swift test`: 1,245 XCTest, 6 skipped, 0 failures; Swift Testing 438 tests / 74 suites passed.
+- `swift build -c release`: passed with the local macOS 27 SDK. This does not replace the required Xcode 26.6 / Swift 6.3.3 publish=false workflow preflight.
+- `swift test --filter Bluetooth`: 306 XCTest, 0 failures; Swift Testing 188 tests / 27 suites passed.
+- `git diff --check` and merge-marker scan: passed. Local `main` remained `fb76626326117a86a982a959a10016de1788d67f`.
+
+## Main integration
+
+The branch now includes v1.4.0 from `fb76626326117a86a982a959a10016de1788d67f`, including external AirPods listening-mode property listeners and the BLE battery scanner, model identification, mobile glyphs, and 30-minute reading retention. Bluetooth UI remains value-only: `BluetoothPanelMapper` merges paired and nearby values, `BluetoothPanelState` carries read-only/actionable row state, and `StatusPanelActions` owns live action checks and scan claims. Closing the summary releases the BLE scan claim while keeping cached readings; an explicit opt-out clears that cache even while the panel is closed. The popover visibility token still gates radio work.
+
+The merge also keeps the v1.4.0 release metadata, appcast history, and localized release notes. This integration does not create a tag, publish a release, or start a GitHub workflow. The full local verification results and merge commit are recorded in `/tmp/status-trio-v2-main-integration-report.md`.
 
 Mounted Bluetooth row hit-test coverage is a disclosed nonblocking limitation: source Button callback wiring and action/confirmation policy tests were reviewed, but NSHostingView did not expose NSButton for the attempted interaction test. A platform-stable mounted test remains future work.
 
@@ -62,8 +74,8 @@ These are every ledger ruling, in recorded order, including each cost if wrong.
 
 16. Ruling: Reuse available independent task3_mapper for Task11 review after freshAstra spawn and existingAstra reactivation bothfailed agentthreadlimit — toolingcap blocks freshseat, reviewer didnotimplementTask11 andsame read-only scopedcontract applies — cost if wrong: priorcontext andlowerLuna reviewcapability require escalation/finalreview foruncertainties; do not skipreview or claimfreshAstraapproval. Futureagentdispatch mayneedexistingavailableLuna seats; no repeatedcompletedtasks.
 
-17. Ruling: Keepapprovedproductbaseline4176b78 during thisrefactor ratherthan silentlyabsorb concurrentmain v1.4.0 changes — actualpublishedhead2137675 newerby42files/+2514/-78, approvedplanpinsbaseline andintegration isseparatechoice — cost if wrong: sync/reconcile latestmain+repeat tests/preflight beforefuturemerge/2.0release, branchdoesnotautomaticallyinclude v1.4newbehavior. Recordexplicitfinalhandofflimit.
+17. Ruling: At the pre-integration handoff, keep approved product baseline `4176b78` rather than silently absorb concurrent main v1.4.0 changes — the approved plan pinned that baseline and integration was a separate decision. The user later authorized merging current main; `fb76626326117a86a982a959a10016de1788d67f` is now integrated and the full local suite passes. The required remote preflight remains pending. Historical cost if the original ruling had remained in force: v1.4 behavior would have been absent from the 2.0 candidate.
 
 18. Ruling: Final whole-branch review uses available independent task4_renderer plus root integration inspection rather than unavailable fresh most-capable seat — native agentthreadlimit and failed CLI transport prevent requested fresh reviewer, root writes no product code — cost if wrong: reused Luna prior renderer context and lower review capability can miss issues; disclose this limit and require any uncertain finding resolved before integration. Final diff4176b78..8178059 handed to reviewer with all deferred minors/rulings.
 
-19. Ruling: Retain mounted Bluetooth button hit-test gap as a disclosed nonblocking test limitation — actualButtoncallback wiring inspected and actionpolicy tests pass, attempted NSHostingView exposes noNSButton, no current behavioral defect found — cost if wrong: a future wiring regression could bypass callback-only tests; add platform-stable mounted interaction coverage before changing row controls.
+19. Ruling: Retain mounted Bluetooth button hit-test gap as a disclosed nonblocking test limitation — action callbacks and value-only row state are covered, attempted NSHostingView exposes noNSButton, no current behavioral defect found — cost if wrong: a future wiring regression could bypass callback-only tests; add platform-stable mounted interaction coverage before changing row controls.

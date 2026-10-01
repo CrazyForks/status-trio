@@ -30,14 +30,9 @@ struct BluetoothDeviceRow: View {
                     .lineLimit(1)
             }
             .accessibilityElement(children: .contain)
-        } else {
+        } else if state.isActionable {
             Button { onRowTapped(state.address) } label: {
-                switch state.batteryLayout {
-                case .inline:
-                    inlineContent
-                case .components:
-                    componentContent
-                }
+                rowContent
             }
             .buttonStyle(.plain)
             .disabled(!state.actionEnabled)
@@ -46,6 +41,21 @@ struct BluetoothDeviceRow: View {
             .accessibilityLabel(state.accessibilityLabel)
             .accessibilityValue(state.accessibilityValue)
             .accessibilityHint(state.actionTitle)
+        } else {
+            rowContent
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(state.accessibilityLabel)
+                .accessibilityValue(state.accessibilityValue)
+        }
+    }
+
+    @ViewBuilder
+    private var rowContent: some View {
+        switch state.batteryLayout {
+        case .inline:
+            inlineContent
+        case .components:
+            componentContent
         }
     }
 

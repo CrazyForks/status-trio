@@ -14,3 +14,7 @@ __pycache__/
 .build/
 dist/
 marketing/
+
+# Scratch: verification logs, downloaded test DMGs, and the recordings cut
+# from them. It is where a run's evidence goes, not what the repository keeps.
+output/

@@ -254,6 +254,14 @@ size 为逻辑点数，scale 为 backing scale，固定位图边长是 `ceil(siz
 
 新功能同时检查菜单栏和 Dock，包括设置派生、owner 输出、controller、cache key、renderer 和测试；只有明确声明且有测试的表面专用行为可以例外。不得使用时间戳或随机 ID 打破场景 equality 来强行刷新。
 
+### Bluetooth 面板值与动作边界
+
+现有 `BluetoothPanelMapper.map(...)` 接收配对设备、配对电量、附近 BLE 电量、列表设置和当前动作状态，并在应用保存排序及可见行数前调用 `BluetoothNearbyDeviceMerge`。附近读数匹配到同名配对设备时复用该行，且配对报告已有的主电量或组件电量优先；无法匹配的 iPhone、iPad、Apple Watch 会按 BLE Device Information Service 的型号补充设备类别和图标，成为只读配对行，并排在所属连接组前面。其他 BLE 设备仍保留在附近列表。
+
+`PanelBluetoothDeviceRow.isActionable` 是 UI 仅渲染值的边界：可操作设备显示按钮，BLE 新增行使用普通行，不显示动作提示或可操作性无障碍提示。`StatusPanelActions` 在执行连接、断开、确认和听音模式动作前重新解析当前配对设备，并拒绝 BLE 新增行。列表变化和行状态由 Mapper 解析；视图通过明确回调交互。
+
+附近扫描只在蓝牙偏好开启且面板可见时运行。面板关闭会释放面板扫描 claim 并停止扫描，同时保留最近读数供快速重开使用；偏好关闭时即使面板已关闭也会清除保留读数。读数最多保留 30 分钟，不能延长报告的原始有效期。
+
 ## 7. 后续功能与插件的接入清单
 
 下面是后续实现需要遵守的边界，不是已经存在的插件 API。
@@ -275,6 +283,7 @@ size 为逻辑点数，scale 为 backing scale，固定位图边长是 `ceil(siz
 | 场景与区域值 | `Sources/StatusTrioCore/Presentation/Icon/{IconSceneState,OuterRingState,CenterState,FooterState,IconSymbolState,IconColorRole}.swift` |
 | 映射及配置 | `Sources/StatusTrioCore/Presentation/Icon/{IconPresentationMapper,IconPresentationConfiguration}.swift` |
 | owner / scheduler | `Sources/StatusTrioCore/Presentation/Icon/IconPresentationViewModel.swift` |
+| 面板值与动作 | `Sources/StatusTrioCore/Presentation/Panel/{BluetoothPanelMapper,BluetoothPanelState,StatusPanelActions}.swift` |
 | 设置派生 | `Sources/StatusTrioCore/Settings/SettingsStore+IconPresentation.swift` |
 | 资源解析 | `Sources/StatusTrioCore/App/IconPresentationResourceResolver.swift` |
 | 宿主接线 | `Sources/StatusTrioCore/App/AppEnvironment.swift` |

@@ -33,6 +33,8 @@ SystemStatusStore / SettingsStore / controllers / Localization
 
 `PanelPresentationMapper`, `PanelDetailMapper`, `BluetoothPanelMapper`, and `AudioPanelMapper` turn domain values into section-specific immutable states. `StatusPanelViewModel` owns subscriptions, refresh coalescing, section values, and the panel lifecycle. It does not draw or decide icon precedence. `StatusPanelActions` routes intents to existing controller operations; it does not own presentation state or settings reorder policy. Settings reorder controls continue to call `SettingsStore` directly.
 
+The Bluetooth mapper combines eligible nearby BLE battery readings with paired rows before applying saved order and visible-row limits. Matching mobile devices reuse their paired row and battery report; a model-only mobile device becomes a read-only row led within its connection group, while other BLE devices remain in the nearby section. `PanelBluetoothDeviceRow.isActionable` controls whether the view exposes a button, and the action coordinator checks the live domain device again before performing an operation. Closing the summary releases its scan claim with cached results retained; turning the preference off clears the retained cache, including when the summary is closed. The controller's popover claim remains the gate that stops the scanner when the popover closes.
+
 `AccessibilityPresentation` keeps status-item spoken identity separate from icon raster identity. Its Wi-Fi name and exact volume value are derived from the current snapshot and language. The panel mappers provide reusable localized battery and Wi-Fi text without moving SSIDs into `IconSceneState` or changing localized strings.
 
 ## Publisher and lifecycle rules
