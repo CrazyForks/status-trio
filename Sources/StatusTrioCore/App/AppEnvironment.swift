@@ -16,6 +16,7 @@ final class AppEnvironment {
     let chargingEffectClock: ChargingEffectClock
     let chargingEffectMotionMonitor: ChargingEffectMotionMonitor
     let bluetoothAudioIconOverrideSynchronizer = BluetoothAudioIconOverrideSynchronizer()
+    private let bluetoothNearbyBatteryOptOutSynchronizer = BluetoothNearbyBatteryOptOutSynchronizer()
 
     private var chargingEffectCancellables = Set<AnyCancellable>()
 
@@ -61,6 +62,10 @@ final class AppEnvironment {
             devices: store.bluetoothDevices,
             settings: settings
         )
+        bluetoothNearbyBatteryOptOutSynchronizer.start(
+            settings: settings,
+            actions: StatusPanelActions(store: store, settings: settings)
+        )
         store.bindInputSettings(settings)
         store.start()
     }
@@ -71,6 +76,7 @@ final class AppEnvironment {
         chargingEffectMotionMonitor.stop()
         chargingEffectCancellables.removeAll()
         bluetoothAudioIconOverrideSynchronizer.stop()
+        bluetoothNearbyBatteryOptOutSynchronizer.stop()
         appIconController.stop()
         mainMenuController.stop()
         store.stop()

@@ -116,6 +116,97 @@ final class BluetoothNearbyBatteryLifecycleTests: XCTestCase {
         controller.deactivate()
     }
 
+    func testSettingsOptOutWhilePanelIsAbsentClearsRetainedReadingsWithoutRestartingScanner() async {
+        let scanner = NearbyBatteryScannerSpy()
+        let monitor = NearbyBatteryStateMonitorSpy()
+        let controller = makeReadyController(scanner: scanner, monitor: monitor)
+        let settings = makeSettings()
+        settings.showsBluetoothBatteryLevels = true
+        settings.showsNearbyBluetoothBatteryDevices = true
+        let actions = actions(for: controller)
+        let observer = BluetoothNearbyBatteryOptOutSynchronizer()
+        observer.start(settings: settings, actions: actions)
+        actions.updateBluetoothNearbyBatteryClaim(enabled: true)
+
+        let device = nearbyDevice(name: "Ling's iPhone", level: 31)
+        scanner.publish([device])
+        await waitUntil { controller.nearbyBatteryDevices == [device] }
+        actions.bluetoothSummaryDisappeared()
+        controller.releaseVisibleSurface(BluetoothDeviceController.popoverSurfaceToken)
+        XCTAssertEqual(controller.nearbyBatteryDevices, [device])
+        XCTAssertFalse(scanner.isRunning, "panel absence stops scanning while retaining its reading")
+
+        settings.showsNearbyBluetoothBatteryDevices = false
+        XCTAssertTrue(controller.nearbyBatteryDevices.isEmpty, "the lifetime settings observer clears opt-out data")
+
+        settings.showsNearbyBluetoothBatteryDevices = true
+        XCTAssertTrue(controller.nearbyBatteryDevices.isEmpty, "reenabling while closed cannot restore stale data")
+        XCTAssertEqual(scanner.startCount, 1, "reenabling while closed cannot restart scanning")
+        XCTAssertFalse(scanner.isRunning)
+
+        controller.holdVisibleSurface(BluetoothDeviceController.bluetoothSummarySurfaceToken)
+        controller.holdVisibleSurface(BluetoothDeviceController.popoverSurfaceToken)
+        XCTAssertEqual(scanner.startCount, 1, "only the view may create the summary claim when it reappears")
+        controller.releaseVisibleSurface(BluetoothDeviceController.popoverSurfaceToken)
+        controller.releaseVisibleSurface(BluetoothDeviceController.bluetoothSummarySurfaceToken)
+
+        observer.stop()
+        controller.deactivate()
+    }
+
+    func testParentBatteryPreferenceOptOutWhilePanelIsAbsentClearsRetainedReadings() async {
+        let scanner = NearbyBatteryScannerSpy()
+        let monitor = NearbyBatteryStateMonitorSpy()
+        let controller = makeReadyController(scanner: scanner, monitor: monitor)
+        let settings = makeSettings()
+        settings.showsBluetoothBatteryLevels = true
+        settings.showsNearbyBluetoothBatteryDevices = true
+        let actions = actions(for: controller)
+        let observer = BluetoothNearbyBatteryOptOutSynchronizer()
+        observer.start(settings: settings, actions: actions)
+        actions.updateBluetoothNearbyBatteryClaim(enabled: true)
+
+        let device = nearbyDevice(name: "Ling's iPhone", level: 31)
+        scanner.publish([device])
+        await waitUntil { controller.nearbyBatteryDevices == [device] }
+        actions.bluetoothSummaryDisappeared()
+        controller.releaseVisibleSurface(BluetoothDeviceController.popoverSurfaceToken)
+
+        settings.showsBluetoothBatteryLevels = false
+        XCTAssertTrue(controller.nearbyBatteryDevices.isEmpty)
+
+        observer.stop()
+        controller.deactivate()
+    }
+
+    func testSettingsOptOutPreservesNearbyReadingsOwnedByAnotherClaim() async {
+        let scanner = NearbyBatteryScannerSpy()
+        let monitor = NearbyBatteryStateMonitorSpy()
+        let controller = makeReadyController(scanner: scanner, monitor: monitor)
+        let settings = makeSettings()
+        settings.showsBluetoothBatteryLevels = true
+        settings.showsNearbyBluetoothBatteryDevices = true
+        let actions = actions(for: controller)
+        let observer = BluetoothNearbyBatteryOptOutSynchronizer()
+        observer.start(settings: settings, actions: actions)
+        actions.updateBluetoothNearbyBatteryClaim(enabled: true)
+        controller.requestNearbyBatteryDevices("independent")
+
+        let device = nearbyDevice(name: "Sensor", level: 52)
+        scanner.publish([device])
+        await waitUntil { controller.nearbyBatteryDevices == [device] }
+        actions.bluetoothSummaryDisappeared()
+        controller.releaseVisibleSurface(BluetoothDeviceController.popoverSurfaceToken)
+
+        settings.showsNearbyBluetoothBatteryDevices = false
+        XCTAssertEqual(controller.nearbyBatteryDevices, [device], "summary opt-out cannot erase another owner's data")
+
+        controller.releaseNearbyBatteryDevices("independent")
+        XCTAssertTrue(controller.nearbyBatteryDevices.isEmpty, "the final owner can clear the retained data")
+        observer.stop()
+        controller.deactivate()
+    }
+
     /// Switching the feature off is the one release that also drops what the
     /// scan read: the surface is no longer entitled to it.
     func testReleasingLastNearbyRequestClearsCacheAndStopsScanner() {
@@ -335,6 +426,29 @@ final class BluetoothNearbyBatteryLifecycleTests: XCTestCase {
         controller.holdVisibleSurface(BluetoothDeviceController.bluetoothSummarySurfaceToken)
         controller.holdVisibleSurface(BluetoothDeviceController.popoverSurfaceToken)
         return controller
+    }
+
+    private func actions(for controller: BluetoothDeviceController) -> StatusPanelActions {
+        StatusPanelActions(
+            requestNearbyBatteryDevices: { controller.requestNearbyBatteryDevices($0) },
+            releaseNearbyBatteryDevices: { controller.releaseNearbyBatteryDevices($0, keepingResults: $1) },
+            holdBluetoothSummary: {
+                controller.holdVisibleSurface(BluetoothDeviceController.bluetoothSummarySurfaceToken)
+            },
+            releaseBluetoothSummary: {
+                controller.releaseVisibleSurface(BluetoothDeviceController.bluetoothSummarySurfaceToken)
+            }
+        )
+    }
+
+    private func makeSettings() -> SettingsStore {
+        let name = "BluetoothNearbyBatteryLifecycleTests.\(UUID().uuidString)"
+        guard let defaults = UserDefaults(suiteName: name) else {
+            fatalError("could not create isolated user defaults suite")
+        }
+        defaults.removeTestSuite(named: name)
+        addTeardownBlock { TestUserDefaults.removeSuite(named: name) }
+        return SettingsStore(defaults: defaults)
     }
 
     private func makeController(
