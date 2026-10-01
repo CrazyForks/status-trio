@@ -134,6 +134,11 @@ struct PresentationArchitectureTests {
         #expect(!identifiers.contains("SystemStatusStore"))
         #expect(!SwiftSourceIdentifierScanner.identifiers(in: "PrefixBatteryStatusSuffix").contains("BatteryStatus"))
         #expect(!identifiers.contains("DockIconRenderer"))
+
+        let nested = #"let text = "\(String(describing: "inner") + SettingsStore.description)""#
+        let raw = ##"let text = #"\\#(SettingsStore.shared)"#"##
+        #expect(SwiftSourceIdentifierScanner.identifiers(in: nested).contains("SettingsStore"))
+        #expect(SwiftSourceIdentifierScanner.identifiers(in: raw).contains("SettingsStore"))
     }
 
     private var packageRoot: URL {

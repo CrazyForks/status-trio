@@ -78,8 +78,35 @@ enum SwiftSourceIdentifierScanner {
             let openingLength = multiline ? 3 : 1
             let contentStart = quote + openingLength
             index = contentStart
+            var interpolated = false
+            var interpolationDepth = 0
 
             while index < characters.count {
+                if interpolationDepth > 0 {
+                    if starts(with: "//") {
+                        skipLineComment()
+                    } else if starts(with: "/*") {
+                        skipBlockComment()
+                    } else if let (nestedQuote, nestedHashes) = stringStart() {
+                        _ = consumeString(quote: nestedQuote, hashes: nestedHashes)
+                    } else {
+                        if characters[index] == "(" {
+                            interpolationDepth += 1
+                        } else if characters[index] == ")" {
+                            interpolationDepth -= 1
+                        }
+                        index += 1
+                    }
+                    continue
+                }
+
+                if isInterpolationStart(at: index, hashes: hashes) {
+                    interpolated = true
+                    index += hashes + 2
+                    interpolationDepth = 1
+                    continue
+                }
+
                 let closes = multiline
                     ? starts(with: "\"\"\"", at: index)
                     : characters[index] == "\""
@@ -88,13 +115,33 @@ enum SwiftSourceIdentifierScanner {
                    hasClosingHashes(after: index + openingLength, count: hashes) {
                     let content = String(characters[contentStart..<index])
                     index += openingLength + hashes
-                    return (content, hasInterpolation(content, hashes: hashes))
+                    return (content, interpolated)
                 }
                 index += 1
             }
 
             let content = String(characters[contentStart..<characters.count])
-            return (content, hasInterpolation(content, hashes: hashes))
+            return (content, interpolated)
+        }
+
+        private func isInterpolationStart(at position: Int, hashes: Int) -> Bool {
+            guard position < characters.count, characters[position] == "\\" else { return false }
+            var cursor = position + 1
+            if hashes == 0 {
+                var previous = position - 1
+                var precedingSlashes = 0
+                while previous >= 0, characters[previous] == "\\" {
+                    precedingSlashes += 1
+                    previous -= 1
+                }
+                guard precedingSlashes.isMultiple(of: 2) else { return false }
+            } else {
+                for _ in 0..<hashes {
+                    guard cursor < characters.count, characters[cursor] == "#" else { return false }
+                    cursor += 1
+                }
+            }
+            return cursor < characters.count && characters[cursor] == "("
         }
 
         private func isEscapedQuote(at quote: Int, hashes: Int) -> Bool {
@@ -118,30 +165,6 @@ enum SwiftSourceIdentifierScanner {
                 return false
             }
             return true
-        }
-
-        private func hasInterpolation(_ content: String, hashes: Int) -> Bool {
-            let values = Array(content)
-            var cursor = 0
-            while cursor < values.count {
-                guard values[cursor] == "\\" else {
-                    cursor += 1
-                    continue
-                }
-                let slashStart = cursor
-                while cursor < values.count, values[cursor] == "\\" { cursor += 1 }
-                let slashCount = cursor - slashStart
-                guard slashCount.isMultiple(of: 2) == false else { continue }
-                var matchedHashes = 0
-                while cursor < values.count, values[cursor] == "#" {
-                    matchedHashes += 1
-                    cursor += 1
-                }
-                if matchedHashes == hashes, cursor < values.count, values[cursor] == "(" {
-                    return true
-                }
-            }
-            return false
         }
 
         private mutating func readIdentifier() -> String {
