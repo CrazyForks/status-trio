@@ -32,6 +32,8 @@
 	<string>Used to show the current Wi-Fi network name in the popover and, when you open Wi-Fi details, to read network names, scan results, and connection information.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Used to show the current Wi-Fi network name in the popover and, when you open Wi-Fi details, to read network names, scan results, and connection information.</string>
+	<key>STTelemetryProduction</key>
+	<false/>
 	<key>SUEnableInstallerLauncherService</key>
 	<true/>
 	<key>SUFeedURL</key>
