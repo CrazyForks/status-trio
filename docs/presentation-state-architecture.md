@@ -2,6 +2,8 @@
 
 Status Trio maps live system data into immutable values before drawing. Producers and controllers own collection, policy, and actions; presentation mappers own decisions about what the user sees; views and renderers consume those decisions without repeating domain rules.
 
+For the three icon regions, concrete Swift API contracts, update timing, examples, and future plugin boundaries, see [三图形展示与更新 API](api/icon-presentation.md).
+
 ## Data flow
 
 ```text

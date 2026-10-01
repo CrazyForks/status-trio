@@ -225,6 +225,10 @@ bash scripts/build-worktree.sh release
 
 The single-instance lock is scoped by bundle identifier, so differently identified builds can run at the same time.
 
+### Icon presentation API
+
+For the three icon regions, update timing, Swift examples, and extension boundaries, see [三图形展示与更新 API](docs/api/icon-presentation.md). This documents the current internal API; an external plugin SDK is not implemented.
+
 ## Technical baseline
 
 - Swift 6
