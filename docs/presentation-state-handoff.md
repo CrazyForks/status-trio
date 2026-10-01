@@ -5,7 +5,8 @@ Branch: `codex/2.0-presentation-refactor`
 2.0 refactor starting baseline: `4176b78`
 
 Integrated latest main: `fb76626326117a86a982a959a10016de1788d67f` (v1.4.0)
-Integration merge commit: recorded in the merge report after verification
+Integration merge commit: `f6a28ff34971106aa73e859b6c145d8ef360daa5`
+Final integrated product commit: `6c09c12de0f829e76f67c4e6f407cee3c1d0ca44`
 
 The approved architecture-only, gradual migration is implemented: shared icon presentation mapping for Menu Bar, Dock and previews; scene-only rendering; panel value states and action coordination; obsolete adapters removed. Existing UI and behavior remain the acceptance contract.
 
@@ -19,8 +20,9 @@ The approved architecture-only, gradual migration is implemented: shared icon pr
 
 ## Integrated verification
 
-- `swift test`: 1,245 XCTest, 6 skipped, 0 failures; Swift Testing 438 tests / 74 suites passed.
-- `swift build -c release`: passed with the local macOS 27 SDK. This does not replace the required Xcode 26.6 / Swift 6.3.3 publish=false workflow preflight.
+- Final local and remote `swift test`: 1,248 XCTest, 6 skipped, 0 failures; Swift Testing 438 tests / 74 suites passed.
+- Local `swift build -c release`: passed with the macOS 27 SDK.
+- Remote acceptance: [run 36817244648](https://github.com/lingyired/status-trio/actions/runs/36817244648) passed on product SHA `6c09c12de0f829e76f67c4e6f407cee3c1d0ca44`, Xcode 26.6 / Swift 6.3.3, version 2.0.0 / build 32 / publish=false. Both arm64 and x86_64 passed the SDK 26.0 platform guard; DMG creation and artifact upload succeeded without publishing.
 - `swift test --filter Bluetooth`: 306 XCTest, 0 failures; Swift Testing 188 tests / 27 suites passed.
 - `git diff --check` and merge-marker scan: passed. Local `main` remained `fb76626326117a86a982a959a10016de1788d67f`.
 
@@ -28,15 +30,15 @@ The approved architecture-only, gradual migration is implemented: shared icon pr
 
 The branch now includes v1.4.0 from `fb76626326117a86a982a959a10016de1788d67f`, including external AirPods listening-mode property listeners and the BLE battery scanner, model identification, mobile glyphs, and 30-minute reading retention. Bluetooth UI remains value-only: `BluetoothPanelMapper` merges paired and nearby values, `BluetoothPanelState` carries read-only/actionable row state, and `StatusPanelActions` owns live action checks and scan claims. Closing the summary releases the BLE scan claim while keeping cached readings; an explicit opt-out clears that cache even while the panel is closed. The popover visibility token still gates radio work.
 
-The merge also keeps the v1.4.0 release metadata, appcast history, and localized release notes. This integration does not create a tag, publish a release, or start a GitHub workflow. The full local verification results and merge commit are recorded in `/tmp/status-trio-v2-main-integration-report.md`.
+The merge also keeps the v1.4.0 release metadata, appcast history, and localized release notes. A non-publishing GitHub workflow verified the integrated product commit. No tag, GitHub Release, or appcast publication was created. The application-lifetime opt-out observer clears retained BLE battery readings even after the panel is gone, without starting scanning on enable or discarding independent claims. An independent Astra integration review found this lifecycle gap; scoped rereview confirmed the fix with no new findings.
 
 Mounted Bluetooth row hit-test coverage is a disclosed nonblocking limitation: source Button callback wiring and action/confirmation policy tests were reviewed, but NSHostingView did not expose NSButton for the attempted interaction test. A platform-stable mounted test remains future work.
 
-Fresh reviewer seats became unavailable due to the agent thread limit; a CLI fallback timed out before performing work. Later reviews reused independent Luna agents, with root integration inspection. This is not fresh Astra review. Implementation remained on Luna.
+During the original pre-integration refactor, fresh reviewer seats became unavailable due to the agent thread limit; a CLI fallback timed out before performing work, so reviews reused independent Luna agents with root inspection. The later main integration received an independent Astra review and scoped fix rereview. Implementation remained on Luna.
 
 The build is ad-hoc signed; Developer ID and Apple notarization are not configured, so this is not a notarized release.
 
-No PR, merge, tag, GitHub Release or appcast publication is part of this handoff. The independent worktree is preserved for integration choice. Release notes prepared here cover the two languages needed by publish=false; publishing requires the complete language set and explicit release authorization.
+Latest main was merged into the 2.0 branch only. Local and remote main remain at `fb76626326117a86a982a959a10016de1788d67f`. No merge into main, PR, tag, GitHub Release or appcast publication is part of this handoff. The independent worktree is preserved for integration choice. Release notes prepared here cover the two languages needed by publish=false; publishing requires the complete language set and explicit release authorization.
 
 ## Rulings I made
 
@@ -74,7 +76,7 @@ These are every ledger ruling, in recorded order, including each cost if wrong.
 
 16. Ruling: Reuse available independent task3_mapper for Task11 review after freshAstra spawn and existingAstra reactivation bothfailed agentthreadlimit — toolingcap blocks freshseat, reviewer didnotimplementTask11 andsame read-only scopedcontract applies — cost if wrong: priorcontext andlowerLuna reviewcapability require escalation/finalreview foruncertainties; do not skipreview or claimfreshAstraapproval. Futureagentdispatch mayneedexistingavailableLuna seats; no repeatedcompletedtasks.
 
-17. Ruling: At the pre-integration handoff, keep approved product baseline `4176b78` rather than silently absorb concurrent main v1.4.0 changes — the approved plan pinned that baseline and integration was a separate decision. The user later authorized merging current main; `fb76626326117a86a982a959a10016de1788d67f` is now integrated and the full local suite passes. The required remote preflight remains pending. Historical cost if the original ruling had remained in force: v1.4 behavior would have been absent from the 2.0 candidate.
+17. Ruling: At the pre-integration handoff, keep approved product baseline `4176b78` rather than silently absorb concurrent main v1.4.0 changes — the approved plan pinned that baseline and integration was a separate decision. The user later authorized merging current main; `fb76626326117a86a982a959a10016de1788d67f` is now integrated and the full local suite passes. The integrated product subsequently passed remote preflight run 36817244648. Historical cost if the original ruling had remained in force: v1.4 behavior would have been absent from the 2.0 candidate.
 
 18. Ruling: Final whole-branch review uses available independent task4_renderer plus root integration inspection rather than unavailable fresh most-capable seat — native agentthreadlimit and failed CLI transport prevent requested fresh reviewer, root writes no product code — cost if wrong: reused Luna prior renderer context and lower review capability can miss issues; disclose this limit and require any uncertain finding resolved before integration. Final diff4176b78..8178059 handed to reviewer with all deferred minors/rulings.
 
