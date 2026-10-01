@@ -162,6 +162,12 @@ struct IconGuideOnboardingView: View {
             )
             .font(.system(size: 12))
             .toggleStyle(.checkbox)
+
+            Link(
+                localization.string(.settingsAnalyticsPrivacyDetails),
+                destination: URL(string: "https://github.com/lingyired/status-trio/blob/main/docs/privacy-telemetry.md")!
+            )
+            .font(.system(size: 11))
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
