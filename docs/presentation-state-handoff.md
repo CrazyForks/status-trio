@@ -6,9 +6,17 @@ Branch: `codex/2.0-presentation-refactor`
 
 Integrated latest main: `fb76626326117a86a982a959a10016de1788d67f` (v1.4.0)
 Integration merge commit: `f6a28ff34971106aa73e859b6c145d8ef360daa5`
-Final integrated product commit: `6c09c12de0f829e76f67c4e6f407cee3c1d0ca44`
+Main integration product commit: `6c09c12de0f829e76f67c4e6f407cee3c1d0ca44`
 
 The approved architecture-only, gradual migration is implemented: shared icon presentation mapping for Menu Bar, Dock and previews; scene-only rendering; panel value states and action coordination; obsolete adapters removed. Existing UI and behavior remain the acceptance contract.
+
+## Final icon architecture cleanup
+
+The final cleanup is complete in `e731036`, with the independent review's interpolation guard fix in `8d46656`. `AppIconController` no longer retains `SystemStatusStore`. `IconPresentationViewModel` accepts a MainActor `IconSceneMapper` closure, defaults to the existing mapper through an explicit closure, and uses the same path for initial/canonical/charging-test output. Scheduling, cache semantics, renderer implementations, UI and panel behavior are unchanged. Semantic identity and source-boundary regression tests were added.
+
+[CI run 36825078720](https://github.com/lingyired/status-trio/actions/runs/36825078720) passed on exact SHA `8d46656f7d4acfa3e408701cdeec04e2c3febdbb`, Xcode 26.6 / Swift 6.3.3, version 2.0.0 / build 33 / publish=false. It ran 1,251 XCTest (6 skipped, no failures) and 444 Swift Testing tests / 74 suites, verified SDK26.0 on both architectures, created the DMG and uploaded artifacts without publishing.
+
+The plan, independent review, fix evidence, all execution rulings and conservative scanner limits are preserved in `docs/superpowers/plans/2026-10-01-icon-architecture-cleanup.md` and `docs/superpowers/reviews/2026-10-01-icon-architecture-cleanup.md`. No actionable minor was deferred. This closes the current architecture cleanup; a future plugin host requires a separate design/branch.
 
 ## Pre-integration verification
 
