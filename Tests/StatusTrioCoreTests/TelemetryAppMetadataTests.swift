@@ -36,7 +36,7 @@ final class TelemetryAppMetadataTests: XCTestCase {
         XCTAssertEqual(context.osName, "macOS")
         XCTAssertEqual(context.osVersion, "15.4")
         XCTAssertEqual(context.architecture, TelemetryAppMetadata.currentArchitecture)
-        XCTAssertEqual(context.distribution, "direct")
+        XCTAssertEqual(context.distribution, "github")
         XCTAssertEqual(context.osLanguage, "th")
         XCTAssertEqual(context.appLanguage, "zh-Hant")
         XCTAssertEqual(context.appIconPlacement, .dock)

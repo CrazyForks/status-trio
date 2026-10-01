@@ -8,4 +8,5 @@
 ### 隐私
 
 - 新增可选使用统计。新安装默认开启此选项，但完成引导或选择“自定义”前不会发送心跳。升级后默认关闭，可在设置中主动开启。
-- 心跳包含随机安装 ID、应用和 macOS 版本、系统与应用语言及图标位置。详情请见[遥测与隐私说明](../../docs/privacy-telemetry.md)。
+- 心跳包含随机安装 ID、应用和 macOS 版本、系统与应用语言及图标位置。详情请见[遥测与隐私说明](https://github.com/lingyired/status-trio/blob/main/docs/privacy-telemetry.md)。
+- 应用未包含第三方分析 SDK。

@@ -35,7 +35,7 @@ enum TelemetryAppMetadata {
             osName: "macOS",
             osVersion: osVersion,
             architecture: currentArchitecture,
-            distribution: "direct",
+            distribution: "github",
             osLanguage: TelemetryLanguageTag.osLanguageTag(preferred: preferredLanguages),
             appLanguage: appLanguage.rawValue,
             appIconPlacement: appIconPlacement

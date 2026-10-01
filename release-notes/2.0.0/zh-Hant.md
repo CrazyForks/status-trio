@@ -8,4 +8,5 @@
 ### 隱私權
 
 - 新增可選使用狀況統計。新安裝預設開啟此選項，但完成引導或選擇「自訂」前不會傳送心跳。升級後預設關閉，可在設定中主動開啟。
-- 心跳包含隨機安裝 ID、App 和 macOS 版本、系統與 App 語言及圖示位置。詳情請參閱[遙測與隱私權說明](../../docs/privacy-telemetry.md)。
+- 心跳包含隨機安裝 ID、App 和 macOS 版本、系統與 App 語言及圖示位置。詳情請參閱[遙測與隱私權說明](https://github.com/lingyired/status-trio/blob/main/docs/privacy-telemetry.md)。
+- App 未包含第三方分析 SDK。

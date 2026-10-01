@@ -79,12 +79,15 @@ final class TelemetryClientTests: XCTestCase {
         XCTAssertNil(fixture.defaults.string(forKey: "telemetry.installationId"))
     }
 
+    @MainActor
     func testCancelledQueuedAttemptDoesNotCreateIDOrSend() async throws {
         let fixture = makeFixture(statusCode: 204)
         defer { fixture.clear() }
         let client = fixture.client
         let telemetryContext = context()
-        let task = Task { await client.sendIfNeeded(context: telemetryContext) }
+        let task = Task { @MainActor in
+            await client.sendIfNeeded(context: telemetryContext)
+        }
         task.cancel()
         await task.value
 

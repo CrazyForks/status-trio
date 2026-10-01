@@ -36,12 +36,14 @@ The JSON request has these required fields:
 | `app_version` | Current app version |
 
 The client may also send the app build, `macOS` and its major/minor version,
-CPU architecture (`arm64` or `x86_64`), distribution (`direct`), the preferred
+CPU architecture (`arm64` or `x86_64`), distribution (`github`), the preferred
 system language, the language selected in the app, and the icon location
 (`menuBar`, `dock`, or `both`). Empty or invalid optional values are omitted.
-This release client declares its distribution as `direct`; the field does not
-verify where you downloaded or copied the app. The client does not send a
-timestamp; the service uses its own receipt time.
+This release client declares its distribution as `github`, identifying the
+binary artifact origin rather than where you acquired it. The app cannot tell
+whether the GitHub-hosted artifact reached you through a mirror or package
+manager. The client does not send a timestamp; the service uses its own receipt
+time.
 
 The payload has no field for a person's name, email, account, device name or
 serial number, hardware UUID, Wi-Fi network, Bluetooth device, location, or
