@@ -171,3 +171,11 @@ final class TelemetryReporter {
         periodicTaskID = nil
     }
 }
+
+@MainActor
+protocol TelemetryReporting: AnyObject {
+    func start()
+    func stop()
+}
+
+extension TelemetryReporter: TelemetryReporting {}

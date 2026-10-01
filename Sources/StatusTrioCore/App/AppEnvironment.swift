@@ -15,6 +15,7 @@ final class AppEnvironment {
     let mainMenuController: MainMenuController
     let chargingEffectClock: ChargingEffectClock
     let chargingEffectMotionMonitor: ChargingEffectMotionMonitor
+    let telemetryReporter: any TelemetryReporting
     let bluetoothAudioIconOverrideSynchronizer = BluetoothAudioIconOverrideSynchronizer()
     private let bluetoothNearbyBatteryOptOutSynchronizer = BluetoothNearbyBatteryOptOutSynchronizer()
 
@@ -32,7 +33,8 @@ final class AppEnvironment {
         appIconController: AppIconController,
         mainMenuController: MainMenuController,
         chargingEffectClock: ChargingEffectClock,
-        chargingEffectMotionMonitor: ChargingEffectMotionMonitor
+        chargingEffectMotionMonitor: ChargingEffectMotionMonitor,
+        telemetryReporter: any TelemetryReporting
     ) {
         self.store = store
         self.settings = settings
@@ -46,6 +48,7 @@ final class AppEnvironment {
         self.mainMenuController = mainMenuController
         self.chargingEffectClock = chargingEffectClock
         self.chargingEffectMotionMonitor = chargingEffectMotionMonitor
+        self.telemetryReporter = telemetryReporter
     }
 
     func start() {
@@ -68,9 +71,11 @@ final class AppEnvironment {
         )
         store.bindInputSettings(settings)
         store.start()
+        telemetryReporter.start()
     }
 
     func stop() {
+        telemetryReporter.stop()
         chargingEffectClock.stop()
         chargingEffectMotionMonitor.onChange = nil
         chargingEffectMotionMonitor.stop()
@@ -233,6 +238,33 @@ final class AppEnvironment {
             localization: localization,
             openSettings: { settingsWindowController.show() }
         )
+        let telemetryConfiguration = TelemetryConfiguration()
+        let telemetryTransport = URLSessionTelemetryTransport(configuration: telemetryConfiguration)
+        let telemetryClient = TelemetryClient(
+            transport: telemetryTransport,
+            configuration: telemetryConfiguration
+        )
+        let telemetryReporter = TelemetryReporter(
+            settings: settings,
+            localization: localization,
+            client: telemetryClient,
+            eligibilityContext: TelemetryEligibilityContext(
+                bundleIdentifier: Bundle.main.bundleIdentifier,
+                productionMarker: Bundle.main.object(forInfoDictionaryKey: "STTelemetryProduction") as? Bool ?? false,
+                isDebugBuild: Self.isDebugBuild
+            ),
+            configuration: telemetryConfiguration,
+            snapshotContext: { language, placement in
+                TelemetryAppMetadata.snapshot(
+                    appVersion: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String,
+                    build: Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String,
+                    osVersion: TelemetryAppMetadata.currentOSVersion,
+                    preferredLanguages: Locale.preferredLanguages,
+                    appLanguage: language,
+                    appIconPlacement: placement
+                )
+            }
+        )
         return AppEnvironment(
             store: store,
             settings: settings,
@@ -245,7 +277,16 @@ final class AppEnvironment {
             appIconController: appIconController,
             mainMenuController: mainMenuController,
             chargingEffectClock: chargingEffectClock,
-            chargingEffectMotionMonitor: chargingEffectMotionMonitor
+            chargingEffectMotionMonitor: chargingEffectMotionMonitor,
+            telemetryReporter: telemetryReporter
         )
+    }
+
+    private static var isDebugBuild: Bool {
+        #if DEBUG
+        true
+        #else
+        false
+        #endif
     }
 }
