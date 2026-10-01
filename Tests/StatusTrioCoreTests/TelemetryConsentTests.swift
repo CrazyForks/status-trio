@@ -74,6 +74,21 @@ final class TelemetryConsentTests: XCTestCase {
         XCTAssertTrue(suite.defaults.bool(forKey: SettingsStore.sharesAnonymousAnalyticsDefaultsKey))
     }
 
+    func testSettingsToggleExplicitlyCompletesConsentAndPersistsBothChoices() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+        let settings = SettingsStore(defaults: suite.defaults)
+
+        settings.setSharesAnonymousAnalytics(true)
+        XCTAssertTrue(settings.canShareAnonymousAnalytics)
+        XCTAssertTrue(suite.defaults.bool(forKey: SettingsStore.sharesAnonymousAnalyticsDefaultsKey))
+
+        settings.setSharesAnonymousAnalytics(false)
+        XCTAssertEqual(settings.telemetryConsentVersion, TelemetryConsent.currentVersion)
+        XCTAssertFalse(settings.canShareAnonymousAnalytics)
+        XCTAssertFalse(suite.defaults.bool(forKey: SettingsStore.sharesAnonymousAnalyticsDefaultsKey))
+    }
+
     private func makeSuite() -> (defaults: UserDefaults, name: String) {
         let name = "TelemetryConsentTests.\(UUID().uuidString)"
         return (UserDefaults(suiteName: name)!, name)

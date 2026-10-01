@@ -100,6 +100,27 @@ final class LocalizationParityTests: XCTestCase {
         }
     }
 
+    func testTelemetryConsentTranslationsArePresentInEveryLanguage() throws {
+        let keys = [
+            "settings.analytics.title",
+            "settings.analytics.description",
+            "settings.analytics.privacyDetails",
+            "onboarding.analytics.title",
+            "onboarding.analytics.description",
+            "onboarding.analytics.toggle"
+        ]
+
+        for language in AppLanguage.allCases {
+            let values = Dictionary(uniqueKeysWithValues: try entries(for: language).map { ($0.key, $0.value) })
+            for key in keys {
+                XCTAssertFalse(
+                    (values[key] ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                    "\(language.rawValue).lproj: \(key) is missing or empty"
+                )
+            }
+        }
+    }
+
     func testEveryLocalizedValueDiffersFromItsKeyPlaceholder() throws {
         for language in AppLanguage.allCases {
             for entry in try entries(for: language) {
