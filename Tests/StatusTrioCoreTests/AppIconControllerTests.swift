@@ -520,7 +520,6 @@ final class AppIconControllerHarness {
         self.activationPolicy = activationPolicy
 
         controller = AppIconController(
-            store: store,
             settings: settings,
             iconPresentation: iconPresentation,
             activationPolicy: activationPolicy,

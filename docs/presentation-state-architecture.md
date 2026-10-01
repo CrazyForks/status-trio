@@ -7,13 +7,21 @@ For the three icon regions, concrete Swift API contracts, update timing, example
 ## Data flow
 
 ```text
-SystemStatusStore / SettingsStore / device controllers
-                    │ delivered values and lifecycle events
-                    ▼
-        IconPresentationViewModel ──► IconPresentationMapper
-                    │                         │
-                    │                         ▼
-       StatusBarController / AppIconController ◄── IconSceneState
+SystemStatusStore ──► IconPresentationInputs ─┐
+SettingsStore ──────► IconPresentationConfiguration ─┤
+                                                     ▼
+                                          IconPresentationViewModel
+                                          lifecycle / publication
+                                                     │
+                                                     ▼
+                                               IconSceneMapper
+                                  default: IconPresentationMapper.scene
+                                                     │
+                                                     ▼
+                                               IconSceneState
+                                           ┌─────────┴─────────┐
+                                           ▼                   ▼
+                                  StatusBarController   AppIconController
                     │                         │
                     ▼                         ▼
             Menu Bar renderer          static Dock renderer/cache
@@ -30,6 +38,8 @@ SystemStatusStore / SettingsStore / controllers / Localization
 ```
 
 `IconPresentationMapper` is a pure transformation from `IconPresentationInputs` and `IconPresentationConfiguration` to `IconSceneState`. It selects the ring, center, and footer, including priority and visible styling. `IconPresentationResourceResolver` is the boundary for filesystem and image availability: it checks whether a device image can be used and returns a value-only symbol choice. System APIs and `NSImage` checks stay in this adapter; the mapper and scene do not import AppKit, SwiftUI, or CoreGraphics. SSIDs and other spoken metadata do not enter the icon scene.
+
+`IconPresentationViewModel` owns publication, lifecycle, and snapshot debounce. Its MainActor `IconSceneMapper` closure maps resolved inputs and configuration into the scene; production defaults to `IconPresentationMapper.scene`. Alternate closures support composition, testing, and future host integration. This is not a plugin API: there is no dynamic registration, public SDK, or external scene publication path.
 
 `PanelPresentationMapper`, `PanelDetailMapper`, `BluetoothPanelMapper`, and `AudioPanelMapper` turn domain values into section-specific immutable states. `StatusPanelViewModel` owns subscriptions, refresh coalescing, section values, and the panel lifecycle. It does not draw or decide icon precedence. `StatusPanelActions` routes intents to existing controller operations; it does not own presentation state or settings reorder policy. Settings reorder controls continue to call `SettingsStore` directly.
 

@@ -10,7 +10,7 @@
 | 调整图形设置 | `SettingsStore.iconPresentationPublisher` → `IconPresentationConfiguration` | 设置由 SettingsStore 持有，不直接改 renderer |
 | 把已知状态映射成三个图形 | `IconPresentationMapper.scene(inputs:configuration:)` | 纯值转换，可用于测试与预览 |
 | 绘制自定义场景或预览 | 构造 `IconSceneState` → `StatusIconRenderer` / `DockIconRenderer` | 此入口生成图像，不会自动更新运行中的图标 |
-| 将来接入插件 | 宿主适配器 → 明确的状态/映射契约 → 同一个共享 owner | 需要后续实现宿主入口，当前没有注册或写入方法 |
+| 将来接入插件 | 宿主适配器 → 明确的状态/映射契约 → 同一个共享 owner | 当前只支持构造时注入映射闭包，没有注册或写入方法 |
 
 ```mermaid
 flowchart LR
@@ -18,7 +18,7 @@ flowchart LR
     S --> O[共享 IconPresentationViewModel]
     T[SettingsStore] --> O
     O --> R[资源 resolver]
-    R --> M[纯 IconPresentationMapper]
+    R --> M[IconSceneMapper 闭包<br/>默认 IconPresentationMapper.scene]
     M --> V[IconSceneState]
     V --> B[菜单栏 controller / renderer]
     V --> D[Dock controller / renderer]
@@ -135,7 +135,9 @@ struct IconPresentationOutput: Equatable, Sendable {
 }
 ```
 
-Owner 构造参数：初始 `snapshot`、初始 `settings`、`AnyPublisher<StatusSnapshot, Never>`、`AnyPublisher<IconPresentationSettings, Never>`、`@MainActor (StatusSnapshot) -> IconPresentationInputs` 资源解析闭包，以及可注入的 `IconPresentationScheduling` 调度器。
+Owner 构造参数：初始 `snapshot`、初始 `settings`、两个 publisher、`@MainActor (StatusSnapshot) -> IconPresentationInputs` 资源解析闭包、`IconSceneMapper` 场景映射闭包，以及可注入的 `IconPresentationScheduling` 调度器。`IconPresentationViewModel` 拥有发布、生命周期和防抖；`IconSceneMapper` 把解析后的 inputs 与 configuration 映射为 `IconSceneState`。默认 mapper 是 `IconPresentationMapper.scene`，由显式闭包调用。注入闭包在 MainActor 同步运行，应保持确定且轻量；它不会自动订阅闭包捕获的状态，调用方应通过既有输入 publisher 触发重新映射。
+
+替代映射闭包可用于组合、测试和未来宿主集成，但 production application 继续使用默认 mapper。此入口不是插件 API：没有动态注册、公开 SDK、外部 scene 注入或发布方法，`output` 仍为只读。
 
 | 事件 | 更新语义 |
 | --- | --- |
@@ -192,7 +194,10 @@ func makePreviewPipeline(initialSnapshot: StatusSnapshot) -> (
         preferences: preferences.eraseToAnyPublisher(),
         resolveInputs: { snapshot in
             IconPresentationResourceResolver.inputs(snapshot: snapshot)
-        }
+        },
+        mapScene: { inputs, configuration in
+            IconPresentationMapper.scene(inputs: inputs, configuration: configuration)
+        } // optional; this is also the default
     )
     owner.start()
     return (owner, snapshots, preferences)
@@ -268,7 +273,7 @@ size 为逻辑点数，scale 为 backing scale，固定位图边长是 `ceil(siz
 
 1. 让宿主适配器接收新 producer 的值，定义数据有效性、失效/断连行为和资源回退；跨进程数据需先转换为宿主认可的值。
 2. 若现有 `StatusSnapshot` 无法表达新数据，明确扩展 inputs 和映射策略，避免篡改现有系统状态或自行竞争绘制表面。
-3. 在同一个 Mapper/宿主组合边界生成完整场景，明确外环、中心、底部归属和优先级，交给同一个共享 owner；目前 owner 不能注入替代 Mapper 或直接发布自定义 scene，需要后续设计该入口。
+3. 在同一个 Mapper/宿主组合边界生成完整场景，明确外环、中心、底部归属和优先级，交给同一个共享 owner。Owner 现在支持构造时注入映射闭包，但尚无动态注册、外部 scene 发布或插件 API。
 4. 复用菜单栏/Dock 渲染和缓存路径；新资源或动画需定义各表面的失效策略和生命周期，不能私设轮询来强迫更新。
 5. 补齐 Mapper 值测试、owner delivered-value/防抖/停止测试，以及双表面渲染/缓存/辅助功能测试。动态注册、公共访问级别、协议版本、权限和远端传输都仍需单独设计与实现。
 

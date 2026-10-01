@@ -1,6 +1,11 @@
 import Combine
 import Foundation
 
+typealias IconSceneMapper = @MainActor (
+    IconPresentationInputs,
+    IconPresentationConfiguration
+) -> IconSceneState
+
 @MainActor
 protocol IconPresentationScheduling: AnyObject {
     func schedule(after delay: Duration, action: @escaping @MainActor () -> Void)
@@ -52,6 +57,7 @@ final class IconPresentationViewModel: ObservableObject {
     private let snapshots: AnyPublisher<StatusSnapshot, Never>
     private let preferences: AnyPublisher<IconPresentationSettings, Never>
     private let resolveInputs: @MainActor (StatusSnapshot) -> IconPresentationInputs
+    private let mapScene: IconSceneMapper
     private let snapshotScheduler: any IconPresentationScheduling
     private var snapshotSubscription: AnyCancellable?
     private var preferencesSubscription: AnyCancellable?
@@ -67,15 +73,24 @@ final class IconPresentationViewModel: ObservableObject {
         snapshots: AnyPublisher<StatusSnapshot, Never>,
         preferences: AnyPublisher<IconPresentationSettings, Never>,
         resolveInputs: @escaping @MainActor (StatusSnapshot) -> IconPresentationInputs,
+        mapScene: @escaping IconSceneMapper = { inputs, configuration in
+            IconPresentationMapper.scene(inputs: inputs, configuration: configuration)
+        },
         snapshotScheduler: any IconPresentationScheduling = TaskIconPresentationScheduler()
     ) {
         self.snapshots = snapshots
         self.preferences = preferences
         self.resolveInputs = resolveInputs
+        self.mapScene = mapScene
         self.snapshotScheduler = snapshotScheduler
         self.latestSnapshot = snapshot
         self.latestSettings = settings
-        self.output = Self.output(snapshot: snapshot, settings: settings, resolveInputs: resolveInputs)
+        self.output = Self.output(
+            snapshot: snapshot,
+            settings: settings,
+            resolveInputs: resolveInputs,
+            mapScene: mapScene
+        )
     }
 
     func start() {
@@ -145,7 +160,8 @@ final class IconPresentationViewModel: ObservableObject {
         let next = Self.output(
             snapshot: latestSnapshot,
             settings: latestSettings,
-            resolveInputs: resolveInputs
+            resolveInputs: resolveInputs,
+            mapScene: mapScene
         )
         guard output != next else { return }
         output = next
@@ -154,19 +170,14 @@ final class IconPresentationViewModel: ObservableObject {
     private static func output(
         snapshot: StatusSnapshot,
         settings: IconPresentationSettings,
-        resolveInputs: @MainActor (StatusSnapshot) -> IconPresentationInputs
+        resolveInputs: @MainActor (StatusSnapshot) -> IconPresentationInputs,
+        mapScene: IconSceneMapper
     ) -> IconPresentationOutput {
-        let scene = IconPresentationMapper.scene(
-            inputs: resolveInputs(snapshot),
-            configuration: settings.configuration
-        )
+        let scene = mapScene(resolveInputs(snapshot), settings.configuration)
         let menuBarTestScene: IconSceneState?
         if settings.testsChargingEffect {
             let projected = ChargingEffectTestMode.snapshot(snapshot, enabled: true)
-            menuBarTestScene = IconPresentationMapper.scene(
-                inputs: resolveInputs(projected),
-                configuration: settings.configuration
-            )
+            menuBarTestScene = mapScene(resolveInputs(projected), settings.configuration)
         } else {
             menuBarTestScene = nil
         }

@@ -211,7 +211,6 @@ final class AppEnvironment {
             chargingEffectClock: chargingEffectClock
         )
         let appIconController = AppIconController(
-            store: store,
             settings: settings,
             iconPresentation: iconPresentation,
             activationPolicy: activationPolicy,

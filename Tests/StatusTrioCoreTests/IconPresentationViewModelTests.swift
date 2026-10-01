@@ -4,6 +4,168 @@ import XCTest
 
 @MainActor
 final class IconPresentationViewModelTests: XCTestCase {
+    func testInjectedMapperBuildsInitialAndPublishedScenesForLatestInputsAndConfiguration() {
+        let initialSnapshot = PresentationFixtures.snapshot(rssi: -45, scalar: 0.2)
+        let snapshots = CurrentValueSubject<StatusSnapshot, Never>(initialSnapshot)
+        let initialSettings = IconPresentationSettings(configuration: .standard, menuBarSize: 28, testsChargingEffect: false)
+        let preferences = CurrentValueSubject<IconPresentationSettings, Never>(initialSettings)
+        let scheduler = ManualIconPresentationScheduler()
+        let customScene = IconSceneState(center: .text(IconTextState(text: "X", color: .primary, scale: 1)))
+        var mapped: [(IconPresentationInputs, IconPresentationConfiguration)] = []
+        let model = IconPresentationViewModel(
+            snapshot: initialSnapshot,
+            settings: initialSettings,
+            snapshots: snapshots.eraseToAnyPublisher(),
+            preferences: preferences.eraseToAnyPublisher(),
+            resolveInputs: { IconPresentationInputs(snapshot: $0, audioIcon: nil) },
+            mapScene: { inputs, configuration in
+                mapped.append((inputs, configuration))
+                return customScene
+            },
+            snapshotScheduler: scheduler
+        )
+
+        XCTAssertEqual(model.output.scene, customScene)
+        XCTAssertEqual(mapped.count, 1)
+        XCTAssertEqual(mapped.first?.0.snapshot, initialSnapshot)
+        XCTAssertEqual(mapped.first?.1, initialSettings.configuration)
+
+        model.start()
+        mapped.removeAll()
+        let latestSnapshot = PresentationFixtures.snapshot(rssi: -80, scalar: 0.7)
+        snapshots.send(PresentationFixtures.snapshot(rssi: -61, scalar: 0.3))
+        snapshots.send(latestSnapshot)
+        XCTAssertTrue(mapped.isEmpty)
+        scheduler.runScheduled()
+        XCTAssertEqual(mapped.count, 1)
+        XCTAssertEqual(mapped.first?.0.snapshot, latestSnapshot)
+
+        let updatedSettings = IconPresentationSettings(
+            configuration: IconPresentationConfiguration(
+                battery: BatteryIconOptions(showsPercentage: false),
+                connection: .standard,
+                volume: .standard,
+                bluetooth: .standard
+            ),
+            menuBarSize: 31,
+            testsChargingEffect: false
+        )
+        preferences.send(updatedSettings)
+        XCTAssertEqual(mapped.count, 2)
+        XCTAssertEqual(mapped.last?.0.snapshot, latestSnapshot)
+        XCTAssertEqual(mapped.last?.1, updatedSettings.configuration)
+        XCTAssertEqual(model.output.scene, customScene)
+        XCTAssertEqual(model.output.menuBarSize, 31)
+        XCTAssertFalse(scheduler.hasPendingAction)
+        model.stop()
+    }
+
+    func testInjectedMapperBuildsCanonicalAndChargingTestScenesFromProjectedSnapshot() {
+        let original = PresentationFixtures.snapshot()
+        XCTAssertFalse(original.battery.isCharging)
+        let snapshots = CurrentValueSubject<StatusSnapshot, Never>(original)
+        let settings = IconPresentationSettings(configuration: .standard, menuBarSize: 28, testsChargingEffect: true)
+        let preferences = CurrentValueSubject<IconPresentationSettings, Never>(settings)
+        let customScene = IconSceneState(center: .text(IconTextState(text: "M", color: .primary, scale: 1)))
+        var mappedSnapshots: [StatusSnapshot] = []
+        let model = IconPresentationViewModel(
+            snapshot: original,
+            settings: settings,
+            snapshots: snapshots.eraseToAnyPublisher(),
+            preferences: preferences.eraseToAnyPublisher(),
+            resolveInputs: { IconPresentationInputs(snapshot: $0, audioIcon: nil) },
+            mapScene: { inputs, _ in
+                mappedSnapshots.append(inputs.snapshot)
+                return customScene
+            }
+        )
+
+        XCTAssertEqual(model.output.scene, customScene)
+        XCTAssertEqual(model.output.menuBarTestScene, customScene)
+        XCTAssertEqual(mappedSnapshots.count, 2)
+        XCTAssertEqual(mappedSnapshots[0], original)
+        XCTAssertTrue(mappedSnapshots[1].battery.isCharging)
+        XCTAssertNotEqual(mappedSnapshots[1].battery, original.battery)
+        XCTAssertFalse(original.battery.isCharging)
+
+        model.start()
+        mappedSnapshots.removeAll()
+        let disabled = IconPresentationSettings(configuration: .standard, menuBarSize: 28, testsChargingEffect: false)
+        preferences.send(disabled)
+        XCTAssertNil(model.output.menuBarTestScene)
+        XCTAssertEqual(mappedSnapshots, [original])
+
+        let updated = PresentationFixtures.snapshot(rssi: -80)
+        snapshots.send(updated)
+        let reenabled = IconPresentationSettings(configuration: .standard, menuBarSize: 29, testsChargingEffect: true)
+        preferences.send(reenabled)
+        XCTAssertEqual(mappedSnapshots.count, 3)
+        XCTAssertEqual(mappedSnapshots[1], updated)
+        XCTAssertTrue(mappedSnapshots[2].battery.isCharging)
+        XCTAssertEqual(model.output.scene, customScene)
+        XCTAssertEqual(model.output.menuBarTestScene, customScene)
+        model.stop()
+    }
+
+    func testInjectedMapperPreservesDedupStopAndRestartLifecycle() {
+        let initial = PresentationFixtures.snapshot()
+        let snapshots = CurrentValueSubject<StatusSnapshot, Never>(initial)
+        let initialSettings = IconPresentationSettings(configuration: .standard, menuBarSize: 28, testsChargingEffect: false)
+        let preferences = CurrentValueSubject<IconPresentationSettings, Never>(initialSettings)
+        let scheduler = ManualIconPresentationScheduler()
+        let constantScene = IconSceneState(center: .symbol(IconSymbolState(
+            source: .symbol(name: "wifi", variableValue: nil, fallback: nil),
+            color: .primary,
+            scale: 1
+        )))
+        var mappedSnapshots: [StatusSnapshot] = []
+        let model = IconPresentationViewModel(
+            snapshot: initial,
+            settings: initialSettings,
+            snapshots: snapshots.eraseToAnyPublisher(),
+            preferences: preferences.eraseToAnyPublisher(),
+            resolveInputs: { IconPresentationInputs(snapshot: $0, audioIcon: nil) },
+            mapScene: { inputs, _ in
+                mappedSnapshots.append(inputs.snapshot)
+                return constantScene
+            },
+            snapshotScheduler: scheduler
+        )
+        var delivered: [IconPresentationOutput] = []
+        let subscription = model.$output.dropFirst().sink { delivered.append($0) }
+        model.start()
+        mappedSnapshots.removeAll()
+
+        let changedSnapshot = PresentationFixtures.snapshot(rssi: -80)
+        snapshots.send(changedSnapshot)
+        XCTAssertTrue(mappedSnapshots.isEmpty)
+        scheduler.runScheduled()
+        XCTAssertEqual(mappedSnapshots, [changedSnapshot])
+        XCTAssertTrue(delivered.isEmpty, "An equal mapped scene must remain deduplicated.")
+
+        preferences.send(IconPresentationSettings(configuration: .standard, menuBarSize: 30, testsChargingEffect: false))
+        XCTAssertEqual(mappedSnapshots, [changedSnapshot, changedSnapshot])
+        XCTAssertEqual(delivered.last?.scene, constantScene)
+        XCTAssertEqual(delivered.last?.menuBarSize, 30)
+
+        let pending = PresentationFixtures.snapshot(rssi: -55)
+        snapshots.send(pending)
+        XCTAssertTrue(scheduler.hasPendingAction)
+        model.stop()
+        XCTAssertFalse(scheduler.hasPendingAction)
+        scheduler.runScheduled()
+        XCTAssertEqual(mappedSnapshots, [changedSnapshot, changedSnapshot])
+
+        let whileStopped = PresentationFixtures.snapshot(rssi: -40)
+        snapshots.send(whileStopped)
+        preferences.send(IconPresentationSettings(configuration: .standard, menuBarSize: 32, testsChargingEffect: false))
+        model.start()
+        XCTAssertEqual(mappedSnapshots.last, whileStopped)
+        XCTAssertEqual(model.output.menuBarSize, 32)
+        subscription.cancel()
+        model.stop()
+    }
+
     func testInitPublishesInitialOutputAndStatusChangesPublishOneCompleteOutput() {
         let initialSnapshot = PresentationFixtures.snapshot()
         let snapshots = CurrentValueSubject<StatusSnapshot, Never>(initialSnapshot)

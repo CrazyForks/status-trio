@@ -20,7 +20,6 @@ final class AppIconController {
         _ pixelLength: Int
     ) -> NSImage?
 
-    private let store: SystemStatusStore
     private let settings: SettingsStore
     private let iconPresentation: IconPresentationViewModel
     private let activationPolicy: AppActivationPolicy
@@ -42,7 +41,6 @@ final class AppIconController {
     private var isStarted = false
 
     init(
-        store: SystemStatusStore,
         settings: SettingsStore,
         iconPresentation: IconPresentationViewModel,
         activationPolicy: AppActivationPolicy,
@@ -58,7 +56,6 @@ final class AppIconController {
         },
         notificationCenter: NotificationCenter = .default
     ) {
-        self.store = store
         self.settings = settings
         self.iconPresentation = iconPresentation
         self.activationPolicy = activationPolicy
