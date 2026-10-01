@@ -66,6 +66,59 @@ final class BluetoothPanelMapperTests: XCTestCase {
         XCTAssertTrue(state.nearbyRows.isEmpty)
     }
 
+    func testMapperHidesSummaryDeviceSegmentsWhenVisibleListAlreadyShowsConnectedDevice() {
+        let localization = makeLocalization()
+        let airPods = device("AA:00:00:00:00:01", "AirPods", connected: true)
+        let battery = BluetoothBatteryLevel(
+            deviceAddress: airPods.id,
+            main: 82,
+            left: nil,
+            right: nil,
+            caseLevel: nil
+        )
+
+        let listVisible = BluetoothPanelMapper.map(
+            availability: .available,
+            devices: [airPods],
+            batteryLevels: ["AA0000000001": battery],
+            actionStates: [:],
+            nearbyDevices: [],
+            batteryLevelsReadFailed: false,
+            isExpanded: false,
+            options: .standard,
+            showsBatteryLevels: true,
+            showsNearbyBatteryDevices: false,
+            confirmingAddress: nil,
+            localization: localization
+        )
+
+        XCTAssertEqual(listVisible.summary.subtitle, "")
+        XCTAssertNil(listVisible.summaryBatterySegments)
+        XCTAssertEqual(listVisible.pairedRows.first?.batteryText, "82%")
+
+        let listDisabled = BluetoothPanelMapper.map(
+            availability: .available,
+            devices: [airPods],
+            batteryLevels: ["AA0000000001": battery],
+            actionStates: [:],
+            nearbyDevices: [],
+            batteryLevelsReadFailed: false,
+            isExpanded: false,
+            options: BluetoothDeviceListOptions(
+                showsList: false,
+                maxVisibleDevices: 5,
+                order: []
+            ),
+            showsBatteryLevels: true,
+            showsNearbyBatteryDevices: false,
+            confirmingAddress: nil,
+            localization: localization
+        )
+
+        XCTAssertEqual(listDisabled.summary.subtitle, "AirPods · 82%")
+        XCTAssertEqual(listDisabled.summaryBatterySegments?.plainText, "AirPods · 82%")
+    }
+
     func testMapperPresentsBatteryReadFailureOnlyWhenPairedRowsAreVisible() {
         let state = BluetoothPanelMapper.map(
             availability: .available,

@@ -88,7 +88,7 @@ enum BluetoothPanelMapper {
 
         return BluetoothPanelState(
             summary: summaryState,
-            summaryBatterySegments: summary.deviceSegments,
+            summaryBatterySegments: hideSubtitle ? nil : summary.deviceSegments,
             hasConnectedDevices: summary.hasConnectedDevices,
             batteryReadTaskID: "\(showsBatteryLevels)-" + BluetoothDevicePresentation.grouped(devices).connected.map(\.name).joined(separator: "、"),
             pairedRows: pairedRows,
