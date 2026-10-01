@@ -11,6 +11,7 @@ final class AppEnvironmentTelemetryLifecycleTests: XCTestCase {
 
         let settings = SettingsStore(defaults: defaults)
         settings.hasCompletedIconGuideOnboarding = true
+        settings.completeTelemetryConsent(sharesAnalytics: false)
         let localization = Localization(defaults: defaults, preferredLanguages: ["en"])
         let battery = LifecycleBatteryMonitor()
         let wifi = LifecycleWiFiMonitor()
