@@ -5,6 +5,8 @@ import Foundation
 final class SettingsStore: ObservableObject {
     static let hasCompletedIconGuideOnboardingDefaultsKey = "hasCompletedIconGuideOnboarding.v1"
     static let hasSeenIconGuideDefaultsKey = "hasSeenIconGuide"
+    static let sharesAnonymousAnalyticsDefaultsKey = "sharesAnonymousAnalytics"
+    static let telemetryConsentVersionDefaultsKey = "telemetryConsentVersion"
     private static let sparkleHasLaunchedBeforeDefaultsKey = "SUHasLaunchedBefore"
 
     static let iconSizeRange: ClosedRange<Double> = 16...36
@@ -96,6 +98,41 @@ final class SettingsStore: ObservableObject {
 
     static let appIconPlacementDefaultsKey = "appIconPlacement"
     static let dockIconBackgroundPreferenceDefaultsKey = "dockIconBackgroundPreference"
+
+    @Published private(set) var sharesAnonymousAnalytics: Bool
+    @Published private(set) var telemetryConsentVersion: Int
+    private let telemetryConsentSubject = PassthroughSubject<TelemetryConsent, Never>()
+
+    var canShareAnonymousAnalytics: Bool {
+        telemetryConsentSnapshot.canShareAnonymousAnalytics
+    }
+
+    var telemetryConsentSnapshot: TelemetryConsent {
+        TelemetryConsent(
+            version: telemetryConsentVersion,
+            sharesAnonymousAnalytics: sharesAnonymousAnalytics
+        )
+    }
+
+    var telemetryConsentUpdates: AnyPublisher<TelemetryConsent, Never> {
+        telemetryConsentSubject.eraseToAnyPublisher()
+    }
+
+    func completeTelemetryConsent(sharesAnalytics: Bool) {
+        guard telemetryConsentVersion <= TelemetryConsent.currentVersion else { return }
+
+        // Persist both values before emitting one coherent snapshot. @Published
+        // emits before didSet, so observers must use this explicit publisher.
+        defaults.set(sharesAnalytics, forKey: Self.sharesAnonymousAnalyticsDefaultsKey)
+        defaults.set(TelemetryConsent.currentVersion, forKey: Self.telemetryConsentVersionDefaultsKey)
+        sharesAnonymousAnalytics = sharesAnalytics
+        telemetryConsentVersion = TelemetryConsent.currentVersion
+        telemetryConsentSubject.send(telemetryConsentSnapshot)
+    }
+
+    func setSharesAnonymousAnalytics(_ enabled: Bool) {
+        completeTelemetryConsent(sharesAnalytics: enabled)
+    }
 
     @Published var hasCompletedIconGuideOnboarding: Bool {
         didSet {
@@ -766,6 +803,36 @@ final class SettingsStore: ObservableObject {
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
+
+        // Snapshot legacy install markers before onboarding migration writes its
+        // completion flag. That flag may be set simply by showing the guide.
+        let hadLegacyInstallMarker =
+            defaults.bool(forKey: Self.sparkleHasLaunchedBeforeDefaultsKey)
+            || defaults.bool(forKey: Self.hasSeenIconGuideDefaultsKey)
+            || defaults.bool(forKey: Self.hasCompletedIconGuideOnboardingDefaultsKey)
+        if let storedConsentVersion = defaults.object(
+            forKey: Self.telemetryConsentVersionDefaultsKey
+        ) as? Int {
+            self.telemetryConsentVersion = storedConsentVersion
+            self.sharesAnonymousAnalytics = defaults.bool(
+                forKey: Self.sharesAnonymousAnalyticsDefaultsKey
+            )
+        } else if hadLegacyInstallMarker {
+            self.telemetryConsentVersion = TelemetryConsent.currentVersion
+            self.sharesAnonymousAnalytics = false
+            defaults.set(false, forKey: Self.sharesAnonymousAnalyticsDefaultsKey)
+            defaults.set(
+                TelemetryConsent.currentVersion,
+                forKey: Self.telemetryConsentVersionDefaultsKey
+            )
+        } else {
+            // Version 0 is a durable pending acknowledgement for fresh installs.
+            self.telemetryConsentVersion = 0
+            self.sharesAnonymousAnalytics = false
+            defaults.set(false, forKey: Self.sharesAnonymousAnalyticsDefaultsKey)
+            defaults.set(0, forKey: Self.telemetryConsentVersionDefaultsKey)
+        }
+
         if defaults.object(forKey: Self.hasCompletedIconGuideOnboardingDefaultsKey) != nil {
             self.hasCompletedIconGuideOnboarding = defaults.bool(
                 forKey: Self.hasCompletedIconGuideOnboardingDefaultsKey
