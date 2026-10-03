@@ -97,6 +97,7 @@ final class SystemStatusStoreTests: XCTestCase {
         store.setPopoverVisible(false)
         await waitForMobileReader { await reader.cancellationCount == 1 }
         store.stop()
+        await reader.finishAll()
     }
 
     func testDisablingMobileBatteryWhileBluetoothViewIsAbsentClearsCacheAndReenableReadsFreshData() async {
@@ -146,6 +147,7 @@ final class SystemStatusStoreTests: XCTestCase {
         settings.showsMobileDeviceBatteryLevels = true
         await waitForMobileReader { await reader.readCount == 2 }
         store.stop()
+        await reader.finishAll()
     }
 
     func testMobileUSBReadStartsWhileBluetoothIsNotActivated() async {
@@ -167,6 +169,7 @@ final class SystemStatusStoreTests: XCTestCase {
         await waitForMobileReader { await reader.readCount == 1 }
         store.stop()
         await waitForMobileReader { await reader.cancellationCount == 1 }
+        await reader.finishAll()
     }
 
     func testInputMonitorFollowsOptInSettingAndPopoverVisibility() async {

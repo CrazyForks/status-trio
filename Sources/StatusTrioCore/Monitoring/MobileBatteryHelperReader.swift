@@ -18,7 +18,7 @@ struct ProcessMobileBatteryHelperExecutor: MobileBatteryHelperExecuting {
     private let helperURL: URL
 
     init(bundleURL: URL = Bundle.main.bundleURL) {
-        helperURL = bundleURL.appendingPathComponent("Contents/Helpers/MobileBatteryHelper", isDirectory: false)
+        helperURL = bundleURL.appendingPathComponent("Contents/Helpers/StatusTrioMobileBatteryHelper", isDirectory: false)
     }
 
     init(helperURL: URL) { self.helperURL = helperURL }

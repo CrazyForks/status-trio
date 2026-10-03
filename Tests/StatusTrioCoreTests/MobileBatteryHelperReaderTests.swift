@@ -4,6 +4,27 @@ import Darwin
 @testable import StatusTrioCore
 
 struct MobileBatteryHelperReaderTests {
+    @Test func defaultExecutorResolvesThePackagedHelperName() async throws {
+        if let packagedBundlePath = ProcessInfo.processInfo.environment["STATUS_TRIO_MOBILE_BATTERY_BUNDLE_URL"] {
+            let bundle = URL(fileURLWithPath: packagedBundlePath, isDirectory: true)
+            let output = try await ProcessMobileBatteryHelperExecutor(bundleURL: bundle)
+                .run(arguments: ["--list"], timeout: .seconds(3))
+            #expect(try MobileBatteryWire.decodeListing(output).count == 0)
+            return
+        }
+
+        let bundle = FileManager.default.temporaryDirectory.appendingPathComponent("MobileBattery-\(UUID().uuidString).app", isDirectory: true)
+        let helper = bundle.appendingPathComponent("Contents/Helpers/StatusTrioMobileBatteryHelper")
+        try FileManager.default.createDirectory(at: helper.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data("#!/bin/sh\nprintf packaged-helper".utf8).write(to: helper)
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: helper.path)
+        defer { try? FileManager.default.removeItem(at: bundle) }
+
+        let output = try await ProcessMobileBatteryHelperExecutor(bundleURL: bundle)
+            .run(arguments: [], timeout: .seconds(2))
+        #expect(String(decoding: output, as: UTF8.self) == "packaged-helper")
+    }
+
     @Test func boundsPhoneReadsAndDeduplicatesRoutes() async throws {
         let ids = (0..<9).map { "p\($0)" }
         let phones = ids.map { #"{"id":"\#($0)","transport":"network","availableTransports":["network","usb"]}"# }.joined(separator: ",")

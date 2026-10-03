@@ -121,7 +121,7 @@ static FakeNativeState BaseState(void) {
 static BOOL TestEmptyEnumeration(void) {
     FakeNativeState state = BaseState(); state.devices = @[];
     STMobileBatteryError error = STMobileBatteryErrorNone;
-    NSDictionary *result = STMobileBatteryCopySnapshot(API(&state), &error);
+    NSDictionary *result = STMobileBatteryCopyDeviceList(API(&state), &error);
     CHECK(error == STMobileBatteryErrorNone, "empty enumeration is successful");
     CHECK([result[@"phones"] isEqual:@[]], "empty enumeration emits no phones");
     return YES;
@@ -131,7 +131,7 @@ static BOOL TestTransportDuplicatesCollapse(void) {
     FakeNativeState state = BaseState();
     state.devices = @[@{@"id": @"phone-1", @"transport": STMobileBatteryTransportUSB}, @{@"id": @"phone-1", @"transport": STMobileBatteryTransportNetwork}];
     STMobileBatteryError error = STMobileBatteryErrorNone;
-    NSDictionary *result = STMobileBatteryCopySnapshot(API(&state), &error);
+    NSDictionary *result = STMobileBatteryCopyDeviceList(API(&state), &error);
     NSArray *phones = result[@"phones"];
     CHECK(error == STMobileBatteryErrorNone, "duplicate transports are accepted");
     CHECK(phones.count == 1, "USB and network duplicate is represented once");
@@ -142,8 +142,8 @@ static BOOL TestTransportDuplicatesCollapse(void) {
 static BOOL TestUntrustedDeviceDoesNotPair(void) {
     FakeNativeState state = BaseState(); state.pairRecord = nil;
     STMobileBatteryError error = STMobileBatteryErrorNone;
-    NSDictionary *result = STMobileBatteryCopySnapshot(API(&state), &error);
-    NSDictionary *phone = result[@"phones"][0];
+    NSDictionary *result = STMobileBatteryCopyPhone(API(&state), @"phone-1", STMobileBatteryTransportUSB, &error);
+    NSDictionary *phone = result[@"failures"][0];
     CHECK([phone[@"errorCode"] integerValue] == STMobileBatteryErrorTrustRequired, "missing existing trust record reports trust required");
     CHECK(state.pairRequestCount == 0, "trust validation never requests pairing");
     CHECK(state.startSessionCount == 0, "trust validation never starts a session");
@@ -178,8 +178,8 @@ static BOOL TestDeviceListPreservesAvailableRoutesInUSBFirstOrder(void) {
 static BOOL TestMissingHostIdentityDoesNotStartSession(void) {
     FakeNativeState state = BaseState(); state.pairRecord = @{@"SystemBUID": @"system"};
     STMobileBatteryError error = STMobileBatteryErrorNone;
-    NSDictionary *result = STMobileBatteryCopySnapshot(API(&state), &error);
-    CHECK([result[@"phones"][0][@"errorCode"] integerValue] == STMobileBatteryErrorHostIdentityMissing, "missing HostID is rejected");
+    NSDictionary *result = STMobileBatteryCopyPhone(API(&state), @"phone-1", STMobileBatteryTransportUSB, &error);
+    CHECK([result[@"failures"][0][@"errorCode"] integerValue] == STMobileBatteryErrorHostIdentityMissing, "missing HostID is rejected");
     CHECK(state.startSessionCount == 0, "invalid host identity is rejected before session start");
     return YES;
 }
@@ -187,19 +187,19 @@ static BOOL TestMissingHostIdentityDoesNotStartSession(void) {
 static BOOL TestInvalidPhonePercentageIsNotZero(void) {
     FakeNativeState state = BaseState(); state.phoneValues = @{@"BatteryCurrentCapacity": @"not-a-number"};
     STMobileBatteryError error = STMobileBatteryErrorNone;
-    NSDictionary *result = STMobileBatteryCopySnapshot(API(&state), &error);
+    NSDictionary *result = STMobileBatteryCopyPhone(API(&state), @"phone-1", STMobileBatteryTransportUSB, &error);
     CHECK(error == STMobileBatteryErrorNone, "individual battery failure stays in successful envelope");
-    CHECK([result[@"phones"][0][@"error"] isEqual:@"battery-unavailable"], "invalid percentage becomes structured device failure");
-    CHECK(result[@"phones"][0][@"percentage"] == nil, "invalid percentage does not become a zero reading");
+    CHECK([result[@"failures"][0][@"error"] isEqual:@"battery-unavailable"], "invalid percentage becomes structured device failure");
+    CHECK([result[@"devices"] count] == 0, "invalid percentage does not become a zero reading");
     return YES;
 }
 
 static BOOL TestMissingPhonePercentageIsFailure(void) {
     FakeNativeState state = BaseState(); state.phoneValues = @{@"DeviceName": @"Phone"};
     STMobileBatteryError error = STMobileBatteryErrorNone;
-    NSDictionary *result = STMobileBatteryCopySnapshot(API(&state), &error);
+    NSDictionary *result = STMobileBatteryCopyPhone(API(&state), @"phone-1", STMobileBatteryTransportUSB, &error);
     CHECK(error == STMobileBatteryErrorNone, "missing per-device battery keeps envelope successful");
-    CHECK([result[@"phones"][0][@"error"] isEqual:@"battery-unavailable"], "missing percentage is a device failure");
+    CHECK([result[@"failures"][0][@"error"] isEqual:@"battery-unavailable"], "missing percentage is a device failure");
     return YES;
 }
 
@@ -207,14 +207,16 @@ static BOOL TestUnsupportedOptionalKeysRemainOptional(void) {
     FakeNativeState state = BaseState(); state.phoneValues = @{@"ProductType": @"iPhone18,1", @"BatteryCurrentCapacity": @100};
     state.companions = @{@"watch-1": @{@"ProductType": @"Watch7,4", @"BatteryCurrentCapacity": @0}};
     STMobileBatteryError error = STMobileBatteryErrorNone;
-    NSDictionary *result = STMobileBatteryCopySnapshot(API(&state), &error);
-    NSDictionary *phone = result[@"phones"][0];
-    CHECK(error == STMobileBatteryErrorNone, "optional unsupported keys do not fail the envelope");
+    NSDictionary *phoneResult = STMobileBatteryCopyPhone(API(&state), @"phone-1", STMobileBatteryTransportUSB, &error);
+    NSDictionary *phone = phoneResult[@"devices"][0];
+    NSDictionary *watchResult = STMobileBatteryCopyWatch(API(&state), @"phone-1", STMobileBatteryTransportUSB, @"watch-1", &error);
+    NSDictionary *watch = watchResult[@"devices"][0];
+    CHECK(error == STMobileBatteryErrorNone, "optional unsupported keys do not fail the split reads");
     CHECK([phone[@"batteryLevel"] isEqual:@100], "full phone battery is retained");
     CHECK(phone[@"name"] == nil, "unsupported phone name remains absent");
-    CHECK([phone[@"watches"][0][@"batteryLevel"] isEqual:@0], "zero Watch battery is retained");
-    CHECK(phone[@"watches"][0][@"name"] == nil, "unsupported Watch name remains absent");
-    CHECK(phone[@"watches"][0][@"charging"] == nil, "unsupported charging value remains absent");
+    CHECK([watch[@"batteryLevel"] isEqual:@0], "zero Watch battery is retained");
+    CHECK(watch[@"name"] == nil, "unsupported Watch name remains absent");
+    CHECK(watch[@"isCharging"] == nil, "unsupported Watch charging value remains absent");
     return YES;
 }
 
@@ -226,16 +228,17 @@ static BOOL TestMultipleWatchesAreEnumerated(void) {
         @"watch-2": @{@"ProductType": @"Watch7,5", @"BatteryCurrentCapacity": @62},
     };
     STMobileBatteryError error = STMobileBatteryErrorNone;
-    NSDictionary *result = STMobileBatteryCopySnapshot(API(&state), &error);
+    NSDictionary *result = STMobileBatteryCopyPhone(API(&state), @"phone-1", STMobileBatteryTransportUSB, &error);
     CHECK(error == STMobileBatteryErrorNone, "multiple Watches are accepted");
-    CHECK([result[@"phones"][0][@"watches"] count] == 2, "all valid paired Watches are returned");
+    CHECK([result[@"watchCandidates"] count] == 2, "all valid paired Watch identifiers are returned as candidates");
+    CHECK(state.watchValueQueryCount == 0, "split phone read defers Watch value reads");
     return YES;
 }
 
 static BOOL TestEveryAllocatedHandleIsReleasedOnFailure(void) {
     FakeNativeState state = BaseState(); state.failSession = YES;
     STMobileBatteryError error = STMobileBatteryErrorNone;
-    (void)STMobileBatteryCopySnapshot(API(&state), &error);
+    (void)STMobileBatteryCopyPhone(API(&state), @"phone-1", STMobileBatteryTransportUSB, &error);
     CHECK(state.allocatedHandles == state.releasedHandles, "client handles are released when session start fails");
     return YES;
 }
@@ -259,7 +262,6 @@ static BOOL TestSplitPhoneReadUsesSwiftWireFields(void) {
     CHECK(error == STMobileBatteryErrorNone, "split phone read succeeds");
     CHECK([phone[@"batteryLevel"] isEqual:@71], "phone battery uses batteryLevel wire key");
     CHECK([phone[@"isCharging"] isEqual:@NO], "phone charging uses isCharging wire key");
-    CHECK(phone[@"percentage"] == nil && phone[@"charging"] == nil, "obsolete phone wire keys are absent");
     return YES;
 }
 
@@ -270,7 +272,6 @@ static BOOL TestSplitPhoneUsesIsChargingWireKey(void) {
     NSDictionary *phone = result[@"devices"][0];
     CHECK(error == STMobileBatteryErrorNone, "split phone read succeeds");
     CHECK([phone[@"isCharging"] isEqual:@NO], "phone charging uses isCharging wire key");
-    CHECK(phone[@"charging"] == nil, "obsolete phone charging key is absent");
     return YES;
 }
 
@@ -325,6 +326,40 @@ static BOOL TestWatchReadTrustFailureDoesNotStartSession(void) {
     return YES;
 }
 
+static BOOL TestShippingPhoneAndWatchRejectRealNumbersAndAcceptIntegerBoundaries(void) {
+    NSArray *invalidValues = @[@72.0, @72.5, @YES, @"72"];
+    for (id invalid in invalidValues) {
+        FakeNativeState phoneState = BaseState();
+        phoneState.phoneValues = @{ @"BatteryCurrentCapacity": invalid };
+        STMobileBatteryError error = STMobileBatteryErrorNone;
+        NSDictionary *phone = STMobileBatteryCopyPhone(API(&phoneState), @"phone-1", STMobileBatteryTransportUSB, &error);
+        NSArray *phoneFailures = phone[@"failures"];
+        CHECK([phoneFailures.firstObject[@"error"] isEqual:@"battery-unavailable"], "split phone rejects non-integer property-list number types");
+
+        FakeNativeState watchState = BaseState();
+        watchState.companions = @{ @"watch-1": @{ @"ProductType": @"Watch7,4", @"BatteryCurrentCapacity": invalid } };
+        error = STMobileBatteryErrorNone;
+        NSDictionary *watch = STMobileBatteryCopyWatch(API(&watchState), @"phone-1", STMobileBatteryTransportUSB, @"watch-1", &error);
+        NSArray *watchFailures = watch[@"failures"];
+        CHECK([watchFailures.firstObject[@"error"] isEqual:@"battery-unavailable"], "split Watch rejects non-integer property-list number types");
+    }
+
+    for (NSNumber *boundary in @[@0, @100]) {
+        FakeNativeState phoneState = BaseState();
+        phoneState.phoneValues = @{ @"BatteryCurrentCapacity": boundary };
+        STMobileBatteryError error = STMobileBatteryErrorNone;
+        NSDictionary *phone = STMobileBatteryCopyPhone(API(&phoneState), @"phone-1", STMobileBatteryTransportUSB, &error);
+        CHECK([phone[@"devices"][0][@"batteryLevel"] isEqual:boundary], "split phone accepts integer percentage boundaries");
+
+        FakeNativeState watchState = BaseState();
+        watchState.companions = @{ @"watch-1": @{ @"ProductType": @"Watch7,4", @"BatteryCurrentCapacity": boundary } };
+        error = STMobileBatteryErrorNone;
+        NSDictionary *watch = STMobileBatteryCopyWatch(API(&watchState), @"phone-1", STMobileBatteryTransportUSB, @"watch-1", &error);
+        CHECK([watch[@"devices"][0][@"batteryLevel"] isEqual:boundary], "split Watch accepts integer percentage boundaries");
+    }
+    return YES;
+}
+
 int main(void) {
     @autoreleasepool {
         NSArray<NSDictionary *> *tests = @[
@@ -346,6 +381,7 @@ int main(void) {
             @{@"name": @"single Watch read", @"run": [NSValue valueWithPointer:TestWatchReadQueriesOnlyRequestedPairedWatch]},
             @{@"name": @"unpaired Watch rejection", @"run": [NSValue valueWithPointer:TestWatchReadRejectsUnpairedIdentifier]},
             @{@"name": @"Watch trust rejection", @"run": [NSValue valueWithPointer:TestWatchReadTrustFailureDoesNotStartSession]},
+            @{@"name": @"shipping split percentage type validation", @"run": [NSValue valueWithPointer:TestShippingPhoneAndWatchRejectRealNumbersAndAcceptIntegerBoundaries]},
         ];
         NSUInteger failures = 0;
         for (NSDictionary *test in tests) {

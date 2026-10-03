@@ -1,7 +1,5 @@
 #import "NativeBatteryClient.h"
 #import <CoreFoundation/CoreFoundation.h>
-#import <limits.h>
-#import <math.h>
 
 NSString * const STMobileBatteryTransportUSB = @"usb";
 NSString * const STMobileBatteryTransportNetwork = @"network";
@@ -16,9 +14,11 @@ static BOOL IsBoolean(id value) {
 
 static NSNumber *ValidatedPercentage(id value) {
     if (![value isKindOfClass:[NSNumber class]] || IsBoolean(value)) return nil;
-    double number = [value doubleValue];
-    if (!isfinite(number) || floor(number) != number || number < 0 || number > 100) return nil;
-    return @((NSInteger)number);
+    CFNumberRef number = (__bridge CFNumberRef)value;
+    if (CFNumberIsFloatType(number)) return nil;
+    NSInteger percentage = [value integerValue];
+    if (percentage < 0 || percentage > 100) return nil;
+    return @(percentage);
 }
 
 static NSDictionary *BatteryFailure(NSString *category) {
@@ -170,47 +170,6 @@ NSDictionary *STMobileBatteryCopyDeviceList(STMobileBatteryNativeAPI api, STMobi
         [items addObject:@{@"id": identifier, @"transport": preferred, @"availableTransports": [orderedRoutes copy]}];
     }
     return @{@"schemaVersion": @1, @"phones": [items copy]};
-}
-
-NSDictionary *STMobileBatteryCopySnapshot(STMobileBatteryNativeAPI api, STMobileBatteryError *error) {
-    if (error) *error = STMobileBatteryErrorNone;
-    if (!api.enumerateDevices || !api.copyPairRecord || !api.freePairRecord ||
-        !api.createLockdownClient || !api.startSession || !api.freeSession ||
-        !api.freeLockdownClient || !api.copyPhoneValues || !api.createCompanionClient ||
-        !api.copyCompanionIdentifiers || !api.copyCompanionValues ||
-        !api.freeCompanionIdentifiers || !api.freeCompanionClient || !api.freeValues ||
-        !api.freeDeviceList) {
-        if (error) *error = STMobileBatteryErrorEnumeration;
-        return nil;
-    }
-
-    NSArray<NSDictionary *> *devices = nil;
-    if (api.enumerateDevices(api.context, &devices) != 0 || ![devices isKindOfClass:[NSArray class]]) {
-        if (devices) api.freeDeviceList(api.context, devices);
-        if (error) *error = STMobileBatteryErrorEnumeration;
-        return nil;
-    }
-
-    NSMutableDictionary<NSString *, NSDictionary *> *uniqueDevices = [NSMutableDictionary dictionary];
-    for (id candidate in devices) {
-        if (![candidate isKindOfClass:[NSDictionary class]]) continue;
-        NSString *identifier = candidate[@"id"];
-        NSString *transport = candidate[@"transport"];
-        if (!IsString(identifier) || (![transport isEqual:STMobileBatteryTransportUSB] && ![transport isEqual:STMobileBatteryTransportNetwork])) continue;
-        NSDictionary *previous = uniqueDevices[identifier];
-        if (!previous || ([transport isEqual:STMobileBatteryTransportUSB] && ![previous[@"transport"] isEqual:STMobileBatteryTransportUSB])) {
-            uniqueDevices[identifier] = @{@"id": identifier, @"transport": transport};
-        }
-    }
-    api.freeDeviceList(api.context, devices);
-
-    NSMutableArray *phones = [NSMutableArray arrayWithCapacity:uniqueDevices.count];
-    NSArray<NSString *> *identifiers = [[uniqueDevices allKeys] sortedArrayUsingSelector:@selector(compare:)];
-    for (NSString *identifier in identifiers) {
-        NSDictionary *phone = ReadPhone(api, uniqueDevices[identifier], YES, NULL);
-        if (phone) [phones addObject:phone];
-    }
-    return @{@"schemaVersion": @1, @"phones": [phones copy]};
 }
 
 static NSDictionary *DeviceFailure(NSString *identifier, NSString *transport, NSString *category, STMobileBatteryError code) {

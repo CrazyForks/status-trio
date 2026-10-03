@@ -33,8 +33,6 @@ typedef struct {
 FOUNDATION_EXPORT NSString * const STMobileBatteryTransportUSB;
 FOUNDATION_EXPORT NSString * const STMobileBatteryTransportNetwork;
 
-/// Uses the same trust, identity, battery-type, and cleanup validation for production and injected test adapters.
-FOUNDATION_EXPORT NSDictionary *STMobileBatteryCopySnapshot(STMobileBatteryNativeAPI api, STMobileBatteryError * _Nullable error);
 FOUNDATION_EXPORT NSDictionary *STMobileBatteryCopyDeviceList(STMobileBatteryNativeAPI api, STMobileBatteryError * _Nullable error);
 FOUNDATION_EXPORT NSDictionary *STMobileBatteryCopyPhone(STMobileBatteryNativeAPI api, NSString *identifier, NSString *transport, STMobileBatteryError * _Nullable error);
 FOUNDATION_EXPORT NSDictionary *STMobileBatteryCopyWatch(STMobileBatteryNativeAPI api, NSString *phoneIdentifier, NSString *transport, NSString *watchIdentifier, STMobileBatteryError * _Nullable error);
