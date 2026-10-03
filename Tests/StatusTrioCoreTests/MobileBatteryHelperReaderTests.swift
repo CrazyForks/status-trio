@@ -41,6 +41,67 @@ struct MobileBatteryHelperReaderTests {
         #expect(result.snapshots.map(\.id) == ["fast"])
     }
 
+    @Test func rejectsUnsolicitedSnapshotsWhileKeepingRequestedResults() async throws {
+        let executor = ScriptedMobileBatteryExecutor { arguments in
+            if arguments == ["--list"] {
+                return Data(#"{"schemaVersion":1,"phones":[{"id":"p1","transport":"usb"},{"id":"p2","transport":"usb"}]}"#.utf8)
+            }
+            if arguments.first == "--read-phone", arguments[1] == "p1" {
+                return Data(#"{"schemaVersion":1,"devices":[{"id":"p1","parentID":null,"name":null,"model":"iPhone17,1","batteryLevel":41,"isCharging":false,"transport":"usb"},{"id":"unsolicited-phone","parentID":null,"name":null,"model":"iPhone17,1","batteryLevel":90,"isCharging":false,"transport":"usb"}],"failures":[],"watchCandidates":[{"id":"w1","parentID":"p1","transport":"usb"}]}"#.utf8)
+            }
+            if arguments.first == "--read-phone" {
+                return Data(#"{"schemaVersion":1,"devices":[{"id":"wrong-only","parentID":null,"name":null,"model":"iPhone17,1","batteryLevel":80,"isCharging":false,"transport":"usb"}],"failures":[],"watchCandidates":[]}"#.utf8)
+            }
+            return Data(#"{"schemaVersion":1,"devices":[{"id":"w1","parentID":"p1","name":null,"model":"Watch7,1","batteryLevel":61,"isCharging":null,"transport":"usb"},{"id":"unsolicited-watch","parentID":"p1","name":null,"model":"Watch7,1","batteryLevel":90,"isCharging":null,"transport":"usb"}],"failures":[],"watchCandidates":[]}"#.utf8)
+        }
+
+        let result = try await MobileBatteryHelperReader(executor: executor).read()
+        #expect(Set(result.snapshots.map(\.id)) == ["p1", "w1"])
+        #expect(result.failures.filter { $0.category == "unsolicited-device" }.count == 3)
+    }
+
+    @Test func completedPhoneSurvivesOverallCycleDeadline() async throws {
+        let executor = ScriptedMobileBatteryExecutor { arguments in
+            if arguments == ["--list"] {
+                return Data(#"{"schemaVersion":1,"phones":[{"id":"slow","transport":"usb"},{"id":"fast","transport":"usb"}]}"#.utf8)
+            }
+            if arguments.first == "--read-phone", arguments[1] == "slow" {
+                try await Task.sleep(for: .seconds(10))
+                throw MobileBatteryHelperError.timedOut
+            }
+            return Data(#"{"schemaVersion":1,"devices":[{"id":"fast","parentID":null,"name":null,"model":"iPhone17,1","batteryLevel":42,"isCharging":false,"transport":"usb"}],"failures":[],"watchCandidates":[]}"#.utf8)
+        }
+        let result = try await MobileBatteryHelperReader(executor: executor, cycleTimeout: .milliseconds(300)).read()
+        #expect(result.snapshots.map(\.id) == ["fast"])
+        #expect(result.failures.contains { $0.category == "cycle-timeout" })
+    }
+
+    @Test func watchFallbackUsesTheRemainingSharedBudget() async throws {
+        let executor = ScriptedMobileBatteryExecutor { arguments in
+            if arguments == ["--list"] {
+                return Data(#"{"schemaVersion":1,"phones":[{"id":"p","transport":"usb","availableTransports":["usb","network"]}]}"#.utf8)
+            }
+            if arguments.first == "--read-phone" {
+                return Data(#"{"schemaVersion":1,"devices":[{"id":"p","parentID":null,"name":null,"model":"iPhone17,1","batteryLevel":41,"isCharging":false,"transport":"usb"}],"failures":[],"watchCandidates":[{"id":"w","parentID":"p","transport":"usb"}]}"#.utf8)
+            }
+            if arguments.last == "usb" {
+                try await Task.sleep(for: .milliseconds(100))
+                throw MobileBatteryHelperError.processFailed
+            }
+            return Data(#"{"schemaVersion":1,"devices":[{"id":"w","parentID":"p","name":null,"model":"Watch7,1","batteryLevel":61,"isCharging":null,"transport":"network"}],"failures":[],"watchCandidates":[]}"#.utf8)
+        }
+
+        let result = try await MobileBatteryHelperReader(executor: executor).read()
+        let timeouts = await executor.recordedTimeouts
+        let arguments = await executor.recordedArguments
+        let watchTimeouts = zip(arguments, timeouts)
+            .filter { $0.0.first == "--read-watch" }
+            .map { $0.1 }
+        #expect(result.snapshots.contains { $0.id == "w" })
+        #expect(watchTimeouts.count == 2)
+        #expect(watchTimeouts[1] < .seconds(5))
+    }
+
     @Test func retriesOnlyDiscoveredNetworkRouteAfterUSBFailure() async throws {
         let executor = ScriptedMobileBatteryExecutor { arguments in
             if arguments == ["--list"] {
@@ -186,6 +247,7 @@ private actor ScriptedMobileBatteryExecutor: MobileBatteryHelperExecuting {
     typealias Handler = @Sendable ([String]) async throws -> Data
     private let handler: Handler
     private(set) var recordedArguments: [[String]] = []
+    private(set) var recordedTimeouts: [Duration] = []
     private var activeRuns = 0
     private(set) var maximumConcurrentRuns = 0
 
@@ -193,6 +255,7 @@ private actor ScriptedMobileBatteryExecutor: MobileBatteryHelperExecuting {
 
     func run(arguments: [String], timeout: Duration) async throws -> Data {
         recordedArguments.append(arguments)
+        recordedTimeouts.append(timeout)
         activeRuns += 1
         maximumConcurrentRuns = max(maximumConcurrentRuns, activeRuns)
         defer { activeRuns -= 1 }

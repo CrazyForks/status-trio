@@ -200,65 +200,74 @@ private final class ProcessInvocation: @unchecked Sendable {
 
 struct MobileBatteryHelperReader: MobileBatteryReading {
     private let executor: any MobileBatteryHelperExecuting
+    private let cycleTimeout: Duration
 
-    init(executor: any MobileBatteryHelperExecuting = ProcessMobileBatteryHelperExecutor()) {
+    init(
+        executor: any MobileBatteryHelperExecuting = ProcessMobileBatteryHelperExecutor(),
+        cycleTimeout: Duration = .seconds(25)
+    ) {
         self.executor = executor
+        self.cycleTimeout = cycleTimeout
     }
 
     func read() async throws -> MobileBatteryReadResult {
-        try await withThrowingTaskGroup(of: MobileBatteryReadResult.self) { group in
-            group.addTask { try await readCycle() }
+        let accumulator = MobileBatteryReadAccumulator()
+        return try await withThrowingTaskGroup(of: MobileBatteryReadResult.self) { group in
+            group.addTask { try await readCycle(accumulator) }
             group.addTask {
-                try await Task.sleep(for: .seconds(25))
+                try await Task.sleep(for: cycleTimeout)
                 throw MobileBatteryHelperError.cycleTimedOut
             }
-            guard let result = try await group.next() else { return MobileBatteryReadResult() }
-            group.cancelAll()
-            return result
+            do {
+                guard let result = try await group.next() else { return MobileBatteryReadResult() }
+                group.cancelAll()
+                return result
+            } catch MobileBatteryHelperError.cycleTimedOut {
+                group.cancelAll()
+                while (try? await group.next()) != nil {}
+                if Task.isCancelled { throw CancellationError() }
+                var result = await accumulator.snapshot()
+                result.failures.append(MobileBatteryReadFailure(category: "cycle-timeout", deviceID: nil))
+                return result
+            } catch {
+                group.cancelAll()
+                while (try? await group.next()) != nil {}
+                if Task.isCancelled { throw CancellationError() }
+                throw error
+            }
         }
     }
 
-    private func readCycle() async throws -> MobileBatteryReadResult {
+    private func readCycle(_ accumulator: MobileBatteryReadAccumulator) async throws -> MobileBatteryReadResult {
         try Task.checkCancellation()
         let listingData = try await executor.run(arguments: ["--list"], timeout: .seconds(3))
         let phones = try MobileBatteryWire.decodeListing(listingData).prefix(8)
-        let phoneResults = await readPhones(Array(phones))
-
-        var result = MobileBatteryReadResult()
-        var candidates: [WatchCandidate] = []
-        for phoneResult in phoneResults {
-            result.snapshots.append(contentsOf: phoneResult.result.snapshots)
-            result.failures.append(contentsOf: phoneResult.result.failures)
-            candidates.append(contentsOf: phoneResult.watchCandidates)
-        }
-
+        let candidates = await readPhones(Array(phones), accumulator: accumulator)
+        guard !Task.isCancelled else { return await accumulator.snapshot() }
         let limitedCandidates = Self.uniqueCandidates(candidates).prefix(8)
-        let watchResults = await readWatches(Array(limitedCandidates))
-        for watchResult in watchResults {
-            result.snapshots.append(contentsOf: watchResult.snapshots)
-            result.failures.append(contentsOf: watchResult.failures)
-        }
-        return result
+        await readWatches(Array(limitedCandidates), accumulator: accumulator)
+        return await accumulator.snapshot()
     }
 
-    private func readPhones(_ phones: [PhoneRoute]) async -> [PhoneResult] {
-        await withTaskGroup(of: PhoneResult.self, returning: [PhoneResult].self) { group in
+    private func readPhones(_ phones: [PhoneRoute], accumulator: MobileBatteryReadAccumulator) async -> [WatchCandidate] {
+        await withTaskGroup(of: PhoneResult.self, returning: [WatchCandidate].self) { group in
             var nextIndex = 0
             for _ in 0..<min(2, phones.count) {
                 let phone = phones[nextIndex]
                 nextIndex += 1
                 group.addTask { await readPhone(phone) }
             }
-            var results: [PhoneResult] = []
+            var candidates: [WatchCandidate] = []
             while let result = await group.next() {
-                results.append(result)
-                if nextIndex < phones.count {
+                await accumulator.append(result.result)
+                candidates.append(contentsOf: result.watchCandidates)
+                if !Task.isCancelled, nextIndex < phones.count {
                     let phone = phones[nextIndex]
                     nextIndex += 1
                     group.addTask { await readPhone(phone) }
                 }
             }
-            return results
+            return candidates
         }
     }
 
@@ -276,10 +285,18 @@ struct MobileBatteryHelperReader: MobileBatteryReading {
                 )
                 let decoded = try MobileBatteryWire.decode(data, expectedParentID: phone.id, observedAt: Date())
                 let discovered = try MobileBatteryWire.decodeWatchCandidates(data, expectedParentID: phone.id)
-                collected.snapshots.append(contentsOf: decoded.snapshots)
+                var returnedPhone = false
+                for snapshot in decoded.snapshots {
+                    guard snapshot.parentID == nil, snapshot.id == phone.id else {
+                        collected.failures.append(MobileBatteryReadFailure(category: "unsolicited-device", deviceID: snapshot.id))
+                        continue
+                    }
+                    collected.snapshots.append(snapshot)
+                    returnedPhone = true
+                }
                 collected.failures.append(contentsOf: decoded.failures)
                 candidates.append(contentsOf: discovered.map { WatchCandidate(route: $0, transports: phone.transports) })
-                if decoded.snapshots.contains(where: { $0.parentID == nil && $0.id == phone.id }) { break }
+                if returnedPhone { break }
             } catch is CancellationError {
                 return PhoneResult(result: collected, watchCandidates: candidates)
             } catch {
@@ -290,24 +307,22 @@ struct MobileBatteryHelperReader: MobileBatteryReading {
         return PhoneResult(result: collected, watchCandidates: candidates)
     }
 
-    private func readWatches(_ candidates: [WatchCandidate]) async -> [MobileBatteryReadResult] {
-        await withTaskGroup(of: MobileBatteryReadResult.self, returning: [MobileBatteryReadResult].self) { group in
+    private func readWatches(_ candidates: [WatchCandidate], accumulator: MobileBatteryReadAccumulator) async {
+        await withTaskGroup(of: MobileBatteryReadResult.self, returning: Void.self) { group in
             var nextIndex = 0
             for _ in 0..<min(2, candidates.count) {
                 let candidate = candidates[nextIndex]
                 nextIndex += 1
                 group.addTask { await readWatch(candidate) }
             }
-            var results: [MobileBatteryReadResult] = []
             while let result = await group.next() {
-                results.append(result)
-                if nextIndex < candidates.count {
+                await accumulator.append(result)
+                if !Task.isCancelled, nextIndex < candidates.count {
                     let candidate = candidates[nextIndex]
                     nextIndex += 1
                     group.addTask { await readWatch(candidate) }
                 }
             }
-            return results
         }
     }
 
@@ -316,16 +331,27 @@ struct MobileBatteryHelperReader: MobileBatteryReading {
         let transports = candidate.transports.contains(candidate.route.transport)
             ? [candidate.route.transport] + candidate.transports.filter { $0 != candidate.route.transport }
             : candidate.transports
+        let deadline = ContinuousClock.now + .seconds(5)
         for transport in transports {
+            let remainingBudget = ContinuousClock.now.duration(to: deadline)
+            guard remainingBudget > .zero else { break }
             do {
                 let data = try await executor.run(
                     arguments: ["--read-watch", candidate.route.parentID, "--watch-id", candidate.route.id, "--transport", transport.rawValue],
-                    timeout: .seconds(5)
+                    timeout: remainingBudget
                 )
                 let decoded = try MobileBatteryWire.decode(data, expectedParentID: candidate.route.parentID, observedAt: Date())
-                collected.snapshots.append(contentsOf: decoded.snapshots)
+                var returnedWatch = false
+                for snapshot in decoded.snapshots {
+                    guard snapshot.parentID == candidate.route.parentID, snapshot.id == candidate.route.id else {
+                        collected.failures.append(MobileBatteryReadFailure(category: "unsolicited-device", deviceID: snapshot.id))
+                        continue
+                    }
+                    collected.snapshots.append(snapshot)
+                    returnedWatch = true
+                }
                 collected.failures.append(contentsOf: decoded.failures)
-                if decoded.snapshots.contains(where: { $0.parentID == candidate.route.parentID && $0.id == candidate.route.id }) { break }
+                if returnedWatch { break }
             } catch is CancellationError {
                 return collected
             } catch {
@@ -364,4 +390,15 @@ private struct PhoneResult: Sendable {
 private struct WatchCandidate: Sendable {
     let route: WatchRoute
     let transports: [MobileBatteryTransport]
+}
+
+private actor MobileBatteryReadAccumulator {
+    private var result = MobileBatteryReadResult()
+
+    func append(_ result: MobileBatteryReadResult) {
+        self.result.snapshots.append(contentsOf: result.snapshots)
+        self.result.failures.append(contentsOf: result.failures)
+    }
+
+    func snapshot() -> MobileBatteryReadResult { result }
 }
