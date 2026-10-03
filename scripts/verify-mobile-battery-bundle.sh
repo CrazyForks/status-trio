@@ -26,11 +26,6 @@ if [[ "${UNIVERSAL_BUILD:-0}" == "1" ]]; then
     done
 fi
 
-if ! otool -l "$HELPER" | grep -Fq 'path @executable_path/../Frameworks/MobileBattery'; then
-    echo "Error: helper is missing its bundled-library run path." >&2
-    exit 1
-fi
-
 BINARIES=("$HELPER")
 while IFS= read -r -d '' library; do
     BINARIES+=("$library")
@@ -40,6 +35,13 @@ if [[ "${#BINARIES[@]}" -lt 2 ]]; then
     exit 1
 fi
 
+for arch in $HELPER_ARCHS; do
+    if ! otool -arch "$arch" -l "$HELPER" | python3 "$(dirname -- "${BASH_SOURCE[0]}")/otool-rpaths.py" | grep -Fxq '@executable_path/../Frameworks/MobileBattery'; then
+        echo "Error: helper $arch slice is missing its bundled-library run path." >&2
+        exit 1
+    fi
+done
+
 for binary in "${BINARIES[@]}"; do
     archs="$(lipo -archs "$binary")"
     if [[ "$archs" != "$HELPER_ARCHS" ]]; then
@@ -48,6 +50,13 @@ for binary in "${BINARIES[@]}"; do
     fi
     bash "$(dirname -- "${BASH_SOURCE[0]}")/verify-platform-version.sh" "$binary" "$EXPECTED_MINOS" 26
     codesign --verify --strict --verbose=2 "$binary"
+
+    while IFS= read -r rpath; do
+        if ! bash "$(dirname -- "${BASH_SOURCE[0]}")/check-mobile-battery-rpath.sh" "$rpath" "$LIBRARY_DIR"; then
+            echo "Error: $(basename "$binary") has an unapproved LC_RPATH: $rpath" >&2
+            exit 1
+        fi
+    done < <(otool -l "$binary" | python3 "$(dirname -- "${BASH_SOURCE[0]}")/otool-rpaths.py")
 
     while IFS= read -r dependency; do
         if ! bash "$(dirname -- "${BASH_SOURCE[0]}")/check-mobile-battery-dependency.sh" "$dependency" "$LIBRARY_DIR"; then
@@ -67,6 +76,7 @@ assert isinstance(payload.get("phones"), list)
 for phone in payload["phones"]:
     assert isinstance(phone.get("id"), str) and phone["id"]
     assert phone.get("transport") in ("usb", "network")
+    assert phone.get("availableTransports") in (["usb"], ["network"], ["usb", "network"])
 PY
 
 echo "Mobile battery helper bundle verified: $HELPER_ARCHS"

@@ -36,14 +36,14 @@ static NSDictionary *ReadWatch(STMobileBatteryNativeAPI api, void *companion, NS
     } else {
         NSMutableDictionary *watch = [NSMutableDictionary dictionaryWithDictionary:@{
             @"id": identifier,
-            @"percentage": percentage,
+            @"batteryLevel": percentage,
         }];
         id name = values[@"DeviceName"];
         id model = values[@"ProductType"];
         id charging = values[@"BatteryIsCharging"];
         if (IsString(name)) watch[@"name"] = name;
         if (IsString(model)) watch[@"model"] = model;
-        if (IsBoolean(charging)) watch[@"charging"] = charging;
+        if (IsBoolean(charging)) watch[@"isCharging"] = charging;
         result = [watch copy];
     }
     if (values) api.freeValues(api.context, values);
@@ -92,12 +92,6 @@ static NSDictionary *ReadPhone(STMobileBatteryNativeAPI api, NSDictionary *devic
 
     int phoneStatus = api.copyPhoneValues(api.context, session, &phoneValues);
     phonePercentage = ValidatedPercentage(phoneValues[@"BatteryCurrentCapacity"]);
-    if (phoneStatus != 0 || !phonePercentage) {
-        phone[@"error"] = @"battery-unavailable";
-        phone[@"errorCode"] = @(STMobileBatteryErrorBatteryUnavailable);
-        goto cleanup;
-    }
-    phone[@"percentage"] = phonePercentage;
     phoneName = phoneValues[@"DeviceName"];
     phoneModel = phoneValues[@"ProductType"];
     phoneClass = phoneValues[@"DeviceClass"];
@@ -105,7 +99,8 @@ static NSDictionary *ReadPhone(STMobileBatteryNativeAPI api, NSDictionary *devic
     if (IsString(phoneName)) phone[@"name"] = phoneName;
     if (IsString(phoneModel)) phone[@"model"] = phoneModel;
     if (IsString(phoneClass)) phone[@"deviceClass"] = phoneClass;
-    if (IsBoolean(phoneCharging)) phone[@"charging"] = phoneCharging;
+    if (phoneStatus == 0 && phonePercentage) phone[@"batteryLevel"] = phonePercentage;
+    if (IsBoolean(phoneCharging)) phone[@"isCharging"] = phoneCharging;
 
     if (api.createCompanionClient(api.context, session, &companion) == 0 && companion) {
         if (api.copyCompanionIdentifiers(api.context, companion, &watchIdentifiers) == 0) {
@@ -124,6 +119,12 @@ static NSDictionary *ReadPhone(STMobileBatteryNativeAPI api, NSDictionary *devic
                 phone[@"watches"] = [watches copy];
             }
         }
+    }
+
+    if (phoneStatus != 0 || !phonePercentage) {
+        phone[@"error"] = @"battery-unavailable";
+        phone[@"errorCode"] = @(STMobileBatteryErrorBatteryUnavailable);
+        goto cleanup;
     }
 
 cleanup:
@@ -148,21 +149,26 @@ NSDictionary *STMobileBatteryCopyDeviceList(STMobileBatteryNativeAPI api, STMobi
         if (error) *error = STMobileBatteryErrorEnumeration;
         return nil;
     }
-    NSMutableDictionary<NSString *, NSDictionary *> *uniqueDevices = [NSMutableDictionary dictionary];
+    NSMutableDictionary<NSString *, NSMutableSet<NSString *> *> *availableRoutes = [NSMutableDictionary dictionary];
     for (id candidate in devices) {
         if (![candidate isKindOfClass:[NSDictionary class]]) continue;
         NSString *identifier = candidate[@"id"];
         NSString *transport = candidate[@"transport"];
         if (!IsString(identifier) || (![transport isEqual:STMobileBatteryTransportUSB] && ![transport isEqual:STMobileBatteryTransportNetwork])) continue;
-        NSDictionary *previous = uniqueDevices[identifier];
-        if (!previous || ([transport isEqual:STMobileBatteryTransportUSB] && ![previous[@"transport"] isEqual:STMobileBatteryTransportUSB])) {
-            uniqueDevices[identifier] = @{@"id": identifier, @"transport": transport};
-        }
+        if (!availableRoutes[identifier]) availableRoutes[identifier] = [NSMutableSet set];
+        [availableRoutes[identifier] addObject:transport];
     }
     api.freeDeviceList(api.context, devices);
-    NSArray *phones = [[uniqueDevices allKeys] sortedArrayUsingSelector:@selector(compare:)];
+    NSArray *phones = [[availableRoutes allKeys] sortedArrayUsingSelector:@selector(compare:)];
     NSMutableArray *items = [NSMutableArray arrayWithCapacity:phones.count];
-    for (NSString *identifier in phones) [items addObject:uniqueDevices[identifier]];
+    for (NSString *identifier in phones) {
+        NSSet *routes = availableRoutes[identifier];
+        NSMutableArray *orderedRoutes = [NSMutableArray arrayWithCapacity:2];
+        if ([routes containsObject:STMobileBatteryTransportUSB]) [orderedRoutes addObject:STMobileBatteryTransportUSB];
+        if ([routes containsObject:STMobileBatteryTransportNetwork]) [orderedRoutes addObject:STMobileBatteryTransportNetwork];
+        NSString *preferred = [routes containsObject:STMobileBatteryTransportUSB] ? STMobileBatteryTransportUSB : STMobileBatteryTransportNetwork;
+        [items addObject:@{@"id": identifier, @"transport": preferred, @"availableTransports": [orderedRoutes copy]}];
+    }
     return @{@"schemaVersion": @1, @"phones": [items copy]};
 }
 

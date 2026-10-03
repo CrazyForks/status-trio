@@ -162,6 +162,19 @@ static BOOL TestDeviceListDoesNotRequireTrustOrReadValues(void) {
     return YES;
 }
 
+static BOOL TestDeviceListPreservesAvailableRoutesInUSBFirstOrder(void) {
+    FakeNativeState state = BaseState();
+    state.devices = @[@{ @"id": @"phone-1", @"transport": STMobileBatteryTransportNetwork },
+                      @{ @"id": @"phone-1", @"transport": STMobileBatteryTransportUSB }];
+    STMobileBatteryError error = STMobileBatteryErrorNone;
+    NSDictionary *result = STMobileBatteryCopyDeviceList(API(&state), &error);
+    NSDictionary *phone = result[@"phones"][0];
+    CHECK(error == STMobileBatteryErrorNone, "device list with both routes succeeds");
+    CHECK([phone[@"transport"] isEqual:STMobileBatteryTransportUSB], "USB remains the preferred transport");
+    CHECK(([phone[@"availableTransports"] isEqual:@[@"usb", @"network"]]), "all routes are listed once in USB-first order");
+    return YES;
+}
+
 static BOOL TestMissingHostIdentityDoesNotStartSession(void) {
     FakeNativeState state = BaseState(); state.pairRecord = @{@"SystemBUID": @"system"};
     STMobileBatteryError error = STMobileBatteryErrorNone;
@@ -197,9 +210,9 @@ static BOOL TestUnsupportedOptionalKeysRemainOptional(void) {
     NSDictionary *result = STMobileBatteryCopySnapshot(API(&state), &error);
     NSDictionary *phone = result[@"phones"][0];
     CHECK(error == STMobileBatteryErrorNone, "optional unsupported keys do not fail the envelope");
-    CHECK([phone[@"percentage"] isEqual:@100], "full phone battery is retained");
+    CHECK([phone[@"batteryLevel"] isEqual:@100], "full phone battery is retained");
     CHECK(phone[@"name"] == nil, "unsupported phone name remains absent");
-    CHECK([phone[@"watches"][0][@"percentage"] isEqual:@0], "zero Watch battery is retained");
+    CHECK([phone[@"watches"][0][@"batteryLevel"] isEqual:@0], "zero Watch battery is retained");
     CHECK(phone[@"watches"][0][@"name"] == nil, "unsupported Watch name remains absent");
     CHECK(phone[@"watches"][0][@"charging"] == nil, "unsupported charging value remains absent");
     return YES;
@@ -238,6 +251,41 @@ static BOOL TestPhoneReadReturnsCandidatesWithoutReadingWatchValues(void) {
     return YES;
 }
 
+static BOOL TestSplitPhoneReadUsesSwiftWireFields(void) {
+    FakeNativeState state = BaseState();
+    STMobileBatteryError error = STMobileBatteryErrorNone;
+    NSDictionary *result = STMobileBatteryCopyPhone(API(&state), @"phone-1", STMobileBatteryTransportUSB, &error);
+    NSDictionary *phone = result[@"devices"][0];
+    CHECK(error == STMobileBatteryErrorNone, "split phone read succeeds");
+    CHECK([phone[@"batteryLevel"] isEqual:@71], "phone battery uses batteryLevel wire key");
+    CHECK([phone[@"isCharging"] isEqual:@NO], "phone charging uses isCharging wire key");
+    CHECK(phone[@"percentage"] == nil && phone[@"charging"] == nil, "obsolete phone wire keys are absent");
+    return YES;
+}
+
+static BOOL TestSplitPhoneUsesIsChargingWireKey(void) {
+    FakeNativeState state = BaseState();
+    STMobileBatteryError error = STMobileBatteryErrorNone;
+    NSDictionary *result = STMobileBatteryCopyPhone(API(&state), @"phone-1", STMobileBatteryTransportUSB, &error);
+    NSDictionary *phone = result[@"devices"][0];
+    CHECK(error == STMobileBatteryErrorNone, "split phone read succeeds");
+    CHECK([phone[@"isCharging"] isEqual:@NO], "phone charging uses isCharging wire key");
+    CHECK(phone[@"charging"] == nil, "obsolete phone charging key is absent");
+    return YES;
+}
+
+static BOOL TestPhoneBatteryFailureStillReturnsWatchCandidates(void) {
+    FakeNativeState state = BaseState();
+    state.phoneValues = @{@"DeviceName": @"Phone", @"ProductType": @"iPhone18,1"};
+    STMobileBatteryError error = STMobileBatteryErrorNone;
+    NSDictionary *result = STMobileBatteryCopyPhone(API(&state), @"phone-1", STMobileBatteryTransportUSB, &error);
+    CHECK(error == STMobileBatteryErrorNone, "per-phone battery failure keeps the envelope successful");
+    CHECK([result[@"failures"][0][@"error"] isEqual:@"battery-unavailable"], "phone battery failure is preserved");
+    CHECK([result[@"watchCandidates"] count] == 1, "trusted companion registry is still returned after battery failure");
+    CHECK(state.watchValueQueryCount == 0, "candidate recovery does not query Watch values");
+    return YES;
+}
+
 static BOOL TestWatchReadQueriesOnlyRequestedPairedWatch(void) {
     FakeNativeState state = BaseState();
     state.watchIdentifiers = @[@"watch-1", @"watch-2"];
@@ -253,7 +301,8 @@ static BOOL TestWatchReadQueriesOnlyRequestedPairedWatch(void) {
     CHECK(state.watchValueQueryIdentifiers.count == 1, "one Watch value query is made");
     CHECK([state.watchValueQueryIdentifiers[0] isEqual:@"watch-2"], "no other Watch identifier is queried");
     CHECK(([state.requestedCompanionKeys[0] isEqual:(@[@"ProductType", @"BatteryCurrentCapacity"])]), "bounded Watch reads query only required model and battery fields");
-    CHECK(result[@"devices"][0][@"name"] == nil && result[@"devices"][0][@"charging"] == nil, "optional Watch name and charging remain absent");
+    CHECK([result[@"devices"][0][@"batteryLevel"] isEqual:@62], "Watch battery uses batteryLevel wire key");
+    CHECK(result[@"devices"][0][@"isCharging"] == nil, "optional Watch charging remains absent");
     return YES;
 }
 
@@ -283,6 +332,7 @@ int main(void) {
             @{@"name": @"transport deduplication", @"run": [NSValue valueWithPointer:TestTransportDuplicatesCollapse]},
             @{@"name": @"trust without pairing", @"run": [NSValue valueWithPointer:TestUntrustedDeviceDoesNotPair]},
             @{@"name": @"device list requires no trust", @"run": [NSValue valueWithPointer:TestDeviceListDoesNotRequireTrustOrReadValues]},
+            @{@"name": @"list preserves available routes", @"run": [NSValue valueWithPointer:TestDeviceListPreservesAvailableRoutesInUSBFirstOrder]},
             @{@"name": @"host identity", @"run": [NSValue valueWithPointer:TestMissingHostIdentityDoesNotStartSession]},
             @{@"name": @"invalid percentage", @"run": [NSValue valueWithPointer:TestInvalidPhonePercentageIsNotZero]},
             @{@"name": @"missing percentage", @"run": [NSValue valueWithPointer:TestMissingPhonePercentageIsFailure]},
@@ -290,6 +340,9 @@ int main(void) {
             @{@"name": @"multiple Watches", @"run": [NSValue valueWithPointer:TestMultipleWatchesAreEnumerated]},
             @{@"name": @"cleanup", @"run": [NSValue valueWithPointer:TestEveryAllocatedHandleIsReleasedOnFailure]},
             @{@"name": @"phone read and candidates", @"run": [NSValue valueWithPointer:TestPhoneReadReturnsCandidatesWithoutReadingWatchValues]},
+            @{@"name": @"split phone Swift wire keys", @"run": [NSValue valueWithPointer:TestSplitPhoneReadUsesSwiftWireFields]},
+            @{@"name": @"split phone isCharging wire key", @"run": [NSValue valueWithPointer:TestSplitPhoneUsesIsChargingWireKey]},
+            @{@"name": @"Watch candidates survive phone battery failure", @"run": [NSValue valueWithPointer:TestPhoneBatteryFailureStillReturnsWatchCandidates]},
             @{@"name": @"single Watch read", @"run": [NSValue valueWithPointer:TestWatchReadQueriesOnlyRequestedPairedWatch]},
             @{@"name": @"unpaired Watch rejection", @"run": [NSValue valueWithPointer:TestWatchReadRejectsUnpairedIdentifier]},
             @{@"name": @"Watch trust rejection", @"run": [NSValue valueWithPointer:TestWatchReadTrustFailureDoesNotStartSession]},

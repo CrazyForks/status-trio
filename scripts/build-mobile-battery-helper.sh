@@ -129,6 +129,20 @@ EOF
         -Wl,-headerpad_max_install_names \
         -o "$helper"
     chmod 755 "$helper"
+
+    strip_development_rpaths() {
+        local binary="$1"
+        while IFS= read -r rpath; do
+            case "$rpath" in
+                "$prefix"/*) install_name_tool -delete_rpath "$rpath" "$binary" ;;
+            esac
+        done < <(otool -l "$binary" | python3 "$ROOT/scripts/otool-rpaths.py")
+    }
+
+    strip_development_rpaths "$helper"
+    while IFS= read -r -d '' library; do
+        strip_development_rpaths "$library"
+    done < <(find "$prefix/lib" -maxdepth 1 -type f -name '*.dylib*' -print0)
 done
 
 PACKAGE="$WORK/package"
@@ -162,7 +176,7 @@ fi
 mkdir -p "$ROOT/Support/MobileBatteryHelper/ThirdPartyNotices"
 python3 - "$WORK/sources" "$ROOT/Support/MobileBatteryHelper/ThirdPartyNotices" <<'PY'
 from pathlib import Path
-import shutil, sys
+import sys
 source_root, notices_root = map(Path, sys.argv[1:])
 for name in ("openssl", "libplist", "libimobiledevice-glue", "libusbmuxd", "libtatsu", "libimobiledevice"):
     source = source_root / name
@@ -172,7 +186,9 @@ for name in ("openssl", "libplist", "libimobiledevice-glue", "libusbmuxd", "libt
     for filename in candidates:
         path = source / filename
         if path.is_file():
-            shutil.copy2(path, destination / filename)
+            text = path.read_text()
+            normalized = "\n".join(line.rstrip() for line in text.splitlines()).rstrip() + "\n"
+            (destination / filename).write_text(normalized)
 PY
 
 cp -R "$ROOT/Support/MobileBatteryHelper/ThirdPartyNotices/." "$PACKAGE/Resources/MobileBatteryLicenses/"
