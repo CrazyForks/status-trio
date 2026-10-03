@@ -81,6 +81,45 @@ final class SystemStatusStoreTests: XCTestCase {
         XCTAssertEqual(vpn.stopCount, 2)
     }
 
+    func testPopoverCloseCancelsMobileBatteryReadWhileViewIsRetained() async {
+        let reader = ControlledMobileBatteryReader()
+        let mobile = MobileBatteryController(reader: reader)
+        let store = SystemStatusStore(
+            batteryMonitor: FakeBatteryMonitor(),
+            wifiMonitor: FakeWiFiMonitor(),
+            volumeMonitor: FakeVolumeMonitor(),
+            mobileBattery: mobile
+        )
+        mobile.request("summary")
+        store.setPopoverVisible(true)
+        await waitForMobileReader { await reader.readCount == 1 }
+
+        store.setPopoverVisible(false)
+        await waitForMobileReader { await reader.cancellationCount == 1 }
+        store.stop()
+    }
+
+    func testMobileUSBReadStartsWhileBluetoothIsNotActivated() async {
+        let reader = ControlledMobileBatteryReader()
+        let mobile = MobileBatteryController(reader: reader)
+        let bluetooth = BluetoothDeviceController(stateMonitor: DeniedBluetoothStateMonitor())
+        let store = SystemStatusStore(
+            batteryMonitor: FakeBatteryMonitor(),
+            wifiMonitor: FakeWiFiMonitor(),
+            volumeMonitor: FakeVolumeMonitor(),
+            bluetoothDevices: bluetooth,
+            mobileBattery: mobile
+        )
+        mobile.request("summary")
+        store.setPopoverVisible(true)
+
+        XCTAssertEqual(store.bluetoothDevices.authorization, .denied)
+        XCTAssertFalse(store.bluetoothDevices.isActive)
+        await waitForMobileReader { await reader.readCount == 1 }
+        store.stop()
+        await waitForMobileReader { await reader.cancellationCount == 1 }
+    }
+
     func testInputMonitorFollowsOptInSettingAndPopoverVisibility() async {
         let battery = FakeBatteryMonitor()
         let wifi = FakeWiFiMonitor()
@@ -1885,6 +1924,15 @@ final class SystemStatusStoreTests: XCTestCase {
             try? await Task.sleep(for: .milliseconds(1))
         }
     }
+
+    private func waitForMobileReader(_ condition: () async -> Bool) async {
+        let deadline = ContinuousClock.now + .seconds(2)
+        while !(await condition()), ContinuousClock.now < deadline {
+            await Task.yield()
+        }
+        let reached = await condition()
+        XCTAssertTrue(reached, "mobile reader state did not settle")
+    }
 }
 
 @MainActor
@@ -2052,6 +2100,15 @@ private struct StubWiredInterfaces: WiredInterfaceProviding {
     let names: [String]
 
     func wiredInterfaces() -> [WiredInterface] { names.map { WiredInterface(name: $0) } }
+}
+
+@MainActor
+private final class DeniedBluetoothStateMonitor: BluetoothStateMonitoring {
+    var onStateChange: ((BluetoothAuthorizationStatus, BluetoothManagerState) -> Void)?
+    let authorization: BluetoothAuthorizationStatus = .denied
+
+    func start() { onStateChange?(.denied, .unknown) }
+    func stop() {}
 }
 
 @MainActor
