@@ -15,6 +15,7 @@ final class MobileBatteryController: ObservableObject {
     private let sleep: @Sendable (Duration) async throws -> Void
     private var claims: Set<String> = []
     private var isSurfaceVisible = false
+    private var isReadingEnabled = true
     private var isStopped = false
     private var generation: UInt64 = 0
     private var readTask: Task<Void, Never>?
@@ -63,6 +64,23 @@ final class MobileBatteryController: ObservableObject {
         updateLifecycle()
     }
 
+    /// Gates the controller from central settings so disabling the opt-in also
+    /// clears cached results when the Bluetooth view is not mounted. Re-enabling
+    /// only resumes work when a visible surface still owns a claim.
+    func setReadingEnabled(_ enabled: Bool) {
+        guard !isStopped, isReadingEnabled != enabled else { return }
+        isReadingEnabled = enabled
+        guard enabled else {
+            cancelActiveWork()
+            expiryTask?.cancel()
+            expiryTask = nil
+            snapshots = []
+            failures = []
+            return
+        }
+        updateLifecycle()
+    }
+
     func refresh() {
         guard !isStopped, isEnabled else { return }
         beginRead(superseding: true)
@@ -81,7 +99,7 @@ final class MobileBatteryController: ObservableObject {
         isRefreshing = false
     }
 
-    private var isEnabled: Bool { isSurfaceVisible && !claims.isEmpty }
+    private var isEnabled: Bool { isReadingEnabled && isSurfaceVisible && !claims.isEmpty }
 
     private func updateLifecycle() {
         if isEnabled {

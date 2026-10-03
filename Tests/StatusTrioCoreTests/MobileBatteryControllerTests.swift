@@ -23,6 +23,36 @@ final class MobileBatteryControllerTests: XCTestCase {
         controller.stop()
     }
 
+    func testRapidDisableAndReenableClearsCacheAndStartsANewReadForTheExistingClaim() async {
+        let reader = ControlledMobileBatteryReader()
+        let controller = MobileBatteryController(reader: reader)
+        controller.setSurfaceVisible(true)
+        controller.request("summary")
+        await waitUntil { await reader.readCount == 1 }
+        await reader.complete(0, with: result(level: 71))
+        await waitUntil { controller.snapshots.count == 1 }
+
+        controller.setReadingEnabled(false)
+        XCTAssertTrue(controller.snapshots.isEmpty)
+        controller.setReadingEnabled(true)
+        await waitUntil { await reader.readCount == 2 }
+        XCTAssertTrue(controller.snapshots.isEmpty)
+        controller.stop()
+    }
+
+    func testReenablingWithNoClaimAndClosedSurfaceDoesNotRead() async {
+        let reader = ControlledMobileBatteryReader()
+        let controller = MobileBatteryController(reader: reader)
+        controller.setReadingEnabled(false)
+        controller.setReadingEnabled(true)
+        controller.setSurfaceVisible(false)
+        await settle()
+
+        let readCount = await reader.readCount
+        XCTAssertEqual(readCount, 0)
+        controller.stop()
+    }
+
     func testClaimsShareWorkAndLastReleaseClearsSnapshots() async {
         let reader = ControlledMobileBatteryReader()
         let controller = MobileBatteryController(reader: reader)

@@ -289,6 +289,7 @@
 "bluetooth.openDetails" = "打開詳細資訊以查看裝置狀態";
 "bluetooth.title" = "藍牙";
 "bluetooth.pairedDevices.title" = "已配對";
+"bluetooth.devices.title" = "藍牙裝置";
 "bluetooth.nearbyBattery.title" = "附近裝置";
 "bluetooth.nearbyDevice.fallback" = "藍牙裝置";
 "bluetooth.action.openSettings" = "打開藍牙設定";

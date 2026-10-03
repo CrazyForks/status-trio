@@ -9,6 +9,9 @@ enum MobileBatteryDeviceMerge {
         let devices: [BluetoothDevice]
         let batteryLevels: [String: BluetoothBatteryLevel]
         let remainingNearby: [NearbyBluetoothBatteryDevice]
+        /// Rows identified by a mobile read even when an existing paired
+        /// battery value remains authoritative and mobile metadata is hidden.
+        let mobileDeviceIDs: Set<String>
         let mobileMetadataByDeviceID: [String: MobileBatterySnapshot]
     }
 
@@ -23,25 +26,39 @@ enum MobileBatteryDeviceMerge {
         var mergedLevels = batteryLevels
         var remainingNearby: [NearbyBluetoothBatteryDevice] = []
         var metadata: [String: MobileBatterySnapshot] = [:]
+        var mobileDeviceIDs = Set<String>()
         var consumedNearby = Set<UUID>()
         let snapshots = deduplicated(mobileSnapshots)
 
+        // Reserve every exact identity match before considering any names. A
+        // different snapshot with a matching name must never take a row that a
+        // stable identity identifies later in the same merge.
+        let identityMatches = Dictionary(uniqueKeysWithValues: snapshots.compactMap { snapshot -> (String, Int)? in
+            let matches = devices.indices.filter { devices[$0].id == snapshot.identity }
+            guard matches.count == 1, let index = matches.first else { return nil }
+            return (snapshot.identity, index)
+        })
+        var reservedPairedIndices = Set(identityMatches.values)
+        var consumedMobileIdentities = Set<String>()
+
         for snapshot in snapshots {
+            guard let index = identityMatches[snapshot.identity],
+                  let mobileKind = BluetoothMobileDeviceModel.kind(forModel: snapshot.model) else { continue }
+            let device = mergedDevices[index]
+            if device.kind == .unknown {
+                mergedDevices[index] = device.replacingKind(with: mobileKind)
+            }
+            mobileDeviceIDs.insert(device.id)
+            if addMobileLevel(snapshot, to: device.id, levels: &mergedLevels) {
+                metadata[device.id] = snapshot
+            }
+            consumedMobileIdentities.insert(snapshot.identity)
+        }
+
+        for snapshot in snapshots {
+            guard !consumedMobileIdentities.contains(snapshot.identity) else { continue }
             guard let mobileKind = BluetoothMobileDeviceModel.kind(forModel: snapshot.model) else { continue }
             let stableID = externalDeviceID(for: snapshot.identity)
-            let pairedIdentityMatches = mergedDevices.indices.filter {
-                mergedDevices[$0].id == snapshot.identity
-            }
-
-            if pairedIdentityMatches.count == 1, let index = pairedIdentityMatches.first {
-                let device = mergedDevices[index]
-                if device.kind == .unknown {
-                    mergedDevices[index] = device.replacingKind(with: mobileKind)
-                }
-                metadata[device.id] = snapshot
-                addMobileLevel(snapshot, to: device.id, levels: &mergedLevels)
-                continue
-            }
 
             let normalizedName = normalized(snapshot.name)
             let sameFamilySnapshots = snapshots.filter {
@@ -52,6 +69,7 @@ enum MobileBatteryDeviceMerge {
             let pairedCandidates = devices.indices.filter {
                 normalized(devices[$0].name) == normalizedName
                     && isCompatible(devices[$0].kind, with: mobileKind)
+                    && !reservedPairedIndices.contains($0)
                     && !normalizedName.isEmpty
             }
             let nearbyCandidates = nearbyDevices.filter {
@@ -68,16 +86,21 @@ enum MobileBatteryDeviceMerge {
                     if device.kind == .unknown {
                         mergedDevices[index] = device.replacingKind(with: mobileKind)
                     }
-                    metadata[device.id] = snapshot
-                    addMobileLevel(snapshot, to: device.id, levels: &mergedLevels)
+                    mobileDeviceIDs.insert(device.id)
+                    if addMobileLevel(snapshot, to: device.id, levels: &mergedLevels) {
+                        metadata[device.id] = snapshot
+                    }
+                    reservedPairedIndices.insert(index)
                 } else if let nearby = nearbyCandidates.first {
                     consumedNearby.insert(nearby.id)
                     let device = nearbyDeviceRow(nearby, kind: mobileKind)
                     mergedDevices.append(device)
-                    metadata[device.id] = snapshot
+                    mobileDeviceIDs.insert(device.id)
                     // A trusted phone read carries the fresher, authoritative
                     // value, so it wins when the BLE scan saw the same device.
-                    addMobileLevel(snapshot, to: device.id, levels: &mergedLevels)
+                    if addMobileLevel(snapshot, to: device.id, levels: &mergedLevels) {
+                        metadata[device.id] = snapshot
+                    }
                 }
                 continue
             }
@@ -94,8 +117,10 @@ enum MobileBatteryDeviceMerge {
                 isReadOverTheAir: true
             )
             mergedDevices.append(device)
-            metadata[device.id] = snapshot
-            addMobileLevel(snapshot, to: device.id, levels: &mergedLevels)
+            mobileDeviceIDs.insert(device.id)
+            if addMobileLevel(snapshot, to: device.id, levels: &mergedLevels) {
+                metadata[device.id] = snapshot
+            }
         }
 
         for nearby in nearbyDevices where !consumedNearby.contains(nearby.id) {
@@ -138,6 +163,7 @@ enum MobileBatteryDeviceMerge {
             devices: mergedDevices,
             batteryLevels: mergedLevels,
             remainingNearby: remainingNearby,
+            mobileDeviceIDs: mobileDeviceIDs,
             mobileMetadataByDeviceID: metadata
         )
     }
@@ -188,18 +214,17 @@ enum MobileBatteryDeviceMerge {
         _ snapshot: MobileBatterySnapshot,
         to deviceID: String,
         levels: inout [String: BluetoothBatteryLevel]
-    ) {
+    ) -> Bool {
         let key = BluetoothBatteryReader.normalizedAddress(deviceID)
-        guard !key.isEmpty else { return }
-        if levels[key] == nil {
-            levels[key] = BluetoothBatteryLevel(
-                deviceAddress: deviceID,
-                main: snapshot.batteryLevel,
-                left: nil,
-                right: nil,
-                caseLevel: nil
-            )
-        }
+        guard !key.isEmpty, levels[key] == nil else { return false }
+        levels[key] = BluetoothBatteryLevel(
+            deviceAddress: deviceID,
+            main: snapshot.batteryLevel,
+            left: nil,
+            right: nil,
+            caseLevel: nil
+        )
+        return true
     }
 
     private static func addNearbyLevel(

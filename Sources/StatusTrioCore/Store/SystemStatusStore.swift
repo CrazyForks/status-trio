@@ -83,6 +83,7 @@ final class SystemStatusStore: ObservableObject {
     private var isVPNActiveForPopover = false
     private var inputUpdateTask: Task<Void, Never>?
     private var inputSettingsCancellable: AnyCancellable?
+    private var mobileBatterySettingsCancellable: AnyCancellable?
     private var inputSettingEnabled = false
     private var isInputEnabled = false
     private var refreshTask: Task<Void, Never>?
@@ -319,6 +320,8 @@ final class SystemStatusStore: ObservableObject {
         isInputEnabled = false
         inputSettingsCancellable?.cancel()
         inputSettingsCancellable = nil
+        mobileBatterySettingsCancellable?.cancel()
+        mobileBatterySettingsCancellable = nil
         inputUpdateTask?.cancel()
         inputUpdateTask = nil
         inputMonitor?.stop()
@@ -648,6 +651,20 @@ final class SystemStatusStore: ObservableObject {
             .removeDuplicates()
             .sink { [weak self] enabled in
                 self?.setInputEnabled(enabled)
+            }
+    }
+
+    func bindMobileBatterySettings(_ settings: SettingsStore) {
+        guard !hasStopped else { return }
+        mobileBatterySettingsCancellable = settings.$showsBluetoothBatteryLevels
+            .combineLatest(
+                settings.$showsMobileDeviceBatteryLevels,
+                settings.$showsBluetoothDeviceList
+            )
+            .map { $0.0 && $0.1 && $0.2 }
+            .removeDuplicates()
+            .sink { [weak self] enabled in
+                self?.mobileBattery.setReadingEnabled(enabled)
             }
     }
 

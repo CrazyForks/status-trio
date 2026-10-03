@@ -289,6 +289,7 @@
 "bluetooth.openDetails" = "Откройте сведения, чтобы увидеть состояние устройств";
 "bluetooth.title" = "Bluetooth";
 "bluetooth.pairedDevices.title" = "Сопряжённые";
+"bluetooth.devices.title" = "Устройства Bluetooth";
 "bluetooth.nearbyBattery.title" = "Рядом";
 "bluetooth.nearbyDevice.fallback" = "Устройство Bluetooth";
 "bluetooth.action.openSettings" = "Открыть настройки Bluetooth";

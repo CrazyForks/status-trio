@@ -63,7 +63,7 @@ struct MobileBatteryDeviceMergeTests {
         #expect(result.batteryLevels[BluetoothBatteryReader.normalizedAddress(result.devices[0].id)]?.main == 61)
     }
 
-    @Test func mergesOnlyUniqueCompatibleNameAndKeepsPairedBatteryValue() {
+    @Test func pairedBatteryWinnerKeepsItsValueWithoutMobileMetadata() {
         let phone = paired(id: "AA-BB", name: "Lina’s iPhone", kind: .mobile(.phone))
         let pairedLevel = BluetoothBatteryLevel(deviceAddress: phone.id, main: 88, left: nil, right: nil, caseLevel: nil)
         let watchWithSameName = snapshot(id: "phone-1", name: "Lina’s iPhone", level: 31)
@@ -75,7 +75,8 @@ struct MobileBatteryDeviceMergeTests {
         #expect(result.devices.count == 1)
         #expect(result.batteryLevels["AABB"] == pairedLevel)
         #expect(result.devices[0].kind == .mobile(.phone))
-        #expect(result.mobileMetadataByDeviceID[phone.id] == watchWithSameName)
+        #expect(result.mobileMetadataByDeviceID[phone.id] == nil)
+        #expect(result.mobileDeviceIDs.contains(phone.id))
     }
 
     @Test func exactStableIdentityWinsWhenTheNameIsAmbiguous() {
@@ -91,6 +92,46 @@ struct MobileBatteryDeviceMergeTests {
         #expect(result.mobileMetadataByDeviceID[identityMatch.id] == snapshot)
         #expect(result.mobileMetadataByDeviceID[otherSameName.id] == nil)
         #expect(result.batteryLevels["EE1"]?.main == 61)
+    }
+
+    @Test func stableIdentityReservesItsRowBeforeNameMatchingInEitherInputOrder() {
+        for stableDeviceID in ["phone:a", "phone:z"] {
+            let exactID = stableDeviceID.replacingOccurrences(of: "phone:", with: "")
+            let nameMatchedSnapshot = snapshot(id: exactID == "a" ? "z" : "a", name: "Shared phone", level: 22)
+            let identitySnapshot = snapshot(id: exactID, name: nil, level: 88)
+            let identityRow = paired(id: stableDeviceID, name: "Shared phone", kind: .mobile(.phone))
+
+            for snapshots in [[nameMatchedSnapshot, identitySnapshot], [identitySnapshot, nameMatchedSnapshot]] {
+                let result = MobileBatteryDeviceMerge.merged(
+                    devices: [identityRow], batteryLevels: [:], nearbyDevices: [],
+                    mobileSnapshots: snapshots, fallbackWatchName: "Apple Watch"
+                )
+
+                #expect(result.devices.count == 2)
+                #expect(result.devices[0].id == stableDeviceID)
+                #expect(result.batteryLevels[BluetoothBatteryReader.normalizedAddress(stableDeviceID)]?.main == 88)
+                let competingID = MobileBatteryDeviceMerge.externalDeviceID(for: nameMatchedSnapshot.identity)
+                #expect(result.devices.contains { $0.id == competingID })
+                #expect(result.batteryLevels[BluetoothBatteryReader.normalizedAddress(competingID)]?.main == 22)
+            }
+        }
+    }
+
+    @Test func pairedBatteryWinnerDoesNotShowMobileObservationMetadata() {
+        let phone = paired(id: "phone:phone-1", name: "Lina’s iPhone", kind: .mobile(.phone))
+        let pairedLevel = BluetoothBatteryLevel(deviceAddress: phone.id, main: 88, left: nil, right: nil, caseLevel: nil)
+        let observation = snapshot(
+            id: "phone-1", name: "Lina’s iPhone", level: 31, charging: true,
+            observedAt: now.addingTimeInterval(900)
+        )
+        let result = MobileBatteryDeviceMerge.merged(
+            devices: [phone], batteryLevels: [BluetoothBatteryReader.normalizedAddress(phone.id): pairedLevel],
+            nearbyDevices: [], mobileSnapshots: [observation], fallbackWatchName: "Apple Watch"
+        )
+
+        #expect(result.batteryLevels[BluetoothBatteryReader.normalizedAddress(phone.id)] == pairedLevel)
+        #expect(result.mobileMetadataByDeviceID[phone.id] == nil)
+        #expect(result.mobileDeviceIDs.contains(phone.id))
     }
 
     @Test func uniqueBluetoothPhoneMatchUsesTrustedMobileLevelAndMetadata() {

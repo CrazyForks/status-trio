@@ -289,6 +289,7 @@
 "bluetooth.openDetails" = "詳細を開いてデバイスの状態を表示";
 "bluetooth.title" = "Bluetooth";
 "bluetooth.pairedDevices.title" = "ペアリング済み";
+"bluetooth.devices.title" = "Bluetooth デバイス";
 "bluetooth.nearbyBattery.title" = "近くのデバイス";
 "bluetooth.nearbyDevice.fallback" = "Bluetooth デバイス";
 "bluetooth.action.openSettings" = "Bluetooth 設定を開く";

@@ -204,3 +204,13 @@ enum BluetoothMobileBatteryPanelVisibility {
             .contains { mobileDeviceIDs.contains($0.id) }
     }
 }
+
+enum BluetoothDeviceListHeading {
+    static func title(
+        hasNearbyDevices: Bool,
+        hasExternalMobileDevices: Bool
+    ) -> LocalizationKey? {
+        guard hasNearbyDevices else { return nil }
+        return hasExternalMobileDevices ? .bluetoothDevicesTitle : .bluetoothPairedDevicesTitle
+    }
+}

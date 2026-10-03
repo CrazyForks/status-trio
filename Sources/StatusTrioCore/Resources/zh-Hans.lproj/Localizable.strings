@@ -289,6 +289,7 @@
 "bluetooth.openDetails" = "打开详情查看设备状态";
 "bluetooth.title" = "蓝牙";
 "bluetooth.pairedDevices.title" = "已配对";
+"bluetooth.devices.title" = "蓝牙设备";
 "bluetooth.nearbyBattery.title" = "附近设备";
 "bluetooth.nearbyDevice.fallback" = "蓝牙设备";
 "bluetooth.action.openSettings" = "打开蓝牙设置";

@@ -39,6 +39,17 @@ struct MobileBatteryPresentationTests {
         ))
     }
 
+    @Test func externalWatchMixedWithUnmatchedNearbyUsesNeutralListHeading() {
+        #expect(BluetoothDeviceListHeading.title(
+            hasNearbyDevices: true,
+            hasExternalMobileDevices: true
+        ) == .bluetoothDevicesTitle)
+        #expect(BluetoothDeviceListHeading.title(
+            hasNearbyDevices: true,
+            hasExternalMobileDevices: false
+        ) == .bluetoothPairedDevicesTitle)
+    }
+
     @Test func mobileClaimRequiresBothBatteryOptInsAndVisibleDeviceList() {
         #expect(BluetoothMobileBatteryPanelVisibility.shouldClaim(
             showsBatteryLevels: true,
@@ -72,6 +83,21 @@ struct MobileBatteryPresentationTests {
         )
 
         #expect(!BluetoothDeviceActionPolicy.isActionable(watch))
+    }
+
+    @Test func pairedRowIdentifiedByMobileReadRemainsVisibleWhenBluetoothIsOff() {
+        let phone = BluetoothDevice(
+            id: "phone:phone-1", name: "Lina’s iPhone", kind: .mobile(.phone), isConnected: true
+        )
+
+        #expect(BluetoothMobileBatteryPanelVisibility.showsList(
+            availability: .poweredOff,
+            devices: [phone],
+            pairedDevices: [phone],
+            mobileDeviceIDs: [phone.id],
+            showsMobileBatteryLevels: true,
+            options: .standard
+        ))
     }
 
     @Test func watchPresentationUsesLocalizedFallbackAndSource() {

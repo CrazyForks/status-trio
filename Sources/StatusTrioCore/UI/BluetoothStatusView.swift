@@ -78,8 +78,12 @@ struct BluetoothStatusView: View {
             }
 
             if showsDeviceList(for: merged) {
-                if !nearbyDevices.isEmpty {
-                    Text(localization.string(.bluetoothPairedDevicesTitle))
+                let pairedIDs = Set(controller.devices.map(\.id))
+                if let heading = BluetoothDeviceListHeading.title(
+                    hasNearbyDevices: !nearbyDevices.isEmpty,
+                    hasExternalMobileDevices: merged.mobileDeviceIDs.contains { !pairedIDs.contains($0) }
+                ) {
+                    Text(localization.string(heading))
                         .font(.callout.weight(.semibold))
                         .foregroundStyle(.secondary)
                         .accessibilityAddTraits(.isHeader)
@@ -234,7 +238,7 @@ struct BluetoothStatusView: View {
             availability: controller.availability,
             devices: merged.devices,
             pairedDevices: controller.devices,
-            mobileDeviceIDs: Set(merged.mobileMetadataByDeviceID.keys),
+            mobileDeviceIDs: merged.mobileDeviceIDs,
             showsMobileBatteryLevels: showsMobileBatteryFeature,
             options: listOptions
         )
@@ -266,16 +270,15 @@ struct BluetoothStatusView: View {
             return merged.devices
         }
 
-        // When Bluetooth is unavailable, only show rows whose level arrived
-        // through the trusted phone. They remain read-only and still pass
+        // When Bluetooth is unavailable, only show rows identified by the
+        // trusted phone. They remain read-only and still pass
         // through BluetoothDeviceList's hidden/order/limit rules.
         return merged.devices.compactMap { device in
-            guard let snapshot = merged.mobileMetadataByDeviceID[device.id],
-                  let kind = BluetoothMobileDeviceModel.kind(forModel: snapshot.model) else { return nil }
+            guard merged.mobileDeviceIDs.contains(device.id) else { return nil }
             return BluetoothDevice(
                 id: device.id,
                 name: device.name,
-                kind: kind,
+                kind: device.kind,
                 isConnected: false,
                 isReadOverTheAir: true
             )

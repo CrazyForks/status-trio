@@ -289,6 +289,7 @@
 "bluetooth.openDetails" = "Apri i dettagli per visualizzare lo stato del dispositivo";
 "bluetooth.title" = "Bluetooth";
 "bluetooth.pairedDevices.title" = "Abbinati";
+"bluetooth.devices.title" = "Dispositivi Bluetooth";
 "bluetooth.nearbyBattery.title" = "Nelle vicinanze";
 "bluetooth.nearbyDevice.fallback" = "Dispositivo Bluetooth";
 "bluetooth.action.openSettings" = "Apri impostazioni Bluetooth";
