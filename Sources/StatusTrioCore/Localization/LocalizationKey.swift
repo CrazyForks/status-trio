@@ -123,6 +123,8 @@ enum LocalizationKey: String, CaseIterable, Hashable, Sendable {
     case settingsBluetoothBatteryLevelsDescription = "settings.bluetooth.batteryLevelsDescription"
     case settingsBluetoothNearbyBatteryDevices = "settings.bluetooth.nearbyBatteryDevices"
     case settingsBluetoothNearbyBatteryDevicesDescription = "settings.bluetooth.nearbyBatteryDevicesDescription"
+    case settingsBluetoothMobileBatteryDevices = "settings.bluetooth.mobileBatteryDevices"
+    case settingsBluetoothMobileBatteryDevicesDescription = "settings.bluetooth.mobileBatteryDevicesDescription"
     case settingsBluetoothListeningModePreview = "settings.bluetooth.listeningModePreview"
     case settingsBluetoothListeningModePreviewDescription = "settings.bluetooth.listeningModePreviewDescription"
     case settingsBluetoothListeningModePreviewDeviceName = "settings.bluetooth.listeningModePreviewDeviceName"
@@ -372,6 +374,13 @@ enum LocalizationKey: String, CaseIterable, Hashable, Sendable {
     /// The label on the mode control as a group, so VoiceOver names what the
     /// capsules are before it reads each one.
     case bluetoothListeningModeGroup = "bluetooth.listeningMode.accessibility"
+
+    case mobileBatteryWatchFallbackName = "mobileBattery.watchFallbackName"
+    case mobileBatteryWatchSource = "mobileBattery.watchSource"
+    case mobileBatteryUpdatedAt = "mobileBattery.updatedAt"
+    case mobileBatteryCharging = "mobileBattery.charging"
+    case mobileBatteryTrustRequired = "mobileBattery.trustRequired"
+    case mobileBatteryUnavailable = "mobileBattery.unavailable"
 
     case volumeTitle = "volume.title"
     case volumeTitleUnavailable = "volume.titleUnavailable"
