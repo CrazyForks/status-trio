@@ -61,9 +61,11 @@ enum BluetoothDeviceListPresentation {
         _ group: [BluetoothDevice],
         using order: [String]
     ) -> [BluetoothDevice] {
-        let readings = group.filter(\.isReadOverTheAir)
+        let readings = group.filter {
+            $0.isReadOverTheAir && BluetoothDeviceIdentity.bleUUID(from: $0.id) == nil
+        }
         guard !readings.isEmpty else { return ranked(group, using: order) }
-        return readings + ranked(group.filter { !$0.isReadOverTheAir }, using: order)
+        return readings + ranked(group.filter { !readings.contains($0) }, using: order)
     }
 
     /// Drops devices the user cannot act on or has chosen to hide: unpaired
@@ -89,7 +91,7 @@ enum BluetoothDeviceListPresentation {
         _ device: BluetoothDevice,
         options: BluetoothDeviceListOptions
     ) -> Bool {
-        let key = BluetoothBatteryReader.normalizedAddress(device.id)
+        let key = BluetoothDeviceIdentity.preferenceKey(device.id)
         if !key.isEmpty, options.hiddenDeviceAddresses.contains(key) {
             return true
         }
@@ -125,15 +127,15 @@ enum BluetoothDeviceListPresentation {
         // applies to nothing while the list looks shuffled.
         var ranks: [String: Int] = [:]
         for (index, address) in order.enumerated() {
-            let key = BluetoothBatteryReader.normalizedAddress(address)
+            let key = BluetoothDeviceIdentity.preferenceKey(address)
             guard !key.isEmpty, ranks[key] == nil else { continue }
             ranks[key] = index
         }
 
         return devices.enumerated()
             .sorted { lhs, rhs in
-                let leftRank = ranks[BluetoothBatteryReader.normalizedAddress(lhs.element.id)] ?? Int.max
-                let rightRank = ranks[BluetoothBatteryReader.normalizedAddress(rhs.element.id)] ?? Int.max
+                let leftRank = ranks[BluetoothDeviceIdentity.preferenceKey(lhs.element.id)] ?? Int.max
+                let rightRank = ranks[BluetoothDeviceIdentity.preferenceKey(rhs.element.id)] ?? Int.max
                 if leftRank != rightRank {
                     return leftRank < rightRank
                 }

@@ -71,6 +71,7 @@ final class SettingsStore: ObservableObject {
     static let hidesGhostBluetoothDevicesDefaultsKey = "hidesGhostBluetoothDevices"
     static let hiddenBluetoothDeviceAddressesDefaultsKey = "hiddenBluetoothDeviceAddresses"
     static let revealedGhostBluetoothDeviceAddressesDefaultsKey = "revealedGhostBluetoothDeviceAddresses"
+    static let nearbyBLESelectionsDefaultsKey = "nearbyBLESelections"
     static let bluetoothNetworkIconDeviceAddressDefaultsKey = "bluetoothNetworkIconDeviceAddress"
     static let bluetoothNetworkIconSymbolNameDefaultsKey = "bluetoothNetworkIconSymbolName"
     static let bluetoothDeviceLimitRange: ClosedRange<Int> = 1...20
@@ -469,6 +470,13 @@ final class SettingsStore: ObservableObject {
         }
     }
 
+    @Published private(set) var nearbyBLESelections: [NearbyBLEDeviceSelection] {
+        didSet {
+            guard let data = try? JSONEncoder().encode(nearbyBLESelections) else { return }
+            defaults.set(data, forKey: Self.nearbyBLESelectionsDefaultsKey)
+        }
+    }
+
     @Published var hidesGhostBluetoothDevices: Bool {
         didSet {
             defaults.set(hidesGhostBluetoothDevices, forKey: Self.hidesGhostBluetoothDevicesDefaultsKey)
@@ -650,7 +658,7 @@ final class SettingsStore: ObservableObject {
             at: min(insertionOffset, reorderedDevices.count)
         )
         bluetoothDeviceOrder = reorderedDevices.map {
-            BluetoothBatteryReader.normalizedAddress($0.id)
+            BluetoothDeviceIdentity.preferenceKey($0.id)
         }
     }
 
@@ -659,7 +667,7 @@ final class SettingsStore: ObservableObject {
     /// "hide devices not in System Settings" filter, so a device the user hides
     /// stays hidden whatever the profiler reports next.
     func setBluetoothDeviceHidden(_ address: String, hidden: Bool) {
-        let key = BluetoothBatteryReader.normalizedAddress(address)
+        let key = BluetoothDeviceIdentity.preferenceKey(address)
         guard !key.isEmpty else { return }
         if hidden {
             hiddenBluetoothDeviceAddresses.insert(key)
@@ -674,12 +682,52 @@ final class SettingsStore: ObservableObject {
     /// without turning the global filter off (which would reveal every unpaired
     /// device at once). Revealing is a no-op for non-ghost devices.
     func setBluetoothGhostRevealed(_ address: String, revealed: Bool) {
-        let key = BluetoothBatteryReader.normalizedAddress(address)
+        let key = BluetoothDeviceIdentity.preferenceKey(address)
         guard !key.isEmpty else { return }
         if revealed {
             revealedGhostBluetoothDeviceAddresses.insert(key)
         } else {
             revealedGhostBluetoothDeviceAddresses.remove(key)
+        }
+    }
+
+    func setNearbyBLEDeviceSelected(_ candidate: NearbyBLEDeviceCandidate, selected: Bool) {
+        let rowID = BluetoothDeviceIdentity.bleRowID(candidate.id)
+        if selected {
+            if let index = nearbyBLESelections.firstIndex(where: { $0.id == candidate.id }) {
+                nearbyBLESelections[index].name = candidate.name
+                nearbyBLESelections[index].vendor = candidate.vendor
+            } else {
+                nearbyBLESelections.append(NearbyBLEDeviceSelection(
+                    id: candidate.id,
+                    name: candidate.name,
+                    vendor: candidate.vendor,
+                    model: nil
+                ))
+            }
+            if !bluetoothDeviceOrder.contains(rowID) {
+                bluetoothDeviceOrder.append(rowID)
+            }
+            hiddenBluetoothDeviceAddresses.remove(rowID)
+            revealedGhostBluetoothDeviceAddresses.remove(rowID)
+        } else {
+            nearbyBLESelections.removeAll { $0.id == candidate.id }
+            bluetoothDeviceOrder.removeAll { BluetoothDeviceIdentity.preferenceKey($0) == rowID }
+            hiddenBluetoothDeviceAddresses.remove(rowID)
+            revealedGhostBluetoothDeviceAddresses.remove(rowID)
+        }
+    }
+
+    /// Updates display metadata only for devices the user has already selected.
+    /// A read result can never add a UUID to the allowlist.
+    func updateNearbyBLEMetadata(_ devices: [NearbyBluetoothBatteryDevice]) {
+        let byID = Dictionary(devices.map { ($0.id, $0) }, uniquingKeysWith: { _, latest in latest })
+        for index in nearbyBLESelections.indices {
+            guard let device = byID[nearbyBLESelections[index].id] else { continue }
+            if !device.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                nearbyBLESelections[index].name = device.name
+            }
+            nearbyBLESelections[index].model = device.model
         }
     }
 
@@ -802,6 +850,9 @@ final class SettingsStore: ObservableObject {
         let storedBluetoothDeviceOrder = defaults.stringArray(
             forKey: Self.bluetoothDeviceOrderDefaultsKey
         ) ?? []
+        let storedNearbyBLESelections = Self.decodedNearbyBLESelections(
+            defaults.data(forKey: Self.nearbyBLESelectionsDefaultsKey)
+        )
         let storedHidesGhostBluetoothDevices = defaults.object(
             forKey: Self.hidesGhostBluetoothDevicesDefaultsKey
         ) as? Bool
@@ -935,6 +986,7 @@ final class SettingsStore: ObservableObject {
             storedBluetoothDeviceLimit ?? Self.defaultMaxVisibleBluetoothDevices
         )
         self.bluetoothDeviceOrder = storedBluetoothDeviceOrder
+        self.nearbyBLESelections = storedNearbyBLESelections
         self.hidesGhostBluetoothDevices = storedHidesGhostBluetoothDevices ?? true
         self.hiddenBluetoothDeviceAddresses = storedHiddenBluetoothDeviceAddresses
         self.revealedGhostBluetoothDeviceAddresses = storedRevealedGhostBluetoothDeviceAddresses
@@ -984,6 +1036,15 @@ final class SettingsStore: ObservableObject {
         self.popupVolumeNaturalScrolling = defaults.object(
             forKey: Self.popupVolumeNaturalScrollingDefaultsKey
         ) as? Bool ?? Self.defaultPopupVolumeNaturalScrolling
+    }
+
+    private static func decodedNearbyBLESelections(_ data: Data?) -> [NearbyBLEDeviceSelection] {
+        guard let data,
+              let decoded = try? JSONDecoder().decode([NearbyBLEDeviceSelection].self, from: data) else {
+            return []
+        }
+        var seen: Set<UUID> = []
+        return decoded.filter { seen.insert($0.id).inserted }
     }
 
     static func clampedIconSize(_ value: Double) -> Double {

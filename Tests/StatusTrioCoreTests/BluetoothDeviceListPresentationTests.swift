@@ -2,6 +2,52 @@ import XCTest
 @testable import StatusTrioCore
 
 final class BluetoothDeviceListPresentationTests: XCTestCase {
+    func testBLERowsUseExplicitPreferenceKeysForOrderingAndHiding() {
+        let firstID = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
+        let secondID = UUID(uuidString: "00000000-0000-0000-0000-000000000002")!
+        let first = BluetoothDevice(
+            id: BluetoothDeviceIdentity.bleRowID(firstID), name: "First", kind: .unknown,
+            isConnected: false, isReadOverTheAir: true
+        )
+        let second = BluetoothDevice(
+            id: BluetoothDeviceIdentity.bleRowID(secondID), name: "Second", kind: .unknown,
+            isConnected: false, isReadOverTheAir: true
+        )
+        let options = BluetoothDeviceListOptions(
+            showsList: true, maxVisibleDevices: 5,
+            order: [BluetoothDeviceIdentity.bleRowID(secondID), BluetoothDeviceIdentity.bleRowID(firstID)],
+            hidesGhostDevices: true, hiddenDeviceAddresses: []
+        )
+
+        XCTAssertEqual(BluetoothDeviceListPresentation.orderedDevices([first, second], using: options.order).map(\.id), [second.id, first.id])
+        XCTAssertEqual(BluetoothDeviceListPresentation.filteredDevices(
+            [first, second],
+            options: BluetoothDeviceListOptions(
+                showsList: true, maxVisibleDevices: 5, order: [], hidesGhostDevices: true,
+                hiddenDeviceAddresses: [BluetoothDeviceIdentity.bleRowID(firstID)]
+            )
+        ).map(\.id), [second.id])
+    }
+
+    func testNearbyReadRowsKeepBLESelectionsInSavedOrder() {
+        let bleID = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
+        let classicRead = BluetoothDevice(
+            id: "AA:00:00:00:00:01", name: "Classic read", kind: .unknown,
+            isConnected: false, isReadOverTheAir: true
+        )
+        let ble = BluetoothDevice(
+            id: BluetoothDeviceIdentity.bleRowID(bleID), name: "Selected BLE", kind: .unknown,
+            isConnected: false, isReadOverTheAir: true
+        )
+
+        XCTAssertEqual(
+            BluetoothDeviceListPresentation.orderedDevices(
+                [ble, classicRead], using: [BluetoothDeviceIdentity.bleRowID(bleID)]
+            ).map(\.id),
+            [classicRead.id, ble.id]
+        )
+    }
+
     func testConnectedDevicesLeadAndOrderOnlyAppliesWithinAGroup() {
         let devices = [
             makeDevice(address: "AA:00:00:00:00:01", name: "Mouse", isConnected: false),
