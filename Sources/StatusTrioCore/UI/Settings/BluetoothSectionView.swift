@@ -216,6 +216,10 @@ struct BluetoothSectionView: View {
                 }
             }
 
+            if store.showsNearbyBluetoothBatteryDevices {
+                NearbyBLESelectionView(store: store, controller: bluetoothDevices)
+            }
+
             deviceListGroup
             deviceOrderGroup
         }
@@ -392,7 +396,7 @@ struct BluetoothSectionView: View {
                 } else {
                     List {
                         ForEach(orderedBluetoothDevices) { device in
-                            let key = BluetoothBatteryReader.normalizedAddress(device.id)
+                            let key = BluetoothDeviceIdentity.preferenceKey(device.id)
                             let ghostHiddenByFilter = device.isUnpairedGhost
                                 && store.hidesGhostBluetoothDevices
                                 && !store.revealedGhostBluetoothDeviceAddresses.contains(key)
@@ -517,7 +521,9 @@ struct BluetoothSectionView: View {
     /// controller, not the store, so a read that lands later repaints it.
     private var orderedBluetoothDevices: [BluetoothDevice] {
         BluetoothDeviceListPresentation.orderedDevices(
-            bluetoothDevices.devices,
+            bluetoothDevices.devices + NearbyBLEDeviceCatalog.settingsDevices(
+                selections: store.nearbyBLESelections
+            ),
             using: store.bluetoothDeviceOrder
         )
     }

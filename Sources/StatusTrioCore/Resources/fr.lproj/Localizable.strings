@@ -71,7 +71,7 @@
 "settings.bluetooth.batteryLevels" = "Afficher les niveaux de batterie Bluetooth";
 "settings.bluetooth.batteryLevelsDescription" = "Lit les niveaux de batterie des AirPods lorsque l’entrée Bluetooth est affichée. Aucune autorisation supplémentaire n’est demandée.";
 "settings.bluetooth.nearbyBatteryDevices" = "Afficher les niveaux de batterie BLE à proximité";
-"settings.bluetooth.nearbyBatteryDevicesDescription" = "Lorsque les niveaux de batterie Bluetooth sont activés, recherche les appareils BLE à proximité qui fournissent le service Batterie standard pendant que le panneau d’état est ouvert. La compatibilité dépend de l’appareil.";
+"settings.bluetooth.nearbyBatteryDevicesDescription" = "Choisissez les appareils BLE à proximité à afficher dans le panneau d’état. La batterie est lue uniquement pour les appareils sélectionnés et visibles.";
 "settings.bluetooth.listeningModePreview" = "Aperçu du sélecteur de mode d'écoute";
 "settings.bluetooth.listeningModePreviewDescription" = "Affiche les pastilles de mode sur tous les AirPods connectés pour tester l'interface. Le toucher d'une pastille s'anime comme sur un vrai appareil, mais ne modifie rien sur les AirPods.";
 "settings.bluetooth.listeningModePreviewDeviceName" = "Nom du périphérique d'aperçu";
@@ -412,3 +412,12 @@
 "mobileBattery.charging" = "En charge";
 "mobileBattery.trustRequired" = "Connectez l’iPhone par câble et touchez Faire confiance pour lire la batterie de son Apple Watch.";
 "mobileBattery.unavailable" = "Impossible d’actualiser la batterie de l’iPhone et de l’Apple Watch.";
+"settings.bluetooth.nearbyBLE.title" = "Appareils BLE à proximité";
+"settings.bluetooth.nearbyBLE.scan" = "Rechercher des appareils à proximité";
+"settings.bluetooth.nearbyBLE.scanning" = "Recherche…";
+"settings.bluetooth.nearbyBLE.description" = "Choisissez les appareils à afficher dans le panneau d’état.";
+"settings.bluetooth.nearbyBLE.empty" = "Aucun appareil à proximité. Relancez la recherche avec votre appareil à proximité.";
+"settings.bluetooth.nearbyBLE.noneSelected" = "Choisissez un appareil pour afficher sa batterie dans le panneau d’état.";
+"bluetooth.nearbyBLE.notNearby" = "Hors de portée";
+"bluetooth.nearbyBLE.unavailable" = "Temporairement indisponible";
+"bluetooth.nearbyBLE.source" = "BLE à proximité";

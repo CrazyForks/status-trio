@@ -24,6 +24,30 @@ enum NearbyBLEDeviceCatalog {
         }
     }
 
+    /// A selection first discovery picker that retains saved UUIDs which are
+    /// no longer broadcasting, so users can still remove them.
+    static func settingsCandidates(
+        selections: [NearbyBLEDeviceSelection],
+        candidates: [NearbyBLEDeviceCandidate]
+    ) -> [NearbyBLEDeviceCandidate] {
+        var byID: [UUID: NearbyBLEDeviceCandidate] = [:]
+        for candidate in NearbyBLEDiscoveryPresentation.ordered(candidates) {
+            byID[candidate.id] = candidate
+        }
+        var result = selections.map { selection in
+            let live = byID.removeValue(forKey: selection.id)
+            let liveName = live?.name.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            return NearbyBLEDeviceCandidate(
+                id: selection.id,
+                name: liveName.isEmpty ? selection.name : liveName,
+                vendor: live?.vendor ?? selection.vendor,
+                lastSeen: live?.lastSeen ?? .distantPast
+            )
+        }
+        result.append(contentsOf: NearbyBLEDiscoveryPresentation.ordered(Array(byID.values)))
+        return result
+    }
+
     /// Projects the selected UUID allowlist into panel rows. Broadcast names
     /// and vendor data describe discovery only; neither can create a row or
     /// classify it as an iPhone. Only selected metadata and a trusted GATT model

@@ -6,6 +6,8 @@ import SwiftUI
 struct NearbyBluetoothBatteryList: View {
     @EnvironmentObject private var localization: Localization
     let rows: [NearbyBLEPanelRow]
+    let options: BluetoothDeviceListOptions
+    let onVisibleIDsChanged: (Set<UUID>) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -14,7 +16,11 @@ struct NearbyBluetoothBatteryList: View {
                 .foregroundStyle(.secondary)
                 .accessibilityAddTraits(.isHeader)
 
-            NearbyBluetoothBatteryRows(rows: rows)
+            NearbyBluetoothBatteryRows(
+                rows: rows,
+                options: options,
+                onVisibleIDsChanged: onVisibleIDsChanged
+            )
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }

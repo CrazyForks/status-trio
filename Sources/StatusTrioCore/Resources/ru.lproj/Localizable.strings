@@ -71,7 +71,7 @@
 "settings.bluetooth.batteryLevels" = "Показывать заряд устройств Bluetooth";
 "settings.bluetooth.batteryLevelsDescription" = "Заряд AirPods считывается, пока показан пункт Bluetooth. Дополнительный запрос разрешения не появляется.";
 "settings.bluetooth.nearbyBatteryDevices" = "Показывать заряд ближайших BLE-устройств";
-"settings.bluetooth.nearbyBatteryDevicesDescription" = "Если показ заряда Bluetooth включён, при открытой панели состояния выполняется поиск ближайших BLE-устройств со стандартной службой Battery Service. Поддержка зависит от устройства.";
+"settings.bluetooth.nearbyBatteryDevicesDescription" = "Выберите ближайшие BLE-устройства для панели состояния. Заряд считывается только у выбранных устройств, видимых в панели.";
 "settings.bluetooth.listeningModePreview" = "Предпросмотр переключателя режима прослушивания";
 "settings.bluetooth.listeningModePreviewDescription" = "Показывать переключатели режима на всех подключённых AirPods для проверки интерфейса. Нажатие анимируется как на настоящем устройстве, но ничего в AirPods не меняет.";
 "settings.bluetooth.listeningModePreviewDeviceName" = "Имя устройства предпросмотра";
@@ -412,3 +412,12 @@
 "mobileBattery.charging" = "Заряжается";
 "mobileBattery.trustRequired" = "Подключите iPhone кабелем и нажмите «Доверять», чтобы считать заряд сопряжённых Apple Watch.";
 "mobileBattery.unavailable" = "Не удалось обновить заряд iPhone и Apple Watch.";
+"settings.bluetooth.nearbyBLE.title" = "Ближайшие BLE-устройства";
+"settings.bluetooth.nearbyBLE.scan" = "Найти устройства поблизости";
+"settings.bluetooth.nearbyBLE.scanning" = "Поиск…";
+"settings.bluetooth.nearbyBLE.description" = "Выберите устройства для отображения в панели состояния.";
+"settings.bluetooth.nearbyBLE.empty" = "Устройства поблизости не найдены. Повторите поиск, когда устройство будет рядом.";
+"settings.bluetooth.nearbyBLE.noneSelected" = "Выберите устройство, чтобы показывать его заряд в панели состояния.";
+"bluetooth.nearbyBLE.notNearby" = "Не поблизости";
+"bluetooth.nearbyBLE.unavailable" = "Временно недоступно";
+"bluetooth.nearbyBLE.source" = "BLE поблизости";

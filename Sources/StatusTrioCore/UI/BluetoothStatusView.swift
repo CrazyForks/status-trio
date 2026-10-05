@@ -119,8 +119,14 @@ struct BluetoothStatusView: View {
                 }
             }
 
-            if showsNearbyBatteryLevels, listOptions.showsList, !nearbyRows.isEmpty {
-                NearbyBluetoothBatteryList(rows: nearbyRows)
+            if showsNearbyBatteryLevels, listOptions.showsList, listOptions.maxVisibleDevices > 0, !nearbyRows.isEmpty {
+                NearbyBluetoothBatteryList(
+                    rows: nearbyRows,
+                    options: listOptions,
+                    onVisibleIDsChanged: {
+                        controller.setVisibleNearbyBLEDevices($0, for: Self.nearbyBLEVisibleToken)
+                    }
+                )
             }
 
             if let message = mobileFailureMessage {
@@ -145,16 +151,15 @@ struct BluetoothStatusView: View {
             }
             controller.requestBatteryLevels(Self.summaryBatteryLevelsToken)
         }
-        .task(id: nearbyBLEConfigurationTaskID) {
+        .task(id: nearbyBLEConfiguration) {
             controller.configureNearbyBLEDevices(
-                enabled: showsNearbyBatteryDevices,
-                selectedIDs: nearbyBLESelectedIDs,
-                hiddenIDs: nearbyBLEHiddenIDs
+                enabled: nearbyBLEConfiguration.enabled,
+                selectedIDs: nearbyBLEConfiguration.selectedIDs,
+                hiddenIDs: nearbyBLEConfiguration.hiddenIDs
             )
-            // Task 5 replaces this temporary selection-wide visibility set with
-            // row geometry from the rendered nearby list.
-            let visibleIDs = showsBatteryLevels && showsNearbyBatteryDevices ? nearbyBLESelectedIDs : []
-            controller.setVisibleNearbyBLEDevices(visibleIDs, for: Self.nearbyBLEVisibleToken)
+            // Revoke the prior geometry permit immediately while SwiftUI lays
+            // out the new rows after a toggle, selection, or order change.
+            controller.setVisibleNearbyBLEDevices([], for: Self.nearbyBLEVisibleToken)
         }
         .task(id: mobileBatteryClaimTaskID) {
             guard BluetoothMobileBatteryPanelVisibility.shouldClaim(
@@ -225,16 +230,28 @@ struct BluetoothStatusView: View {
     private static let summaryBatteryLevelsToken = "bluetooth.summary"
     private static let nearbyBLEVisibleToken = "bluetooth.summary.nearbyBLEVisible"
 
+    private struct NearbyBLEConfiguration: Equatable {
+        let enabled: Bool
+        let selectedIDs: Set<UUID>
+        let hiddenIDs: Set<UUID>
+        let batteryLevelsEnabled: Bool
+        let showsList: Bool
+    }
+
     private var nearbyBLESelectedIDs: Set<UUID> { Set(nearbyBLESelections.map(\.id)) }
 
     private var nearbyBLEHiddenIDs: Set<UUID> {
         Set(listOptions.hiddenDeviceAddresses.compactMap { BluetoothDeviceIdentity.bleUUID(from: $0) })
     }
 
-    private var nearbyBLEConfigurationTaskID: String {
-        let selected = nearbyBLESelectedIDs.map(\.uuidString).sorted().joined(separator: ",")
-        let hidden = nearbyBLEHiddenIDs.map(\.uuidString).sorted().joined(separator: ",")
-        return "\(showsBatteryLevels):\(showsNearbyBatteryDevices):\(selected):\(hidden)"
+    private var nearbyBLEConfiguration: NearbyBLEConfiguration {
+        NearbyBLEConfiguration(
+            enabled: showsNearbyBatteryDevices,
+            selectedIDs: nearbyBLESelectedIDs,
+            hiddenIDs: nearbyBLEHiddenIDs,
+            batteryLevelsEnabled: showsBatteryLevels,
+            showsList: listOptions.showsList
+        )
     }
     private static let mobileBatteryToken = "bluetooth.summary.mobileBatteryDevices"
 

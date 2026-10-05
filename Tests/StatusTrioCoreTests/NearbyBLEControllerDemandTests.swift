@@ -59,6 +59,28 @@ final class NearbyBLEControllerDemandTests: XCTestCase {
         controller.deactivate()
     }
 
+    func testGeneralBatteryToggleOffRevokesPanelReadsWithoutStoppingSettingsDiscovery() {
+        let (controller, scanner, monitor) = makeController()
+        controller.activate()
+        monitor.emit(.poweredOn)
+        let id = UUID()
+        controller.configureNearbyBLEDevices(enabled: true, selectedIDs: [id], hiddenIDs: [])
+        controller.requestNearbyBLEDiscovery("settings")
+        controller.holdVisibleSurface(BluetoothDeviceController.popoverSurfaceToken)
+        controller.holdVisibleSurface(BluetoothDeviceController.bluetoothSummarySurfaceToken)
+        controller.setVisibleNearbyBLEDevices([id], for: "panel")
+        XCTAssertEqual(scanner.allowedReadDeviceIDs, [id])
+
+        // The panel's general battery-level setting removes the read demand.
+        controller.setVisibleNearbyBLEDevices([], for: "panel")
+
+        XCTAssertTrue(scanner.allowedReadDeviceIDs.isEmpty)
+        XCTAssertTrue(scanner.isRunning, "Settings discovery is independent of panel battery visibility")
+        controller.releaseNearbyBLEDiscovery("settings")
+        XCTAssertFalse(scanner.isRunning)
+        controller.deactivate()
+    }
+
     func testFeatureOffAndBluetoothUnavailableRevokeAllReads() {
         let (controller, scanner, monitor) = makeController()
         controller.activate()

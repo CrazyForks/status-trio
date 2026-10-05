@@ -55,6 +55,27 @@ import Testing
         #expect(SettingsStore(defaults: suite.defaults).nearbyBLESelections.map(\.id) == [id, otherID])
     }
 
+    @Test func broadcastMetadataUpdatesSavedNameButCannotSelectAnUnapprovedUUID() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+        let selectedID = UUID()
+        let unselectedID = UUID()
+        let store = SettingsStore(defaults: suite.defaults)
+        store.setNearbyBLEDeviceSelected(
+            NearbyBLEDeviceCandidate(id: selectedID, name: "Saved name", vendor: .other, lastSeen: .now),
+            selected: true
+        )
+
+        store.updateNearbyBLECandidateMetadata([
+            NearbyBLEDeviceCandidate(id: selectedID, name: "Current name", vendor: .apple, lastSeen: .now),
+            NearbyBLEDeviceCandidate(id: unselectedID, name: "Nearby stranger", vendor: .apple, lastSeen: .now)
+        ])
+
+        #expect(store.nearbyBLESelections.map(\.id) == [selectedID])
+        #expect(store.nearbyBLESelections.first?.name == "Current name")
+        #expect(store.nearbyBLESelections.first?.vendor == .apple)
+    }
+
     private func makeSuite() -> (defaults: UserDefaults, name: String) {
         let name = "NearbyBLESettingsTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: name)!

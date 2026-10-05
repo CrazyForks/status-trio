@@ -718,6 +718,18 @@ final class SettingsStore: ObservableObject {
         }
     }
 
+    /// Broadcast metadata can refresh the label of a saved UUID, but never
+    /// changes selection state or creates a new permission entry.
+    func updateNearbyBLECandidateMetadata(_ candidates: [NearbyBLEDeviceCandidate]) {
+        let byID = Dictionary(candidates.map { ($0.id, $0) }, uniquingKeysWith: { _, latest in latest })
+        for index in nearbyBLESelections.indices {
+            guard let candidate = byID[nearbyBLESelections[index].id],
+                  !candidate.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { continue }
+            nearbyBLESelections[index].name = candidate.name
+            nearbyBLESelections[index].vendor = candidate.vendor
+        }
+    }
+
     /// Updates display metadata only for devices the user has already selected.
     /// A read result can never add a UUID to the allowlist.
     func updateNearbyBLEMetadata(_ devices: [NearbyBluetoothBatteryDevice]) {

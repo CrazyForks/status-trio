@@ -71,7 +71,7 @@
 "settings.bluetooth.batteryLevels" = "Show Bluetooth battery levels";
 "settings.bluetooth.batteryLevelsDescription" = "Reads AirPods battery levels while the Bluetooth entry is shown. No additional permission prompt is shown.";
 "settings.bluetooth.nearbyBatteryDevices" = "Show nearby BLE battery levels";
-"settings.bluetooth.nearbyBatteryDevicesDescription" = "With Bluetooth battery levels on, scans for nearby BLE devices that provide the standard Battery Service while the status panel is open. Support varies by device.";
+"settings.bluetooth.nearbyBatteryDevicesDescription" = "Select nearby BLE devices to show in the status panel. Battery reads run only for selected devices visible in the panel.";
 "settings.bluetooth.listeningModePreview" = "Preview the listening mode switch";
 "settings.bluetooth.listeningModePreviewDescription" = "Show the mode capsules on every connected AirPods for interface testing. Tapping a capsule animates as it does on a real device, but changes nothing on the AirPods.";
 "settings.bluetooth.listeningModePreviewDeviceName" = "Preview device name";
@@ -412,3 +412,12 @@
 "mobileBattery.charging" = "Charging";
 "mobileBattery.trustRequired" = "Connect your iPhone by cable and tap Trust to read its Apple Watch battery.";
 "mobileBattery.unavailable" = "iPhone and Apple Watch battery could not be refreshed.";
+"settings.bluetooth.nearbyBLE.title" = "Nearby BLE devices";
+"settings.bluetooth.nearbyBLE.scan" = "Scan nearby devices";
+"settings.bluetooth.nearbyBLE.scanning" = "Scanning…";
+"settings.bluetooth.nearbyBLE.description" = "Select devices to show in the status panel.";
+"settings.bluetooth.nearbyBLE.empty" = "No nearby devices found. Scan again with your device nearby.";
+"settings.bluetooth.nearbyBLE.noneSelected" = "Select a device to show its battery in the status panel.";
+"bluetooth.nearbyBLE.notNearby" = "Not nearby";
+"bluetooth.nearbyBLE.unavailable" = "Temporarily unavailable";
+"bluetooth.nearbyBLE.source" = "Nearby BLE";

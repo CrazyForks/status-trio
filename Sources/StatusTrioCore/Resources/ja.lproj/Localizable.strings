@@ -71,7 +71,7 @@
 "settings.bluetooth.batteryLevels" = "Bluetooth のバッテリー残量を表示";
 "settings.bluetooth.batteryLevelsDescription" = "Bluetooth 項目の表示中に AirPods の残量を読み取ります。追加の権限確認は表示されません。";
 "settings.bluetooth.nearbyBatteryDevices" = "近くの BLE デバイスのバッテリー残量を表示";
-"settings.bluetooth.nearbyBatteryDevicesDescription" = "Bluetooth のバッテリー残量表示が有効な間、ステータスパネルを開くと標準 Battery Service を提供する近くの BLE デバイスをスキャンします。対応状況はデバイスによって異なります。";
+"settings.bluetooth.nearbyBatteryDevicesDescription" = "ステータスパネルに表示する近くの BLE デバイスを選択します。バッテリーは選択され、表示中のデバイスのみ読み取ります。";
 "settings.bluetooth.listeningModePreview" = "ヒアリングモード切り替えをプレビュー表示";
 "settings.bluetooth.listeningModePreviewDescription" = "UI の確認用に、接続中のすべての AirPods にモード切り替えのボタンを表示します。タップすると実機と同じアニメーションが動きますが、AirPods の設定は変更されません。";
 "settings.bluetooth.listeningModePreviewDeviceName" = "プレビュー表示名";
@@ -412,3 +412,12 @@
 "mobileBattery.charging" = "充電中";
 "mobileBattery.trustRequired" = "iPhone をケーブルで接続して「信頼」をタップすると、ペアリング済み Apple Watch のバッテリーを読み取れます。";
 "mobileBattery.unavailable" = "iPhone と Apple Watch のバッテリーを更新できませんでした。";
+"settings.bluetooth.nearbyBLE.title" = "近くの BLE デバイス";
+"settings.bluetooth.nearbyBLE.scan" = "近くのデバイスをスキャン";
+"settings.bluetooth.nearbyBLE.scanning" = "スキャン中…";
+"settings.bluetooth.nearbyBLE.description" = "ステータスパネルに表示するデバイスを選択します。";
+"settings.bluetooth.nearbyBLE.empty" = "近くにデバイスが見つかりません。デバイスを近くに置いて再スキャンしてください。";
+"settings.bluetooth.nearbyBLE.noneSelected" = "デバイスを選択すると、ステータスパネルにバッテリー残量を表示します。";
+"bluetooth.nearbyBLE.notNearby" = "近くにありません";
+"bluetooth.nearbyBLE.unavailable" = "一時的に利用できません";
+"bluetooth.nearbyBLE.source" = "近くの BLE";

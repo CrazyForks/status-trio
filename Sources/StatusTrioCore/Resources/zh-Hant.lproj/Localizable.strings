@@ -71,7 +71,7 @@
 "settings.bluetooth.batteryLevels" = "顯示藍牙裝置電量";
 "settings.bluetooth.batteryLevelsDescription" = "當狀態面板顯示藍牙裝置時讀取 AirPods 電量，不會額外要求權限。";
 "settings.bluetooth.nearbyBatteryDevices" = "顯示附近 BLE 裝置電量";
-"settings.bluetooth.nearbyBatteryDevicesDescription" = "開啟藍牙電量後，狀態面板開啟時會掃描提供標準電池服務的附近 BLE 裝置。支援情況因裝置而異。";
+"settings.bluetooth.nearbyBatteryDevicesDescription" = "選擇要在狀態面板中顯示的附近 BLE 裝置。僅讀取已選擇且目前可見的裝置電量。";
 "settings.bluetooth.listeningModePreview" = "預試聆聽模式切換";
 "settings.bluetooth.listeningModePreviewDescription" = "在每台已連結的 AirPods 上顯示模式膠囊，用於介面測試。點擊膠囊的動畫與真機一致，但不會變更 AirPods 的任何設定。";
 "settings.bluetooth.listeningModePreviewDeviceName" = "預試裝置名";
@@ -412,3 +412,12 @@
 "mobileBattery.charging" = "正在充電";
 "mobileBattery.trustRequired" = "請以連接線連接 iPhone 並點一下「信任」，以讀取已配對 Apple Watch 的電量。";
 "mobileBattery.unavailable" = "無法重新整理 iPhone 與 Apple Watch 電量。";
+"settings.bluetooth.nearbyBLE.title" = "附近 BLE 裝置";
+"settings.bluetooth.nearbyBLE.scan" = "掃描附近裝置";
+"settings.bluetooth.nearbyBLE.scanning" = "正在掃描…";
+"settings.bluetooth.nearbyBLE.description" = "選擇要在狀態面板中顯示的裝置。";
+"settings.bluetooth.nearbyBLE.empty" = "找不到附近裝置。請將裝置放在附近後重新掃描。";
+"settings.bluetooth.nearbyBLE.noneSelected" = "勾選裝置後，可在狀態面板中顯示其電量。";
+"bluetooth.nearbyBLE.notNearby" = "目前不在附近";
+"bluetooth.nearbyBLE.unavailable" = "暫時無法讀取";
+"bluetooth.nearbyBLE.source" = "附近 BLE";

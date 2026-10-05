@@ -54,7 +54,7 @@
 "settings.bluetooth.batteryLevels" = "عرض مستويات بطارية Bluetooth";
 "settings.bluetooth.batteryLevelsDescription" = "تقرأ مستويات بطارية AirPods أثناء عرض إدخال Bluetooth. لن يظهر طلب إذن إضافي.";
 "settings.bluetooth.nearbyBatteryDevices" = "عرض مستويات بطارية أجهزة BLE القريبة";
-"settings.bluetooth.nearbyBatteryDevicesDescription" = "عند تفعيل مستويات بطارية Bluetooth، يبحث التطبيق عن أجهزة BLE قريبة توفر خدمة البطارية القياسية أثناء فتح لوحة الحالة. يختلف الدعم حسب الجهاز.";
+"settings.bluetooth.nearbyBatteryDevicesDescription" = "اختر أجهزة BLE القريبة لعرضها في لوحة الحالة. تُقرأ البطارية للأجهزة المحددة والظاهرة فقط.";
 "settings.bluetooth.listeningModePreview" = "معاينة مُبدِّل وضع السمع";
 "settings.bluetooth.listeningModePreviewDescription" = "اعرض كبسولات الوضع على جميع AirPods المتصلة لاختبار الواجهة. النقر على كبسولة يُحركها كما على الجهاز الفعلي لكن دون تغيير أي إعداد في AirPods.";
 "settings.bluetooth.listeningModePreviewDeviceName" = "اسم جهاز المعاينة";
@@ -412,3 +412,12 @@
 "mobileBattery.charging" = "قيد الشحن";
 "mobileBattery.trustRequired" = "صِل iPhone بالكابل واضغط على «الوثوق» لقراءة بطارية Apple Watch المقترنة.";
 "mobileBattery.unavailable" = "تعذّر تحديث بطارية iPhone وApple Watch.";
+"settings.bluetooth.nearbyBLE.title" = "أجهزة BLE القريبة";
+"settings.bluetooth.nearbyBLE.scan" = "افحص الأجهزة القريبة";
+"settings.bluetooth.nearbyBLE.scanning" = "جارٍ الفحص…";
+"settings.bluetooth.nearbyBLE.description" = "اختر الأجهزة التي تريد عرضها في لوحة الحالة.";
+"settings.bluetooth.nearbyBLE.empty" = "لم يتم العثور على أجهزة قريبة. أعد الفحص مع وجود جهازك بالقرب.";
+"settings.bluetooth.nearbyBLE.noneSelected" = "اختر جهازًا لعرض بطاريته في لوحة الحالة.";
+"bluetooth.nearbyBLE.notNearby" = "غير قريب";
+"bluetooth.nearbyBLE.unavailable" = "غير متاح مؤقتًا";
+"bluetooth.nearbyBLE.source" = "BLE قريب";
