@@ -53,17 +53,26 @@ The packaged executable check reported `arm64: minos 15.0, sdk 26.0` and
 `LC_BUILD_VERSION check passed`; package output is at
 `/tmp/nearby-ble-final-testapp-build.log`.
 
-The final test app is packaged separately from the installed product, using
-bundle ID `com.lingsmbp.StatusTrio.BLETest` and display name `Status Trio BLE
-Test`. The package must pass `scripts/verify-platform-version.sh` with macOS 26
-SDK or newer. It uses the repository's ad-hoc signing configuration; the
+The final test app is packaged separately from the installed product. It uses
+the repository's ad-hoc signing configuration; the
 project has no Developer ID certificate or notarization secrets.
 
-A `publish=false` GitHub release preflight passed for the previous implementation
-SHA `43d9786ed3ae52db74f735964ecdbc477f876361` (run `37324480752`: tests,
-release build, app/DMG packaging, signing and artifact upload passed; publishing
-was skipped). That run predates the consolidated review fixes. The parent task
-owns the final-SHA preflight and its result must be recorded separately.
+A manual settings smoke test used three simulated UUID selections in the
+isolated test-app preferences, without granting Bluetooth access. Blank and
+duplicate names displayed distinct UUID suffixes; device-order rows displayed
+the Nearby BLE source badge without overlapping controls. Deselecting one
+candidate removed its corresponding device-order row. The test app was then
+closed and its isolated preferences reset; installed-product preferences were
+not changed. This checks settings presentation, not radio discovery or reads.
+
+The final `publish=false` GitHub release preflight
+[run 37328285452](https://github.com/lingyired/status-trio/actions/runs/37328285452)
+passed at commit `f675c42f08d663a7da04a8fabffcfa0b116685f8`, whose product
+code and tests are identical to `3764a719c2cd4abebb651ff1c26dd9508ddb4497`.
+Version `1.4.0`, build `18` was used only for the preflight. Tests, release
+build, app/DMG packaging, signing, and artifact upload passed. Artifact
+`StatusTrio-226` was uploaded (12,127,822 bytes); release and appcast publication
+were skipped. Subsequent documentation changes do not alter the verified code.
 
 The focused regression suite covers session-gate retirement/regrant, candidate
 cache removal and expiry, Apple-first sorting across selected and discovered
@@ -76,6 +85,36 @@ invalidation policy used by the view and the controller's permit retention.
 Actual SwiftUI geometry reporting after a hidden-row settings change remains
 unverified by automated UI integration. No failing Actions run remains
 unrecorded; the failed local hosted-view experiment is not a GitHub Actions run.
+
+## Implementation rulings
+
+- Recognized Apple Continuity candidates may appear without a name. Names are
+  presentation metadata; the complete company identifier and recognized message
+  type still gate discovery. If this admits unwanted unnamed candidates, the
+  picker can be noisier, but no UUID gains read permission without selection.
+- Real iPhone/Watch GATT capability remains a hardware verification item. Unit
+  tests prove authorization boundaries, not a particular device's readable
+  characteristic. If a target is unsupported, its selected row may remain
+  unavailable rather than deliver battery data.
+- BLE UUID stability remains a hardware verification item. Selection follows
+  only the saved UUID because names cannot safely identify ownership. If a UUID
+  rotates, the user must select the new UUID.
+- Temporary GATT effects on macOS connection reporting remain unverified. Pure
+  BLE rows stay disconnected, while system rows preserve macOS state without a
+  reliable cross-source identity. If macOS reports a temporary GATT session as a
+  connection, that system row may still appear connected.
+- Exact CI toolchain compatibility is decided by the nonpublishing release
+  workflow, not the newer local compiler. A failed preflight blocks merge and
+  must be diagnosed and recorded before completion.
+- All 12 translations use the existing localization vocabulary, but this pass
+  does not provide native-speaker review. Some wording may need later refinement.
+- Headless hosted-view geometry verification was replaced with deterministic
+  policy and controller regressions after no geometry and a signal-11 host
+  failure. Physical scrolling and actual SwiftUI layout remain manual hardware
+  checks; a layout-specific regression could escape these tests.
+
+No review minors remain deferred. The visual/VoiceOver status inconsistency was
+regraded as important and fixed with shared status derivation and a regression.
 
 ## Hardware verification limits
 
@@ -93,10 +132,7 @@ available in the current advertisement inputs. The implementation does not
 infer one from a name. BLE rows remain distinct and `isConnected == false`; a
 system row keeps the state reported by macOS. Whether a temporary GATT session
 changes that system-reported state was not measured during this pass, so this
-work does not claim to resolve a false-connected system row. A prior isolated
-diagnostic for a paired keyboard left it in the system connected section after
-canceling an app-local read, but did not exercise this feature's scanner or
-establish a BLE-UUID-to-system-address association.
+work does not claim to resolve a false-connected system row.
 
 If a test device changes its BLE UUID, its prior selection cannot safely follow
 it by name. The user must select the newly discovered UUID. Any future
