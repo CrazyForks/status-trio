@@ -348,11 +348,19 @@ final class BluetoothNearbyBatteryLifecycleTests: XCTestCase {
 @MainActor
 final class NearbyBatteryScannerSpy: BluetoothLEBatteryScanning {
     var onDevicesChanged: (([NearbyBluetoothBatteryDevice]) -> Void)?
+    var onCandidatesChanged: (([NearbyBLEDeviceCandidate]) -> Void)?
+    var onReadFailures: ((Set<UUID>) -> Void)?
+    var onIsScanningChanged: ((Bool) -> Void)?
+    private(set) var allowedReadDeviceIDs: Set<UUID> = []
     private(set) var isRunning = false
     private(set) var isScanning = false
     private(set) var startCount = 0
     private(set) var refreshCount = 0
     private(set) var stopCount = 0
+
+    func setAllowedReadDeviceIDs(_ ids: Set<UUID>) {
+        allowedReadDeviceIDs = ids
+    }
 
     func start() {
         startCount += 1

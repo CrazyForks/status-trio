@@ -48,6 +48,27 @@ struct BluetoothLEBatteryScannerStateTests {
         #expect(policy.queuedCandidateCount == 8)
     }
 
+    @Test func unauthorizedBroadcastsDoNotUseTheEightReadCandidateSlots() {
+        let start = Date(timeIntervalSince1970: 2_100)
+        var policy = BluetoothLEBatteryScanPolicy()
+        var authorization = NearbyBLEReadAuthorization()
+        let permitted = UUID()
+        _ = authorization.update([permitted])
+        let didBeginScan = policy.beginScan(at: start, manual: true)
+        #expect(didBeginScan)
+
+        for _ in 0..<12 {
+            let stranger = UUID()
+            if authorization.allowedIDs.contains(stranger) {
+                _ = policy.enqueueCandidate(stranger, at: start)
+            }
+        }
+        #expect(policy.queuedCandidateCount == 0)
+        let didEnqueuePermit = policy.enqueueCandidate(permitted, at: start)
+        #expect(didEnqueuePermit)
+        #expect(policy.queuedCandidateCount == 1)
+    }
+
     @Test func connectionQueueStartsAndRefillsWhileScanWindowIsActive() {
         let start = Date(timeIntervalSince1970: 3_000)
         var policy = BluetoothLEBatteryScanPolicy()
@@ -87,6 +108,26 @@ struct BluetoothLEBatteryScannerStateTests {
         #expect(policy.queuedCandidateCount == 0)
         policy.completeConnection(candidates[0], succeeded: false, at: start)
         #expect(policy.startQueuedConnections().isEmpty)
+    }
+
+    @Test func removingRevokedCandidatesKeepsOtherQueuedAndActiveReads() {
+        let start = Date(timeIntervalSince1970: 3_300)
+        var policy = BluetoothLEBatteryScanPolicy()
+        let revoked = UUID()
+        let active = UUID()
+        let queued = UUID()
+        let didBeginScan = policy.beginScan(at: start, manual: true)
+        #expect(didBeginScan)
+        _ = policy.enqueueCandidate(revoked, at: start)
+        _ = policy.enqueueCandidate(active, at: start)
+        _ = policy.enqueueCandidate(queued, at: start)
+        #expect(policy.startQueuedConnections() == [revoked, active])
+
+        policy.removeCandidates([revoked])
+
+        #expect(policy.inFlightConnectionCount == 1)
+        #expect(policy.queuedCandidateCount == 1)
+        #expect(policy.startQueuedConnections() == [queued])
     }
 
     @Test func doesNotQueueTheSamePeripheralWhileItsGattQueryIsInFlight() {

@@ -787,8 +787,13 @@ private final class SummaryBluetoothBatteryReader: BluetoothBatteryReading {
 @MainActor
 private final class SummaryNearbyBatteryScanner: BluetoothLEBatteryScanning {
     var onDevicesChanged: (([NearbyBluetoothBatteryDevice]) -> Void)?
+    var onCandidatesChanged: (([NearbyBLEDeviceCandidate]) -> Void)?
+    var onReadFailures: ((Set<UUID>) -> Void)?
+    var onIsScanningChanged: ((Bool) -> Void)?
     private(set) var isRunning = false
     private(set) var isScanning = false
+
+    func setAllowedReadDeviceIDs(_ ids: Set<UUID>) {}
 
     func start() { isRunning = true }
     func refresh() {}
