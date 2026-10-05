@@ -157,9 +157,13 @@ struct BluetoothStatusView: View {
                 selectedIDs: nearbyBLEConfiguration.selectedIDs,
                 hiddenIDs: nearbyBLEConfiguration.hiddenIDs
             )
-            // Revoke the prior geometry permit immediately while SwiftUI lays
-            // out the new rows after a toggle, selection, or order change.
-            controller.setVisibleNearbyBLEDevices([], for: Self.nearbyBLEVisibleToken)
+            if NearbyBLEPanelVisibility.shouldClearVisibleIDs(
+                enabled: nearbyBLEConfiguration.enabled,
+                batteryLevelsEnabled: nearbyBLEConfiguration.batteryLevelsEnabled,
+                showsList: nearbyBLEConfiguration.showsList
+            ) {
+                controller.setVisibleNearbyBLEDevices([], for: Self.nearbyBLEVisibleToken)
+            }
         }
         .task(id: mobileBatteryClaimTaskID) {
             guard BluetoothMobileBatteryPanelVisibility.shouldClaim(

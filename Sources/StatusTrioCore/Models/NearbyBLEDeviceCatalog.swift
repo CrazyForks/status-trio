@@ -6,6 +6,19 @@ struct NearbyBLEPanelRow: Identifiable, Equatable, Sendable {
     let batteryLevel: Int?
     let wasSeenRecently: Bool
     let readFailed: Bool
+
+    var status: NearbyBLEPanelRowStatus {
+        if let batteryLevel { return .battery(batteryLevel) }
+        if readFailed { return .unavailable }
+        return wasSeenRecently ? .pending : .notNearby
+    }
+}
+
+enum NearbyBLEPanelRowStatus: Equatable, Sendable {
+    case battery(Int)
+    case unavailable
+    case notNearby
+    case pending
 }
 
 enum NearbyBLEDeviceCatalog {
@@ -45,7 +58,7 @@ enum NearbyBLEDeviceCatalog {
             )
         }
         result.append(contentsOf: NearbyBLEDiscoveryPresentation.ordered(Array(byID.values)))
-        return result
+        return NearbyBLEDiscoveryPresentation.ordered(result)
     }
 
     /// Projects the selected UUID allowlist into panel rows. Broadcast names

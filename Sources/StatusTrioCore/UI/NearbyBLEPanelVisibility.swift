@@ -2,6 +2,10 @@ import CoreGraphics
 import Foundation
 
 enum NearbyBLEPanelVisibility {
+    static func shouldClearVisibleIDs(enabled: Bool, batteryLevelsEnabled: Bool, showsList: Bool) -> Bool {
+        !enabled || !batteryLevelsEnabled || !showsList
+    }
+
     static func eligibleIDs(
         rows: [NearbyBLEPanelRow],
         showsList: Bool,

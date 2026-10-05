@@ -29,6 +29,29 @@ import Testing
         #expect(BluetoothDeviceIdentity.preferenceKey("aa:bb:cc:dd:ee:ff") == "AABBCCDDEEFF")
     }
 
+    @Test func blankCandidateNameUsesFallbackAndStableUUIDSuffix() {
+        let id = UUID(uuidString: "00000000-0000-0000-0000-00000000ABCD")!
+        let candidate = NearbyBLEDeviceCandidate(id: id, name: " \n ", vendor: .unknown, lastSeen: .now)
+
+        #expect(candidate.displayName(fallback: "Nearby device") == "Nearby device · ABCD")
+    }
+
+    @Test func duplicateCandidateNamesReceiveUUIDSuffixesOnEveryRow() {
+        let first = NearbyBLEDeviceCandidate(
+            id: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!,
+            name: "Phone", vendor: .apple, lastSeen: .now
+        )
+        let second = NearbyBLEDeviceCandidate(
+            id: UUID(uuidString: "00000000-0000-0000-0000-000000000002")!,
+            name: " phone ", vendor: .other, lastSeen: .now
+        )
+
+        #expect(NearbyBLEDiscoveryPresentation.displayNames([first, second], fallback: "Nearby") == [
+            first.id: "Phone · 0001",
+            second.id: "phone · 0002"
+        ])
+    }
+
     @Test(arguments: [Data(), Data([0x4C]), Data([0x4C, 0x00]), Data([0x01, 0x00])])
     func vendorClassificationRequiresACompleteAppleCompanyIdentifier(_ payload: Data) {
         let expected: NearbyBLEVendor

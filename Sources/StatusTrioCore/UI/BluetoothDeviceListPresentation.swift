@@ -145,6 +145,34 @@ enum BluetoothDeviceListPresentation {
     }
 }
 
+struct BluetoothDeviceSettingsOrderLabel: Equatable {
+    let title: String
+    let source: String?
+}
+
+enum BluetoothDeviceSettingsPresentation {
+    static func orderLabel(
+        device: BluetoothDevice,
+        nearbyBLENames: [UUID: String],
+        fallback: String,
+        nearbySource: String
+    ) -> BluetoothDeviceSettingsOrderLabel {
+        guard let id = BluetoothDeviceIdentity.bleUUID(from: device.id) else {
+            return BluetoothDeviceSettingsOrderLabel(title: device.name, source: nil)
+        }
+        let candidate = NearbyBLEDeviceCandidate(
+            id: id,
+            name: nearbyBLENames[id] ?? device.name,
+            vendor: .unknown,
+            lastSeen: .distantPast
+        )
+        return BluetoothDeviceSettingsOrderLabel(
+            title: candidate.displayName(fallback: fallback),
+            source: nearbySource
+        )
+    }
+}
+
 /// Whether the panel's Bluetooth section shows the list at all, and whether the
 /// row's own subtitle gives way to it. Both rules live here so the view body
 /// stays a straight rendering of decisions that are unit-tested.
@@ -216,3 +244,4 @@ enum BluetoothDeviceListHeading {
         return hasExternalMobileDevices ? .bluetoothDevicesTitle : .bluetoothPairedDevicesTitle
     }
 }
+import Foundation

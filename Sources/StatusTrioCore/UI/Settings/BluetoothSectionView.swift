@@ -397,6 +397,12 @@ struct BluetoothSectionView: View {
                     List {
                         ForEach(orderedBluetoothDevices) { device in
                             let key = BluetoothDeviceIdentity.preferenceKey(device.id)
+                            let orderLabel = BluetoothDeviceSettingsPresentation.orderLabel(
+                                device: device,
+                                nearbyBLENames: nearbyBLEOrderNames,
+                                fallback: localization.string(.bluetoothNearbyDeviceFallback),
+                                nearbySource: localization.string(.bluetoothNearbyBLESource)
+                            )
                             let ghostHiddenByFilter = device.isUnpairedGhost
                                 && store.hidesGhostBluetoothDevices
                                 && !store.revealedGhostBluetoothDeviceAddresses.contains(key)
@@ -412,10 +418,17 @@ struct BluetoothSectionView: View {
                                     .foregroundStyle(device.isConnected ? Color.accentColor : Color.secondary)
                                     .frame(width: 18)
 
-                                Text(device.name)
+                                Text(orderLabel.title)
                                     .font(.system(size: 13))
                                     .lineLimit(1)
                                     .frame(maxWidth: .infinity, alignment: .leading)
+
+                                if let source = orderLabel.source {
+                                    Text(source)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                        .accessibilityIdentifier("bluetooth.deviceOrder.nearbyBLESource")
+                                }
 
                                 if device.isUnpairedGhost {
                                     Text(localization.string(.settingsBluetoothNotInSystemSettings))
@@ -525,6 +538,16 @@ struct BluetoothSectionView: View {
                 selections: store.nearbyBLESelections
             ),
             using: store.bluetoothDeviceOrder
+        )
+    }
+
+    private var nearbyBLEOrderNames: [UUID: String] {
+        let candidates = store.nearbyBLESelections.map {
+            NearbyBLEDeviceCandidate(id: $0.id, name: $0.name, vendor: $0.vendor, lastSeen: .distantPast)
+        }
+        return NearbyBLEDiscoveryPresentation.displayNames(
+            candidates,
+            fallback: localization.string(.bluetoothNearbyDeviceFallback)
         )
     }
 

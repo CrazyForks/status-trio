@@ -32,6 +32,13 @@ struct NearbyBLESelectionView: View {
         )
     }
 
+    private var candidateDisplayNames: [UUID: String] {
+        NearbyBLEDiscoveryPresentation.displayNames(
+            candidates,
+            fallback: localization.string(.bluetoothNearbyDeviceFallback)
+        )
+    }
+
     var body: some View {
         SettingsGroup(
             localization.string(.settingsBluetoothNearbyBLETitle),
@@ -71,11 +78,19 @@ struct NearbyBLESelectionView: View {
                         tint: .blue,
                         title: displayName(candidate)
                     ) {
-                        Toggle("", isOn: selectionBinding(for: candidate))
-                            .toggleStyle(.switch)
-                            .controlSize(.small)
-                            .labelsHidden()
-                            .accessibilityLabel(displayName(candidate))
+                        HStack(spacing: 8) {
+                            if store.nearbyBLESelections.contains(where: { $0.id == candidate.id }),
+                               !candidate.wasSeenRecently() {
+                                Text(localization.string(.bluetoothNearbyBLENotNearby))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Toggle("", isOn: selectionBinding(for: candidate))
+                                .toggleStyle(.switch)
+                                .controlSize(.small)
+                                .labelsHidden()
+                                .accessibilityLabel(displayName(candidate))
+                        }
                     }
                     .accessibilityIdentifier("nearbyBLE.selection.\(candidate.id.uuidString)")
                     if index == candidates.count - 1, store.nearbyBLESelections.isEmpty {
@@ -109,8 +124,9 @@ struct NearbyBLESelectionView: View {
     }
 
     private func displayName(_ candidate: NearbyBLEDeviceCandidate) -> String {
-        let name = candidate.name.trimmingCharacters(in: .whitespacesAndNewlines)
-        return name.isEmpty ? localization.string(.bluetoothNearbyDeviceFallback) : name
+        candidateDisplayNames[candidate.id] ?? candidate.displayName(
+            fallback: localization.string(.bluetoothNearbyDeviceFallback)
+        )
     }
 
     private func selectionBinding(for candidate: NearbyBLEDeviceCandidate) -> Binding<Bool> {

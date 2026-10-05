@@ -87,17 +87,20 @@ struct NearbyBluetoothBatteryRows: View {
 
     @ViewBuilder
     private func rowView(_ row: NearbyBLEPanelRow) -> some View {
-        let trimmedName = row.device.name.trimmingCharacters(in: .whitespacesAndNewlines)
-        let name = trimmedName.isEmpty
-            ? localization.string(.bluetoothNearbyDeviceFallback)
-            : trimmedName
-        let status: String = if let level = row.batteryLevel {
-            "\(level)%"
-        } else if row.readFailed {
+        let candidate = NearbyBLEDeviceCandidate(
+            id: row.id,
+            name: row.device.name,
+            vendor: .unknown,
+            lastSeen: row.wasSeenRecently ? .now : .distantPast
+        )
+        let name = candidate.displayName(fallback: localization.string(.bluetoothNearbyDeviceFallback))
+        let status: String = switch row.status {
+        case let .battery(level): "\(level)%"
+        case .unavailable:
             localization.string(.bluetoothNearbyBLEUnavailable)
-        } else if !row.wasSeenRecently {
+        case .notNearby:
             localization.string(.bluetoothNearbyBLENotNearby)
-        } else {
+        case .pending:
             "—"
         }
 
@@ -129,11 +132,7 @@ struct NearbyBluetoothBatteryRows: View {
         .contentShape(Rectangle())
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(name)
-        .accessibilityValue(row.batteryLevel.map {
-            localization.format(.batteryAccessibilityValue, $0)
-        } ?? (row.readFailed
-            ? localization.string(.bluetoothNearbyBLEUnavailable)
-            : localization.string(.bluetoothNearbyBLENotNearby)))
+        .accessibilityValue(status)
     }
 
     private func publishVisibleIDs() {

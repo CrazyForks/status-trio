@@ -81,6 +81,35 @@ final class NearbyBLEControllerDemandTests: XCTestCase {
         controller.deactivate()
     }
 
+    func testHidingAnOffLimitRowKeepsOtherVisibleSelectedReadPermits() {
+        let (controller, scanner, monitor) = makeController()
+        controller.activate()
+        monitor.emit(.poweredOn)
+        let visible = UUID()
+        let offLimit = UUID()
+        controller.configureNearbyBLEDevices(enabled: true, selectedIDs: [visible, offLimit], hiddenIDs: [])
+        controller.holdVisibleSurface(BluetoothDeviceController.popoverSurfaceToken)
+        controller.holdVisibleSurface(BluetoothDeviceController.bluetoothSummarySurfaceToken)
+        controller.setVisibleNearbyBLEDevices([visible], for: "panel")
+        XCTAssertEqual(scanner.allowedReadDeviceIDs, [visible])
+
+        controller.configureNearbyBLEDevices(
+            enabled: true,
+            selectedIDs: [visible, offLimit],
+            hiddenIDs: [offLimit]
+        )
+
+        XCTAssertEqual(scanner.allowedReadDeviceIDs, [visible])
+
+        controller.configureNearbyBLEDevices(
+            enabled: true,
+            selectedIDs: [visible],
+            hiddenIDs: []
+        )
+        XCTAssertEqual(scanner.allowedReadDeviceIDs, [visible], "deselecting off-limit B must preserve visible A")
+        controller.deactivate()
+    }
+
     func testFeatureOffAndBluetoothUnavailableRevokeAllReads() {
         let (controller, scanner, monitor) = makeController()
         controller.activate()
