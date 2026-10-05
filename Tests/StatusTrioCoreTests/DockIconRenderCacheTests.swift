@@ -339,7 +339,7 @@ struct DockIconRenderCacheTests {
             connectionOptions: .standard,
             bluetoothAudioOptions: BluetoothAudioIconOptions(
                 replacesNetworkIcon: true,
-                networkIconSymbolOverride: "keyboard"
+                networkIconSymbolOverride: "applewatch"
             ),
             backgroundStyle: .dark
         )
@@ -350,7 +350,7 @@ struct DockIconRenderCacheTests {
         #expect(rendersAudioGlyph)
         #expect(rendersOverrideGlyph)
         #expect(rendersOverrideAgain == false)
-        #expect(overridden.bluetoothAudioDeviceIcon == .symbol("keyboard"))
+        #expect(overridden.bluetoothAudioDeviceIcon == .symbol("applewatch"))
     }
 
     /// The override stands in for the current output's glyph: the key carries

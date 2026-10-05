@@ -15,11 +15,15 @@ enum BluetoothDeviceRowIcon {
     static func symbolName(for device: BluetoothDevice) -> String {
         switch device.kind {
         case .audio:
-            AudioOutputDeviceIcon.symbolName(
+            return AudioOutputDeviceIcon.symbolName(
                 for: AudioDeviceIdentity(bluetooth: device.name, model: device.airPodsModel)
             )
         default:
-            symbolName(for: device.kind, name: device.name)
+            if device.kind == .mobile(.watch),
+               BluetoothMobileDeviceModel.kind(forModel: device.appleMobileModel) == .mobile(.watch) {
+                return availableSymbol(from: ["applewatch", "watch.analog"])
+            }
+            return symbolName(for: device.kind, name: device.name)
         }
     }
 
@@ -29,7 +33,11 @@ enum BluetoothDeviceRowIcon {
 
     static func symbolName(for kind: BluetoothDeviceKind, name: String) -> String {
         let candidates = candidateSymbols(for: kind, name: name)
-        return candidates.first {
+        return availableSymbol(from: candidates)
+    }
+
+    private static func availableSymbol(from candidates: [String]) -> String {
+        candidates.first {
             NSImage(systemSymbolName: $0, accessibilityDescription: nil) != nil
         } ?? candidates.last ?? genericSymbol
     }

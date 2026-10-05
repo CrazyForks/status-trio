@@ -56,9 +56,11 @@ enum BluetoothNearbyDeviceMerge {
                 // The report's own class wins when it declared one. Only a row it
                 // could not classify is corrected, so a device macOS described
                 // keeps the class macOS gave it.
-                mergedDevices[index] = device.kind == .unknown
-                    ? device.identifiedByModel(kind)
-                    : device
+                if device.kind == .unknown {
+                    mergedDevices[index] = device.identifiedByModel(kind, model: nearby.model)
+                } else if kind == .mobile(.watch), device.kind == kind, let model = nearby.model {
+                    mergedDevices[index] = device.recordingAppleMobileModel(model)
+                }
                 let key = BluetoothBatteryReader.normalizedAddress(device.id)
                 addIfAbsent(&mergedLevels, key: key, level: nearby.batteryLevel, address: device.id)
             } else {
@@ -67,6 +69,7 @@ enum BluetoothNearbyDeviceMerge {
                     name: nearby.name,
                     kind: kind,
                     isConnected: false,
+                    appleMobileModel: nearby.model,
                     isReadOverTheAir: true
                 )
                 mergedDevices.append(device)

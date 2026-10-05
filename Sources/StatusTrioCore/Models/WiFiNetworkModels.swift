@@ -323,6 +323,9 @@ struct BluetoothDevice: Identifiable, Equatable, Sendable {
     /// the profiler's `device_productID` / `device_vendorID` pair. It survives a
     /// rename, which the name cannot.
     let airPodsModel: AirPodsModel?
+    /// Hardware model supplied by an Apple mobile-device read. Unlike a row
+    /// name, this evidence survives the user renaming the device.
+    let appleMobileModel: String?
     /// The `device_vendorID` / `device_productID` pair the report carries, kept
     /// as numbers because they are the identity a reading from another source is
     /// matched to this device by: the pair survives a rename, and unlike the name
@@ -337,18 +340,15 @@ struct BluetoothDevice: Identifiable, Equatable, Sendable {
     /// option off. A device the stack has classified always carries one of those
     /// two keys, so their joint absence is the signal.
     let isUnpairedGhost: Bool
-    /// Whether this row exists because of a battery reading this app took over
-    /// the air, rather than because the paired-device report described a device
-    /// the user has.
+    /// Whether this row exists because an external read supplied device
+    /// information, rather than because the paired-device report described a
+    /// device the user has. This covers both nearby Bluetooth reads and devices
+    /// observed through a trusted phone.
     ///
-    /// Such a row is one the report could not describe: either it carries no
-    /// entry for the device at all, or it carries one with no class, which is a
-    /// ghost the panel hides. Two things follow, and they are the same thing
-    /// seen twice. Its connection state cannot be reported, because connecting
-    /// to read a level is what makes the system call it connected in the first
-    /// place. And it cannot be acted on, because there is no paired connection
-    /// for this app to make or break — the device is known here by a
-    /// CoreBluetooth identifier, which is not a Bluetooth address.
+    /// Such a row is read-only: an external reading can report a battery level,
+    /// but it cannot supply the Mac's connection state or a paired Bluetooth
+    /// address for this app to connect or disconnect. The provider identity may
+    /// come from a Bluetooth peripheral or from a trusted phone.
     let isReadOverTheAir: Bool
 
     init(
@@ -357,6 +357,7 @@ struct BluetoothDevice: Identifiable, Equatable, Sendable {
         kind: BluetoothDeviceKind,
         isConnected: Bool,
         airPodsModel: AirPodsModel? = nil,
+        appleMobileModel: String? = nil,
         vendorID: Int? = nil,
         productID: Int? = nil,
         appleBluetoothAudioDiagnostic: AppleBluetoothAudioDiagnosticRecord? = nil,
@@ -369,6 +370,7 @@ struct BluetoothDevice: Identifiable, Equatable, Sendable {
         self.isConnected = isConnected
         self.appleBluetoothAudioDiagnostic = appleBluetoothAudioDiagnostic
         self.airPodsModel = airPodsModel
+        self.appleMobileModel = appleMobileModel
         self.vendorID = vendorID
         self.productID = productID
         self.isUnpairedGhost = isUnpairedGhost
@@ -387,6 +389,7 @@ struct BluetoothDevice: Identifiable, Equatable, Sendable {
             kind: kind,
             isConnected: isConnected,
             airPodsModel: airPodsModel,
+            appleMobileModel: appleMobileModel,
             vendorID: vendorID,
             productID: productID,
             appleBluetoothAudioDiagnostic: appleBluetoothAudioDiagnostic,
@@ -411,18 +414,37 @@ struct BluetoothDevice: Identifiable, Equatable, Sendable {
     ///
     /// The name and the address are still the report's. An advertised name and a
     /// CoreBluetooth identifier are not, so they are not carried here.
-    func identifiedByModel(_ kind: BluetoothDeviceKind) -> BluetoothDevice {
+    func identifiedByModel(_ kind: BluetoothDeviceKind, model: String? = nil) -> BluetoothDevice {
         BluetoothDevice(
             id: id,
             name: name,
             kind: kind,
             isConnected: false,
             airPodsModel: airPodsModel,
+            appleMobileModel: model ?? appleMobileModel,
             vendorID: vendorID,
             productID: productID,
             appleBluetoothAudioDiagnostic: appleBluetoothAudioDiagnostic,
             isUnpairedGhost: false,
             isReadOverTheAir: true
+        )
+    }
+
+    /// Keep a trusted model for icon resolution without changing the class or
+    /// ownership reported by the paired-device source.
+    func recordingAppleMobileModel(_ model: String) -> BluetoothDevice {
+        BluetoothDevice(
+            id: id,
+            name: name,
+            kind: kind,
+            isConnected: isConnected,
+            airPodsModel: airPodsModel,
+            appleMobileModel: model,
+            vendorID: vendorID,
+            productID: productID,
+            appleBluetoothAudioDiagnostic: appleBluetoothAudioDiagnostic,
+            isUnpairedGhost: isUnpairedGhost,
+            isReadOverTheAir: isReadOverTheAir
         )
     }
 

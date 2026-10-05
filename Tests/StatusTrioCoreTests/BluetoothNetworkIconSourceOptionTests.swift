@@ -40,6 +40,20 @@ struct BluetoothNetworkIconSourceOptionTests {
         #expect(options[2].symbolName == "computermouse")
     }
 
+    @Test func appleWatchModelPinsItsIconForTheSharedNetworkSource() {
+        let watch = BluetoothDevice(
+            id: "watch-id",
+            name: "Kitchen timer",
+            kind: .mobile(.watch),
+            isConnected: false,
+            appleMobileModel: "Watch7,1"
+        )
+
+        let option = BluetoothNetworkIconSourceOption.options(devices: [watch], order: [watch.id])[1]
+
+        #expect(option.symbolName == "applewatch")
+    }
+
     /// A ghost has no class, so it carries no glyph worth pinning; the menu
     /// offers only devices the user can see in System Settings.
     @Test func optionsSkipGhostDevices() {
