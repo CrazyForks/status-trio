@@ -5,7 +5,7 @@ import SwiftUI
 /// device list, which has a different identity source.
 struct NearbyBluetoothBatteryList: View {
     @EnvironmentObject private var localization: Localization
-    let devices: [NearbyBluetoothBatteryDevice]
+    let rows: [NearbyBLEPanelRow]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -14,7 +14,7 @@ struct NearbyBluetoothBatteryList: View {
                 .foregroundStyle(.secondary)
                 .accessibilityAddTraits(.isHeader)
 
-            NearbyBluetoothBatteryRows(devices: devices)
+            NearbyBluetoothBatteryRows(rows: rows)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }

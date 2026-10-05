@@ -24,25 +24,32 @@ struct BluetoothStatusView: View {
     let onOpenBluetoothSettings: () -> Void
     let onOpenBluetoothPermissionSettings: () -> Void
 
-    /// The paired-device list with the iOS devices the BLE scan found folded
-    /// into it, derived once per body evaluation.
+    /// The paired-device list and independently identified BLE rows are kept
+    /// separate; an advertisement has no trustworthy classic address to join.
     private var mergedDeviceList: MobileBatteryDeviceMerge.Result {
-        let scanResults = BluetoothNearbyBatteryListPresentation.visibleDevices(
-            from: controller.nearbyBatteryDevices,
-            enabled: showsNearbyBatteryLevels
-        )
         return MobileBatteryDeviceMerge.merged(
             devices: controller.devices,
             batteryLevels: controller.batteryLevels,
-            nearbyDevices: scanResults,
+            nearbyDevices: [],
             mobileSnapshots: showsMobileBatteryFeature ? mobileBatteryController.snapshots : [],
             fallbackWatchName: localization.string(.mobileBatteryWatchFallbackName)
         )
     }
 
+    private var nearbyPanelRows: [NearbyBLEPanelRow] {
+        NearbyBLEDeviceCatalog.panelRows(
+            selections: nearbyBLESelections,
+            candidates: controller.nearbyBLECandidates,
+            readings: controller.nearbyBatteryDevices,
+            failures: controller.nearbyBLEReadFailures,
+            options: listOptions,
+            now: Date()
+        )
+    }
+
     var body: some View {
         let merged = mergedDeviceList
-        let nearbyDevices = merged.remainingNearby
+        let nearbyRows = nearbyPanelRows
 
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 10) {
@@ -81,7 +88,7 @@ struct BluetoothStatusView: View {
             if showsDeviceList(for: merged) {
                 let pairedIDs = Set(controller.devices.map(\.id))
                 if let heading = BluetoothDeviceListHeading.title(
-                    hasNearbyDevices: !nearbyDevices.isEmpty,
+                    hasNearbyDevices: false,
                     hasExternalMobileDevices: merged.mobileDeviceIDs.contains { !pairedIDs.contains($0) }
                 ) {
                     Text(localization.string(heading))
@@ -112,8 +119,8 @@ struct BluetoothStatusView: View {
                 }
             }
 
-            if !nearbyDevices.isEmpty {
-                NearbyBluetoothBatteryList(devices: nearbyDevices)
+            if showsNearbyBatteryLevels, listOptions.showsList, !nearbyRows.isEmpty {
+                NearbyBluetoothBatteryList(rows: nearbyRows)
             }
 
             if let message = mobileFailureMessage {
