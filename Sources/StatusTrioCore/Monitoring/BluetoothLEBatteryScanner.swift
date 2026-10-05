@@ -259,6 +259,10 @@ final class CoreBluetoothLEBatteryScanner: NSObject,
         }
 
         policy.removeCandidates(revokedIDs)
+        // A later aggregate callback may be caused by a different authorized
+        // device. Do not let its full snapshot resurrect a revoked UUID's old
+        // reading if that UUID is selected again before the snapshot arrives.
+        nearbyDevices = nearbyDevices.filter { !revokedIDs.contains($0.key) }
         for id in revokedIDs {
             candidatePeripherals.removeValue(forKey: id)
             candidateNames.removeValue(forKey: id)

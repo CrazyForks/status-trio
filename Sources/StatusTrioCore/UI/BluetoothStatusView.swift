@@ -17,6 +17,7 @@ struct BluetoothStatusView: View {
     @EnvironmentObject private var localization: Localization
     let showsBatteryLevels: Bool
     var showsNearbyBatteryDevices = false
+    var nearbyBLESelections: [NearbyBLEDeviceSelection] = []
     var showsMobileBatteryLevels = false
     var listOptions: BluetoothDeviceListOptions = .standard
     let onRequestAuthorization: () -> Void
@@ -137,18 +138,16 @@ struct BluetoothStatusView: View {
             }
             controller.requestBatteryLevels(Self.summaryBatteryLevelsToken)
         }
-        .task(id: showsNearbyBatteryLevels) {
-            guard showsNearbyBatteryLevels else {
-                // The setting is off, so the surface is no longer entitled to
-                // what the scan read: these go now rather than at the end of
-                // their lifetime.
-                controller.releaseNearbyBatteryDevices(Self.nearbyBatteryDevicesToken)
-                return
-            }
-            // This claim follows the saved opt-in across popover closes. The
-            // controller's popover token is the separate gate that stops the
-            // scanner immediately when the popover closes.
-            controller.requestNearbyBatteryDevices(Self.nearbyBatteryDevicesToken)
+        .task(id: nearbyBLEConfigurationTaskID) {
+            controller.configureNearbyBLEDevices(
+                enabled: showsNearbyBatteryDevices,
+                selectedIDs: nearbyBLESelectedIDs,
+                hiddenIDs: nearbyBLEHiddenIDs
+            )
+            // Task 5 replaces this temporary selection-wide visibility set with
+            // row geometry from the rendered nearby list.
+            let visibleIDs = showsBatteryLevels && showsNearbyBatteryDevices ? nearbyBLESelectedIDs : []
+            controller.setVisibleNearbyBLEDevices(visibleIDs, for: Self.nearbyBLEVisibleToken)
         }
         .task(id: mobileBatteryClaimTaskID) {
             guard BluetoothMobileBatteryPanelVisibility.shouldClaim(
@@ -164,16 +163,7 @@ struct BluetoothStatusView: View {
         .onDisappear {
             controller.releaseVisibleSurface(BluetoothDeviceController.bluetoothSummarySurfaceToken)
             controller.releaseBatteryLevels(Self.summaryBatteryLevelsToken)
-            // The panel closing is not the feature being switched off: it is the
-            // same surface coming back in a moment, so what it read stays for the
-            // cache's own lifetime. Dropping it here made every reopen pay for a
-            // fresh scan, connect and GATT read before an iPhone row could be
-            // drawn at all, while the paired rows — whose report survives the
-            // close — appeared at once.
-            controller.releaseNearbyBatteryDevices(
-                Self.nearbyBatteryDevicesToken,
-                keepingResults: true
-            )
+            controller.releaseVisibleNearbyBLEDevices(Self.nearbyBLEVisibleToken)
             mobileBatteryController.release(
                 Self.mobileBatteryToken,
                 keepingResults: BluetoothMobileBatteryPanelVisibility.shouldClaim(
@@ -226,7 +216,19 @@ struct BluetoothStatusView: View {
     }
 
     private static let summaryBatteryLevelsToken = "bluetooth.summary"
-    private static let nearbyBatteryDevicesToken = "bluetooth.summary.nearbyBatteryDevices"
+    private static let nearbyBLEVisibleToken = "bluetooth.summary.nearbyBLEVisible"
+
+    private var nearbyBLESelectedIDs: Set<UUID> { Set(nearbyBLESelections.map(\.id)) }
+
+    private var nearbyBLEHiddenIDs: Set<UUID> {
+        Set(listOptions.hiddenDeviceAddresses.compactMap { BluetoothDeviceIdentity.bleUUID(from: $0) })
+    }
+
+    private var nearbyBLEConfigurationTaskID: String {
+        let selected = nearbyBLESelectedIDs.map(\.uuidString).sorted().joined(separator: ",")
+        let hidden = nearbyBLEHiddenIDs.map(\.uuidString).sorted().joined(separator: ",")
+        return "\(showsBatteryLevels):\(showsNearbyBatteryDevices):\(selected):\(hidden)"
+    }
     private static let mobileBatteryToken = "bluetooth.summary.mobileBatteryDevices"
 
     private var showsNearbyBatteryLevels: Bool {

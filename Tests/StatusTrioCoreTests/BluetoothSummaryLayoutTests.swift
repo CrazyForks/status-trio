@@ -659,6 +659,9 @@ final class BluetoothSummaryLayoutTests: XCTestCase {
             mobileBatteryController: MobileBatteryController(),
             showsBatteryLevels: showsBatteryLevels,
             showsNearbyBatteryDevices: showsNearbyBatteryDevices,
+            nearbyBLESelections: nearbyDevices.map {
+                NearbyBLEDeviceSelection(id: $0.id, name: $0.name, vendor: .unknown, model: $0.model)
+            },
             listOptions: listOptions,
             onRequestAuthorization: {},
             onOpenBluetoothSettings: {},

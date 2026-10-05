@@ -406,6 +406,7 @@ struct StatusPopoverView: View {
                 mobileBatteryController: store.mobileBattery,
                 showsBatteryLevels: settings.showsBluetoothBatteryLevels,
                 showsNearbyBatteryDevices: settings.showsNearbyBluetoothBatteryDevices,
+                nearbyBLESelections: settings.nearbyBLESelections,
                 showsMobileBatteryLevels: settings.showsMobileDeviceBatteryLevels,
                 listOptions: settings.bluetoothDeviceListOptions,
                 onRequestAuthorization: requestBluetoothAuthorization,
