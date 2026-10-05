@@ -39,6 +39,25 @@ final class StatusBarRenderCacheTests: XCTestCase {
         XCTAssertFalse(cache.shouldRender(replacementEnabled))
     }
 
+    func testAppleWatchDeviceOverrideRendersInTheMenuBarCache() {
+        var cache = StatusBarRenderCache()
+        let withoutDeviceGlyph = makeKey(
+            appearance: "darkAqua",
+            bluetoothAudioOptions: BluetoothAudioIconOptions(replacesNetworkIcon: true)
+        )
+        let appleWatchGlyph = makeKey(
+            appearance: "darkAqua",
+            bluetoothAudioOptions: BluetoothAudioIconOptions(
+                replacesNetworkIcon: true,
+                networkIconSymbolOverride: "applewatch"
+            )
+        )
+
+        XCTAssertTrue(cache.shouldRender(withoutDeviceGlyph))
+        XCTAssertTrue(cache.shouldRender(appleWatchGlyph))
+        XCTAssertFalse(cache.shouldRender(appleWatchGlyph))
+    }
+
     func testBluetoothSymbolScaleChangeRendersAgain() {
         var cache = StatusBarRenderCache()
         let standard = makeKey(

@@ -61,6 +61,38 @@ struct MobileBatteryDeviceMergeTests {
         #expect(result.devices[0].isReadOverTheAir)
         #expect(result.mobileMetadataByDeviceID[result.devices[0].id] == watch)
         #expect(result.batteryLevels[BluetoothBatteryReader.normalizedAddress(result.devices[0].id)]?.main == 61)
+        #expect(BluetoothDeviceRowIcon.symbolName(for: result.devices[0]) == "applewatch")
+    }
+
+    @MainActor @Test func namedAppleWatchKeepsModelGlyphAfterCustomName() {
+        let watch = snapshot(id: "watch-1", parentID: "phone-1", name: "Kitchen timer", model: "Watch7,1")
+        let result = MobileBatteryDeviceMerge.merged(
+            devices: [], batteryLevels: [:], nearbyDevices: [],
+            mobileSnapshots: [watch], fallbackWatchName: "Apple Watch"
+        )
+
+        #expect(result.devices[0].name == "Kitchen timer")
+        #expect(BluetoothDeviceRowIcon.symbolName(for: result.devices[0]) == "applewatch")
+        #expect(BluetoothAudioIconOverrideSynchronizer.update(
+            currentSymbol: nil,
+            selectedAddress: result.devices[0].id,
+            devices: result.devices,
+            availability: .available
+        ) == .set("applewatch"))
+    }
+
+    @Test func modelEvidenceDoesNotChangeAClassifiedPairedWatchOwnership() {
+        let pairedWatch = paired(id: "11-22", name: "Kitchen Watch", kind: .mobile(.watch))
+        let watch = snapshot(id: "watch-1", parentID: "phone-1", name: "Kitchen Watch", model: "Watch7,1")
+        let result = MobileBatteryDeviceMerge.merged(
+            devices: [pairedWatch], batteryLevels: [:], nearbyDevices: [],
+            mobileSnapshots: [watch], fallbackWatchName: "Apple Watch"
+        )
+
+        #expect(result.devices.count == 1)
+        #expect(result.devices[0].isConnected)
+        #expect(!result.devices[0].isReadOverTheAir)
+        #expect(BluetoothDeviceRowIcon.symbolName(for: result.devices[0]) == "applewatch")
     }
 
     @Test func pairedBatteryWinnerKeepsItsValueWithoutMobileMetadata() {

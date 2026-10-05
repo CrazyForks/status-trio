@@ -280,6 +280,7 @@ struct BluetoothStatusView: View {
                 name: device.name,
                 kind: device.kind,
                 isConnected: false,
+                appleMobileModel: device.appleMobileModel,
                 isReadOverTheAir: true
             )
         }

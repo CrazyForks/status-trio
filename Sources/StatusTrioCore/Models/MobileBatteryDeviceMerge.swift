@@ -47,6 +47,9 @@ enum MobileBatteryDeviceMerge {
             let device = mergedDevices[index]
             if device.kind == .unknown {
                 mergedDevices[index] = device.replacingKind(with: mobileKind)
+                    .recordingAppleMobileModel(snapshot.model)
+            } else if mobileKind == .mobile(.watch) {
+                mergedDevices[index] = device.recordingAppleMobileModel(snapshot.model)
             }
             mobileDeviceIDs.insert(device.id)
             if addMobileLevel(snapshot, to: device.id, levels: &mergedLevels) {
@@ -85,6 +88,9 @@ enum MobileBatteryDeviceMerge {
                     let device = mergedDevices[index]
                     if device.kind == .unknown {
                         mergedDevices[index] = device.replacingKind(with: mobileKind)
+                            .recordingAppleMobileModel(snapshot.model)
+                    } else if mobileKind == .mobile(.watch) {
+                        mergedDevices[index] = device.recordingAppleMobileModel(snapshot.model)
                     }
                     mobileDeviceIDs.insert(device.id)
                     if addMobileLevel(snapshot, to: device.id, levels: &mergedLevels) {
@@ -114,6 +120,7 @@ enum MobileBatteryDeviceMerge {
                 name: name,
                 kind: mobileKind,
                 isConnected: false,
+                appleMobileModel: snapshot.model,
                 isReadOverTheAir: true
             )
             mergedDevices.append(device)
@@ -154,7 +161,9 @@ enum MobileBatteryDeviceMerge {
 
             let device = mergedDevices[index]
             if device.kind == .unknown {
-                mergedDevices[index] = device.identifiedByModel(kind)
+                mergedDevices[index] = device.identifiedByModel(kind, model: nearby.model)
+            } else if kind == .mobile(.watch), device.kind == kind, let model = nearby.model {
+                mergedDevices[index] = device.recordingAppleMobileModel(model)
             }
             addNearbyLevel(nearby, to: device.id, levels: &mergedLevels)
         }
@@ -252,6 +261,7 @@ enum MobileBatteryDeviceMerge {
             name: nearby.displayName(fallback: fallbackPhoneName),
             kind: kind,
             isConnected: false,
+            appleMobileModel: nearby.model,
             isReadOverTheAir: true
         )
     }

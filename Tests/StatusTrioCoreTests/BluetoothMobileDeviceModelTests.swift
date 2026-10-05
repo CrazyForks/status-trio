@@ -141,6 +141,60 @@ struct BluetoothNearbyDeviceMergeTests {
         #expect(!result.devices[0].isConnected)
     }
 
+    @Test func preservesAppleWatchModelForAnAddedRowAndUsesItsSpecificGlyph() {
+        let result = BluetoothNearbyDeviceMerge.merged(
+            devices: [],
+            batteryLevels: [:],
+            nearbyDevices: [nearbyDevice(name: "Office Watch", level: 45, model: "Watch7,1")]
+        )
+
+        #expect(result.devices.count == 1)
+        #expect(result.devices[0].name == "Office Watch")
+        #expect(BluetoothDeviceRowIcon.symbolName(for: result.devices[0]) == "applewatch")
+        #expect(result.devices[0].appleMobileModel == "Watch7,1")
+    }
+
+    @Test func existingRowKeepsWatchModelEvidenceWhenRefined() {
+        let paired = pairedDevice(name: "Office Watch")
+        let result = BluetoothNearbyDeviceMerge.merged(
+            devices: [paired],
+            batteryLevels: [:],
+            nearbyDevices: [nearbyDevice(name: "Office Watch", level: 45, model: "Watch7,1")]
+        )
+
+        #expect(result.devices[0].appleMobileModel == "Watch7,1")
+        #expect(BluetoothDeviceRowIcon.symbolName(for: result.devices[0]) == "applewatch")
+    }
+
+    @Test func knownPairedWatchKeepsItsConnectionAndOwnershipWhenItsModelArrives() {
+        let paired = pairedDevice(name: "Office Watch", kind: .mobile(.watch))
+        let result = BluetoothNearbyDeviceMerge.merged(
+            devices: [paired],
+            batteryLevels: [:],
+            nearbyDevices: [nearbyDevice(name: "Office Watch", level: 45, model: "Watch7,1")]
+        )
+
+        #expect(result.devices[0].isConnected)
+        #expect(!result.devices[0].isReadOverTheAir)
+        #expect(BluetoothDeviceRowIcon.symbolName(for: result.devices[0]) == "applewatch")
+    }
+
+    @Test func appleWatchModelEvidenceWinsOverARenamedName() {
+        let renamed = BluetoothDevice(
+            id: "watch",
+            name: "Kitchen timer",
+            kind: .mobile(.watch),
+            isConnected: false,
+            appleMobileModel: "Watch7,1"
+        )
+        #expect(BluetoothDeviceRowIcon.symbolName(for: renamed) == "applewatch")
+    }
+
+    @Test func genericWatchWithoutAppleModelKeepsGenericGlyph() {
+        let generic = BluetoothDevice(id: "watch", name: "Watch", kind: .mobile(.watch), isConnected: false)
+        #expect(BluetoothDeviceRowIcon.symbolName(for: generic) == "watch.analog")
+    }
+
     /// The name is the only identity the two sources share, so the comparison
     /// drops case and surrounding whitespace and stops there.
     @Test func matchesTheNameIgnoringCaseAndSurroundingWhitespace() {

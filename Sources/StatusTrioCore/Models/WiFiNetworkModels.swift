@@ -323,6 +323,9 @@ struct BluetoothDevice: Identifiable, Equatable, Sendable {
     /// the profiler's `device_productID` / `device_vendorID` pair. It survives a
     /// rename, which the name cannot.
     let airPodsModel: AirPodsModel?
+    /// Hardware model supplied by an Apple mobile-device read. Unlike a row
+    /// name, this evidence survives the user renaming the device.
+    let appleMobileModel: String?
     /// The `device_vendorID` / `device_productID` pair the report carries, kept
     /// as numbers because they are the identity a reading from another source is
     /// matched to this device by: the pair survives a rename, and unlike the name
@@ -354,6 +357,7 @@ struct BluetoothDevice: Identifiable, Equatable, Sendable {
         kind: BluetoothDeviceKind,
         isConnected: Bool,
         airPodsModel: AirPodsModel? = nil,
+        appleMobileModel: String? = nil,
         vendorID: Int? = nil,
         productID: Int? = nil,
         appleBluetoothAudioDiagnostic: AppleBluetoothAudioDiagnosticRecord? = nil,
@@ -366,6 +370,7 @@ struct BluetoothDevice: Identifiable, Equatable, Sendable {
         self.isConnected = isConnected
         self.appleBluetoothAudioDiagnostic = appleBluetoothAudioDiagnostic
         self.airPodsModel = airPodsModel
+        self.appleMobileModel = appleMobileModel
         self.vendorID = vendorID
         self.productID = productID
         self.isUnpairedGhost = isUnpairedGhost
@@ -384,6 +389,7 @@ struct BluetoothDevice: Identifiable, Equatable, Sendable {
             kind: kind,
             isConnected: isConnected,
             airPodsModel: airPodsModel,
+            appleMobileModel: appleMobileModel,
             vendorID: vendorID,
             productID: productID,
             appleBluetoothAudioDiagnostic: appleBluetoothAudioDiagnostic,
@@ -408,18 +414,37 @@ struct BluetoothDevice: Identifiable, Equatable, Sendable {
     ///
     /// The name and the address are still the report's. An advertised name and a
     /// CoreBluetooth identifier are not, so they are not carried here.
-    func identifiedByModel(_ kind: BluetoothDeviceKind) -> BluetoothDevice {
+    func identifiedByModel(_ kind: BluetoothDeviceKind, model: String? = nil) -> BluetoothDevice {
         BluetoothDevice(
             id: id,
             name: name,
             kind: kind,
             isConnected: false,
             airPodsModel: airPodsModel,
+            appleMobileModel: model ?? appleMobileModel,
             vendorID: vendorID,
             productID: productID,
             appleBluetoothAudioDiagnostic: appleBluetoothAudioDiagnostic,
             isUnpairedGhost: false,
             isReadOverTheAir: true
+        )
+    }
+
+    /// Keep a trusted model for icon resolution without changing the class or
+    /// ownership reported by the paired-device source.
+    func recordingAppleMobileModel(_ model: String) -> BluetoothDevice {
+        BluetoothDevice(
+            id: id,
+            name: name,
+            kind: kind,
+            isConnected: isConnected,
+            airPodsModel: airPodsModel,
+            appleMobileModel: model,
+            vendorID: vendorID,
+            productID: productID,
+            appleBluetoothAudioDiagnostic: appleBluetoothAudioDiagnostic,
+            isUnpairedGhost: isUnpairedGhost,
+            isReadOverTheAir: isReadOverTheAir
         )
     }
 
