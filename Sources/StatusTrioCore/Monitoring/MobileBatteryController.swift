@@ -14,6 +14,7 @@ final class MobileBatteryController: ObservableObject {
     private let clock: @Sendable () -> Date
     private let sleep: @Sendable (Duration) async throws -> Void
     private var claims: Set<String> = []
+    private var authorizedDeviceIDs: Set<AppleDeviceID> = []
     private var isSurfaceVisible = false
     private var isReadingEnabled = true
     private var isStopped = false
@@ -64,6 +65,19 @@ final class MobileBatteryController: ObservableObject {
         updateLifecycle()
     }
 
+    func setAuthorizedDeviceIDs(_ ids: Set<AppleDeviceID>) {
+        guard !isStopped, authorizedDeviceIDs != ids else { return }
+        let wasEnabled = isEnabled
+        authorizedDeviceIDs = ids
+        let authorizedIdentities = Set(ids.map(\.readIdentity))
+        snapshots.removeAll { !authorizedIdentities.contains($0.identity) }
+        failures.removeAll { failure in
+            guard let deviceID = failure.deviceID else { return true }
+            return !ids.contains { id in id.matchesHelperIdentifier(deviceID) }
+        }
+        if wasEnabled || isEnabled { updateLifecycle() }
+    }
+
     /// Gates the controller from central settings so disabling the opt-in also
     /// clears cached results when the Bluetooth view is not mounted. Re-enabling
     /// only resumes work when a visible surface still owns a claim.
@@ -90,6 +104,7 @@ final class MobileBatteryController: ObservableObject {
         guard !isStopped else { return }
         isStopped = true
         claims.removeAll()
+        authorizedDeviceIDs.removeAll()
         isSurfaceVisible = false
         cancelActiveWork()
         expiryTask?.cancel()
@@ -99,7 +114,7 @@ final class MobileBatteryController: ObservableObject {
         isRefreshing = false
     }
 
-    private var isEnabled: Bool { isReadingEnabled && isSurfaceVisible && !claims.isEmpty }
+    private var isEnabled: Bool { isReadingEnabled && isSurfaceVisible && !claims.isEmpty && !authorizedDeviceIDs.isEmpty }
 
     private func updateLifecycle() {
         if isEnabled {
@@ -132,10 +147,11 @@ final class MobileBatteryController: ObservableObject {
 
         let readGeneration = generation
         let reader = self.reader
+        let selectedIDs = authorizedDeviceIDs
         isRefreshing = true
         readTask = Task { [weak self, reader] in
             do {
-                let result = try await reader.read()
+                let result = try await reader.read(selectedIDs: selectedIDs)
                 guard !Task.isCancelled else { return }
                 self?.finishRead(result, generation: readGeneration)
             } catch {
@@ -150,16 +166,21 @@ final class MobileBatteryController: ObservableObject {
 
     private func finishRead(_ result: MobileBatteryReadResult, generation readGeneration: UInt64) {
         guard !isStopped, readGeneration == generation, isEnabled else { return }
+        let currentIdentities = Set(authorizedDeviceIDs.map(\.readIdentity))
+        let snapshots = result.snapshots.filter { currentIdentities.contains($0.identity) }
         readTask = nil
         isRefreshing = false
-        failures = result.failures
+        failures = result.failures.filter { failure in
+            guard let deviceID = failure.deviceID else { return false }
+            return authorizedDeviceIDs.contains { $0.matchesHelperIdentifier(deviceID) }
+        }
 
-        if !result.snapshots.isEmpty {
-            var byIdentity = Dictionary(uniqueKeysWithValues: snapshots.map { ($0.identity, $0) })
-            for snapshot in result.snapshots {
+        if !snapshots.isEmpty {
+            var byIdentity = Dictionary(uniqueKeysWithValues: self.snapshots.map { ($0.identity, $0) })
+            for snapshot in snapshots {
                 byIdentity[snapshot.identity] = snapshot
             }
-            snapshots = byIdentity.values.sorted { $0.identity < $1.identity }
+            self.snapshots = byIdentity.values.sorted { $0.identity < $1.identity }
         }
         pruneExpiredSnapshots()
         scheduleExpiry()
@@ -201,5 +222,23 @@ final class MobileBatteryController: ObservableObject {
         let now = clock()
         let fresh = snapshots.filter { now < $0.observedAt.addingTimeInterval(Self.cacheLifetime) }
         if fresh.count != snapshots.count { snapshots = fresh }
+    }
+}
+
+private extension AppleDeviceID {
+    var readIdentity: String {
+        switch self {
+        case let .trustedDevice(id): "phone:\(id)"
+        case let .trustedWatch(parentID, id): "watch:\(parentID):\(id)"
+        case .ble: ""
+        }
+    }
+
+    func matchesHelperIdentifier(_ identifier: String) -> Bool {
+        switch self {
+        case let .trustedDevice(id): id == identifier
+        case let .trustedWatch(_, id): id == identifier
+        case .ble: false
+        }
     }
 }

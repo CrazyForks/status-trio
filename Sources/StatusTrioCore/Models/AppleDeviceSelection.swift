@@ -54,6 +54,7 @@ enum AppleDeviceEvidence: String, Codable, Sendable {
     case appleBluetoothCompanyID
     case verifiedAppleModel
     case trustedWatchCompanion
+    case unverifiedTrustedRoute
 }
 
 struct AppleDeviceSelection: Codable, Equatable, Identifiable, Sendable {

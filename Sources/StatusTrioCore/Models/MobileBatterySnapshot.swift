@@ -39,7 +39,8 @@ struct MobileBatteryReadResult: Sendable {
 }
 
 protocol MobileBatteryReading: Sendable {
-    func read() async throws -> MobileBatteryReadResult
+    func discover() async throws -> [AppleDeviceCandidate]
+    func read(selectedIDs: Set<AppleDeviceID>) async throws -> MobileBatteryReadResult
 }
 
 enum MobileBatteryWireError: Error, Equatable {
@@ -78,7 +79,8 @@ enum MobileBatteryWire {
                           expectedParentID == parentID else { throw MobileBatteryWireError.invalidEnvelope }
                 } else {
                     guard wire.parentID == nil,
-                          family.lowercased().hasPrefix("iphone") else {
+                          BluetoothMobileDeviceModel.kind(forModel: family) == .mobile(.phone)
+                            || BluetoothMobileDeviceModel.kind(forModel: family) == .mobile(.tablet) else {
                         throw MobileBatteryWireError.invalidEnvelope
                     }
                 }
@@ -134,8 +136,23 @@ enum MobileBatteryWire {
                 id = .trustedWatch(parentID: parentID, id: wire.id)
                 evidence = wire.model.map(isAppleModel) == true ? .verifiedAppleModel : .trustedWatchCompanion
             } else {
-                guard let model = wire.model,
-                      isAppleModel(model) else { continue }
+                guard let model = wire.model, isAppleModel(model) else {
+                    guard wire.trustRequired else { continue }
+                    id = .trustedDevice(wire.id)
+                    let candidate = AppleDeviceCandidate(
+                        id: id,
+                        name: wire.name ?? wire.id,
+                        model: wire.model,
+                        transports: [wire.transport],
+                        trustRequired: true,
+                        evidence: .unverifiedTrustedRoute
+                    )
+                    if indexes[id] == nil {
+                        indexes[id] = candidates.count
+                        candidates.append(candidate)
+                    }
+                    continue
+                }
                 id = .trustedDevice(wire.id)
                 evidence = .verifiedAppleModel
             }

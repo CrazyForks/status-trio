@@ -33,6 +33,22 @@ struct MobileBatterySnapshotTests {
         let decoded = try MobileBatteryWire.decodeDiscovery(Data(json.utf8), expectedParentID: nil)
         #expect(decoded.isEmpty)
     }
+
+    @Test func untrustedUnknownRouteCanExplainTrustWithoutBecomingSelectable() throws {
+        let json = #"{"schemaVersion":1,"candidates":[{"id":"unknown","name":"iPhone","model":"Unknown,1","transport":"usb","trustRequired":true}],"failures":[]}"#
+        let candidates = try MobileBatteryWire.decodeDiscovery(Data(json.utf8), expectedParentID: nil)
+        #expect(candidates.count == 1)
+        #expect(candidates[0].trustRequired)
+        #expect(!candidates[0].isSelectableAppleDevice)
+    }
+
+    @Test func untrustedParentRouteWithoutModelSurvivesAsHintOnly() throws {
+        let json = #"{"schemaVersion":1,"candidates":[{"id":"phone-1","transport":"usb","trustRequired":true}],"failures":[{"id":"phone-1","error":"trust-required"}]}"#
+        let candidates = try MobileBatteryWire.decodeDiscovery(Data(json.utf8), expectedParentID: nil)
+        #expect(candidates.count == 1)
+        #expect(candidates[0].trustRequired)
+        #expect(!candidates[0].isSelectableAppleDevice)
+    }
     @Test func realZeroSurvivesValidation() throws {
         let json = Data(#"{"schemaVersion":1,"devices":[{"id":"w","parentID":"p","name":null,"model":"Watch7,1","batteryLevel":0,"isCharging":null,"transport":"usb"}],"failures":[]}"#.utf8)
         let result = try MobileBatteryWire.decode(json, expectedParentID: "p", observedAt: .distantPast)
@@ -59,10 +75,10 @@ struct MobileBatterySnapshotTests {
         #expect(result.failures.count == 1)
     }
 
-    @Test func rejectsBlankIdentifiersAndMissingWatchParent() throws {
+    @Test func rejectsBlankIdentifiersAndMissingWatchParentButAcceptsIPad() throws {
         #expect(try decode(device(id: "   ", model: "iPhone17,1", level: "50")).snapshots.isEmpty)
         #expect(try decode(device(id: "w", model: "Watch7,1", level: "50")).snapshots.isEmpty)
-        #expect(try decode(device(id: "tablet", model: "iPad11,1", level: "50")).snapshots.isEmpty)
+        #expect(try decode(device(id: "tablet", model: "iPad11,1", level: "50")).snapshots.count == 1)
     }
 
     @Test func rejectsUnknownSchemaVersion() throws {

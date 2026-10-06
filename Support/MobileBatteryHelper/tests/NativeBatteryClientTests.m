@@ -406,6 +406,8 @@ static BOOL TestDiscoveryReleasesResourcesOnTrustFailure(void) {
     NSDictionary *result = STMobileBatteryCopyDiscovery(API(&state), @"phone-1", STMobileBatteryTransportUSB, &error);
     CHECK(error == STMobileBatteryErrorNone, "trust failure is scoped in a successful discovery envelope");
     CHECK([result[@"failures"] count] == 1, "trust failure is reported for the device");
+    CHECK([result[@"candidates"] count] == 1, "untrusted route remains visible as a trust hint");
+    CHECK([result[@"candidates"][0][@"trustRequired"] boolValue], "untrusted route is not claimed verified");
     CHECK(state.phoneMetadataReads == 0 && state.phoneBatteryReads == 0, "trust failure reads neither metadata nor battery");
     CHECK(state.allocatedHandles == state.releasedHandles, "discovery trust failure releases every acquired handle");
     return YES;

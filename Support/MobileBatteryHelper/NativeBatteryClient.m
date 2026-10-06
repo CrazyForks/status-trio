@@ -318,6 +318,26 @@ NSDictionary *STMobileBatteryCopyDiscovery(STMobileBatteryNativeAPI api, NSStrin
     if (recordStatus != 0 || ![pairRecord isKindOfClass:[NSDictionary class]]) {
         failureCategory = @"trust-required";
         failureCode = STMobileBatteryErrorTrustRequired;
+        NSArray<NSDictionary *> *listedDevices = nil;
+        BOOL routeIsPresent = NO;
+        if (api.enumerateDevices && api.freeDeviceList &&
+            api.enumerateDevices(api.context, &listedDevices) == 0 &&
+            [listedDevices isKindOfClass:[NSArray class]]) {
+            for (NSDictionary *listed in listedDevices) {
+                if ([listed[@"id"] isEqual:identifier] && [listed[@"transport"] isEqual:transport]) {
+                    routeIsPresent = YES;
+                    break;
+                }
+            }
+        }
+        if (listedDevices) api.freeDeviceList(api.context, listedDevices);
+        if (routeIsPresent) {
+            [candidates addObject:@{
+                @"id": identifier,
+                @"transport": transport,
+                @"trustRequired": @YES,
+            }];
+        }
         goto discovery_cleanup;
     }
     if (!IsString(pairRecord[@"HostID"]) || !IsString(pairRecord[@"SystemBUID"])) {
