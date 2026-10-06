@@ -34,6 +34,10 @@ final class SettingsStore: ObservableObject {
     static let showsBluetoothBatteryLevelsDefaultsKey = "showsBluetoothBatteryLevels"
     static let showsNearbyBluetoothBatteryDevicesDefaultsKey = "showsNearbyBluetoothBatteryDevices"
     static let showsMobileDeviceBatteryLevelsDefaultsKey = "showsMobileDeviceBatteryLevels"
+    static let showsAppleDevicesAndBatteryDefaultsKey = "showsAppleDevicesAndBattery"
+    static let appleDeviceSelectionsDefaultsKey = "appleDeviceSelections"
+    static let appleDeviceSettingsMigrationVersionDefaultsKey = "appleDeviceSettingsMigrationVersion"
+    static let archivedLegacyNearbyBLESelectionsDefaultsKey = "archivedLegacyNearbyBLESelections"
     static let previewsBluetoothListeningModeDefaultsKey = "previewsBluetoothListeningMode"
     static let bluetoothListeningModePreviewDeviceNameDefaultsKey = "bluetoothListeningModePreviewDeviceName"
     static let bluetoothListeningModePreviewDeviceCountDefaultsKey = "bluetoothListeningModePreviewDeviceCount"
@@ -300,6 +304,19 @@ final class SettingsStore: ObservableObject {
             )
         }
     }
+
+    @Published var showsAppleDevicesAndBattery: Bool {
+        didSet { defaults.set(showsAppleDevicesAndBattery, forKey: Self.showsAppleDevicesAndBatteryDefaultsKey) }
+    }
+
+    @Published private(set) var appleDeviceSelections: [AppleDeviceSelection] {
+        didSet {
+            guard let data = try? JSONEncoder().encode(appleDeviceSelections) else { return }
+            defaults.set(data, forKey: Self.appleDeviceSelectionsDefaultsKey)
+        }
+    }
+
+    @Published private(set) var archivedLegacyNearbyBLESelections: [NearbyBLEDeviceSelection]
 
     @Published var showsMobileDeviceBatteryLevels: Bool {
         didSet {
@@ -834,8 +851,19 @@ final class SettingsStore: ObservableObject {
 
     private let defaults: UserDefaults
 
+    func setAppleDeviceSelected(_ candidate: AppleDeviceCandidate, selected: Bool) {
+        guard candidate.isSelectableAppleDevice else { return }
+        if selected {
+            guard !appleDeviceSelections.contains(where: { $0.id == candidate.id }) else { return }
+            appleDeviceSelections.append(candidate.selection)
+        } else {
+            appleDeviceSelections.removeAll { $0.id == candidate.id }
+        }
+    }
+
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
+        let appleMigration = AppleDeviceSettingsMigration.migrate(defaults: defaults)
         if defaults.object(forKey: Self.hasCompletedIconGuideOnboardingDefaultsKey) != nil {
             self.hasCompletedIconGuideOnboarding = defaults.bool(
                 forKey: Self.hasCompletedIconGuideOnboardingDefaultsKey
@@ -955,6 +983,9 @@ final class SettingsStore: ObservableObject {
         self.showsMobileDeviceBatteryLevels = defaults.object(
             forKey: Self.showsMobileDeviceBatteryLevelsDefaultsKey
         ) as? Bool ?? false
+        self.showsAppleDevicesAndBattery = appleMigration.isEnabled
+        self.appleDeviceSelections = appleMigration.selections
+        self.archivedLegacyNearbyBLESelections = appleMigration.archivedLegacyBLESelections
         self.previewsBluetoothListeningMode = defaults.object(
             forKey: Self.previewsBluetoothListeningModeDefaultsKey
         ) as? Bool ?? false

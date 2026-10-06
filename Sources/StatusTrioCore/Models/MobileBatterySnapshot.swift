@@ -4,6 +4,7 @@ import CoreFoundation
 enum MobileBatteryTransport: String, Codable, Sendable {
     case usb
     case network
+    case bluetooth
 }
 
 struct MobileBatterySnapshot: Equatable, Sendable {

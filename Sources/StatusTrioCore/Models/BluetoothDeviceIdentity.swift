@@ -14,6 +14,7 @@ enum BluetoothDeviceIdentity {
 
     static func preferenceKey(_ rowID: String) -> String {
         if let id = bleUUID(from: rowID) { return bleRowID(id) }
+        if rowID.hasPrefix("mobile-") { return BluetoothBatteryReader.normalizedAddress(rowID) }
         return BluetoothBatteryReader.normalizedAddress(rowID)
     }
 }
