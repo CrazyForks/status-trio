@@ -13,10 +13,11 @@ BLE rows keep their CoreBluetooth UUID identity and remain separate from system
 Bluetooth rows. Names and Apple vendor data are display and sorting metadata;
 they do not establish ownership, pair devices, or prove a match to a system
 address. Blank and duplicate picker names gain a stable UUID suffix. Settings
-order entries show a Nearby BLE source label. A changed BLE UUID needs a new
+order entries show a Nearby BLE source label; panel rows omit that subtitle
+and keep the device icon, name, and battery/read status. A changed BLE UUID needs a new
 explicit selection. Read failures keep the saved row and show an unavailable
 status; expired or missing readings never appear as zero percent. The visual
-and VoiceOver status use the same state. BLE rows are always displayed as
+and VoiceOver status use the same state. BLE rows remain classified as
 nearby and do not expose connect or disconnect actions.
 
 The live candidate list reflects the latest five-second discovery window. A

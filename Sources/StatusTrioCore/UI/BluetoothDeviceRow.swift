@@ -94,7 +94,6 @@ struct BluetoothDeviceRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 name
                 mobileDetails
-                nearbySource
             }
 
             Spacer(minLength: 8)
@@ -184,16 +183,6 @@ struct BluetoothDeviceRow: View {
     private var mobileDetails: some View {
         if let snapshot = mobileMetadataByDeviceID[device.id] {
             MobileBatteryDeviceRows(snapshot: snapshot)
-        }
-    }
-
-    @ViewBuilder
-    private var nearbySource: some View {
-        if nearbyMetadataByDeviceID[device.id] != nil {
-            Text(localization.string(.bluetoothNearbyBLESource))
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
-                .lineLimit(1)
         }
     }
 
