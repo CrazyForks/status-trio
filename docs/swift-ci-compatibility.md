@@ -12,6 +12,7 @@
 
 | Run | 失败阶段 | 根因 | 修复方式 |
 | --- | --- | --- | --- |
+| [`37416172832`](https://github.com/lingyired/status-trio/actions/runs/37416172832)（PR #93，head `27cc07cadbcae8a969b1140508a6899d7a06fbde`） | `Run tests` | `DDCVolumePresentationTests.testTopologyChangeClearsConfirmedDDCVolumeAndSelectedRowImmediately` 在 `VolumeMonitor.topologyChanged()` 后读取异步 `MonitorStream` 的下一项时，仍观察到先前已确认的 DDC 音量 `0.75`：scalar、current-device volume、canSetVolume 与 current output-device row volume 四项断言失败。run 中 1,158 个 XCTest 有 4 failures、6 skipped；其余 519 个 Swift Testing tests passed。版本/appcast、Xcode 26.6/macOS 26.6.2 runner setup 均通过；后续 build/sign/package 因 tests step 失败而跳过。此为产品/测试时序行为，不是编译、签名或 runner 环境失败。 | 本失败 run 的 head 上未实施修复，故不声称该 SHA 已修复。后续 head `db2bdb4` 的完整本机 `swift test`（1,164 XCTest、6 skipped、0 failures；540 Swift Testing / 88 suites）通过；PR #93 非发布预检 [`37490195329`](https://github.com/lingyired/status-trio/actions/runs/37490195329) 在相同 DDC 测试上通过 `Run tests`，并完成 macOS 26/Xcode 26.6 build/sign/DMG 与 artifact upload。该预检 `publish=false`，Release/appcast 发布跳过。父会话安排的独立只读 review 仍作为 merge 前 review gate；本次未更改产品代码。 |
 | `34753548674` | `Run tests` | `isolated deinit` 在 Swift 6.1.2 需要实验开关，默认不可用 | 移除 `isolated deinit`，改为普通 `deinit` 和显式清理 |
 | `34753630833` | `Run tests` | 尝试启用 `IsolatedDeinit`，生产编译器不允许 | 不依赖该实验特性，直接改写生命周期清理 |
 | `34753843803` | `Run tests` | 测试中的 `weak let` 在 Swift 6.1.2 非法 | 改为 `weak var` |

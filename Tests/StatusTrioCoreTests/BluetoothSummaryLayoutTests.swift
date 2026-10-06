@@ -267,6 +267,45 @@ final class BluetoothSummaryLayoutTests: XCTestCase {
         )
     }
 
+    func testAppleMasterOffHidesOptInRowsButKeepsPairedRowsAndSelectionCanReturn() async throws {
+        let paired = BluetoothDevice(
+            id: "AA:00:00:00:00:01",
+            name: "Paired Keyboard",
+            kind: .peripheral(.keyboard),
+            isConnected: false
+        )
+        let nearby = [
+            NearbyBluetoothBatteryDevice(
+                id: UUID(), name: "Selected Apple Device", batteryLevel: 67,
+                model: nil, manufacturer: nil, lastUpdated: Date()
+            )
+        ]
+        let options = BluetoothDeviceListOptions(showsList: true, maxVisibleDevices: 5, order: [])
+
+        let pairedOnly = try await makeHosting(
+            language: .english, authorization: .allowed, devices: [paired],
+            batteryLevels: [:], listOptions: options
+        )
+        defer { pairedOnly.1.deactivate() }
+
+        let masterOff = try await makeHosting(
+            language: .english, authorization: .allowed, devices: [paired],
+            batteryLevels: [:], listOptions: options, nearbyDevices: nearby,
+            showsAppleDevicesAndBattery: false
+        )
+        defer { masterOff.1.deactivate() }
+
+        let reenabled = try await makeHosting(
+            language: .english, authorization: .allowed, devices: [paired],
+            batteryLevels: [:], listOptions: options, nearbyDevices: nearby,
+            showsAppleDevicesAndBattery: true
+        )
+        defer { reenabled.1.deactivate() }
+
+        XCTAssertEqual(masterOff.0.fittingSize.height, pairedOnly.0.fittingSize.height, accuracy: 1)
+        XCTAssertGreaterThan(reenabled.0.fittingSize.height, pairedOnly.0.fittingSize.height)
+    }
+
     func testLongNearbyListScrollsInsideItsBound() async throws {
         let nearby = (1...16).map { index in
             NearbyBluetoothBatteryDevice(

@@ -25,18 +25,21 @@ struct BluetoothStatusView: View {
     let onOpenBluetoothPermissionSettings: () -> Void
 
     private var appleProjection: AppleDeviceCatalog.Projection {
-        AppleDeviceCatalog.projection(
-            selections: appleDeviceSelections,
+        let selections = showsAppleDevicesAndBattery ? appleDeviceSelections : []
+        let candidates = showsAppleDevicesAndBattery ? appleCandidates : []
+        let nearbyCandidates = showsAppleDevicesAndBattery ? controller.nearbyBLECandidates : []
+        return AppleDeviceCatalog.projection(
+            selections: selections,
             candidates: AppleDeviceCatalog.candidates(
-                ble: controller.nearbyBLECandidates,
-                trusted: appleCandidates,
-                selections: appleDeviceSelections
+                ble: nearbyCandidates,
+                trusted: candidates,
+                selections: selections
             ),
-            nearbyReadings: showsBatteryLevels ? controller.nearbyBatteryDevices : [],
-            trustedSnapshots: showsMobileBatteryFeature ? mobileBatteryController.snapshots : [],
+            nearbyReadings: showsAppleDevicesAndBattery && showsBatteryLevels ? controller.nearbyBatteryDevices : [],
+            trustedSnapshots: showsAppleDevicesAndBattery && showsMobileBatteryFeature ? mobileBatteryController.snapshots : [],
             failures: showsMobileBatteryFeature ? Set(mobileBatteryController.failures.compactMap { failure in
                 guard let id = failure.deviceID else { return nil }
-                return appleDeviceSelections.first(where: { selection in
+                return selections.first(where: { selection in
                     switch selection.id {
                     case let .trustedDevice(value): value == id
                     case let .trustedWatch(_, value): value == id

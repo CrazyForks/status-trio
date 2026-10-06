@@ -46,3 +46,13 @@ Task 4: complete (commit ad1c336).
 Task 5: implementation committed in f1d05e1; external CI preflight, PR #93 push/body update, test-app package/restart and hardware report remain.
 
 Final review: self-review (no subagent tool); parent session will perform a fresh independent review before merge.
+
+## Fresh parent-review follow-up — master switch projection gate
+- Finding: `BluetoothStatusView.appleProjection` always received persistent selections. Since the catalog intentionally synthesizes candidates for saved/offline selections, master-off still displayed opt-in Apple rows.
+- RED: hosted `BluetoothSummaryLayoutTests.testAppleMasterOffHidesOptInRowsButKeepsPairedRowsAndSelectionCanReturn` failed: master-off layout height was 117pt vs paired-only 91pt.
+- GREEN: gate catalog selections/candidates/readings/snapshots/failures at projection input with `showsAppleDevicesAndBattery`; do not mutate SettingsStore selections. Paired system rows stay outside this gate. Re-enabling reprojects retained selection.
+- Verification after fix: hosted regression passed; full `swift test` passed (1,165 XCTest, 6 skipped, 0 failures; 540 Swift Testing across 88 suites); `swift build -c release` passed (26.37s); native helper tests passed (24); rpath/dependency checks, appcast notes 12/12, forbidden-pattern guard and `git diff --check` passed.
+
+## Historical failed CI record
+- Run `37416172832`, head `27cc07cadbcae8a969b1140508a6899d7a06fbde`, failed at `Run tests`: `DDCVolumePresentationTests.testTopologyChangeClearsConfirmedDDCVolumeAndSelectedRowImmediately` observed stale DDC scalar `0.75` in four post-topology invalidation assertions. This is a test/product event-order failure, not compilation, signature, or runner setup. That head was not modified in response and is not claimed fixed.
+- A subsequent `db2bdb4` preflight `37490195329` passed the same test in `Run tests` and completed macOS 26/Xcode 26.6 build/sign/DMG and artifact upload with `publish=false`. Full details are recorded in `docs/swift-ci-compatibility.md`.
