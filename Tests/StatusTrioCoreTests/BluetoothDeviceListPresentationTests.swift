@@ -2,6 +2,90 @@ import XCTest
 @testable import StatusTrioCore
 
 final class BluetoothDeviceListPresentationTests: XCTestCase {
+    func testUnifiedListSharesOrderHideLimitExpansionAndVisibleBLESelection() {
+        let firstBLEID = UUID(uuidString: "00000000-0000-0000-0000-000000000011")!
+        let secondBLEID = UUID(uuidString: "00000000-0000-0000-0000-000000000012")!
+        let hiddenBLEID = UUID(uuidString: "00000000-0000-0000-0000-000000000013")!
+        let connected = makeDevice(address: "AA:00:00:00:00:01", name: "Connected", isConnected: true)
+        let system = makeDevice(address: "AA:00:00:00:00:02", name: "System", isConnected: false)
+        let nearbyRows = [
+            nearbyRow(id: secondBLEID, name: "Second BLE"),
+            nearbyRow(id: hiddenBLEID, name: "Hidden BLE"),
+            nearbyRow(id: firstBLEID, name: "First BLE")
+        ]
+        let options = BluetoothDeviceListOptions(
+            showsList: true,
+            maxVisibleDevices: 2,
+            order: [
+                BluetoothDeviceIdentity.bleRowID(firstBLEID),
+                BluetoothDeviceIdentity.bleRowID(secondBLEID),
+                system.id
+            ],
+            hiddenDeviceAddresses: [BluetoothDeviceIdentity.bleRowID(hiddenBLEID)]
+        )
+
+        let collapsed = BluetoothDeviceListModel.make(
+            devices: [system, connected],
+            nearbyRows: nearbyRows,
+            order: options.order,
+            limit: options.maxVisibleDevices,
+            isExpanded: false,
+            options: options
+        )
+
+        XCTAssertEqual(collapsed.orderedDevices.map(\.name), ["Connected", "First BLE", "Second BLE", "System"])
+        XCTAssertEqual(collapsed.visibleDevices.map(\.name), ["Connected", "First BLE"])
+        XCTAssertTrue(collapsed.canToggleExpansion)
+        XCTAssertEqual(
+            NearbyBLEPanelVisibility.visibleSelectedIDs(
+                in: collapsed.visibleDevices,
+                frames: [
+                    firstBLEID: CGRect(x: 0, y: 0, width: 200, height: 24),
+                    secondBLEID: CGRect(x: 0, y: 32, width: 200, height: 24)
+                ],
+                viewport: CGRect(x: 0, y: 0, width: 200, height: 168)
+            ),
+            [firstBLEID]
+        )
+
+        let expanded = BluetoothDeviceListModel.make(
+            devices: [system, connected],
+            nearbyRows: nearbyRows,
+            order: options.order,
+            limit: options.maxVisibleDevices,
+            isExpanded: true,
+            options: options
+        )
+        XCTAssertEqual(expanded.visibleDevices.map(\.name), ["Connected", "First BLE", "Second BLE", "System"])
+        XCTAssertEqual(
+            NearbyBLEPanelVisibility.visibleSelectedIDs(
+                in: expanded.visibleDevices,
+                frames: [
+                    firstBLEID: CGRect(x: 0, y: -40, width: 200, height: 24),
+                    secondBLEID: CGRect(x: 0, y: 32, width: 200, height: 24)
+                ],
+                viewport: CGRect(x: 0, y: 0, width: 200, height: 168)
+            ),
+            [secondBLEID]
+        )
+    }
+
+    private func nearbyRow(id: UUID, name: String) -> NearbyBLEPanelRow {
+        NearbyBLEPanelRow(
+            id: id,
+            device: BluetoothDevice(
+                id: BluetoothDeviceIdentity.bleRowID(id),
+                name: name,
+                kind: .unknown,
+                isConnected: false,
+                isReadOverTheAir: true
+            ),
+            batteryLevel: 84,
+            wasSeenRecently: true,
+            readFailed: false
+        )
+    }
+
     func testBLERowsUseExplicitPreferenceKeysForOrderingAndHiding() {
         let firstID = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
         let secondID = UUID(uuidString: "00000000-0000-0000-0000-000000000002")!

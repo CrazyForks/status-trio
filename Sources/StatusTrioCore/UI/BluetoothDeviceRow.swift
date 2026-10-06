@@ -18,6 +18,7 @@ struct BluetoothDeviceRow: View {
     let device: BluetoothDevice
     let batteryLevels: [String: BluetoothBatteryLevel]
     var mobileMetadataByDeviceID: [String: MobileBatterySnapshot] = [:]
+    var nearbyMetadataByDeviceID: [String: NearbyBLEPanelRow] = [:]
     let actionState: BluetoothDeviceActionState?
     let isConfirmingDisconnect: Bool
     let onPerformAction: () -> Void
@@ -93,13 +94,21 @@ struct BluetoothDeviceRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 name
                 mobileDetails
+                nearbySource
             }
 
             Spacer(minLength: 8)
 
-            batteryText
-
-            trailingStatus(status)
+            if let nearbyRow = nearbyMetadataByDeviceID[device.id] {
+                Text(nearbyStatusText(nearbyRow.status))
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .accessibilityHidden(true)
+            } else {
+                batteryText
+                trailingStatus(status)
+            }
         }
         .contentShape(Rectangle())
     }
@@ -178,6 +187,25 @@ struct BluetoothDeviceRow: View {
         }
     }
 
+    @ViewBuilder
+    private var nearbySource: some View {
+        if nearbyMetadataByDeviceID[device.id] != nil {
+            Text(localization.string(.bluetoothNearbyBLESource))
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+                .lineLimit(1)
+        }
+    }
+
+    private func nearbyStatusText(_ status: NearbyBLEPanelRowStatus) -> String {
+        switch status {
+        case let .battery(level): "\(level)%"
+        case .unavailable: localization.string(.bluetoothNearbyBLEUnavailable)
+        case .notNearby: localization.string(.bluetoothNearbyBLENotNearby)
+        case .pending: "—"
+        }
+    }
+
     /// The level as the report's pieces. The charging case is drawn as its glyph
     /// rather than spelled out, so the row is not carrying a word no localization
     /// translates.
@@ -224,6 +252,9 @@ struct BluetoothDeviceRow: View {
     /// `Text` run and has no label of its own: a combined element would otherwise
     /// announce the case's percentage with nothing saying what it belongs to.
     private var rowAccessibilityValue: String {
+        if let nearbyRow = nearbyMetadataByDeviceID[device.id] {
+            return nearbyStatusText(nearbyRow.status)
+        }
         let state = stateAccessibilityValue
         guard let level = BluetoothDevicePresentation.batteryLevelSegments(
             for: device,

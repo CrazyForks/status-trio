@@ -411,7 +411,7 @@
 "mobileBattery.updatedAt" = "Actualizado %@";
 "mobileBattery.charging" = "Cargando";
 "mobileBattery.trustRequired" = "Conecta el iPhone por cable y pulsa Confiar para leer la batería del Apple Watch enlazado.";
-"mobileBattery.unavailable" = "No se pudo actualizar la batería del iPhone y el Apple Watch.";
+"mobileBattery.unavailable" = "No se pudo actualizar la batería del iPhone y el Apple Watch por USB o Wi-Fi.";
 "settings.bluetooth.nearbyBLE.title" = "Dispositivos BLE cercanos";
 "settings.bluetooth.nearbyBLE.scan" = "Buscar dispositivos cercanos";
 "settings.bluetooth.nearbyBLE.scanning" = "Buscando…";

@@ -1,16 +1,17 @@
 import SwiftUI
 
-/// The paired-device list shown inside the status panel, under the Bluetooth
-/// row. It mirrors the volume output list: the first `limit` devices are always
-/// visible and anything beyond them is revealed by an expansion control. Each
-/// row is a control: tapping it connects or disconnects that device, and an
-/// input device's disconnect is confirmed in place first.
+/// The Bluetooth device list shown under the status row. Paired, trusted-mobile,
+/// and selected BLE rows share one order, limit, expansion control, and viewport.
+/// Only actionable paired rows connect or disconnect; external reading rows stay
+/// read-only.
 struct BluetoothDeviceList: View {
     @EnvironmentObject private var localization: Localization
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let devices: [BluetoothDevice]
     let batteryLevels: [String: BluetoothBatteryLevel]
     var mobileMetadataByDeviceID: [String: MobileBatterySnapshot] = [:]
+    var nearbyRows: [NearbyBLEPanelRow] = []
+    var onVisibleNearbyIDsChanged: (Set<UUID>) -> Void = { _ in }
     let actionStates: [String: BluetoothDeviceActionState]
     /// The device whose disconnect is waiting for confirmation, by normalized
     /// address. The controller owns it so that closing the panel cancels it even
@@ -22,6 +23,11 @@ struct BluetoothDeviceList: View {
     let onCancelDisconnect: () -> Void
 
     @State private var isExpanded = false
+    @State private var nearbyRowFrames: [UUID: CGRect] = [:]
+    @State private var rowsViewportFrame = CGRect.zero
+    @State private var reportedNearbyIDs = Set<UUID>()
+
+    private static let geometryCoordinateSpace = "BluetoothDeviceList"
 
     /// How tall the rows may grow before they scroll, matching the Wi-Fi list's
     /// own bound so the two lists in the panel stop at the same place.
@@ -36,6 +42,7 @@ struct BluetoothDeviceList: View {
     var body: some View {
         let model = BluetoothDeviceListModel.make(
             devices: devices,
+            nearbyRows: nearbyRows,
             order: options.order,
             limit: options.maxVisibleDevices,
             isExpanded: isExpanded,
@@ -73,6 +80,25 @@ struct BluetoothDeviceList: View {
                 .buttonStyle(.plain)
             }
         }
+        .coordinateSpace(name: Self.geometryCoordinateSpace)
+        .onPreferenceChange(BluetoothDeviceListRowFramesPreferenceKey.self) { frames in
+            nearbyRowFrames = frames
+            publishVisibleNearbyIDs(in: model.visibleDevices)
+        }
+        .onPreferenceChange(BluetoothDeviceListViewportPreferenceKey.self) { frame in
+            rowsViewportFrame = frame
+            publishVisibleNearbyIDs(in: model.visibleDevices)
+        }
+        .onChange(of: model.visibleDevices) { _, visibleDevices in
+            publishVisibleNearbyIDs(in: visibleDevices)
+        }
+        .onChange(of: nearbyRows) { _, _ in
+            publishVisibleNearbyIDs(in: model.visibleDevices)
+        }
+        .onChange(of: options) { _, _ in
+            publishVisibleNearbyIDs(in: model.visibleDevices)
+        }
+        .onDisappear { reportVisibleNearbyIDs([]) }
     }
 
     /// The rows, bounded.
@@ -92,8 +118,10 @@ struct BluetoothDeviceList: View {
         if estimatedContentHeight(for: visibleDevices) > Self.maximumRowsHeight {
             ScrollView { rowStack(visibleDevices) }
                 .frame(maxHeight: Self.maximumRowsHeight)
+                .background(viewportFrameReader)
         } else {
             rowStack(visibleDevices)
+                .background(viewportFrameReader)
         }
     }
 
@@ -107,7 +135,8 @@ struct BluetoothDeviceList: View {
             total + BluetoothDeviceRowMetrics.estimatedHeight(
                 for: device,
                 batteryLevels: batteryLevels,
-                hasMobileDetails: mobileMetadataByDeviceID[device.id] != nil
+                hasMobileDetails: mobileMetadataByDeviceID[device.id] != nil,
+                hasNearbyDetails: nearbyRowByDeviceID[device.id] != nil
             )
         }
         return rowHeights + Self.rowSpacing * CGFloat(visibleDevices.count - 1)
@@ -121,6 +150,7 @@ struct BluetoothDeviceList: View {
                     device: device,
                     batteryLevels: batteryLevels,
                     mobileMetadataByDeviceID: mobileMetadataByDeviceID,
+                    nearbyMetadataByDeviceID: nearbyRowByDeviceID,
                     actionState: actionStates[address],
                     isConfirmingDisconnect: confirmingAddress == address
                         && BluetoothDeviceActionPolicy.requiresConfirmation(for: device),
@@ -128,7 +158,62 @@ struct BluetoothDeviceList: View {
                     onRequestDisconnect: { onRequestDisconnect(device) },
                     onCancelDisconnect: onCancelDisconnect
                 )
+                .background {
+                    if let id = BluetoothDeviceIdentity.bleUUID(from: device.id), device.isReadOverTheAir {
+                        GeometryReader { proxy in
+                            Color.clear.preference(
+                                key: BluetoothDeviceListRowFramesPreferenceKey.self,
+                                value: [id: proxy.frame(in: .named(Self.geometryCoordinateSpace))]
+                            )
+                        }
+                    }
+                }
             }
         }
+    }
+
+    private var nearbyRowByDeviceID: [String: NearbyBLEPanelRow] {
+        Dictionary(nearbyRows.map { ($0.device.id, $0) }, uniquingKeysWith: { _, latest in latest })
+    }
+
+    private var viewportFrameReader: some View {
+        GeometryReader { proxy in
+            Color.clear.preference(
+                key: BluetoothDeviceListViewportPreferenceKey.self,
+                value: proxy.frame(in: .named(Self.geometryCoordinateSpace))
+            )
+        }
+    }
+
+    private func publishVisibleNearbyIDs(in visibleDevices: [BluetoothDevice]) {
+        reportVisibleNearbyIDs(NearbyBLEPanelVisibility.visibleSelectedIDs(
+            in: visibleDevices,
+            frames: nearbyRowFrames,
+            viewport: rowsViewportFrame
+        ))
+    }
+
+    private func reportVisibleNearbyIDs(_ ids: Set<UUID>) {
+        guard reportedNearbyIDs != ids else { return }
+        reportedNearbyIDs = ids
+        onVisibleNearbyIDsChanged(ids)
+    }
+}
+
+private struct BluetoothDeviceListRowFramesPreferenceKey: PreferenceKey {
+    static let defaultValue: [UUID: CGRect] = [:]
+
+    static func reduce(value: inout [UUID: CGRect], nextValue: () -> [UUID: CGRect]) {
+        value.merge(nextValue(), uniquingKeysWith: { _, latest in latest })
+    }
+}
+
+private struct BluetoothDeviceListViewportPreferenceKey: PreferenceKey {
+    static let defaultValue = CGRect.zero
+
+    static func reduce(value: inout CGRect, nextValue: () -> CGRect) {
+        let next = nextValue()
+        guard next.width > 0, next.height > 0 else { return }
+        value = next
     }
 }

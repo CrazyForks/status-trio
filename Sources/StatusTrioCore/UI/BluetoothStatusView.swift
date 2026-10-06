@@ -24,8 +24,8 @@ struct BluetoothStatusView: View {
     let onOpenBluetoothSettings: () -> Void
     let onOpenBluetoothPermissionSettings: () -> Void
 
-    /// The paired-device list and independently identified BLE rows are kept
-    /// separate; an advertisement has no trustworthy classic address to join.
+    /// System and trusted-phone rows retain their own identity. Selected BLE
+    /// rows are supplied separately to the shared list, keyed only by UUID.
     private var mergedDeviceList: MobileBatteryDeviceMerge.Result {
         return MobileBatteryDeviceMerge.merged(
             devices: controller.devices,
@@ -85,7 +85,7 @@ struct BluetoothStatusView: View {
                     .frame(width: 24, height: 24)
             }
 
-            if showsDeviceList(for: merged) {
+            if showsDeviceList(for: merged, nearbyRows: nearbyRows) {
                 let pairedIDs = Set(controller.devices.map(\.id))
                 if let heading = BluetoothDeviceListHeading.title(
                     hasNearbyDevices: false,
@@ -101,6 +101,10 @@ struct BluetoothStatusView: View {
                     devices: panelDeviceRows(from: merged),
                     batteryLevels: merged.batteryLevels,
                     mobileMetadataByDeviceID: merged.mobileMetadataByDeviceID,
+                    nearbyRows: showsNearbyBatteryLevels ? nearbyRows : [],
+                    onVisibleNearbyIDsChanged: {
+                        controller.setVisibleNearbyBLEDevices($0, for: Self.nearbyBLEVisibleToken)
+                    },
                     actionStates: controller.deviceActionStates,
                     confirmingAddress: controller.pendingDisconnectConfirmation,
                     options: listOptions,
@@ -117,16 +121,6 @@ struct BluetoothStatusView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-            }
-
-            if showsNearbyBatteryLevels, listOptions.showsList, listOptions.maxVisibleDevices > 0, !nearbyRows.isEmpty {
-                NearbyBluetoothBatteryList(
-                    rows: nearbyRows,
-                    options: listOptions,
-                    onVisibleIDsChanged: {
-                        controller.setVisibleNearbyBLEDevices($0, for: Self.nearbyBLEVisibleToken)
-                    }
-                )
             }
 
             if let message = mobileFailureMessage {
@@ -263,8 +257,12 @@ struct BluetoothStatusView: View {
         showsBatteryLevels && showsNearbyBatteryDevices
     }
 
-    private func showsDeviceList(for merged: MobileBatteryDeviceMerge.Result) -> Bool {
-        BluetoothMobileBatteryPanelVisibility.showsList(
+    private func showsDeviceList(
+        for merged: MobileBatteryDeviceMerge.Result,
+        nearbyRows: [NearbyBLEPanelRow]
+    ) -> Bool {
+        if showsNearbyBatteryLevels, listOptions.showsList, !nearbyRows.isEmpty { return true }
+        return BluetoothMobileBatteryPanelVisibility.showsList(
             availability: controller.availability,
             devices: merged.devices,
             pairedDevices: controller.devices,
@@ -283,12 +281,12 @@ struct BluetoothStatusView: View {
     }
 
     private var mobileFailureMessage: LocalizationKey? {
-        guard showsMobileBatteryFeature,
-              mobileBatteryController.snapshots.isEmpty,
-              !mobileBatteryController.isRefreshing else { return nil }
-        return mobileBatteryController.failures.contains(where: { $0.category == "trust-required" })
-            ? .mobileBatteryTrustRequired
-            : .mobileBatteryUnavailable
+        MobileBatteryFailurePresentation.message(
+            isEnabled: showsMobileBatteryFeature,
+            snapshots: mobileBatteryController.snapshots,
+            failures: mobileBatteryController.failures,
+            isRefreshing: mobileBatteryController.isRefreshing
+        )
     }
 
     private func visibleDeviceRows(from merged: MobileBatteryDeviceMerge.Result) -> [BluetoothDevice] {

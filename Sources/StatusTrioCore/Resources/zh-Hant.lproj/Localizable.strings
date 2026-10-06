@@ -411,7 +411,7 @@
 "mobileBattery.updatedAt" = "更新於 %@";
 "mobileBattery.charging" = "正在充電";
 "mobileBattery.trustRequired" = "請以連接線連接 iPhone 並點一下「信任」，以讀取已配對 Apple Watch 的電量。";
-"mobileBattery.unavailable" = "無法重新整理 iPhone 與 Apple Watch 電量。";
+"mobileBattery.unavailable" = "無法透過 USB 或 Wi-Fi 讀取 iPhone 與 Apple Watch 電量。";
 "settings.bluetooth.nearbyBLE.title" = "附近 BLE 裝置";
 "settings.bluetooth.nearbyBLE.scan" = "掃描附近裝置";
 "settings.bluetooth.nearbyBLE.scanning" = "正在掃描…";

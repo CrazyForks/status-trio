@@ -1,3 +1,5 @@
+import Foundation
+
 /// The list the status panel renders, derived once per body evaluation so the
 /// view never re-derives the order or the limit itself.
 struct BluetoothDeviceListModel: Equatable {
@@ -7,13 +9,15 @@ struct BluetoothDeviceListModel: Equatable {
 
     static func make(
         devices: [BluetoothDevice],
+        nearbyRows: [NearbyBLEPanelRow] = [],
         order: [String],
         limit: Int,
         isExpanded: Bool,
         options: BluetoothDeviceListOptions
     ) -> BluetoothDeviceListModel {
+        let unifiedDevices = devices + nearbyRows.map(\.device)
         let filteredDevices = BluetoothDeviceListPresentation.filteredDevices(
-            devices,
+            unifiedDevices,
             options: options
         )
         let orderedDevices = BluetoothDeviceListPresentation.orderedDevices(filteredDevices, using: order)
@@ -95,8 +99,8 @@ enum BluetoothDeviceListPresentation {
     /// device above a connected one. Devices with no saved rank keep the
     /// group's own order and land after the ranked ones.
     ///
-    /// A row a reading created leads its group, ahead of everything else in it.
-    /// See `leading`.
+    /// Trusted-mobile reading rows lead their group; selected BLE UUID rows
+    /// remain in the saved order. See `leading`.
     static func orderedDevices(
         _ devices: [BluetoothDevice],
         using order: [String]
@@ -105,7 +109,7 @@ enum BluetoothDeviceListPresentation {
         return leading(groups.connected, using: order) + leading(groups.disconnected, using: order)
     }
 
-    /// One group, with the rows a reading created in front.
+    /// One group, with trusted-mobile reading rows in front.
     ///
     /// Those rows are the only ones the panel has live information about: a
     /// level read over the air seconds ago, where every other row carries what
@@ -301,4 +305,20 @@ enum BluetoothDeviceListHeading {
         return hasExternalMobileDevices ? .bluetoothDevicesTitle : .bluetoothPairedDevicesTitle
     }
 }
-import Foundation
+
+/// USB/Wi-Fi helper failures are independent of nearby BLE readings: a BLE
+/// success must never hide a real helper failure, and an empty helper result
+/// without failures is not itself an error.
+enum MobileBatteryFailurePresentation {
+    static func message(
+        isEnabled: Bool,
+        snapshots: [MobileBatterySnapshot],
+        failures: [MobileBatteryReadFailure],
+        isRefreshing: Bool
+    ) -> LocalizationKey? {
+        guard isEnabled, !isRefreshing, snapshots.isEmpty, !failures.isEmpty else { return nil }
+        return failures.contains { $0.category == "trust-required" }
+            ? .mobileBatteryTrustRequired
+            : .mobileBatteryUnavailable
+    }
+}

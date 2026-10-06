@@ -559,3 +559,18 @@ mode names, the group label, and the failure message ship in every language
 (`bluetooth.listeningMode.*`), guarded by the localization parity and
 every-key-every-language tests.
 
+
+
+## Selected BLE battery rows
+
+Selected nearby BLE devices appear in the same `BluetoothDeviceList` as system and
+trusted-mobile rows. They keep independent UUID identities and read-only actions,
+while sharing saved ordering, hiding, the visible-row limit, expansion, and one
+scroll viewport bounded to 330 points. Only selected BLE rows whose geometry
+intersects that actual viewport are eligible for reads. A normal status-panel run
+confirmed one selected iPhone BLE battery read; that is not evidence of broader
+hardware coverage or scroll-away behavior.
+
+USB/Wi-Fi mobile-helper failures are reported separately from BLE. An empty helper
+result without a reported failure is not an error, and a successful BLE row does
+not hide a real USB/Wi-Fi helper failure.

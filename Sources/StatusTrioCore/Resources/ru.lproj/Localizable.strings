@@ -411,7 +411,7 @@
 "mobileBattery.updatedAt" = "Обновлено %@";
 "mobileBattery.charging" = "Заряжается";
 "mobileBattery.trustRequired" = "Подключите iPhone кабелем и нажмите «Доверять», чтобы считать заряд сопряжённых Apple Watch.";
-"mobileBattery.unavailable" = "Не удалось обновить заряд iPhone и Apple Watch.";
+"mobileBattery.unavailable" = "Не удалось обновить заряд iPhone и Apple Watch через USB или Wi-Fi.";
 "settings.bluetooth.nearbyBLE.title" = "Ближайшие BLE-устройства";
 "settings.bluetooth.nearbyBLE.scan" = "Найти устройства поблизости";
 "settings.bluetooth.nearbyBLE.scanning" = "Поиск…";

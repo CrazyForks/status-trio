@@ -411,7 +411,7 @@
 "mobileBattery.updatedAt" = "تم التحديث %@";
 "mobileBattery.charging" = "قيد الشحن";
 "mobileBattery.trustRequired" = "صِل iPhone بالكابل واضغط على «الوثوق» لقراءة بطارية Apple Watch المقترنة.";
-"mobileBattery.unavailable" = "تعذّر تحديث بطارية iPhone وApple Watch.";
+"mobileBattery.unavailable" = "تعذّر تحديث بطارية iPhone وApple Watch عبر USB أو Wi-Fi.";
 "settings.bluetooth.nearbyBLE.title" = "أجهزة BLE القريبة";
 "settings.bluetooth.nearbyBLE.scan" = "افحص الأجهزة القريبة";
 "settings.bluetooth.nearbyBLE.scanning" = "جارٍ الفحص…";

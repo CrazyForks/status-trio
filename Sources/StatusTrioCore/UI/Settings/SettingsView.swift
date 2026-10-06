@@ -96,10 +96,23 @@ struct SettingsView: View {
                     HStack(alignment: .center, spacing: 10) {
                         SettingsIcon(symbol: section.symbol, tint: section.tint)
 
-                        Text(section.title(localization))
-                            .font(.system(size: 13, weight: selectedSection == section ? .medium : .regular))
-                            .foregroundStyle(selectedSection == section ? Color.white : Color.primary)
-                            .lineLimit(1)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(section.title(localization))
+                                .font(.system(size: 13, weight: selectedSection == section ? .medium : .regular))
+                                .foregroundStyle(selectedSection == section ? Color.white : Color.primary)
+                                .lineLimit(1)
+
+                            if section == .about {
+                                Text("v\(AppMetadata.versionDisplayString)")
+                                    .font(.system(size: 9, weight: .regular, design: .rounded))
+                                    .foregroundStyle(
+                                        selectedSection == section
+                                            ? Color.white.opacity(0.72)
+                                            : Color.secondary
+                                    )
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
 
                         Spacer(minLength: 0)
                     }

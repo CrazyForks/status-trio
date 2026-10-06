@@ -6,15 +6,18 @@ enum NearbyBLEPanelVisibility {
         !enabled || !batteryLevelsEnabled || !showsList
     }
 
-    static func eligibleIDs(
-        rows: [NearbyBLEPanelRow],
-        showsList: Bool,
-        limit: Int,
-        expanded: Bool
+    static func visibleSelectedIDs(
+        in visibleDevices: [BluetoothDevice],
+        frames: [UUID: CGRect],
+        viewport: CGRect
     ) -> Set<UUID> {
-        guard showsList, limit > 0 else { return [] }
-        let eligibleRows = expanded ? rows : Array(rows.prefix(limit))
-        return Set(eligibleRows.map(\.id))
+        var selectedIDs = Set<UUID>()
+        for device in visibleDevices where device.isReadOverTheAir {
+            if let id = BluetoothDeviceIdentity.bleUUID(from: device.id) {
+                selectedIDs.insert(id)
+            }
+        }
+        return selectedIDs.intersection(intersectingIDs(frames: frames, viewport: viewport))
     }
 
     static func intersectingIDs(frames: [UUID: CGRect], viewport: CGRect) -> Set<UUID> {

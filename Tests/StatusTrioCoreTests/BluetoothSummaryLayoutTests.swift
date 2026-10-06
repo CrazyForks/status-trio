@@ -181,7 +181,7 @@ final class BluetoothSummaryLayoutTests: XCTestCase {
         XCTAssertLessThan(withSettingOn.height, 120)
     }
 
-    func testNearbyGroupRequiresBothBatterySettingsAndRendersAsItsOwnGroup() async throws {
+    func testSelectedBLERowSharesTheBluetoothListAndRemainsIndependentByUUID() async throws {
         let nearby = [
             NearbyBluetoothBatteryDevice(
                 id: UUID(),
@@ -258,7 +258,7 @@ final class BluetoothSummaryLayoutTests: XCTestCase {
         XCTAssertGreaterThan(
             bothGroupsHosting.fittingSize.height,
             pairedHosting.fittingSize.height,
-            "a same-named nearby device must remain in its own group beside the paired row"
+            "a same-named BLE UUID remains a distinct read-only row in the shared list"
         )
         XCTAssertEqual(
             disabledHosting.fittingSize.height,
@@ -279,12 +279,17 @@ final class BluetoothSummaryLayoutTests: XCTestCase {
                 lastUpdated: Date()
             )
         }
+        let sharedOptions = BluetoothDeviceListOptions(
+            showsList: true,
+            maxVisibleDevices: 20,
+            order: []
+        )
         let (hosting, controller) = try await makeHosting(
             language: .english,
             authorization: .allowed,
             devices: [],
             batteryLevels: [:],
-            listOptions: .standard,
+            listOptions: sharedOptions,
             nearbyDevices: nearby,
             showsNearbyBatteryDevices: true
         )
@@ -292,11 +297,11 @@ final class BluetoothSummaryLayoutTests: XCTestCase {
 
         let scrolling = try XCTUnwrap(
             firstScrollView(in: hosting),
-            "Nearby results must scroll instead of growing the popover without a bound"
+            "The unified Bluetooth list must bound its expanded rows"
         )
         XCTAssertLessThanOrEqual(
             scrolling.frame.height,
-            NearbyBluetoothBatteryRows.maximumRowsHeight + 1
+            BluetoothDeviceList.maximumRowsHeight + 1
         )
     }
 

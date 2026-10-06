@@ -411,7 +411,7 @@
 "mobileBattery.updatedAt" = "更新 %@";
 "mobileBattery.charging" = "充電中";
 "mobileBattery.trustRequired" = "iPhone をケーブルで接続して「信頼」をタップすると、ペアリング済み Apple Watch のバッテリーを読み取れます。";
-"mobileBattery.unavailable" = "iPhone と Apple Watch のバッテリーを更新できませんでした。";
+"mobileBattery.unavailable" = "USB または Wi-Fi 経由で iPhone と Apple Watch のバッテリーを更新できませんでした。";
 "settings.bluetooth.nearbyBLE.title" = "近くの BLE デバイス";
 "settings.bluetooth.nearbyBLE.scan" = "近くのデバイスをスキャン";
 "settings.bluetooth.nearbyBLE.scanning" = "スキャン中…";
