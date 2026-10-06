@@ -208,7 +208,7 @@ private struct BluetoothDeviceListRowFramesPreferenceKey: PreferenceKey {
     }
 }
 
-private struct BluetoothDeviceListViewportPreferenceKey: PreferenceKey {
+struct BluetoothDeviceListViewportPreferenceKey: PreferenceKey {
     static let defaultValue = CGRect.zero
 
     static func reduce(value: inout CGRect, nextValue: () -> CGRect) {

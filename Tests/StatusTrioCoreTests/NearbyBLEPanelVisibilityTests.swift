@@ -37,6 +37,16 @@ struct NearbyBLEPanelVisibilityTests {
         ).isEmpty)
     }
 
+    @Test func edgeOnlyViewportContactHasNoVisibleArea() {
+        let edgeOnly = UUID()
+        let frames = [edgeOnly: CGRect(x: 10, y: 100, width: 40, height: 20)]
+
+        #expect(NearbyBLEPanelVisibility.intersectingIDs(
+            frames: frames,
+            viewport: CGRect(x: 0, y: 0, width: 100, height: 100)
+        ).isEmpty)
+    }
+
     @Test func settingsUnionKeepsUndiscoveredSavedSelectionsAndDeduplicatesUUIDs() {
         let saved = NearbyBLEDeviceSelection(id: UUID(), name: "Saved", vendor: .other, model: nil)
         let duplicate = candidate(saved.id, name: "New broadcast name")
