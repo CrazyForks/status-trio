@@ -16,7 +16,7 @@
 - 设置选择列表可注明“附近蓝牙”“USB / Wi-Fi”“通过 iPhone”等来源和必要的信任提示；面板行不出现 BLE 来源副标题。
 - 列表延续已保存排序和隐藏控制。获选设备无电量时也能形成行；待读取、无法读取和不在附近保持区分，不将未知电量显示为 0%。
 
-说明中的 USB 信任步骤依据 Apple 支持文档 https://support.apple.com/en-ie/109054 。Watch 的可读性是本项目现有 helper 的能力限制，不宣称所有型号都支持。iPad 须增加 helper 与模型测试后才能宣称路径支持；无法实机验证的部分明确记录。
+说明中的 USB 信任步骤依据 Apple 支持文档 <https://support.apple.com/en-ie/109054> 。Watch 的可读性是本项目现有 helper 的能力限制，不宣称所有型号都支持。iPad 须增加 helper 与模型测试后才能宣称路径支持；无法实机验证的部分明确记录。
 
 ## 发现、范围与身份
 
@@ -56,4 +56,4 @@ BLE 临时 GATT 连接仍不作为用户“已连接”状态。保留只读行�
 
 ## 审阅状态
 
-用户已于 2026-10-06 审阅通过本书面设计。实施计划见 docs/superpowers/plans/2026-10-06-apple-device-battery.md；计划待审阅，随后按用户偏好由 gpt-6-luna 执行。
+用户已于 2026-10-06 审阅通过本书面设计，实施计划由用户批准并由 gpt-6-luna Native inline 执行。实现范围包括 metadata-only trusted discovery、精确 selected-ID 读取授权、统一 Apple device picker/catalog 与 viewport 投影、12 语言文案及文档。最终验收、指定 CI 工具链 preflight、test-app 重启和可用硬件 smoke test 仍在进行；不得据本地测试宣称已验证发布兼容性或实机读取能力。

@@ -420,4 +420,9 @@
 "settings.bluetooth.nearbyBLE.noneSelected" = "勾選裝置後，可在狀態面板中顯示其電量。";
 "bluetooth.nearbyBLE.notNearby" = "目前不在附近";
 "bluetooth.nearbyBLE.unavailable" = "暫時無法讀取";
-"bluetooth.nearbyBLE.source" = "附近 BLE";
+"bluetooth.nearbyBLE.source" = "附近藍牙";
+"settings.appleDevicesAndBattery" = "顯示 Apple 裝置與電量";
+"settings.appleDevicesAndBattery.description" = "選擇 iPhone、iPad、Apple Watch 等 Apple 裝置，將其加入藍牙裝置列表並顯示可讀取的電量。透過 USB 或 Wi-Fi 讀取 iPhone、iPad 時，首次需用 USB 連接、解鎖並點按「信任」；無線讀取還需設定 Wi-Fi 同步。Apple Watch 可嘗試透過已信任的配對 iPhone 讀取。附近藍牙讀取不要求 USB 信任，電量可用性因裝置而異。";
+"settings.appleDeviceSelection.title" = "選擇 Apple 裝置";
+"settings.appleDeviceSelection.trustRequired" = "需要信任";
+"settings.appleDeviceSelection.required" = "選擇要加入藍牙裝置列表的裝置。";

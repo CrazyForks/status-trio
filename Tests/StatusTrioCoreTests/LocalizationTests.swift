@@ -70,6 +70,37 @@ final class LocalizationTests: XCTestCase {
         }
     }
 
+    func testAppleDeviceBatteryCopyCoversSelectionAndTrustPaths() throws {
+        let english = try XCTUnwrap(Localization.resourceBundle(for: .english))
+        let description = english.localizedString(
+            forKey: LocalizationKey.settingsAppleDevicesAndBatteryDescription.rawValue,
+            value: nil,
+            table: nil
+        )
+        XCTAssertTrue(description.contains("iPhone"))
+        XCTAssertTrue(description.contains("iPad"))
+        XCTAssertTrue(description.contains("Apple Watch"))
+        XCTAssertFalse(description.contains("iWatch"))
+
+        let chinese = try XCTUnwrap(Localization.resourceBundle(for: .simplifiedChinese))
+        let chineseDescription = chinese.localizedString(
+            forKey: LocalizationKey.settingsAppleDevicesAndBatteryDescription.rawValue,
+            value: nil,
+            table: nil
+        )
+        for term in ["iPhone", "iPad", "Apple Watch", "USB", "信任", "附近蓝牙"] {
+            XCTAssertTrue(chineseDescription.contains(term), "Simplified Chinese copy is missing \(term)")
+        }
+        XCTAssertEqual(
+            chinese.localizedString(forKey: LocalizationKey.settingsAppleDevicesAndBattery.rawValue, value: nil, table: nil),
+            "显示苹果设备与电量"
+        )
+        XCTAssertEqual(
+            chinese.localizedString(forKey: LocalizationKey.settingsAppleDeviceSelectionTitle.rawValue, value: nil, table: nil),
+            "选择苹果设备"
+        )
+    }
+
     func testNaturalScrollingDescriptionMentionsThirdPartyScrollApps() throws {
         let requiredMentions = ["MOS", "Scroll Reverser", "LinearMouse", "Status Trio"]
         let requiredGuidance: [AppLanguage: (scope: String, remedy: String)] = [

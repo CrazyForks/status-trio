@@ -420,4 +420,9 @@
 "settings.bluetooth.nearbyBLE.noneSelected" = "상태 패널에 배터리를 표시할 기기를 선택하세요.";
 "bluetooth.nearbyBLE.notNearby" = "근처에 없음";
 "bluetooth.nearbyBLE.unavailable" = "일시적으로 사용할 수 없음";
-"bluetooth.nearbyBLE.source" = "주변 BLE";
+"bluetooth.nearbyBLE.source" = "주변 Bluetooth";
+"settings.appleDevicesAndBattery" = "Apple 기기 및 배터리 표시";
+"settings.appleDevicesAndBattery.description" = "iPhone, iPad, Apple Watch 등 Apple 기기를 선택해 Bluetooth 목록에 추가하세요. iPhone 및 iPad를 USB 또는 Wi-Fi로 읽으려면 처음 한 번 USB로 연결하고 잠금을 해제한 뒤 ‘신뢰’를 탭해야 합니다. 무선 읽기에는 Wi-Fi 동기화도 필요합니다. Apple Watch는 신뢰된 페어링 iPhone을 통해 읽을 수 있습니다. 주변 Bluetooth 읽기에는 USB 신뢰가 필요하지 않으며 배터리 제공 여부는 기기마다 다릅니다.";
+"settings.appleDeviceSelection.title" = "Apple 기기 선택";
+"settings.appleDeviceSelection.trustRequired" = "신뢰 필요";
+"settings.appleDeviceSelection.required" = "Bluetooth 목록에 표시할 기기를 선택하세요.";

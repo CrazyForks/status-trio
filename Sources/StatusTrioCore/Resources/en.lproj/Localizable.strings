@@ -420,4 +420,9 @@
 "settings.bluetooth.nearbyBLE.noneSelected" = "Select a device to show its battery in the status panel.";
 "bluetooth.nearbyBLE.notNearby" = "Not nearby";
 "bluetooth.nearbyBLE.unavailable" = "Temporarily unavailable";
-"bluetooth.nearbyBLE.source" = "Nearby BLE";
+"bluetooth.nearbyBLE.source" = "Nearby Bluetooth";
+"settings.appleDevicesAndBattery" = "Show Apple devices and battery";
+"settings.appleDevicesAndBattery.description" = "Select iPhone, iPad, Apple Watch, and other Apple devices to add them to the Bluetooth list. USB or Wi-Fi reads of iPhone and iPad require a one-time USB connection, unlock, and Trust; wireless reads also require Wi-Fi syncing. Apple Watch reads may use its trusted paired iPhone. Nearby Bluetooth does not require USB trust; battery availability varies by device.";
+"settings.appleDeviceSelection.title" = "Choose Apple devices";
+"settings.appleDeviceSelection.trustRequired" = "Trust required";
+"settings.appleDeviceSelection.required" = "Select devices to show them in the Bluetooth list.";

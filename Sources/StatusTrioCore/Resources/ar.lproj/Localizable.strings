@@ -420,4 +420,9 @@
 "settings.bluetooth.nearbyBLE.noneSelected" = "اختر جهازًا لعرض بطاريته في لوحة الحالة.";
 "bluetooth.nearbyBLE.notNearby" = "غير قريب";
 "bluetooth.nearbyBLE.unavailable" = "غير متاح مؤقتًا";
-"bluetooth.nearbyBLE.source" = "BLE قريب";
+"bluetooth.nearbyBLE.source" = "Bluetooth قريب";
+"settings.appleDevicesAndBattery" = "إظهار أجهزة Apple والبطارية";
+"settings.appleDevicesAndBattery.description" = "اختر iPhone وiPad وApple Watch وأجهزة Apple الأخرى لإضافتها إلى قائمة Bluetooth. تتطلب قراءة iPhone وiPad عبر USB أو Wi-Fi توصيلهما مرة واحدة عبر USB وإلغاء قفلهما والنقر على «الوثوق». تتطلب القراءة اللاسلكية أيضًا مزامنة Wi-Fi. يمكن محاولة قراءة Apple Watch عبر iPhone موثوق ومقترن بها. لا تتطلب قراءة Bluetooth القريبة الوثوق عبر USB؛ ويختلف توفر البطارية حسب الجهاز.";
+"settings.appleDeviceSelection.title" = "اختيار أجهزة Apple";
+"settings.appleDeviceSelection.trustRequired" = "يتطلب الوثوق";
+"settings.appleDeviceSelection.required" = "اختر الأجهزة التي تريد إظهارها في قائمة Bluetooth.";

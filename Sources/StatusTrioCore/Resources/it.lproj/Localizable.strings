@@ -420,4 +420,9 @@
 "settings.bluetooth.nearbyBLE.noneSelected" = "Seleziona un dispositivo per mostrarne la batteria nel pannello di stato.";
 "bluetooth.nearbyBLE.notNearby" = "Non nelle vicinanze";
 "bluetooth.nearbyBLE.unavailable" = "Temporaneamente non disponibile";
-"bluetooth.nearbyBLE.source" = "BLE vicino";
+"bluetooth.nearbyBLE.source" = "Bluetooth vicino";
+"settings.appleDevicesAndBattery" = "Mostra dispositivi Apple e batteria";
+"settings.appleDevicesAndBattery.description" = "Seleziona iPhone, iPad, Apple Watch e altri dispositivi Apple per aggiungerli all’elenco Bluetooth. La lettura di iPhone e iPad tramite USB o Wi-Fi richiede una prima connessione USB, lo sblocco e il tocco su «Autorizza». La lettura wireless richiede anche la sincronizzazione Wi-Fi. Apple Watch può essere letto tramite l’iPhone abbinato e autorizzato. La lettura Bluetooth nelle vicinanze non richiede l’autorizzazione USB; la disponibilità della batteria varia in base al dispositivo.";
+"settings.appleDeviceSelection.title" = "Scegli dispositivi Apple";
+"settings.appleDeviceSelection.trustRequired" = "Autorizzazione richiesta";
+"settings.appleDeviceSelection.required" = "Seleziona i dispositivi da mostrare nell’elenco Bluetooth.";
