@@ -308,6 +308,173 @@ final class BluetoothDeviceListPresentationTests: XCTestCase {
         )
     }
 
+    func testSettingsSuppressesOnlyUniqueUnpairedGhostShadowOfSelectedBLE() {
+        let selected = makeSelectedBLERow(name: " Ling's iPhone ")
+        let shadow = makeDevice(
+            address: "AA:00:00:00:00:01",
+            name: "LING'S IPHONE",
+            isConnected: false,
+            isUnpairedGhost: true
+        )
+        let pairedPeer = makeDevice(
+            address: "AA:00:00:00:00:02",
+            name: "Ling's iPhone",
+            isConnected: true
+        )
+        let unrelatedGhost = makeDevice(
+            address: "AA:00:00:00:00:03",
+            name: "Other ghost",
+            isConnected: false,
+            isUnpairedGhost: true
+        )
+        let settingsRows = BluetoothDeviceListPresentation.removingSelectedNearbyBLEGhostShadows(
+            from: [shadow, pairedPeer, unrelatedGhost, selected],
+            selectedNearbyBLERows: [selected]
+        )
+
+        XCTAssertEqual(Set(settingsRows.map(\.id)), Set([pairedPeer.id, unrelatedGhost.id, selected.id]))
+        XCTAssertTrue(settingsRows.contains { $0.id == pairedPeer.id }, "a truly paired peer must remain")
+        XCTAssertTrue(settingsRows.contains { $0.id == selected.id }, "the selected BLE row keeps its own identity")
+        XCTAssertTrue(settingsRows.contains { $0.id == unrelatedGhost.id }, "unrelated ghosts remain available in Settings")
+    }
+
+    func testPanelGhostShadowRemainsSuppressedWhenSelectedBLERowIsHidden() {
+        let selectedID = UUID()
+        let selected = makeSelectedBLERow(name: "Ling's iPhone", id: selectedID)
+        let shadow = makeDevice(
+            address: "AA:00:00:00:00:11",
+            name: "Ling's iPhone",
+            isConnected: false,
+            isUnpairedGhost: true
+        )
+        let revealedGhost = makeDevice(
+            address: "AA:00:00:00:00:12",
+            name: "Unrelated ghost",
+            isConnected: false,
+            isUnpairedGhost: true
+        )
+        let pairedPeer = makeDevice(
+            address: "AA:00:00:00:00:13",
+            name: "Ling's iPhone",
+            isConnected: true
+        )
+        let options = BluetoothDeviceListOptions(
+            showsList: true,
+            maxVisibleDevices: 5,
+            order: [],
+            hidesGhostDevices: true,
+            revealedGhostDeviceAddresses: [BluetoothBatteryReader.normalizedAddress(revealedGhost.id)]
+        )
+
+        let panelRows = BluetoothDeviceListPresentation.panelSystemRows(
+            from: [shadow, revealedGhost, pairedPeer],
+            selectedNearbyBLEDevices: [selected],
+            showsNearbyBatteryLevels: true,
+            listOptions: options
+        )
+        XCTAssertEqual(
+            BluetoothDeviceListPresentation.filteredDevices(panelRows, options: options).map(\.id),
+            [revealedGhost.id, pairedPeer.id]
+        )
+
+        // The actual panel catalog omits a manually hidden selected UUID. Its
+        // former name therefore must not continue suppressing a separately
+        // revealed system ghost.
+        let selection = NearbyBLEDeviceSelection(
+            id: selectedID,
+            name: selected.name,
+            vendor: .unknown,
+            model: nil
+        )
+        let hiddenOptions = BluetoothDeviceListOptions(
+            showsList: true,
+            maxVisibleDevices: 5,
+            order: [],
+            hiddenDeviceAddresses: [BluetoothDeviceIdentity.bleRowID(selectedID)]
+        )
+        let hiddenNearbyRows = NearbyBLEDeviceCatalog.panelRows(
+            selections: [selection],
+            candidates: [],
+            readings: [],
+            failures: [],
+            options: hiddenOptions,
+            now: Date()
+        )
+        XCTAssertTrue(hiddenNearbyRows.isEmpty)
+        let revealShadow = BluetoothDeviceListOptions(
+            showsList: true,
+            maxVisibleDevices: 5,
+            order: [],
+            hidesGhostDevices: true,
+            hiddenDeviceAddresses: [BluetoothDeviceIdentity.bleRowID(selectedID)],
+            revealedGhostDeviceAddresses: [BluetoothBatteryReader.normalizedAddress(shadow.id)]
+        )
+        let canonicalSelectedRows = NearbyBLEDeviceCatalog.settingsDevices(selections: [selection])
+        let panelSystemRows = BluetoothDeviceListPresentation.panelSystemRows(
+            from: [shadow, pairedPeer],
+            selectedNearbyBLEDevices: canonicalSelectedRows,
+            showsNearbyBatteryLevels: true,
+            listOptions: revealShadow
+        )
+        XCTAssertEqual(
+            BluetoothDeviceListPresentation.filteredDevices(panelSystemRows, options: revealShadow).map(\.id),
+            [pairedPeer.id],
+            "Hiding a saved BLE row must not reveal its duplicate macOS ghost; truly paired peers remain"
+        )
+        XCTAssertEqual(
+            BluetoothDeviceListPresentation.panelSystemRows(
+                from: [shadow],
+                selectedNearbyBLEDevices: canonicalSelectedRows,
+                showsNearbyBatteryLevels: false,
+                listOptions: revealShadow
+            ).map(\.id),
+            [shadow.id],
+            "Shadow suppression is limited to the nearby battery feature"
+        )
+    }
+
+    func testAmbiguousNamesAndNonBLEReadingsNeverSuppressGhosts() {
+        let selectedA = makeSelectedBLERow(name: "Shared phone")
+        let selectedB = makeSelectedBLERow(name: "Shared phone")
+        let ghost = makeDevice(
+            address: "AA:00:00:00:00:21",
+            name: "Shared phone",
+            isConnected: false,
+            isUnpairedGhost: true
+        )
+        let ambiguousSelection = BluetoothDeviceListPresentation.removingSelectedNearbyBLEGhostShadows(
+            from: [ghost, selectedA, selectedB],
+            selectedNearbyBLERows: [selectedA, selectedB]
+        )
+        XCTAssertTrue(ambiguousSelection.contains { $0.id == ghost.id })
+
+        let nonBLEReading = makeReadingDevice(address: "CB-1", name: "Shared phone")
+        let nonSelectedSource = BluetoothDeviceListPresentation.removingSelectedNearbyBLEGhostShadows(
+            from: [ghost, nonBLEReading],
+            selectedNearbyBLERows: []
+        )
+        XCTAssertTrue(nonSelectedSource.contains { $0.id == ghost.id })
+
+        let ghostA = makeDevice(
+            address: "AA:00:00:00:00:22",
+            name: "Shared phone",
+            isConnected: false,
+            isUnpairedGhost: true
+        )
+        let ghostB = makeDevice(
+            address: "AA:00:00:00:00:23",
+            name: "Shared phone",
+            isConnected: false,
+            isUnpairedGhost: true
+        )
+        let ambiguousGhosts = BluetoothDeviceListPresentation.removingSelectedNearbyBLEGhostShadows(
+            from: [ghostA, ghostB, selectedA],
+            selectedNearbyBLERows: [selectedA]
+        )
+        XCTAssertTrue(ambiguousGhosts.contains { $0.id == ghostA.id })
+        XCTAssertTrue(ambiguousGhosts.contains { $0.id == ghostB.id })
+    }
+
     /// A row a reading created leads its group. It is the only row the panel has
     /// live information about — a level read over the air seconds ago — and the
     /// report lists it wherever its own scan found it, sorted among the rest by
@@ -358,6 +525,16 @@ final class BluetoothDeviceListPresentationTests: XCTestCase {
         XCTAssertEqual(
             BluetoothDeviceListPresentation.orderedDevices(devices, using: []).map(\.name),
             ["MX Keys", "Ling's iPhone"]
+        )
+    }
+
+    private func makeSelectedBLERow(name: String, id: UUID = UUID()) -> BluetoothDevice {
+        BluetoothDevice(
+            id: BluetoothDeviceIdentity.bleRowID(id),
+            name: name,
+            kind: .unknown,
+            isConnected: false,
+            isReadOverTheAir: true
         )
     }
 

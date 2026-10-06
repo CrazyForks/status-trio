@@ -92,10 +92,11 @@ unrecorded; the failed local hosted-view experiment is not a GitHub Actions run.
   presentation metadata; the complete company identifier and recognized message
   type still gate discovery. If this admits unwanted unnamed candidates, the
   picker can be noisier, but no UUID gains read permission without selection.
-- Real iPhone/Watch GATT capability remains a hardware verification item. Unit
-  tests prove authorization boundaries, not a particular device's readable
-  characteristic. If a target is unsupported, its selected row may remain
-  unavailable rather than deliver battery data.
+- The October 6, 2026 live follow-up below verified a successful GATT battery
+  read and visible percentage for one selected Nearby BLE target. This does not
+  establish support for other iPhone, Watch, or standard Battery Service
+  peripherals; unit tests alone do not prove a particular target's readable
+  characteristic.
 - BLE UUID stability remains a hardware verification item. Selection follows
   only the saved UUID because names cannot safely identify ownership. If a UUID
   rotates, the user must select the new UUID.
@@ -108,24 +109,49 @@ unrecorded; the failed local hosted-view experiment is not a GitHub Actions run.
   must be diagnosed and recorded before completion.
 - All 12 translations use the existing localization vocabulary, but this pass
   does not provide native-speaker review. Some wording may need later refinement.
-- Headless hosted-view geometry verification was replaced with deterministic
-  policy and controller regressions after no geometry and a signal-11 host
-  failure. Physical scrolling and actual SwiftUI layout remain manual hardware
-  checks; a layout-specific regression could escape these tests.
+- Headless hosted-view geometry verification was replaced with a direct reducer
+  regression after the host produced no geometry and an `NSWindow` test exited
+  with signal 11. The October 6 live popover confirmed actual viewport reporting
+  at runtime, but automated SwiftUI layout integration and physical scroll-away
+  behavior remain unverified; a layout-specific regression could escape tests.
 
 No review minors remain deferred. The visual/VoiceOver status inconsistency was
 regraded as important and fixed with shared status derivation and a regression.
 
+## Follow-up live verification (October 6, 2026)
+
+A real macOS popover run with one selected Nearby BLE peer confirmed the row was
+visible to the viewport policy and received a read permit. The scanner connected,
+discovered the Battery Service and Battery Level characteristic, completed a
+successful one-byte battery read, parsed it, and published a result accepted by
+the controller under the active permit. CUA inspection confirmed the selected
+Nearby BLE row displayed a battery percentage. No device identifier, device name,
+or exact battery percentage is recorded here.
+
+The runtime trace isolated the prior no-battery regression to viewport
+preference aggregation: a default zero-size preference could overwrite the real
+viewport, so a visibly rendered row was not reported as visible. The reducer now
+ignores zero-size defaults, with a direct reducer regression. The duplicate
+macOS unpaired ghost fix is presentation-only and suppresses only a unique name
+shadow of a selected BLE row; it does not merge identities, readings, or read
+permissions. Regression coverage includes hidden selected rows and ambiguous
+names.
+
+This is one successful target run, not a broad hardware matrix. Other devices,
+radio timing races, and scroll-away cancellation still require independent
+validation.
+
 ## Hardware verification limits
 
-This implementation pass did not run a controlled iPhone, Watch, or standard
-Battery Service peripheral matrix. Automated tests establish permission
-boundaries and row projection, but do not prove that a particular radio target
-advertises the recognized candidate payload, accepts a GATT connection, or
-returns a readable battery characteristic. Settings discovery, Apple-first
-ordering on real advertisements, actual charge readings, callback routing under
-radio races, and physical scroll-away cancellation therefore remain unverified
-on hardware.
+The live follow-up above verifies one selected target's viewport eligibility,
+read permit, GATT connection, Battery Service/Battery Level read, accepted result,
+and visible percentage in the real popover. This was one target run, not a
+controlled iPhone, Watch, or standard Battery Service peripheral matrix.
+Automated tests establish permission boundaries and row projection but do not
+prove that other targets advertise the recognized candidate payload, accept a
+GATT connection, or return a readable characteristic. Settings discovery,
+Apple-first ordering across real advertisements, callback routing under radio
+races, and physical scroll-away cancellation remain unverified on hardware.
 
 No reliable mapping from a nearby BLE UUID to a system Bluetooth address is
 available in the current advertisement inputs. The implementation does not

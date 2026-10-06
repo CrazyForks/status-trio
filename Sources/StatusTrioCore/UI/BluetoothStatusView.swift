@@ -98,7 +98,7 @@ struct BluetoothStatusView: View {
                 }
 
                 BluetoothDeviceList(
-                    devices: visibleDeviceRows(from: merged),
+                    devices: panelDeviceRows(from: merged),
                     batteryLevels: merged.batteryLevels,
                     mobileMetadataByDeviceID: merged.mobileMetadataByDeviceID,
                     actionStates: controller.deviceActionStates,
@@ -314,6 +314,19 @@ struct BluetoothStatusView: View {
                 isReadOverTheAir: true
             )
         }
+    }
+
+    private func panelDeviceRows(
+        from merged: MobileBatteryDeviceMerge.Result
+    ) -> [BluetoothDevice] {
+        BluetoothDeviceListPresentation.panelSystemRows(
+            from: visibleDeviceRows(from: merged),
+            selectedNearbyBLEDevices: NearbyBLEDeviceCatalog.settingsDevices(
+                selections: nearbyBLESelections
+            ),
+            showsNearbyBatteryLevels: showsNearbyBatteryLevels,
+            listOptions: listOptions
+        )
     }
 
     private var hidesSubtitle: Bool {

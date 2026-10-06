@@ -533,10 +533,15 @@ struct BluetoothSectionView: View {
     /// Settings moves the row the user is looking at. Read from the observed
     /// controller, not the store, so a read that lands later repaints it.
     private var orderedBluetoothDevices: [BluetoothDevice] {
-        BluetoothDeviceListPresentation.orderedDevices(
-            bluetoothDevices.devices + NearbyBLEDeviceCatalog.settingsDevices(
-                selections: store.nearbyBLESelections
-            ),
+        let nearbyDevices = NearbyBLEDeviceCatalog.settingsDevices(
+            selections: store.nearbyBLESelections
+        )
+        let devices = BluetoothDeviceListPresentation.removingSelectedNearbyBLEGhostShadows(
+            from: bluetoothDevices.devices + nearbyDevices,
+            selectedNearbyBLERows: nearbyDevices
+        )
+        return BluetoothDeviceListPresentation.orderedDevices(
+            devices,
             using: store.bluetoothDeviceOrder
         )
     }

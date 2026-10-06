@@ -33,6 +33,63 @@ struct BluetoothDeviceListModel: Equatable {
 }
 
 enum BluetoothDeviceListPresentation {
+    /// Applies the shared system-row shadow rule while the nearby battery list
+    /// is enabled. Saved selections are deliberately independent of row-level
+    /// hiding: hiding the BLE row must not make its duplicate system ghost reappear.
+    static func panelSystemRows(
+        from systemRows: [BluetoothDevice],
+        selectedNearbyBLEDevices: [BluetoothDevice],
+        showsNearbyBatteryLevels: Bool,
+        listOptions: BluetoothDeviceListOptions
+    ) -> [BluetoothDevice] {
+        guard showsNearbyBatteryLevels,
+              listOptions.showsList,
+              listOptions.maxVisibleDevices > 0 else { return systemRows }
+        return removingSelectedNearbyBLEGhostShadows(
+            from: systemRows,
+            selectedNearbyBLERows: selectedNearbyBLEDevices
+        )
+    }
+
+    /// Removes only a uniquely name-matched unpaired ghost that shadows one
+    /// selected Nearby BLE row. This is presentation-only: neither row identity,
+    /// readings, nor the UUID-based read permit is merged or changed by a name.
+    static func removingSelectedNearbyBLEGhostShadows(
+        from devices: [BluetoothDevice],
+        selectedNearbyBLERows: [BluetoothDevice]
+    ) -> [BluetoothDevice] {
+        var selectedIDsByName: [String: Set<UUID>] = [:]
+        for device in selectedNearbyBLERows {
+            guard device.isReadOverTheAir,
+                  let id = BluetoothDeviceIdentity.bleUUID(from: device.id),
+                  let name = normalizedPresentationName(device.name) else { continue }
+            selectedIDsByName[name, default: []].insert(id)
+        }
+
+        var ghostCountsByName: [String: Int] = [:]
+        for device in devices where device.isUnpairedGhost && !device.isConnected {
+            guard let name = normalizedPresentationName(device.name) else { continue }
+            ghostCountsByName[name, default: 0] += 1
+        }
+
+        let shadowNames = Set(selectedIDsByName.compactMap { name, ids in
+            ids.count == 1 && ghostCountsByName[name] == 1 ? name : nil
+        })
+        guard !shadowNames.isEmpty else { return devices }
+
+        return devices.filter { device in
+            guard device.isUnpairedGhost, !device.isConnected,
+                  let name = normalizedPresentationName(device.name) else { return true }
+            return !shadowNames.contains(name)
+        }
+    }
+
+    private static func normalizedPresentationName(_ name: String) -> String? {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        return trimmed.folding(options: [.caseInsensitive], locale: Locale(identifier: "en_US_POSIX"))
+    }
+
     /// Connected devices always lead; the saved order only reorders devices
     /// **within** their own group, so a drag can never lift a disconnected
     /// device above a connected one. Devices with no saved rank keep the
