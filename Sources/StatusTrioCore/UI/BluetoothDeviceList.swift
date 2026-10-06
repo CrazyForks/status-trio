@@ -12,6 +12,8 @@ struct BluetoothDeviceList: View {
     var mobileMetadataByDeviceID: [String: MobileBatterySnapshot] = [:]
     var nearbyRows: [NearbyBLEPanelRow] = []
     var onVisibleNearbyIDsChanged: (Set<UUID>) -> Void = { _ in }
+    var appleRows: [AppleDevicePanelRow] = []
+    var onVisibleAppleIDsChanged: (Set<AppleDeviceID>) -> Void = { _ in }
     let actionStates: [String: BluetoothDeviceActionState]
     /// The device whose disconnect is waiting for confirmation, by normalized
     /// address. The controller owns it so that closing the panel cancels it even
@@ -26,6 +28,8 @@ struct BluetoothDeviceList: View {
     @State private var nearbyRowFrames: [UUID: CGRect] = [:]
     @State private var rowsViewportFrame = CGRect.zero
     @State private var reportedNearbyIDs = Set<UUID>()
+    @State private var rowFrames: [String: CGRect] = [:]
+    @State private var reportedAppleIDs = Set<AppleDeviceID>()
 
     private static let geometryCoordinateSpace = "BluetoothDeviceList"
 
@@ -43,6 +47,7 @@ struct BluetoothDeviceList: View {
         let model = BluetoothDeviceListModel.make(
             devices: devices,
             nearbyRows: nearbyRows,
+            appleRows: appleRows,
             order: options.order,
             limit: options.maxVisibleDevices,
             isExpanded: isExpanded,
@@ -82,7 +87,11 @@ struct BluetoothDeviceList: View {
         }
         .coordinateSpace(name: Self.geometryCoordinateSpace)
         .onPreferenceChange(BluetoothDeviceListRowFramesPreferenceKey.self) { frames in
-            nearbyRowFrames = frames
+            rowFrames = frames
+            nearbyRowFrames = Dictionary(frames.compactMap { key, frame in
+                guard let id = BluetoothDeviceIdentity.bleUUID(from: key) else { return nil }
+                return (id, frame)
+            }, uniquingKeysWith: { _, latest in latest })
             publishVisibleNearbyIDs(in: model.visibleDevices)
         }
         .onPreferenceChange(BluetoothDeviceListViewportPreferenceKey.self) { frame in
@@ -92,13 +101,22 @@ struct BluetoothDeviceList: View {
         .onChange(of: model.visibleDevices) { _, visibleDevices in
             publishVisibleNearbyIDs(in: visibleDevices)
         }
+        .onChange(of: isExpanded) { _, _ in
+            publishVisibleNearbyIDs(in: model.visibleDevices)
+        }
         .onChange(of: nearbyRows) { _, _ in
+            publishVisibleNearbyIDs(in: model.visibleDevices)
+        }
+        .onChange(of: appleRows) { _, _ in
             publishVisibleNearbyIDs(in: model.visibleDevices)
         }
         .onChange(of: options) { _, _ in
             publishVisibleNearbyIDs(in: model.visibleDevices)
         }
-        .onDisappear { reportVisibleNearbyIDs([]) }
+        .onDisappear {
+            reportVisibleNearbyIDs([])
+            reportVisibleAppleIDs([])
+        }
     }
 
     /// The rows, bounded.
@@ -151,6 +169,7 @@ struct BluetoothDeviceList: View {
                     batteryLevels: batteryLevels,
                     mobileMetadataByDeviceID: mobileMetadataByDeviceID,
                     nearbyMetadataByDeviceID: nearbyRowByDeviceID,
+                    appleStatusByDeviceID: Dictionary(appleRows.map { ($0.device.id, $0.status) }, uniquingKeysWith: { _, latest in latest }),
                     actionState: actionStates[address],
                     isConfirmingDisconnect: confirmingAddress == address
                         && BluetoothDeviceActionPolicy.requiresConfirmation(for: device),
@@ -159,11 +178,11 @@ struct BluetoothDeviceList: View {
                     onCancelDisconnect: onCancelDisconnect
                 )
                 .background {
-                    if let id = BluetoothDeviceIdentity.bleUUID(from: device.id), device.isReadOverTheAir {
+                    if device.isReadOverTheAir {
                         GeometryReader { proxy in
                             Color.clear.preference(
                                 key: BluetoothDeviceListRowFramesPreferenceKey.self,
-                                value: [id: proxy.frame(in: .named(Self.geometryCoordinateSpace))]
+                                value: [device.id: proxy.frame(in: .named(Self.geometryCoordinateSpace))]
                             )
                         }
                     }
@@ -191,6 +210,13 @@ struct BluetoothDeviceList: View {
             frames: nearbyRowFrames,
             viewport: rowsViewportFrame
         ))
+        let appleIDs = AppleDevicePanelVisibility.visibleIDs(
+            in: visibleDevices,
+            rowIDs: AppleDeviceCatalog.rowIdentityMap(appleRows),
+            frames: rowFrames,
+            viewport: rowsViewportFrame
+        )
+        reportVisibleAppleIDs(appleIDs)
     }
 
     private func reportVisibleNearbyIDs(_ ids: Set<UUID>) {
@@ -198,12 +224,18 @@ struct BluetoothDeviceList: View {
         reportedNearbyIDs = ids
         onVisibleNearbyIDsChanged(ids)
     }
+
+    private func reportVisibleAppleIDs(_ ids: Set<AppleDeviceID>) {
+        guard reportedAppleIDs != ids else { return }
+        reportedAppleIDs = ids
+        onVisibleAppleIDsChanged(ids)
+    }
 }
 
 private struct BluetoothDeviceListRowFramesPreferenceKey: PreferenceKey {
-    static let defaultValue: [UUID: CGRect] = [:]
+    static let defaultValue: [String: CGRect] = [:]
 
-    static func reduce(value: inout [UUID: CGRect], nextValue: () -> [UUID: CGRect]) {
+    static func reduce(value: inout [String: CGRect], nextValue: () -> [String: CGRect]) {
         value.merge(nextValue(), uniquingKeysWith: { _, latest in latest })
     }
 }

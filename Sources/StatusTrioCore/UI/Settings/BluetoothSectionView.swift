@@ -122,21 +122,11 @@ struct BluetoothSectionView: View {
                 SettingsDivider()
 
                 SettingsToggleRow(
-                    symbol: "dot.radiowaves.left.and.right",
+                    symbol: "apple.logo",
                     tint: .blue,
-                    title: localization.string(.settingsBluetoothNearbyBatteryDevices),
-                    subtitle: localization.string(.settingsBluetoothNearbyBatteryDevicesDescription),
-                    isOn: $store.showsNearbyBluetoothBatteryDevices
-                )
-
-                SettingsDivider()
-
-                SettingsToggleRow(
-                    symbol: "iphone.gen3.radiowaves.left.and.right",
-                    tint: .teal,
-                    title: localization.string(.settingsBluetoothMobileBatteryDevices),
-                    subtitle: localization.string(.settingsBluetoothMobileBatteryDevicesDescription),
-                    isOn: $store.showsMobileDeviceBatteryLevels
+                    title: localization.string(.settingsAppleDevicesAndBattery),
+                    subtitle: localization.string(.settingsAppleDevicesAndBatteryDescription),
+                    isOn: $store.showsAppleDevicesAndBattery
                 )
 
                 SettingsDivider()
@@ -216,8 +206,8 @@ struct BluetoothSectionView: View {
                 }
             }
 
-            if store.showsNearbyBluetoothBatteryDevices {
-                NearbyBLESelectionView(store: store, controller: bluetoothDevices)
+            if store.showsAppleDevicesAndBattery {
+                AppleDeviceSelectionView(store: store, discovery: statusStore.appleDeviceDiscovery, bluetooth: bluetoothDevices)
             }
 
             deviceListGroup

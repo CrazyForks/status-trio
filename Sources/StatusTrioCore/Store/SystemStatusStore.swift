@@ -59,6 +59,7 @@ final class SystemStatusStore: ObservableObject {
     let primaryLink: PrimaryLinkController
     let bluetoothDevices: BluetoothDeviceController
     let mobileBattery: MobileBatteryController
+    let appleDeviceDiscovery: AppleDeviceDiscoveryController
     /// The AirPods listening-mode surface. A separate owner from `bluetoothDevices`
     /// (the plan's Option B): its own discovery/write lifecycle, so the delicate
     /// paired-device controller is not widened by it. The Bluetooth view drives it
@@ -84,6 +85,7 @@ final class SystemStatusStore: ObservableObject {
     private var inputUpdateTask: Task<Void, Never>?
     private var inputSettingsCancellable: AnyCancellable?
     private var mobileBatterySettingsCancellable: AnyCancellable?
+    private var appleDeviceSettingsCancellable: AnyCancellable?
     private var inputSettingEnabled = false
     private var isInputEnabled = false
     private var refreshTask: Task<Void, Never>?
@@ -148,6 +150,7 @@ final class SystemStatusStore: ObservableObject {
         primaryLink: PrimaryLinkController = PrimaryLinkController(),
         bluetoothDevices: BluetoothDeviceController = BluetoothDeviceController(),
         mobileBattery: MobileBatteryController = MobileBatteryController(),
+        appleDeviceDiscovery: AppleDeviceDiscoveryController = AppleDeviceDiscoveryController(),
         bluetoothListeningModes: BluetoothListeningModeController = BluetoothListeningModeController(),
         initialSnapshot: StatusSnapshot = .placeholder
     ) {
@@ -169,6 +172,7 @@ final class SystemStatusStore: ObservableObject {
         self.primaryLink = primaryLink
         self.bluetoothDevices = bluetoothDevices
         self.mobileBattery = mobileBattery
+        self.appleDeviceDiscovery = appleDeviceDiscovery
         self.bluetoothListeningModes = bluetoothListeningModes
         self.snapshot = initialSnapshot
         self.popupSnapshot = initialSnapshot
@@ -342,6 +346,7 @@ final class SystemStatusStore: ObservableObject {
 
         batteryDetails.deactivate()
         mobileBattery.stop()
+        appleDeviceDiscovery.stop()
         batteryMonitor.stop()
         wifiMonitor.stop()
         connectionMonitor?.stop()
@@ -658,13 +663,18 @@ final class SystemStatusStore: ObservableObject {
         guard !hasStopped else { return }
         mobileBatterySettingsCancellable = settings.$showsBluetoothBatteryLevels
             .combineLatest(
-                settings.$showsMobileDeviceBatteryLevels,
+                settings.$showsAppleDevicesAndBattery,
                 settings.$showsBluetoothDeviceList
             )
             .map { $0.0 && $0.1 && $0.2 }
             .removeDuplicates()
             .sink { [weak self] enabled in
                 self?.mobileBattery.setReadingEnabled(enabled)
+            }
+        appleDeviceSettingsCancellable = settings.$showsAppleDevicesAndBattery
+            .removeDuplicates()
+            .sink { [weak self] enabled in
+                self?.appleDeviceDiscovery.setEnabled(enabled)
             }
     }
 

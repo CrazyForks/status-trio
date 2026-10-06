@@ -19,6 +19,7 @@ struct BluetoothDeviceRow: View {
     let batteryLevels: [String: BluetoothBatteryLevel]
     var mobileMetadataByDeviceID: [String: MobileBatterySnapshot] = [:]
     var nearbyMetadataByDeviceID: [String: NearbyBLEPanelRow] = [:]
+    var appleStatusByDeviceID: [String: NearbyBLEPanelRowStatus] = [:]
     let actionState: BluetoothDeviceActionState?
     let isConfirmingDisconnect: Bool
     let onPerformAction: () -> Void
@@ -98,8 +99,8 @@ struct BluetoothDeviceRow: View {
 
             Spacer(minLength: 8)
 
-            if let nearbyRow = nearbyMetadataByDeviceID[device.id] {
-                Text(nearbyStatusText(nearbyRow.status))
+            if let externalStatus = externalBatteryStatus {
+                Text(nearbyStatusText(externalStatus))
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
@@ -195,6 +196,10 @@ struct BluetoothDeviceRow: View {
         }
     }
 
+    private var externalBatteryStatus: NearbyBLEPanelRowStatus? {
+        nearbyMetadataByDeviceID[device.id]?.status ?? appleStatusByDeviceID[device.id]
+    }
+
     /// The level as the report's pieces. The charging case is drawn as its glyph
     /// rather than spelled out, so the row is not carrying a word no localization
     /// translates.
@@ -241,8 +246,8 @@ struct BluetoothDeviceRow: View {
     /// `Text` run and has no label of its own: a combined element would otherwise
     /// announce the case's percentage with nothing saying what it belongs to.
     private var rowAccessibilityValue: String {
-        if let nearbyRow = nearbyMetadataByDeviceID[device.id] {
-            return nearbyStatusText(nearbyRow.status)
+        if let externalStatus = externalBatteryStatus {
+            return nearbyStatusText(externalStatus)
         }
         let state = stateAccessibilityValue
         guard let level = BluetoothDevicePresentation.batteryLevelSegments(

@@ -10,12 +10,13 @@ struct BluetoothDeviceListModel: Equatable {
     static func make(
         devices: [BluetoothDevice],
         nearbyRows: [NearbyBLEPanelRow] = [],
+        appleRows: [AppleDevicePanelRow] = [],
         order: [String],
         limit: Int,
         isExpanded: Bool,
         options: BluetoothDeviceListOptions
     ) -> BluetoothDeviceListModel {
-        let unifiedDevices = devices + nearbyRows.map(\.device)
+        let unifiedDevices = devices + nearbyRows.map(\.device) + appleRows.map(\.device)
         let filteredDevices = BluetoothDeviceListPresentation.filteredDevices(
             unifiedDevices,
             options: options

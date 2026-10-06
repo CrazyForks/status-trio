@@ -218,7 +218,7 @@ final class BluetoothSummaryLayoutTests: XCTestCase {
             batteryLevels: [:],
             listOptions: options,
             nearbyDevices: nearby,
-            showsNearbyBatteryDevices: true
+            showsAppleDevicesAndBattery: true
         )
         defer { nearbyController.deactivate() }
 
@@ -238,7 +238,7 @@ final class BluetoothSummaryLayoutTests: XCTestCase {
             batteryLevels: [:],
             listOptions: options,
             nearbyDevices: nearby,
-            showsNearbyBatteryDevices: true
+            showsAppleDevicesAndBattery: true
         )
         defer { bothGroupsController.deactivate() }
 
@@ -250,7 +250,7 @@ final class BluetoothSummaryLayoutTests: XCTestCase {
             listOptions: options,
             nearbyDevices: nearby,
             showsBatteryLevels: false,
-            showsNearbyBatteryDevices: true
+            showsAppleDevicesAndBattery: true
         )
         defer { disabledController.deactivate() }
 
@@ -260,16 +260,15 @@ final class BluetoothSummaryLayoutTests: XCTestCase {
             pairedHosting.fittingSize.height,
             "a same-named BLE UUID remains a distinct read-only row in the shared list"
         )
-        XCTAssertEqual(
+        XCTAssertGreaterThan(
             disabledHosting.fittingSize.height,
             baselineHosting.fittingSize.height,
-            accuracy: 1,
-            "Nearby rows depend on both opt-in and the main Bluetooth battery-level setting"
+            "Selected Apple rows remain visible when battery reads are disabled"
         )
     }
 
     func testLongNearbyListScrollsInsideItsBound() async throws {
-        let nearby = (1...12).map { index in
+        let nearby = (1...16).map { index in
             NearbyBluetoothBatteryDevice(
                 id: UUID(),
                 name: "BLE Sensor \(index)",
@@ -291,7 +290,7 @@ final class BluetoothSummaryLayoutTests: XCTestCase {
             batteryLevels: [:],
             listOptions: sharedOptions,
             nearbyDevices: nearby,
-            showsNearbyBatteryDevices: true
+            showsAppleDevicesAndBattery: true
         )
         defer { controller.deactivate() }
 
@@ -629,7 +628,7 @@ final class BluetoothSummaryLayoutTests: XCTestCase {
         listOptions: BluetoothDeviceListOptions,
         nearbyDevices: [NearbyBluetoothBatteryDevice] = [],
         showsBatteryLevels: Bool = true,
-        showsNearbyBatteryDevices: Bool = false
+        showsAppleDevicesAndBattery: Bool = false
     ) async throws -> (NSView, BluetoothDeviceController) {
         let suite = "StatusTrioCoreTests.BluetoothSummary.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
@@ -663,9 +662,15 @@ final class BluetoothSummaryLayoutTests: XCTestCase {
             controller: controller,
             mobileBatteryController: MobileBatteryController(),
             showsBatteryLevels: showsBatteryLevels,
-            showsNearbyBatteryDevices: showsNearbyBatteryDevices,
-            nearbyBLESelections: nearbyDevices.map {
-                NearbyBLEDeviceSelection(id: $0.id, name: $0.name, vendor: .unknown, model: $0.model)
+            showsAppleDevicesAndBattery: showsAppleDevicesAndBattery,
+            appleDeviceSelections: nearbyDevices.map {
+                AppleDeviceSelection(id: .ble($0.id), name: $0.name, model: $0.model)
+            },
+            appleCandidates: nearbyDevices.map {
+                AppleDeviceCandidate(
+                    id: .ble($0.id), name: $0.name, model: $0.model, transports: [.bluetooth],
+                    trustRequired: false, evidence: .appleBluetoothCompanyID
+                )
             },
             listOptions: listOptions,
             onRequestAuthorization: {},

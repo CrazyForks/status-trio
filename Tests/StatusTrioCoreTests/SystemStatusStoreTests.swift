@@ -84,6 +84,7 @@ final class SystemStatusStoreTests: XCTestCase {
     func testPopoverCloseCancelsMobileBatteryReadWhileViewIsRetained() async {
         let reader = ControlledMobileBatteryReader()
         let mobile = MobileBatteryController(reader: reader)
+        mobile.setAuthorizedDeviceIDs([.trustedDevice("phone-1")])
         let store = SystemStatusStore(
             batteryMonitor: FakeBatteryMonitor(),
             wifiMonitor: FakeWiFiMonitor(),
@@ -103,11 +104,12 @@ final class SystemStatusStoreTests: XCTestCase {
     func testDisablingMobileBatteryWhileBluetoothViewIsAbsentClearsCacheAndReenableReadsFreshData() async {
         let reader = ControlledMobileBatteryReader()
         let mobile = MobileBatteryController(reader: reader)
+        mobile.setAuthorizedDeviceIDs([.trustedDevice("phone-1")])
         let suite = makeSuite()
         defer { suite.defaults.removeTestSuite(named: suite.name) }
         let settings = SettingsStore(defaults: suite.defaults)
         settings.showsBluetoothBatteryLevels = true
-        settings.showsMobileDeviceBatteryLevels = true
+        settings.showsAppleDevicesAndBattery = true
         settings.showsBluetoothDeviceList = true
         let store = SystemStatusStore(
             batteryMonitor: FakeBatteryMonitor(),
@@ -131,7 +133,7 @@ final class SystemStatusStoreTests: XCTestCase {
         // feature without that view mounted to receive an onChange.
         mobile.release("summary", keepingResults: true)
         XCTAssertEqual(mobile.snapshots.map(\.batteryLevel), [71])
-        settings.showsMobileDeviceBatteryLevels = false
+        settings.showsAppleDevicesAndBattery = false
         XCTAssertTrue(mobile.snapshots.isEmpty)
 
         // Returning while disabled cannot restart reads or restore cached data.
@@ -144,7 +146,7 @@ final class SystemStatusStoreTests: XCTestCase {
         XCTAssertEqual(disabledReadCount, 1)
 
         // Re-enabling opens a fresh generation through the normal active claim.
-        settings.showsMobileDeviceBatteryLevels = true
+        settings.showsAppleDevicesAndBattery = true
         await waitForMobileReader { await reader.readCount == 2 }
         store.stop()
         await reader.finishAll()
@@ -153,6 +155,7 @@ final class SystemStatusStoreTests: XCTestCase {
     func testMobileUSBReadStartsWhileBluetoothIsNotActivated() async {
         let reader = ControlledMobileBatteryReader()
         let mobile = MobileBatteryController(reader: reader)
+        mobile.setAuthorizedDeviceIDs([.trustedDevice("phone-1")])
         let bluetooth = BluetoothDeviceController(stateMonitor: DeniedBluetoothStateMonitor())
         let store = SystemStatusStore(
             batteryMonitor: FakeBatteryMonitor(),
