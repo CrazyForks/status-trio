@@ -10,6 +10,8 @@ typedef struct {
     NSDictionary<NSString *, NSDictionary *> *companions;
     NSArray<NSString *> *watchIdentifiers;
     NSUInteger pairRequestCount;
+    NSUInteger phoneMetadataReads;
+    NSUInteger phoneBatteryReads;
     NSUInteger startSessionCount;
     NSUInteger configurationWriteCount;
     NSUInteger watchValueQueryCount;
@@ -63,7 +65,18 @@ static int StartSession(void *context, void *client, NSDictionary *record, void 
 static void FreeSession(void *context, void *session) { FreeHandle(context, session); }
 static void FreeLockdown(void *context, void *client) { FreeHandle(context, client); }
 static int CopyPhone(void *context, void *session, NSDictionary **values) {
-    (void)session; *values = ((FakeNativeState *)context)->phoneValues; return 0;
+    (void)session;
+    FakeNativeState *state = context;
+    state->phoneBatteryReads++;
+    *values = state->phoneValues;
+    return 0;
+}
+static int CopyPhoneMetadata(void *context, void *session, NSDictionary **values) {
+    (void)session;
+    FakeNativeState *state = context;
+    state->phoneMetadataReads++;
+    *values = state->phoneValues;
+    return 0;
 }
 static int CreateCompanion(void *context, void *session, void **companion) {
     (void)session; *companion = NewFakeHandle(context); return 0;
@@ -98,6 +111,7 @@ static STMobileBatteryNativeAPI API(FakeNativeState *state) {
         .freeSession = FreeSession,
         .freeLockdownClient = FreeLockdown,
         .copyPhoneValues = CopyPhone,
+        .copyPhoneMetadata = CopyPhoneMetadata,
         .createCompanionClient = CreateCompanion,
         .copyCompanionIdentifiers = CopyWatchIDs,
         .copyCompanionValues = CopyWatch,
@@ -301,6 +315,7 @@ static BOOL TestWatchReadQueriesOnlyRequestedPairedWatch(void) {
     CHECK([result[@"devices"][0][@"id"] isEqual:@"watch-2"], "requested Watch identity is preserved");
     CHECK(state.watchValueQueryIdentifiers.count == 1, "one Watch value query is made");
     CHECK([state.watchValueQueryIdentifiers[0] isEqual:@"watch-2"], "no other Watch identifier is queried");
+    CHECK(state.phoneBatteryReads == 0, "Watch-only battery read never queries parent phone battery");
     CHECK(([state.requestedCompanionKeys[0] isEqual:(@[@"ProductType", @"BatteryCurrentCapacity"])]), "bounded Watch reads query only required model and battery fields");
     CHECK([result[@"devices"][0][@"batteryLevel"] isEqual:@62], "Watch battery uses batteryLevel wire key");
     CHECK(result[@"devices"][0][@"isCharging"] == nil, "optional Watch charging remains absent");
@@ -360,9 +375,80 @@ static BOOL TestShippingPhoneAndWatchRejectRealNumbersAndAcceptIntegerBoundaries
     return YES;
 }
 
+
+static BOOL TestDiscoveryDoesNotReadBattery(void) {
+    FakeNativeState state = BaseState();
+    STMobileBatteryError error = STMobileBatteryErrorNone;
+    NSDictionary *result = STMobileBatteryCopyDiscovery(API(&state), @"phone-1", STMobileBatteryTransportUSB, &error);
+    CHECK(error == STMobileBatteryErrorNone, "metadata discovery succeeds");
+    CHECK(state.phoneBatteryReads == 0, "discovery does not read phone battery");
+    CHECK(state.phoneMetadataReads == 1, "discovery uses the dedicated metadata callback");
+    CHECK([result[@"candidates"] count] == 2, "phone and Watch metadata are returned");
+    CHECK(result[@"candidates"][0][@"batteryLevel"] == nil, "discovery output has no battery value");
+    CHECK(state.watchValueQueryCount == 1, "Watch metadata is queried exactly once");
+    CHECK(![state.requestedCompanionKeys[0] containsObject:@"BatteryCurrentCapacity"], "discovery does not request Watch battery");
+    CHECK(![state.requestedCompanionKeys[0] containsObject:@"BatteryIsCharging"], "discovery does not request Watch charging state");
+    return YES;
+}
+
+static BOOL TestWatchOnlyDiscoveryDoesNotReadParentBattery(void) {
+    FakeNativeState state = BaseState();
+    STMobileBatteryError error = STMobileBatteryErrorNone;
+    NSDictionary *result = STMobileBatteryCopyDiscovery(API(&state), @"phone-1", STMobileBatteryTransportUSB, &error);
+    CHECK([result[@"candidates"] count] == 2, "parent metadata and paired Watch are discoverable");
+    CHECK(state.phoneBatteryReads == 0, "parent session is not a parent battery read");
+    return YES;
+}
+
+static BOOL TestDiscoveryReleasesResourcesOnTrustFailure(void) {
+    FakeNativeState state = BaseState(); state.pairRecord = nil;
+    STMobileBatteryError error = STMobileBatteryErrorNone;
+    NSDictionary *result = STMobileBatteryCopyDiscovery(API(&state), @"phone-1", STMobileBatteryTransportUSB, &error);
+    CHECK(error == STMobileBatteryErrorNone, "trust failure is scoped in a successful discovery envelope");
+    CHECK([result[@"failures"] count] == 1, "trust failure is reported for the device");
+    CHECK(state.phoneMetadataReads == 0 && state.phoneBatteryReads == 0, "trust failure reads neither metadata nor battery");
+    CHECK(state.allocatedHandles == state.releasedHandles, "discovery trust failure releases every acquired handle");
+    return YES;
+}
+
+static BOOL TestDiscoveryAcceptsIPadMetadataAndScopesSessionFailure(void) {
+    FakeNativeState state = BaseState();
+    NSMutableDictionary *values = [state.phoneValues mutableCopy];
+    values[@"ProductType"] = @"iPad14,3";
+    state.phoneValues = values;
+    STMobileBatteryError error = STMobileBatteryErrorNone;
+    NSDictionary *result = STMobileBatteryCopyDiscovery(API(&state), @"phone-1", STMobileBatteryTransportUSB, &error);
+    CHECK(error == STMobileBatteryErrorNone, "iPad metadata discovery succeeds");
+    CHECK([result[@"candidates"][0][@"model"] isEqual:@"iPad14,3"], "iPad product type is preserved");
+    CHECK(state.phoneBatteryReads == 0, "iPad discovery does not read battery");
+
+    FakeNativeState failed = BaseState(); failed.failSession = YES;
+    result = STMobileBatteryCopyDiscovery(API(&failed), @"phone-1", STMobileBatteryTransportUSB, &error);
+    NSArray *failures = result[@"failures"];
+    CHECK([failures.firstObject[@"error"] isEqual:@"session-unavailable"], "session failure is scoped in response");
+    CHECK(failed.phoneBatteryReads == 0 && failed.phoneMetadataReads == 0, "failed session reads no values");
+    CHECK(failed.allocatedHandles == failed.releasedHandles, "session failure releases acquired handles");
+    return YES;
+}
+
+static BOOL TestDiscoveryRejectsMalformedIdentifierAndTransport(void) {
+    FakeNativeState state = BaseState();
+    STMobileBatteryError error = STMobileBatteryErrorNone;
+    CHECK(STMobileBatteryCopyDiscovery(API(&state), @"", STMobileBatteryTransportUSB, &error) == nil, "empty identifier is rejected");
+    CHECK(error == STMobileBatteryErrorEnumeration, "invalid identifier reports argument error");
+    CHECK(STMobileBatteryCopyDiscovery(API(&state), @"phone-1", @"bluetooth", &error) == nil, "unsupported transport is rejected");
+    CHECK(state.startSessionCount == 0, "invalid discovery arguments do not start a session");
+    return YES;
+}
+
 int main(void) {
     @autoreleasepool {
         NSArray<NSDictionary *> *tests = @[
+            @{@"name": @"metadata-only discovery", @"run": [NSValue valueWithPointer:TestDiscoveryDoesNotReadBattery]},
+            @{@"name": @"watch discovery avoids parent battery", @"run": [NSValue valueWithPointer:TestWatchOnlyDiscoveryDoesNotReadParentBattery]},
+            @{@"name": @"discovery trust cleanup", @"run": [NSValue valueWithPointer:TestDiscoveryReleasesResourcesOnTrustFailure]},
+            @{@"name": @"iPad metadata and scoped session failure", @"run": [NSValue valueWithPointer:TestDiscoveryAcceptsIPadMetadataAndScopesSessionFailure]},
+            @{@"name": @"malformed discovery arguments", @"run": [NSValue valueWithPointer:TestDiscoveryRejectsMalformedIdentifierAndTransport]},
             @{@"name": @"empty enumeration", @"run": [NSValue valueWithPointer:TestEmptyEnumeration]},
             @{@"name": @"transport deduplication", @"run": [NSValue valueWithPointer:TestTransportDuplicatesCollapse]},
             @{@"name": @"trust without pairing", @"run": [NSValue valueWithPointer:TestUntrustedDeviceDoesNotPair]},

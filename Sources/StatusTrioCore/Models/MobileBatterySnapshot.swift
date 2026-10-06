@@ -118,6 +118,56 @@ enum MobileBatteryWire {
         }.sorted { $0.id < $1.id }
     }
 
+    static func decodeDiscovery(_ data: Data, expectedParentID: String?) throws -> [AppleDeviceCandidate] {
+        let envelope = try JSONDecoder().decode(DiscoveryEnvelope.self, from: data)
+        guard envelope.schemaVersion == 1 else { throw MobileBatteryWireError.unsupportedSchema(envelope.schemaVersion) }
+
+        var candidates: [AppleDeviceCandidate] = []
+        var indexes: [AppleDeviceID: Int] = [:]
+        for entry in envelope.candidates {
+            guard let wire = entry.candidate,
+                  !wire.id.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { continue }
+            let id: AppleDeviceID
+            let evidence: AppleDeviceEvidence
+            if let parentID = wire.parentID {
+                guard parentID == expectedParentID else { continue }
+                id = .trustedWatch(parentID: parentID, id: wire.id)
+                evidence = wire.model.map(isAppleModel) == true ? .verifiedAppleModel : .trustedWatchCompanion
+            } else {
+                guard let model = wire.model,
+                      isAppleModel(model) else { continue }
+                id = .trustedDevice(wire.id)
+                evidence = .verifiedAppleModel
+            }
+            let candidate = AppleDeviceCandidate(
+                id: id,
+                name: wire.name ?? wire.model ?? "Apple Watch",
+                model: wire.model,
+                transports: [wire.transport],
+                trustRequired: wire.trustRequired,
+                evidence: evidence
+            )
+            if let index = indexes[id] {
+                let existing = candidates[index]
+                guard existing.model == candidate.model, existing.name == candidate.name else { continue }
+                candidates[index] = AppleDeviceCandidate(
+                    id: id,
+                    name: existing.name,
+                    model: existing.model,
+                    transports: ([.usb, .network] as [MobileBatteryTransport]).filter {
+                        existing.transports.contains($0) || candidate.transports.contains($0)
+                    },
+                    trustRequired: existing.trustRequired && candidate.trustRequired,
+                    evidence: existing.evidence
+                )
+            } else {
+                indexes[id] = candidates.count
+                candidates.append(candidate)
+            }
+        }
+        return candidates
+    }
+
     static func decodeWatchCandidates(_ data: Data, expectedParentID: String) throws -> [WatchRoute] {
         let envelope = try JSONDecoder().decode(WatchCandidateEnvelope.self, from: data)
         guard envelope.schemaVersion == 1 else { throw MobileBatteryWireError.unsupportedSchema(envelope.schemaVersion) }
@@ -127,6 +177,11 @@ enum MobileBatteryWire {
                   !candidate.id.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
             return WatchRoute(id: candidate.id, parentID: candidate.parentID, transport: candidate.transport)
         }
+    }
+
+    private static func isAppleModel(_ model: String) -> Bool {
+        let family = model.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return ["iphone", "ipad", "ipod", "watch", "mac", "audioaccessory", "applevision"].contains { family.hasPrefix($0) }
     }
 }
 
@@ -191,6 +246,43 @@ private struct ListingEnvelope: Decodable {
 private struct WatchCandidateEnvelope: Decodable {
     let schemaVersion: Int
     let watchCandidates: [CandidateEntry]?
+}
+
+private struct DiscoveryEnvelope: Decodable {
+    let schemaVersion: Int
+    let candidates: [DiscoveryCandidateEntry]
+}
+
+private struct DiscoveryCandidateEntry: Decodable {
+    let candidate: DiscoveryCandidate?
+
+    init(from decoder: Decoder) throws {
+        candidate = try? DiscoveryCandidate(from: decoder)
+    }
+}
+
+private struct DiscoveryCandidate: Decodable {
+    let id: String
+    let parentID: String?
+    let name: String?
+    let model: String?
+    let transport: MobileBatteryTransport
+    let trustRequired: Bool
+
+    private enum CodingKeys: String, CodingKey { case id, parentID, name, model, transport, trustRequired, batteryLevel, isCharging }
+
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        guard !values.contains(.batteryLevel), !values.contains(.isCharging) else {
+            throw MobileBatteryWireError.invalidEnvelope
+        }
+        id = try values.decode(String.self, forKey: .id)
+        parentID = try values.decodeIfPresent(String.self, forKey: .parentID)
+        name = try values.decodeIfPresent(String.self, forKey: .name)
+        model = try values.decodeIfPresent(String.self, forKey: .model)
+        transport = try values.decode(MobileBatteryTransport.self, forKey: .transport)
+        trustRequired = try values.decode(Bool.self, forKey: .trustRequired)
+    }
 }
 
 private struct CandidateEntry: Decodable {

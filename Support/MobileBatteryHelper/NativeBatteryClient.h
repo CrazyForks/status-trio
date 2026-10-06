@@ -21,6 +21,7 @@ typedef struct {
     void (*freeSession)(void * _Nullable context, void * _Nullable session);
     void (*freeLockdownClient)(void * _Nullable context, void * _Nullable client);
     int (*copyPhoneValues)(void * _Nullable context, void *session, NSDictionary * _Nullable * _Nonnull values);
+    int (*copyPhoneMetadata)(void * _Nullable context, void *session, NSDictionary * _Nullable * _Nonnull values);
     int (*createCompanionClient)(void * _Nullable context, void *session, void * _Nullable * _Nonnull companion);
     int (*copyCompanionIdentifiers)(void * _Nullable context, void *companion, NSArray<NSString *> * _Nullable * _Nonnull identifiers);
     int (*copyCompanionValues)(void * _Nullable context, void *companion, NSString *identifier, NSArray<NSString *> *keys, NSDictionary * _Nullable * _Nonnull values);
@@ -36,6 +37,7 @@ FOUNDATION_EXPORT NSString * const STMobileBatteryTransportNetwork;
 FOUNDATION_EXPORT NSDictionary *STMobileBatteryCopyDeviceList(STMobileBatteryNativeAPI api, STMobileBatteryError * _Nullable error);
 FOUNDATION_EXPORT NSDictionary *STMobileBatteryCopyPhone(STMobileBatteryNativeAPI api, NSString *identifier, NSString *transport, STMobileBatteryError * _Nullable error);
 FOUNDATION_EXPORT NSDictionary *STMobileBatteryCopyWatch(STMobileBatteryNativeAPI api, NSString *phoneIdentifier, NSString *transport, NSString *watchIdentifier, STMobileBatteryError * _Nullable error);
+FOUNDATION_EXPORT NSDictionary *STMobileBatteryCopyDiscovery(STMobileBatteryNativeAPI api, NSString *identifier, NSString *transport, STMobileBatteryError * _Nullable error);
 FOUNDATION_EXPORT STMobileBatteryNativeAPI STMobileBatteryProductionAPI(void);
 
 NS_ASSUME_NONNULL_END
