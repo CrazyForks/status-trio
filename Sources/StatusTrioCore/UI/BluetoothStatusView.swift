@@ -98,6 +98,9 @@ struct BluetoothStatusView: View {
                         controller.setVisibleNearbyBLEDevices($0, for: Self.nearbyBLEVisibleToken)
                     },
                     appleRows: appleRows,
+                    selectedBLEShadowRows: showsAppleDevicesAndBattery
+                        ? AppleDeviceCatalog.selectedBLEShadowRows(from: appleDeviceSelections)
+                        : [],
                     onVisibleAppleIDsChanged: { ids in
                         let trustedIDs = Set(ids.filter { id in
                             switch id { case .trustedDevice, .trustedWatch: true; case .ble: false }

@@ -11,16 +11,26 @@ struct BluetoothDeviceListModel: Equatable {
         devices: [BluetoothDevice],
         nearbyRows: [NearbyBLEPanelRow] = [],
         appleRows: [AppleDevicePanelRow] = [],
+        selectedBLEShadowRows: [BluetoothDevice] = [],
         order: [String],
         limit: Int,
         isExpanded: Bool,
         options: BluetoothDeviceListOptions
     ) -> BluetoothDeviceListModel {
-        let unifiedDevices = devices + nearbyRows.map(\.device) + appleRows.map(\.device)
-        let filteredDevices = BluetoothDeviceListPresentation.filteredDevices(
-            unifiedDevices,
-            options: options
+        let selectedBLEDevices = (selectedBLEShadowRows + nearbyRows.map(\.device) + appleRows.compactMap { row in
+            if case .ble = row.id { return row.device }
+            return nil
+        })
+        let systemRows = BluetoothDeviceListPresentation.panelSystemRows(
+            from: devices,
+            selectedNearbyBLEDevices: selectedBLEDevices,
+            showsNearbyBatteryLevels: !selectedBLEDevices.isEmpty,
+            listOptions: options
         )
+        let unifiedDevices = BluetoothDeviceListPresentation.uniquelyIdentifiedDevices(
+            systemRows + nearbyRows.map(\.device) + appleRows.map(\.device)
+        )
+        let filteredDevices = BluetoothDeviceListPresentation.filteredDevices(unifiedDevices, options: options)
         let orderedDevices = BluetoothDeviceListPresentation.orderedDevices(filteredDevices, using: order)
         return BluetoothDeviceListModel(
             orderedDevices: orderedDevices,
@@ -87,6 +97,32 @@ enum BluetoothDeviceListPresentation {
                   let name = normalizedPresentationName(device.name) else { return true }
             return !shadowNames.contains(name)
         }
+    }
+
+    /// Exact IDs may recur when a trusted paired row and a battery projection
+    /// represent the same underlying device. Prefer the real system row so its
+    /// connection state and actions survive. Never merge by display name.
+    static func uniquelyIdentifiedDevices(_ devices: [BluetoothDevice]) -> [BluetoothDevice] {
+        var result: [BluetoothDevice] = []
+        var indexByID: [String: Int] = [:]
+        for device in devices {
+            guard let existingIndex = indexByID[device.id] else {
+                indexByID[device.id] = result.count
+                result.append(device)
+                continue
+            }
+            let existing = result[existingIndex]
+            if identityPriority(device) < identityPriority(existing) {
+                result[existingIndex] = device
+            }
+        }
+        return result
+    }
+
+    private static func identityPriority(_ device: BluetoothDevice) -> Int {
+        if !device.isUnpairedGhost && !device.isReadOverTheAir { return 0 }
+        if !device.isUnpairedGhost { return 1 }
+        return 2
     }
 
     private static func normalizedPresentationName(_ name: String) -> String? {

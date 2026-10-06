@@ -80,6 +80,22 @@ enum AppleDeviceCatalog {
         return values.values.sorted { $0.id.rowID < $1.id.rowID }
     }
 
+    /// Saved BLE selections remain independent of list-level hiding. The panel
+    /// uses these rows only to suppress a uniquely matched unpaired system ghost;
+    /// they are never appended as displayed rows and carry no battery reading.
+    static func selectedBLEShadowRows(from selections: [AppleDeviceSelection]) -> [BluetoothDevice] {
+        selections.compactMap { selection in
+            guard case .ble = selection.id else { return nil }
+            return BluetoothDevice(
+                id: selection.id.rowID,
+                name: selection.name,
+                kind: .unknown,
+                isConnected: false,
+                isReadOverTheAir: true
+            )
+        }
+    }
+
     static func panelRows(
         selections: [AppleDeviceSelection],
         candidates: [AppleDeviceCandidate],

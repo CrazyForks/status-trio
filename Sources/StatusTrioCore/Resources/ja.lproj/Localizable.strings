@@ -422,7 +422,7 @@
 "bluetooth.nearbyBLE.unavailable" = "一時的に利用できません";
 "bluetooth.nearbyBLE.source" = "近くのBluetooth";
 "settings.appleDevicesAndBattery" = "Appleデバイスとバッテリーを表示";
-"settings.appleDevicesAndBattery.description" = "iPhone、iPad、Apple WatchなどのAppleデバイスを選択してBluetoothリストに追加します。iPhoneとiPadをUSBまたはWi-Fi経由で読み取るには、初回にUSB接続してロックを解除し、「信頼」をタップしてください。ワイヤレス読み取りにはWi-Fi同期も必要です。Apple Watchは信頼済みのペアリングiPhone経由で読み取れる場合があります。近くのBluetooth読み取りにUSBの信頼は不要ですが、バッテリーの取得可否はデバイスによって異なります。";
+"settings.appleDevicesAndBattery.description" = "Appleデバイスを選択してBluetoothリストに追加します。近くのBluetoothはデバイスの検出と表示のみを行い、接続やバッテリーの読み取りはしません。バッテリー残量は、信頼済みのUSBまたはWi-Fi経由で取得できる場合があります。Apple Watchでは信頼済みのペアリングiPhone経由で取得できる場合があります。すべてのAppleデバイスで取得できるとは限りません。";
 "settings.appleDeviceSelection.title" = "Appleデバイスを選択";
 "settings.appleDeviceSelection.trustRequired" = "信頼が必要";
 "settings.appleDeviceSelection.required" = "Bluetoothリストに表示するデバイスを選択してください。";

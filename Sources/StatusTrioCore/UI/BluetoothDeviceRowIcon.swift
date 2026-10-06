@@ -27,6 +27,15 @@ enum BluetoothDeviceRowIcon {
         }
     }
 
+    /// Resolves the family only from a trusted model identifier. Nearby
+    /// advertisement names are intentionally not used to guess product type.
+    static func symbolName(forAppleModel model: String?) -> String {
+        guard let kind = BluetoothMobileDeviceModel.kind(forModel: model) else {
+            return genericSymbol
+        }
+        return symbolName(for: kind)
+    }
+
     static func symbolName(for kind: BluetoothDeviceKind) -> String {
         symbolName(for: kind, name: "")
     }

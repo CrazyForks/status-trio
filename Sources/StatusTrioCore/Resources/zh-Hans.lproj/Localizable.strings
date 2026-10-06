@@ -422,7 +422,7 @@
 "bluetooth.nearbyBLE.unavailable" = "暂时无法读取";
 "bluetooth.nearbyBLE.source" = "附近蓝牙";
 "settings.appleDevicesAndBattery" = "显示苹果设备与电量";
-"settings.appleDevicesAndBattery.description" = "选择 iPhone、iPad、Apple Watch 等苹果设备，将其加入蓝牙设备列表并显示可读取的电量。通过 USB 或 Wi-Fi 读取 iPhone、iPad 时，首次需用 USB 连接、解锁并点按“信任”；无线读取还需配置 Wi-Fi 同步。Apple Watch 可尝试通过已信任的配对 iPhone 读取。附近蓝牙读取不要求 USB 信任，电量可用性因设备而异。";
+"settings.appleDevicesAndBattery.description" = "选择 iPhone、iPad、Apple Watch 等 Apple 设备，将其加入蓝牙列表。附近蓝牙仅发现并显示设备，不会连接设备或读取电量。电量可能通过已信任的 USB 或 Wi-Fi 读取；Apple Watch 也可能通过已信任的配对 iPhone 读取。并非所有 Apple 设备都能提供电量。";
 "settings.appleDeviceSelection.title" = "选择苹果设备";
 "settings.appleDeviceSelection.trustRequired" = "需要信任";
 "settings.appleDeviceSelection.required" = "选择要加入蓝牙设备列表的设备。";

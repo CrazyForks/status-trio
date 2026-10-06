@@ -20,7 +20,25 @@ final class NearbyBLEControllerDemandTests: XCTestCase {
         controller.deactivate()
     }
 
-    func testOnlySelectedVisibleRowsWithBothPanelSurfacesReceiveReadPermission() {
+    func testSelectedNearbyAppleRowNeverAuthorizesOrAcceptsBLEBatteryReads() async {
+        let (controller, scanner, monitor) = makeController()
+        controller.activate()
+        monitor.emit(.poweredOn)
+        let selected = UUID()
+        controller.configureNearbyBLEDevices(enabled: true, selectedIDs: [selected], hiddenIDs: [])
+        controller.holdVisibleSurface(BluetoothDeviceController.popoverSurfaceToken)
+        controller.holdVisibleSurface(BluetoothDeviceController.bluetoothSummarySurfaceToken)
+        controller.setVisibleNearbyBLEDevices([selected], for: "panel")
+
+        XCTAssertTrue(scanner.allowedReadDeviceIDs.isEmpty)
+        scanner.publish([device(selected)])
+        await Task.yield()
+        XCTAssertTrue(controller.nearbyBatteryDevices.isEmpty)
+        XCTAssertTrue(controller.nearbyBLEReadFailures.isEmpty)
+        controller.deactivate()
+    }
+
+    func testSelectedVisibleRowsNeverReceiveNearbyBLEReadPermission() {
         let (controller, scanner, monitor) = makeController()
         controller.activate()
         monitor.emit(.poweredOn)
@@ -31,14 +49,14 @@ final class NearbyBLEControllerDemandTests: XCTestCase {
 
         XCTAssertTrue(scanner.allowedReadDeviceIDs.isEmpty, "popover without the Bluetooth summary is insufficient")
         controller.holdVisibleSurface(BluetoothDeviceController.bluetoothSummarySurfaceToken)
-        XCTAssertEqual(scanner.allowedReadDeviceIDs, [id])
+        XCTAssertTrue(scanner.allowedReadDeviceIDs.isEmpty, "selection and panel visibility never authorize BLE battery reads")
 
         controller.configureNearbyBLEDevices(enabled: true, selectedIDs: [id], hiddenIDs: [id])
         XCTAssertTrue(scanner.allowedReadDeviceIDs.isEmpty)
         controller.deactivate()
     }
 
-    func testPanelCloseRevokesReadsButLeavesSettingsDiscoveryRunning() {
+    func testPanelCloseLeavesOnlySettingsDiscoveryRunning() {
         let (controller, scanner, monitor) = makeController()
         controller.activate()
         monitor.emit(.poweredOn)
@@ -48,7 +66,7 @@ final class NearbyBLEControllerDemandTests: XCTestCase {
         controller.holdVisibleSurface(BluetoothDeviceController.popoverSurfaceToken)
         controller.holdVisibleSurface(BluetoothDeviceController.bluetoothSummarySurfaceToken)
         controller.setVisibleNearbyBLEDevices([id], for: "panel")
-        XCTAssertEqual(scanner.allowedReadDeviceIDs, [id])
+        XCTAssertTrue(scanner.allowedReadDeviceIDs.isEmpty, "selection and panel visibility never authorize BLE battery reads")
 
         controller.releaseVisibleSurface(BluetoothDeviceController.popoverSurfaceToken)
 
@@ -59,7 +77,7 @@ final class NearbyBLEControllerDemandTests: XCTestCase {
         controller.deactivate()
     }
 
-    func testGeneralBatteryToggleOffRevokesPanelReadsWithoutStoppingSettingsDiscovery() {
+    func testGeneralBatteryToggleOffDoesNotStopSettingsDiscoveryOrEnableReads() {
         let (controller, scanner, monitor) = makeController()
         controller.activate()
         monitor.emit(.poweredOn)
@@ -69,7 +87,7 @@ final class NearbyBLEControllerDemandTests: XCTestCase {
         controller.holdVisibleSurface(BluetoothDeviceController.popoverSurfaceToken)
         controller.holdVisibleSurface(BluetoothDeviceController.bluetoothSummarySurfaceToken)
         controller.setVisibleNearbyBLEDevices([id], for: "panel")
-        XCTAssertEqual(scanner.allowedReadDeviceIDs, [id])
+        XCTAssertTrue(scanner.allowedReadDeviceIDs.isEmpty, "selection and panel visibility never authorize BLE battery reads")
 
         // The panel's general battery-level setting removes the read demand.
         controller.setVisibleNearbyBLEDevices([], for: "panel")
@@ -81,7 +99,7 @@ final class NearbyBLEControllerDemandTests: XCTestCase {
         controller.deactivate()
     }
 
-    func testHidingAnOffLimitRowKeepsOtherVisibleSelectedReadPermits() {
+    func testHidingRowsNeverGrantsNearbyBLEReadPermission() {
         let (controller, scanner, monitor) = makeController()
         controller.activate()
         monitor.emit(.poweredOn)
@@ -91,7 +109,7 @@ final class NearbyBLEControllerDemandTests: XCTestCase {
         controller.holdVisibleSurface(BluetoothDeviceController.popoverSurfaceToken)
         controller.holdVisibleSurface(BluetoothDeviceController.bluetoothSummarySurfaceToken)
         controller.setVisibleNearbyBLEDevices([visible], for: "panel")
-        XCTAssertEqual(scanner.allowedReadDeviceIDs, [visible])
+        XCTAssertTrue(scanner.allowedReadDeviceIDs.isEmpty, "selection and panel visibility never authorize BLE battery reads")
 
         controller.configureNearbyBLEDevices(
             enabled: true,
@@ -99,18 +117,18 @@ final class NearbyBLEControllerDemandTests: XCTestCase {
             hiddenIDs: [offLimit]
         )
 
-        XCTAssertEqual(scanner.allowedReadDeviceIDs, [visible])
+        XCTAssertTrue(scanner.allowedReadDeviceIDs.isEmpty, "selection and panel visibility never authorize BLE battery reads")
 
         controller.configureNearbyBLEDevices(
             enabled: true,
             selectedIDs: [visible],
             hiddenIDs: []
         )
-        XCTAssertEqual(scanner.allowedReadDeviceIDs, [visible], "deselecting off-limit B must preserve visible A")
+        XCTAssertTrue(scanner.allowedReadDeviceIDs.isEmpty, "deselecting off-limit B does not authorize BLE battery reads")
         controller.deactivate()
     }
 
-    func testFeatureOffAndBluetoothUnavailableRevokeAllReads() {
+    func testFeatureOffAndBluetoothUnavailableKeepNearbyBLEReadsDisabled() {
         let (controller, scanner, monitor) = makeController()
         controller.activate()
         monitor.emit(.poweredOn)
@@ -119,21 +137,21 @@ final class NearbyBLEControllerDemandTests: XCTestCase {
         controller.holdVisibleSurface(BluetoothDeviceController.popoverSurfaceToken)
         controller.holdVisibleSurface(BluetoothDeviceController.bluetoothSummarySurfaceToken)
         controller.setVisibleNearbyBLEDevices([id], for: "panel")
-        XCTAssertEqual(scanner.allowedReadDeviceIDs, [id])
+        XCTAssertTrue(scanner.allowedReadDeviceIDs.isEmpty, "selection and panel visibility never authorize BLE battery reads")
 
         controller.configureNearbyBLEDevices(enabled: false, selectedIDs: [id], hiddenIDs: [])
         XCTAssertTrue(scanner.allowedReadDeviceIDs.isEmpty)
         XCTAssertFalse(scanner.isRunning)
 
         controller.configureNearbyBLEDevices(enabled: true, selectedIDs: [id], hiddenIDs: [])
-        XCTAssertEqual(scanner.allowedReadDeviceIDs, [id])
+        XCTAssertTrue(scanner.allowedReadDeviceIDs.isEmpty, "selection and panel visibility never authorize BLE battery reads")
         monitor.emit(.poweredOff)
         XCTAssertTrue(scanner.allowedReadDeviceIDs.isEmpty)
         XCTAssertFalse(scanner.isRunning)
         controller.deactivate()
     }
 
-    func testLateAggregateCannotAddUnselectedOrNoLongerVisibleReadings() async {
+    func testNearbyBLECallbacksNeverAddBatteryReadings() async {
         let (controller, scanner, monitor) = makeController()
         controller.activate()
         monitor.emit(.poweredOn)
@@ -146,15 +164,15 @@ final class NearbyBLEControllerDemandTests: XCTestCase {
         scanner.publish([device(selected), device(stranger)])
         await Task.yield()
 
-        XCTAssertEqual(controller.nearbyBatteryDevices.map(\.id), [selected])
+        XCTAssertTrue(controller.nearbyBatteryDevices.isEmpty, "passive BLE results never populate battery readings")
         controller.setVisibleNearbyBLEDevices([], for: "panel")
         scanner.publish([device(selected)])
         await Task.yield()
-        XCTAssertEqual(controller.nearbyBatteryDevices.map(\.id), [selected], "cached fresh readings may remain, but callbacks cannot re-add unpermitted IDs")
+        XCTAssertTrue(controller.nearbyBatteryDevices.isEmpty, "callbacks cannot create readings even for selected visible devices")
         controller.deactivate()
     }
 
-    func testDeselectAndReselectDoesNotAcceptCallbackCapturedBeforeRevocation() async {
+    func testDeselectAndReselectNeverAcceptsNearbyBLEBatteryCallbacks() async {
         let (controller, scanner, monitor) = makeController()
         controller.activate()
         monitor.emit(.poweredOn)
@@ -172,7 +190,7 @@ final class NearbyBLEControllerDemandTests: XCTestCase {
         XCTAssertTrue(controller.nearbyBatteryDevices.isEmpty)
         scanner.publish([device(id)])
         await Task.yield()
-        XCTAssertEqual(controller.nearbyBatteryDevices.map(\.id), [id])
+        XCTAssertTrue(controller.nearbyBatteryDevices.isEmpty, "passive BLE results never populate battery readings")
         controller.deactivate()
     }
 

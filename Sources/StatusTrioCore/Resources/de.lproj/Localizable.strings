@@ -422,7 +422,7 @@
 "bluetooth.nearbyBLE.unavailable" = "Vorübergehend nicht verfügbar";
 "bluetooth.nearbyBLE.source" = "Bluetooth in der Nähe";
 "settings.appleDevicesAndBattery" = "Apple-Geräte und Batteriestand anzeigen";
-"settings.appleDevicesAndBattery.description" = "Wähle iPhone, iPad, Apple Watch und andere Apple-Geräte aus, um sie zur Bluetooth-Liste hinzuzufügen. Für das Auslesen von iPhone und iPad über USB oder WLAN sind einmalig eine USB-Verbindung, das Entsperren und „Diesem Computer vertrauen“ nötig. Drahtloses Auslesen erfordert zusätzlich WLAN-Synchronisierung. Eine Apple Watch kann über ihr gekoppeltes, vertrauenswürdiges iPhone ausgelesen werden. Für Bluetooth-Geräte in der Nähe ist kein USB-Vertrauen nötig; ob ein Batteriestand verfügbar ist, hängt vom Gerät ab.";
+"settings.appleDevicesAndBattery.description" = "Wähle Apple-Geräte aus, um sie zur Bluetooth-Liste hinzuzufügen. Bluetooth in der Nähe erkennt und zeigt Geräte nur an; es verbindet sich nicht mit ihnen und liest keine Akkustände aus. Akkustände können über vertrauenswürdiges USB oder WLAN sowie bei der Apple Watch über das gekoppelte, vertrauenswürdige iPhone verfügbar sein. Nicht für jedes Apple-Gerät ist ein Akkustand verfügbar.";
 "settings.appleDeviceSelection.title" = "Apple-Geräte auswählen";
 "settings.appleDeviceSelection.trustRequired" = "Vertrauen erforderlich";
 "settings.appleDeviceSelection.required" = "Wähle Geräte aus, die in der Bluetooth-Liste angezeigt werden sollen.";

@@ -422,7 +422,7 @@
 "bluetooth.nearbyBLE.unavailable" = "Временно недоступно";
 "bluetooth.nearbyBLE.source" = "Bluetooth поблизости";
 "settings.appleDevicesAndBattery" = "Показывать устройства Apple и заряд";
-"settings.appleDevicesAndBattery.description" = "Выберите iPhone, iPad, Apple Watch и другие устройства Apple, чтобы добавить их в список Bluetooth. Для чтения iPhone и iPad через USB или Wi-Fi сначала подключите устройство по USB, разблокируйте его и нажмите «Доверять». Для беспроводного чтения также требуется синхронизация по Wi-Fi. Apple Watch можно попробовать прочитать через доверенный сопряжённый iPhone. Чтение ближайших устройств Bluetooth не требует доверия по USB; доступность заряда зависит от устройства.";
+"settings.appleDevicesAndBattery.description" = "Выберите устройства Apple, чтобы добавить их в список Bluetooth. Bluetooth поблизости только обнаруживает и показывает устройства; он не подключается к ним и не считывает заряд батареи. Заряд может быть доступен через доверенный USB или Wi-Fi, а для Apple Watch — через доверенный сопряжённый iPhone. Заряд доступен не для всех устройств Apple.";
 "settings.appleDeviceSelection.title" = "Выбрать устройства Apple";
 "settings.appleDeviceSelection.trustRequired" = "Требуется доверие";
 "settings.appleDeviceSelection.required" = "Выберите устройства для отображения в списке Bluetooth.";

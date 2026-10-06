@@ -86,6 +86,55 @@ final class BluetoothDeviceListPresentationTests: XCTestCase {
         )
     }
 
+    func testUnifiedModelSuppressesUniqueGhostAndPrefersExactPairedIdentity() {
+        let selectedID = UUID(uuidString: "00000000-0000-0000-0000-000000000099")!
+        let selectedRow = nearbyRow(id: selectedID, name: "Ling's iPhone")
+        let ghost = makeDevice(
+            address: "AA:00:00:00:00:99", name: "Ling's iPhone", isConnected: false, isUnpairedGhost: true
+        )
+        let paired = BluetoothDevice(
+            id: "paired-exact", name: "Ling's iPhone", kind: .mobile(.phone), isConnected: true
+        )
+        let duplicatePresentation = BluetoothDevice(
+            id: paired.id, name: "stale duplicate", kind: .unknown, isConnected: false, isReadOverTheAir: true
+        )
+        let distinctSameNamePaired = BluetoothDevice(
+            id: "paired-other", name: "Ling's iPhone", kind: .mobile(.phone), isConnected: true
+        )
+        let options = BluetoothDeviceListOptions(showsList: true, maxVisibleDevices: 20, order: [], hidesGhostDevices: false)
+
+        let model = BluetoothDeviceListModel.make(
+            devices: [ghost, paired, distinctSameNamePaired, duplicatePresentation],
+            nearbyRows: [selectedRow],
+            order: [], limit: 20, isExpanded: true, options: options
+        )
+
+        XCTAssertEqual(model.orderedDevices.filter { $0.name == "Ling's iPhone" }.count, 3)
+        XCTAssertEqual(model.orderedDevices.filter { $0.id == paired.id }.count, 1)
+        XCTAssertFalse(model.orderedDevices.contains { $0.id == ghost.id })
+        XCTAssertTrue(model.orderedDevices.contains { $0.id == distinctSameNamePaired.id })
+        XCTAssertEqual(model.orderedDevices.first { $0.id == paired.id }, paired)
+    }
+
+    func testUnifiedModelSuppressesShadowForSavedBLESelectionEvenWhenItsRowIsHidden() {
+        let selected = makeSelectedBLERow(name: "Ling's iPhone")
+        let ghost = makeDevice(
+            address: "AA:00:00:00:00:98", name: "Ling's iPhone", isConnected: false, isUnpairedGhost: true
+        )
+        let options = BluetoothDeviceListOptions(
+            showsList: true, maxVisibleDevices: 20, order: [], hidesGhostDevices: false,
+            hiddenDeviceAddresses: [selected.id]
+        )
+
+        let model = BluetoothDeviceListModel.make(
+            devices: [ghost], selectedBLEShadowRows: [selected], order: [], limit: 20,
+            isExpanded: true, options: options
+        )
+
+        XCTAssertFalse(model.orderedDevices.contains { $0.id == ghost.id })
+        XCTAssertTrue(model.orderedDevices.isEmpty)
+    }
+
     func testBLERowsUseExplicitPreferenceKeysForOrderingAndHiding() {
         let firstID = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
         let secondID = UUID(uuidString: "00000000-0000-0000-0000-000000000002")!

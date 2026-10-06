@@ -37,6 +37,14 @@ struct BluetoothDeviceRowIconTests {
         #expect(BluetoothDeviceRowIcon.symbolName(for: .unknown) == BluetoothDeviceRowIcon.genericSymbol)
     }
 
+    @Test func appleSelectionIconsRequireTrustedModelEvidence() {
+        #expect(BluetoothDeviceRowIcon.symbolName(forAppleModel: "iPhone18,1") == "smartphone")
+        #expect(BluetoothDeviceRowIcon.symbolName(forAppleModel: "iPad17,1") == "ipad.landscape")
+        #expect(BluetoothDeviceRowIcon.symbolName(forAppleModel: "Watch12,1") == "watch.analog")
+        #expect(BluetoothDeviceRowIcon.symbolName(forAppleModel: nil) == BluetoothDeviceRowIcon.genericSymbol)
+        #expect(BluetoothDeviceRowIcon.symbolName(forAppleModel: "A phone named iPhone") == BluetoothDeviceRowIcon.genericSymbol)
+    }
+
     /// The rule the audio icon table already follows: the running system
     /// resolves the list, so the last entry is what a macOS too old to ship any
     /// of the others falls back to and must never be blank.

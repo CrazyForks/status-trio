@@ -13,6 +13,7 @@ struct BluetoothDeviceList: View {
     var nearbyRows: [NearbyBLEPanelRow] = []
     var onVisibleNearbyIDsChanged: (Set<UUID>) -> Void = { _ in }
     var appleRows: [AppleDevicePanelRow] = []
+    var selectedBLEShadowRows: [BluetoothDevice] = []
     var onVisibleAppleIDsChanged: (Set<AppleDeviceID>) -> Void = { _ in }
     let actionStates: [String: BluetoothDeviceActionState]
     /// The device whose disconnect is waiting for confirmation, by normalized
@@ -48,6 +49,7 @@ struct BluetoothDeviceList: View {
             devices: devices,
             nearbyRows: nearbyRows,
             appleRows: appleRows,
+            selectedBLEShadowRows: selectedBLEShadowRows,
             order: options.order,
             limit: options.maxVisibleDevices,
             isExpanded: isExpanded,

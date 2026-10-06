@@ -48,27 +48,7 @@ struct AppleDeviceSelectionView: View {
             } else {
                 ForEach(Array(candidates.enumerated()), id: \.element.id) { index, candidate in
                     SettingsDivider()
-                    SettingsRow(
-                        "apple.logo",
-                        tint: .blue,
-                        title: displayName(candidate)
-                    ) {
-                        HStack(spacing: 8) {
-                            if candidate.trustRequired {
-                                Text(localization.string(.settingsAppleDeviceTrustRequired))
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                            if candidate.isSelectableAppleDevice {
-                                Toggle("", isOn: selectionBinding(for: candidate))
-                                    .toggleStyle(.switch)
-                                    .controlSize(.small)
-                                    .labelsHidden()
-                                    .accessibilityLabel(displayName(candidate))
-                            }
-                        }
-                    }
-                    .accessibilityIdentifier("appleDevice.selection.\(candidate.id.rowID)")
+                    appleDeviceRow(candidate)
                     if index == candidates.count - 1, store.appleDeviceSelections.isEmpty {
                         SettingsDivider()
                         SettingsHintRow(text: localization.string(.settingsAppleDeviceSelectionRequired))
@@ -110,6 +90,40 @@ struct AppleDeviceSelectionView: View {
 
     private var bleConfiguration: String {
         "\(store.showsAppleDevicesAndBattery)-\(store.appleDeviceSelections.map { $0.id.rowID }.joined(separator: ","))"
+    }
+
+    private func appleDeviceRow(_ candidate: AppleDeviceCandidate) -> some View {
+        let title = displayName(candidate)
+        return HStack(spacing: 10) {
+            Image(systemName: BluetoothDeviceRowIcon.symbolName(forAppleModel: candidate.model))
+                .foregroundStyle(Color.secondary)
+                .frame(width: 18)
+                .accessibilityHidden(true)
+
+            Text(title)
+                .font(.system(size: 13))
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            if candidate.trustRequired {
+                Text(localization.string(.settingsAppleDeviceTrustRequired))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            if candidate.isSelectableAppleDevice {
+                Toggle("", isOn: selectionBinding(for: candidate))
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+                    .labelsHidden()
+                    .accessibilityLabel(title)
+                    .accessibilityIdentifier("appleDevice.selection.toggle.\(candidate.id.rowID)")
+            }
+        }
+        .padding(.vertical, 5)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("appleDevice.selection.\(candidate.id.rowID)")
     }
 
     private func displayName(_ candidate: AppleDeviceCandidate) -> String {

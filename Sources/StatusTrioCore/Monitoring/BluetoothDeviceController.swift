@@ -351,7 +351,6 @@ final class BluetoothDeviceController: ObservableObject {
     /// actor because its CoreBluetooth manager and delegates were created there.
     /// This is teardown-owned storage, captured by the main-actor hop below.
     nonisolated(unsafe) private let nearbyBatteryScanner: (any BluetoothLEBatteryScanning)?
-    private let nearbyBatteryCacheLifetime: TimeInterval
     /// The second battery source, read only for the devices the paired-device
     /// report carries no level for. Optional so a test can build a controller
     /// that never spawns `/usr/bin/pmset`.
@@ -429,12 +428,8 @@ final class BluetoothDeviceController: ObservableObject {
     private var nearbyBLEHiddenIDs: Set<UUID> = []
     private var nearbyBLEDiscoveryRequests: Set<String> = []
     private var visibleNearbyBLERequests: [String: Set<UUID>] = [:]
-    private var nearbyBLEReadPermit: Set<UUID> = []
-    private var nearbyBLEReadRevisions: [UUID: UInt64] = [:]
     private var nearbyScannerGeneration: UInt64 = 0
     private var nearbyScannerCallbackIsInstalled = false
-    private var nearbyBatteryCacheExpirationTask: Task<Void, Never>?
-    private var nearbyBatteryCacheGeneration: UInt64 = 0
 
     /// The action in flight, or the failure still on screen, keyed by normalized
     /// address. No entry means the row reports the device's own state.
@@ -507,14 +502,12 @@ final class BluetoothDeviceController: ObservableObject {
             try await Task.sleep(for: $0)
         },
         nearbyBatteryScanner: (any BluetoothLEBatteryScanning)? = nil,
-        nearbyBatteryCacheLifetime: TimeInterval = BluetoothLEBatteryScanPolicy.resultLifetime
     ) {
         self.worker = worker
         self.appleBluetoothAudioDiagnosticReporter = appleBluetoothAudioDiagnosticReporter
         self.stateMonitor = stateMonitor
         self.batteryReader = batteryReader
         self.nearbyBatteryScanner = nearbyBatteryScanner
-        self.nearbyBatteryCacheLifetime = nearbyBatteryCacheLifetime
         self.accessoryBatteryReader = accessoryBatteryReader
         self.notificationCenter = notificationCenter
         self.workspaceNotificationCenter = workspaceNotificationCenter
@@ -549,7 +542,6 @@ final class BluetoothDeviceController: ObservableObject {
 
     deinit {
         periodicRefreshTask?.cancel()
-        nearbyBatteryCacheExpirationTask?.cancel()
         // Releasing the registrations here is the whole point: an observer token
         // that is never removed keeps the center's block alive for the life of
         // the process.
@@ -767,7 +759,6 @@ final class BluetoothDeviceController: ObservableObject {
     /// policy only; it never starts discovery by itself and never authorizes a
     /// read without a currently visible row.
     func configureNearbyBLEDevices(enabled: Bool, selectedIDs: Set<UUID>, hiddenIDs: Set<UUID>) {
-        let removed = nearbyBLESelectedIDs.subtracting(selectedIDs)
         nearbyBLEEnabled = enabled
         nearbyBLESelectedIDs = selectedIDs
         nearbyBLEHiddenIDs = hiddenIDs
@@ -775,11 +766,7 @@ final class BluetoothDeviceController: ObservableObject {
             nearbyBatteryDevices = []
             nearbyBLEReadFailures = []
             nearbyBLECandidates = []
-        } else if !removed.isEmpty {
-            nearbyBatteryDevices.removeAll { removed.contains($0.id) }
-            nearbyBLEReadFailures.subtract(removed)
         }
-        pruneNearbyBatteryCache(at: Date())
         updateNearbyBatteryScanner()
     }
 
@@ -788,7 +775,6 @@ final class BluetoothDeviceController: ObservableObject {
     func requestNearbyBLEDiscovery(_ token: String) {
         guard nearbyBLEEnabled else { return }
         let inserted = nearbyBLEDiscoveryRequests.insert(token).inserted
-        pruneNearbyBatteryCache(at: Date())
         let wasRunning = nearbyBatteryScanner?.isRunning == true
         updateNearbyBatteryScanner()
         if inserted, wasRunning, isNearbyBLEScannerDemanded {
@@ -1013,7 +999,9 @@ final class BluetoothDeviceController: ObservableObject {
         batteryLevels = [:]
     }
 
-    private var currentNearbyBLEReadPermit: Set<UUID> {
+    /// Selected rows may demand passive rediscovery while visible, but never
+    /// authorize a Bluetooth connection or battery read.
+    private var visibleSelectedNearbyBLEIDs: Set<UUID> {
         guard nearbyBLEEnabled,
               isActive,
               availability == .available,
@@ -1025,20 +1013,14 @@ final class BluetoothDeviceController: ObservableObject {
 
     private var isNearbyBLEScannerDemanded: Bool {
         isActive && availability == .available && nearbyBLEEnabled
-            && (!nearbyBLEDiscoveryRequests.isEmpty || !nearbyBLEReadPermit.isEmpty)
+            && (!nearbyBLEDiscoveryRequests.isEmpty || !visibleSelectedNearbyBLEIDs.isEmpty)
     }
 
     private func updateNearbyBatteryScanner() {
-        guard let nearbyBatteryScanner else {
-            nearbyBLEReadPermit = currentNearbyBLEReadPermit
-            return
-        }
-        let newPermit = currentNearbyBLEReadPermit
-        for id in nearbyBLEReadPermit.subtracting(newPermit) {
-            nearbyBLEReadRevisions[id, default: 0] &+= 1
-        }
-        nearbyBLEReadPermit = newPermit
-        nearbyBatteryScanner.setAllowedReadDeviceIDs(newPermit)
+        guard let nearbyBatteryScanner else { return }
+        nearbyBatteryScanner.setAllowedReadDeviceIDs([])
+        nearbyBatteryDevices = []
+        nearbyBLEReadFailures = []
 
         guard isNearbyBLEScannerDemanded else {
             if nearbyBatteryScanner.isRunning || nearbyScannerCallbackIsInstalled {
@@ -1051,25 +1033,14 @@ final class BluetoothDeviceController: ObservableObject {
             return
         }
 
-        pruneNearbyBatteryCache(at: Date())
         guard !nearbyBatteryScanner.isRunning else { return }
         nearbyScannerGeneration &+= 1
         let generation = nearbyScannerGeneration
         nearbyScannerCallbackIsInstalled = true
-        nearbyBatteryScanner.onDevicesChanged = { [weak self] devices in
-            guard let self else { return }
-            // Capture authorization at callback time, before hopping to the main
-            // actor. A revocation followed by re-selection cannot bless a stale
-            // aggregate callback from the prior scanner session.
-            let permitAtCallback = self.nearbyBLEReadPermit
-            let revisionsAtCallback = self.nearbyBLEReadRevisions
+        nearbyBatteryScanner.onDevicesChanged = { [weak self] _ in
             Task { @MainActor [weak self] in
-                self?.receiveNearbyBatteryDevices(
-                    devices,
-                    permittedIDs: permitAtCallback,
-                    revisions: revisionsAtCallback,
-                    generation: generation
-                )
+                guard let self, generation == self.nearbyScannerGeneration else { return }
+                self.nearbyBatteryDevices = []
             }
         }
         nearbyBatteryScanner.onCandidatesChanged = { [weak self] candidates in
@@ -1079,15 +1050,10 @@ final class BluetoothDeviceController: ObservableObject {
                 self.nearbyBLECandidates = NearbyBLEDiscoveryPresentation.ordered(candidates)
             }
         }
-        nearbyBatteryScanner.onReadFailures = { [weak self] failures in
-            guard let self else { return }
-            let revisionsAtCallback = self.nearbyBLEReadRevisions
+        nearbyBatteryScanner.onReadFailures = { [weak self] _ in
             Task { @MainActor [weak self] in
                 guard let self, generation == self.nearbyScannerGeneration else { return }
-                let current = self.currentNearbyBLEReadPermit
-                self.nearbyBLEReadFailures.formUnion(failures.filter {
-                    current.contains($0) && self.nearbyBLEReadRevisions[$0, default: 0] == revisionsAtCallback[$0, default: 0]
-                })
+                self.nearbyBLEReadFailures = []
             }
         }
         nearbyBatteryScanner.onIsScanningChanged = { [weak self] scanning in
@@ -1109,9 +1075,6 @@ final class BluetoothDeviceController: ObservableObject {
 
     private func stopNearbyBatteryScanner(clearResults: Bool) {
         nearbyScannerGeneration &+= 1
-        nearbyBatteryCacheGeneration &+= 1
-        nearbyBatteryCacheExpirationTask?.cancel()
-        nearbyBatteryCacheExpirationTask = nil
         if let nearbyBatteryScanner {
             nearbyBatteryScanner.setAllowedReadDeviceIDs([])
             nearbyBatteryScanner.onDevicesChanged = nil
@@ -1122,73 +1085,12 @@ final class BluetoothDeviceController: ObservableObject {
                 nearbyBatteryScanner.stop()
             }
         }
-        for id in nearbyBLEReadPermit { nearbyBLEReadRevisions[id, default: 0] &+= 1 }
-        nearbyBLEReadPermit = []
         nearbyScannerCallbackIsInstalled = false
         isDiscoveringNearbyBLEDevices = false
         if clearResults {
             nearbyBatteryDevices = []
             nearbyBLEReadFailures = []
             nearbyBLECandidates = []
-        } else {
-            scheduleNearbyBatteryCacheExpiration()
-        }
-    }
-
-    private func receiveNearbyBatteryDevices(
-        _ devices: [NearbyBluetoothBatteryDevice],
-        permittedIDs: Set<UUID>,
-        revisions: [UUID: UInt64],
-        generation: UInt64
-    ) {
-        guard generation == nearbyScannerGeneration,
-              isNearbyBLEScannerDemanded else { return }
-        let currentPermit = currentNearbyBLEReadPermit
-        let accepted = devices.filter { device in
-            permittedIDs.contains(device.id)
-                && currentPermit.contains(device.id)
-                && nearbyBLESelectedIDs.contains(device.id)
-                && nearbyBLEReadRevisions[device.id, default: 0] == revisions[device.id, default: 0]
-        }
-        let now = Date()
-        var devicesByID: [UUID: NearbyBluetoothBatteryDevice] = [:]
-        for device in nearbyBatteryDevices + accepted where
-            nearbyBLESelectedIDs.contains(device.id)
-                && now.timeIntervalSince(device.lastUpdated) <= nearbyBatteryCacheLifetime {
-            devicesByID[device.id] = device
-        }
-        nearbyBatteryDevices = devicesByID.values.sorted { $0.id.uuidString < $1.id.uuidString }
-        nearbyBLEReadFailures.subtract(accepted.map(\.id))
-        scheduleNearbyBatteryCacheExpiration()
-    }
-
-    private func pruneNearbyBatteryCache(at date: Date) {
-        let freshDevices = nearbyBatteryDevices.filter {
-            date.timeIntervalSince($0.lastUpdated) <= nearbyBatteryCacheLifetime
-        }
-        guard freshDevices != nearbyBatteryDevices else { return }
-        nearbyBatteryDevices = freshDevices
-        scheduleNearbyBatteryCacheExpiration()
-    }
-
-    private func scheduleNearbyBatteryCacheExpiration() {
-        nearbyBatteryCacheExpirationTask?.cancel()
-        nearbyBatteryCacheExpirationTask = nil
-        guard let oldestUpdate = nearbyBatteryDevices.map(\.lastUpdated).min() else { return }
-        nearbyBatteryCacheGeneration &+= 1
-        let generation = nearbyBatteryCacheGeneration
-        let expiry = oldestUpdate.addingTimeInterval(nearbyBatteryCacheLifetime)
-        let delay = max(0, expiry.timeIntervalSinceNow)
-        let sleepDuration = Duration.milliseconds(Int64((delay * 1_000).rounded(.up)))
-        nearbyBatteryCacheExpirationTask = Task { @MainActor [weak self] in
-            do {
-                try await Task.sleep(for: sleepDuration)
-            } catch {
-                return
-            }
-            guard let self, self.nearbyBatteryCacheGeneration == generation else { return }
-            self.pruneNearbyBatteryCache(at: Date())
-            self.scheduleNearbyBatteryCacheExpiration()
         }
     }
 
