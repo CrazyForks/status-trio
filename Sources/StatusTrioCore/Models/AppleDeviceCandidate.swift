@@ -1,6 +1,6 @@
 import Foundation
 
-/// Identity remains namespaced by the transport/provider that can authorize it.
+/// Identity stays namespaced by the provider; display names are never identity.
 enum AppleDeviceID: Codable, Hashable, Sendable {
     case ble(UUID)
     case trustedDevice(String)
@@ -57,13 +57,13 @@ enum AppleDeviceEvidence: String, Codable, Sendable {
     case unverifiedTrustedRoute
 }
 
-struct AppleDeviceSelection: Codable, Equatable, Identifiable, Sendable {
+struct LegacyAppleDeviceSelection: Codable, Equatable, Identifiable, Sendable {
     let id: AppleDeviceID
     var name: String
     var model: String?
 }
 
-struct AppleDeviceCandidate: Equatable, Identifiable, Sendable {
+struct AppleDeviceCandidate: Codable, Equatable, Identifiable, Sendable {
     let id: AppleDeviceID
     var name: String
     var model: String?
@@ -71,17 +71,30 @@ struct AppleDeviceCandidate: Equatable, Identifiable, Sendable {
     var trustRequired: Bool
     var evidence: AppleDeviceEvidence
 
-    var selection: AppleDeviceSelection {
-        AppleDeviceSelection(id: id, name: name, model: model)
-    }
-
-    var isSelectableAppleDevice: Bool {
-        guard !transports.isEmpty else { return false }
+    var isVerifiedTrustedAppleDevice: Bool {
+        guard !trustRequired else { return false }
+        let hasTrustedTransport = transports.contains(.usb) || transports.contains(.network)
+        guard hasTrustedTransport else { return false }
         return switch (id, evidence) {
-        case (.ble, .appleBluetoothCompanyID): true
-        case (.trustedDevice, .verifiedAppleModel), (.trustedWatch, .verifiedAppleModel),
-             (.trustedWatch, .trustedWatchCompanion): true
+        case (.trustedDevice, .verifiedAppleModel): Self.isPhoneOrIPadModel(model)
+        case (.trustedWatch, .verifiedAppleModel): Self.isWatchModel(model)
+        case (.trustedWatch, .trustedWatchCompanion): true
         default: false
         }
     }
+
+    private static func normalizedModel(_ model: String?) -> String {
+        (model ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
+    private static func isPhoneOrIPadModel(_ model: String?) -> Bool {
+        let value = normalizedModel(model)
+        return value.hasPrefix("iphone") || value.hasPrefix("ipad")
+    }
+
+    private static func isWatchModel(_ model: String?) -> Bool {
+        let value = normalizedModel(model)
+        return value.hasPrefix("watch")
+    }
+
 }

@@ -136,34 +136,14 @@ enum BluetoothDeviceListPresentation {
     /// device above a connected one. Devices with no saved rank keep the
     /// group's own order and land after the ranked ones.
     ///
-    /// Trusted-mobile reading rows lead their group; selected BLE UUID rows
-    /// remain in the saved order. See `leading`.
+    /// Every row in a group follows the same saved identity order, regardless
+    /// of which provider supplied its metadata or battery value.
     static func orderedDevices(
         _ devices: [BluetoothDevice],
         using order: [String]
     ) -> [BluetoothDevice] {
         let groups = BluetoothDevicePresentation.grouped(devices)
-        return leading(groups.connected, using: order) + leading(groups.disconnected, using: order)
-    }
-
-    /// One group, with trusted-mobile reading rows in front.
-    ///
-    /// Those rows are the only ones the panel has live information about: a
-    /// level read over the air seconds ago, where every other row carries what
-    /// macOS wrote down at some earlier point. The report knows nothing about
-    /// where they belong, so it lists them wherever its own scan found them —
-    /// the middle of the group, sorted among the rest by name — which is where
-    /// the user was looking past them. The saved order arranges the rest and
-    /// cannot push a reading row back among them.
-    private static func leading(
-        _ group: [BluetoothDevice],
-        using order: [String]
-    ) -> [BluetoothDevice] {
-        let readings = group.filter {
-            $0.isReadOverTheAir && BluetoothDeviceIdentity.bleUUID(from: $0.id) == nil
-        }
-        guard !readings.isEmpty else { return ranked(group, using: order) }
-        return readings + ranked(group.filter { !readings.contains($0) }, using: order)
+        return ranked(groups.connected, using: order) + ranked(groups.disconnected, using: order)
     }
 
     /// Drops devices the user cannot act on or has chosen to hide: unpaired

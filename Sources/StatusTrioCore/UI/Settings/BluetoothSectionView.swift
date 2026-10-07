@@ -10,6 +10,7 @@ struct BluetoothSectionView: View {
     /// plain `let` and forwards nothing from it, so observing the store alone
     /// would leave the pane showing whatever it read first — usually nothing.
     @ObservedObject var bluetoothDevices: BluetoothDeviceController
+    @ObservedObject var appleDeviceDiscovery: AppleDeviceDiscoveryController
     @Binding var previewIsDark: Bool
     @EnvironmentObject private var localization: Localization
 
@@ -206,10 +207,6 @@ struct BluetoothSectionView: View {
                 }
             }
 
-            if store.showsAppleDevicesAndBattery {
-                AppleDeviceSelectionView(store: store, discovery: statusStore.appleDeviceDiscovery, bluetooth: bluetoothDevices)
-            }
-
             deviceListGroup
             deviceOrderGroup
         }
@@ -389,7 +386,7 @@ struct BluetoothSectionView: View {
                             let key = BluetoothDeviceIdentity.preferenceKey(device.id)
                             let orderLabel = BluetoothDeviceSettingsPresentation.orderLabel(
                                 device: device,
-                                nearbyBLENames: nearbyBLEOrderNames,
+                                nearbyBLENames: [:],
                                 fallback: localization.string(.bluetoothNearbyDeviceFallback),
                                 nearbySource: localization.string(.bluetoothNearbyBLESource)
                             )
@@ -523,26 +520,23 @@ struct BluetoothSectionView: View {
     /// Settings moves the row the user is looking at. Read from the observed
     /// controller, not the store, so a read that lands later repaints it.
     private var orderedBluetoothDevices: [BluetoothDevice] {
-        let nearbyDevices = NearbyBLEDeviceCatalog.settingsDevices(
-            selections: store.nearbyBLESelections
-        )
-        let devices = BluetoothDeviceListPresentation.removingSelectedNearbyBLEGhostShadows(
-            from: bluetoothDevices.devices + nearbyDevices,
-            selectedNearbyBLERows: nearbyDevices
-        )
+        let trustedDevices = store.showsAppleDevicesAndBattery
+            ? AppleDeviceCatalog.candidates(trusted: store.trustedAppleDeviceMetadata + appleDeviceDiscovery.candidates)
+                .map { candidate in
+                    BluetoothDevice(
+                        id: candidate.id.rowID,
+                        name: candidate.name,
+                        kind: BluetoothMobileDeviceModel.kind(forModel: candidate.model) ?? .unknown,
+                        isConnected: false,
+                        appleMobileModel: candidate.model,
+                        isReadOverTheAir: true
+                    )
+                }
+            : []
+        let devices = BluetoothDeviceListPresentation.uniquelyIdentifiedDevices(bluetoothDevices.devices + trustedDevices)
         return BluetoothDeviceListPresentation.orderedDevices(
             devices,
             using: store.bluetoothDeviceOrder
-        )
-    }
-
-    private var nearbyBLEOrderNames: [UUID: String] {
-        let candidates = store.nearbyBLESelections.map {
-            NearbyBLEDeviceCandidate(id: $0.id, name: $0.name, vendor: $0.vendor, lastSeen: .distantPast)
-        }
-        return NearbyBLEDiscoveryPresentation.displayNames(
-            candidates,
-            fallback: localization.string(.bluetoothNearbyDeviceFallback)
         )
     }
 

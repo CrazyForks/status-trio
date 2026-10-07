@@ -11,142 +11,95 @@ enum AppleDeviceCatalog {
     struct Projection: Equatable, Sendable {
         let rows: [AppleDevicePanelRow]
         let batteryLevels: [String: BluetoothBatteryLevel]
+        let mobileMetadataByDeviceID: [String: MobileBatterySnapshot]
     }
 
-    static func projection(
-        selections: [AppleDeviceSelection],
-        candidates: [AppleDeviceCandidate],
-        nearbyReadings: [NearbyBluetoothBatteryDevice],
-        trustedSnapshots: [MobileBatterySnapshot],
-        failures: Set<AppleDeviceID>,
-        options: BluetoothDeviceListOptions,
-        now: Date
-    ) -> Projection {
-        let rows = panelRows(
-            selections: selections,
-            candidates: candidates,
-            nearbyReadings: nearbyReadings,
-            trustedSnapshots: trustedSnapshots,
-            failures: failures,
-            options: options,
-            now: now
-        )
-        let levels = Dictionary(rows.compactMap { row -> (String, BluetoothBatteryLevel)? in
-            guard let level = row.batteryLevel else { return nil }
-            return (row.device.id, BluetoothBatteryLevel(
-                deviceAddress: row.device.id,
-                main: level,
-                left: nil,
-                right: nil,
-                caseLevel: nil
-            ))
-        }, uniquingKeysWith: { _, latest in latest })
-        return Projection(rows: rows, batteryLevels: levels)
+    static func readAuthorizedIDs(
+        visibleIDs: Set<AppleDeviceID>,
+        currentCandidates: [AppleDeviceCandidate]
+    ) -> Set<AppleDeviceID> {
+        let eligible = Set(currentCandidates.filter(\.isVerifiedTrustedAppleDevice).map(\.id))
+        return visibleIDs.intersection(eligible)
     }
 
     static func candidates(
-        ble: [NearbyBLEDeviceCandidate],
-        trusted: [AppleDeviceCandidate],
-        selections: [AppleDeviceSelection]
+        trusted: [AppleDeviceCandidate]
     ) -> [AppleDeviceCandidate] {
         var values: [AppleDeviceID: AppleDeviceCandidate] = [:]
-        for candidate in ble where candidate.vendor == .apple {
-            let id = AppleDeviceID.ble(candidate.id)
-            values[id] = AppleDeviceCandidate(
-                id: id, name: candidate.name, model: nil, transports: [.bluetooth],
-                trustRequired: false, evidence: .appleBluetoothCompanyID
-            )
-        }
-        for candidate in trusted where candidate.isSelectableAppleDevice { values[candidate.id] = candidate }
-        for selection in selections where values[selection.id] == nil {
-            let evidence: AppleDeviceEvidence
-            let transports: [MobileBatteryTransport]
-            switch selection.id {
-            case .ble:
-                evidence = .appleBluetoothCompanyID
-                transports = [.bluetooth]
-            case .trustedDevice:
-                evidence = .verifiedAppleModel
-                transports = [.usb, .network]
-            case .trustedWatch:
-                evidence = .trustedWatchCompanion
-                transports = [.usb, .network]
+        for candidate in trusted where candidate.isVerifiedTrustedAppleDevice {
+            if let existing = values[candidate.id] {
+                let transports = ([MobileBatteryTransport.usb, .network] as [MobileBatteryTransport]).filter {
+                    existing.transports.contains($0) || candidate.transports.contains($0)
+                }
+                values[candidate.id] = AppleDeviceCandidate(
+                    id: candidate.id,
+                    name: candidate.name,
+                    model: candidate.model ?? existing.model,
+                    transports: transports,
+                    trustRequired: false,
+                    evidence: candidate.evidence
+                )
+            } else {
+                values[candidate.id] = candidate
             }
-            values[selection.id] = AppleDeviceCandidate(
-                id: selection.id, name: selection.name, model: selection.model,
-                transports: transports, trustRequired: false, evidence: evidence
-            )
         }
         return values.values.sorted { $0.id.rowID < $1.id.rowID }
     }
 
-    /// Saved BLE selections remain independent of list-level hiding. The panel
-    /// uses these rows only to suppress a uniquely matched unpaired system ghost;
-    /// they are never appended as displayed rows and carry no battery reading.
-    static func selectedBLEShadowRows(from selections: [AppleDeviceSelection]) -> [BluetoothDevice] {
-        selections.compactMap { selection in
-            guard case .ble = selection.id else { return nil }
-            return BluetoothDevice(
-                id: selection.id.rowID,
-                name: selection.name,
-                kind: .unknown,
-                isConnected: false,
-                isReadOverTheAir: true
-            )
-        }
-    }
-
-    static func panelRows(
-        selections: [AppleDeviceSelection],
+    static func projection(
         candidates: [AppleDeviceCandidate],
-        nearbyReadings: [NearbyBluetoothBatteryDevice],
         trustedSnapshots: [MobileBatterySnapshot],
-        failures: Set<AppleDeviceID>,
-        options: BluetoothDeviceListOptions,
-        now: Date
-    ) -> [AppleDevicePanelRow] {
-        let candidateMap = Dictionary(candidates.map { ($0.id, $0) }, uniquingKeysWith: { _, latest in latest })
-        let nearbyMap = Dictionary(nearbyReadings.map { (AppleDeviceID.ble($0.id), $0) }, uniquingKeysWith: { _, latest in latest })
-        let trustedMap = Dictionary(trustedSnapshots.map { (Self.id(for: $0), $0) }, uniquingKeysWith: { _, latest in latest })
-        var order: [String: Int] = [:]
-        for (index, value) in options.order.enumerated() {
-            let key = BluetoothDeviceIdentity.preferenceKey(value)
-            if order[key] == nil { order[key] = index }
-        }
-
-        var indexedRows: [(rank: Int, index: Int, row: AppleDevicePanelRow)] = []
-        for (index, selection) in selections.enumerated() {
-            guard let candidate = candidateMap[selection.id], candidate.isSelectableAppleDevice else { continue }
+        failures: Set<AppleDeviceID> = [],
+        options: BluetoothDeviceListOptions
+    ) -> Projection {
+        let trustedCandidates = Self.candidates(trusted: candidates)
+        let snapshots = MobileBatteryDeviceMerge.deduplicatedSnapshots(trustedSnapshots)
+        let snapshotsByID = Dictionary(snapshots.map { (id(for: $0), $0) }, uniquingKeysWith: { old, new in
+            new.observedAt >= old.observedAt ? new : old
+        })
+        let failuresByID = failures
+        var levels: [String: BluetoothBatteryLevel] = [:]
+        var metadata: [String: MobileBatterySnapshot] = [:]
+        let rows = trustedCandidates.compactMap { candidate -> AppleDevicePanelRow? in
+            guard candidate.isVerifiedTrustedAppleDevice else { return nil }
+            let snapshot = snapshotsByID[candidate.id]
+            let name = snapshot?.name?.trimmingCharacters(in: .whitespacesAndNewlines)
+            let displayName = (name?.isEmpty == false ? name : nil) ?? candidate.name
+            let model = snapshot?.model ?? candidate.model
             let device = BluetoothDevice(
-                id: selection.id.rowID,
-                name: selection.name,
-                kind: BluetoothMobileDeviceModel.kind(forModel: selection.model ?? candidate.model) ?? .unknown,
+                id: candidate.id.rowID,
+                name: displayName,
+                kind: BluetoothMobileDeviceModel.kind(forModel: model) ?? .unknown,
                 isConnected: false,
-                appleMobileModel: selection.model ?? candidate.model,
+                appleMobileModel: model,
                 isReadOverTheAir: true
             )
-            guard !BluetoothDeviceListPresentation.isDeviceHidden(device, options: options) else { continue }
+            guard !BluetoothDeviceListPresentation.isDeviceHidden(device, options: options) else { return nil }
 
-            let level: Int?
-            let status: NearbyBLEPanelRowStatus
-            switch selection.id {
-            case let .ble(id):
-                let reading = nearbyMap[.ble(id)]
-                let valid = reading.flatMap { (0...100).contains($0.batteryLevel) && now.timeIntervalSince($0.lastUpdated) <= BluetoothLEBatteryScanPolicy.resultLifetime ? $0.batteryLevel : nil }
-                level = valid
-                status = valid.map { NearbyBLEPanelRowStatus.battery($0) } ?? (failures.contains(selection.id) ? .unavailable : .notNearby)
-            case .trustedDevice, .trustedWatch:
-                level = trustedMap[selection.id]?.batteryLevel
-                status = level.map { NearbyBLEPanelRowStatus.battery($0) } ?? (failures.contains(selection.id) ? .unavailable : .notNearby)
+            if let snapshot {
+                levels[BluetoothBatteryReader.normalizedAddress(device.id)] = BluetoothBatteryLevel(
+                    deviceAddress: device.id,
+                    main: snapshot.batteryLevel,
+                    left: nil,
+                    right: nil,
+                    caseLevel: nil
+                )
+                metadata[device.id] = snapshot
             }
-            let rank = order[BluetoothDeviceIdentity.preferenceKey(device.id)] ?? Int.max
-            let row = AppleDevicePanelRow(id: selection.id, device: device, batteryLevel: level, status: status)
-            indexedRows.append((rank: rank, index: index, row: row))
+            let status: NearbyBLEPanelRowStatus
+            if let snapshot { status = .battery(snapshot.batteryLevel) }
+            else { status = failuresByID.contains(candidate.id) ? .unavailable : .notNearby }
+            return AppleDevicePanelRow(
+                id: candidate.id,
+                device: device,
+                batteryLevel: snapshot?.batteryLevel,
+                status: status
+            )
         }
-        indexedRows.sort { lhs, rhs in
-            lhs.rank == rhs.rank ? lhs.index < rhs.index : lhs.rank < rhs.rank
-        }
-        return indexedRows.map(\.row)
+        let orderedRows = BluetoothDeviceListPresentation.orderedDevices(rows.map(\.device), using: options.order)
+        let rowByID = Dictionary(rows.map { ($0.device.id, $0) }, uniquingKeysWith: { first, _ in first })
+        let ordered = orderedRows.compactMap { rowByID[$0.id] }
+        return Projection(rows: ordered, batteryLevels: levels, mobileMetadataByDeviceID: metadata)
     }
 
     static func rowIdentityMap(_ rows: [AppleDevicePanelRow]) -> [String: AppleDeviceID] {

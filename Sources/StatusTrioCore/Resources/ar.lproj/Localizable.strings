@@ -1,6 +1,5 @@
 "menu.version" = "Status Trio %@";
 "menu.settings" = "الإعدادات…";
-"menu.settings.development" = "إصدار تطويري · %@";
 "menu.quit" = "إنهاء Status Trio";
 "menu.about" = "حول %@";
 "menu.hide" = "إخفاء %@";
@@ -53,8 +52,6 @@
 "settings.bluetooth.networkErrorPriorityDescription" = "تبقى أيقونة الشبكة ظاهرة عند انقطاع الاتصال أو غياب الإنترنت بدلًا من أيقونة جهاز Bluetooth.";
 "settings.bluetooth.batteryLevels" = "عرض مستويات بطارية Bluetooth";
 "settings.bluetooth.batteryLevelsDescription" = "تقرأ مستويات بطارية AirPods أثناء عرض إدخال Bluetooth. لن يظهر طلب إذن إضافي.";
-"settings.bluetooth.nearbyBatteryDevices" = "عرض مستويات بطارية أجهزة BLE القريبة";
-"settings.bluetooth.nearbyBatteryDevicesDescription" = "اختر أجهزة BLE القريبة لعرضها في لوحة الحالة. تُقرأ البطارية للأجهزة المحددة والظاهرة فقط.";
 "settings.bluetooth.listeningModePreview" = "معاينة مُبدِّل وضع السمع";
 "settings.bluetooth.listeningModePreviewDescription" = "اعرض كبسولات الوضع على جميع AirPods المتصلة لاختبار الواجهة. النقر على كبسولة يُحركها كما على الجهاز الفعلي لكن دون تغيير أي إعداد في AirPods.";
 "settings.bluetooth.listeningModePreviewDeviceName" = "اسم جهاز المعاينة";
@@ -404,25 +401,14 @@
 "bluetooth.listeningMode.changeFailed" = "تعذّر تغيير وضع السمع.";
 "bluetooth.listeningMode.accessibility" = "وضع السمع";
 
-"settings.bluetooth.mobileBatteryDevices" = "بطارية iPhone وApple Watch";
-"settings.bluetooth.mobileBatteryDevicesDescription" = "اقرأها عبر iPhone موثوق باستخدام USB أو Wi‑Fi. صِل iPhone بالكابل مرة واحدة واضغط على «الوثوق». يتطلب الاستخدام اللاسلكي مزامنة Wi‑Fi مُعدّة مسبقًا.";
 "mobileBattery.watchFallbackName" = "Apple Watch";
 "mobileBattery.watchSource" = "عبر iPhone";
 "mobileBattery.updatedAt" = "تم التحديث %@";
 "mobileBattery.charging" = "قيد الشحن";
 "mobileBattery.trustRequired" = "صِل iPhone بالكابل واضغط على «الوثوق» لقراءة بطارية Apple Watch المقترنة.";
 "mobileBattery.unavailable" = "تعذّر تحديث بطارية iPhone وApple Watch عبر USB أو Wi-Fi.";
-"settings.bluetooth.nearbyBLE.title" = "أجهزة BLE القريبة";
-"settings.bluetooth.nearbyBLE.scan" = "افحص الأجهزة القريبة";
-"settings.bluetooth.nearbyBLE.scanning" = "جارٍ الفحص…";
-"settings.bluetooth.nearbyBLE.description" = "اختر الأجهزة التي تريد عرضها في لوحة الحالة.";
-"settings.bluetooth.nearbyBLE.empty" = "لم يتم العثور على أجهزة قريبة. أعد الفحص مع وجود جهازك بالقرب.";
-"settings.bluetooth.nearbyBLE.noneSelected" = "اختر جهازًا لعرض بطاريته في لوحة الحالة.";
 "bluetooth.nearbyBLE.notNearby" = "غير قريب";
 "bluetooth.nearbyBLE.unavailable" = "غير متاح مؤقتًا";
-"bluetooth.nearbyBLE.source" = "Bluetooth قريب";
 "settings.appleDevicesAndBattery" = "إظهار أجهزة Apple والبطارية";
-"settings.appleDevicesAndBattery.description" = "اختر أجهزة Apple لإضافتها إلى قائمة Bluetooth. يقتصر Bluetooth القريب على اكتشاف الأجهزة وعرضها، ولا يتصل بها أو يقرأ بطاريتها. قد تتوفر قراءة البطارية عبر USB أو Wi-Fi بعد الوثوق بالجهاز، أو عبر iPhone موثوق مقترن بـ Apple Watch. لا يتوفر مستوى البطارية لكل أجهزة Apple.";
-"settings.appleDeviceSelection.title" = "اختيار أجهزة Apple";
-"settings.appleDeviceSelection.trustRequired" = "يتطلب الوثوق";
-"settings.appleDeviceSelection.required" = "اختر الأجهزة التي تريد إظهارها في قائمة Bluetooth.";
+"settings.appleDevicesAndBattery.description" = "تظهر تلقائيًا في قائمة Bluetooth أجهزة iPhone وiPad التي تم التحقق من أنها موثوقة مسبقًا على هذا الـ Mac، وكذلك أجهزة Apple Watch التي تم التحقق منها عبر iPhone موثوق ومقترن. لا يثبت بث Apple القريب أو اسم الجهاز وحده ملكيته. تُقرأ البطارية، عند توفرها، عبر USB موثوق أو Wi-Fi مُعدّة مسبقًا؛ وتخضع القراءة لإعداد بطارية Bluetooth العام. تبقى صفوف Bluetooth التي لا يمكن مطابقتها بهوية ثابتة مشتركة منفصلة.";
+"bluetooth.nearbyBLE.source" = "Bluetooth قريب";

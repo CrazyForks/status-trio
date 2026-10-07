@@ -113,6 +113,8 @@ final class SystemStatusStore: ObservableObject {
     private var hasStarted = false
     private var hasStopped = false
     @Published private(set) var isPopoverVisible = false
+    @Published private(set) var trustedAppleDeviceCandidates: [AppleDeviceCandidate] = []
+    @Published private(set) var trustedAppleDeviceDiscoveryGeneration: UInt64 = 0
     /// True while the display is asleep. The fallback poll skips its work then,
     /// because no menu bar or Dock tile is on screen to keep fresh.
     @Published private(set) var isDisplayAsleep = false
@@ -326,6 +328,8 @@ final class SystemStatusStore: ObservableObject {
         inputSettingsCancellable = nil
         mobileBatterySettingsCancellable?.cancel()
         mobileBatterySettingsCancellable = nil
+        appleDeviceSettingsCancellable?.cancel()
+        appleDeviceSettingsCancellable = nil
         inputUpdateTask?.cancel()
         inputUpdateTask = nil
         inputMonitor?.stop()
@@ -672,10 +676,17 @@ final class SystemStatusStore: ObservableObject {
                 self?.mobileBattery.setReadingEnabled(enabled)
             }
         appleDeviceSettingsCancellable = settings.$showsAppleDevicesAndBattery
-            .removeDuplicates()
-            .sink { [weak self] enabled in
+            .combineLatest(appleDeviceDiscovery.$candidates)
+            .sink { [weak self, weak settings] enabled, candidates in
                 self?.appleDeviceDiscovery.setEnabled(enabled)
+                self?.trustedAppleDeviceCandidates = candidates
+                self?.trustedAppleDeviceDiscoveryGeneration = self?.appleDeviceDiscovery.discoveryGeneration ?? 0
+                guard enabled else { return }
+                settings?.updateTrustedAppleDeviceMetadata(candidates)
             }
+        appleDeviceDiscovery.setEnabled(settings.showsAppleDevicesAndBattery)
+        trustedAppleDeviceCandidates = appleDeviceDiscovery.candidates
+        trustedAppleDeviceDiscoveryGeneration = appleDeviceDiscovery.discoveryGeneration
     }
 
     func selectInputDevice(_ id: AudioDeviceID) {

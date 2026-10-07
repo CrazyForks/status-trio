@@ -5,23 +5,32 @@ import Foundation
 final class AppleDeviceDiscoveryController: ObservableObject {
     @Published private(set) var candidates: [AppleDeviceCandidate] = []
     @Published private(set) var isDiscovering = false
+    @Published private(set) var discoveryGeneration: UInt64 = 0
 
     private let reader: any MobileBatteryReading
     private var claims: Set<String> = []
     private var isEnabled = false
     private var generation: UInt64 = 0
     private var task: Task<Void, Never>?
+    private var refreshTask: Task<Void, Never>?
 
     init(reader: any MobileBatteryReading = MobileBatteryHelperReader()) {
         self.reader = reader
     }
 
-    deinit { task?.cancel() }
+    deinit {
+        task?.cancel()
+        refreshTask?.cancel()
+    }
 
     func setEnabled(_ enabled: Bool) {
         guard isEnabled != enabled else { return }
         isEnabled = enabled
-        updateLifecycle()
+        if enabled {
+            startDiscovery()
+        } else {
+            stopDiscovery(clearCandidates: true)
+        }
     }
 
     func request(_ token: String) {
@@ -33,7 +42,7 @@ final class AppleDeviceDiscoveryController: ObservableObject {
 
     func release(_ token: String) {
         guard claims.remove(token) != nil else { return }
-        if claims.isEmpty { stopDiscovery(clearCandidates: false) }
+        if claims.isEmpty && !isEnabled { stopDiscovery(clearCandidates: false) }
     }
 
     func refresh() {
@@ -47,7 +56,7 @@ final class AppleDeviceDiscoveryController: ObservableObject {
         stopDiscovery(clearCandidates: true)
     }
 
-    private var isActive: Bool { isEnabled && !claims.isEmpty }
+    private var isActive: Bool { isEnabled }
 
     private func updateLifecycle() {
         if isActive { startDiscovery() }
@@ -56,8 +65,12 @@ final class AppleDeviceDiscoveryController: ObservableObject {
 
     private func startDiscovery() {
         guard isActive else { return }
+        refreshTask?.cancel()
+        refreshTask = nil
         generation &+= 1
         let currentGeneration = generation
+        discoveryGeneration = currentGeneration
+        candidates = []
         task?.cancel()
         isDiscovering = true
         let reader = self.reader
@@ -78,12 +91,28 @@ final class AppleDeviceDiscoveryController: ObservableObject {
         candidates = values.sorted { $0.id.rowID < $1.id.rowID }
         isDiscovering = false
         task = nil
+        if isEnabled {
+            scheduleRefresh()
+        }
+    }
+
+    private func scheduleRefresh() {
+        refreshTask?.cancel()
+        refreshTask = Task { [weak self] in
+            do { try await Task.sleep(for: .seconds(60)) }
+            catch { return }
+            guard !Task.isCancelled else { return }
+            self?.refresh()
+        }
     }
 
     private func stopDiscovery(clearCandidates: Bool) {
         generation &+= 1
+        discoveryGeneration = generation
         task?.cancel()
         task = nil
+        refreshTask?.cancel()
+        refreshTask = nil
         isDiscovering = false
         if clearCandidates { candidates = [] }
     }

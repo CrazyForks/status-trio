@@ -46,6 +46,7 @@ final class UpdaterManager: NSObject, ObservableObject, SPUUpdaterDelegate {
         manualUpdatePresentation = ManualUpdatePresentation(
             activationPolicy: activationPolicy
         )
+        guard AppMetadata.developmentCodename == nil else { return }
         #if DEBUG
         return
         #else
@@ -58,6 +59,7 @@ final class UpdaterManager: NSObject, ObservableObject, SPUUpdaterDelegate {
     }
 
     func checkForUpdates() {
+        guard AppMetadata.developmentCodename == nil else { return }
         #if DEBUG
         return
         #else

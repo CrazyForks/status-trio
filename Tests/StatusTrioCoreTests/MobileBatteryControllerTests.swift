@@ -68,6 +68,26 @@ final class MobileBatteryControllerTests: XCTestCase {
         await reader.finishAll()
     }
 
+    func testMasterOffRevokesPendingTrustedReadsAndClearsCachedAppleRows() async {
+        let reader = ControlledMobileBatteryReader()
+        let controller = MobileBatteryController(reader: reader)
+        controller.setAuthorizedDeviceIDs([.trustedDevice("phone-a")])
+        controller.setSurfaceVisible(true)
+        controller.request("panel")
+        await waitUntil { await reader.readCount == 1 }
+
+        controller.setReadingEnabled(false)
+
+        XCTAssertTrue(controller.snapshots.isEmpty)
+        XCTAssertFalse(controller.isRefreshing)
+        await waitUntil { await reader.cancellationCount == 1 }
+        await reader.complete(0, with: result(level: 99))
+        await settle()
+        XCTAssertTrue(controller.snapshots.isEmpty)
+        controller.stop()
+        await reader.finishAll()
+    }
+
     func testReenablingWithNoClaimAndClosedSurfaceDoesNotRead() async {
         let reader = ControlledMobileBatteryReader()
         let controller = MobileBatteryController(reader: reader)

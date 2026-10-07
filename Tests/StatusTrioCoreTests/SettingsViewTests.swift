@@ -50,6 +50,7 @@ final class SettingsViewTests: XCTestCase {
                 store: store,
                 statusStore: statusStore,
                 bluetoothDevices: statusStore.bluetoothDevices,
+                appleDeviceDiscovery: statusStore.appleDeviceDiscovery,
                 previewIsDark: isDark
             ))),
             ("audio", AnyView(AudioSectionView(
@@ -189,35 +190,6 @@ final class SettingsViewTests: XCTestCase {
         )
     }
 
-    func testAppleDeviceSelectionRowsHostWithModelBasedIconsAndTrustedControls() {
-        let suite = makeSuite()
-        defer { clear(suite) }
-        let localization = Localization(defaults: suite.defaults, preferredLanguages: ["en"])
-        let store = SettingsStore(defaults: suite.defaults)
-        let phone = AppleDeviceCandidate(
-            id: .trustedDevice("phone-id"), name: "Ling's iPhone", model: "iPhone18,1",
-            transports: [.usb], trustRequired: true, evidence: .verifiedAppleModel
-        )
-        let unknownBLE = AppleDeviceCandidate(
-            id: .ble(UUID()), name: "Apple Watch", model: nil,
-            transports: [.bluetooth], trustRequired: false, evidence: .appleBluetoothCompanyID
-        )
-        store.setAppleDeviceSelected(phone, selected: true)
-        store.setAppleDeviceSelected(unknownBLE, selected: true)
-        let discovery = AppleDeviceDiscoveryController()
-        let bluetooth = SettingsBluetoothTestFactory.makeController(devices: [])
-        let view = AppleDeviceSelectionView(store: store, discovery: discovery, bluetooth: bluetooth)
-            .environmentObject(localization)
-        let hostingView = NSHostingView(rootView: view)
-        hostingView.frame = NSRect(x: 0, y: 0, width: 500, height: 400)
-        hostingView.layoutSubtreeIfNeeded()
-
-        XCTAssertGreaterThan(hostingView.fittingSize.height, 0)
-        XCTAssertNotNil(hostingView.subviews)
-        XCTAssertEqual(BluetoothDeviceRowIcon.symbolName(forAppleModel: phone.model), "smartphone")
-        XCTAssertEqual(BluetoothDeviceRowIcon.symbolName(forAppleModel: unknownBLE.model), BluetoothDeviceRowIcon.genericSymbol)
-    }
-
     func testSettingsViewHostingViewRendersWithoutCrashing() {
         let name = "StatusTrioCoreTests.SettingsViewTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: name) ?? .standard
@@ -321,6 +293,7 @@ private func renderBluetoothPane(
         store: store,
         statusStore: statusStore,
         bluetoothDevices: observedController,
+        appleDeviceDiscovery: statusStore.appleDeviceDiscovery,
         previewIsDark: .constant(true)
     )
     .environmentObject(localization)

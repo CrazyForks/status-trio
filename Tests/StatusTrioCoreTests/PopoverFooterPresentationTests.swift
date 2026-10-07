@@ -12,13 +12,13 @@ final class PopoverFooterPresentationTests: XCTestCase {
         )
     }
 
-    func testSettingsLabelAppendsTheDevelopmentSuffix() {
+    func testSettingsLabelAppendsOnlyTheDevelopmentCodename() {
         XCTAssertEqual(
             PopoverFooterPresentation.settingsLabel(
                 title: "Settings…",
-                developmentSuffix: "Development · Fix Issues"
+                developmentSuffix: "Apple Link"
             ),
-            "Settings… · Development · Fix Issues"
+            "Settings… · Apple Link"
         )
     }
 
@@ -35,9 +35,10 @@ final class PopoverFooterPresentationTests: XCTestCase {
         // readable in every language.
         let label = PopoverFooterPresentation.settingsLabel(
             title: "Settings…",
-            developmentSuffix: "Development · Fix Issues"
+            developmentSuffix: "Apple Link"
         )
 
+        XCTAssertFalse(label.contains("Development"))
         XCTAssertFalse(label.contains("1.3.0"))
     }
 }

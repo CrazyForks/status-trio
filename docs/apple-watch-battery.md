@@ -1,15 +1,29 @@
-# iPhone and Apple Watch battery readings
+# iPhone, iPad, and Apple Watch battery rows
 
 ## Setup
 
-1. In **Settings → Bluetooth**, enable **iPhone and Apple Watch battery**.
-2. Connect the iPhone to the Mac over USB. On the iPhone, accept **Trust This Computer** if asked. Status Trio does not initiate pairing or change trust settings.
-3. For wireless reads, configure Wi-Fi syncing for the iPhone in Finder yourself. The app uses an already-configured route and does not enable Wi-Fi syncing.
-4. Keep the iPhone and Watch paired as usual. The Watch reading is obtained through its trusted parent iPhone; the Watch does not need a separate Mac pairing.
+1. In **Settings → Bluetooth**, enable **Show Apple devices and battery**.
+   Verified devices already trusted by this Mac appear automatically in the Bluetooth list; there is no device picker.
+2. Connect an iPhone or iPad to the Mac over USB and accept **Trust This Computer** if prompted. Status Trio does not initiate pairing or change trust settings.
+3. For wireless reads, configure Wi-Fi syncing for the iPhone in Finder yourself. The app uses an already configured trusted route and does not enable Wi-Fi syncing.
+4. Keep the iPhone and Watch paired as usual. A Watch is verified and read through its trusted paired iPhone; the Watch does not need a separate Mac pairing.
 
-The setting is off by default. Reads are on demand while the Bluetooth device list is visible, refresh periodically while it stays open, and stop when the panel closes. Battery observations are cached for up to 30 minutes across temporary read failures. The helper reads only devices already trusted by macOS. It stores no pairing credentials in Status Trio and routine logs omit device identifiers.
+The setting is off by default. The Bluetooth battery-level setting must also be
+on to read levels. Reads are on demand for currently verified devices whose
+rows are visible in the list viewport, refresh periodically while visible, and
+stop when the panel closes or eligibility is revoked. Previously verified
+metadata can keep an offline row visible, but cached metadata alone does not
+authorize a new read. Battery observations are cached for up to 30 minutes
+across temporary read failures. The helper reads only devices already trusted
+by macOS. It stores no pairing credentials in Status Trio and routine logs omit
+device identifiers.
 
-A Watch can appear with the localized fallback name **Apple Watch**. Watch charging state is not currently read. When the phone is temporarily unavailable, an earlier successful reading can remain visible until its observation expires.
+A Watch can appear with the localized fallback name **Apple Watch**. Watch
+charging state is not currently read. When the phone is temporarily
+unavailable, a previously verified row can remain visible; the prior battery
+reading can remain until its observation expires. Same-named classic Bluetooth
+rows are not assumed to be the same device as helper UDIDs and remain separate
+when no stable mapping exists.
 
 ## Helper dependencies and redistribution
 
@@ -32,6 +46,11 @@ Local logs are retained in the task scratch directory (not shipped): `.superpowe
 **Release workflow preflight — PASS:** [run 37108779255](https://github.com/lingyired/status-trio/actions/runs/37108779255) ran against tested commit `42c47b0e33d326421f1a1566bc3130010020147e`. The runner was macOS 26.6.2 with Xcode 26.6, Swift 6.3.3, and macOS SDK 26.5. CI passed 1,139 XCTest cases (6 skipped, 0 failed) and 475 Swift Testing cases in 76 suites; appcast-note validation passed for all 12 languages. The app executable passed audit with arm64 and x86_64 slices, macOS 15.0 minimum, and LC_BUILD_VERSION SDK 26.0. The source-built helper and each bundled runtime library passed audit with arm64 and x86_64 slices, macOS 15.0 minimum, and SDK 26.5. SDK 26.5 is the CI toolchain SDK; the app executable reports 26.0 in its own load-command metadata. The app was signed Ad-hoc because Developer ID signing and Apple notarization are not configured. DMG `StatusTrio-1.4.0.dmg` was created without publishing, and the workflow artifact upload succeeded ([artifact 11269166810](https://github.com/lingyired/status-trio/actions/runs/37108779255/artifacts/11269166810)). GitHub Release upload and appcast publication were skipped by `publish=false`. This verification covers the tested feature SHA above; this evidence update is a documentation-only follow-up.
 
 **Hardware acceptance: PENDING.** At the local check on 2026-10-03, the packaged helper's isolated `--list` command found zero trusted phones. No already-trusted iPhone or paired Watch was available to this check, so USB battery values, Watch readings against device displays, configured Wi-Fi transport, panel reopen, Bluetooth-off behavior, phone disconnect, and cache expiry have not been observed on hardware. Mocks and packaging checks do not resolve this acceptance item. To complete it, connect an already-trusted iPhone by USB, enable the setting, compare iPhone and Watch battery percentages and the iPhone charging state with their displays, then check the existing Wi-Fi-sync route and the documented close/reopen, Bluetooth-off, disconnect, and expiry behavior. Record OS/device versions, transport, observation times, and results here without stable device IDs. Do not pair devices or change Wi-Fi-sync configuration as part of verification.
+
+**Current helper enumeration — 2026-10-07:** the helper's `--list` operation
+found zero trusted devices. Automated discovery and authorization tests pass,
+but physical iPhone/iPad/Watch reads still require hardware verification. Do
+not infer working hardware reads from an empty enumeration.
 
 **Final review fix wave — 2026-10-03:** local `swift test` passed 1,142 XCTest cases (6 skipped, 0 failed) and 476 Swift Testing tests across 76 suites; `swift build -c release` passed; the native helper adapter suite passed 18/18 cases. The universal app build, helper bundle audit, signature verification, rpath/dependency fixtures, and executor-backed `--list` smoke against `dist/StatusTrio.app` passed. This packaged-reader smoke found zero trusted phones (`phones: []`): it verifies the packaged helper path and list decoding only, and is not hardware acceptance. Its test asserts an empty phone list, so it may fail when run on a machine with a trusted phone connected; use the app UI and compare against device displays for hardware acceptance. On this local macOS 27.0.1 / Xcode 27.0 / Swift 6.4 / SDK 27.0 machine, the app executable's LC_BUILD_VERSION SDK was 26.0 and the helper/runtime library SDK was 27.0. Detailed logs are in `.superpowers/sdd/2026-10-03-apple-watch-battery/final-*.log`.
 

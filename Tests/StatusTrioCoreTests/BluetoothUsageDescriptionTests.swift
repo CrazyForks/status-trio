@@ -8,8 +8,9 @@ final class BluetoothUsageDescriptionTests: XCTestCase {
         let purpose = try XCTUnwrap(values["NSBluetoothAlwaysUsageDescription"] as? String)
 
         XCTAssertTrue(purpose.contains("connection status"))
-        XCTAssertTrue(purpose.contains("nearby battery levels"))
-        XCTAssertTrue(purpose.contains("Battery Service"))
+        XCTAssertTrue(purpose.contains("already trusted"))
+        XCTAssertTrue(purpose.contains("metadata and battery values"))
+        XCTAssertFalse(purpose.contains("Battery Service"))
     }
 
     func testEveryLanguageLocalizesTheBluetoothPurpose() throws {

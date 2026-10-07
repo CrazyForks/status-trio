@@ -9,7 +9,7 @@ struct MobileBatterySnapshotTests {
         #expect(candidates.map(\.id) == [.trustedDevice("ipad-1"), .trustedWatch(parentID: "phone-1", id: "watch-1")])
         #expect(candidates[0].evidence == .verifiedAppleModel)
         #expect(candidates[1].evidence == .verifiedAppleModel)
-        let selectable = candidates.map { $0.isSelectableAppleDevice }
+        let selectable = candidates.map { $0.isVerifiedTrustedAppleDevice }
         #expect(selectable == [true, true])
     }
 
@@ -39,7 +39,7 @@ struct MobileBatterySnapshotTests {
         let candidates = try MobileBatteryWire.decodeDiscovery(Data(json.utf8), expectedParentID: nil)
         #expect(candidates.count == 1)
         #expect(candidates[0].trustRequired)
-        #expect(!candidates[0].isSelectableAppleDevice)
+        #expect(!candidates[0].isVerifiedTrustedAppleDevice)
     }
 
     @Test func untrustedParentRouteWithoutModelSurvivesAsHintOnly() throws {
@@ -47,7 +47,7 @@ struct MobileBatterySnapshotTests {
         let candidates = try MobileBatteryWire.decodeDiscovery(Data(json.utf8), expectedParentID: nil)
         #expect(candidates.count == 1)
         #expect(candidates[0].trustRequired)
-        #expect(!candidates[0].isSelectableAppleDevice)
+        #expect(!candidates[0].isVerifiedTrustedAppleDevice)
     }
     @Test func realZeroSurvivesValidation() throws {
         let json = Data(#"{"schemaVersion":1,"devices":[{"id":"w","parentID":"p","name":null,"model":"Watch7,1","batteryLevel":0,"isCharging":null,"transport":"usb"}],"failures":[]}"#.utf8)

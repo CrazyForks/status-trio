@@ -3,6 +3,36 @@ import XCTest
 
 @MainActor
 final class AppleDeviceDiscoveryControllerTests: XCTestCase {
+    func testMasterSwitchAloneDiscoversTrustedCandidatesWithoutPickerClaim() async {
+        let reader = ControlledMobileBatteryReader()
+        let controller = AppleDeviceDiscoveryController(reader: reader)
+        controller.setEnabled(true)
+        await waitUntil { await reader.discoveryCount == 1 }
+        await reader.completeDiscovery(0, with: [candidate(id: "phone-1", model: "iPhone18,1")])
+        await waitUntil { controller.candidates.count == 1 && !controller.isDiscovering }
+
+        XCTAssertEqual(controller.candidates.map(\.id), [.trustedDevice("phone-1")])
+        let reads = await reader.readCount
+        XCTAssertEqual(reads, 0)
+        controller.stop()
+    }
+
+    func testMasterOffStopsDiscoveryAndRemovesCandidates() async {
+        let reader = ControlledMobileBatteryReader()
+        let controller = AppleDeviceDiscoveryController(reader: reader)
+        controller.setEnabled(true)
+        await waitUntil { await reader.discoveryCount == 1 }
+        await reader.completeDiscovery(0, with: [candidate(id: "phone-1", model: "iPhone18,1")])
+        await waitUntil { controller.candidates.count == 1 }
+
+        controller.setEnabled(false)
+
+        XCTAssertTrue(controller.candidates.isEmpty)
+        XCTAssertFalse(controller.isDiscovering)
+        controller.stop()
+        await reader.finishAll()
+    }
+
     func testDiscoveryRequiresEnabledPickerClaimAndNeverReadsBattery() async {
         let reader = ControlledMobileBatteryReader()
         let controller = AppleDeviceDiscoveryController(reader: reader)
@@ -26,17 +56,36 @@ final class AppleDeviceDiscoveryControllerTests: XCTestCase {
         controller.stop()
     }
 
-    func testDismissalRejectsLateDiscoveryAndKeepsSavedSelectionExternal() async {
+    func testMasterOffRejectsLateDiscoveryResult() async {
         let reader = ControlledMobileBatteryReader()
         let controller = AppleDeviceDiscoveryController(reader: reader)
         controller.setEnabled(true)
-        controller.request("picker")
         await waitUntil { await reader.discoveryCount == 1 }
-        controller.release("picker")
+        controller.setEnabled(false)
         await reader.completeDiscovery(0, with: [candidate(id: "phone-1", model: "iPhone18,1")])
         await settle()
         XCTAssertTrue(controller.candidates.isEmpty)
+        XCTAssertFalse(controller.isDiscovering)
         controller.stop()
+        await reader.finishAll()
+    }
+
+    func testRefreshStartsANewReadAuthorityGeneration() async {
+        let reader = ControlledMobileBatteryReader()
+        let controller = AppleDeviceDiscoveryController(reader: reader)
+        controller.setEnabled(true)
+        await waitUntil { await reader.discoveryCount == 1 }
+        await reader.completeDiscovery(0, with: [candidate(id: "phone-1", model: "iPhone18,1")])
+        await waitUntil { controller.candidates.count == 1 && !controller.isDiscovering }
+        let firstGeneration = controller.discoveryGeneration
+
+        controller.refresh()
+
+        XCTAssertGreaterThan(controller.discoveryGeneration, firstGeneration)
+        XCTAssertTrue(controller.candidates.isEmpty)
+        controller.setEnabled(false)
+        controller.stop()
+        await reader.finishAll()
     }
 
     private func candidate(id: String, model: String) -> AppleDeviceCandidate {

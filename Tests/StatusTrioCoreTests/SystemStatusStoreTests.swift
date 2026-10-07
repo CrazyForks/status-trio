@@ -152,6 +152,46 @@ final class SystemStatusStoreTests: XCTestCase {
         await reader.finishAll()
     }
 
+    func testDisablingAppleMasterStopsMetadataDiscoveryAndRevokesMobileReads() async {
+        let discoveryReader = ControlledMobileBatteryReader()
+        let batteryReader = ControlledMobileBatteryReader()
+        let discovery = AppleDeviceDiscoveryController(reader: discoveryReader)
+        let mobile = MobileBatteryController(reader: batteryReader)
+        let suite = makeSuite()
+        defer { suite.defaults.removeTestSuite(named: suite.name) }
+        let settings = SettingsStore(defaults: suite.defaults)
+        settings.showsBluetoothBatteryLevels = true
+        settings.showsAppleDevicesAndBattery = true
+        settings.showsBluetoothDeviceList = true
+        let store = SystemStatusStore(
+            batteryMonitor: FakeBatteryMonitor(),
+            wifiMonitor: FakeWiFiMonitor(),
+            volumeMonitor: FakeVolumeMonitor(),
+            mobileBattery: mobile,
+            appleDeviceDiscovery: discovery
+        )
+        store.bindMobileBatterySettings(settings)
+        store.setPopoverVisible(true)
+        mobile.setAuthorizedDeviceIDs([.trustedDevice("phone-1")])
+        mobile.request("summary")
+        await waitForMobileReader { await discoveryReader.discoveryCount == 1 }
+        await waitForMobileReader { await batteryReader.readCount == 1 }
+        await discoveryReader.completeDiscovery(0, with: [AppleDeviceCandidate(
+            id: .trustedDevice("phone-1"), name: "Phone", model: "iPhone18,1",
+            transports: [.usb], trustRequired: false, evidence: .verifiedAppleModel
+        )])
+        await waitForMobileReader { discovery.candidates.count == 1 }
+
+        settings.showsAppleDevicesAndBattery = false
+
+        XCTAssertTrue(discovery.candidates.isEmpty)
+        XCTAssertTrue(mobile.snapshots.isEmpty)
+        await waitForMobileReader { await batteryReader.cancellationCount == 1 }
+        store.stop()
+        await batteryReader.finishAll()
+        await discoveryReader.finishAll()
+    }
+
     func testMobileUSBReadStartsWhileBluetoothIsNotActivated() async {
         let reader = ControlledMobileBatteryReader()
         let mobile = MobileBatteryController(reader: reader)

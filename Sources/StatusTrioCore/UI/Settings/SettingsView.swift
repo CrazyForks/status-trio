@@ -161,6 +161,7 @@ struct SettingsView: View {
                 store: store,
                 statusStore: statusStore,
                 bluetoothDevices: statusStore.bluetoothDevices,
+                appleDeviceDiscovery: statusStore.appleDeviceDiscovery,
                 previewIsDark: $previewIsDark
             )
         case .audio:

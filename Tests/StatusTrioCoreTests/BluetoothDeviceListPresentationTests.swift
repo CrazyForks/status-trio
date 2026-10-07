@@ -135,6 +135,42 @@ final class BluetoothDeviceListPresentationTests: XCTestCase {
         XCTAssertTrue(model.orderedDevices.isEmpty)
     }
 
+    func testTrustedAppleRowsShareSettingsOrderAndHiddenDeviceFiltering() {
+        let phoneID = AppleDeviceID.trustedDevice("phone-123")
+        let phone = BluetoothDevice(
+            id: phoneID.rowID, name: "Renamed iPhone", kind: .mobile(.phone),
+            isConnected: false, appleMobileModel: "iPhone18,1", isReadOverTheAir: true
+        )
+        let ordinary = makeDevice(address: "AA:00:00:00:00:44", name: "Keyboard", isConnected: false)
+        let options = BluetoothDeviceListOptions(
+            showsList: true, maxVisibleDevices: 5,
+            order: [ordinary.id, phone.id], hidesGhostDevices: false,
+            hiddenDeviceAddresses: [BluetoothDeviceIdentity.preferenceKey(phone.id)]
+        )
+
+        let model = BluetoothDeviceListModel.make(
+            devices: [phone, ordinary], order: options.order, limit: 5,
+            isExpanded: true, options: options
+        )
+
+        XCTAssertEqual(model.orderedDevices.map(\.id), [ordinary.id])
+    }
+
+    func testTrustedAppleRowsRespectTheSameUnifiedOrderAsOrdinaryDevices() {
+        let phoneID = AppleDeviceID.trustedDevice("phone-123")
+        let phone = BluetoothDevice(
+            id: phoneID.rowID, name: "iPhone", kind: .mobile(.phone),
+            isConnected: false, isReadOverTheAir: true
+        )
+        let ordinary = makeDevice(address: "AA:00:00:00:00:45", name: "Keyboard", isConnected: false)
+
+        let ordered = BluetoothDeviceListPresentation.orderedDevices(
+            [phone, ordinary], using: [phone.id, ordinary.id]
+        )
+
+        XCTAssertEqual(ordered.map(\.id), [phone.id, ordinary.id])
+    }
+
     func testBLERowsUseExplicitPreferenceKeysForOrderingAndHiding() {
         let firstID = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
         let secondID = UUID(uuidString: "00000000-0000-0000-0000-000000000002")!
@@ -162,7 +198,7 @@ final class BluetoothDeviceListPresentationTests: XCTestCase {
         ).map(\.id), [second.id])
     }
 
-    func testNearbyReadRowsKeepBLESelectionsInSavedOrder() {
+    func testNearbyReadRowsFollowSharedSavedOrder() {
         let bleID = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
         let classicRead = BluetoothDevice(
             id: "AA:00:00:00:00:01", name: "Classic read", kind: .unknown,
@@ -177,7 +213,7 @@ final class BluetoothDeviceListPresentationTests: XCTestCase {
             BluetoothDeviceListPresentation.orderedDevices(
                 [ble, classicRead], using: [BluetoothDeviceIdentity.bleRowID(bleID)]
             ).map(\.id),
-            [classicRead.id, ble.id]
+            [ble.id, classicRead.id]
         )
     }
 
@@ -608,11 +644,7 @@ final class BluetoothDeviceListPresentationTests: XCTestCase {
         XCTAssertTrue(ambiguousGhosts.contains { $0.id == ghostB.id })
     }
 
-    /// A row a reading created leads its group. It is the only row the panel has
-    /// live information about — a level read over the air seconds ago — and the
-    /// report lists it wherever its own scan found it, sorted among the rest by
-    /// name, which is the middle of the group where the user looks past it.
-    func testRowsAReadingCreatedLeadTheirGroup() {
+    func testTrustedRowsFollowSavedOrderWithinTheirConnectionGroup() {
         let devices = [
             makeDevice(address: "AA:00:00:00:00:01", name: "AirPods", isConnected: false),
             makeReadingDevice(address: "CB-1", name: "Ling's iPhone"),
@@ -620,19 +652,15 @@ final class BluetoothDeviceListPresentationTests: XCTestCase {
             makeReadingDevice(address: "CB-2", name: "Lingsipad")
         ]
 
-        let ordered = BluetoothDeviceListPresentation.orderedDevices(devices, using: [])
-
-        XCTAssertEqual(
-            Set(ordered.prefix(2).map(\.name)),
-            ["Ling's iPhone", "Lingsipad"],
-            "both readings lead, ahead of the AirPods rule and the name sort"
+        let ordered = BluetoothDeviceListPresentation.orderedDevices(
+            devices,
+            using: ["AA0000000001", "CB-1", "AA0000000002", "CB-2"]
         )
-        XCTAssertEqual(ordered.suffix(2).map(\.name), ["AirPods", "MX Keys"])
+
+        XCTAssertEqual(ordered.map(\.name), ["AirPods", "Ling's iPhone", "MX Keys", "Lingsipad"])
     }
 
-    /// The saved order arranges the rest of the group; it cannot push a reading
-    /// row back among them, which is what dragging it there would ask for.
-    func testASavedOrderCannotPushAReadingRowBackIntoTheGroup() {
+    func testSavedOrderCanPositionATrustedReadingWithinItsGroup() {
         let devices = [
             makeDevice(address: "AA:00:00:00:00:01", name: "Mouse", isConnected: false),
             makeReadingDevice(address: "CB-1", name: "Ling's iPhone")
@@ -643,7 +671,7 @@ final class BluetoothDeviceListPresentationTests: XCTestCase {
                 devices,
                 using: ["AA0000000001", "CB-1"]
             ).map(\.name),
-            ["Ling's iPhone", "Mouse"]
+            ["Mouse", "Ling's iPhone"]
         )
     }
 

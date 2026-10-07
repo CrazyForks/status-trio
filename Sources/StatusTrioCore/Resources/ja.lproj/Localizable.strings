@@ -1,6 +1,5 @@
 "menu.version" = "Status Trio %@";
 "menu.settings" = "設定…";
-"menu.settings.development" = "開発版 · %@";
 "menu.quit" = "Status Trioを終了";
 "menu.about" = "%@ について";
 "menu.hide" = "%@ を隠す";
@@ -70,8 +69,6 @@
 "settings.bluetooth.networkErrorPriorityDescription" = "接続エラーやオフライン状態では、Bluetooth 機器ではなくネットワークアイコンを表示します。";
 "settings.bluetooth.batteryLevels" = "Bluetooth のバッテリー残量を表示";
 "settings.bluetooth.batteryLevelsDescription" = "Bluetooth 項目の表示中に AirPods の残量を読み取ります。追加の権限確認は表示されません。";
-"settings.bluetooth.nearbyBatteryDevices" = "近くの BLE デバイスのバッテリー残量を表示";
-"settings.bluetooth.nearbyBatteryDevicesDescription" = "ステータスパネルに表示する近くの BLE デバイスを選択します。バッテリーは選択され、表示中のデバイスのみ読み取ります。";
 "settings.bluetooth.listeningModePreview" = "ヒアリングモード切り替えをプレビュー表示";
 "settings.bluetooth.listeningModePreviewDescription" = "UI の確認用に、接続中のすべての AirPods にモード切り替えのボタンを表示します。タップすると実機と同じアニメーションが動きますが、AirPods の設定は変更されません。";
 "settings.bluetooth.listeningModePreviewDeviceName" = "プレビュー表示名";
@@ -404,25 +401,14 @@
 "bluetooth.listeningMode.changeFailed" = "ヒアリングモードを変更できませんでした。";
 "bluetooth.listeningMode.accessibility" = "ヒアリングモード";
 
-"settings.bluetooth.mobileBatteryDevices" = "iPhone と Apple Watch のバッテリー";
-"settings.bluetooth.mobileBatteryDevicesDescription" = "信頼済みの iPhone から USB または Wi‑Fi 経由で読み取ります。初回は iPhone をケーブルで接続し、「信頼」をタップしてください。ワイヤレスで使うには Wi‑Fi 同期の設定が必要です。";
 "mobileBattery.watchFallbackName" = "Apple Watch";
 "mobileBattery.watchSource" = "iPhone 経由";
 "mobileBattery.updatedAt" = "更新 %@";
 "mobileBattery.charging" = "充電中";
 "mobileBattery.trustRequired" = "iPhone をケーブルで接続して「信頼」をタップすると、ペアリング済み Apple Watch のバッテリーを読み取れます。";
 "mobileBattery.unavailable" = "USB または Wi-Fi 経由で iPhone と Apple Watch のバッテリーを更新できませんでした。";
-"settings.bluetooth.nearbyBLE.title" = "近くの BLE デバイス";
-"settings.bluetooth.nearbyBLE.scan" = "近くのデバイスをスキャン";
-"settings.bluetooth.nearbyBLE.scanning" = "スキャン中…";
-"settings.bluetooth.nearbyBLE.description" = "ステータスパネルに表示するデバイスを選択します。";
-"settings.bluetooth.nearbyBLE.empty" = "近くにデバイスが見つかりません。デバイスを近くに置いて再スキャンしてください。";
-"settings.bluetooth.nearbyBLE.noneSelected" = "デバイスを選択すると、ステータスパネルにバッテリー残量を表示します。";
 "bluetooth.nearbyBLE.notNearby" = "近くにありません";
 "bluetooth.nearbyBLE.unavailable" = "一時的に利用できません";
-"bluetooth.nearbyBLE.source" = "近くのBluetooth";
 "settings.appleDevicesAndBattery" = "Appleデバイスとバッテリーを表示";
-"settings.appleDevicesAndBattery.description" = "Appleデバイスを選択してBluetoothリストに追加します。近くのBluetoothはデバイスの検出と表示のみを行い、接続やバッテリーの読み取りはしません。バッテリー残量は、信頼済みのUSBまたはWi-Fi経由で取得できる場合があります。Apple Watchでは信頼済みのペアリングiPhone経由で取得できる場合があります。すべてのAppleデバイスで取得できるとは限りません。";
-"settings.appleDeviceSelection.title" = "Appleデバイスを選択";
-"settings.appleDeviceSelection.trustRequired" = "信頼が必要";
-"settings.appleDeviceSelection.required" = "Bluetoothリストに表示するデバイスを選択してください。";
+"settings.appleDevicesAndBattery.description" = "この Mac で信頼済みと確認された iPhone と iPad、および信頼済みのペアリング iPhone を通じて確認された Apple Watch は、Bluetooth リストに自動表示されます。近くの Apple のブロードキャストやデバイス名だけでは所有者を確認できません。電池残量は利用可能な場合、信頼済み USB または設定済み Wi-Fi 経由で読み取り、読み取りは Bluetooth 電池の全体設定に従います。安定した共通 ID で照合できない Bluetooth 行は別々に表示します。";
+"bluetooth.nearbyBLE.source" = "近くのBluetooth";

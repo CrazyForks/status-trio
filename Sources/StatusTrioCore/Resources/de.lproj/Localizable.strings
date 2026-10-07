@@ -1,6 +1,5 @@
 "menu.version" = "Status Trio %@";
 "menu.settings" = "Einstellungen…";
-"menu.settings.development" = "Entwicklungsversion · %@";
 "menu.quit" = "Status Trio beenden";
 "menu.about" = "Über %@";
 "menu.hide" = "%@ ausblenden";
@@ -70,8 +69,6 @@
 "settings.bluetooth.networkErrorPriorityDescription" = "Bei Verbindungsfehlern oder Offline-Status bleibt das Netzwerksymbol sichtbar statt des Bluetooth-Gerätesymbols.";
 "settings.bluetooth.batteryLevels" = "Bluetooth-Batteriestände anzeigen";
 "settings.bluetooth.batteryLevelsDescription" = "Liest AirPods-Batteriestände, während der Bluetooth-Eintrag sichtbar ist. Es wird keine zusätzliche Berechtigung angefragt.";
-"settings.bluetooth.nearbyBatteryDevices" = "Akkustände naher BLE-Geräte anzeigen";
-"settings.bluetooth.nearbyBatteryDevicesDescription" = "Wähle Geräte in der Nähe aus, die im Statusfenster erscheinen sollen. Akkus werden nur bei ausgewählten, sichtbaren Geräten gelesen.";
 "settings.bluetooth.listeningModePreview" = "Hörmodus-Umschaltung Vorschau anzeigen";
 "settings.bluetooth.listeningModePreviewDescription" = "Für UI-Tests die Modi-Kapseln auf allen verbundenen AirPods anzeigen. Das Antippen einer Kapsel animiert wie auf einem echten Gerät, ändert aber nichts an den AirPods.";
 "settings.bluetooth.listeningModePreviewDeviceName" = "Vorschau-Gerätename";
@@ -404,25 +401,14 @@
 "bluetooth.listeningMode.changeFailed" = "Der Hörmodus konnte nicht geändert werden.";
 "bluetooth.listeningMode.accessibility" = "Hörmodus";
 
-"settings.bluetooth.mobileBatteryDevices" = "Batteriestand von iPhone und Apple Watch";
-"settings.bluetooth.mobileBatteryDevicesDescription" = "Wird über ein vertrauenswürdiges iPhone per USB oder WLAN gelesen. Verbinde das iPhone einmal per Kabel und tippe auf „Vertrauen“. Drahtlos ist eine eingerichtete WLAN-Synchronisierung erforderlich.";
 "mobileBattery.watchFallbackName" = "Apple Watch";
 "mobileBattery.watchSource" = "Über iPhone";
 "mobileBattery.updatedAt" = "Aktualisiert %@";
 "mobileBattery.charging" = "Wird geladen";
 "mobileBattery.trustRequired" = "Verbinde dein iPhone per Kabel und tippe auf „Vertrauen“, um den Batteriestand der gekoppelten Apple Watch zu lesen.";
 "mobileBattery.unavailable" = "Der Batteriestand von iPhone und Apple Watch konnte über USB oder WLAN nicht aktualisiert werden.";
-"settings.bluetooth.nearbyBLE.title" = "BLE-Geräte in der Nähe";
-"settings.bluetooth.nearbyBLE.scan" = "Geräte in der Nähe suchen";
-"settings.bluetooth.nearbyBLE.scanning" = "Suche läuft…";
-"settings.bluetooth.nearbyBLE.description" = "Wähle Geräte aus, die im Statusfenster erscheinen sollen.";
-"settings.bluetooth.nearbyBLE.empty" = "Keine Geräte in der Nähe gefunden. Starte die Suche erneut, während dein Gerät in der Nähe ist.";
-"settings.bluetooth.nearbyBLE.noneSelected" = "Wähle ein Gerät aus, um seinen Akkustand im Statusfenster anzuzeigen.";
 "bluetooth.nearbyBLE.notNearby" = "Nicht in der Nähe";
 "bluetooth.nearbyBLE.unavailable" = "Vorübergehend nicht verfügbar";
-"bluetooth.nearbyBLE.source" = "Bluetooth in der Nähe";
 "settings.appleDevicesAndBattery" = "Apple-Geräte und Batteriestand anzeigen";
-"settings.appleDevicesAndBattery.description" = "Wähle Apple-Geräte aus, um sie zur Bluetooth-Liste hinzuzufügen. Bluetooth in der Nähe erkennt und zeigt Geräte nur an; es verbindet sich nicht mit ihnen und liest keine Akkustände aus. Akkustände können über vertrauenswürdiges USB oder WLAN sowie bei der Apple Watch über das gekoppelte, vertrauenswürdige iPhone verfügbar sein. Nicht für jedes Apple-Gerät ist ein Akkustand verfügbar.";
-"settings.appleDeviceSelection.title" = "Apple-Geräte auswählen";
-"settings.appleDeviceSelection.trustRequired" = "Vertrauen erforderlich";
-"settings.appleDeviceSelection.required" = "Wähle Geräte aus, die in der Bluetooth-Liste angezeigt werden sollen.";
+"settings.appleDevicesAndBattery.description" = "Verifizierte iPhones und iPads, denen dieser Mac bereits vertraut, sowie über ein vertrauenswürdiges gekoppeltes iPhone verifizierte Apple Watches erscheinen automatisch in der Bluetooth-Liste. Ein Apple-Funksignal oder Gerätename allein belegt keine Zugehörigkeit. Akkustände werden, sofern verfügbar, über vertrauenswürdiges USB oder eingerichtetes WLAN gelesen; Abrufe folgen der globalen Bluetooth-Batterieeinstellung. Bluetooth-Einträge ohne stabile Identitätszuordnung bleiben getrennt.";
+"bluetooth.nearbyBLE.source" = "Bluetooth in der Nähe";

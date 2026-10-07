@@ -1,6 +1,5 @@
 "menu.version" = "Status Trio %@";
 "menu.settings" = "Ajustes…";
-"menu.settings.development" = "Versión de desarrollo · %@";
 "menu.quit" = "Salir de Status Trio";
 "menu.about" = "Acerca de %@";
 "menu.hide" = "Ocultar %@";
@@ -70,8 +69,6 @@
 "settings.bluetooth.networkErrorPriorityDescription" = "Los errores de conexión y el estado sin conexión mantienen el icono de red en lugar del dispositivo Bluetooth.";
 "settings.bluetooth.batteryLevels" = "Mostrar niveles de batería Bluetooth";
 "settings.bluetooth.batteryLevelsDescription" = "Lee los niveles de batería de los AirPods mientras se muestra la entrada Bluetooth. No se solicita permiso adicional.";
-"settings.bluetooth.nearbyBatteryDevices" = "Mostrar niveles de batería BLE cercanos";
-"settings.bluetooth.nearbyBatteryDevicesDescription" = "Selecciona los dispositivos BLE cercanos que quieres mostrar en el panel de estado. Solo se lee la batería de los dispositivos seleccionados y visibles.";
 "settings.bluetooth.listeningModePreview" = "Previsualizar el selector del modo de escucha";
 "settings.bluetooth.listeningModePreviewDescription" = "Muestra las cápsulas de modo en todos los AirPods conectados para probar la interfaz. Al tocar una cápsula se anima igual que en un dispositivo real, pero no cambia nada en los AirPods.";
 "settings.bluetooth.listeningModePreviewDeviceName" = "Nombre del dispositivo de vista previa";
@@ -404,25 +401,14 @@
 "bluetooth.listeningMode.changeFailed" = "No se pudo cambiar el modo de escucha.";
 "bluetooth.listeningMode.accessibility" = "Modo de escucha";
 
-"settings.bluetooth.mobileBatteryDevices" = "Batería del iPhone y el Apple Watch";
-"settings.bluetooth.mobileBatteryDevicesDescription" = "Se lee a través de un iPhone de confianza por USB o Wi‑Fi. Conecta el iPhone por cable una vez y pulsa Confiar. El uso inalámbrico requiere que la sincronización por Wi‑Fi ya esté configurada.";
 "mobileBattery.watchFallbackName" = "Apple Watch";
 "mobileBattery.watchSource" = "A través del iPhone";
 "mobileBattery.updatedAt" = "Actualizado %@";
 "mobileBattery.charging" = "Cargando";
 "mobileBattery.trustRequired" = "Conecta el iPhone por cable y pulsa Confiar para leer la batería del Apple Watch enlazado.";
 "mobileBattery.unavailable" = "No se pudo actualizar la batería del iPhone y el Apple Watch por USB o Wi-Fi.";
-"settings.bluetooth.nearbyBLE.title" = "Dispositivos BLE cercanos";
-"settings.bluetooth.nearbyBLE.scan" = "Buscar dispositivos cercanos";
-"settings.bluetooth.nearbyBLE.scanning" = "Buscando…";
-"settings.bluetooth.nearbyBLE.description" = "Selecciona los dispositivos que quieres mostrar en el panel de estado.";
-"settings.bluetooth.nearbyBLE.empty" = "No se encontraron dispositivos cercanos. Vuelve a buscar con tu dispositivo cerca.";
-"settings.bluetooth.nearbyBLE.noneSelected" = "Selecciona un dispositivo para mostrar su batería en el panel de estado.";
 "bluetooth.nearbyBLE.notNearby" = "No está cerca";
 "bluetooth.nearbyBLE.unavailable" = "Temporalmente no disponible";
-"bluetooth.nearbyBLE.source" = "Bluetooth cercano";
 "settings.appleDevicesAndBattery" = "Mostrar dispositivos Apple y batería";
-"settings.appleDevicesAndBattery.description" = "Selecciona dispositivos Apple para añadirlos a la lista Bluetooth. El Bluetooth cercano solo detecta y muestra dispositivos; no se conecta a ellos ni lee sus baterías. Puede haber lecturas de batería mediante USB o Wi-Fi de confianza, o, para Apple Watch, mediante su iPhone emparejado y de confianza. No todos los dispositivos Apple ofrecen una lectura de batería.";
-"settings.appleDeviceSelection.title" = "Elegir dispositivos Apple";
-"settings.appleDeviceSelection.trustRequired" = "Se requiere confiar";
-"settings.appleDeviceSelection.required" = "Selecciona los dispositivos que quieres mostrar en la lista Bluetooth.";
+"settings.appleDevicesAndBattery.description" = "Los iPhone y iPad verificados y ya confiables para este Mac, junto con los Apple Watch verificados a través de un iPhone enlazado de confianza, aparecen automáticamente en la lista Bluetooth. Una emisión cercana de Apple o el nombre del dispositivo por sí solos no demuestran que te pertenezca. La batería se lee por USB de confianza o por Wi-Fi ya configurada cuando está disponible; las lecturas respetan el ajuste global de batería Bluetooth. Las filas sin una identidad estable compartida permanecen separadas.";
+"bluetooth.nearbyBLE.source" = "Bluetooth cercano";

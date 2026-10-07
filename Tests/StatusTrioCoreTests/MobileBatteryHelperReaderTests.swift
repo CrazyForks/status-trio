@@ -61,7 +61,7 @@ struct MobileBatteryHelperReaderTests {
         }
         let candidates = try await MobileBatteryHelperReader(executor: executor).discover()
         #expect(candidates.count == 8)
-        #expect(candidates.allSatisfy { $0.isSelectableAppleDevice })
+        #expect(candidates.allSatisfy { $0.isVerifiedTrustedAppleDevice })
     }
 
     @Test func defaultExecutorResolvesThePackagedHelperName() async throws {
