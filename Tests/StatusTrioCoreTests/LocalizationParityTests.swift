@@ -83,6 +83,17 @@ final class LocalizationParityTests: XCTestCase {
         }
     }
 
+    func testPersonalHotspotSectionIsLocalizedInEveryLanguage() throws {
+        let key = LocalizationKey.wifiPersonalHotspot.rawValue
+        for language in AppLanguage.allCases {
+            let values = Dictionary(uniqueKeysWithValues: try entries(for: language).map { ($0.key, $0.value) })
+            XCTAssertFalse(
+                (values[key] ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                "\(language.rawValue).lproj must translate \(key)"
+            )
+        }
+    }
+
     func testAudioInputTranslationsAreNotEmpty() throws {
         let keys = LocalizationKey.allCases.map(\.rawValue).filter {
             $0.hasPrefix("audioInput.") || $0 == "settings.popup.order.audioInput"

@@ -252,6 +252,7 @@
 "wifi.power" = "Wi-Fi";
 "wifi.refresh" = "ネットワークを更新";
 "wifi.knownNetworks" = "既知のネットワーク";
+"wifi.personalHotspot" = "インターネット共有";
 "wifi.otherNetworks" = "その他のネットワーク";
 "wifi.scanning" = "ネットワークをスキャン中…";
 "wifi.noNetworks" = "近くにネットワークが見つかりません。";
