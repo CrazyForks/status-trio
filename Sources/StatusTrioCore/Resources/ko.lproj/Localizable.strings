@@ -252,6 +252,7 @@
 "wifi.power" = "Wi-Fi";
 "wifi.refresh" = "네트워크 새로 고침";
 "wifi.knownNetworks" = "알려진 네트워크";
+"wifi.personalHotspot" = "개인용 핫스팟";
 "wifi.otherNetworks" = "기타 네트워크";
 "wifi.scanning" = "네트워크 검색 중…";
 "wifi.noNetworks" = "주변에서 네트워크를 찾을 수 없습니다.";

@@ -138,14 +138,38 @@ enum WiFiNetworkRowAction: Equatable, Sendable {
     case openSettings
 }
 
+enum WiFiNetworkSection: Equatable, Sendable {
+    case personalHotspot
+    case known
+}
+
+struct WiFiNetworkGroups {
+    let personalHotspot: [WiFiNetwork]
+    let known: [WiFiNetwork]
+    let other: [WiFiNetwork]
+}
+
 enum WiFiNetworkPresentation {
     static func grouped(
-        _ networks: [WiFiNetwork]
-    ) -> (known: [WiFiNetwork], other: [WiFiNetwork]) {
-        (
-            known: networks.filter { $0.isKnown || $0.isConnected },
-            other: networks.filter { !$0.isKnown && !$0.isConnected }
+        _ networks: [WiFiNetwork],
+        wifiState: WiFiState = .connected
+    ) -> WiFiNetworkGroups {
+        let personalHotspot = networks.filter { wifiState == .hotspot && $0.isConnected }
+        let personalHotspotIDs = Set(personalHotspot.map(\.id))
+        let remaining = networks.filter { !personalHotspotIDs.contains($0.id) }
+        return WiFiNetworkGroups(
+            personalHotspot: personalHotspot,
+            known: remaining.filter { $0.isKnown || $0.isConnected },
+            other: remaining.filter { !$0.isKnown && !$0.isConnected }
         )
+    }
+
+    static func detailsSection(for wifiState: WiFiState) -> WiFiNetworkSection {
+        wifiState == .hotspot ? .personalHotspot : .known
+    }
+
+    static func trailingSymbol(for network: WiFiNetwork, wifiState: WiFiState) -> String? {
+        wifiState == .hotspot && network.isConnected ? "personalhotspot" : nil
     }
 
     /// Status Trio never joins a network itself, so every row other than the

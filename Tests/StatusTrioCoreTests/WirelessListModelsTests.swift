@@ -72,10 +72,59 @@ final class WirelessListModelsTests: XCTestCase {
             knownSSIDs: ["Home", "Office"]
         )
 
-        let grouped = WiFiNetworkPresentation.grouped(networks)
+        let grouped = WiFiNetworkPresentation.grouped(networks, wifiState: .connected)
 
         XCTAssertEqual(grouped.known.map(\.ssid), ["Office", "Home"])
         XCTAssertEqual(grouped.other.map(\.ssid), ["Cafe"])
+    }
+
+    func testOnlyConnectedNetworkMovesIntoPersonalHotspotSection() {
+        let networks = WiFiNetwork.merge(
+            [
+                WiFiNetworkCandidate(ssid: "Phone", bssid: "connected-ap", rssi: -42, channel: 6, security: .wpa2Personal),
+                WiFiNetworkCandidate(ssid: "Phone", bssid: "same-security-ap", rssi: -50, channel: 11, security: .wpa2Personal),
+                WiFiNetworkCandidate(ssid: "Phone", bssid: "different-security-ap", rssi: -55, channel: 1, security: .wpa3Personal),
+                WiFiNetworkCandidate(ssid: "Cafe", bssid: "cafe-ap", rssi: -60, channel: 1, security: .open)
+            ],
+            connectedBSSID: "connected-ap",
+            knownSSIDs: ["Phone"]
+        )
+
+        let grouped = WiFiNetworkPresentation.grouped(networks, wifiState: .hotspot)
+
+        XCTAssertEqual(grouped.personalHotspot.map(\.ssid), ["Phone"])
+        XCTAssertEqual(grouped.personalHotspot.map(\.security), [.wpa2Personal])
+        XCTAssertEqual(
+            Set(grouped.known.map(\.id)),
+            Set(networks.filter { $0.ssid == "Phone" && !$0.isConnected }.map(\.id))
+        )
+        XCTAssertEqual(grouped.other.map(\.ssid), ["Cafe"])
+        XCTAssertTrue(Set(grouped.known.map(\.id)).isDisjoint(with: Set(grouped.personalHotspot.map(\.id))))
+
+        let laggingStatus = WiFiNetworkPresentation.grouped(networks, wifiState: .connected)
+        XCTAssertTrue(laggingStatus.personalHotspot.isEmpty)
+        XCTAssertEqual(laggingStatus.known.map(\.id), networks.filter { $0.ssid == "Phone" }.map(\.id))
+    }
+
+    func testPersonalHotspotPresentationKeepsConnectionAndDetailsInConnectedSection() {
+        let connected = WiFiNetwork.merge(
+            [WiFiNetworkCandidate(ssid: "Phone", bssid: "phone-ap", rssi: -42, channel: 6, security: .wpa2Personal)],
+            connectedBSSID: "phone-ap"
+        )[0]
+        let sameSSIDUnconnected = WiFiNetwork.merge(
+            [WiFiNetworkCandidate(ssid: "Phone", bssid: "other-ap", rssi: -48, channel: 11, security: .wpa2Personal)],
+            connectedBSSID: "phone-ap"
+        )[0]
+
+        XCTAssertEqual(
+            WiFiNetworkPresentation.trailingSymbol(for: connected, wifiState: .hotspot),
+            "personalhotspot"
+        )
+        XCTAssertNil(WiFiNetworkPresentation.trailingSymbol(for: sameSSIDUnconnected, wifiState: .hotspot))
+        XCTAssertNil(WiFiNetworkPresentation.trailingSymbol(for: connected, wifiState: .connected))
+        XCTAssertEqual(WiFiNetworkPresentation.action(for: connected), .none)
+        XCTAssertEqual(WiFiNetworkPresentation.detailsSection(for: .hotspot), .personalHotspot)
+        XCTAssertEqual(WiFiNetworkPresentation.detailsSection(for: .connected), .known)
     }
 
     func testEveryWiFiRowOpensSystemSettingsExceptTheConnectedOne() {
