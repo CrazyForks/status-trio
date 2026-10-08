@@ -45,13 +45,14 @@ final class BatteryDetailsTests: XCTestCase {
         values["IsCharging"] = true
         values["Amperage"] = 1000
         let charging = parse(values, state: state(connected: true, charging: true))
-        XCTAssertEqual(try XCTUnwrap(charging.power).watts, 12.279)
+        XCTAssertNil(charging.power)
         XCTAssertEqual(charging.adapterWatts, 90)
+        XCTAssertEqual(charging.powerAvailability, .collecting)
         values["IsCharging"] = false
         XCTAssertNil(parse(values, state: state(connected: true)).power, "Positive current without charging is inconsistent")
         values["Amperage"] = -1000
-        XCTAssertLessThan(try XCTUnwrap(parse(values, state: state(connected: true)).power).watts, 0,
-                          "A Mac can draw from the battery while connected to an insufficient adapter")
+        XCTAssertNil(parse(values, state: state(connected: true)).power,
+                     "Connected power is represented by the system sample, not battery current")
     }
 
     func testPowerTransitionsRequireAConsistentNewSample() {
@@ -62,6 +63,49 @@ final class BatteryDetailsTests: XCTestCase {
         XCTAssertNil(beforeTransition.power)
         XCTAssertEqual(beforeTransition.powerAvailability, .collecting)
         XCTAssertNotNil(parse(registry, notBefore: now).power)
+    }
+
+    func testConnectedIntelMacUsesSystemPowerWhenBatteryCurrentIsZero() {
+        let systemPower = SystemPowerSample(watts: 18.5, readAt: now)
+        var values = registry
+        values["ExternalConnected"] = true
+        values["IsCharging"] = false
+        values["Amperage"] = 0
+
+        let details = BatteryDetailsReader.parse(
+            registry: values,
+            adapterWatts: 90,
+            remainingSeconds: -1,
+            state: state(connected: true),
+            now: now,
+            systemPower: systemPower
+        )
+
+        XCTAssertEqual(details.systemPower, systemPower)
+        XCTAssertEqual(details.powerAvailability, .available)
+        XCTAssertEqual(details.adapterWatts, 90)
+        XCTAssertNil(details.power)
+    }
+
+    func testConnectedIntelMacUsesSystemPowerWhenBatteryCurrentIsNegative() {
+        let systemPower = SystemPowerSample(watts: 22.75, readAt: now)
+        var values = registry
+        values["ExternalConnected"] = true
+        values["IsCharging"] = false
+        values["Amperage"] = -1000
+
+        let details = BatteryDetailsReader.parse(
+            registry: values,
+            adapterWatts: 90,
+            remainingSeconds: -1,
+            state: state(connected: true),
+            now: now,
+            systemPower: systemPower
+        )
+
+        XCTAssertEqual(details.systemPower, systemPower)
+        XCTAssertEqual(details.powerAvailability, .available)
+        XCTAssertNil(details.power, "Battery net power is not the system total while adapter power is available")
     }
 
     func testUnsupportedTelemetryIsUnavailableRatherThanCollecting() {
@@ -87,14 +131,13 @@ final class BatteryDetailsTests: XCTestCase {
         XCTAssertEqual(BatteryDetails().powerAvailability, .unavailable)
     }
 
-    func testIdleBatteryOnAdapterReportsZeroWattsInsteadOfUnavailable() throws {
+    func testIdleBatteryOnAdapterDoesNotPublishBatteryNetPower() throws {
         var values = registry
         values["ExternalConnected"] = true
         values["IsCharging"] = false
         values["Amperage"] = 0
         let idle = parse(values, state: state(connected: true))
-        XCTAssertEqual(try XCTUnwrap(idle.power).watts, 0)
-        XCTAssertEqual(idle.powerAvailability, .available)
+        XCTAssertNil(idle.power)
         XCTAssertEqual(idle.adapterWatts, 90)
         values["ExternalConnected"] = false
         let unplugged = parse(values)
@@ -110,8 +153,9 @@ final class BatteryDetailsTests: XCTestCase {
         let pluggedIn = BatteryDetailsReader.parse(
             registry: idle, adapterWatts: 90, remainingSeconds: -1,
             state: state(connected: true), now: now, systemPower: system)
-        XCTAssertEqual(try XCTUnwrap(pluggedIn.power).watts, 0)
+        XCTAssertNil(pluggedIn.power, "Connected Macs show whole-system power, not battery net power")
         XCTAssertEqual(pluggedIn.systemPower?.watts, 17.25)
+        XCTAssertEqual(pluggedIn.powerAvailability, .available)
         let missingBattery = BatteryDetailsReader.parse(
             registry: [:], adapterWatts: 90, remainingSeconds: -1,
             state: state(connected: true), now: now, systemPower: system)
