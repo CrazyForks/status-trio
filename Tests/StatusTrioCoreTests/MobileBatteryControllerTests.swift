@@ -956,23 +956,26 @@ private actor ControlledMobileBatterySleeper {
         }
     }
 
-    func waitForDuration(_ duration: Duration) async {
-        for _ in 0..<1_000 {
-            if continuations.values.contains(where: { $0.duration == duration }) { return }
+    func waitForDuration(_ duration: Duration, timeout: Duration = .seconds(5)) async {
+        let deadline = ContinuousClock.now + timeout
+        while !continuations.values.contains(where: { $0.duration == duration }),
+              ContinuousClock.now < deadline {
             await Task.yield()
         }
     }
 
-    func waitForRequestCount(_ count: Int, duration: Duration) async {
-        for _ in 0..<1_000 {
-            if requestedDurations.filter({ $0 == duration }).count >= count { return }
+    func waitForRequestCount(_ count: Int, duration: Duration, timeout: Duration = .seconds(5)) async {
+        let deadline = ContinuousClock.now + timeout
+        while requestedDurations.filter({ $0 == duration }).count < count,
+              ContinuousClock.now < deadline {
             await Task.yield()
         }
     }
 
-    func waitForActiveRequestCount(_ count: Int, duration: Duration) async {
-        for _ in 0..<1_000 {
-            if continuations.values.filter({ $0.duration == duration }).count == count { return }
+    func waitForActiveRequestCount(_ count: Int, duration: Duration, timeout: Duration = .seconds(5)) async {
+        let deadline = ContinuousClock.now + timeout
+        while continuations.values.filter({ $0.duration == duration }).count != count,
+              ContinuousClock.now < deadline {
             await Task.yield()
         }
     }

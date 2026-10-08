@@ -747,14 +747,14 @@ macOS 13 兼容性分支 `codex/macos13-compatibility` 的首次 non-publishing 
   打包、`Verify Ventura binary metadata` 和 artifact 上传全部通过；`publish=false` 未创建 GitHub Release，
   也未更新 appcast。
 
-## 37763140072：macOS 13 review-fix 预检在既有 Watch 重试测试上失败
+## 37763140072 / 37763923306：macOS 13 review-fix 预检在既有 Watch 重试测试上失败
 
-macOS 13 review-fix 分支（head `29bad4e`）的 `publish=false` 预检
-[`37763140072`](https://github.com/lingyired/status-trio/actions/runs/37763140072)
-在 `Run tests` 阶段失败。其余步骤未执行。
+macOS 13 review-fix 分支的两个 `publish=false` 预检
+[`37763140072`](https://github.com/lingyired/status-trio/actions/runs/37763140072)（head `29bad4e`）和
+[`37763923306`](https://github.com/lingyired/status-trio/actions/runs/37763923306)（head `97323cf`）
+都在 `Run tests` 阶段失败，均为 `MobileBatteryControllerTests.testMissingWatchRetryBudgetSurvivesRepublishedDemandAndBackgroundToggle` 的第 416 行断言：`configuredRefreshRequests` 为 `0`，期望 `1`。其余步骤未执行。
 
 - **失败阶段**：`Run tests`。
-- **失败测试**：`MobileBatteryControllerTests.testMissingWatchRetryBudgetSurvivesRepublishedDemandAndBackgroundToggle`，断言 `configuredRefreshRequests` 为 `0`，期望 `1`。
-- **根因判断**：该测试验证 `MobileBatteryController` 的后台重试调度；本次 review-fix 没有修改该控制器或相关测试。失败表现为一次调度时序偶发，而非编译或 API 兼容错误。
-- **当前证据**：同一提交在本机完整 `swift test` 通过；单独重复运行该失败测试 5 次均通过（`swift test --filter 'MobileBatteryControllerTests/testMissingWatchRetryBudgetSurvivesRepublishedDemandAndBackgroundToggle'`）。
-- **后续动作**：需要重新触发同一 `publish=false` preflight；若再次出现，应按 `systematic-debugging` 将该测试的调度时序作为独立问题修复，而不是当作一次性 flaky 忽略。
+- **根因**：测试辅助 actor 的 `waitForRequestCount` 只做 1000 次 `Task.yield()`，CI 调度慢时会在条件尚未满足时静默返回；随后立即读取计数得到 `0`。这是测试等待逻辑的时序竞态，不是 `MobileBatteryController` 的 API/行为回归。
+- **修复**：把 `waitForDuration`、`waitForRequestCount`、`waitForActiveRequestCount` 改为带真实 `ContinuousClock` deadline 的有界等待，并保持 `Task.yield()` 让被测任务获得调度机会；不改变生产代码。
+- **后续验证**：第三个 `publish=false` 预检必须覆盖同一测试；若仍失败，则继续按测试调度逻辑排查，不将其归为 flaky。
