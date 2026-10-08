@@ -804,3 +804,11 @@ macOS 13 review-fix 分支的三个 `publish=false` 预检
   整毫秒并向上取整，真实时钟上超过 1ms 的调度延迟就会让记录值变成 `119.998s` 一类，
   精确 `==` 匹配不到。容差取 0.01s，相邻的整秒区间（599s 与 600s）相距 1s，不会互相别名。
 - `fire(duration:)` 仍是精确匹配：它要唤醒的是某个具体 waiter，近似匹配可能唤醒错误的那个。
+
+合入 main 的 head `da6f5c9` 已用非发布预检
+[`37808512388`](https://github.com/lingyired/status-trio/actions/runs/37808512388)
+（`version=1.5.1`、`build=22`、`publish=false`、`notarize=false`）验证，耗时 12m14s 全绿：
+`Run tests`、`Run native compatibility tests`、Universal release 构建、Ad-hoc 签名、
+DMG 打包与 artifact 上传全部通过；`publish=false` 未创建 GitHub Release，也未更新 appcast。
+本机同一 head 上 `swift test` 为 573 Swift Testing / 90 suites 通过、`swift build -c release` 通过。
+这条记录本身的提交只补充验证说明，不改变已通过预检的产品代码。
