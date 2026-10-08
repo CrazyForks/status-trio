@@ -28,6 +28,24 @@ final class MacOS13UICompatibilityTests: XCTestCase {
         }
     }
 
+    func testBluetoothViewsRouteEveryVisibilityChangeThroughASnapshot() throws {
+        let statusSource = try String(
+            contentsOf: packageRoot.appendingPathComponent("Sources/StatusTrioCore/UI/BluetoothStatusView.swift"),
+            encoding: .utf8
+        )
+        XCTAssertTrue(statusSource.contains(".onChange(of: readAuthorizationSnapshot)"))
+        XCTAssertTrue(statusSource.contains("updateReadAuthorization(snapshot)"))
+        XCTAssertFalse(statusSource.contains(".onChange(of: showsBatteryLevels) { _ in updateNearbyReadAuthorization() }"))
+        XCTAssertFalse(statusSource.contains(".onChange(of: showsAppleDevicesAndBattery) { _ in updateNearbyReadAuthorization() }"))
+
+        let listSource = try String(
+            contentsOf: packageRoot.appendingPathComponent("Sources/StatusTrioCore/UI/BluetoothDeviceList.swift"),
+            encoding: .utf8
+        )
+        XCTAssertTrue(listSource.contains("BluetoothDeviceListVisibilitySnapshot"))
+        XCTAssertTrue(listSource.contains(".onChange(of: visibilitySnapshot)"))
+    }
+
     func testPictureRowKeepsNativeActivationAndUsesMoveCommandForArrows() throws {
         let source = try String(
             contentsOf: packageRoot.appendingPathComponent("Sources/StatusTrioCore/UI/Settings/SettingsChrome.swift"),

@@ -15,7 +15,7 @@
 <p align="center"><strong>Três sinais do sistema. Um único ícone de status nativo do macOS — na sua barra de menus ou no Dock.</strong></p>
 
 <p align="center">
-  <a href="https://github.com/lingyired/status-trio/releases/latest"><img src="https://img.shields.io/badge/Download%20for%20macOS-Universal%20%C2%B7%20macOS%2013%2B-000000?logo=apple&logoColor=white&style=for-the-badge" alt="Baixar para macOS — versão universal, macOS 13 ou posterior"></a>
+  <a href="https://github.com/lingyired/status-trio/releases/latest"><img src="https://img.shields.io/badge/Download%20for%20macOS-Universal%20%C2%B7%20macOS%2013%20target-000000?logo=apple&logoColor=white&style=for-the-badge" alt="Baixar para macOS — versão universal, macOS 13 como destino de implantação (validação do Ventura pendente)"></a>
 </p>
 
 <p align="center">
@@ -29,7 +29,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/macOS-13%2B%20supported-blue?logo=apple&logoColor=white" alt="Compatível com macOS 13 ou posterior">
+  <img src="https://img.shields.io/badge/macOS-13%20target%20%28validation%20pending%29-blue?logo=apple&logoColor=white" alt="Compatível com macOS 13 como destino de implantação (validação do Ventura pendente)">
   <img src="https://img.shields.io/badge/Universal-Apple%20Silicon%20%7C%20Intel-lightgrey" alt="Binário universal para Apple Silicon e Intel">
 </p>
 
@@ -121,7 +121,7 @@ Os mesmos estados renderizados para uma barra de menus escura:
 
 ## Requisitos
 
-- macOS 13 ou posterior para executar o app
+- macOS 13 como destino de implantação (validação do Ventura pendente) para executar o app
 - Toolchain do Swift 6 com o SDK do macOS 26 (Xcode 26 ou posterior) para compilá-lo. Compilar com um
   SDK mais antigo produz silenciosamente a aparência de popover anterior ao Tahoe, então `scripts/build-app.sh`
   falha quando o SDK for anterior ao 26.
@@ -229,7 +229,7 @@ O bloqueio de instância única é definido pelo identificador de bundle, então
 
 - Swift 6
 - SwiftUI + AppKit
-- macOS 13+
+- macOS 13 deployment target (Ventura runtime validation pending)
 - `LSUIElement`: acessório da barra de menus que muda para uma política de ativação regular enquanto o ícone do Dock é exibido
 - Sparkle para verificação de atualizações
 

@@ -38,9 +38,16 @@ if not executables:
 failures = []
 for path in executables:
     archs = subprocess.check_output(["lipo", "-archs", str(path)], text=True).strip().split()
+    if not archs:
+        failures.append(f"{path.relative_to(root)} has no architecture slices")
+        continue
+    if set(archs) != {"arm64", "x86_64"}:
+        failures.append(
+            f"{path.relative_to(root)} must be Universal, found: {' '.join(archs)}"
+        )
+        continue
     for arch in archs:
         out = subprocess.check_output(["vtool", "-show-build", "-arch", arch, str(path)], text=True, stderr=subprocess.STDOUT)
-        match = re.search(r"^\s*(?:minos|version)\s+(\S+)", out, re.MULTILINE)
         lines = out.splitlines()
         minos = None
         for index, line in enumerate(lines):
@@ -57,8 +64,9 @@ for path in executables:
         if not minos:
             failures.append(f"{path.relative_to(root)} ({arch}) has no platform minimum")
             continue
-        parts = [int(p) for p in minos.split(".")]
-        if parts[0] > 13:
+        parts = [int(part) for part in minos.split(".")]
+        parts += [0] * (3 - len(parts))
+        if tuple(parts[:3]) > (13, 0, 0):
             failures.append(f"{path.relative_to(root)} ({arch}) has minimum {minos}")
 
 if failures:

@@ -32,6 +32,13 @@ struct BluetoothDeviceList: View {
     @State private var rowFrames: [String: CGRect] = [:]
     @State private var reportedAppleIDs = Set<AppleDeviceID>()
 
+    private struct BluetoothDeviceListVisibilitySnapshot: Equatable {
+        let visibleDevices: [BluetoothDevice]
+        let displayRows: [BluetoothDisplayRow]
+        let appleRows: [AppleDevicePanelRow]
+        let options: BluetoothDeviceListOptions
+    }
+
     private var displayRows: [BluetoothDisplayRow] {
         let sourceModel = BluetoothDeviceListModel.make(
             devices: devices,
@@ -72,6 +79,12 @@ struct BluetoothDeviceList: View {
             from: orderedDisplayDevices,
             limit: options.maxVisibleDevices,
             isExpanded: isExpanded
+        )
+        let visibilitySnapshot = BluetoothDeviceListVisibilitySnapshot(
+            visibleDevices: visibleDisplayDevices,
+            displayRows: displayRows,
+            appleRows: appleRows,
+            options: options
         )
 
         VStack(spacing: Self.rowSpacing) {
@@ -115,26 +128,14 @@ struct BluetoothDeviceList: View {
                 guard let id = BluetoothDeviceIdentity.bleUUID(from: key) else { return nil }
                 return (id, frame)
             }, uniquingKeysWith: { _, latest in latest })
-            publishVisibleNearbyIDs(in: visibleDisplayDevices)
+            publishVisibleNearbyIDs(in: visibilitySnapshot)
         }
         .onPreferenceChange(BluetoothDeviceListViewportPreferenceKey.self) { frame in
             rowsViewportFrame = frame
-            publishVisibleNearbyIDs(in: visibleDisplayDevices)
+            publishVisibleNearbyIDs(in: visibilitySnapshot)
         }
-        .onChange(of: visibleDisplayDevices) { visibleDevices in
-            publishVisibleNearbyIDs(in: visibleDevices)
-        }
-        .onChange(of: isExpanded) { _ in
-            publishVisibleNearbyIDs(in: visibleDisplayDevices)
-        }
-        .onChange(of: nearbyRows) { _ in
-            publishVisibleNearbyIDs(in: visibleDisplayDevices)
-        }
-        .onChange(of: appleRows) { _ in
-            publishVisibleNearbyIDs(in: visibleDisplayDevices)
-        }
-        .onChange(of: options) { _ in
-            publishVisibleNearbyIDs(in: visibleDisplayDevices)
+        .onChange(of: visibilitySnapshot) { snapshot in
+            publishVisibleNearbyIDs(in: snapshot)
         }
         .onDisappear {
             reportVisibleNearbyIDs([])
@@ -304,23 +305,25 @@ struct BluetoothDeviceList: View {
         }
     }
 
-    private func publishVisibleNearbyIDs(in visibleDevices: [BluetoothDevice]) {
+    private func publishVisibleNearbyIDs(in snapshot: BluetoothDeviceListVisibilitySnapshot) {
         var nearbyIDs = NearbyBLEPanelVisibility.visibleSelectedIDs(
-            in: visibleDevices,
+            in: snapshot.visibleDevices,
             frames: nearbyRowFrames,
             viewport: rowsViewportFrame
         )
         var appleIDs = AppleDevicePanelVisibility.visibleIDs(
-            in: visibleDevices,
-            rowIDs: AppleDeviceCatalog.rowIdentityMap(appleRows),
+            in: snapshot.visibleDevices,
+            rowIDs: AppleDeviceCatalog.rowIdentityMap(snapshot.appleRows),
             frames: rowFrames,
             viewport: rowsViewportFrame
         )
-        let visibleIDs = Set(visibleDevices.map(\.id))
-        for row in displayRows where visibleIDs.contains(row.device.id) {
+        let visibleIDs = Set(snapshot.visibleDevices.map(\.id))
+        for row in snapshot.displayRows where visibleIDs.contains(row.device.id) {
             for sourceID in row.sourceIDs {
                 if let uuid = BluetoothDeviceIdentity.bleUUID(from: sourceID) { nearbyIDs.insert(uuid) }
-                if let appleID = appleRows.first(where: { $0.device.id == sourceID })?.id { appleIDs.insert(appleID) }
+                if let appleID = snapshot.appleRows.first(where: { $0.device.id == sourceID })?.id {
+                    appleIDs.insert(appleID)
+                }
             }
         }
         reportVisibleNearbyIDs(nearbyIDs)

@@ -15,7 +15,7 @@
 <p align="center"><strong>Drei Systemsignale. Ein natives macOS-Statussymbol — in Ihrer Menüleiste oder im Dock.</strong></p>
 
 <p align="center">
-  <a href="https://github.com/lingyired/status-trio/releases/latest"><img src="https://img.shields.io/badge/Download%20for%20macOS-Universal%20%C2%B7%20macOS%2013%2B-000000?logo=apple&logoColor=white&style=for-the-badge" alt="Für macOS laden — Universal-Build, macOS 13 oder neuer"></a>
+  <a href="https://github.com/lingyired/status-trio/releases/latest"><img src="https://img.shields.io/badge/Download%20for%20macOS-Universal%20%C2%B7%20macOS%2013%20target-000000?logo=apple&logoColor=white&style=for-the-badge" alt="Für macOS laden — Universal-Build, macOS 13 als Deployment-Ziel (Ventura-Laufzeitvalidierung ausstehend)"></a>
 </p>
 
 <p align="center">
@@ -29,7 +29,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/macOS-13%2B%20supported-blue?logo=apple&logoColor=white" alt="macOS 13 oder neuer wird unterstützt">
+  <img src="https://img.shields.io/badge/macOS-13%20target%20%28validation%20pending%29-blue?logo=apple&logoColor=white" alt="macOS 13 als Deployment-Ziel (Ventura-Laufzeitvalidierung ausstehend) wird unterstützt">
   <img src="https://img.shields.io/badge/Universal-Apple%20Silicon%20%7C%20Intel-lightgrey" alt="Universal-Binary für Apple Silicon und Intel">
 </p>
 
@@ -121,7 +121,7 @@ Dieselben Zustände für eine dunkle Menüleiste dargestellt:
 
 ## Voraussetzungen
 
-- macOS 13 oder neuer zum Ausführen der App
+- macOS 13 als Deployment-Ziel (Ventura-Laufzeitvalidierung ausstehend) zum Ausführen der App
 - Swift-6-Toolchain mit dem macOS-26-SDK (Xcode 26 oder neuer), um sie zu bauen. Ein Build gegen ein
   älteres SDK erzeugt stillschweigend die Popover-Darstellung von vor Tahoe, deshalb schlägt `scripts/build-app.sh` fehl,
   wenn das SDK älter als 26 ist.
@@ -229,7 +229,7 @@ Die Sperre für einzelne Instanzen richtet sich nach der Bundle-ID, sodass Build
 
 - Swift 6
 - SwiftUI + AppKit
-- macOS 13+
+- macOS 13 deployment target (Ventura runtime validation pending)
 - `LSUIElement`-Menüleisten-Accessoire, das zu einer regulären Aktivierungsrichtlinie wechselt, während das Dock-Symbol angezeigt wird
 - Sparkle für die Suche nach Updates
 

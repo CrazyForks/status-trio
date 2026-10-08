@@ -15,7 +15,7 @@
 <p align="center"><strong>Three system signals. One native macOS status icon — in your menu bar or the Dock.</strong></p>
 
 <p align="center">
-  <a href="https://github.com/lingyired/status-trio/releases/latest"><img src="https://img.shields.io/badge/Download%20for%20macOS-Universal%20%C2%B7%20macOS%2013%2B-000000?logo=apple&logoColor=white&style=for-the-badge" alt="Download for macOS — universal build, macOS 13 or later"></a>
+  <a href="https://github.com/lingyired/status-trio/releases/latest"><img src="https://img.shields.io/badge/Download%20for%20macOS-Universal%20%C2%B7%20macOS%2013%20target-000000?logo=apple&logoColor=white&style=for-the-badge" alt="Download for macOS — universal build, macOS 13 target; Ventura runtime validation pending"></a>
 </p>
 
 <p align="center">
@@ -29,7 +29,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/macOS-13%2B%20supported-blue?logo=apple&logoColor=white" alt="macOS 13 or later supported">
+  <img src="https://img.shields.io/badge/macOS-13%20target%20%28validation%20pending%29-blue?logo=apple&logoColor=white" alt="macOS 13 deployment target; Ventura runtime validation pending">
   <img src="https://img.shields.io/badge/Universal-Apple%20Silicon%20%7C%20Intel-lightgrey" alt="Universal binary for Apple Silicon and Intel">
 </p>
 
@@ -121,7 +121,7 @@ The same states rendered for a dark menu bar:
 
 ## Requirements
 
-- macOS 13 or later to run the app
+- macOS 13 deployment target; Ventura runtime validation pending
 - Swift 6 toolchain with the macOS 26 SDK (Xcode 26 or later) to build it. Building against an
   older SDK silently produces the pre-Tahoe popover appearance, so `scripts/build-app.sh` fails
   when the SDK is older than 26.
@@ -233,7 +233,7 @@ For the three icon regions, update timing, Swift examples, and extension boundar
 
 - Swift 6
 - SwiftUI + AppKit
-- macOS 13+
+- macOS 13 deployment target (Ventura runtime validation pending)
 - `LSUIElement` menu bar accessory that switches to a regular activation policy while the Dock icon is shown
 - Sparkle for update checks
 

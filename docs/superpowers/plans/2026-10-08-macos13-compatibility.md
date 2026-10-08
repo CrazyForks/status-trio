@@ -122,7 +122,7 @@ swift build -c release
 
 ```bash
 UNIVERSAL_BUILD=1 bash scripts/build-app.sh release no-open
-APP="$PWD/dist/Status Trio.app"
+APP="$PWD/dist/StatusTrio.app"
 BIN="$APP/Contents/MacOS/StatusTrio"
 lipo -archs "$BIN"
 bash scripts/verify-platform-version.sh "$BIN" 13.0 26
@@ -195,10 +195,11 @@ bash scripts/test-mobile-battery-helper.sh
 bash scripts/test-mobile-battery-rpaths.sh
 bash scripts/test-otool-dependencies.sh
 UNIVERSAL_BUILD=1 bash scripts/build-app.sh release no-open
-APP="$PWD/dist/Status Trio.app"
+APP="$PWD/dist/StatusTrio.app"
 bash scripts/verify-platform-version.sh "$APP/Contents/MacOS/StatusTrio" 13.0 26
 UNIVERSAL_BUILD=1 bash scripts/verify-mobile-battery-bundle.sh "$APP"
 bash scripts/test-macos13-bundle-contract.sh
+bash scripts/test-macos13-sparkle-metadata.sh "$APP"
 codesign --verify --deep --strict --verbose=2 "$APP"
 git diff --check
 ```
