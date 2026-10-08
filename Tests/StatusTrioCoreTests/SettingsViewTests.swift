@@ -50,6 +50,7 @@ final class SettingsViewTests: XCTestCase {
                 store: store,
                 statusStore: statusStore,
                 bluetoothDevices: statusStore.bluetoothDevices,
+                appleDeviceDiscovery: statusStore.appleDeviceDiscovery,
                 previewIsDark: isDark
             ))),
             ("audio", AnyView(AudioSectionView(
@@ -292,6 +293,7 @@ private func renderBluetoothPane(
         store: store,
         statusStore: statusStore,
         bluetoothDevices: observedController,
+        appleDeviceDiscovery: statusStore.appleDeviceDiscovery,
         previewIsDark: .constant(true)
     )
     .environmentObject(localization)

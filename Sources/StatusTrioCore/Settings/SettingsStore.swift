@@ -34,6 +34,15 @@ final class SettingsStore: ObservableObject {
     static let showsBluetoothBatteryLevelsDefaultsKey = "showsBluetoothBatteryLevels"
     static let showsNearbyBluetoothBatteryDevicesDefaultsKey = "showsNearbyBluetoothBatteryDevices"
     static let showsMobileDeviceBatteryLevelsDefaultsKey = "showsMobileDeviceBatteryLevels"
+    static let showsAppleDevicesAndBatteryDefaultsKey = "showsAppleDevicesAndBattery"
+    static let refreshesAppleBatteriesInBackgroundDefaultsKey = "refreshesAppleBatteriesInBackground"
+    static let appleBatteryRefreshIntervalMinutesDefaultsKey = "appleBatteryRefreshIntervalMinutes"
+    static let appleBatteryRefreshIntervalMinutesRange = 1...10
+    static let defaultAppleBatteryRefreshIntervalMinutes = 1
+    static let appleDeviceSelectionsDefaultsKey = "appleDeviceSelections"
+    static let appleDeviceSettingsMigrationVersionDefaultsKey = "appleDeviceSettingsMigrationVersion"
+    static let archivedLegacyNearbyBLESelectionsDefaultsKey = "archivedLegacyNearbyBLESelections"
+    static let trustedAppleDeviceMetadataDefaultsKey = "trustedAppleDeviceMetadata.v1"
     static let previewsBluetoothListeningModeDefaultsKey = "previewsBluetoothListeningMode"
     static let bluetoothListeningModePreviewDeviceNameDefaultsKey = "bluetoothListeningModePreviewDeviceName"
     static let bluetoothListeningModePreviewDeviceCountDefaultsKey = "bluetoothListeningModePreviewDeviceCount"
@@ -71,6 +80,9 @@ final class SettingsStore: ObservableObject {
     static let hidesGhostBluetoothDevicesDefaultsKey = "hidesGhostBluetoothDevices"
     static let hiddenBluetoothDeviceAddressesDefaultsKey = "hiddenBluetoothDeviceAddresses"
     static let revealedGhostBluetoothDeviceAddressesDefaultsKey = "revealedGhostBluetoothDeviceAddresses"
+    static let nearbyBLESelectionsDefaultsKey = "nearbyBLESelections"
+    /// Named BLE UUID metadata is retained independently of temporary discovery.
+    static let nearbyBLEConsentDefaultsKey = "nearbyBLEConsent.v1"
     static let bluetoothNetworkIconDeviceAddressDefaultsKey = "bluetoothNetworkIconDeviceAddress"
     static let bluetoothNetworkIconSymbolNameDefaultsKey = "bluetoothNetworkIconSymbolName"
     static let bluetoothDeviceLimitRange: ClosedRange<Int> = 1...20
@@ -300,6 +312,39 @@ final class SettingsStore: ObservableObject {
         }
     }
 
+    @Published var showsAppleDevicesAndBattery: Bool {
+        didSet { defaults.set(showsAppleDevicesAndBattery, forKey: Self.showsAppleDevicesAndBatteryDefaultsKey) }
+    }
+
+    @Published var refreshesAppleBatteriesInBackground: Bool {
+        didSet {
+            defaults.set(
+                refreshesAppleBatteriesInBackground,
+                forKey: Self.refreshesAppleBatteriesInBackgroundDefaultsKey
+            )
+        }
+    }
+
+    @Published var appleBatteryRefreshIntervalMinutes: Int {
+        didSet {
+            let clamped = Self.clampedAppleBatteryRefreshInterval(appleBatteryRefreshIntervalMinutes)
+            guard clamped == appleBatteryRefreshIntervalMinutes else {
+                appleBatteryRefreshIntervalMinutes = clamped
+                return
+            }
+            defaults.set(clamped, forKey: Self.appleBatteryRefreshIntervalMinutesDefaultsKey)
+        }
+    }
+
+    @Published private(set) var archivedLegacyNearbyBLESelections: [NearbyBLEDeviceSelection]
+
+    @Published private(set) var trustedAppleDeviceMetadata: [AppleDeviceCandidate] {
+        didSet {
+            guard let data = try? JSONEncoder().encode(trustedAppleDeviceMetadata) else { return }
+            defaults.set(data, forKey: Self.trustedAppleDeviceMetadataDefaultsKey)
+        }
+    }
+
     @Published var showsMobileDeviceBatteryLevels: Bool {
         didSet {
             defaults.set(
@@ -466,6 +511,13 @@ final class SettingsStore: ObservableObject {
     @Published private(set) var bluetoothDeviceOrder: [String] {
         didSet {
             defaults.set(bluetoothDeviceOrder, forKey: Self.bluetoothDeviceOrderDefaultsKey)
+        }
+    }
+
+    @Published private(set) var nearbyBLESelections: [NearbyBLEDeviceSelection] {
+        didSet {
+            guard let data = try? JSONEncoder().encode(nearbyBLESelections) else { return }
+            defaults.set(data, forKey: Self.nearbyBLEConsentDefaultsKey)
         }
     }
 
@@ -650,7 +702,7 @@ final class SettingsStore: ObservableObject {
             at: min(insertionOffset, reorderedDevices.count)
         )
         bluetoothDeviceOrder = reorderedDevices.map {
-            BluetoothBatteryReader.normalizedAddress($0.id)
+            BluetoothDeviceIdentity.preferenceKey($0.id)
         }
     }
 
@@ -659,7 +711,7 @@ final class SettingsStore: ObservableObject {
     /// "hide devices not in System Settings" filter, so a device the user hides
     /// stays hidden whatever the profiler reports next.
     func setBluetoothDeviceHidden(_ address: String, hidden: Bool) {
-        let key = BluetoothBatteryReader.normalizedAddress(address)
+        let key = BluetoothDeviceIdentity.preferenceKey(address)
         guard !key.isEmpty else { return }
         if hidden {
             hiddenBluetoothDeviceAddresses.insert(key)
@@ -674,7 +726,7 @@ final class SettingsStore: ObservableObject {
     /// without turning the global filter off (which would reveal every unpaired
     /// device at once). Revealing is a no-op for non-ghost devices.
     func setBluetoothGhostRevealed(_ address: String, revealed: Bool) {
-        let key = BluetoothBatteryReader.normalizedAddress(address)
+        let key = BluetoothDeviceIdentity.preferenceKey(address)
         guard !key.isEmpty else { return }
         if revealed {
             revealedGhostBluetoothDeviceAddresses.insert(key)
@@ -682,6 +734,65 @@ final class SettingsStore: ObservableObject {
             revealedGhostBluetoothDeviceAddresses.remove(key)
         }
     }
+
+    func setNearbyBLEDeviceSelected(_ candidate: NearbyBLEDeviceCandidate, selected: Bool) {
+        let rowID = BluetoothDeviceIdentity.bleRowID(candidate.id)
+        if selected {
+            if let index = nearbyBLESelections.firstIndex(where: { $0.id == candidate.id }) {
+                nearbyBLESelections[index].name = candidate.name
+                nearbyBLESelections[index].vendor = candidate.vendor
+            } else {
+                nearbyBLESelections.append(NearbyBLEDeviceSelection(
+                    id: candidate.id,
+                    name: candidate.name,
+                    vendor: candidate.vendor,
+                    model: nil
+                ))
+            }
+            if !bluetoothDeviceOrder.contains(rowID) {
+                bluetoothDeviceOrder.append(rowID)
+            }
+            hiddenBluetoothDeviceAddresses.remove(rowID)
+            revealedGhostBluetoothDeviceAddresses.remove(rowID)
+        } else {
+            nearbyBLESelections.removeAll { $0.id == candidate.id }
+            bluetoothDeviceOrder.removeAll { BluetoothDeviceIdentity.preferenceKey($0) == rowID }
+            hiddenBluetoothDeviceAddresses.remove(rowID)
+            revealedGhostBluetoothDeviceAddresses.remove(rowID)
+        }
+    }
+
+    /// A valid battery response is the only event that creates or refreshes a
+    /// persisted nearby row. Row hide/order preferences remain keyed by UUID.
+    func updateNearbyBLEMetadata(_ devices: [NearbyBluetoothBatteryDevice]) {
+        var updated = nearbyBLESelections
+        var changed = false
+        for device in devices where (0...100).contains(device.batteryLevel) {
+            guard !device.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { continue }
+            if let index = updated.firstIndex(where: { $0.id == device.id }) {
+                updated[index].name = device.name
+                updated[index].vendor = .apple
+                if let model = device.model { updated[index].model = model }
+                updated[index].batteryLevel = device.batteryLevel
+                updated[index].batteryLastUpdated = device.lastUpdated
+            } else {
+                updated.append(NearbyBLEDeviceSelection(
+                    id: device.id,
+                    name: device.name,
+                    vendor: .apple,
+                    model: device.model,
+                    batteryLevel: device.batteryLevel,
+                    batteryLastUpdated: device.lastUpdated
+                ))
+                let rowID = BluetoothDeviceIdentity.bleRowID(device.id)
+                if !bluetoothDeviceOrder.contains(rowID) { bluetoothDeviceOrder.append(rowID) }
+            }
+            changed = true
+        }
+        guard changed, updated != nearbyBLESelections else { return }
+        nearbyBLESelections = updated
+    }
+
 
     func movePopupSections(
         fromOffsets source: IndexSet,
@@ -774,8 +885,39 @@ final class SettingsStore: ObservableObject {
 
     private let defaults: UserDefaults
 
+    func updateTrustedAppleDeviceMetadata(_ candidates: [AppleDeviceCandidate]) {
+        var values = Dictionary(
+            trustedAppleDeviceMetadata.filter(\.isVerifiedTrustedAppleDevice).map { ($0.id, $0) },
+            uniquingKeysWith: { _, latest in latest }
+        )
+        for candidate in candidates where candidate.isVerifiedTrustedAppleDevice {
+            guard let existing = values[candidate.id] else {
+                values[candidate.id] = candidate
+                continue
+            }
+            let transports = ([MobileBatteryTransport.usb, .network] as [MobileBatteryTransport]).filter {
+                existing.transports.contains($0) || candidate.transports.contains($0)
+            }
+            values[candidate.id] = AppleDeviceCandidate(
+                id: candidate.id,
+                name: candidate.name,
+                model: candidate.model ?? existing.model,
+                transports: transports,
+                trustRequired: false,
+                evidence: candidate.evidence
+            )
+        }
+        let updated = values.values.sorted { $0.id.rowID < $1.id.rowID }
+        guard updated != trustedAppleDeviceMetadata else { return }
+        trustedAppleDeviceMetadata = updated
+    }
+
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
+        let appleMigration = AppleDeviceSettingsMigration.migrate(defaults: defaults)
+        let storedTrustedMetadata = Self.decodedTrustedAppleDeviceMetadata(
+            defaults.data(forKey: Self.trustedAppleDeviceMetadataDefaultsKey)
+        )
         if defaults.object(forKey: Self.hasCompletedIconGuideOnboardingDefaultsKey) != nil {
             self.hasCompletedIconGuideOnboarding = defaults.bool(
                 forKey: Self.hasCompletedIconGuideOnboardingDefaultsKey
@@ -802,9 +944,12 @@ final class SettingsStore: ObservableObject {
         let storedBluetoothDeviceOrder = defaults.stringArray(
             forKey: Self.bluetoothDeviceOrderDefaultsKey
         ) ?? []
+        let storedNearbyBLESelections = Self.decodedNearbyBLESelections(
+            defaults.data(forKey: Self.nearbyBLEConsentDefaultsKey)
+        )
         let storedHidesGhostBluetoothDevices = defaults.object(
             forKey: Self.hidesGhostBluetoothDevicesDefaultsKey
-        ) as? Bool
+        ) as? Bool ?? true
         let storedHiddenBluetoothDeviceAddresses = Set(
             defaults.stringArray(forKey: Self.hiddenBluetoothDeviceAddressesDefaultsKey) ?? []
         )
@@ -892,6 +1037,16 @@ final class SettingsStore: ObservableObject {
         self.showsMobileDeviceBatteryLevels = defaults.object(
             forKey: Self.showsMobileDeviceBatteryLevelsDefaultsKey
         ) as? Bool ?? false
+        self.showsAppleDevicesAndBattery = appleMigration.isEnabled
+        self.refreshesAppleBatteriesInBackground = defaults.object(
+            forKey: Self.refreshesAppleBatteriesInBackgroundDefaultsKey
+        ) as? Bool ?? false
+        self.appleBatteryRefreshIntervalMinutes = Self.clampedAppleBatteryRefreshInterval(
+            (defaults.object(forKey: Self.appleBatteryRefreshIntervalMinutesDefaultsKey) as? NSNumber)?.intValue
+                ?? Self.defaultAppleBatteryRefreshIntervalMinutes
+        )
+        self.archivedLegacyNearbyBLESelections = appleMigration.archivedLegacyBLESelections
+        self.trustedAppleDeviceMetadata = storedTrustedMetadata
         self.previewsBluetoothListeningMode = defaults.object(
             forKey: Self.previewsBluetoothListeningModeDefaultsKey
         ) as? Bool ?? false
@@ -935,7 +1090,8 @@ final class SettingsStore: ObservableObject {
             storedBluetoothDeviceLimit ?? Self.defaultMaxVisibleBluetoothDevices
         )
         self.bluetoothDeviceOrder = storedBluetoothDeviceOrder
-        self.hidesGhostBluetoothDevices = storedHidesGhostBluetoothDevices ?? true
+        self.nearbyBLESelections = storedNearbyBLESelections
+        self.hidesGhostBluetoothDevices = storedHidesGhostBluetoothDevices
         self.hiddenBluetoothDeviceAddresses = storedHiddenBluetoothDeviceAddresses
         self.revealedGhostBluetoothDeviceAddresses = storedRevealedGhostBluetoothDeviceAddresses
         self.bluetoothNetworkIconDeviceAddress = defaults.string(
@@ -986,6 +1142,27 @@ final class SettingsStore: ObservableObject {
         ) as? Bool ?? Self.defaultPopupVolumeNaturalScrolling
     }
 
+    private static func decodedNearbyBLESelections(_ data: Data?) -> [NearbyBLEDeviceSelection] {
+        guard let data,
+              let decoded = try? JSONDecoder().decode([NearbyBLEDeviceSelection].self, from: data) else {
+            return []
+        }
+        var seen: Set<UUID> = []
+        return decoded.filter { seen.insert($0.id).inserted }
+    }
+
+    private static func decodedTrustedAppleDeviceMetadata(_ data: Data?) -> [AppleDeviceCandidate] {
+        guard let data,
+              let decoded = try? JSONDecoder().decode([AppleDeviceCandidate].self, from: data) else {
+            return []
+        }
+        var byID: [AppleDeviceID: AppleDeviceCandidate] = [:]
+        for candidate in decoded where candidate.isVerifiedTrustedAppleDevice {
+            byID[candidate.id] = candidate
+        }
+        return byID.values.sorted { $0.id.rowID < $1.id.rowID }
+    }
+
     static func clampedIconSize(_ value: Double) -> Double {
         guard value.isFinite else { return defaultIconSize }
         return min(iconSizeRange.upperBound, max(iconSizeRange.lowerBound, value))
@@ -1027,6 +1204,13 @@ final class SettingsStore: ObservableObject {
         guard value.isFinite else { return defaultRefreshIntervalSeconds }
         let clamped = min(refreshIntervalRange.upperBound, max(refreshIntervalRange.lowerBound, value))
         return (clamped / 5).rounded() * 5
+    }
+
+    static func clampedAppleBatteryRefreshInterval(_ value: Int) -> Int {
+        min(
+            Self.appleBatteryRefreshIntervalMinutesRange.upperBound,
+            max(Self.appleBatteryRefreshIntervalMinutesRange.lowerBound, value)
+        )
     }
 
     static func clampedOutputDeviceLimit(_ value: Int) -> Int {

@@ -181,123 +181,29 @@ final class BluetoothSummaryLayoutTests: XCTestCase {
         XCTAssertLessThan(withSettingOn.height, 120)
     }
 
-    func testNearbyGroupRequiresBothBatterySettingsAndRendersAsItsOwnGroup() async throws {
-        let nearby = [
-            NearbyBluetoothBatteryDevice(
-                id: UUID(),
-                name: "Temperature Sensor",
-                batteryLevel: 0,
-                model: nil,
-                manufacturer: nil,
-                lastUpdated: Date()
-            )
-        ]
-        let paired = [
-            BluetoothDevice(
-                id: "AA:00:00:00:00:01",
-                name: "Temperature Sensor",
-                kind: .unknown,
-                isConnected: false
-            )
-        ]
+    func testAppleMasterDoesNotPromoteNearbyBLEReadingsToOwnedRows() async throws {
+        let paired = BluetoothDevice(
+            id: "AA:00:00:00:00:01", name: "Temperature Sensor",
+            kind: .unknown, isConnected: false
+        )
         let options = BluetoothDeviceListOptions(showsList: true, maxVisibleDevices: 5, order: [])
+        let pairedOnly = try await makeHosting(
+            language: .english, authorization: .allowed, devices: [paired],
+            batteryLevels: [:], listOptions: options
+        )
+        defer { pairedOnly.1.deactivate() }
+        let withNearbyBroadcast = try await makeHosting(
+            language: .english, authorization: .allowed, devices: [paired],
+            batteryLevels: [:], listOptions: options,
+            nearbyDevices: [NearbyBluetoothBatteryDevice(
+                id: UUID(), name: "Temperature Sensor", batteryLevel: 0,
+                model: nil, manufacturer: "Apple Inc.", lastUpdated: Date()
+            )],
+            showsAppleDevicesAndBattery: true
+        )
+        defer { withNearbyBroadcast.1.deactivate() }
 
-        let (baselineHosting, baselineController) = try await makeHosting(
-            language: .english,
-            authorization: .allowed,
-            devices: [],
-            batteryLevels: [:],
-            listOptions: options
-        )
-        defer { baselineController.deactivate() }
-
-        let (nearbyHosting, nearbyController) = try await makeHosting(
-            language: .english,
-            authorization: .allowed,
-            devices: [],
-            batteryLevels: [:],
-            listOptions: options,
-            nearbyDevices: nearby,
-            showsNearbyBatteryDevices: true
-        )
-        defer { nearbyController.deactivate() }
-
-        let (pairedHosting, pairedController) = try await makeHosting(
-            language: .english,
-            authorization: .allowed,
-            devices: paired,
-            batteryLevels: [:],
-            listOptions: options
-        )
-        defer { pairedController.deactivate() }
-
-        let (bothGroupsHosting, bothGroupsController) = try await makeHosting(
-            language: .english,
-            authorization: .allowed,
-            devices: paired,
-            batteryLevels: [:],
-            listOptions: options,
-            nearbyDevices: nearby,
-            showsNearbyBatteryDevices: true
-        )
-        defer { bothGroupsController.deactivate() }
-
-        let (disabledHosting, disabledController) = try await makeHosting(
-            language: .english,
-            authorization: .allowed,
-            devices: [],
-            batteryLevels: [:],
-            listOptions: options,
-            nearbyDevices: nearby,
-            showsBatteryLevels: false,
-            showsNearbyBatteryDevices: true
-        )
-        defer { disabledController.deactivate() }
-
-        XCTAssertGreaterThan(nearbyHosting.fittingSize.height, baselineHosting.fittingSize.height)
-        XCTAssertGreaterThan(
-            bothGroupsHosting.fittingSize.height,
-            pairedHosting.fittingSize.height,
-            "a same-named nearby device must remain in its own group beside the paired row"
-        )
-        XCTAssertEqual(
-            disabledHosting.fittingSize.height,
-            baselineHosting.fittingSize.height,
-            accuracy: 1,
-            "Nearby rows depend on both opt-in and the main Bluetooth battery-level setting"
-        )
-    }
-
-    func testLongNearbyListScrollsInsideItsBound() async throws {
-        let nearby = (1...12).map { index in
-            NearbyBluetoothBatteryDevice(
-                id: UUID(),
-                name: "BLE Sensor \(index)",
-                batteryLevel: index * 7,
-                model: nil,
-                manufacturer: nil,
-                lastUpdated: Date()
-            )
-        }
-        let (hosting, controller) = try await makeHosting(
-            language: .english,
-            authorization: .allowed,
-            devices: [],
-            batteryLevels: [:],
-            listOptions: .standard,
-            nearbyDevices: nearby,
-            showsNearbyBatteryDevices: true
-        )
-        defer { controller.deactivate() }
-
-        let scrolling = try XCTUnwrap(
-            firstScrollView(in: hosting),
-            "Nearby results must scroll instead of growing the popover without a bound"
-        )
-        XCTAssertLessThanOrEqual(
-            scrolling.frame.height,
-            NearbyBluetoothBatteryRows.maximumRowsHeight + 1
-        )
+        XCTAssertEqual(withNearbyBroadcast.0.fittingSize.height, pairedOnly.0.fittingSize.height, accuracy: 1)
     }
 
     /// The panel has no scroll view of its own, so the rows take a bound: a list
@@ -624,7 +530,7 @@ final class BluetoothSummaryLayoutTests: XCTestCase {
         listOptions: BluetoothDeviceListOptions,
         nearbyDevices: [NearbyBluetoothBatteryDevice] = [],
         showsBatteryLevels: Bool = true,
-        showsNearbyBatteryDevices: Bool = false
+        showsAppleDevicesAndBattery: Bool = false
     ) async throws -> (NSView, BluetoothDeviceController) {
         let suite = "StatusTrioCoreTests.BluetoothSummary.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
@@ -658,7 +564,8 @@ final class BluetoothSummaryLayoutTests: XCTestCase {
             controller: controller,
             mobileBatteryController: MobileBatteryController(),
             showsBatteryLevels: showsBatteryLevels,
-            showsNearbyBatteryDevices: showsNearbyBatteryDevices,
+            showsAppleDevicesAndBattery: showsAppleDevicesAndBattery,
+            trustedAppleDeviceMetadata: [],
             listOptions: listOptions,
             onRequestAuthorization: {},
             onOpenBluetoothSettings: {},
@@ -787,8 +694,15 @@ private final class SummaryBluetoothBatteryReader: BluetoothBatteryReading {
 @MainActor
 private final class SummaryNearbyBatteryScanner: BluetoothLEBatteryScanning {
     var onDevicesChanged: (([NearbyBluetoothBatteryDevice]) -> Void)?
+    var onCandidatesChanged: (([NearbyBLEDeviceCandidate]) -> Void)?
+    var onReadFailures: ((Set<UUID>) -> Void)?
+    var onIsScanningChanged: ((Bool) -> Void)?
+    var discoveredCandidates: [NearbyBLEDeviceCandidate] = []
     private(set) var isRunning = false
     private(set) var isScanning = false
+
+    func setAllowedReadDeviceIDs(_ ids: Set<UUID>) {}
+    func setInitialReadCandidateIDs(_ ids: Set<UUID>) {}
 
     func start() { isRunning = true }
     func refresh() {}

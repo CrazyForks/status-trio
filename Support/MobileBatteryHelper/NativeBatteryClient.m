@@ -50,6 +50,23 @@ static NSDictionary *ReadWatch(STMobileBatteryNativeAPI api, void *companion, NS
     return result;
 }
 
+static NSDictionary *DiscoverWatch(STMobileBatteryNativeAPI api, void *companion, NSString *identifier) {
+    NSDictionary *values = nil;
+    NSArray<NSString *> *metadataKeys = @[@"DeviceName", @"ProductType", @"DeviceClass"];
+    int status = api.copyCompanionValues(api.context, companion, identifier, metadataKeys, &values);
+    NSMutableDictionary *watch = [NSMutableDictionary dictionaryWithDictionary:@{
+        @"id": identifier,
+        @"trustRequired": @NO,
+    }];
+    id name = values[@"DeviceName"];
+    id model = values[@"ProductType"];
+    if (IsString(name)) watch[@"name"] = name;
+    if (IsString(model)) watch[@"model"] = model;
+    if (status != 0) watch[@"metadataUnavailable"] = @YES;
+    if (values) api.freeValues(api.context, values);
+    return [watch copy];
+}
+
 static NSDictionary *ReadPhone(STMobileBatteryNativeAPI api, NSDictionary *device, BOOL includeWatchValues, NSArray<NSString *> **candidateIdentifiers) {
     NSString *identifier = device[@"id"];
     NSString *transport = device[@"transport"];
@@ -276,4 +293,100 @@ watch_cleanup:
     if (lockdown) api.freeLockdownClient(api.context, lockdown);
     if (pairRecord) api.freePairRecord(api.context, pairRecord);
     return @{@"schemaVersion": @1, @"devices": [devices copy], @"failures": [failures copy], @"watchCandidates": @[]};
+}
+
+NSDictionary *STMobileBatteryCopyDiscovery(STMobileBatteryNativeAPI api, NSString *identifier, NSString *transport, STMobileBatteryError *error) {
+    if (error) *error = STMobileBatteryErrorNone;
+    if (!IsString(identifier) || identifier.length > 256 ||
+        (![transport isEqual:STMobileBatteryTransportUSB] && ![transport isEqual:STMobileBatteryTransportNetwork])) {
+        if (error) *error = STMobileBatteryErrorEnumeration;
+        return nil;
+    }
+
+    NSDictionary *pairRecord = nil;
+    void *lockdown = NULL;
+    void *session = NULL;
+    void *companion = NULL;
+    NSDictionary *phoneMetadata = nil;
+    NSArray<NSString *> *watchIdentifiers = nil;
+    NSMutableArray *candidates = [NSMutableArray array];
+    NSMutableArray *failures = [NSMutableArray array];
+    NSString *failureCategory = nil;
+    STMobileBatteryError failureCode = STMobileBatteryErrorNone;
+
+    int recordStatus = api.copyPairRecord(api.context, identifier, &pairRecord);
+    if (recordStatus != 0 || ![pairRecord isKindOfClass:[NSDictionary class]]) {
+        failureCategory = @"trust-required";
+        failureCode = STMobileBatteryErrorTrustRequired;
+        NSArray<NSDictionary *> *listedDevices = nil;
+        BOOL routeIsPresent = NO;
+        if (api.enumerateDevices && api.freeDeviceList &&
+            api.enumerateDevices(api.context, &listedDevices) == 0 &&
+            [listedDevices isKindOfClass:[NSArray class]]) {
+            for (NSDictionary *listed in listedDevices) {
+                if ([listed[@"id"] isEqual:identifier] && [listed[@"transport"] isEqual:transport]) {
+                    routeIsPresent = YES;
+                    break;
+                }
+            }
+        }
+        if (listedDevices) api.freeDeviceList(api.context, listedDevices);
+        if (routeIsPresent) {
+            [candidates addObject:@{
+                @"id": identifier,
+                @"transport": transport,
+                @"trustRequired": @YES,
+            }];
+        }
+        goto discovery_cleanup;
+    }
+    if (!IsString(pairRecord[@"HostID"]) || !IsString(pairRecord[@"SystemBUID"])) {
+        failureCategory = @"host-identity-missing";
+        failureCode = STMobileBatteryErrorHostIdentityMissing;
+        goto discovery_cleanup;
+    }
+    if (!api.copyPhoneMetadata ||
+        api.createLockdownClient(api.context, identifier, transport, &lockdown) != 0 || !lockdown ||
+        api.startSession(api.context, lockdown, pairRecord, &session) != 0 || !session) {
+        failureCategory = @"session-unavailable";
+        failureCode = STMobileBatteryErrorSession;
+        goto discovery_cleanup;
+    }
+
+    if (api.copyPhoneMetadata(api.context, session, &phoneMetadata) == 0 && phoneMetadata) {
+        NSMutableDictionary *phone = [NSMutableDictionary dictionaryWithDictionary:@{
+            @"id": identifier,
+            @"transport": transport,
+            @"trustRequired": @NO,
+        }];
+        id name = phoneMetadata[@"DeviceName"];
+        id model = phoneMetadata[@"ProductType"];
+        if (IsString(name)) phone[@"name"] = name;
+        if (IsString(model)) phone[@"model"] = model;
+        [candidates addObject:[phone copy]];
+    }
+
+    if (api.createCompanionClient(api.context, session, &companion) == 0 && companion &&
+        api.copyCompanionIdentifiers(api.context, companion, &watchIdentifiers) == 0 && watchIdentifiers) {
+        NSMutableSet<NSString *> *seen = [NSMutableSet set];
+        for (id value in watchIdentifiers) {
+            if (![value isKindOfClass:[NSString class]] || !IsString(value) || [value length] > 256 || [seen containsObject:value]) continue;
+            [seen addObject:value];
+            NSMutableDictionary *watch = [DiscoverWatch(api, companion, value) mutableCopy];
+            watch[@"parentID"] = identifier;
+            watch[@"transport"] = transport;
+            [candidates addObject:[watch copy]];
+            if (candidates.count >= 9) break;
+        }
+    }
+
+discovery_cleanup:
+    if (failureCategory) [failures addObject:DeviceFailure(identifier, transport, failureCategory, failureCode)];
+    if (watchIdentifiers) api.freeCompanionIdentifiers(api.context, watchIdentifiers);
+    if (companion) api.freeCompanionClient(api.context, companion);
+    if (phoneMetadata) api.freeValues(api.context, phoneMetadata);
+    if (session) api.freeSession(api.context, session);
+    if (lockdown) api.freeLockdownClient(api.context, lockdown);
+    if (pairRecord) api.freePairRecord(api.context, pairRecord);
+    return @{ @"schemaVersion": @1, @"candidates": [candidates copy], @"failures": [failures copy] };
 }

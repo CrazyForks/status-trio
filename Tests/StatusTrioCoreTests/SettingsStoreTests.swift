@@ -88,6 +88,52 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(second.batterySymbolScale, 0.95, accuracy: 0.001)
     }
 
+    func testAppleBackgroundRefreshDefaultsOffAndIntervalDefaultsToOneMinute() {
+        let store = SettingsStore(defaults: makeSuite().defaults)
+
+        XCTAssertFalse(store.refreshesAppleBatteriesInBackground)
+        XCTAssertEqual(store.appleBatteryRefreshIntervalMinutes, 1)
+    }
+
+    func testAppleBackgroundRefreshIntervalClampsAndPersistsWhenToggleTurnsOff() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+
+        let first = SettingsStore(defaults: suite.defaults)
+        first.appleBatteryRefreshIntervalMinutes = 0
+        XCTAssertEqual(first.appleBatteryRefreshIntervalMinutes, 1)
+
+        first.appleBatteryRefreshIntervalMinutes = 11
+        XCTAssertEqual(first.appleBatteryRefreshIntervalMinutes, 10)
+
+        first.appleBatteryRefreshIntervalMinutes = 6
+        first.refreshesAppleBatteriesInBackground = true
+        first.refreshesAppleBatteriesInBackground = false
+
+        let second = SettingsStore(defaults: suite.defaults)
+        XCTAssertFalse(second.refreshesAppleBatteriesInBackground)
+        XCTAssertEqual(second.appleBatteryRefreshIntervalMinutes, 6)
+        second.refreshesAppleBatteriesInBackground = true
+        XCTAssertEqual(second.appleBatteryRefreshIntervalMinutes, 6)
+    }
+
+    func testStoredAppleBackgroundIntervalClampsToSupportedBoundsAndInvalidDefaults() {
+        let low = makeSuite()
+        defer { clear(low) }
+        low.defaults.set(0, forKey: SettingsStore.appleBatteryRefreshIntervalMinutesDefaultsKey)
+        XCTAssertEqual(SettingsStore(defaults: low.defaults).appleBatteryRefreshIntervalMinutes, 1)
+
+        let high = makeSuite()
+        defer { clear(high) }
+        high.defaults.set(20, forKey: SettingsStore.appleBatteryRefreshIntervalMinutesDefaultsKey)
+        XCTAssertEqual(SettingsStore(defaults: high.defaults).appleBatteryRefreshIntervalMinutes, 10)
+
+        let invalid = makeSuite()
+        defer { clear(invalid) }
+        invalid.defaults.set("bad", forKey: SettingsStore.appleBatteryRefreshIntervalMinutesDefaultsKey)
+        XCTAssertEqual(SettingsStore(defaults: invalid.defaults).appleBatteryRefreshIntervalMinutes, 1)
+    }
+
     func testConnectionIconDisplayDefaults() {
         let store = SettingsStore(defaults: makeSuite().defaults)
 

@@ -393,73 +393,34 @@ gated by `BluetoothPanelActivation.shouldActivate(authorization:)`, so the pane
 never raises a permission prompt; releasing it stops the safety-net poll but
 does not turn the panel's enabled flag off.
 
-## Nearby standard BLE battery readings
+## Apple device battery rows
 
-`Settings › Bluetooth › Show nearby BLE battery levels` is an opt-in source,
-off by default. It supplements the paired-device report. The existing Bluetooth
-battery-level setting must also be on. Nearby readings are read-only: scanning
-and GATT reads never change paired-device identity, paired battery readings, or
-connect/disconnect actions.
+With **Show Apple devices and battery** enabled, verified iPhone and iPad
+devices already trusted by this Mac and Apple Watch devices verified through a
+trusted paired iPhone appear automatically in this same list. There is no
+separate picker. Trusted discovery reads metadata only; arbitrary nearby Apple
+broadcasts, names, and untrusted routes do not establish ownership.
 
-While the app is active and the Bluetooth summary is visible in the open status
-popover, the scanner looks for peripherals worth a GATT read. It does not filter
-the scan by service, because that filter is applied by the Bluetooth stack: an
-advertisement that does not name a service is never delivered to the app at all.
-Two advertisements are instead accepted in the delegate — one that names the
-standard Battery Service (`180F`), and Apple's Continuity payload carrying a
-Nearby Info or Handoff message type together with a name. The name is what keeps
-the second route to the user's own devices: the system reports one only for a
-device it already knows.
+Named Apple BLE discoveries appear as ordinary rows in the Bluetooth Settings
+order list and, when the master option is enabled, in the status popover. UUIDs
+are internal stable row identities only. Names and advertisements do not
+establish ownership, and BLE rows never merge with classic Bluetooth rows by
+name. Settings discovery never reads battery data.
 
-Each scan listens for five seconds, starts no more than two GATT reads at once,
-and retries automatically no more often than once per minute. Each connection
-attempt is limited to four seconds. Closing the popover or leaving the Bluetooth
-summary stops scanning and cancels active connections. Recent readings are kept
-in memory for up to thirty minutes, so a panel reopened inside that window draws
-its rows from the last reading at once instead of waiting out a scan, a connect
-and a GATT read before the row can exist. That lifetime decides only whether the
-reading may still draw a row: every open scans again, and the level it reads
-replaces the cached one as soon as it lands, so what is on screen is always the
-last answer. A device that leaves keeps its row, with the level it last gave,
-until the reading expires. Nothing is persisted, and switching the setting off
-drops the readings immediately.
+A BLE battery read requires the global Bluetooth battery option, the Apple
+device option, and a row actually intersecting the visible popover viewport.
+Closing, hiding, folding, or scrolling a row out of view revokes its permit.
+Scanner sessions are limited to two concurrent connections, an eight-second
+deadline, and a per-device cooldown. A BLE row without a battery value, including
+after a failed read, has no extra status label. Trusted helper devices continue
+to use the helper's existing verification and USB/network routes.
 
-The scanner reads the standard Battery Level characteristic (`2A19`) and accepts
-only a single byte in the range `0...100`. Model and manufacturer strings from
-the optional Device Information Service can add a name, but they do not delay a
-valid battery reading. The app does not infer charging from a level change.
-
-An iPhone, an iPad or a Watch never advertises `180F`; it answers with the
-Battery Service only after the connection, so it arrives through the Continuity
-route. Its Device Information Service also answers with a model string
-(`iPhone14,3`), which is the class the paired-device report leaves out for these
-devices. The reading is folded onto the row the same device already has, matched
-by exact name, because the report keys a device by its classic address and a scan
-by the CoreBluetooth identifier and the two cannot be converted into one
-another. A mobile device the report does not carry at all gets a row of its own.
-A reading also lifts its row to the front of its group, ahead of the AirPods
-rule and the name sort and ahead of anything the user dragged: it is the only row
-the panel has live information about, and the report appends it wherever its own
-scan found it, which is the middle of the group. A connected device still leads
-it, because the group a row belongs to is decided first. These rows cannot appear
-before the read answers, so the first one after a cold start costs a scan window,
-a connect and a GATT read. On every other device the panel shows a level the
-system report already carried.
-
-A row a reading created is the reading's, and it is drawn as such. It is never
-marked connected: the report calls the phone connected because the read connected
-to it, within a fifth of a second of the read, and takes it back when the panel
-closes and the read ends — drawing that would turn the row blue a few seconds
-after the panel opens, every time. It is also read-only: the app knows such a
-device only by its CoreBluetooth identifier, which is not a Bluetooth address, so
-there is no paired connection for it to make or break. A row the paired-device
-report classified itself is untouched by both rules: the reading only adds a
-level to it.
-
-Device support still varies, and the app does not use manufacturer-specific
-parsers. See
-[`nearby-ble-battery-observations.md`](nearby-ble-battery-observations.md) for
-the hardware validation status.
+Classic Bluetooth addresses generally cannot be mapped to helper UDIDs. When no
+stable cross-provider identity exists, same-named rows stay separate rather
+than sharing ownership, connection state, or battery values. The classic row
+keeps its normal connection actions; the helper-backed row is read-only. See
+[`apple-device-battery.md`](apple-device-battery.md) for migration and hardware
+verification details.
 
 ## Acting on a device from its row
 
@@ -558,4 +519,3 @@ an animated progress dot normally, a static dot when Reduce Motion is on. All of
 mode names, the group label, and the failure message ship in every language
 (`bluetooth.listeningMode.*`), guarded by the localization parity and
 every-key-every-language tests.
-

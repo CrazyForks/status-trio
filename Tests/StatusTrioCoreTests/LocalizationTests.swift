@@ -70,6 +70,45 @@ final class LocalizationTests: XCTestCase {
         }
     }
 
+    func testAppleDeviceBatteryCopyDescribesNearbyNamedRowsWithoutConsentInEveryLanguage() throws {
+        let english = try XCTUnwrap(Localization.resourceBundle(for: .english))
+        let description = english.localizedString(
+            forKey: LocalizationKey.settingsAppleDevicesAndBatteryDescription.rawValue,
+            value: nil,
+            table: nil
+        )
+        XCTAssertTrue(description.localizedCaseInsensitiveContains("nearby"))
+        XCTAssertTrue(description.localizedCaseInsensitiveContains("named"))
+        XCTAssertTrue(description.localizedCaseInsensitiveContains("apple"))
+        XCTAssertFalse(description.localizedCaseInsensitiveContains("authorized"))
+        XCTAssertFalse(description.localizedCaseInsensitiveContains("allow battery"))
+
+        let chinese = try XCTUnwrap(Localization.resourceBundle(for: .simplifiedChinese))
+        let chineseDescription = chinese.localizedString(
+            forKey: LocalizationKey.settingsAppleDevicesAndBatteryDescription.rawValue,
+            value: nil,
+            table: nil
+        )
+        for term in ["Apple", "附近", "名称"] {
+            XCTAssertTrue(chineseDescription.contains(term), "Simplified Chinese copy is missing \(term)")
+        }
+        XCTAssertEqual(
+            chinese.localizedString(forKey: LocalizationKey.settingsAppleDevicesAndBattery.rawValue, value: nil, table: nil),
+            "显示苹果设备与电量"
+        )
+
+        for language in AppLanguage.allCases {
+            let bundle = try XCTUnwrap(Localization.resourceBundle(for: language))
+            let localized = bundle.localizedString(
+                forKey: LocalizationKey.settingsAppleDevicesAndBatteryDescription.rawValue,
+                value: nil,
+                table: nil
+            )
+            XCTAssertFalse(localized.localizedCaseInsensitiveContains("authorized"), "\(language.rawValue) still describes BLE authorization")
+            XCTAssertFalse(localized.localizedCaseInsensitiveContains("allow battery"), "\(language.rawValue) still describes BLE authorization")
+        }
+    }
+
     func testNaturalScrollingDescriptionMentionsThirdPartyScrollApps() throws {
         let requiredMentions = ["MOS", "Scroll Reverser", "LinearMouse", "Status Trio"]
         let requiredGuidance: [AppLanguage: (scope: String, remedy: String)] = [

@@ -52,12 +52,10 @@ struct BluetoothLEBatteryAdvertisementTests {
         }
     }
 
-    /// The name is what keeps the route to the user's own devices: every Apple
-    /// phone in range broadcasts this payload, and only the ones this Mac knows
-    /// have a name at all.
-    @Test func unknownAppleMobileDeviceIsNotACandidate() {
+    /// Names are for display only; an empty name cannot suppress discovery.
+    @Test func unnamedAppleBroadcastsRemainCandidates() {
         for name: String? in [nil, "", "   ", "\n"] {
-            #expect(!BluetoothLEBatteryAdvertisement.isCandidate(
+            #expect(BluetoothLEBatteryAdvertisement.isCandidate(
                 serviceUUIDs: nil,
                 manufacturerData: appleManufacturerData(messageType: 0x10),
                 name: name,
@@ -85,6 +83,12 @@ struct BluetoothLEBatteryAdvertisementTests {
             manufacturerData: Data([0x06, 0x00, 0x10]),
             name: "Some Sensor",
             batteryService: batteryService
+        ))
+    }
+
+    @Test func appleContinuityRequiresTheCompleteCompanyIdentifier() {
+        #expect(!BluetoothLEBatteryAdvertisement.isAppleMobileDevice(
+            manufacturerData: Data([0x4C, 0x01, 0x10, 0x01])
         ))
     }
 

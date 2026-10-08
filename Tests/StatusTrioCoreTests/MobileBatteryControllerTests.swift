@@ -7,6 +7,7 @@ final class MobileBatteryControllerTests: XCTestCase {
         let reader = ControlledMobileBatteryReader()
         let controller = MobileBatteryController(reader: reader)
 
+        controller.setAuthorizedDeviceIDs([.trustedDevice("phone-a")])
         controller.setSurfaceVisible(true)
         await settle()
         let countWithoutClaims = await reader.readCount
@@ -24,9 +25,72 @@ final class MobileBatteryControllerTests: XCTestCase {
         await reader.finishAll()
     }
 
+    func testReleasingTemporaryViewportRetainsFreshCachedSnapshot() async {
+        let reader = ControlledMobileBatteryReader()
+        let controller = MobileBatteryController(reader: reader)
+        controller.setAuthorizedDeviceIDs([.trustedDevice("phone-a")])
+        controller.setSurfaceVisible(true)
+        controller.request("popover")
+        await waitUntil { await reader.readCount == 1 }
+        await reader.complete(0, with: result(level: 74))
+        await waitUntil { controller.snapshots.count == 1 }
+
+        controller.setAuthorizedDeviceIDs([])
+
+        XCTAssertEqual(controller.snapshots.map(\.batteryLevel), [74])
+        controller.setSurfaceVisible(false)
+        XCTAssertEqual(controller.snapshots.map(\.batteryLevel), [74])
+        controller.stop()
+        await reader.finishAll()
+    }
+
+    func testBackgroundRefreshCanReadWithClosedSurfaceAndStopsWhenDisabled() async {
+        let reader = ControlledMobileBatteryReader()
+        let controller = MobileBatteryController(reader: reader)
+        controller.setAuthorizedDeviceIDs([.trustedDevice("phone-a")])
+        controller.setBackgroundRefresh(enabled: true, interval: .seconds(60))
+        controller.setSurfaceVisible(false)
+
+        await waitUntil { await reader.readCount == 1 }
+        controller.setBackgroundRefresh(enabled: false, interval: .seconds(60))
+        await waitUntil { await reader.cancellationCount == 1 }
+        controller.stop()
+        await reader.finishAll()
+    }
+
+    func testBackgroundRefreshUsesConfiguredIntervalWithoutOverlappingRead() async {
+        let reader = ControlledMobileBatteryReader()
+        let sleeper = ControlledMobileBatterySleeper()
+        let controller = MobileBatteryController(
+            reader: reader,
+            sleep: { duration in try await sleeper.sleep(duration) }
+        )
+        controller.setAuthorizedDeviceIDs([.trustedDevice("phone-a")])
+        controller.setBackgroundRefresh(enabled: true, interval: .seconds(120))
+        await waitUntil { await reader.readCount == 1 }
+        await reader.complete(0, with: result(level: 42))
+        await waitUntil { !controller.isRefreshing }
+        await sleeper.waitForDuration(.seconds(120))
+
+        let countBeforeTick = await reader.readCount
+        XCTAssertEqual(countBeforeTick, 1)
+        await sleeper.fire(duration: .seconds(120))
+        await waitUntil { await reader.readCount == 2 }
+        controller.setBackgroundRefresh(enabled: false, interval: .seconds(120))
+        await waitUntil { await reader.cancellationCount == 1 }
+        let readCountAfterDisable = await reader.readCount
+        await sleeper.fire(duration: .seconds(120))
+        await settle()
+        let readCountAfterCancelledCadence = await reader.readCount
+        XCTAssertEqual(readCountAfterCancelledCadence, readCountAfterDisable)
+        controller.stop()
+        await reader.finishAll()
+    }
+
     func testRapidDisableAndReenableClearsCacheAndStartsANewReadForTheExistingClaim() async {
         let reader = ControlledMobileBatteryReader()
         let controller = MobileBatteryController(reader: reader)
+        controller.setAuthorizedDeviceIDs([.trustedDevice("phone-a")])
         controller.setSurfaceVisible(true)
         controller.request("summary")
         await waitUntil { await reader.readCount == 1 }
@@ -42,9 +106,54 @@ final class MobileBatteryControllerTests: XCTestCase {
         await reader.finishAll()
     }
 
+    func testDisablingBatteryReadsClearsLevelsButRetainsAuthorizedRows() async {
+        let reader = ControlledMobileBatteryReader()
+        let controller = MobileBatteryController(reader: reader)
+        let selected: Set<AppleDeviceID> = [.trustedDevice("phone-a")]
+        controller.setAuthorizedDeviceIDs(selected)
+        controller.setSurfaceVisible(true)
+        controller.request("panel")
+        await waitUntil { await reader.readCount == 1 }
+        await reader.complete(0, with: result(level: 71))
+        await waitUntil { controller.snapshots.count == 1 }
+
+        controller.setReadingEnabled(false)
+        XCTAssertTrue(controller.snapshots.isEmpty)
+        controller.setAuthorizedDeviceIDs(selected)
+        XCTAssertTrue(controller.snapshots.isEmpty)
+        let readsWhileDisabled = await reader.readCount
+        XCTAssertEqual(readsWhileDisabled, 1)
+
+        controller.setReadingEnabled(true)
+        await waitUntil { await reader.readCount == 2 }
+        controller.stop()
+        await reader.finishAll()
+    }
+
+    func testMasterOffRevokesPendingTrustedReadsAndClearsCachedAppleRows() async {
+        let reader = ControlledMobileBatteryReader()
+        let controller = MobileBatteryController(reader: reader)
+        controller.setAuthorizedDeviceIDs([.trustedDevice("phone-a")])
+        controller.setSurfaceVisible(true)
+        controller.request("panel")
+        await waitUntil { await reader.readCount == 1 }
+
+        controller.setReadingEnabled(false)
+
+        XCTAssertTrue(controller.snapshots.isEmpty)
+        XCTAssertFalse(controller.isRefreshing)
+        await waitUntil { await reader.cancellationCount == 1 }
+        await reader.complete(0, with: result(level: 99))
+        await settle()
+        XCTAssertTrue(controller.snapshots.isEmpty)
+        controller.stop()
+        await reader.finishAll()
+    }
+
     func testReenablingWithNoClaimAndClosedSurfaceDoesNotRead() async {
         let reader = ControlledMobileBatteryReader()
         let controller = MobileBatteryController(reader: reader)
+        controller.setAuthorizedDeviceIDs([.trustedDevice("phone-a")])
         controller.setReadingEnabled(false)
         controller.setReadingEnabled(true)
         controller.setSurfaceVisible(false)
@@ -59,6 +168,7 @@ final class MobileBatteryControllerTests: XCTestCase {
     func testClaimsShareWorkAndLastReleaseClearsSnapshots() async {
         let reader = ControlledMobileBatteryReader()
         let controller = MobileBatteryController(reader: reader)
+        controller.setAuthorizedDeviceIDs([.trustedDevice("phone-a")])
         controller.setSurfaceVisible(true)
         controller.request("summary")
         await waitUntil { await reader.readCount == 1 }
@@ -84,6 +194,7 @@ final class MobileBatteryControllerTests: XCTestCase {
     func testClosingPopoverCancelsReadAndReopenRejectsLateGeneration() async {
         let reader = ControlledMobileBatteryReader()
         let controller = MobileBatteryController(reader: reader)
+        controller.setAuthorizedDeviceIDs([.trustedDevice("phone-a")])
         controller.request("summary")
         controller.setSurfaceVisible(true)
         await waitUntil { await reader.readCount == 1 }
@@ -102,9 +213,55 @@ final class MobileBatteryControllerTests: XCTestCase {
         await reader.finishAll()
     }
 
+    func testViewportPermitLossRetainsCacheAndRejectsLateSnapshot() async {
+        let reader = ControlledMobileBatteryReader()
+        let controller = MobileBatteryController(reader: reader)
+        let first: Set<AppleDeviceID> = [.trustedDevice("phone-a"), .trustedDevice("phone-b")]
+        controller.setAuthorizedDeviceIDs(first)
+        controller.request("panel")
+        controller.setSurfaceVisible(true)
+        await waitUntil { await reader.readCount == 1 }
+        await reader.complete(0, with: MobileBatteryReadResult(snapshots: [
+            snapshot(id: "phone-a", level: 71, at: Date()), snapshot(id: "phone-b", level: 62, at: Date())
+        ]))
+        await waitUntil { controller.snapshots.count == 2 }
+
+        controller.setAuthorizedDeviceIDs([.trustedDevice("phone-b")])
+        XCTAssertEqual(Set(controller.snapshots.map(\.id)), ["phone-a", "phone-b"])
+        await waitUntil { await reader.readCount == 2 }
+        await reader.complete(1, with: MobileBatteryReadResult(snapshots: [
+            snapshot(id: "phone-a", level: 99, at: Date()), snapshot(id: "phone-b", level: 55, at: Date())
+        ]))
+        await waitUntil { controller.snapshots.first(where: { $0.id == "phone-b" })?.batteryLevel == 55 }
+        XCTAssertEqual(Set(controller.snapshots.map(\.id)), ["phone-a", "phone-b"])
+        XCTAssertEqual(controller.snapshots.first(where: { $0.id == "phone-a" })?.batteryLevel, 71)
+        controller.stop()
+        await reader.finishAll()
+    }
+
+    func testExplicitHidePurgesOnlyHiddenCachedSnapshot() async {
+        let reader = ControlledMobileBatteryReader()
+        let controller = MobileBatteryController(reader: reader)
+        controller.setAuthorizedDeviceIDs([.trustedDevice("phone-a"), .trustedDevice("phone-b")])
+        controller.setSurfaceVisible(true)
+        controller.request("panel")
+        await waitUntil { await reader.readCount == 1 }
+        await reader.complete(0, with: MobileBatteryReadResult(snapshots: [
+            snapshot(id: "phone-a", level: 71, at: Date()), snapshot(id: "phone-b", level: 62, at: Date())
+        ]))
+        await waitUntil { controller.snapshots.count == 2 }
+
+        controller.revokeDeviceIDs([.trustedDevice("phone-a")])
+
+        XCTAssertEqual(controller.snapshots.map(\.id), ["phone-b"])
+        controller.stop()
+        await reader.finishAll()
+    }
+
     func testManualRefreshSupersedesReadAndStartsImmediately() async {
         let reader = ControlledMobileBatteryReader()
         let controller = MobileBatteryController(reader: reader)
+        controller.setAuthorizedDeviceIDs([.trustedDevice("phone-a")])
         controller.request("summary")
         controller.setSurfaceVisible(true)
         await waitUntil { await reader.readCount == 1 }
@@ -126,6 +283,7 @@ final class MobileBatteryControllerTests: XCTestCase {
         let reader = ControlledMobileBatteryReader()
         let now = MutableDate(Date(timeIntervalSince1970: 10_000))
         let controller = MobileBatteryController(reader: reader, clock: { now.value })
+        controller.setAuthorizedDeviceIDs([.trustedDevice("phone-a"), .trustedDevice("phone-b")])
         controller.request("summary")
         controller.setSurfaceVisible(true)
         await waitUntil { await reader.readCount == 1 }
@@ -158,16 +316,41 @@ final class MobileBatteryControllerTests: XCTestCase {
             clock: { now.value },
             sleep: { duration in try await sleeper.sleep(duration) }
         )
+        controller.setAuthorizedDeviceIDs([.trustedDevice("phone-a")])
         controller.request("summary")
         controller.setSurfaceVisible(true)
         await waitUntil { await reader.readCount == 1 }
         await reader.complete(0, with: result(level: 63, at: now.value))
         await waitUntil { controller.snapshots.count == 1 }
-        await sleeper.waitForDuration(.seconds(1_800))
+        await sleeper.waitForDuration(.seconds(1_200))
 
         controller.setSurfaceVisible(false)
-        now.value.addTimeInterval(1_800)
-        await sleeper.fire(duration: .seconds(1_800))
+        now.value.addTimeInterval(1_200)
+        await sleeper.fire(duration: .seconds(1_200))
+        await waitUntil { controller.snapshots.isEmpty }
+        controller.stop()
+        await reader.finishAll()
+    }
+
+    func testVerifiedSnapshotExpiresAtTwentyMinutes() async {
+        let reader = ControlledMobileBatteryReader()
+        let now = MutableDate(Date(timeIntervalSince1970: 22_000))
+        let sleeper = ControlledMobileBatterySleeper()
+        let controller = MobileBatteryController(
+            reader: reader,
+            clock: { now.value },
+            sleep: { duration in try await sleeper.sleep(duration) }
+        )
+        controller.setAuthorizedDeviceIDs([.trustedDevice("phone-a")])
+        controller.request("summary")
+        controller.setSurfaceVisible(true)
+        await waitUntil { await reader.readCount == 1 }
+        await reader.complete(0, with: result(level: 64, at: now.value))
+        await waitUntil { controller.snapshots.count == 1 }
+        await sleeper.waitForDuration(.seconds(1_200))
+
+        now.value.addTimeInterval(1_200)
+        await sleeper.fire(duration: .seconds(1_200))
         await waitUntil { controller.snapshots.isEmpty }
         controller.stop()
         await reader.finishAll()
@@ -180,6 +363,7 @@ final class MobileBatteryControllerTests: XCTestCase {
             reader: reader,
             sleep: { duration in try await sleeper.sleep(duration) }
         )
+        controller.setAuthorizedDeviceIDs([.trustedDevice("phone-a")])
         controller.request("summary")
         controller.setSurfaceVisible(true)
         await waitUntil { await reader.readCount == 1 }
@@ -200,6 +384,7 @@ final class MobileBatteryControllerTests: XCTestCase {
         weak var weakController: MobileBatteryController?
         do {
             let controller = MobileBatteryController(reader: reader)
+            controller.setAuthorizedDeviceIDs([.trustedDevice("phone-a")])
             weakController = controller
             controller.request("summary")
             controller.setSurfaceVisible(true)
@@ -214,6 +399,7 @@ final class MobileBatteryControllerTests: XCTestCase {
         let reader = ControlledMobileBatteryReader()
         let now = MutableDate(Date(timeIntervalSince1970: 30_000))
         let controller = MobileBatteryController(reader: reader, clock: { now.value })
+        controller.setAuthorizedDeviceIDs([.trustedDevice("phone-a")])
         controller.request("summary")
         controller.setSurfaceVisible(true)
         await waitUntil { await reader.readCount == 1 }
@@ -236,6 +422,7 @@ final class MobileBatteryControllerTests: XCTestCase {
         let reader = ControlledMobileBatteryReader()
         let now = MutableDate(Date(timeIntervalSince1970: 40_000))
         let controller = MobileBatteryController(reader: reader, clock: { now.value })
+        controller.setAuthorizedDeviceIDs([.trustedDevice("phone-a")])
         controller.request("summary")
         controller.setSurfaceVisible(true)
         await waitUntil { await reader.readCount == 1 }
@@ -264,17 +451,18 @@ final class MobileBatteryControllerTests: XCTestCase {
             clock: { now.value },
             sleep: { duration in try await sleeper.sleep(duration) }
         )
+        controller.setAuthorizedDeviceIDs([.trustedDevice("phone-a")])
         controller.request("summary")
         controller.setSurfaceVisible(true)
         await waitUntil { await reader.readCount == 1 }
         await reader.complete(0, with: result(level: 64, at: now.value))
         await waitUntil { controller.snapshots.count == 1 }
-        await sleeper.waitForDuration(.seconds(1_800))
+        await sleeper.waitForDuration(.seconds(1_200))
 
         controller.release("summary", keepingResults: true)
         XCTAssertEqual(controller.snapshots.map(\.batteryLevel), [64])
-        now.value.addTimeInterval(1_800)
-        await sleeper.fire(duration: .seconds(1_800))
+        now.value.addTimeInterval(1_200)
+        await sleeper.fire(duration: .seconds(1_200))
         await waitUntil { controller.snapshots.isEmpty }
 
         controller.stop()
@@ -329,10 +517,21 @@ private final class MutableDate: @unchecked Sendable {
 
 actor ControlledMobileBatteryReader: MobileBatteryReading {
     private var continuations: [Int: CheckedContinuation<MobileBatteryReadResult, any Error>] = [:]
+    private var discoveryContinuations: [Int: CheckedContinuation<[AppleDeviceCandidate], any Error>] = [:]
     private(set) var readCount = 0
+    private(set) var discoveryCount = 0
     private(set) var cancellationCount = 0
+    private(set) var selectedIDHistory: [Set<AppleDeviceID>] = []
 
-    func read() async throws -> MobileBatteryReadResult {
+    func discover() async throws -> [AppleDeviceCandidate] {
+        let index = discoveryCount
+        discoveryCount += 1
+        return try await withCheckedThrowingContinuation { discoveryContinuations[index] = $0 }
+    }
+
+    func read(selectedIDs: Set<AppleDeviceID>) async throws -> MobileBatteryReadResult {
+        guard !selectedIDs.isEmpty else { return MobileBatteryReadResult() }
+        selectedIDHistory.append(selectedIDs)
         let index = readCount
         readCount += 1
         return try await withTaskCancellationHandler {
@@ -346,10 +545,17 @@ actor ControlledMobileBatteryReader: MobileBatteryReading {
         continuations.removeValue(forKey: index)?.resume(returning: result)
     }
 
+    func completeDiscovery(_ index: Int, with candidates: [AppleDeviceCandidate]) {
+        discoveryContinuations.removeValue(forKey: index)?.resume(returning: candidates)
+    }
+
     func finishAll() {
         let pending = continuations.values
         continuations.removeAll()
         for continuation in pending { continuation.resume(throwing: CancellationError()) }
+        let pendingDiscovery = discoveryContinuations.values
+        discoveryContinuations.removeAll()
+        for continuation in pendingDiscovery { continuation.resume(throwing: CancellationError()) }
     }
 
     private func recordCancellation() { cancellationCount += 1 }

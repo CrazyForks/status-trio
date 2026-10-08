@@ -1,6 +1,5 @@
 "menu.version" = "Status Trio %@";
 "menu.settings" = "Ajustes…";
-"menu.settings.development" = "Versão de desenvolvimento · %@";
 "menu.quit" = "Sair do Status Trio";
 "menu.about" = "Sobre o %@";
 "menu.hide" = "Ocultar %@";
@@ -70,8 +69,6 @@
 "settings.bluetooth.networkErrorPriorityDescription" = "Erros de conexão e estados offline mantêm o ícone de rede em vez do dispositivo Bluetooth.";
 "settings.bluetooth.batteryLevels" = "Mostrar níveis de bateria Bluetooth";
 "settings.bluetooth.batteryLevelsDescription" = "Lê os níveis de bateria dos AirPods enquanto a entrada Bluetooth está visível. Nenhuma permissão adicional é solicitada.";
-"settings.bluetooth.nearbyBatteryDevices" = "Mostrar níveis de bateria BLE próximos";
-"settings.bluetooth.nearbyBatteryDevicesDescription" = "Com os níveis de bateria Bluetooth ativados, procura dispositivos BLE próximos que oferecem o serviço padrão de bateria enquanto o painel de status está aberto. O suporte varia conforme o dispositivo.";
 "settings.bluetooth.listeningModePreview" = "Previsualizar o seletor do modo de audição";
 "settings.bluetooth.listeningModePreviewDescription" = "Mostra as cápsulas de modo em todos os AirPods conectados para testar a interface. Tocar em uma cápsula anima como em um dispositivo real, mas não altera nada nos AirPods.";
 "settings.bluetooth.listeningModePreviewDeviceName" = "Nome do dispositivo de prévia";
@@ -389,9 +386,6 @@
 "wifi.summary.band" = "%@ GHz";
 "wifi.summary.signal" = "%d dBm";
 "wifi.summary.bandAndSignal" = "%@ · %@";
-"settings.bluetooth.hideUnpairedDevices" = "Ocultar dispositivos ausentes nas Configurações do Sistema";
-"settings.bluetooth.hideUnpairedDevicesDescription" = "Oculta dispositivos varridos mas não pareados que o sistema não lista. Desative para mostrar tudo.";
-"settings.bluetooth.notInSystemSettings" = "Ausente nas Configurações do Sistema";
 "settings.bluetooth.hideDevice" = "Ocultar dispositivo";
 "settings.bluetooth.showDevice" = "Mostrar dispositivo";
 "settings.bluetooth.permissionRequired" = "Permissão do Bluetooth necessária";
@@ -405,11 +399,17 @@
 "bluetooth.listeningMode.changeFailed" = "Não foi possível alterar o modo de audição.";
 "bluetooth.listeningMode.accessibility" = "Modo de audição";
 
-"settings.bluetooth.mobileBatteryDevices" = "Bateria do iPhone e do Apple Watch";
-"settings.bluetooth.mobileBatteryDevicesDescription" = "Leitura por um iPhone confiável via USB ou Wi‑Fi. Conecte o iPhone por cabo uma vez e toque em Confiar. O uso sem fio requer a sincronização por Wi‑Fi já configurada.";
 "mobileBattery.watchFallbackName" = "Apple Watch";
 "mobileBattery.watchSource" = "Via iPhone";
 "mobileBattery.updatedAt" = "Atualizado %@";
 "mobileBattery.charging" = "Carregando";
 "mobileBattery.trustRequired" = "Conecte o iPhone por cabo e toque em Confiar para ler a bateria do Apple Watch emparelhado.";
-"mobileBattery.unavailable" = "Não foi possível atualizar a bateria do iPhone e do Apple Watch.";
+"mobileBattery.unavailable" = "Não foi possível atualizar a bateria do iPhone e do Apple Watch via USB ou Wi-Fi.";
+"bluetooth.nearbyBLE.notNearby" = "Não está próximo";
+"bluetooth.nearbyBLE.unavailable" = "Temporariamente indisponível";
+"settings.appleDevicesAndBattery" = "Mostrar dispositivos Apple e bateria";
+"settings.appleDevicesAndBattery.description" = "Dispositivos Apple confiáveis e próximos com nome aparecem na lista Bluetooth.";
+"settings.appleBackgroundRefresh" = "Atualizar baterias Apple em segundo plano";
+"settings.appleBackgroundRefresh.description" = "Atualiza as baterias dos dispositivos Apple selecionados com o painel fechado.";
+"settings.appleBackgroundRefresh.interval" = "Intervalo de atualização da bateria em segundo plano";
+"settings.appleBackgroundRefresh.intervalValue" = "%d minuto(s)";

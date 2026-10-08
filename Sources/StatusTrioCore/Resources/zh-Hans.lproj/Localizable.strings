@@ -1,6 +1,5 @@
 "menu.version" = "Status Trio %@";
 "menu.settings" = "设置…";
-"menu.settings.development" = "开发版 · %@";
 "menu.quit" = "退出 Status Trio";
 "menu.about" = "关于 %@";
 "menu.hide" = "隐藏 %@";
@@ -70,8 +69,6 @@
 "settings.bluetooth.networkErrorPriorityDescription" = "断网或无网络时仍显示网络图标，不显示蓝牙设备图标。";
 "settings.bluetooth.batteryLevels" = "显示蓝牙设备电量";
 "settings.bluetooth.batteryLevelsDescription" = "当状态面板显示蓝牙设备时读取 AirPods 电量，不会额外请求权限。";
-"settings.bluetooth.nearbyBatteryDevices" = "显示附近 BLE 设备电量";
-"settings.bluetooth.nearbyBatteryDevicesDescription" = "开启蓝牙电量后，状态面板打开时会扫描提供标准电池服务的附近 BLE 设备。支持情况因设备而异。";
 "settings.bluetooth.listeningModePreview" = "预览聆听模式开关";
 "settings.bluetooth.listeningModePreviewDescription" = "在每台已连接的 AirPods 上显示模式胶囊，用于界面测试。点击胶囊的动画与真机一致，但不会更改 AirPods 的任何设置。";
 "settings.bluetooth.listeningModePreviewDeviceName" = "预览设备名";
@@ -389,9 +386,6 @@
 "wifi.summary.band" = "%@ GHz";
 "wifi.summary.signal" = "%d dBm";
 "wifi.summary.bandAndSignal" = "%@ · %@";
-"settings.bluetooth.hideUnpairedDevices" = "隐藏系统设置未列出的设备";
-"settings.bluetooth.hideUnpairedDevicesDescription" = "隐藏系统未配对、仅被扫描到的设备；关闭则显示全部。";
-"settings.bluetooth.notInSystemSettings" = "未在系统设置中";
 "settings.bluetooth.hideDevice" = "隐藏此设备";
 "settings.bluetooth.showDevice" = "显示此设备";
 "settings.bluetooth.permissionRequired" = "需要蓝牙权限";
@@ -405,11 +399,17 @@
 "bluetooth.listeningMode.changeFailed" = "无法更改聆听模式。";
 "bluetooth.listeningMode.accessibility" = "聆听模式";
 
-"settings.bluetooth.mobileBatteryDevices" = "iPhone 与 Apple Watch 电量";
-"settings.bluetooth.mobileBatteryDevicesDescription" = "通过已信任的 iPhone，经 USB 或 Wi-Fi 读取。首次请用线连接 iPhone 并轻点“信任”；无线读取需要已配置 Wi-Fi 同步。";
 "mobileBattery.watchFallbackName" = "Apple Watch";
 "mobileBattery.watchSource" = "通过 iPhone 读取";
 "mobileBattery.updatedAt" = "更新于 %@";
 "mobileBattery.charging" = "正在充电";
 "mobileBattery.trustRequired" = "请用线连接 iPhone 并轻点“信任”，以读取配对 Apple Watch 的电量。";
-"mobileBattery.unavailable" = "无法刷新 iPhone 与 Apple Watch 电量。";
+"mobileBattery.unavailable" = "使用 USB 或 Wi-Fi 无法刷新 iPhone 与 Apple Watch 电量。";
+"bluetooth.nearbyBLE.notNearby" = "当前不在附近";
+"bluetooth.nearbyBLE.unavailable" = "暂时无法读取";
+"settings.appleDevicesAndBattery" = "显示苹果设备与电量";
+"settings.appleDevicesAndBattery.description" = "已信任的 Apple 设备和附近有名称的设备会显示在蓝牙列表中。";
+"settings.appleBackgroundRefresh" = "在后台更新 Apple 设备电量";
+"settings.appleBackgroundRefresh.description" = "状态面板关闭时，继续更新已选 Apple 设备的电量。";
+"settings.appleBackgroundRefresh.interval" = "后台更新电量的时间间隔";
+"settings.appleBackgroundRefresh.intervalValue" = "%d 分钟";

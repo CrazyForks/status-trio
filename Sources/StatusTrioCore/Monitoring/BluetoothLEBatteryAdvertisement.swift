@@ -18,15 +18,8 @@ import Foundation
 /// Reading an iOS device therefore starts with recognising that payload, which
 /// is what makes the iPhone row work in AirBattery, whose parser this follows.
 ///
-/// The Continuity route carries a condition the service route does not need: a
-/// name. Every Apple mobile device in radio range broadcasts that payload, so
-/// recognising it alone would make the scanner open a session with every
-/// stranger's phone in the room — and the scanner is bounded to eight queued
-/// candidates, so a crowd of strangers would also crowd out the user's own
-/// devices. CoreBluetooth only reports a name for a device the system already
-/// knows, one this Mac paired with or has connected to before, so requiring a
-/// name is what keeps the route to the user's devices. It filters on identity,
-/// not on capability: macOS withholds the name from a stranger, not the battery.
+/// Advertisement recognition identifies Apple mobile candidates. A GATT session
+/// is separately limited to a UUID whose row is currently visible in the panel.
 enum BluetoothLEBatteryAdvertisement {
     /// Apple's Bluetooth SIG company identifier, first on the wire.
     static let appleCompanyIdentifier: UInt8 = 0x4C
@@ -71,6 +64,7 @@ enum BluetoothLEBatteryAdvertisement {
         // The indices are taken from `startIndex` rather than written as 0..2,
         // because a sliced `Data` keeps the offsets of the buffer it came from.
         return manufacturerData[manufacturerData.startIndex] == appleCompanyIdentifier
+            && manufacturerData[manufacturerData.startIndex + 1] == 0x00
             && continuityMessageTypes.contains(
                 manufacturerData[manufacturerData.startIndex + continuityMessageTypeOffset]
             )
@@ -90,7 +84,6 @@ enum BluetoothLEBatteryAdvertisement {
         if advertisesBatteryService(serviceUUIDs, batteryService: batteryService) {
             return true
         }
-        guard isAppleMobileDevice(manufacturerData: manufacturerData) else { return false }
-        return !(name ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        return isAppleMobileDevice(manufacturerData: manufacturerData)
     }
 }

@@ -210,10 +210,29 @@ struct MobileBatteryHelperReader: MobileBatteryReading {
         self.cycleTimeout = cycleTimeout
     }
 
-    func read() async throws -> MobileBatteryReadResult {
+    func discover() async throws -> [AppleDeviceCandidate] {
+        let listingData = try await executor.run(arguments: ["--list"], timeout: .seconds(3))
+        let phones = try MobileBatteryWire.decodeListing(listingData).prefix(8)
+        return await withTaskGroup(of: [AppleDeviceCandidate].self, returning: [AppleDeviceCandidate].self) { group in
+            for phone in phones {
+                guard !Task.isCancelled else { break }
+                group.addTask { await discover(phone) }
+            }
+            var candidates: [AppleDeviceCandidate] = []
+            while let values = await group.next() {
+                candidates.append(contentsOf: values)
+                let merged = Self.mergeCandidates(candidates)
+                if merged.count >= 8 { return Array(merged.prefix(8)) }
+            }
+            return Array(Self.mergeCandidates(candidates).prefix(8))
+        }
+    }
+
+    func read(selectedIDs: Set<AppleDeviceID>) async throws -> MobileBatteryReadResult {
+        guard !selectedIDs.isEmpty else { return MobileBatteryReadResult() }
         let accumulator = MobileBatteryReadAccumulator()
         return try await withThrowingTaskGroup(of: MobileBatteryReadResult.self) { group in
-            group.addTask { try await readCycle(accumulator) }
+            group.addTask { try await readCycle(selectedIDs, accumulator: accumulator) }
             group.addTask {
                 try await Task.sleep(for: cycleTimeout)
                 throw MobileBatteryHelperError.cycleTimedOut
@@ -238,15 +257,51 @@ struct MobileBatteryHelperReader: MobileBatteryReading {
         }
     }
 
-    private func readCycle(_ accumulator: MobileBatteryReadAccumulator) async throws -> MobileBatteryReadResult {
+    private func readCycle(_ selectedIDs: Set<AppleDeviceID>, accumulator: MobileBatteryReadAccumulator) async throws -> MobileBatteryReadResult {
         try Task.checkCancellation()
         let listingData = try await executor.run(arguments: ["--list"], timeout: .seconds(3))
-        let phones = try MobileBatteryWire.decodeListing(listingData).prefix(8)
-        let candidates = await readPhones(Array(phones), accumulator: accumulator)
+        let routes = try MobileBatteryWire.decodeListing(listingData)
+        let selectedPhones = Set(selectedIDs.compactMap { id -> String? in
+            if case let .trustedDevice(identifier) = id { return identifier }
+            return nil
+        })
+        let selectedWatches = selectedIDs.compactMap { id -> (String, String)? in
+            if case let .trustedWatch(parentID, watchID) = id { return (parentID, watchID) }
+            return nil
+        }
+        let requestedPhoneRoutes = Array(routes.filter { selectedPhones.contains($0.id) }.prefix(8))
+        _ = await readPhones(requestedPhoneRoutes, accumulator: accumulator)
         guard !Task.isCancelled else { return await accumulator.snapshot() }
-        let limitedCandidates = Self.uniqueCandidates(candidates).prefix(8)
-        await readWatches(Array(limitedCandidates), accumulator: accumulator)
+
+        let routesByParent = Dictionary(uniqueKeysWithValues: routes.map { ($0.id, $0.transports) })
+        let requestedWatches = selectedWatches.compactMap { parentID, watchID -> WatchCandidate? in
+            guard let transports = routesByParent[parentID], !transports.isEmpty else { return nil }
+            let route = WatchRoute(id: watchID, parentID: parentID, transport: transports[0])
+            return WatchCandidate(route: route, transports: transports)
+        }
+        await readWatches(requestedWatches.sorted { $0.route.parentID == $1.route.parentID
+            ? $0.route.id < $1.route.id
+            : $0.route.parentID < $1.route.parentID
+        }.prefix(8).map { $0 }, accumulator: accumulator)
         return await accumulator.snapshot()
+    }
+
+    private func discover(_ phone: PhoneRoute) async -> [AppleDeviceCandidate] {
+        var candidates: [AppleDeviceCandidate] = []
+        for transport in phone.transports {
+            do {
+                let data = try await executor.run(
+                    arguments: ["--discover-device", phone.id, "--transport", transport.rawValue],
+                    timeout: .seconds(5)
+                )
+                let decoded = try MobileBatteryWire.decodeDiscovery(data, expectedParentID: phone.id)
+                candidates.append(contentsOf: decoded)
+                if !decoded.isEmpty { break }
+            } catch {
+                if Task.isCancelled { return candidates }
+            }
+        }
+        return candidates
     }
 
     private func readPhones(_ phones: [PhoneRoute], accumulator: MobileBatteryReadAccumulator) async -> [WatchCandidate] {
@@ -379,6 +434,25 @@ struct MobileBatteryHelperReader: MobileBatteryReading {
             if $0.route.parentID != $1.route.parentID { return $0.route.parentID < $1.route.parentID }
             return $0.route.id < $1.route.id
         }
+    }
+
+    private static func mergeCandidates(_ candidates: [AppleDeviceCandidate]) -> [AppleDeviceCandidate] {
+        var merged: [AppleDeviceID: AppleDeviceCandidate] = [:]
+        for candidate in candidates {
+            guard let existing = merged[candidate.id] else { merged[candidate.id] = candidate; continue }
+            let routes = ([MobileBatteryTransport.usb, .network] as [MobileBatteryTransport]).filter {
+                existing.transports.contains($0) || candidate.transports.contains($0)
+            }
+            merged[candidate.id] = AppleDeviceCandidate(
+                id: candidate.id,
+                name: existing.name,
+                model: existing.model ?? candidate.model,
+                transports: routes,
+                trustRequired: existing.trustRequired && candidate.trustRequired,
+                evidence: existing.evidence
+            )
+        }
+        return merged.values.sorted { $0.id.rowID < $1.id.rowID }
     }
 }
 

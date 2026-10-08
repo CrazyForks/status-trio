@@ -21,9 +21,7 @@ struct PopoverFooterView: View {
     private var settingsTitle: String {
         PopoverFooterPresentation.settingsLabel(
             title: localization.string(.menuSettings),
-            developmentSuffix: AppMetadata.developmentCodename.map {
-                localization.format(.menuSettingsDevelopment, $0)
-            }
+            developmentSuffix: AppMetadata.developmentCodename
         )
     }
 

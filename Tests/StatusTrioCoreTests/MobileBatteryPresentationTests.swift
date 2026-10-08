@@ -100,7 +100,7 @@ struct MobileBatteryPresentationTests {
         ))
     }
 
-    @Test func watchPresentationUsesLocalizedFallbackAndSource() {
+    @Test func watchPresentationUsesLocalizedFallbackWithoutSourceOrTimeDetail() {
         let watch = MobileBatterySnapshot(
             id: "watch-1", parentID: "phone-1", name: "  ", model: "Watch7,1",
             batteryLevel: 61, isCharging: nil, transport: .usb,
@@ -108,7 +108,57 @@ struct MobileBatteryPresentationTests {
         )
 
         #expect(MobileBatteryDeviceRowPresentation.displayName(watch, fallbackWatchName: "Apple Watch") == "Apple Watch")
-        #expect(MobileBatteryDeviceRowPresentation.sourceText(watch, viaIPhone: "Via iPhone") == "Via iPhone")
+        #expect(MobileBatteryDeviceRowPresentation.sourceText(watch, viaIPhone: "Via iPhone") == nil)
         #expect(MobileBatteryDeviceRowPresentation.chargingText(watch, charging: "Charging") == nil)
+    }
+}
+
+struct MobileBatteryFailurePresentationTests {
+    @Test func mobileFailureRequiresAnActualFailureAndNoSnapshot() {
+        #expect(MobileBatteryFailurePresentation.message(
+            isEnabled: true,
+            snapshots: [],
+            failures: [],
+            isRefreshing: false
+        ) == nil)
+        #expect(MobileBatteryFailurePresentation.message(
+            isEnabled: true,
+            snapshots: [],
+            failures: [MobileBatteryReadFailure(category: "read-failed", deviceID: "phone-1")],
+            isRefreshing: true
+        ) == nil)
+        #expect(MobileBatteryFailurePresentation.message(
+            isEnabled: false,
+            snapshots: [],
+            failures: [MobileBatteryReadFailure(category: "read-failed", deviceID: "phone-1")],
+            isRefreshing: false
+        ) == nil)
+    }
+
+    @Test func mobileFailureReportsRealUSBWiFiFailureAndTrustTakesPriority() {
+        let readFailure = MobileBatteryReadFailure(category: "read-failed", deviceID: "phone-1")
+        let trustFailure = MobileBatteryReadFailure(category: "trust-required", deviceID: "phone-1")
+        #expect(MobileBatteryFailurePresentation.message(
+            isEnabled: true,
+            snapshots: [],
+            failures: [readFailure],
+            isRefreshing: false
+        ) == .mobileBatteryUnavailable)
+        #expect(MobileBatteryFailurePresentation.message(
+            isEnabled: true,
+            snapshots: [],
+            failures: [readFailure, trustFailure],
+            isRefreshing: false
+        ) == .mobileBatteryTrustRequired)
+        #expect(MobileBatteryFailurePresentation.message(
+            isEnabled: true,
+            snapshots: [MobileBatterySnapshot(
+                id: "phone-1", parentID: nil, name: "iPhone", model: "iPhone18,1",
+                batteryLevel: 80, isCharging: nil, transport: .usb,
+                observedAt: Date(timeIntervalSince1970: 1_700_000_000)
+            )],
+            failures: [readFailure],
+            isRefreshing: false
+        ) == nil)
     }
 }

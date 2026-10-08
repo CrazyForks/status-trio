@@ -18,6 +18,32 @@ import XCTest
 /// row's `ProgressView`.
 @MainActor
 final class BluetoothDeviceRowLayoutTests: XCTestCase {
+    func testNearbyBLERowDoesNotAddASourceSubtitle() async throws {
+        let id = UUID()
+        let device = BluetoothDevice(
+            id: BluetoothDeviceIdentity.bleRowID(id),
+            name: "iPhone",
+            kind: .mobile(.phone),
+            isConnected: false,
+            isReadOverTheAir: true
+        )
+        for language in [AppLanguage.english, .simplifiedChinese] {
+            let plain = try await renderRow(language: language, device: device)
+            let nearby = try await renderRow(
+                language: language,
+                device: device,
+                nearbyMetadataByDeviceID: [device.id: NearbyBLEPanelRow(
+                    id: id, device: device, batteryLevel: 100,
+                    wasSeenRecently: true, readFailed: false
+                )]
+            )
+            XCTAssertEqual(nearby.size.height, plain.size.height, accuracy: 1,
+                           "Nearby BLE must not add a subtitle in \(language.rawValue)")
+            XCTAssertTrue(nearby.hasInk(from: 280, to: 315), "Battery remains visible")
+            XCTAssertEqual(nearby.controls.count, 0, "BLE row remains read-only")
+        }
+    }
+
     func testTheConfirmingRowStaysOnOneLine() async throws {
         let device = BluetoothDevice(
             id: "AA:00:00:00:00:01",
@@ -357,6 +383,7 @@ final class BluetoothDeviceRowLayoutTests: XCTestCase {
         language: AppLanguage,
         device: BluetoothDevice,
         batteryLevels: [String: BluetoothBatteryLevel] = [:],
+        nearbyMetadataByDeviceID: [String: NearbyBLEPanelRow] = [:],
         actionState: BluetoothDeviceActionState? = nil,
         isConfirmingDisconnect: Bool = false
     ) async throws -> RenderedRow {
@@ -369,6 +396,7 @@ final class BluetoothDeviceRowLayoutTests: XCTestCase {
         let view = BluetoothDeviceRow(
             device: device,
             batteryLevels: batteryLevels,
+            nearbyMetadataByDeviceID: nearbyMetadataByDeviceID,
             actionState: actionState,
             isConfirmingDisconnect: isConfirmingDisconnect,
             onPerformAction: {},

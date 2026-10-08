@@ -34,7 +34,8 @@ final class BluetoothPermissionTimingTests: XCTestCase {
             nearbyBatteryScanner: scanner
         )
 
-        bluetoothController.requestNearbyBatteryDevices("nearby-test")
+        bluetoothController.configureNearbyBLEDevices(enabled: true, knownIDs: [], hiddenIDs: [])
+        bluetoothController.requestNearbyBLEDiscovery("nearby-test")
         bluetoothController.holdVisibleSurface(BluetoothDeviceController.popoverSurfaceToken)
         bluetoothController.prepareForPresentation()
 

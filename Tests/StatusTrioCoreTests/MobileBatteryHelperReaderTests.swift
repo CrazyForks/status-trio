@@ -4,6 +4,66 @@ import Darwin
 @testable import StatusTrioCore
 
 struct MobileBatteryHelperReaderTests {
+    @Test func emptySelectedIDsPerformNoHelperCalls() async throws {
+        let executor = ScriptedMobileBatteryExecutor { _ in Issue.record("empty authorization must not invoke helper"); return Data() }
+        let result = try await MobileBatteryHelperReader(executor: executor).read(selectedIDs: [])
+        #expect(result.snapshots.isEmpty)
+        #expect(await executor.recordedArguments.isEmpty)
+    }
+
+    @Test func selectedWatchReadsOnlyItsParentRouteAndNeverReadsParentBattery() async throws {
+        let executor = ScriptedMobileBatteryExecutor { arguments in
+            if arguments == ["--list"] {
+                return Data(#"{"schemaVersion":1,"phones":[{"id":"p","transport":"usb","availableTransports":["usb","network"]},{"id":"q","transport":"usb"}]}"#.utf8)
+            }
+            if arguments == ["--read-watch", "p", "--watch-id", "w", "--transport", "usb"] {
+                return Data(#"{"schemaVersion":1,"devices":[{"id":"w","parentID":"p","name":"Watch","model":"Watch7,4","batteryLevel":62,"isCharging":false,"transport":"usb"}],"failures":[],"watchCandidates":[]}"#.utf8)
+            }
+            Issue.record("unexpected helper call: \(arguments)")
+            return Data()
+        }
+        let selected: Set<AppleDeviceID> = [.trustedWatch(parentID: "p", id: "w")]
+        let result = try await MobileBatteryHelperReader(executor: executor).read(selectedIDs: selected)
+        #expect(result.snapshots.map(\.identity) == ["watch:p:w"])
+        let calls = await executor.recordedArguments
+        #expect(calls.contains(["--list"]))
+        #expect(calls.contains(["--read-watch", "p", "--watch-id", "w", "--transport", "usb"]))
+        #expect(!calls.contains { $0.first == "--read-phone" || $0.first == "--discover-device" })
+        #expect(!calls.contains { $0.contains("q") })
+    }
+
+    @Test func discoveryUsesMetadataCommandsAndNeverReadsBattery() async throws {
+        let executor = ScriptedMobileBatteryExecutor { arguments in
+            if arguments == ["--list"] {
+                return Data(#"{"schemaVersion":1,"phones":[{"id":"p","transport":"usb"}]}"#.utf8)
+            }
+            if arguments == ["--discover-device", "p", "--transport", "usb"] {
+                return Data(#"{"schemaVersion":1,"candidates":[{"id":"p","name":"Phone","model":"iPhone18,1","transport":"usb","trustRequired":false},{"id":"w","parentID":"p","name":"Watch","model":"Watch7,4","transport":"usb","trustRequired":false}],"failures":[]}"#.utf8)
+            }
+            Issue.record("discovery must not make battery calls: \(arguments)")
+            return Data()
+        }
+        let candidates = try await MobileBatteryHelperReader(executor: executor).discover()
+        #expect(candidates.map(\.id).contains(.trustedDevice("p")))
+        #expect(candidates.map(\.id).contains(.trustedWatch(parentID: "p", id: "w")))
+        let calls = await executor.recordedArguments
+        #expect(calls == [["--list"], ["--discover-device", "p", "--transport", "usb"]])
+    }
+
+    @Test func discoveryCapsTotalCandidatesAfterAppleFiltering() async throws {
+        let phones = (0..<8).map { #"{"id":"p\#($0)","transport":"usb"}"# }.joined(separator: ",")
+        let executor = ScriptedMobileBatteryExecutor { arguments in
+            if arguments == ["--list"] { return Data(#"{"schemaVersion":1,"phones":[\#(phones)]}"#.utf8) }
+            guard arguments.first == "--discover-device" else { Issue.record("discovery made a battery call"); return Data() }
+            let parent = arguments[1]
+            let entries = (0..<3).map { #"{"id":"\#(parent)-w\#($0)","parentID":"\#(parent)","model":"Watch7,4","transport":"usb","trustRequired":false}"# }.joined(separator: ",")
+            return Data(#"{"schemaVersion":1,"candidates":[{"id":"\#(parent)","model":"iPhone18,1","transport":"usb","trustRequired":false},\#(entries)],"failures":[]}"#.utf8)
+        }
+        let candidates = try await MobileBatteryHelperReader(executor: executor).discover()
+        #expect(candidates.count == 8)
+        #expect(candidates.allSatisfy { $0.isVerifiedTrustedAppleDevice })
+    }
+
     @Test func defaultExecutorResolvesThePackagedHelperName() async throws {
         if let packagedBundlePath = ProcessInfo.processInfo.environment["STATUS_TRIO_MOBILE_BATTERY_BUNDLE_URL"] {
             let bundle = URL(fileURLWithPath: packagedBundlePath, isDirectory: true)
@@ -38,7 +98,8 @@ struct MobileBatteryHelperReaderTests {
             let watchID = arguments[3]
             return Data(#"{"schemaVersion":1,"devices":[{"id":"\#(watchID)","parentID":"\#(phoneID)","name":null,"model":"Watch7,1","batteryLevel":60,"isCharging":null,"transport":"usb"}],"failures":[],"watchCandidates":[]}"#.utf8)
         }
-        let result = try await MobileBatteryHelperReader(executor: executor).read()
+        let watches = ids.prefix(8).map { AppleDeviceID.trustedWatch(parentID: $0, id: "w-\($0)") }
+        let result = try await MobileBatteryHelperReader(executor: executor).read(selectedIDs: Set(ids.prefix(8).map(AppleDeviceID.trustedDevice) + watches))
         let recorded = await executor.recordedArguments
         #expect(recorded.filter { $0.first == "--read-phone" }.count == 8)
         #expect(recorded.filter { $0.first == "--read-watch" }.count == 8)
@@ -58,7 +119,7 @@ struct MobileBatteryHelperReaderTests {
             }
             return Data(#"{"schemaVersion":1,"devices":[{"id":"fast","parentID":null,"name":null,"model":"iPhone17,1","batteryLevel":42,"isCharging":false,"transport":"usb"}],"failures":[],"watchCandidates":[]}"#.utf8)
         }
-        let result = try await MobileBatteryHelperReader(executor: executor).read()
+        let result = try await MobileBatteryHelperReader(executor: executor).read(selectedIDs: [.trustedDevice("slow"), .trustedDevice("fast")])
         #expect(result.snapshots.map(\.id) == ["fast"])
     }
 
@@ -76,7 +137,9 @@ struct MobileBatteryHelperReaderTests {
             return Data(#"{"schemaVersion":1,"devices":[{"id":"w1","parentID":"p1","name":null,"model":"Watch7,1","batteryLevel":61,"isCharging":null,"transport":"usb"},{"id":"unsolicited-watch","parentID":"p1","name":null,"model":"Watch7,1","batteryLevel":90,"isCharging":null,"transport":"usb"}],"failures":[],"watchCandidates":[]}"#.utf8)
         }
 
-        let result = try await MobileBatteryHelperReader(executor: executor).read()
+        let result = try await MobileBatteryHelperReader(executor: executor).read(selectedIDs: [
+            .trustedDevice("p1"), .trustedDevice("p2"), .trustedWatch(parentID: "p1", id: "w1")
+        ])
         #expect(Set(result.snapshots.map(\.id)) == ["p1", "w1"])
         #expect(result.failures.filter { $0.category == "unsolicited-device" }.count == 3)
     }
@@ -92,7 +155,8 @@ struct MobileBatteryHelperReaderTests {
             }
             return Data(#"{"schemaVersion":1,"devices":[{"id":"fast","parentID":null,"name":null,"model":"iPhone17,1","batteryLevel":42,"isCharging":false,"transport":"usb"}],"failures":[],"watchCandidates":[]}"#.utf8)
         }
-        let result = try await MobileBatteryHelperReader(executor: executor, cycleTimeout: .milliseconds(300)).read()
+        let result = try await MobileBatteryHelperReader(executor: executor, cycleTimeout: .milliseconds(300))
+            .read(selectedIDs: [.trustedDevice("slow"), .trustedDevice("fast")])
         #expect(result.snapshots.map(\.id) == ["fast"])
         #expect(result.failures.contains { $0.category == "cycle-timeout" })
     }
@@ -112,7 +176,9 @@ struct MobileBatteryHelperReaderTests {
             return Data(#"{"schemaVersion":1,"devices":[{"id":"w","parentID":"p","name":null,"model":"Watch7,1","batteryLevel":61,"isCharging":null,"transport":"network"}],"failures":[],"watchCandidates":[]}"#.utf8)
         }
 
-        let result = try await MobileBatteryHelperReader(executor: executor).read()
+        let result = try await MobileBatteryHelperReader(executor: executor).read(selectedIDs: [
+            .trustedDevice("p"), .trustedWatch(parentID: "p", id: "w")
+        ])
         let timeouts = await executor.recordedTimeouts
         let arguments = await executor.recordedArguments
         let watchTimeouts = zip(arguments, timeouts)
@@ -134,7 +200,7 @@ struct MobileBatteryHelperReaderTests {
             }
             throw MobileBatteryHelperError.processFailed
         }
-        let result = try await MobileBatteryHelperReader(executor: executor).read()
+        let result = try await MobileBatteryHelperReader(executor: executor).read(selectedIDs: [.trustedDevice("p")])
         let recorded = await executor.recordedArguments
         #expect(recorded.filter { $0.first == "--read-phone" }.map(\.last) == ["usb", "network"])
         #expect(result.snapshots.first?.batteryLevel == 55)
@@ -157,7 +223,10 @@ struct MobileBatteryHelperReaderTests {
             let watchID = arguments[3]
             return Data(#"{"schemaVersion":1,"devices":[{"id":"\#(watchID)","parentID":"\#(phoneID)","name":null,"model":"Watch7,1","batteryLevel":66,"isCharging":null,"transport":"usb"}],"failures":[],"watchCandidates":[]}"#.utf8)
         }
-        let result = try await MobileBatteryHelperReader(executor: executor).read()
+        let result = try await MobileBatteryHelperReader(executor: executor).read(selectedIDs: [
+            .trustedDevice("p1"), .trustedDevice("p2"),
+            .trustedWatch(parentID: "p1", id: "wp1"), .trustedWatch(parentID: "p2", id: "wp2")
+        ])
         #expect(result.snapshots.contains { $0.id == "p1" })
         #expect(result.snapshots.contains { $0.id == "p2" })
         #expect(result.snapshots.contains { $0.id == "wp2" })

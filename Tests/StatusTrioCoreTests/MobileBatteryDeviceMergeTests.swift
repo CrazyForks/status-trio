@@ -81,7 +81,7 @@ struct MobileBatteryDeviceMergeTests {
         ) == .set("applewatch"))
     }
 
-    @Test func modelEvidenceDoesNotChangeAClassifiedPairedWatchOwnership() {
+    @Test func sameNamedTrustedWatchDoesNotMergeWithPairedBluetoothWatch() {
         let pairedWatch = paired(id: "11-22", name: "Kitchen Watch", kind: .mobile(.watch))
         let watch = snapshot(id: "watch-1", parentID: "phone-1", name: "Kitchen Watch", model: "Watch7,1")
         let result = MobileBatteryDeviceMerge.merged(
@@ -89,13 +89,16 @@ struct MobileBatteryDeviceMergeTests {
             mobileSnapshots: [watch], fallbackWatchName: "Apple Watch"
         )
 
-        #expect(result.devices.count == 1)
+        #expect(result.devices.count == 2)
+        #expect(result.devices[0].id == pairedWatch.id)
         #expect(result.devices[0].isConnected)
         #expect(!result.devices[0].isReadOverTheAir)
-        #expect(BluetoothDeviceRowIcon.symbolName(for: result.devices[0]) == "applewatch")
+        #expect(result.devices[1].id == MobileBatteryDeviceMerge.externalDeviceID(for: watch.identity))
+        #expect(result.devices[1].isReadOverTheAir)
+        #expect(BluetoothDeviceRowIcon.symbolName(for: result.devices[0]) == "watch.analog")
     }
 
-    @Test func pairedBatteryWinnerKeepsItsValueWithoutMobileMetadata() {
+    @Test func sameNamedTrustedPhoneDoesNotTakePairedBluetoothBatteryOwnership() {
         let phone = paired(id: "AA-BB", name: "Lina’s iPhone", kind: .mobile(.phone))
         let pairedLevel = BluetoothBatteryLevel(deviceAddress: phone.id, main: 88, left: nil, right: nil, caseLevel: nil)
         let watchWithSameName = snapshot(id: "phone-1", name: "Lina’s iPhone", level: 31)
@@ -104,11 +107,12 @@ struct MobileBatteryDeviceMergeTests {
             mobileSnapshots: [watchWithSameName], fallbackWatchName: "Apple Watch"
         )
 
-        #expect(result.devices.count == 1)
+        #expect(result.devices.count == 2)
         #expect(result.batteryLevels["AABB"] == pairedLevel)
-        #expect(result.devices[0].kind == .mobile(.phone))
+        #expect(result.devices.first(where: { $0.id == phone.id })?.kind == .mobile(.phone))
         #expect(result.mobileMetadataByDeviceID[phone.id] == nil)
-        #expect(result.mobileDeviceIDs.contains(phone.id))
+        #expect(!result.mobileDeviceIDs.contains(phone.id))
+        #expect(result.devices.contains { $0.id == MobileBatteryDeviceMerge.externalDeviceID(for: watchWithSameName.identity) })
     }
 
     @Test func exactStableIdentityWinsWhenTheNameIsAmbiguous() {
@@ -166,7 +170,7 @@ struct MobileBatteryDeviceMergeTests {
         #expect(result.mobileDeviceIDs.contains(phone.id))
     }
 
-    @Test func uniqueBluetoothPhoneMatchUsesTrustedMobileLevelAndMetadata() {
+    @Test func sameNamedBluetoothPhoneDoesNotAbsorbTrustedMobileIdentity() {
         let blePhone = nearby(name: "Ling's iPhone", model: "iPhone14,3", level: 20)
         let snapshot = snapshot(id: "phone-1", name: "Ling's iPhone", level: 84)
         let result = MobileBatteryDeviceMerge.merged(
@@ -175,11 +179,38 @@ struct MobileBatteryDeviceMergeTests {
         )
 
         #expect(result.devices.count == 1)
-        #expect(result.devices[0].id == blePhone.id.uuidString)
-        #expect(result.devices[0].isReadOverTheAir)
-        #expect(result.batteryLevels.values.first?.main == 84)
-        #expect(result.mobileMetadataByDeviceID[blePhone.id.uuidString] == snapshot)
-        #expect(result.remainingNearby.isEmpty)
+        #expect(result.devices[0].id == MobileBatteryDeviceMerge.externalDeviceID(for: snapshot.identity))
+        #expect(result.batteryLevels[BluetoothBatteryReader.normalizedAddress(result.devices[0].id)]?.main == 84)
+        #expect(result.mobileMetadataByDeviceID[result.devices[0].id] == snapshot)
+        #expect(result.remainingNearby == [blePhone])
+    }
+
+    @Test func trustedMobileIdentityNeverMergesWithPairedBluetoothDeviceByName() {
+        let paired = paired(id: "AA-BB-CC", name: "Shared iPhone", kind: .mobile(.phone))
+        let trusted = snapshot(id: "phone-1", name: "Shared iPhone")
+        let result = MobileBatteryDeviceMerge.merged(
+            devices: [paired], batteryLevels: [:], nearbyDevices: [],
+            mobileSnapshots: [trusted], fallbackWatchName: "Apple Watch"
+        )
+
+        #expect(result.devices.count == 2)
+        #expect(result.devices.contains { $0.id == paired.id && !$0.isReadOverTheAir })
+        #expect(result.devices.contains { $0.id == MobileBatteryDeviceMerge.externalDeviceID(for: trusted.identity) })
+        #expect(result.mobileMetadataByDeviceID[paired.id] == nil)
+    }
+
+    @Test func trustedMobileIdentityNeverMergesWithNearbyBluetoothDeviceByName() {
+        let nearby = nearby(name: "Shared iPhone", model: "iPhone14,3", level: 20)
+        let trusted = snapshot(id: "phone-1", name: "Shared iPhone", level: 84)
+        let result = MobileBatteryDeviceMerge.merged(
+            devices: [], batteryLevels: [:], nearbyDevices: [nearby],
+            mobileSnapshots: [trusted], fallbackWatchName: "Apple Watch"
+        )
+
+        #expect(result.devices.count == 1)
+        #expect(result.devices[0].id == MobileBatteryDeviceMerge.externalDeviceID(for: trusted.identity))
+        #expect(result.batteryLevels[BluetoothBatteryReader.normalizedAddress(result.devices[0].id)]?.main == 84)
+        #expect(result.remainingNearby == [nearby])
     }
 
     @Test func sameNameAcrossPhoneAndWatchFamiliesDoesNotMerge() {

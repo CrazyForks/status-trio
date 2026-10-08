@@ -217,6 +217,18 @@ static int NativeCopyPhoneValues(void *context, void *session, NSDictionary **va
     return 0;
 }
 
+static int NativeCopyPhoneMetadata(void *context, void *session, NSDictionary **values) {
+    (void)context;
+    STNativeSession *handle = session;
+    if (!handle) return -1;
+    NSMutableDictionary *result = [NSMutableDictionary dictionary];
+    CopyLockdownValue(handle->lockdown->client, NULL, "DeviceName", result);
+    CopyLockdownValue(handle->lockdown->client, NULL, "ProductType", result);
+    CopyLockdownValue(handle->lockdown->client, NULL, "DeviceClass", result);
+    *values = [result copy];
+    return 0;
+}
+
 static int NativeCreateCompanion(void *context, void *session, void **companion) {
     (void)context;
     if (!session) return -1;
@@ -296,6 +308,7 @@ STMobileBatteryNativeAPI STMobileBatteryProductionAPI(void) {
         .freeSession = NativeFreeSession,
         .freeLockdownClient = NativeFreeLockdown,
         .copyPhoneValues = NativeCopyPhoneValues,
+        .copyPhoneMetadata = NativeCopyPhoneMetadata,
         .createCompanionClient = NativeCreateCompanion,
         .copyCompanionIdentifiers = NativeCopyCompanionIdentifiers,
         .copyCompanionValues = NativeCopyCompanionValues,
@@ -333,6 +346,10 @@ int main(int argc, const char *argv[]) {
             NSString *identifier = [NSString stringWithUTF8String:argv[2]];
             NSString *transport = [NSString stringWithUTF8String:argv[4]];
             if (IsTransport(transport)) payload = STMobileBatteryCopyPhone(api, identifier, transport, &error);
+        } else if (argc == 5 && strcmp(argv[1], "--discover-device") == 0 && strcmp(argv[3], "--transport") == 0) {
+            NSString *identifier = [NSString stringWithUTF8String:argv[2]];
+            NSString *transport = [NSString stringWithUTF8String:argv[4]];
+            if (IsTransport(transport)) payload = STMobileBatteryCopyDiscovery(api, identifier, transport, &error);
         } else if (argc == 7 && strcmp(argv[1], "--read-watch") == 0 && strcmp(argv[3], "--watch-id") == 0 && strcmp(argv[5], "--transport") == 0) {
             NSString *phoneIdentifier = [NSString stringWithUTF8String:argv[2]];
             NSString *watchIdentifier = [NSString stringWithUTF8String:argv[4]];

@@ -1,6 +1,5 @@
 "menu.version" = "Status Trio %@";
 "menu.settings" = "Настройки…";
-"menu.settings.development" = "Версия для разработки · %@";
 "menu.quit" = "Завершить Status Trio";
 "menu.about" = "О программе «%@»";
 "menu.hide" = "Скрыть %@";
@@ -70,8 +69,6 @@
 "settings.bluetooth.networkErrorPriorityDescription" = "При ошибке подключения или отсутствии сети остаётся значок сети вместо устройства Bluetooth.";
 "settings.bluetooth.batteryLevels" = "Показывать заряд устройств Bluetooth";
 "settings.bluetooth.batteryLevelsDescription" = "Заряд AirPods считывается, пока показан пункт Bluetooth. Дополнительный запрос разрешения не появляется.";
-"settings.bluetooth.nearbyBatteryDevices" = "Показывать заряд ближайших BLE-устройств";
-"settings.bluetooth.nearbyBatteryDevicesDescription" = "Если показ заряда Bluetooth включён, при открытой панели состояния выполняется поиск ближайших BLE-устройств со стандартной службой Battery Service. Поддержка зависит от устройства.";
 "settings.bluetooth.listeningModePreview" = "Предпросмотр переключателя режима прослушивания";
 "settings.bluetooth.listeningModePreviewDescription" = "Показывать переключатели режима на всех подключённых AirPods для проверки интерфейса. Нажатие анимируется как на настоящем устройстве, но ничего в AirPods не меняет.";
 "settings.bluetooth.listeningModePreviewDeviceName" = "Имя устройства предпросмотра";
@@ -389,9 +386,6 @@
 "wifi.summary.band" = "%@ GHz";
 "wifi.summary.signal" = "%d dBm";
 "wifi.summary.bandAndSignal" = "%@ · %@";
-"settings.bluetooth.hideUnpairedDevices" = "Скрывать устройства, отсутствующие в Системных настройках";
-"settings.bluetooth.hideUnpairedDevicesDescription" = "Скрывает отсканированные, но не сопряжённые устройства, которых нет в системе. Выключите, чтобы показать все.";
-"settings.bluetooth.notInSystemSettings" = "Отсутствует в Системных настройках";
 "settings.bluetooth.hideDevice" = "Скрыть устройство";
 "settings.bluetooth.showDevice" = "Показать устройство";
 "settings.bluetooth.permissionRequired" = "Требуется разрешение Bluetooth";
@@ -405,11 +399,17 @@
 "bluetooth.listeningMode.changeFailed" = "Не удалось изменить режим прослушивания.";
 "bluetooth.listeningMode.accessibility" = "Режим прослушивания";
 
-"settings.bluetooth.mobileBatteryDevices" = "Заряд iPhone и Apple Watch";
-"settings.bluetooth.mobileBatteryDevicesDescription" = "Данные считываются через доверенный iPhone по USB или Wi‑Fi. Один раз подключите iPhone кабелем и нажмите «Доверять». Для беспроводного чтения должна быть настроена синхронизация по Wi‑Fi.";
 "mobileBattery.watchFallbackName" = "Apple Watch";
 "mobileBattery.watchSource" = "Через iPhone";
 "mobileBattery.updatedAt" = "Обновлено %@";
 "mobileBattery.charging" = "Заряжается";
 "mobileBattery.trustRequired" = "Подключите iPhone кабелем и нажмите «Доверять», чтобы считать заряд сопряжённых Apple Watch.";
-"mobileBattery.unavailable" = "Не удалось обновить заряд iPhone и Apple Watch.";
+"mobileBattery.unavailable" = "Не удалось обновить заряд iPhone и Apple Watch через USB или Wi-Fi.";
+"bluetooth.nearbyBLE.notNearby" = "Не поблизости";
+"bluetooth.nearbyBLE.unavailable" = "Временно недоступно";
+"settings.appleDevicesAndBattery" = "Показывать устройства Apple и заряд";
+"settings.appleDevicesAndBattery.description" = "Доверенные и находящиеся рядом устройства Apple с именами отображаются в списке Bluetooth.";
+"settings.appleBackgroundRefresh" = "Обновлять заряд Apple в фоновом режиме";
+"settings.appleBackgroundRefresh.description" = "Обновляет заряд выбранных устройств Apple, когда панель закрыта.";
+"settings.appleBackgroundRefresh.interval" = "Интервал фонового обновления заряда";
+"settings.appleBackgroundRefresh.intervalValue" = "%d мин.";
