@@ -108,6 +108,25 @@ struct MobileBatteryHelperReaderTests {
         #expect(result.snapshots.count == 16)
     }
 
+    @Test func selectedWatchStartsBeforeUnrelatedPhoneReadsFinish() async throws {
+        let executor = FairSchedulingMobileBatteryExecutor()
+        let reader = MobileBatteryHelperReader(executor: executor)
+        let readTask = Task {
+            try await reader.read(selectedIDs: [
+                .trustedDevice("p1"), .trustedDevice("p2"), .trustedDevice("p3"),
+                .trustedWatch(parentID: "p1", id: "w1")
+            ])
+        }
+
+        let watchStartedBeforePhoneRelease = await executor.waitForWatchOrBlockedPhonePair()
+        await executor.releasePhones()
+        let result = try await readTask.value
+
+        #expect(watchStartedBeforePhoneRelease, "a requested Watch must start before two unrelated phone jobs can occupy the workers")
+        #expect(result.snapshots.contains { $0.identity == "watch:p1:w1" })
+        #expect(await executor.maximumConcurrentRuns <= 2)
+    }
+
     @Test func onePhoneTimeoutDoesNotDiscardAnotherPhonesSnapshot() async throws {
         let executor = ScriptedMobileBatteryExecutor { arguments in
             if arguments == ["--list"] {
@@ -350,5 +369,68 @@ private actor ScriptedMobileBatteryExecutor: MobileBatteryHelperExecuting {
         maximumConcurrentRuns = max(maximumConcurrentRuns, activeRuns)
         defer { activeRuns -= 1 }
         return try await handler(arguments)
+    }
+}
+
+private actor FairSchedulingMobileBatteryExecutor: MobileBatteryHelperExecuting {
+    private var phoneContinuations: [String: CheckedContinuation<Data, any Error>] = [:]
+    private var schedulingDecisionWaiters: [CheckedContinuation<Bool, Never>] = []
+    private var watchStarted = false
+    private var phonesReleased = false
+    private var activeRuns = 0
+    private(set) var maximumConcurrentRuns = 0
+
+    func run(arguments: [String], timeout: Duration) async throws -> Data {
+        activeRuns += 1
+        maximumConcurrentRuns = max(maximumConcurrentRuns, activeRuns)
+        defer { activeRuns -= 1 }
+
+        if arguments == ["--list"] {
+            return Data(#"{"schemaVersion":1,"phones":[{"id":"p1","transport":"usb"},{"id":"p2","transport":"usb"},{"id":"p3","transport":"usb"}]}"#.utf8)
+        }
+
+        if arguments.first == "--read-phone" {
+            let phoneID = arguments[1]
+            if phonesReleased { return Self.phoneData(id: phoneID) }
+            return try await withCheckedThrowingContinuation { continuation in
+                phoneContinuations[phoneID] = continuation
+                resumeSchedulingDecisionIfReady()
+            }
+        }
+
+        if arguments.first == "--read-watch" {
+            watchStarted = true
+            resumeSchedulingDecisionIfReady()
+            return Data(#"{"schemaVersion":1,"devices":[{"id":"w1","parentID":"p1","name":"Watch","model":"Watch7,4","batteryLevel":62,"isCharging":false,"transport":"usb"}],"failures":[],"watchCandidates":[]}"#.utf8)
+        }
+
+        throw MobileBatteryHelperError.processFailed
+    }
+
+    func waitForWatchOrBlockedPhonePair() async -> Bool {
+        if watchStarted { return true }
+        if phoneContinuations.count >= 2 { return false }
+        return await withCheckedContinuation { schedulingDecisionWaiters.append($0) }
+    }
+
+    func releasePhones() {
+        phonesReleased = true
+        let pending = phoneContinuations
+        phoneContinuations.removeAll()
+        for (phoneID, continuation) in pending {
+            continuation.resume(returning: Self.phoneData(id: phoneID))
+        }
+    }
+
+    private func resumeSchedulingDecisionIfReady() {
+        guard watchStarted || phoneContinuations.count >= 2 else { return }
+        let result = watchStarted
+        let waiters = schedulingDecisionWaiters
+        schedulingDecisionWaiters.removeAll()
+        for waiter in waiters { waiter.resume(returning: result) }
+    }
+
+    private static func phoneData(id: String) -> Data {
+        Data(#"{"schemaVersion":1,"devices":[{"id":"\#(id)","parentID":null,"name":"Phone","model":"iPhone17,1","batteryLevel":55,"isCharging":false,"transport":"usb"}],"failures":[],"watchCandidates":[]}"#.utf8)
     }
 }
