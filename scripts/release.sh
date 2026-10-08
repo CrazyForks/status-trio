@@ -38,6 +38,7 @@ VERSION="${VERSION:-$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionStr
 BUILD="${BUILD:-$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$ROOT/Support/Info.plist")}"
 TAG="${TAG:-v$VERSION}"
 PUBLISH="${PUBLISH:-true}"
+NOTARIZE="${NOTARIZE:-false}"
 UNIVERSAL_BUILD="${UNIVERSAL_BUILD:-1}"
 OUTPUT_DIR="${OUTPUT_DIR:-$ROOT/dist}"
 SU_FEED_URL="${SU_FEED_URL:-https://raw.githubusercontent.com/$RELEASE_REPO/$RELEASE_BRANCH/$APPCAST_FILE}"
@@ -62,6 +63,22 @@ case "$PUBLISH" in
         exit 2
         ;;
 esac
+
+case "$NOTARIZE" in
+    true|false) ;;
+    *) echo "Error: NOTARIZE must be true or false." >&2; exit 2 ;;
+esac
+
+if [[ "$NOTARIZE" == "true" ]]; then
+    if [[ "$PUBLISH" != "false" ]]; then
+        echo "Error: NOTARIZE=true requires PUBLISH=false; notarized CI test builds cannot publish." >&2
+        exit 2
+    fi
+    if [[ "$CODE_SIGN_IDENTITY" != "Developer ID Application: "* || -z "$NOTARY_PROFILE" ]]; then
+        echo "Error: NOTARIZE=true requires a Developer ID Application identity and NOTARY_PROFILE." >&2
+        exit 2
+    fi
+fi
 
 case "$UNIVERSAL_BUILD" in
     0|1) ;;
@@ -166,6 +183,35 @@ mkdir -p "$STAGING_DIR"
 ditto "$ROOT/dist/StatusTrio.app" "$STAGING_DIR/$APP_NAME.app"
 ln -s /Applications "$STAGING_DIR/Applications"
 
+submit_for_notarization() {
+    local artifact="$1"
+    local result="$TEMP_ROOT/notary-result.json"
+    if [[ -n "$KEYCHAIN_PATH" ]]; then
+        xcrun notarytool submit "$artifact" \
+            --keychain-profile "$NOTARY_PROFILE" \
+            --keychain "$KEYCHAIN_PATH" \
+            --wait --output-format json > "$result"
+    else
+        xcrun notarytool submit "$artifact" \
+            --keychain-profile "$NOTARY_PROFILE" \
+            --wait --output-format json > "$result"
+    fi
+    ruby -rjson -e '
+        result = JSON.parse(File.read(ARGV[0]))
+        abort("Error: notarization was not Accepted (status: #{result["status"]}).") unless result["status"] == "Accepted"
+    ' "$result"
+}
+
+if [[ -n "$NOTARY_PROFILE" ]]; then
+    # Give the app its own offline ticket before sealing it inside the DMG.
+    # The app archive and final signed container are distinct submissions.
+    APP_ARCHIVE="$TEMP_ROOT/app.zip"
+    ditto -c -k --keepParent "$STAGING_DIR/$APP_NAME.app" "$APP_ARCHIVE"
+    submit_for_notarization "$APP_ARCHIVE"
+    xcrun stapler staple "$STAGING_DIR/$APP_NAME.app"
+    xcrun stapler validate "$STAGING_DIR/$APP_NAME.app"
+fi
+
 DMG_PATH="$OUTPUT_DIR/$DMG_BASENAME-$VERSION.dmg"
 rm -f "$DMG_PATH" "$DMG_PATH.sha256"
 
@@ -178,12 +224,19 @@ hdiutil create \
     "$DMG_PATH"
 
 if [[ -n "$NOTARY_PROFILE" ]]; then
+    DMG_SIGN_ARGS=(--force --sign "$CODE_SIGN_IDENTITY" --timestamp)
+    if [[ -n "$KEYCHAIN_PATH" ]]; then
+        DMG_SIGN_ARGS+=(--keychain "$KEYCHAIN_PATH")
+    fi
+    /usr/bin/codesign "${DMG_SIGN_ARGS[@]}" "$DMG_PATH"
+    /usr/bin/codesign --verify --strict --verbose=2 "$DMG_PATH"
     echo "Submitting $DMG_PATH for notarization..."
-    xcrun notarytool submit "$DMG_PATH" \
-        --keychain-profile "$NOTARY_PROFILE" \
-        --wait
+    submit_for_notarization "$DMG_PATH"
     xcrun stapler staple "$DMG_PATH"
     xcrun stapler validate "$DMG_PATH"
+    # Assess without user interaction; a failed assessment fails the build.
+    spctl --assess --type open --context context:primary-signature --verbose=2 "$DMG_PATH"
+    spctl --assess --type execute --verbose=2 "$STAGING_DIR/$APP_NAME.app"
 fi
 
 SPARKLE_PRIVATE_KEY="${SPARKLE_PRIVATE_KEY:-}"

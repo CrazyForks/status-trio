@@ -5,6 +5,8 @@ import Foundation
 final class MobileBatteryController: ObservableObject {
     private static let refreshInterval: Duration = .seconds(60)
     private static let cacheLifetime: TimeInterval = 1_200
+    private static let initialWatchRetryInterval: Duration = .seconds(60)
+    private static let maximumInitialWatchRetries = 3
 
     @Published private(set) var snapshots: [MobileBatterySnapshot] = []
     @Published private(set) var failures: [MobileBatteryReadFailure] = []
@@ -16,6 +18,7 @@ final class MobileBatteryController: ObservableObject {
     private var claims: Set<String> = []
     private var authorizedDeviceIDs: Set<AppleDeviceID> = []
     private var backgroundAuthorizedDeviceIDs: Set<AppleDeviceID> = []
+    private var initialWatchRetryAttempts: [AppleDeviceID: Int] = [:]
     private var isSurfaceVisible = false
     private var isReadingEnabled = true
     private var isBackgroundRefreshEnabled = false
@@ -23,9 +26,10 @@ final class MobileBatteryController: ObservableObject {
     private var isStopped = false
     private var generation: UInt64 = 0
     private var readTask: Task<Void, Never>?
-    private var activeReadIDs: Set<AppleDeviceID> = []
+    private var activeReadDemandIDs: Set<AppleDeviceID> = []
     private var refreshTask: Task<Void, Never>?
     private var expiryTask: Task<Void, Never>?
+    private var nextFullRefreshDate: Date?
 
     init(
         reader: any MobileBatteryReading = MobileBatteryHelperReader(),
@@ -72,7 +76,9 @@ final class MobileBatteryController: ObservableObject {
     func setAuthorizedDeviceIDs(_ ids: Set<AppleDeviceID>) {
         guard !isStopped, authorizedDeviceIDs != ids else { return }
         let wasEnabled = isEnabled
+        let previousAuthorization = authorizedDeviceIDs.union(backgroundAuthorizedDeviceIDs)
         authorizedDeviceIDs = ids
+        reconcileInitialWatchRetryState(previousAuthorization: previousAuthorization)
         failures.removeAll { failure in
             guard let deviceID = failure.deviceID else { return true }
             return !ids.contains { id in id.matchesHelperIdentifier(deviceID) }
@@ -82,7 +88,9 @@ final class MobileBatteryController: ObservableObject {
 
     func setBackgroundAuthorizedDeviceIDs(_ ids: Set<AppleDeviceID>) {
         guard !isStopped, backgroundAuthorizedDeviceIDs != ids else { return }
+        let previousAuthorization = authorizedDeviceIDs.union(backgroundAuthorizedDeviceIDs)
         backgroundAuthorizedDeviceIDs = ids
+        reconcileInitialWatchRetryState(previousAuthorization: previousAuthorization)
         updateLifecycle()
     }
 
@@ -96,6 +104,7 @@ final class MobileBatteryController: ObservableObject {
         }
         authorizedDeviceIDs.subtract(ids)
         backgroundAuthorizedDeviceIDs.subtract(ids)
+        for id in ids { initialWatchRetryAttempts.removeValue(forKey: id) }
         updateLifecycle()
     }
 
@@ -122,6 +131,7 @@ final class MobileBatteryController: ObservableObject {
         guard isBackgroundRefreshEnabled != enabled || backgroundRefreshInterval != interval else { return }
         isBackgroundRefreshEnabled = enabled
         backgroundRefreshInterval = interval
+        nextFullRefreshDate = clock().addingTimeInterval(Self.timeInterval(for: configuredRefreshInterval))
         updateLifecycle()
     }
 
@@ -163,7 +173,7 @@ final class MobileBatteryController: ObservableObject {
 
     private func updateLifecycle() {
         if hasReadDemand {
-            if readTask != nil, activeReadIDs == effectiveReadIDs { return }
+            if readTask != nil, activeReadDemandIDs == effectiveReadIDs { return }
             beginRead(superseding: true)
         } else {
             cancelActiveWork()
@@ -174,13 +184,13 @@ final class MobileBatteryController: ObservableObject {
         generation &+= 1
         readTask?.cancel()
         readTask = nil
-        activeReadIDs = []
+        activeReadDemandIDs = []
         isRefreshing = false
         refreshTask?.cancel()
         refreshTask = nil
     }
 
-    private func beginRead(superseding: Bool) {
+    private func beginRead(superseding: Bool, selectedIDs requestedIDs: Set<AppleDeviceID>? = nil) {
         guard !isStopped, hasReadDemand else { return }
         if superseding {
             generation &+= 1
@@ -194,34 +204,41 @@ final class MobileBatteryController: ObservableObject {
 
         let readGeneration = generation
         let reader = self.reader
-        let selectedIDs = effectiveReadIDs
-        activeReadIDs = selectedIDs
+        let selectedIDs = requestedIDs ?? effectiveReadIDs
+        guard !selectedIDs.isEmpty else { return }
+        activeReadDemandIDs = effectiveReadIDs
         isRefreshing = true
         readTask = Task { [weak self, reader] in
             do {
                 let result = try await reader.read(selectedIDs: selectedIDs)
                 guard !Task.isCancelled else { return }
-                self?.finishRead(result, generation: readGeneration)
+                self?.finishRead(result, requestedIDs: selectedIDs, generation: readGeneration)
             } catch {
                 guard !Task.isCancelled else { return }
                 self?.finishRead(
                     MobileBatteryReadResult(failures: [MobileBatteryReadFailure(category: "read-failed", deviceID: nil)]),
+                    requestedIDs: selectedIDs,
                     generation: readGeneration
                 )
             }
         }
     }
 
-    private func finishRead(_ result: MobileBatteryReadResult, generation readGeneration: UInt64) {
+    private func finishRead(
+        _ result: MobileBatteryReadResult,
+        requestedIDs: Set<AppleDeviceID>,
+        generation readGeneration: UInt64
+    ) {
         guard !isStopped, readGeneration == generation, hasReadDemand else { return }
-        let currentIdentities = Set(effectiveReadIDs.map(\.readIdentity))
-        let snapshots = result.snapshots.filter { currentIdentities.contains($0.identity) }
+        let acceptedReadIDs = requestedIDs.intersection(effectiveReadIDs)
+        let requestedIdentities = Set(acceptedReadIDs.map(\.readIdentity))
+        let snapshots = result.snapshots.filter { requestedIdentities.contains($0.identity) }
         readTask = nil
-        activeReadIDs = []
+        activeReadDemandIDs = []
         isRefreshing = false
         failures = result.failures.filter { failure in
             guard let deviceID = failure.deviceID else { return false }
-            return effectiveReadIDs.contains { $0.matchesHelperIdentifier(deviceID) }
+            return acceptedReadIDs.contains { $0.matchesHelperIdentifier(deviceID) }
         }
 
         if !snapshots.isEmpty {
@@ -231,22 +248,79 @@ final class MobileBatteryController: ObservableObject {
             }
             self.snapshots = byIdentity.values.sorted { $0.identity < $1.identity }
         }
+        for snapshot in snapshots {
+            guard let parentID = snapshot.parentID else { continue }
+            let id = AppleDeviceID.trustedWatch(parentID: parentID, id: snapshot.id)
+            initialWatchRetryAttempts.removeValue(forKey: id)
+        }
         pruneExpiredSnapshots()
         scheduleExpiry()
+        if requestedIDs == effectiveReadIDs {
+            nextFullRefreshDate = clock().addingTimeInterval(Self.timeInterval(for: configuredRefreshInterval))
+        }
         scheduleNextRefresh(generation: readGeneration)
     }
 
     private func scheduleNextRefresh(generation readGeneration: UInt64) {
         guard !isStopped, readGeneration == generation, hasReadDemand else { return }
         let sleep = self.sleep
-        let interval = isBackgroundRefreshEnabled ? backgroundRefreshInterval : Self.refreshInterval
-        refreshTask = Task { [weak self, sleep] in
+        pruneExpiredSnapshots()
+        let missingWatches = missingAuthorizedWatchesNeedingRetry
+        let configuredInterval = configuredRefreshInterval
+        let fullRefreshDate = nextFullRefreshDate ?? clock().addingTimeInterval(Self.timeInterval(for: configuredInterval))
+        let remainingFullRefresh = max(0, fullRefreshDate.timeIntervalSince(clock()))
+        let retryInterval = Self.timeInterval(for: Self.initialWatchRetryInterval)
+        let fullRefreshIsNext = missingWatches.isEmpty || remainingFullRefresh <= retryInterval
+        let interval = fullRefreshIsNext
+            ? .milliseconds(Int64(ceil(remainingFullRefresh * 1_000)))
+            : Self.initialWatchRetryInterval
+        refreshTask = Task { [weak self, sleep, interval, fullRefreshIsNext] in
             do { try await sleep(interval) }
             catch { return }
             guard !Task.isCancelled else { return }
             guard let self, self.generation == readGeneration, self.hasReadDemand else { return }
             self.refreshTask = nil
-            self.beginRead(superseding: false)
+            if !fullRefreshIsNext {
+                let retryIDs = self.missingAuthorizedWatchesNeedingRetry
+                guard !retryIDs.isEmpty else {
+                    self.beginRead(superseding: false)
+                    return
+                }
+                for id in retryIDs {
+                    self.initialWatchRetryAttempts[id, default: 0] += 1
+                }
+                self.beginRead(superseding: false, selectedIDs: retryIDs)
+            } else {
+                self.beginRead(superseding: false)
+            }
+        }
+    }
+
+    private var configuredRefreshInterval: Duration {
+        isBackgroundRefreshEnabled ? backgroundRefreshInterval : Self.refreshInterval
+    }
+
+    private static func timeInterval(for duration: Duration) -> TimeInterval {
+        let components = duration.components
+        return Double(components.seconds) + Double(components.attoseconds) / 1_000_000_000_000_000_000
+    }
+
+    private var missingAuthorizedWatchesNeedingRetry: Set<AppleDeviceID> {
+        let cachedWatchIdentities = Set(snapshots.map(\.identity))
+        return Set(effectiveReadIDs.filter { id in
+            guard case .trustedWatch = id,
+                  !cachedWatchIdentities.contains(id.readIdentity),
+                  (initialWatchRetryAttempts[id] ?? 0) < Self.maximumInitialWatchRetries else { return false }
+            return true
+        })
+    }
+
+    private func reconcileInitialWatchRetryState(previousAuthorization: Set<AppleDeviceID>) {
+        let currentAuthorization = authorizedDeviceIDs.union(backgroundAuthorizedDeviceIDs)
+        initialWatchRetryAttempts = initialWatchRetryAttempts.filter { currentAuthorization.contains($0.key) }
+        for id in currentAuthorization.subtracting(previousAuthorization) {
+            guard case .trustedWatch = id else { continue }
+            initialWatchRetryAttempts.removeValue(forKey: id)
         }
     }
 

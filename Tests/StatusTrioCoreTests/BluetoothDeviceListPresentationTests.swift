@@ -126,6 +126,15 @@ final class BluetoothDeviceListPresentationTests: XCTestCase {
         XCTAssertEqual(BluetoothDeviceListPresentation.externalBatteryStatus(
             for: device, canonicalStatus: .battery(18), nearbyStatus: .battery(20), appleStatus: nil
         ), .battery(18))
+        XCTAssertEqual(BluetoothDeviceListPresentation.externalBatteryStatus(
+            for: device, canonicalStatus: nil, nearbyStatus: .pending, appleStatus: nil
+        ), .pending)
+        XCTAssertNil(BluetoothDeviceListPresentation.externalBatteryStatus(
+            for: device, canonicalStatus: nil, nearbyStatus: .unavailable, appleStatus: nil
+        ))
+        XCTAssertNil(BluetoothDeviceListPresentation.externalBatteryStatus(
+            for: device, canonicalStatus: nil, nearbyStatus: .notNearby, appleStatus: nil
+        ))
     }
 
     func testSettingsProjectionUsesSharedPairingAndAliasAwareOrdering() {

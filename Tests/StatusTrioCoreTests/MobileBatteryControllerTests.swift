@@ -3,6 +3,27 @@ import XCTest
 
 @MainActor
 final class MobileBatteryControllerTests: XCTestCase {
+    func testSleeperWaitsThrowWhenTheRequestedStateNeverArrives() async {
+        let sleeper = ControlledMobileBatterySleeper()
+        for operation in 0..<3 {
+            do {
+                switch operation {
+                case 0:
+                    try await sleeper.waitForDuration(.seconds(600), timeout: .zero)
+                case 1:
+                    try await sleeper.waitForRequestCount(1, duration: .seconds(600), timeout: .zero)
+                default:
+                    try await sleeper.waitForActiveRequestCount(1, duration: .seconds(600), timeout: .zero)
+                }
+                XCTFail("Sleeper wait \(operation) returned without observing its requested state.")
+            } catch is ControlledMobileBatterySleeper.WaitTimeout {
+                // A missing scheduler event must fail rather than silently continue.
+            } catch {
+                XCTFail("Unexpected sleeper wait error: \(error)")
+            }
+        }
+    }
+
     func testClaimsAndSurfaceMustBothBeActiveToRead() async {
         let reader = ControlledMobileBatteryReader()
         let controller = MobileBatteryController(reader: reader)
@@ -58,7 +79,7 @@ final class MobileBatteryControllerTests: XCTestCase {
         await reader.finishAll()
     }
 
-    func testBackgroundRefreshUsesConfiguredIntervalWithoutOverlappingRead() async {
+    func testBackgroundRefreshUsesConfiguredIntervalWithoutOverlappingRead() async throws {
         let reader = ControlledMobileBatteryReader()
         let sleeper = ControlledMobileBatterySleeper()
         let controller = MobileBatteryController(
@@ -70,7 +91,7 @@ final class MobileBatteryControllerTests: XCTestCase {
         await waitUntil { await reader.readCount == 1 }
         await reader.complete(0, with: result(level: 42))
         await waitUntil { !controller.isRefreshing }
-        await sleeper.waitForDuration(.seconds(120))
+        try await sleeper.waitForDuration(.seconds(120))
 
         let countBeforeTick = await reader.readCount
         XCTAssertEqual(countBeforeTick, 1)
@@ -83,6 +104,374 @@ final class MobileBatteryControllerTests: XCTestCase {
         await settle()
         let readCountAfterCancelledCadence = await reader.readCount
         XCTAssertEqual(readCountAfterCancelledCadence, readCountAfterDisable)
+        controller.stop()
+        await reader.finishAll()
+    }
+
+    func testSuccessfulWatchKeepsConfiguredBackgroundInterval() async throws {
+        let reader = ControlledMobileBatteryReader()
+        let sleeper = ControlledMobileBatterySleeper()
+        let controller = MobileBatteryController(
+            reader: reader,
+            sleep: { duration in try await sleeper.sleep(duration) }
+        )
+        let selected: Set<AppleDeviceID> = [.trustedDevice("phone-a"), .trustedWatch(parentID: "phone-a", id: "watch-a")]
+        controller.setAuthorizedDeviceIDs(selected)
+        controller.setBackgroundAuthorizedDeviceIDs(selected)
+        controller.setBackgroundRefresh(enabled: true, interval: .seconds(600))
+        await waitUntil { await reader.readCount == 1 }
+
+        await reader.complete(0, with: MobileBatteryReadResult(snapshots: [
+            snapshot(level: 42, at: Date()), watchSnapshot(id: "watch-a", parentID: "phone-a", level: 68)
+        ]))
+        await waitUntil { controller.snapshots.count == 2 }
+        try await sleeper.waitForDuration(.seconds(600))
+
+        let earlyRetryRequests = await sleeper.requestCount(for: .seconds(60))
+        let normalRefreshRequests = await sleeper.requestCount(for: .seconds(600))
+        XCTAssertEqual(earlyRetryRequests, 0)
+        XCTAssertEqual(normalRefreshRequests, 1)
+        controller.stop()
+        await reader.finishAll()
+    }
+
+    func testMissingWatchWithValidCachedSnapshotKeepsConfiguredInterval() async throws {
+        let reader = ControlledMobileBatteryReader()
+        let sleeper = ControlledMobileBatterySleeper()
+        let controller = MobileBatteryController(
+            reader: reader,
+            sleep: { duration in try await sleeper.sleep(duration) }
+        )
+        let watch = AppleDeviceID.trustedWatch(parentID: "phone-a", id: "watch-a")
+        controller.setAuthorizedDeviceIDs([watch])
+        controller.setBackgroundRefresh(enabled: true, interval: .seconds(600))
+        await waitUntil { await reader.readCount == 1 }
+
+        await reader.complete(0, with: MobileBatteryReadResult(snapshots: [
+            watchSnapshot(id: "watch-a", parentID: "phone-a", level: 68)
+        ]))
+        await waitUntil { controller.snapshots.count == 1 }
+        try await sleeper.waitForDuration(.seconds(600))
+        await sleeper.fire(duration: .seconds(600))
+        await waitUntil { await reader.readCount == 2 }
+        await reader.complete(1, with: MobileBatteryReadResult(
+            failures: [MobileBatteryReadFailure(category: "read-failed", deviceID: "watch-a")]
+        ))
+        await waitUntil { !controller.isRefreshing }
+        try await sleeper.waitForRequestCount(1, duration: .seconds(600))
+
+        let earlyRetryRequests = await sleeper.requestCount(for: .seconds(60))
+        XCTAssertEqual(earlyRetryRequests, 0)
+        let configuredRefreshRequests = await sleeper.requestCount(for: .seconds(600))
+        XCTAssertEqual(configuredRefreshRequests, 2)
+        controller.stop()
+        await reader.finishAll()
+    }
+
+    func testMissingWatchSchedulesOneMinuteRetryInsteadOfConfiguredBackgroundInterval() async throws {
+        let reader = ControlledMobileBatteryReader()
+        let sleeper = ControlledMobileBatterySleeper()
+        let controller = MobileBatteryController(
+            reader: reader,
+            sleep: { duration in try await sleeper.sleep(duration) }
+        )
+        controller.setAuthorizedDeviceIDs([.trustedWatch(parentID: "phone-a", id: "watch-a")])
+        controller.setBackgroundRefresh(enabled: true, interval: .seconds(600))
+        await waitUntil { await reader.readCount == 1 }
+        await reader.complete(0, with: MobileBatteryReadResult(
+            failures: [MobileBatteryReadFailure(category: "read-failed", deviceID: "watch-a")]
+        ))
+        await waitUntil { !controller.isRefreshing }
+
+        try await sleeper.waitForDuration(.seconds(60))
+        let retryRequests = await sleeper.requestCount(for: .seconds(60))
+        let configuredRequests = await sleeper.requestCount(for: .seconds(600))
+        XCTAssertEqual(retryRequests, 1)
+        XCTAssertEqual(configuredRequests, 0)
+
+        controller.stop()
+        await reader.finishAll()
+    }
+
+    func testWatchOnlyRetriesDoNotPostponeConfiguredFullRefreshDeadline() async throws {
+        let reader = ControlledMobileBatteryReader()
+        let sleeper = ControlledMobileBatterySleeper()
+        let now = MutableDate(Date(timeIntervalSince1970: 60_000))
+        let controller = MobileBatteryController(
+            reader: reader,
+            clock: { now.value },
+            sleep: { duration in try await sleeper.sleep(duration) }
+        )
+        let phone = AppleDeviceID.trustedDevice("phone-a")
+        let watch = AppleDeviceID.trustedWatch(parentID: "phone-a", id: "watch-a")
+        let selected: Set<AppleDeviceID> = [phone, watch]
+        controller.setAuthorizedDeviceIDs(selected)
+        controller.setBackgroundAuthorizedDeviceIDs(selected)
+        controller.setBackgroundRefresh(enabled: true, interval: .seconds(600))
+        await waitUntil { await reader.readCount == 1 }
+
+        await reader.complete(0, with: MobileBatteryReadResult(
+            snapshots: [snapshot(level: 42, at: now.value)],
+            failures: [MobileBatteryReadFailure(category: "read-failed", deviceID: "watch-a")]
+        ))
+        await waitUntil { !controller.isRefreshing }
+
+        for retry in 0..<3 {
+            try await sleeper.waitForDuration(.seconds(60))
+            now.value.addTimeInterval(60)
+            await sleeper.fire(duration: .seconds(60))
+            await waitUntil { await reader.readCount == retry + 2 }
+            await reader.complete(retry + 1, with: MobileBatteryReadResult(
+                failures: [MobileBatteryReadFailure(category: "read-failed", deviceID: "watch-a")]
+            ))
+            await waitUntil { !controller.isRefreshing }
+        }
+
+        now.value.addTimeInterval(420)
+        try await sleeper.waitForDuration(.seconds(420))
+        let retainedFullRefreshIsScheduled = await sleeper.hasActiveRequest(for: .seconds(420))
+        XCTAssertTrue(retainedFullRefreshIsScheduled, "the third Watch retry must leave the original t=600 full-refresh deadline intact")
+        guard retainedFullRefreshIsScheduled else {
+            controller.stop()
+            await reader.finishAll()
+            return
+        }
+        await sleeper.fire(duration: .seconds(420))
+        await waitUntil { await reader.readCount == 5 }
+        let reads = await reader.selectedIDHistory
+        XCTAssertEqual(reads[4], selected, "the full configured refresh remains due at t=600 after retries at t=60, t=120, and t=180")
+
+        controller.stop()
+        await reader.finishAll()
+    }
+
+    func testChangingBackgroundIntervalDuringWatchRetryReanchorsFullRefreshDeadline() async throws {
+        let reader = ControlledMobileBatteryReader()
+        let sleeper = ControlledMobileBatterySleeper()
+        let now = MutableDate(Date(timeIntervalSince1970: 70_000))
+        let controller = MobileBatteryController(
+            reader: reader,
+            clock: { now.value },
+            sleep: { duration in try await sleeper.sleep(duration) }
+        )
+        let phone = AppleDeviceID.trustedDevice("phone-a")
+        let watch = AppleDeviceID.trustedWatch(parentID: "phone-a", id: "watch-a")
+        let selected: Set<AppleDeviceID> = [phone, watch]
+        controller.setAuthorizedDeviceIDs(selected)
+        controller.setBackgroundAuthorizedDeviceIDs(selected)
+        controller.setBackgroundRefresh(enabled: true, interval: .seconds(600))
+        await waitUntil { await reader.readCount == 1 }
+        await reader.complete(0, with: MobileBatteryReadResult(
+            snapshots: [snapshot(level: 42, at: now.value)],
+            failures: [MobileBatteryReadFailure(category: "read-failed", deviceID: "watch-a")]
+        ))
+        await waitUntil { !controller.isRefreshing }
+
+        try await sleeper.waitForDuration(.seconds(60))
+        now.value.addTimeInterval(60)
+        await sleeper.fire(duration: .seconds(60))
+        await waitUntil { await reader.readCount == 2 }
+        controller.setBackgroundRefresh(enabled: true, interval: .seconds(120))
+        await reader.complete(1, with: MobileBatteryReadResult(
+            failures: [MobileBatteryReadFailure(category: "read-failed", deviceID: "watch-a")]
+        ))
+        await waitUntil { !controller.isRefreshing }
+
+        try await sleeper.waitForDuration(.seconds(60))
+        now.value.addTimeInterval(60)
+        await sleeper.fire(duration: .seconds(60))
+        await waitUntil { await reader.readCount == 3 }
+        await reader.complete(2, with: MobileBatteryReadResult(
+            failures: [MobileBatteryReadFailure(category: "read-failed", deviceID: "watch-a")]
+        ))
+        await waitUntil { !controller.isRefreshing }
+
+        try await sleeper.waitForDuration(.seconds(60))
+        now.value.addTimeInterval(60)
+        await sleeper.fire(duration: .seconds(60))
+        await waitUntil { await reader.readCount == 4 }
+        let reads = await reader.selectedIDHistory
+        XCTAssertEqual(reads[3], selected, "interval change at t=60 reanchors the full refresh to t=180")
+
+        controller.stop()
+        await reader.finishAll()
+    }
+
+    func testDisablingBackgroundDuringWatchRetryUsesVisibleForegroundDeadline() async throws {
+        let reader = ControlledMobileBatteryReader()
+        let sleeper = ControlledMobileBatterySleeper()
+        let now = MutableDate(Date(timeIntervalSince1970: 80_000))
+        let controller = MobileBatteryController(
+            reader: reader,
+            clock: { now.value },
+            sleep: { duration in try await sleeper.sleep(duration) }
+        )
+        let phone = AppleDeviceID.trustedDevice("phone-a")
+        let watch = AppleDeviceID.trustedWatch(parentID: "phone-a", id: "watch-a")
+        let selected: Set<AppleDeviceID> = [phone, watch]
+        controller.setAuthorizedDeviceIDs(selected)
+        controller.setBackgroundAuthorizedDeviceIDs(selected)
+        controller.setBackgroundRefresh(enabled: true, interval: .seconds(600))
+        await waitUntil { await reader.readCount == 1 }
+        await reader.complete(0, with: MobileBatteryReadResult(
+            snapshots: [snapshot(level: 42, at: now.value)],
+            failures: [MobileBatteryReadFailure(category: "read-failed", deviceID: "watch-a")]
+        ))
+        await waitUntil { !controller.isRefreshing }
+
+        try await sleeper.waitForDuration(.seconds(60))
+        now.value.addTimeInterval(60)
+        await sleeper.fire(duration: .seconds(60))
+        await waitUntil { await reader.readCount == 2 }
+        controller.request("visible-panel")
+        controller.setSurfaceVisible(true)
+        controller.setBackgroundRefresh(enabled: false, interval: .seconds(600))
+        await reader.complete(1, with: MobileBatteryReadResult(
+            failures: [MobileBatteryReadFailure(category: "read-failed", deviceID: "watch-a")]
+        ))
+        await waitUntil { !controller.isRefreshing }
+
+        try await sleeper.waitForDuration(.seconds(60))
+        now.value.addTimeInterval(60)
+        await sleeper.fire(duration: .seconds(60))
+        await waitUntil { await reader.readCount == 3 }
+        let reads = await reader.selectedIDHistory
+        XCTAssertEqual(reads[2], selected, "disabling background during a Watch retry must reanchor to the visible 60-second cadence")
+
+        controller.stop()
+        await reader.finishAll()
+    }
+
+    func testWatchOnlyRetryIgnoresSnapshotsAndFailuresOutsideRequestedIDs() async throws {
+        let reader = ControlledMobileBatteryReader()
+        let sleeper = ControlledMobileBatterySleeper()
+        let controller = MobileBatteryController(
+            reader: reader,
+            sleep: { duration in try await sleeper.sleep(duration) }
+        )
+        let phone = AppleDeviceID.trustedDevice("phone-a")
+        let watchA = AppleDeviceID.trustedWatch(parentID: "phone-a", id: "watch-a")
+        let watchB = AppleDeviceID.trustedWatch(parentID: "phone-a", id: "watch-b")
+        let selected: Set<AppleDeviceID> = [phone, watchA, watchB]
+        controller.setAuthorizedDeviceIDs(selected)
+        controller.setBackgroundAuthorizedDeviceIDs(selected)
+        controller.setBackgroundRefresh(enabled: true, interval: .seconds(600))
+        await waitUntil { await reader.readCount == 1 }
+
+        await reader.complete(0, with: MobileBatteryReadResult(snapshots: [
+            snapshot(level: 42, at: Date()), watchSnapshot(id: "watch-a", parentID: "phone-a", level: 68)
+        ]))
+        await waitUntil { controller.snapshots.count == 2 }
+        try await sleeper.waitForDuration(.seconds(60))
+        await sleeper.fire(duration: .seconds(60))
+        await waitUntil { await reader.readCount == 2 }
+
+        let readHistory = await reader.selectedIDHistory
+        XCTAssertEqual(readHistory[1], [watchB])
+        await reader.complete(1, with: MobileBatteryReadResult(
+            snapshots: [snapshot(level: 99, at: Date()), watchSnapshot(id: "watch-a", parentID: "phone-a", level: 99)],
+            failures: [
+                MobileBatteryReadFailure(category: "unsolicited-device", deviceID: "phone-a"),
+                MobileBatteryReadFailure(category: "read-failed", deviceID: "watch-a")
+            ]
+        ))
+        await waitUntil { !controller.isRefreshing }
+
+        XCTAssertEqual(controller.snapshots.first(where: { $0.identity == "phone:phone-a" })?.batteryLevel, 42)
+        XCTAssertEqual(controller.snapshots.first(where: { $0.identity == "watch:phone-a:watch-a" })?.batteryLevel, 68)
+        XCTAssertTrue(controller.failures.isEmpty)
+        try await sleeper.waitForRequestCount(2, duration: .seconds(60))
+        let nextRetryRequests = await sleeper.requestCount(for: .seconds(60))
+        XCTAssertEqual(nextRetryRequests, 2, "an unrelated Watch result must not clear or restart Watch B's retry budget")
+
+        controller.stop()
+        await reader.finishAll()
+    }
+
+    func testMissingWatchRetryBudgetSurvivesRepublishedDemandAndBackgroundToggle() async throws {
+        try await assertMissingWatchRetryBudget(
+            clockAdvance: 0, expectedRefresh: .seconds(600), requestsAfterReenable: 2
+        )
+    }
+
+    func testMissingWatchRetryBudgetPreservesElapsedFullRefreshDeadline() async throws {
+        try await assertMissingWatchRetryBudget(
+            clockAdvance: 1, expectedRefresh: .seconds(599), requestsAfterReenable: 1
+        )
+    }
+
+    private func assertMissingWatchRetryBudget(
+        clockAdvance: TimeInterval, expectedRefresh: Duration, requestsAfterReenable: Int
+    ) async throws {
+        let reader = ControlledMobileBatteryReader()
+        let sleeper = ControlledMobileBatterySleeper()
+        let clock = MutableDate(Date())
+        let controller = MobileBatteryController(
+            reader: reader,
+            clock: { clock.value },
+            sleep: { duration in try await sleeper.sleep(duration) }
+        )
+        let phone = AppleDeviceID.trustedDevice("phone-a")
+        let successfulWatch = AppleDeviceID.trustedWatch(parentID: "phone-a", id: "watch-a")
+        let missingWatch = AppleDeviceID.trustedWatch(parentID: "phone-a", id: "watch-b")
+        let selected: Set<AppleDeviceID> = [phone, successfulWatch, missingWatch]
+        controller.setAuthorizedDeviceIDs(selected)
+        controller.setBackgroundAuthorizedDeviceIDs(selected)
+        controller.setBackgroundRefresh(enabled: true, interval: .seconds(600))
+        await waitUntil { await reader.readCount == 1 }
+
+        await reader.complete(0, with: partialWatchResult())
+        await waitUntil { !controller.isRefreshing }
+        try await sleeper.waitForRequestCount(1, duration: .seconds(60))
+        controller.setBackgroundRefresh(enabled: false, interval: .seconds(600))
+        try await sleeper.waitForActiveRequestCount(0, duration: .seconds(60))
+        controller.setBackgroundRefresh(enabled: true, interval: .seconds(600))
+        await waitUntil { await reader.readCount == 2 }
+
+        await reader.complete(1, with: partialWatchResult())
+        await waitUntil { !controller.isRefreshing }
+        try await sleeper.waitForRequestCount(2, duration: .seconds(60))
+        controller.setAuthorizedDeviceIDs(selected)
+        controller.setBackgroundAuthorizedDeviceIDs(selected)
+        await sleeper.fire(duration: .seconds(60))
+        await waitUntil { await reader.readCount == 3 }
+
+        clock.value = clock.value.addingTimeInterval(clockAdvance)
+
+        for retry in 0..<3 {
+            await reader.complete(retry + 2, with: missingWatchFailureResult())
+            await waitUntil { !controller.isRefreshing }
+            if retry < 2 {
+                try await sleeper.waitForRequestCount(retry + 3, duration: .seconds(60))
+                await sleeper.fire(duration: .seconds(60))
+                await waitUntil { await reader.readCount == retry + 4 }
+            }
+        }
+
+        try await sleeper.waitForRequestCount(1, duration: expectedRefresh)
+        let cappedRetryRequests = await sleeper.requestCount(for: .seconds(60))
+        let configuredRefreshRequests = await sleeper.requestCount(for: expectedRefresh)
+        XCTAssertEqual(cappedRetryRequests, 4)
+        XCTAssertEqual(configuredRefreshRequests, 1)
+
+        controller.setBackgroundRefresh(enabled: false, interval: .seconds(600))
+        controller.setBackgroundRefresh(enabled: true, interval: .seconds(600))
+        await waitUntil { await reader.readCount == 6 }
+        await reader.complete(5, with: partialWatchResult())
+        await waitUntil { !controller.isRefreshing }
+        try await sleeper.waitForRequestCount(requestsAfterReenable, duration: .seconds(600))
+        let retriesAfterReenable = await sleeper.requestCount(for: .seconds(60))
+        XCTAssertEqual(retriesAfterReenable, 4)
+
+        controller.revokeDeviceIDs([missingWatch])
+        controller.setAuthorizedDeviceIDs(selected)
+        await waitUntil { await reader.readCount == 7 }
+        await reader.complete(6, with: partialWatchResult())
+        await waitUntil { !controller.isRefreshing }
+        try await sleeper.waitForRequestCount(5, duration: .seconds(60))
+        let retriesAfterNewAuthorization = await sleeper.requestCount(for: .seconds(60))
+        XCTAssertEqual(retriesAfterNewAuthorization, 5)
+
         controller.stop()
         await reader.finishAll()
     }
@@ -307,7 +696,7 @@ final class MobileBatteryControllerTests: XCTestCase {
         await reader.finishAll()
     }
 
-    func testExpiredCacheIsPrunedWhilePopoverIsClosed() async {
+    func testExpiredCacheIsPrunedWhilePopoverIsClosed() async throws {
         let reader = ControlledMobileBatteryReader()
         let now = MutableDate(Date(timeIntervalSince1970: 20_000))
         let sleeper = ControlledMobileBatterySleeper()
@@ -322,7 +711,7 @@ final class MobileBatteryControllerTests: XCTestCase {
         await waitUntil { await reader.readCount == 1 }
         await reader.complete(0, with: result(level: 63, at: now.value))
         await waitUntil { controller.snapshots.count == 1 }
-        await sleeper.waitForDuration(.seconds(1_200))
+        try await sleeper.waitForDuration(.seconds(1_200))
 
         controller.setSurfaceVisible(false)
         now.value.addTimeInterval(1_200)
@@ -332,7 +721,7 @@ final class MobileBatteryControllerTests: XCTestCase {
         await reader.finishAll()
     }
 
-    func testVerifiedSnapshotExpiresAtTwentyMinutes() async {
+    func testVerifiedSnapshotExpiresAtTwentyMinutes() async throws {
         let reader = ControlledMobileBatteryReader()
         let now = MutableDate(Date(timeIntervalSince1970: 22_000))
         let sleeper = ControlledMobileBatterySleeper()
@@ -347,7 +736,7 @@ final class MobileBatteryControllerTests: XCTestCase {
         await waitUntil { await reader.readCount == 1 }
         await reader.complete(0, with: result(level: 64, at: now.value))
         await waitUntil { controller.snapshots.count == 1 }
-        await sleeper.waitForDuration(.seconds(1_200))
+        try await sleeper.waitForDuration(.seconds(1_200))
 
         now.value.addTimeInterval(1_200)
         await sleeper.fire(duration: .seconds(1_200))
@@ -356,7 +745,7 @@ final class MobileBatteryControllerTests: XCTestCase {
         await reader.finishAll()
     }
 
-    func testRefreshesEverySixtySecondsWithoutOverlappingCycles() async {
+    func testRefreshesEverySixtySecondsWithoutOverlappingCycles() async throws {
         let reader = ControlledMobileBatteryReader()
         let sleeper = ControlledMobileBatterySleeper()
         let controller = MobileBatteryController(
@@ -369,7 +758,7 @@ final class MobileBatteryControllerTests: XCTestCase {
         await waitUntil { await reader.readCount == 1 }
         await reader.complete(0, with: result(level: 42))
         await waitUntil { !controller.isRefreshing }
-        await sleeper.waitForDuration(.seconds(60))
+        try await sleeper.waitForDuration(.seconds(60))
 
         let countBeforeRefresh = await reader.readCount
         XCTAssertEqual(countBeforeRefresh, 1)
@@ -442,7 +831,7 @@ final class MobileBatteryControllerTests: XCTestCase {
         await reader.finishAll()
     }
 
-    func testCacheExpiresAfterFinalClaimReleasesWhileKeepingResults() async {
+    func testCacheExpiresAfterFinalClaimReleasesWhileKeepingResults() async throws {
         let reader = ControlledMobileBatteryReader()
         let now = MutableDate(Date(timeIntervalSince1970: 50_000))
         let sleeper = ControlledMobileBatterySleeper()
@@ -457,7 +846,7 @@ final class MobileBatteryControllerTests: XCTestCase {
         await waitUntil { await reader.readCount == 1 }
         await reader.complete(0, with: result(level: 64, at: now.value))
         await waitUntil { controller.snapshots.count == 1 }
-        await sleeper.waitForDuration(.seconds(1_200))
+        try await sleeper.waitForDuration(.seconds(1_200))
 
         controller.release("summary", keepingResults: true)
         XCTAssertEqual(controller.snapshots.map(\.batteryLevel), [64])
@@ -484,6 +873,29 @@ final class MobileBatteryControllerTests: XCTestCase {
 
     private func result(level: Int, id: String = "phone-a", at date: Date = Date()) -> MobileBatteryReadResult {
         MobileBatteryReadResult(snapshots: [snapshot(id: id, level: level, at: date)])
+    }
+
+    private func watchSnapshot(id: String, parentID: String, level: Int, at date: Date = Date()) -> MobileBatterySnapshot {
+        MobileBatterySnapshot(
+            id: id,
+            parentID: parentID,
+            name: "Watch",
+            model: "Watch7,4",
+            batteryLevel: level,
+            isCharging: nil,
+            transport: .usb,
+            observedAt: date
+        )
+    }
+
+    private func partialWatchResult() -> MobileBatteryReadResult {
+        MobileBatteryReadResult(snapshots: [
+            snapshot(level: 42, at: Date()), watchSnapshot(id: "watch-a", parentID: "phone-a", level: 68)
+        ], failures: [MobileBatteryReadFailure(category: "read-failed", deviceID: "watch-b")])
+    }
+
+    private func missingWatchFailureResult() -> MobileBatteryReadResult {
+        MobileBatteryReadResult(failures: [MobileBatteryReadFailure(category: "read-failed", deviceID: "watch-b")])
     }
 
     private func settle() async {
@@ -562,16 +974,19 @@ actor ControlledMobileBatteryReader: MobileBatteryReading {
 }
 
 private actor ControlledMobileBatterySleeper {
+    struct WaitTimeout: Error {}
     private struct Waiter {
         let duration: Duration
         let continuation: CheckedContinuation<Void, any Error>
     }
     private var nextID = 0
     private var continuations: [Int: Waiter] = [:]
+    private var requestedDurations: [Duration] = []
 
     func sleep(_ duration: Duration) async throws {
         let id = nextID
         nextID += 1
+        requestedDurations.append(duration)
         try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation {
                 continuations[id] = Waiter(duration: duration, continuation: $0)
@@ -581,11 +996,38 @@ private actor ControlledMobileBatterySleeper {
         }
     }
 
-    func waitForDuration(_ duration: Duration) async {
-        for _ in 0..<1_000 {
-            if continuations.values.contains(where: { $0.duration == duration }) { return }
-            await Task.yield()
+    func waitForDuration(_ duration: Duration, timeout: Duration = .seconds(5)) async throws {
+        try await waitUntil(timeout: timeout) {
+            self.continuations.values.contains { $0.duration == duration }
         }
+    }
+
+    func waitForRequestCount(_ count: Int, duration: Duration, timeout: Duration = .seconds(5)) async throws {
+        try await waitUntil(timeout: timeout) {
+            self.requestedDurations.filter { $0 == duration }.count >= count
+        }
+    }
+
+    func waitForActiveRequestCount(_ count: Int, duration: Duration, timeout: Duration = .seconds(5)) async throws {
+        try await waitUntil(timeout: timeout) {
+            self.continuations.values.filter { $0.duration == duration }.count == count
+        }
+    }
+
+    private func waitUntil(timeout: Duration, condition: () -> Bool) async throws {
+        let deadline = ContinuousClock.now + timeout
+        while !condition() {
+            guard ContinuousClock.now < deadline else { throw WaitTimeout() }
+            try await Task.sleep(for: .milliseconds(1))
+        }
+    }
+
+    func requestCount(for duration: Duration) -> Int {
+        requestedDurations.filter { $0 == duration }.count
+    }
+
+    func hasActiveRequest(for duration: Duration) -> Bool {
+        continuations.values.contains { $0.duration == duration }
     }
 
     func fire(duration: Duration) {

@@ -23,6 +23,11 @@ on:
         required: true
         default: false
         type: boolean
+      notarize:
+        description: "Require Developer ID signing and Apple notarization, including non-publishing test builds."
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -35,11 +40,14 @@ jobs:
   release:
     runs-on: macos-26
     timeout-minutes: 90
+    environment:
+      name: ${{ (github.event_name == 'push' || inputs.publish || inputs.notarize) && 'distribution' || 'ci' }}
     env:
       DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
       RELEASE_REPO: ${{ vars.RELEASE_REPO }}
       RELEASE_BRANCH: ${{ vars.RELEASE_BRANCH }}
       PUBLISH: ${{ github.event_name == 'push' || inputs.publish }}
+      NOTARIZE: ${{ inputs.notarize || false }}
 
     steps:
       - name: Check out repository
@@ -96,6 +104,14 @@ jobs:
 
           echo "Resolved release ${TAG}: ${VERSION} (${BUILD})"
 
+      - name: Validate notarization test mode
+        run: |
+          set -euo pipefail
+          if [[ "${NOTARIZE}" == "true" && "${PUBLISH}" == "true" ]]; then
+            echo "::error::notarize=true requires publish=false; notarized CI test builds never publish releases or appcasts."
+            exit 1
+          fi
+
       - name: Validate appcast notes
         run: bash scripts/validate-appcast-notes.sh
 
@@ -111,13 +127,24 @@ jobs:
           fi
 
       - name: Configure Developer ID signing
+        if: ${{ env.PUBLISH == 'true' || env.NOTARIZE == 'true' }}
         env:
           DEVELOPER_ID_CERTIFICATE_P12: ${{ secrets.DEVELOPER_ID_CERTIFICATE_P12 }}
           CERTIFICATE_PASSWORD: ${{ secrets.DEVELOPER_ID_CERTIFICATE_PASSWORD }}
         run: |
           set -euo pipefail
 
-          if [[ "${PUBLISH}" != "true" || -z "${DEVELOPER_ID_CERTIFICATE_P12}" ]]; then
+          if [[ "${NOTARIZE}" == "true" && -z "${DEVELOPER_ID_CERTIFICATE_P12}" ]]; then
+            echo "::error::DEVELOPER_ID_CERTIFICATE_P12 is required when notarize=true."
+            exit 1
+          fi
+
+          if [[ "${NOTARIZE}" == "true" && -z "${CERTIFICATE_PASSWORD}" ]]; then
+            echo "::error::DEVELOPER_ID_CERTIFICATE_PASSWORD is required when notarize=true."
+            exit 1
+          fi
+
+          if [[ "${PUBLISH}" != "true" && "${NOTARIZE}" != "true" ]] || [[ -z "${DEVELOPER_ID_CERTIFICATE_P12}" ]]; then
             echo "Developer ID signing is not configured; using Ad-hoc signing."
             exit 0
           fi
@@ -129,7 +156,27 @@ jobs:
 
           CERT_PATH="${RUNNER_TEMP}/developer-id.p12"
           KEYCHAIN_PATH="${RUNNER_TEMP}/app-signing.keychain-db"
+          KEYCHAIN_LIST_BACKUP="${RUNNER_TEMP}/app-signing-keychains.original"
+          KEYCHAIN_LIST_PARSED="${RUNNER_TEMP}/app-signing-keychains.parsed"
           KEYCHAIN_PASSWORD="$(openssl rand -hex 24)"
+          SMOKE_PATH="${RUNNER_TEMP}/codesign-smoke"
+          trap 'rm -f "${CERT_PATH:-}" "${SMOKE_PATH:-}" "${KEYCHAIN_LIST_PARSED:-}"' EXIT
+          # The always-run cleanup step also handles partial keychain setup.
+          echo "KEYCHAIN_PATH=${KEYCHAIN_PATH}" >> "${GITHUB_ENV}"
+
+          security list-keychains -d user > "${KEYCHAIN_LIST_BACKUP}"
+          ruby -rjson -e '
+            File.foreach(ARGV[0]) { |line| STDOUT.write(JSON.parse(line), "\0") }
+          ' "${KEYCHAIN_LIST_BACKUP}" > "${KEYCHAIN_LIST_PARSED}"
+          ORIGINAL_KEYCHAINS=()
+          while IFS= read -r -d '' keychain; do
+            ORIGINAL_KEYCHAINS+=("${keychain}")
+          done < "${KEYCHAIN_LIST_PARSED}"
+          if [[ "${#ORIGINAL_KEYCHAINS[@]}" -eq 0 ]]; then
+            echo "::error::Could not read the existing user keychain search list; refusing to replace it."
+            exit 1
+          fi
+          echo "KEYCHAIN_LIST_BACKUP=${KEYCHAIN_LIST_BACKUP}" >> "${GITHUB_ENV}"
 
           printf '%s' "${DEVELOPER_ID_CERTIFICATE_P12}" | base64 -D > "${CERT_PATH}"
 
@@ -148,8 +195,6 @@ jobs:
             -s \
             -k "${KEYCHAIN_PASSWORD}" \
             "${KEYCHAIN_PATH}" >/dev/null
-          security list-keychains -d user -s "${KEYCHAIN_PATH}" \
-            $(security list-keychains -d user | tr -d '"')
 
           IDENTITY="$(
             security find-identity -v -p codesigning "${KEYCHAIN_PATH}" \
@@ -162,12 +207,25 @@ jobs:
             exit 1
           fi
 
+          security list-keychains -d user -s "${KEYCHAIN_PATH}" "${ORIGINAL_KEYCHAINS[@]}"
+
+          cp /usr/bin/true "${SMOKE_PATH}"
+          if ! /usr/bin/codesign --force --sign "${IDENTITY}" "${SMOKE_PATH}"; then
+            echo "::error::Developer ID identity could not sign the disposable codesign smoke-test binary."
+            exit 1
+          fi
+          if ! /usr/bin/codesign --verify --strict "${SMOKE_PATH}"; then
+            echo "::error::Developer ID codesign smoke-test binary did not verify."
+            exit 1
+          fi
+          rm -f "${SMOKE_PATH}"
+
           {
             echo "CODE_SIGN_IDENTITY=${IDENTITY}"
-            echo "KEYCHAIN_PATH=${KEYCHAIN_PATH}"
           } >> "${GITHUB_ENV}"
 
       - name: Configure Apple notarization
+        if: ${{ env.PUBLISH == 'true' || env.NOTARIZE == 'true' }}
         env:
           NOTARY_API_KEY_ID: ${{ secrets.APPSTORE_CONNECT_API_KEY_ID }}
           NOTARY_API_ISSUER_ID: ${{ secrets.APPSTORE_CONNECT_API_ISSUER_ID }}
@@ -175,7 +233,22 @@ jobs:
         run: |
           set -euo pipefail
 
-          if [[ "${PUBLISH}" != "true" || -z "${NOTARY_API_PRIVATE_KEY}" ]]; then
+          if [[ "${NOTARIZE}" == "true" && -z "${NOTARY_API_PRIVATE_KEY}" ]]; then
+            echo "::error::APPSTORE_CONNECT_API_PRIVATE_KEY is required when notarize=true."
+            exit 1
+          fi
+
+          if [[ "${NOTARIZE}" == "true" && -z "${NOTARY_API_KEY_ID}" ]]; then
+            echo "::error::APPSTORE_CONNECT_API_KEY_ID is required when notarize=true."
+            exit 1
+          fi
+
+          if [[ "${NOTARIZE}" == "true" && -z "${NOTARY_API_ISSUER_ID}" ]]; then
+            echo "::error::APPSTORE_CONNECT_API_ISSUER_ID is required when notarize=true."
+            exit 1
+          fi
+
+          if [[ "${PUBLISH}" != "true" && "${NOTARIZE}" != "true" ]] || [[ -z "${NOTARY_API_PRIVATE_KEY}" ]]; then
             echo "Apple notarization is not configured."
             exit 0
           fi
@@ -186,12 +259,21 @@ jobs:
           fi
 
           KEY_PATH="${RUNNER_TEMP}/AuthKey_${NOTARY_API_KEY_ID}.p8"
+          trap 'rm -f "${KEY_PATH:-}"' EXIT
           printf '%s' "${NOTARY_API_PRIVATE_KEY}" > "${KEY_PATH}"
 
-          xcrun notarytool store-credentials "status-trio-notary" \
-            --key "${KEY_PATH}" \
-            --key-id "${NOTARY_API_KEY_ID}" \
-            --issuer "${NOTARY_API_ISSUER_ID}"
+          if [[ -n "${KEYCHAIN_PATH:-}" ]]; then
+            xcrun notarytool store-credentials "status-trio-notary" \
+              --key "${KEY_PATH}" \
+              --key-id "${NOTARY_API_KEY_ID}" \
+              --issuer "${NOTARY_API_ISSUER_ID}" \
+              --keychain "${KEYCHAIN_PATH}"
+          else
+            xcrun notarytool store-credentials "status-trio-notary" \
+              --key "${KEY_PATH}" \
+              --key-id "${NOTARY_API_KEY_ID}" \
+              --issuer "${NOTARY_API_ISSUER_ID}"
+          fi
           rm -f "${KEY_PATH}"
 
           echo "NOTARY_PROFILE=status-trio-notary" >> "${GITHUB_ENV}"
@@ -261,7 +343,7 @@ jobs:
       - name: Build, sign, notarize, and publish
         env:
           GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
-          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+          SPARKLE_PRIVATE_KEY: ${{ env.PUBLISH == 'true' && secrets.SPARKLE_PRIVATE_KEY || '' }}
         run: bash scripts/release.sh
 
       - name: Upload release artifacts
@@ -277,4 +359,34 @@ jobs:
 
       - name: Clean up signing keychain
         if: always() && env.KEYCHAIN_PATH != ''
-        run: security delete-keychain "${KEYCHAIN_PATH}" || true
+        run: |
+          set -euo pipefail
+          CLEANUP_STATUS=0
+          if [[ -n "${KEYCHAIN_LIST_BACKUP:-}" && -f "${KEYCHAIN_LIST_BACKUP}" ]]; then
+            KEYCHAIN_LIST_PARSED="${RUNNER_TEMP}/app-signing-keychains.restore"
+            if ruby -rjson -e '
+              File.foreach(ARGV[0]) { |line| STDOUT.write(JSON.parse(line), "\0") }
+            ' "${KEYCHAIN_LIST_BACKUP}" > "${KEYCHAIN_LIST_PARSED}"; then
+              ORIGINAL_KEYCHAINS=()
+              while IFS= read -r -d '' keychain; do
+                ORIGINAL_KEYCHAINS+=("${keychain}")
+              done < "${KEYCHAIN_LIST_PARSED}"
+              if [[ "${#ORIGINAL_KEYCHAINS[@]}" -gt 0 ]] && security list-keychains -d user -s "${ORIGINAL_KEYCHAINS[@]}"; then
+                rm -f "${KEYCHAIN_LIST_BACKUP}"
+              else
+                echo "::error::Could not restore the original user keychain search list."
+                CLEANUP_STATUS=1
+              fi
+            else
+              echo "::error::Could not parse the saved user keychain search list."
+              CLEANUP_STATUS=1
+            fi
+            rm -f "${KEYCHAIN_LIST_PARSED}"
+          fi
+          if [[ -n "${KEYCHAIN_PATH}" && -f "${KEYCHAIN_PATH}" ]]; then
+            if ! security delete-keychain "${KEYCHAIN_PATH}"; then
+              echo "::error::Could not delete the temporary signing keychain."
+              CLEANUP_STATUS=1
+            fi
+          fi
+          exit "${CLEANUP_STATUS}"

@@ -290,12 +290,19 @@ struct AppIconControllerTests {
     /// one trailing redraw that carries the newest options, instead of
     /// allocating one bitmap per frame.
     @Test func sliderBurstRepaintsTheDockIconOnce() async throws {
+        let sleeper = ManualEventSleeper()
+        let fixedDate = Date()
+        let coalescer = IconRenderCoalescer(
+            now: { fixedDate },
+            sleep: { duration in await sleeper.sleep(duration) }
+        )
         let harness = try AppIconControllerHarness(
             initialPlacement: .dock,
             initialBattery: BatteryStatus(
                 rawPercentage: 35, isPresent: true, isCharging: false,
                 isLowPowerMode: false, isConnectedToPower: false
-            )
+            ),
+            renderCoalescer: coalescer
         )
         defer { harness.cleanUp() }
         harness.controller.start()
@@ -307,6 +314,10 @@ struct AppIconControllerTests {
         }
 
         #expect(harness.log.renderCount == 0, "A drag must not redraw on every value.")
+        let didSchedule = await sleeper.waitForCallCount(1, timeout: .seconds(5))
+        try #require(didSchedule, "The burst must schedule a trailing redraw.")
+        #expect(harness.log.renderCount == 0, "The redraw must wait for the controlled scheduler.")
+        sleeper.releaseAll()
         try await waitForCoalescedRenders { harness.log.renderCount == 1 }
 
         #expect(harness.log.renderCount == 1)
@@ -472,7 +483,8 @@ final class AppIconControllerHarness {
         initialWiFi: WiFiStatus = .placeholder,
         initialVolume: VolumeStatus = .placeholder,
         initialReplacesNetworkIcon: Bool = false,
-        snapshotScheduler: any IconPresentationScheduling = TestTaskIconPresentationScheduler()
+        snapshotScheduler: any IconPresentationScheduling = TestTaskIconPresentationScheduler(),
+        renderCoalescer: IconRenderCoalescer? = nil
     ) throws {
         suiteName = "StatusTrioCoreTests.AppIconController.\(UUID().uuidString)"
         guard let defaults = UserDefaults(suiteName: suiteName) else {
@@ -544,7 +556,8 @@ final class AppIconControllerHarness {
             },
             theme: systemTheme,
             isDarkAppearance: { isDarkAppearance },
-            notificationCenter: notificationCenter
+            notificationCenter: notificationCenter,
+            renderCoalescer: renderCoalescer
         )
 
         store.start()
