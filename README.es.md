@@ -15,7 +15,7 @@
 <p align="center"><strong>Tres señales del sistema. Un solo icono de estado nativo de macOS: en la barra de menús o en el Dock.</strong></p>
 
 <p align="center">
-  <a href="https://github.com/lingyired/status-trio/releases/latest"><img src="https://img.shields.io/badge/Download%20for%20macOS-Universal%20%C2%B7%20macOS%2015%2B-000000?logo=apple&logoColor=white&style=for-the-badge" alt="Descargar para macOS — versión universal, macOS 15 o posterior"></a>
+  <a href="https://github.com/lingyired/status-trio/releases/latest"><img src="https://img.shields.io/badge/Download%20for%20macOS-Universal%20%C2%B7%20macOS%2013%2B-000000?logo=apple&logoColor=white&style=for-the-badge" alt="Descargar para macOS — versión universal, macOS 13 o posterior"></a>
 </p>
 
 <p align="center">
@@ -29,7 +29,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/macOS-15%2B%20supported-blue?logo=apple&logoColor=white" alt="Compatible con macOS 15 o posterior">
+  <img src="https://img.shields.io/badge/macOS-13%2B%20supported-blue?logo=apple&logoColor=white" alt="Compatible con macOS 13 o posterior">
   <img src="https://img.shields.io/badge/Universal-Apple%20Silicon%20%7C%20Intel-lightgrey" alt="Binario universal para Apple Silicon e Intel">
 </p>
 
@@ -121,7 +121,7 @@ Los mismos estados representados para una barra de menús oscura:
 
 ## Requisitos
 
-- macOS 15 o posterior para ejecutar la app
+- macOS 13 o posterior para ejecutar la app
 - Cadena de herramientas de Swift 6 con el SDK de macOS 26 (Xcode 26 o posterior) para compilarla. Compilar contra un
   SDK anterior produce de forma silenciosa la apariencia del panel emergente previa a Tahoe, por lo que
   `scripts/build-app.sh` falla cuando el SDK es anterior a 26.
@@ -229,7 +229,7 @@ El bloqueo de instancia única está limitado por el identificador de paquete, p
 
 - Swift 6
 - SwiftUI + AppKit
-- macOS 15+
+- macOS 13+
 - Accesorio de barra de menús `LSUIElement` que cambia a una política de activación normal mientras se muestra el icono del Dock
 - Sparkle para buscar actualizaciones
 

@@ -66,3 +66,13 @@
 8. Verify menu-bar-only, Dock-only, and both placement modes, including icon rendering parity.
 9. Verify Sparkle update discovery/download/signature path against an isolated test feed.
 10. Record PASS / FAIL / BLOCKED / NOT RUN for each item; do not infer success from CI.
+
+## Git and release state
+
+- Baseline: `be80a4ce12d691cb9696127eacd94c0040694965`.
+- Verified preflight code head: `8ee4b6d042d3b6d386274d54093c42de342fe722`.
+- Branch: `codex/macos13-compatibility`; preflight is `publish=false`, so the version `1.5.1`
+  and build `19` remain unpublished.
+- No merge, tag, GitHub Release, or online appcast update was performed by this work.
+- The preflight artifact is `StatusTrio-1.5.1.dmg`; keep it as a test artifact, not as a release
+  approval for Ventura. The missing Intel and Apple Silicon runtime tests are the remaining gate.

@@ -15,7 +15,7 @@
 <p align="center"><strong>Три системных сигнала. Один нативный значок состояния macOS — в строке меню или в Dock.</strong></p>
 
 <p align="center">
-  <a href="https://github.com/lingyired/status-trio/releases/latest"><img src="https://img.shields.io/badge/Download%20for%20macOS-Universal%20%C2%B7%20macOS%2015%2B-000000?logo=apple&logoColor=white&style=for-the-badge" alt="Скачать для macOS — универсальная сборка, macOS 15 или новее"></a>
+  <a href="https://github.com/lingyired/status-trio/releases/latest"><img src="https://img.shields.io/badge/Download%20for%20macOS-Universal%20%C2%B7%20macOS%2013%2B-000000?logo=apple&logoColor=white&style=for-the-badge" alt="Скачать для macOS — универсальная сборка, macOS 13 или новее"></a>
 </p>
 
 <p align="center">
@@ -29,7 +29,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/macOS-15%2B%20supported-blue?logo=apple&logoColor=white" alt="Поддерживается macOS 15 или новее">
+  <img src="https://img.shields.io/badge/macOS-13%2B%20supported-blue?logo=apple&logoColor=white" alt="Поддерживается macOS 13 или новее">
   <img src="https://img.shields.io/badge/Universal-Apple%20Silicon%20%7C%20Intel-lightgrey" alt="Универсальный двоичный файл для Apple Silicon и Intel">
 </p>
 
@@ -121,7 +121,7 @@ Status Trio — нативное приложение состояния для 
 
 ## Требования
 
-- macOS 15 или новее для работы приложения
+- macOS 13 или новее для работы приложения
 - Инструментарий Swift 6 с macOS 26 SDK (Xcode 26 или новее) для его сборки. Сборка со
   старым SDK незаметно даёт панель в оформлении до Tahoe, поэтому `scripts/build-app.sh`
   завершается ошибкой, если SDK старее 26.
@@ -229,7 +229,7 @@ bash scripts/build-worktree.sh release
 
 - Swift 6
 - SwiftUI + AppKit
-- macOS 15+
+- macOS 13+
 - `LSUIElement` — аксессуар строки меню, который переключается на обычную политику активации, пока показан значок в Dock
 - Sparkle для проверки обновлений
 

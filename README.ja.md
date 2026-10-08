@@ -15,7 +15,7 @@
 <p align="center"><strong>3 つのシステムシグナル。1 つのネイティブ macOS ステータスアイコン — メニューバーでも Dock でも。</strong></p>
 
 <p align="center">
-  <a href="https://github.com/lingyired/status-trio/releases/latest"><img src="https://img.shields.io/badge/Download%20for%20macOS-Universal%20%C2%B7%20macOS%2015%2B-000000?logo=apple&logoColor=white&style=for-the-badge" alt="macOS 版をダウンロード — ユニバーサルビルド、macOS 15 以降"></a>
+  <a href="https://github.com/lingyired/status-trio/releases/latest"><img src="https://img.shields.io/badge/Download%20for%20macOS-Universal%20%C2%B7%20macOS%2013%2B-000000?logo=apple&logoColor=white&style=for-the-badge" alt="macOS 版をダウンロード — ユニバーサルビルド、macOS 13 以降"></a>
 </p>
 
 <p align="center">
@@ -29,7 +29,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/macOS-15%2B%20supported-blue?logo=apple&logoColor=white" alt="macOS 15 以降に対応">
+  <img src="https://img.shields.io/badge/macOS-13%2B%20supported-blue?logo=apple&logoColor=white" alt="macOS 13 以降に対応">
   <img src="https://img.shields.io/badge/Universal-Apple%20Silicon%20%7C%20Intel-lightgrey" alt="Apple Silicon と Intel 向けのユニバーサルバイナリ">
 </p>
 
@@ -121,7 +121,7 @@ Dock アイコンはメニューバーと同じ組み合わせアイコンを描
 
 ## 動作環境
 
-- アプリの実行には macOS 15 以降
+- アプリの実行には macOS 13 以降
 - ビルドには macOS 26 SDK を備えた Swift 6 ツールチェーン（Xcode 26 以降）が必要です。古い SDK でビルドすると、Tahoe 以前のポップオーバー外観が警告なく生成されるため、`scripts/build-app.sh` は SDK が 26 より古い場合に失敗します。
 
 ## ソースから実行
@@ -227,7 +227,7 @@ bash scripts/build-worktree.sh release
 
 - Swift 6
 - SwiftUI + AppKit
-- macOS 15+
+- macOS 13+
 - `LSUIElement` のメニューバーアクセサリ。Dock アイコンの表示中は通常のアクティベーションポリシーに切り替わります
 - アップデートの確認に Sparkle
 

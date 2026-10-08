@@ -15,7 +15,7 @@
 <p align="center"><strong>三个系统状态，一个原生 macOS 状态图标 —— 可放在菜单栏或程序坞。</strong></p>
 
 <p align="center">
-  <a href="https://github.com/lingyired/status-trio/releases/latest"><img src="https://img.shields.io/badge/Download%20for%20macOS-Universal%20%C2%B7%20macOS%2015%2B-000000?logo=apple&logoColor=white&style=for-the-badge" alt="下载 macOS 版 —— 通用二进制，需 macOS 15 或更高版本"></a>
+  <a href="https://github.com/lingyired/status-trio/releases/latest"><img src="https://img.shields.io/badge/Download%20for%20macOS-Universal%20%C2%B7%20macOS%2013%2B-000000?logo=apple&logoColor=white&style=for-the-badge" alt="下载 macOS 版 —— 通用二进制，需 macOS 13 或更高版本"></a>
 </p>
 
 <p align="center">
@@ -29,7 +29,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/macOS-15%2B%20supported-blue?logo=apple&logoColor=white" alt="支持 macOS 15 或更高版本">
+  <img src="https://img.shields.io/badge/macOS-13%2B%20supported-blue?logo=apple&logoColor=white" alt="支持 macOS 13 或更高版本">
   <img src="https://img.shields.io/badge/Universal-Apple%20Silicon%20%7C%20Intel-lightgrey" alt="通用二进制，支持 Apple Silicon 与 Intel">
 </p>
 
@@ -121,7 +121,7 @@ Status Trio 是一个原生 macOS 状态应用，将 Wi-Fi、电池和音量整�
 
 ## 系统要求
 
-- 运行 app 需要 macOS 15 或更高版本
+- 运行 app 需要 macOS 13 或更高版本
 - 构建需要带 macOS 26 SDK 的 Swift 6 工具链（Xcode 26 或更高版本）。用更旧的 SDK 构建会静默产出
   Tahoe 之前的弹出面板观感，因此 `scripts/build-app.sh` 在 SDK 低于 26 时会直接失败。
 
@@ -228,7 +228,7 @@ bash scripts/build-worktree.sh release
 
 - Swift 6
 - SwiftUI + AppKit
-- macOS 15+
+- macOS 13+
 - `LSUIElement` 菜单栏辅助应用，显示程序坞图标时切换为常规应用策略
 - 使用 Sparkle 检查更新
 
