@@ -1047,6 +1047,33 @@ final class BluetoothDeviceListPresentationTests: XCTestCase {
         XCTAssertEqual(model.orderedDevices.map(\.name), ["EDIFIER LolliPods", "Ling's iPhone"])
     }
 
+    /// Regression: the final display pass ranked by the saved order before it
+    /// looked at the level, so a battery-less device with an earlier saved
+    /// position pushed a charged device back to the bottom of its group.
+    func testDisplayRowsRankBatteryAheadOfTheSavedOrder() {
+        let headset = BluetoothDisplayRow(
+            device: makeDevice(address: "AA:00:00:00:00:0C", name: "EDIFIER LolliPods", isConnected: false),
+            sourceIDs: ["AA:00:00:00:00:0C"]
+        )
+        let iPhoneID = UUID(uuidString: "00000000-0000-0000-0000-0000000000A4")!
+        let iPhone = BluetoothDisplayRow(
+            device: makeSelectedBLERow(name: "Ling's iPhone", id: iPhoneID),
+            sourceIDs: [BluetoothDeviceIdentity.bleRowID(iPhoneID)]
+        )
+        let levels = [BluetoothBatteryReader.normalizedAddress(iPhone.device.id): BluetoothBatteryLevel(
+            deviceAddress: iPhone.device.id, main: 36, left: nil, right: nil, caseLevel: nil
+        )]
+
+        XCTAssertEqual(
+            BluetoothDeviceListPresentation.orderedDisplayRows(
+                [headset, iPhone],
+                using: [headset.device.id, iPhone.device.id],
+                batteryLevels: levels
+            ).map(\.device.name),
+            ["Ling's iPhone", "EDIFIER LolliPods"]
+        )
+    }
+
     func testAConnectedDeviceStillLeadsAReading() {
         let devices = [
             makeReadingDevice(address: "CB-1", name: "Ling's iPhone"),

@@ -356,11 +356,26 @@ enum BluetoothDeviceListPresentation {
         return level.main != nil || level.left != nil || level.right != nil || level.caseLevel != nil
     }
 
+    /// The same two rules `orderedDevices` applies, in the same order: within
+    /// the group the rows the list can draw a level for lead the rows it cannot,
+    /// and the saved order ranks inside each half. A saved position must not
+    /// lift a battery-less row over a row with a reading — otherwise the model's
+    /// order and this final pass disagree, and this one wins.
     static func orderedDisplayRows(
         _ rows: [BluetoothDisplayRow],
         using order: [String],
         batteryLevels: [String: BluetoothBatteryLevel] = [:]
     ) -> [BluetoothDisplayRow] {
+        let withLevels = rows.filter { hasReportedBatteryLevel($0, batteryLevels: batteryLevels) }
+        let withoutLevels = rows.filter { !hasReportedBatteryLevel($0, batteryLevels: batteryLevels) }
+        return rankedDisplayRows(withLevels, using: order) + rankedDisplayRows(withoutLevels, using: order)
+    }
+
+    private static func rankedDisplayRows(
+        _ rows: [BluetoothDisplayRow],
+        using order: [String]
+    ) -> [BluetoothDisplayRow] {
+        guard !order.isEmpty else { return rows }
         let rankByKey = Dictionary(order.enumerated().map {
             (BluetoothDeviceIdentity.preferenceKey($0.element), $0.offset)
         }, uniquingKeysWith: { first, _ in first })
@@ -368,13 +383,6 @@ enum BluetoothDeviceListPresentation {
             let left = lhs.element.sourceIDs.compactMap { rankByKey[BluetoothDeviceIdentity.preferenceKey($0)] }.min() ?? Int.max
             let right = rhs.element.sourceIDs.compactMap { rankByKey[BluetoothDeviceIdentity.preferenceKey($0)] }.min() ?? Int.max
             if left != right { return left < right }
-            // Cross-source rows can carry their level under an alias, so the
-            // battery test reads every source the row draws from.
-            let leftHasLevel = hasReportedBatteryLevel(lhs.element, batteryLevels: batteryLevels)
-            let rightHasLevel = hasReportedBatteryLevel(rhs.element, batteryLevels: batteryLevels)
-            if leftHasLevel != rightHasLevel {
-                return leftHasLevel
-            }
             return lhs.offset < rhs.offset
         }.map(\.element)
     }
