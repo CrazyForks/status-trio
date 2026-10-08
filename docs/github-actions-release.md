@@ -20,6 +20,16 @@
 - `build`：显式的数字构建号，必须大于 appcast 中已发布的最大构建号
 - `publish=false`：只构建 DMG，并上传为 Actions artifact
 - `publish=true`：创建 Release、创建 tag，并更新 Sparkle appcast
+- `notarize=true`：仅与 `publish=false` 一起使用；要求 Developer ID 签名和 Apple 公证，生成可在 CI 中验证的通用构建 artifact，不创建 Release、tag 或 appcast
+
+从命令行启动一次公证测试构建（替换分支、版本和构建号；不会自动启动）：
+
+```bash
+gh workflow run release.yml --repo lingyired/status-trio --ref <branch> \
+  -f version=1.2.0 -f build=99 -f publish=false -f notarize=true
+```
+
+`notarize=true` 必须配置 `DEVELOPER_ID_CERTIFICATE_P12`、`DEVELOPER_ID_CERTIFICATE_PASSWORD`、`APPSTORE_CONNECT_API_KEY_ID`、`APPSTORE_CONNECT_API_ISSUER_ID` 和 `APPSTORE_CONNECT_API_PRIVATE_KEY`；缺少任一项时 workflow 会失败，不会退回 Ad-hoc 签名。
 
 文案不再通过输入传入，改为读取仓库内的 `release-notes/<version>/`。每个 dispatch（含 `publish=false` 预检）都会运行 `scripts/validate-appcast-notes.sh`，打印语言覆盖表，并把生成的 appcast 条目干跑到临时文件后断言 XML 合法、变体齐全、`en` 排第一、无未替换占位符。
 

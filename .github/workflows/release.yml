@@ -23,6 +23,11 @@ on:
         required: true
         default: false
         type: boolean
+      notarize:
+        description: "Require Developer ID signing and Apple notarization, including non-publishing test builds."
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -40,6 +45,7 @@ jobs:
       RELEASE_REPO: ${{ vars.RELEASE_REPO }}
       RELEASE_BRANCH: ${{ vars.RELEASE_BRANCH }}
       PUBLISH: ${{ github.event_name == 'push' || inputs.publish }}
+      NOTARIZE: ${{ inputs.notarize || false }}
 
     steps:
       - name: Check out repository
@@ -96,6 +102,14 @@ jobs:
 
           echo "Resolved release ${TAG}: ${VERSION} (${BUILD})"
 
+      - name: Validate notarization test mode
+        run: |
+          set -euo pipefail
+          if [[ "${NOTARIZE}" == "true" && "${PUBLISH}" == "true" ]]; then
+            echo "::error::notarize=true requires publish=false; notarized CI test builds never publish releases or appcasts."
+            exit 1
+          fi
+
       - name: Validate appcast notes
         run: bash scripts/validate-appcast-notes.sh
 
@@ -117,7 +131,17 @@ jobs:
         run: |
           set -euo pipefail
 
-          if [[ "${PUBLISH}" != "true" || -z "${DEVELOPER_ID_CERTIFICATE_P12}" ]]; then
+          if [[ "${NOTARIZE}" == "true" && -z "${DEVELOPER_ID_CERTIFICATE_P12}" ]]; then
+            echo "::error::DEVELOPER_ID_CERTIFICATE_P12 is required when notarize=true."
+            exit 1
+          fi
+
+          if [[ "${NOTARIZE}" == "true" && -z "${CERTIFICATE_PASSWORD}" ]]; then
+            echo "::error::DEVELOPER_ID_CERTIFICATE_PASSWORD is required when notarize=true."
+            exit 1
+          fi
+
+          if [[ "${PUBLISH}" != "true" && "${NOTARIZE}" != "true" ]] || [[ -z "${DEVELOPER_ID_CERTIFICATE_P12}" ]]; then
             echo "Developer ID signing is not configured; using Ad-hoc signing."
             exit 0
           fi
@@ -130,6 +154,9 @@ jobs:
           CERT_PATH="${RUNNER_TEMP}/developer-id.p12"
           KEYCHAIN_PATH="${RUNNER_TEMP}/app-signing.keychain-db"
           KEYCHAIN_PASSWORD="$(openssl rand -hex 24)"
+          trap 'rm -f "${CERT_PATH:-}"' EXIT
+          # The always-run cleanup step also handles partial keychain setup.
+          echo "KEYCHAIN_PATH=${KEYCHAIN_PATH}" >> "${GITHUB_ENV}"
 
           printf '%s' "${DEVELOPER_ID_CERTIFICATE_P12}" | base64 -D > "${CERT_PATH}"
 
@@ -148,8 +175,6 @@ jobs:
             -s \
             -k "${KEYCHAIN_PASSWORD}" \
             "${KEYCHAIN_PATH}" >/dev/null
-          security list-keychains -d user -s "${KEYCHAIN_PATH}" \
-            $(security list-keychains -d user | tr -d '"')
 
           IDENTITY="$(
             security find-identity -v -p codesigning "${KEYCHAIN_PATH}" \
@@ -164,7 +189,6 @@ jobs:
 
           {
             echo "CODE_SIGN_IDENTITY=${IDENTITY}"
-            echo "KEYCHAIN_PATH=${KEYCHAIN_PATH}"
           } >> "${GITHUB_ENV}"
 
       - name: Configure Apple notarization
@@ -175,7 +199,22 @@ jobs:
         run: |
           set -euo pipefail
 
-          if [[ "${PUBLISH}" != "true" || -z "${NOTARY_API_PRIVATE_KEY}" ]]; then
+          if [[ "${NOTARIZE}" == "true" && -z "${NOTARY_API_PRIVATE_KEY}" ]]; then
+            echo "::error::APPSTORE_CONNECT_API_PRIVATE_KEY is required when notarize=true."
+            exit 1
+          fi
+
+          if [[ "${NOTARIZE}" == "true" && -z "${NOTARY_API_KEY_ID}" ]]; then
+            echo "::error::APPSTORE_CONNECT_API_KEY_ID is required when notarize=true."
+            exit 1
+          fi
+
+          if [[ "${NOTARIZE}" == "true" && -z "${NOTARY_API_ISSUER_ID}" ]]; then
+            echo "::error::APPSTORE_CONNECT_API_ISSUER_ID is required when notarize=true."
+            exit 1
+          fi
+
+          if [[ "${PUBLISH}" != "true" && "${NOTARIZE}" != "true" ]] || [[ -z "${NOTARY_API_PRIVATE_KEY}" ]]; then
             echo "Apple notarization is not configured."
             exit 0
           fi
@@ -186,12 +225,21 @@ jobs:
           fi
 
           KEY_PATH="${RUNNER_TEMP}/AuthKey_${NOTARY_API_KEY_ID}.p8"
+          trap 'rm -f "${KEY_PATH:-}"' EXIT
           printf '%s' "${NOTARY_API_PRIVATE_KEY}" > "${KEY_PATH}"
 
-          xcrun notarytool store-credentials "status-trio-notary" \
-            --key "${KEY_PATH}" \
-            --key-id "${NOTARY_API_KEY_ID}" \
-            --issuer "${NOTARY_API_ISSUER_ID}"
+          if [[ -n "${KEYCHAIN_PATH:-}" ]]; then
+            xcrun notarytool store-credentials "status-trio-notary" \
+              --key "${KEY_PATH}" \
+              --key-id "${NOTARY_API_KEY_ID}" \
+              --issuer "${NOTARY_API_ISSUER_ID}" \
+              --keychain "${KEYCHAIN_PATH}"
+          else
+            xcrun notarytool store-credentials "status-trio-notary" \
+              --key "${KEY_PATH}" \
+              --key-id "${NOTARY_API_KEY_ID}" \
+              --issuer "${NOTARY_API_ISSUER_ID}"
+          fi
           rm -f "${KEY_PATH}"
 
           echo "NOTARY_PROFILE=status-trio-notary" >> "${GITHUB_ENV}"
@@ -277,4 +325,8 @@ jobs:
 
       - name: Clean up signing keychain
         if: always() && env.KEYCHAIN_PATH != ''
-        run: security delete-keychain "${KEYCHAIN_PATH}" || true
+        run: |
+          set -euo pipefail
+          if [[ -n "${KEYCHAIN_PATH}" && -f "${KEYCHAIN_PATH}" ]]; then
+            security delete-keychain "${KEYCHAIN_PATH}"
+          fi
