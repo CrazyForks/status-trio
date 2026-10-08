@@ -178,7 +178,7 @@ def parse_options
 
   options[:appcast] ||= File.expand_path("../appcast.xml", __dir__)
   options[:output] ||= options[:appcast]
-  options[:minimum] ||= "15.0"
+  options[:minimum] ||= "13.0"
 
   raise "VERSION must not be empty." if options[:version].to_s.empty?
   raise "BUILD must contain only digits." unless options[:build].to_s.match?(/\A\d+\z/)

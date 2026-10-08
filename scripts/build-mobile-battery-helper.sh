@@ -6,7 +6,7 @@ MANIFEST="$ROOT/Support/mobile-battery-dependencies.json"
 WORK="$ROOT/.build/mobile-battery"
 SDK_PATH="$(xcrun --sdk macosx --show-sdk-path)"
 SDK_VERSION="$(xcrun --sdk macosx --show-sdk-version)"
-MINIMUM_MACOS="15.0"
+MINIMUM_MACOS="13.0"
 UNIVERSAL_BUILD="${UNIVERSAL_BUILD:-0}"
 BUILD_JOBS="${BUILD_JOBS:-$(sysctl -n hw.ncpu)}"
 

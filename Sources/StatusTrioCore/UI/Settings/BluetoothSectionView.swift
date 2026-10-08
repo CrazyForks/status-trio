@@ -585,7 +585,7 @@ struct BluetoothSectionView: View {
 
                 guard enabled != wasEnabled else { return }
                 if enabled {
-                    NSApp.activate()
+                    NSApp.activate(ignoringOtherApps: true)
                 }
                 statusStore.setBluetoothEnabled(enabled)
             }

@@ -414,10 +414,10 @@ struct IconGuideView: View {
             .fixedSize(horizontal: false, vertical: true)
         }
         .onAppear(perform: { restartPulse() })
-        .onChange(of: selectedPart) { _, _ in
+        .onChange(of: selectedPart) { _ in
             restartPulse()
         }
-        .onChange(of: reduceMotion) { _, _ in
+        .onChange(of: reduceMotion) { _ in
             restartPulse()
         }
     }

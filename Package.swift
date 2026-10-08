@@ -4,7 +4,7 @@ import PackageDescription
 let package = Package(
     name: "StatusTrio",
     defaultLocalization: "en",
-    platforms: [.macOS(.v15)],
+    platforms: [.macOS(.v13)],
     products: [
         .executable(name: "StatusTrio", targets: ["StatusTrio"])
     ],

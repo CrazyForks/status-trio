@@ -121,19 +121,19 @@ struct BluetoothDeviceList: View {
             rowsViewportFrame = frame
             publishVisibleNearbyIDs(in: visibleDisplayDevices)
         }
-        .onChange(of: visibleDisplayDevices) { _, visibleDevices in
+        .onChange(of: visibleDisplayDevices) { visibleDevices in
             publishVisibleNearbyIDs(in: visibleDevices)
         }
-        .onChange(of: isExpanded) { _, _ in
+        .onChange(of: isExpanded) { _ in
             publishVisibleNearbyIDs(in: visibleDisplayDevices)
         }
-        .onChange(of: nearbyRows) { _, _ in
+        .onChange(of: nearbyRows) { _ in
             publishVisibleNearbyIDs(in: visibleDisplayDevices)
         }
-        .onChange(of: appleRows) { _, _ in
+        .onChange(of: appleRows) { _ in
             publishVisibleNearbyIDs(in: visibleDisplayDevices)
         }
-        .onChange(of: options) { _, _ in
+        .onChange(of: options) { _ in
             publishVisibleNearbyIDs(in: visibleDisplayDevices)
         }
         .onDisappear {

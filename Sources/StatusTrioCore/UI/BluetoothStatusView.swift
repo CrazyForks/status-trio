@@ -205,11 +205,11 @@ struct BluetoothStatusView: View {
         .task(id: currentTrustedAppleGeneration) {
             mobileBatteryController.setAuthorizedDeviceIDs([])
         }
-        .onChange(of: currentTrustedAppleCandidates) { _, _ in
+        .onChange(of: currentTrustedAppleCandidates) { _ in
             updateTrustedReadAuthorization()
         }
-        .onChange(of: showsBatteryLevels) { _, _ in updateNearbyReadAuthorization() }
-        .onChange(of: showsAppleDevicesAndBattery) { _, _ in updateNearbyReadAuthorization() }
+        .onChange(of: showsBatteryLevels) { _ in updateNearbyReadAuthorization() }
+        .onChange(of: showsAppleDevicesAndBattery) { _ in updateNearbyReadAuthorization() }
         .onDisappear {
             controller.setVisibleNearbyBLEDevices([], for: "bluetooth.summary.ble")
             controller.releaseVisibleSurface(BluetoothDeviceController.bluetoothSummarySurfaceToken)
