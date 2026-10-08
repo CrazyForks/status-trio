@@ -26,8 +26,8 @@
 - `verify-mobile-battery-bundle.sh`: passed; architecture slices, RPATHs, dependency paths, and
   signatures were checked.
 - Sparkle metadata: 5 Mach-O files checked, all with macOS minimums at or below 13.0.
-- Artifact: `StatusTrio-1.5.1.dmg` (13,765,806 bytes),
-  SHA-256 `f1231034ac37fd9e3dad487f082bc54a1a03bfa73774da3c505654ccff2bbff7`.
+- Artifact: `StatusTrio-1.5.1.dmg` (13,797,188 bytes),
+  SHA-256 `5c43be21fd4b804ac87948c6fb75fcf0f9bc859725db915a04e3a1042bd6bcfd`.
 - Packaging is Ad-hoc signed; this repository has no Developer ID certificate or notarization
   secrets. Do not claim notarization.
 
