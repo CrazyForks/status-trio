@@ -4,8 +4,9 @@
 
 - Goal: one Universal app for macOS 13 Ventura and later, built with SDK 26+.
 - Code baseline before implementation: `be80a4ce12d691cb9696127eacd94c0040694965`.
-- Preflight head: `8ee4b6d042d3b6d386274d54093c42de342fe722`.
-- Automated preflight: [run 37758928359](https://github.com/lingyired/status-trio/actions/runs/37758928359), success.
+- Preflight code head: `c2ea2ccaef546ffa61377cfc718e44cbcc039865`.
+- Superseded first successful preflight: `8ee4b6d042d3b6d386274d54093c42de342fe722`.
+- Automated preflight: [run 37765927373](https://github.com/lingyired/status-trio/actions/runs/37765927373), success.
 - Hardware runtime export: **not complete**. The authoritative macOS 13 Intel and Apple Silicon
   checklists remain **NOT RUN** until tested on those systems. Do not describe this build as
   fully supported on Ventura from the CI result alone.
@@ -13,7 +14,7 @@
 ## Automated evidence
 
 - CI toolchain: macOS 26 runner, Xcode 26.6, Apple Swift 6.3.3.
-- `Run tests`: passed; XCTest executed 1387 tests with 7 skipped and 0 failures, and Swift Testing
+- `Run tests`: passed; XCTest executed 1390 tests with 7 skipped and 0 failures, and Swift Testing
   ran 570 tests in 90 suites.
 - `Run native compatibility tests`: passed; deployment contract, appcast fixture, bundle contract,
   native Helper tests, RPATH parser tests, and dependency parser tests all passed.
@@ -70,7 +71,7 @@
 ## Git and release state
 
 - Baseline: `be80a4ce12d691cb9696127eacd94c0040694965`.
-- Verified preflight code head: `8ee4b6d042d3b6d386274d54093c42de342fe722`.
+- Verified preflight code head: `c2ea2ccaef546ffa61377cfc718e44cbcc039865`.
 - Branch: `codex/macos13-compatibility`; preflight is `publish=false`, so the version `1.5.1`
   and build `19` remain unpublished.
 - No merge, tag, GitHub Release, or online appcast update was performed by this work.
