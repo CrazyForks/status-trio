@@ -40,6 +40,8 @@ jobs:
   release:
     runs-on: macos-26
     timeout-minutes: 90
+    environment:
+      name: ${{ (github.event_name == 'push' || inputs.publish || inputs.notarize) && 'distribution' || 'ci' }}
     env:
       DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
       RELEASE_REPO: ${{ vars.RELEASE_REPO }}
@@ -125,6 +127,7 @@ jobs:
           fi
 
       - name: Configure Developer ID signing
+        if: ${{ env.PUBLISH == 'true' || env.NOTARIZE == 'true' }}
         env:
           DEVELOPER_ID_CERTIFICATE_P12: ${{ secrets.DEVELOPER_ID_CERTIFICATE_P12 }}
           CERTIFICATE_PASSWORD: ${{ secrets.DEVELOPER_ID_CERTIFICATE_PASSWORD }}
@@ -192,6 +195,7 @@ jobs:
           } >> "${GITHUB_ENV}"
 
       - name: Configure Apple notarization
+        if: ${{ env.PUBLISH == 'true' || env.NOTARIZE == 'true' }}
         env:
           NOTARY_API_KEY_ID: ${{ secrets.APPSTORE_CONNECT_API_KEY_ID }}
           NOTARY_API_ISSUER_ID: ${{ secrets.APPSTORE_CONNECT_API_ISSUER_ID }}
@@ -309,7 +313,7 @@ jobs:
       - name: Build, sign, notarize, and publish
         env:
           GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
-          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+          SPARKLE_PRIVATE_KEY: ${{ env.PUBLISH == 'true' && secrets.SPARKLE_PRIVATE_KEY || '' }}
         run: bash scripts/release.sh
 
       - name: Upload release artifacts

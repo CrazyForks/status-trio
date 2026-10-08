@@ -11,10 +11,27 @@ ruby -ryaml -rjson -e '
   abort "notarize must be boolean, default false" unless input["type"] == "boolean" && input["default"] == false
   job = workflow.fetch("jobs").fetch("release")
   abort "NOTARIZE must be wired from dispatch" unless job.fetch("env").fetch("NOTARIZE").include?("inputs.notarize")
+  environment_name = job.fetch("environment").fetch("name")
+  ["github.event_name ==", "inputs.publish", "inputs.notarize", "distribution", "ci"].each do |condition|
+    abort "release environment selection is missing #{condition}" unless environment_name.include?(condition)
+  end
   steps = job.fetch("steps")
   ["Validate notarization test mode", "Configure Developer ID signing", "Configure Apple notarization"].each do |name|
     step = steps.find { |candidate| candidate["name"] == name }
     File.write(File.join(ENV.fetch("TEST_ROOT"), name + ".sh"), step ? step.fetch("run") : "")
+  end
+  ["Configure Developer ID signing", "Configure Apple notarization"].each do |name|
+    step = steps.find { |candidate| candidate["name"] == name } || abort("missing step #{name}")
+    guard = step.fetch("if", "")
+    ["env.PUBLISH ==", "env.NOTARIZE =="].each do |condition|
+      abort "#{name} must guard secret injection with #{condition}" unless guard.include?(condition)
+    end
+    abort "#{name} must run for publishing or notarization" unless guard.include?("||")
+  end
+  release_step = steps.find { |candidate| candidate["name"] == "Build, sign, notarize, and publish" } || abort("missing release step")
+  sparkle_key = release_step.fetch("env").fetch("SPARKLE_PRIVATE_KEY", "")
+  ["env.PUBLISH ==", "secrets.SPARKLE_PRIVATE_KEY", "|| ''"].each do |condition|
+    abort "SPARKLE_PRIVATE_KEY must be publish-only (missing #{condition})" unless sparkle_key.include?(condition)
   end
 ' "$ROOT/.github/workflows/release.yml"
 
