@@ -12,9 +12,7 @@ enum MobileBatteryDeviceRowPresentation {
     }
 
     static func sourceText(_ snapshot: MobileBatterySnapshot, viaIPhone: String) -> String? {
-        BluetoothMobileDeviceModel.kind(forModel: snapshot.model) == .mobile(.watch)
-            ? viaIPhone
-            : nil
+        nil
     }
 
     static func chargingText(_ snapshot: MobileBatterySnapshot, charging: String) -> String? {
@@ -38,16 +36,7 @@ struct MobileBatteryDeviceRows: View {
     }
 
     private var detailText: String {
-        let time = snapshot.observedAt.formatted(
-            Date.FormatStyle(date: .omitted, time: .shortened)
-                .locale(localization.resolvedLanguage.locale)
-        )
         let parts = [
-            MobileBatteryDeviceRowPresentation.sourceText(
-                snapshot,
-                viaIPhone: localization.string(.mobileBatteryWatchSource)
-            ),
-            localization.format(.mobileBatteryUpdatedAt, time),
             MobileBatteryDeviceRowPresentation.chargingText(
                 snapshot,
                 charging: localization.string(.mobileBatteryCharging)

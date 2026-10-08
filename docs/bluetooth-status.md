@@ -398,14 +398,22 @@ does not turn the panel's enabled flag off.
 With **Show Apple devices and battery** enabled, verified iPhone and iPad
 devices already trusted by this Mac and Apple Watch devices verified through a
 trusted paired iPhone appear automatically in this same list. There is no
-per-device selection. Discovery reads metadata only; arbitrary nearby Apple
+separate picker. Trusted discovery reads metadata only; arbitrary nearby Apple
 broadcasts, names, and untrusted routes do not establish ownership.
 
-Battery reads require the global Bluetooth battery option, a visible row in the
-actual viewport, and current verified discovery evidence. Cached verified
-metadata keeps an offline row visible but cannot authorize a new read by itself.
-USB and network observations for the same helper identity deduplicate, and
-verified renames update the row associated with that stable identity.
+Named Apple BLE discoveries appear as ordinary rows in the Bluetooth Settings
+order list and, when the master option is enabled, in the status popover. UUIDs
+are internal stable row identities only. Names and advertisements do not
+establish ownership, and BLE rows never merge with classic Bluetooth rows by
+name. Settings discovery never reads battery data.
+
+A BLE battery read requires the global Bluetooth battery option, the Apple
+device option, and a row actually intersecting the visible popover viewport.
+Closing, hiding, folding, or scrolling a row out of view revokes its permit.
+Scanner sessions are limited to two concurrent connections, an eight-second
+deadline, and a per-device cooldown. A BLE row without a battery value, including
+after a failed read, has no extra status label. Trusted helper devices continue
+to use the helper's existing verification and USB/network routes.
 
 Classic Bluetooth addresses generally cannot be mapped to helper UDIDs. When no
 stable cross-provider identity exists, same-named rows stay separate rather

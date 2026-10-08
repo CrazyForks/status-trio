@@ -385,9 +385,6 @@
 "wifi.summary.band" = "%@ GHz";
 "wifi.summary.signal" = "%d dBm";
 "wifi.summary.bandAndSignal" = "%@ · %@";
-"settings.bluetooth.hideUnpairedDevices" = "Ocultar dispositivos ausentes nas Configurações do Sistema";
-"settings.bluetooth.hideUnpairedDevicesDescription" = "Oculta dispositivos varridos mas não pareados que o sistema não lista. Desative para mostrar tudo.";
-"settings.bluetooth.notInSystemSettings" = "Ausente nas Configurações do Sistema";
 "settings.bluetooth.hideDevice" = "Ocultar dispositivo";
 "settings.bluetooth.showDevice" = "Mostrar dispositivo";
 "settings.bluetooth.permissionRequired" = "Permissão do Bluetooth necessária";
@@ -410,5 +407,8 @@
 "bluetooth.nearbyBLE.notNearby" = "Não está próximo";
 "bluetooth.nearbyBLE.unavailable" = "Temporariamente indisponível";
 "settings.appleDevicesAndBattery" = "Mostrar dispositivos Apple e bateria";
-"settings.appleDevicesAndBattery.description" = "iPhones e iPads verificados e já confiáveis neste Mac, além de Apple Watches verificados por um iPhone emparelhado e confiável, aparecem automaticamente na lista Bluetooth. Uma transmissão Apple próxima ou o nome do dispositivo, por si só, não comprova propriedade. A bateria é lida, quando disponível, por USB confiável ou Wi-Fi já configurado; as leituras respeitam a opção global de bateria Bluetooth. Dispositivos sem uma identidade estável compartilhada permanecem separados.";
-"bluetooth.nearbyBLE.source" = "Bluetooth próximo";
+"settings.appleDevicesAndBattery.description" = "Dispositivos Apple confiáveis e próximos com nome aparecem na lista Bluetooth.";
+"settings.appleBackgroundRefresh" = "Atualizar baterias Apple em segundo plano";
+"settings.appleBackgroundRefresh.description" = "Atualiza as baterias dos dispositivos Apple selecionados com o painel fechado.";
+"settings.appleBackgroundRefresh.interval" = "Intervalo de atualização da bateria em segundo plano";
+"settings.appleBackgroundRefresh.intervalValue" = "%d minuto(s)";

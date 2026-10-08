@@ -20,6 +20,7 @@ struct BluetoothDeviceRow: View {
     var mobileMetadataByDeviceID: [String: MobileBatterySnapshot] = [:]
     var nearbyMetadataByDeviceID: [String: NearbyBLEPanelRow] = [:]
     var appleStatusByDeviceID: [String: NearbyBLEPanelRowStatus] = [:]
+    var canonicalStatusByDeviceID: [String: NearbyBLEPanelRowStatus] = [:]
     let actionState: BluetoothDeviceActionState?
     let isConfirmingDisconnect: Bool
     let onPerformAction: () -> Void
@@ -197,7 +198,12 @@ struct BluetoothDeviceRow: View {
     }
 
     private var externalBatteryStatus: NearbyBLEPanelRowStatus? {
-        nearbyMetadataByDeviceID[device.id]?.status ?? appleStatusByDeviceID[device.id]
+        BluetoothDeviceListPresentation.externalBatteryStatus(
+            for: device,
+            canonicalStatus: canonicalStatusByDeviceID[device.id],
+            nearbyStatus: nearbyMetadataByDeviceID[device.id]?.presentationStatus,
+            appleStatus: appleStatusByDeviceID[device.id]
+        )
     }
 
     /// The level as the report's pieces. The charging case is drawn as its glyph

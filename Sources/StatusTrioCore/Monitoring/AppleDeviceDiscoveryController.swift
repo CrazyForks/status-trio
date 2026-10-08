@@ -10,6 +10,7 @@ final class AppleDeviceDiscoveryController: ObservableObject {
     private let reader: any MobileBatteryReading
     private var claims: Set<String> = []
     private var isEnabled = false
+    private var refreshInterval: Duration = .seconds(60)
     private var generation: UInt64 = 0
     private var task: Task<Void, Never>?
     private var refreshTask: Task<Void, Never>?
@@ -26,11 +27,14 @@ final class AppleDeviceDiscoveryController: ObservableObject {
     func setEnabled(_ enabled: Bool) {
         guard isEnabled != enabled else { return }
         isEnabled = enabled
-        if enabled {
-            startDiscovery()
-        } else {
-            stopDiscovery(clearCandidates: true)
-        }
+        if !enabled { stopDiscovery(clearCandidates: true) }
+        else { updateLifecycle() }
+    }
+
+    func setRefreshInterval(_ interval: Duration) {
+        guard refreshInterval != interval else { return }
+        refreshInterval = interval
+        if isActive { scheduleRefresh() }
     }
 
     func request(_ token: String) {
@@ -42,7 +46,7 @@ final class AppleDeviceDiscoveryController: ObservableObject {
 
     func release(_ token: String) {
         guard claims.remove(token) != nil else { return }
-        if claims.isEmpty && !isEnabled { stopDiscovery(clearCandidates: false) }
+        if claims.isEmpty { stopDiscovery(clearCandidates: false) }
     }
 
     func refresh() {
@@ -56,7 +60,7 @@ final class AppleDeviceDiscoveryController: ObservableObject {
         stopDiscovery(clearCandidates: true)
     }
 
-    private var isActive: Bool { isEnabled }
+    private var isActive: Bool { isEnabled && !claims.isEmpty }
 
     private func updateLifecycle() {
         if isActive { startDiscovery() }
@@ -91,18 +95,23 @@ final class AppleDeviceDiscoveryController: ObservableObject {
         candidates = values.sorted { $0.id.rowID < $1.id.rowID }
         isDiscovering = false
         task = nil
-        if isEnabled {
+        if isActive {
             scheduleRefresh()
         }
     }
 
     private func scheduleRefresh() {
         refreshTask?.cancel()
+        refreshTask = nil
         refreshTask = Task { [weak self] in
-            do { try await Task.sleep(for: .seconds(60)) }
+            do {
+                guard let interval = self?.refreshInterval else { return }
+                try await Task.sleep(for: interval)
+            }
             catch { return }
             guard !Task.isCancelled else { return }
-            self?.refresh()
+            guard let self, self.isActive else { return }
+            self.refresh()
         }
     }
 

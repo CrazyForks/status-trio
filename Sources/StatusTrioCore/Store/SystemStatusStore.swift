@@ -86,6 +86,9 @@ final class SystemStatusStore: ObservableObject {
     private var inputSettingsCancellable: AnyCancellable?
     private var mobileBatterySettingsCancellable: AnyCancellable?
     private var appleDeviceSettingsCancellable: AnyCancellable?
+    private var appleBackgroundSettingsCancellable: AnyCancellable?
+    private var appleEligibilitySettingsCancellable: AnyCancellable?
+    private var nearbyBLESettingsCancellables: Set<AnyCancellable> = []
     private var inputSettingEnabled = false
     private var isInputEnabled = false
     private var refreshTask: Task<Void, Never>?
@@ -107,6 +110,7 @@ final class SystemStatusStore: ObservableObject {
     /// `MainActor.assumeIsolated`, which is a fatal assertion rather than a hop
     /// if the last reference is released off the main thread.
     nonisolated(unsafe) private var wakeObserver: NSObjectProtocol?
+    nonisolated(unsafe) private var systemSleepObserver: NSObjectProtocol?
     nonisolated(unsafe) private var displaySleepObserver: NSObjectProtocol?
     nonisolated(unsafe) private var displayWakeObserver: NSObjectProtocol?
     private var lastPublishedSnapshot: StatusSnapshot?
@@ -186,6 +190,9 @@ final class SystemStatusStore: ObservableObject {
         if let wakeObserver {
             wakeNotificationCenter.removeObserver(wakeObserver)
         }
+        if let systemSleepObserver {
+            wakeNotificationCenter.removeObserver(systemSleepObserver)
+        }
         if let displaySleepObserver {
             wakeNotificationCenter.removeObserver(displaySleepObserver)
         }
@@ -219,10 +226,21 @@ final class SystemStatusStore: ObservableObject {
                 // over-polling is the safe direction, permanent staleness is
                 // not.
                 self.isDisplayAsleep = false
+                self.bluetoothDevices.setSystemSleeping(false)
                 self.volumeMonitor.setDisplayAsleep(false)
                 self.displayAsleepSkipCount = 0
                 self.recoverAll()
                 self.refreshAll()
+            }
+        }
+
+        systemSleepObserver = wakeNotificationCenter.addObserver(
+            forName: NSWorkspace.willSleepNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.bluetoothDevices.setSystemSleeping(true)
             }
         }
 
@@ -330,6 +348,11 @@ final class SystemStatusStore: ObservableObject {
         mobileBatterySettingsCancellable = nil
         appleDeviceSettingsCancellable?.cancel()
         appleDeviceSettingsCancellable = nil
+        appleBackgroundSettingsCancellable?.cancel()
+        appleBackgroundSettingsCancellable = nil
+        appleEligibilitySettingsCancellable?.cancel()
+        appleEligibilitySettingsCancellable = nil
+        nearbyBLESettingsCancellables.removeAll()
         inputUpdateTask?.cancel()
         inputUpdateTask = nil
         inputMonitor?.stop()
@@ -338,6 +361,10 @@ final class SystemStatusStore: ObservableObject {
         if let wakeObserver {
             wakeNotificationCenter.removeObserver(wakeObserver)
             self.wakeObserver = nil
+        }
+        if let systemSleepObserver {
+            wakeNotificationCenter.removeObserver(systemSleepObserver)
+            self.systemSleepObserver = nil
         }
         if let displaySleepObserver {
             wakeNotificationCenter.removeObserver(displaySleepObserver)
@@ -498,6 +525,7 @@ final class SystemStatusStore: ObservableObject {
         guard !hasStopped else { return }
         isPopoverVisible = visible
         mobileBattery.setSurfaceVisible(visible)
+        updateAppleRefreshDemand()
         inputMonitor?.setVisible(visible)
         if !visible { batteryDetails.deactivate() }
         updateDetailsVisibility()
@@ -665,6 +693,28 @@ final class SystemStatusStore: ObservableObject {
 
     func bindMobileBatterySettings(_ settings: SettingsStore) {
         guard !hasStopped else { return }
+        nearbyBLESettingsCancellables.removeAll()
+        settings.$showsAppleDevicesAndBattery
+            .combineLatest(settings.$nearbyBLESelections, settings.$hiddenBluetoothDeviceAddresses,
+                           settings.$showsBluetoothBatteryLevels)
+            .combineLatest(settings.$showsBluetoothDeviceList)
+            .sink { [weak self] values, listVisible in
+                let (enabled, selections, hidden, batteryEnabled) = values
+                let expandedHidden = BluetoothDeviceListPresentation.expandedAliasIDs(
+                    forHiddenIDs: hidden,
+                    among: self?.appleDeviceAliasRows(for: settings) ?? []
+                )
+                self?.bluetoothDevices.configureNearbyBLEDevices(
+                    enabled: enabled, knownIDs: Set(selections.map(\.id)),
+                    hiddenIDs: Set(expandedHidden.compactMap { BluetoothDeviceIdentity.bleUUID(from: $0) }),
+                    batteryLevelsEnabled: batteryEnabled,
+                    listVisible: listVisible,
+                    persistedSelections: selections
+                )
+            }.store(in: &nearbyBLESettingsCancellables)
+        bluetoothDevices.$nearbyBatteryDevices
+            .sink { [weak settings] readings in settings?.updateNearbyBLEMetadata(readings) }
+            .store(in: &nearbyBLESettingsCancellables)
         mobileBatterySettingsCancellable = settings.$showsBluetoothBatteryLevels
             .combineLatest(
                 settings.$showsAppleDevicesAndBattery,
@@ -678,15 +728,120 @@ final class SystemStatusStore: ObservableObject {
         appleDeviceSettingsCancellable = settings.$showsAppleDevicesAndBattery
             .combineLatest(appleDeviceDiscovery.$candidates)
             .sink { [weak self, weak settings] enabled, candidates in
-                self?.appleDeviceDiscovery.setEnabled(enabled)
                 self?.trustedAppleDeviceCandidates = candidates
                 self?.trustedAppleDeviceDiscoveryGeneration = self?.appleDeviceDiscovery.discoveryGeneration ?? 0
                 guard enabled else { return }
                 settings?.updateTrustedAppleDeviceMetadata(candidates)
             }
+        appleBackgroundSettingsCancellable = settings.$refreshesAppleBatteriesInBackground
+            .combineLatest(settings.$appleBatteryRefreshIntervalMinutes)
+            .sink { [weak self] enabled, intervalMinutes in
+                self?.mobileBattery.setBackgroundRefresh(
+                    enabled: enabled,
+                    interval: .seconds(intervalMinutes * 60)
+                )
+                self?.appleDeviceDiscovery.setRefreshInterval(.seconds(intervalMinutes * 60))
+                Task { @MainActor [weak self] in self?.updateAppleRefreshDemand() }
+            }
+        appleEligibilitySettingsCancellable = settings.$showsAppleDevicesAndBattery
+            .combineLatest(
+                settings.$showsBluetoothBatteryLevels,
+                settings.$showsBluetoothDeviceList,
+                settings.$enabledPopupSections
+            )
+            .sink { [weak self] masterEnabled, _, _, _ in
+                guard let self else { return }
+                self.appleDeviceDiscovery.setEnabled(masterEnabled)
+                Task { @MainActor [weak self] in self?.updateAppleRefreshDemand() }
+            }
+        settings.$hiddenBluetoothDeviceAddresses
+            .sink { [weak self, weak settings] values in
+                guard let self, let settings else { return }
+                let expandedHidden = BluetoothDeviceListPresentation.expandedAliasIDs(
+                    forHiddenIDs: values,
+                    among: self.appleDeviceAliasRows(for: settings)
+                )
+                let hidden = Set(expandedHidden.compactMap { rowID -> AppleDeviceID? in
+                    if let uuid = BluetoothDeviceIdentity.bleUUID(from: rowID) { return .ble(uuid) }
+                    guard let candidate = (settings.trustedAppleDeviceMetadata + self.trustedAppleDeviceCandidates).first(where: {
+                        BluetoothDeviceIdentity.preferenceKey($0.id.rowID) == BluetoothDeviceIdentity.preferenceKey(rowID)
+                    }) else { return nil }
+                    return candidate.id
+                })
+                self.mobileBattery.revokeDeviceIDs(hidden)
+                Task { @MainActor [weak self] in self?.updateAppleRefreshDemand() }
+            }.store(in: &nearbyBLESettingsCancellables)
         appleDeviceDiscovery.setEnabled(settings.showsAppleDevicesAndBattery)
+        appleDeviceDiscovery.setRefreshInterval(.seconds(settings.appleBatteryRefreshIntervalMinutes * 60))
+        self.boundAppleRefreshSettings = settings
         trustedAppleDeviceCandidates = appleDeviceDiscovery.candidates
         trustedAppleDeviceDiscoveryGeneration = appleDeviceDiscovery.discoveryGeneration
+        updateAppleRefreshDemand()
+    }
+
+    private weak var boundAppleRefreshSettings: SettingsStore?
+
+    private func updateAppleRefreshDemand() {
+        guard let settings = boundAppleRefreshSettings else { return }
+        let eligible = settings.showsAppleDevicesAndBattery
+            && settings.showsBluetoothBatteryLevels
+            && settings.showsBluetoothDeviceList
+        let background = eligible && settings.refreshesAppleBatteriesInBackground
+        let foreground = eligible && isPopoverVisible && settings.enabledPopupSections.contains(.bluetooth)
+        appleDeviceDiscovery.setEnabled(eligible)
+        let hiddenKeys = Set(BluetoothDeviceListPresentation.expandedAliasIDs(
+            forHiddenIDs: settings.hiddenBluetoothDeviceAddresses,
+            among: appleDeviceAliasRows(for: settings)
+        ).map { BluetoothDeviceIdentity.preferenceKey($0) })
+        if background || foreground {
+            appleDeviceDiscovery.request("system-status.apple-refresh")
+            let backgroundIDs: Set<AppleDeviceID> = settings.refreshesAppleBatteriesInBackground
+                ? Set(AppleDeviceCatalog.candidates(trusted: settings.trustedAppleDeviceMetadata)
+                    .filter { !hiddenKeys.contains(BluetoothDeviceIdentity.preferenceKey($0.id.rowID)) }
+                    .map(\.id))
+                : []
+            mobileBattery.setBackgroundAuthorizedDeviceIDs(backgroundIDs)
+            let bleIDs: Set<UUID> = background
+                ? Set(settings.nearbyBLESelections.filter { $0.vendor == .apple }
+                    .filter { !hiddenKeys.contains(BluetoothDeviceIdentity.preferenceKey(BluetoothDeviceIdentity.bleRowID($0.id))) }
+                    .map(\.id))
+                : []
+            bluetoothDevices.setNearbyBLEBackgroundRefresh(
+                enabled: background,
+                selectedIDs: bleIDs,
+                interval: .seconds(settings.appleBatteryRefreshIntervalMinutes * 60)
+            )
+        } else {
+            appleDeviceDiscovery.release("system-status.apple-refresh")
+            mobileBattery.setBackgroundAuthorizedDeviceIDs([])
+            bluetoothDevices.setNearbyBLEBackgroundRefresh(enabled: false, selectedIDs: [])
+        }
+    }
+
+    private func appleDeviceAliasRows(for settings: SettingsStore) -> [BluetoothDevice] {
+        let options = settings.bluetoothDeviceListOptions
+        let unhiddenOptions = BluetoothDeviceListOptions(
+            showsList: options.showsList,
+            maxVisibleDevices: options.maxVisibleDevices,
+            order: options.order,
+            hidesGhostDevices: options.hidesGhostDevices,
+            revealedGhostDeviceAddresses: options.revealedGhostDeviceAddresses
+        )
+        let trustedRows = AppleDeviceCatalog.projection(
+            candidates: AppleDeviceCatalog.candidates(
+                trusted: settings.trustedAppleDeviceMetadata + trustedAppleDeviceCandidates
+            ),
+            trustedSnapshots: mobileBattery.snapshots,
+            options: unhiddenOptions
+        ).rows.map(\.device)
+        let nearbyRows = NearbyBLEDeviceCatalog.panelRows(
+            selections: settings.nearbyBLESelections,
+            readings: bluetoothDevices.nearbyBatteryDevices,
+            failures: bluetoothDevices.nearbyBLEReadFailures,
+            options: unhiddenOptions,
+            now: Date()
+        ).map(\.device)
+        return trustedRows + nearbyRows
     }
 
     func selectInputDevice(_ id: AudioDeviceID) {

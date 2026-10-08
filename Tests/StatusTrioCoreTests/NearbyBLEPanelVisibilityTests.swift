@@ -47,27 +47,31 @@ struct NearbyBLEPanelVisibilityTests {
         ).isEmpty)
     }
 
-    @Test func settingsUnionKeepsUndiscoveredSavedSelectionsAndDeduplicatesUUIDs() {
-        let saved = NearbyBLEDeviceSelection(id: UUID(), name: "Saved", vendor: .other, model: nil)
-        let duplicate = candidate(saved.id, name: "New broadcast name")
-        let nearby = candidate(UUID(), name: "Nearby")
-
-        let rows = NearbyBLEDeviceCatalog.settingsCandidates(selections: [saved], candidates: [duplicate, nearby])
-
-        #expect(rows.map(\.id) == [nearby.id, saved.id])
-        #expect(rows[1].name == "New broadcast name")
-    }
-
-    @Test func settingsUnionSortsTheWholeListAppleFirstIncludingSavedSelections() {
-        let savedOther = NearbyBLEDeviceSelection(id: UUID(), name: "Z saved", vendor: .other, model: nil)
-        let apple = NearbyBLEDeviceCandidate(id: UUID(), name: "Phone", vendor: .apple, lastSeen: .now)
-        let other = NearbyBLEDeviceCandidate(id: UUID(), name: "A nearby", vendor: .other, lastSeen: .now)
-
-        let rows = NearbyBLEDeviceCatalog.settingsCandidates(
-            selections: [savedOther], candidates: [other, apple]
+    @Test func settingsProjectionKeepsOnlyUndiscoveredFreshVerifiedAppleRows() {
+        let saved = NearbyBLEDeviceSelection(id: UUID(), name: "Saved", vendor: .apple, model: nil)
+        let duplicate = UUID()
+        let now = Date(timeIntervalSince1970: 30_000)
+        let verified = NearbyBLEDeviceSelection(
+            id: duplicate, name: "Verified", vendor: .apple, model: nil,
+            batteryLevel: 48, batteryLastUpdated: now
         )
 
-        #expect(rows.map(\.id) == [apple.id, other.id, savedOther.id])
+        let rows = NearbyBLEDeviceCatalog.settingsCandidates(selections: [saved, verified], now: now)
+
+        #expect(rows.map(\.id) == [verified.id])
+        #expect(rows[0].name == "Verified")
+    }
+
+    @Test func savedNonAppleMetadataDoesNotCreateASettingsCandidateRow() {
+        let savedOther = NearbyBLEDeviceSelection(id: UUID(), name: "Old Mouse", vendor: .other, model: nil)
+        let savedUnknown = NearbyBLEDeviceSelection(id: UUID(), name: "Unknown", vendor: .unknown, model: nil)
+
+        let rows = NearbyBLEDeviceCatalog.settingsCandidates(
+            selections: [savedOther, savedUnknown]
+        )
+
+        #expect(rows.isEmpty)
+        #expect([savedOther, savedUnknown].map(\.id) == [savedOther.id, savedUnknown.id])
     }
 
     @Test func recentMissingReadingHasTheSameNeutralStatusForVisualAndAccessibility() {
@@ -76,23 +80,6 @@ struct NearbyBLEPanelVisibilityTests {
 
         #expect(recent.status == .pending)
         #expect(absent.status == .notNearby)
-    }
-
-    @Test func settingsOrderLabelsMarkNearbyBLESourceAndDisambiguateNames() {
-        let id = UUID(uuidString: "00000000-0000-0000-0000-00000000ABCD")!
-        let device = BluetoothDevice(
-            id: BluetoothDeviceIdentity.bleRowID(id), name: "Phone", kind: .unknown,
-            isConnected: false, isReadOverTheAir: true
-        )
-        let label = BluetoothDeviceSettingsPresentation.orderLabel(
-            device: device,
-            nearbyBLENames: [id: "Phone · ABCD"],
-            fallback: "Nearby",
-            nearbySource: "Nearby BLE"
-        )
-
-        #expect(label.title == "Phone · ABCD")
-        #expect(label.source == "Nearby BLE")
     }
 
     private func row(

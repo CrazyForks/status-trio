@@ -25,7 +25,7 @@
 	<key>LSUIElement</key>
 	<true/>
 	<key>NSBluetoothAlwaysUsageDescription</key>
-	<string>Used to show Bluetooth device connection status. When Apple device battery display is enabled, Status Trio also reads metadata and battery values from Apple devices already trusted by this Mac.</string>
+	<string>Shows Bluetooth connection status and reads battery/model metadata only for devices explicitly authorized by BLE UUID or already trusted by this Mac.</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>NSLocationUsageDescription</key>

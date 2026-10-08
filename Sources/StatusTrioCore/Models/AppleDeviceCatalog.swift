@@ -88,7 +88,7 @@ enum AppleDeviceCatalog {
             }
             let status: NearbyBLEPanelRowStatus
             if let snapshot { status = .battery(snapshot.batteryLevel) }
-            else { status = failuresByID.contains(candidate.id) ? .unavailable : .notNearby }
+            else { status = failuresByID.contains(candidate.id) ? .unavailable : .pending }
             return AppleDevicePanelRow(
                 id: candidate.id,
                 device: device,

@@ -9,7 +9,7 @@ final class BluetoothNearbyBatteryLifecycleTests: XCTestCase {
         let monitor = NearbyBatteryStateMonitorSpy()
         let controller = makeController(scanner: scanner, monitor: monitor)
 
-        controller.configureNearbyBLEDevices(enabled: true, selectedIDs: [], hiddenIDs: [])
+        controller.configureNearbyBLEDevices(enabled: true, knownIDs: [], hiddenIDs: [])
         controller.requestNearbyBLEDiscovery("settings")
         controller.holdVisibleSurface(BluetoothDeviceController.bluetoothSummarySurfaceToken)
         controller.holdVisibleSurface(BluetoothDeviceController.popoverSurfaceToken)
@@ -25,48 +25,103 @@ final class BluetoothNearbyBatteryLifecycleTests: XCTestCase {
         controller.deactivate()
     }
 
-    func testSettingsDiscoveryStartsWithoutPopoverButViewClaimDoesNotAuthorizeReads() {
+    func testSettingsDiscoveryDoesNotScanAndViewClaimDoesNotPermitReads() {
         let scanner = NearbyBatteryScannerSpy()
         let monitor = NearbyBatteryStateMonitorSpy()
         let controller = makeController(scanner: scanner, monitor: monitor)
         controller.activate()
         monitor.emit(authorization: .allowed, state: .poweredOn)
 
-        controller.configureNearbyBLEDevices(enabled: true, selectedIDs: [], hiddenIDs: [])
+        controller.configureNearbyBLEDevices(enabled: true, knownIDs: [], hiddenIDs: [])
         controller.requestNearbyBLEDiscovery("settings")
-        XCTAssertEqual(scanner.startCount, 1, "settings discovery can run without a popover")
-        XCTAssertTrue(scanner.allowedReadDeviceIDs.isEmpty, "discovery does not grant reads")
+        XCTAssertEqual(scanner.startCount, 0, "a Settings claim alone must not start scanning")
+        XCTAssertTrue(scanner.allowedReadDeviceIDs.isEmpty, "a Settings claim does not grant reads")
         controller.holdVisibleSurface(BluetoothDeviceController.bluetoothSummarySurfaceToken)
-        XCTAssertTrue(scanner.allowedReadDeviceIDs.isEmpty, "a view claim cannot substitute for the popover claim")
+        XCTAssertEqual(scanner.startCount, 0, "the summary view alone is not an active popover")
+        XCTAssertTrue(scanner.allowedReadDeviceIDs.isEmpty, "a view claim cannot substitute for visible rows")
+        controller.holdVisibleSurface(BluetoothDeviceController.popoverSurfaceToken)
+        XCTAssertEqual(scanner.startCount, 1, "foreground summary claims demand discovery")
+        XCTAssertTrue(scanner.allowedReadDeviceIDs.isEmpty, "discovery does not grant reads without visible rows")
 
         controller.deactivate()
+    }
+
+    func testHidingEitherCompatibleAliasRevokesForegroundBLEReadAndRejectsLateCallback() async {
+        let bleID = UUID(uuidString: "00000000-0000-0000-0000-0000000000B3")!
+        let ble = BluetoothDevice(
+            id: BluetoothDeviceIdentity.bleRowID(bleID), name: "Phone", kind: .mobile(.phone),
+            isConnected: false, appleMobileModel: "iPhone18,1", isReadOverTheAir: true
+        )
+        let trusted = BluetoothDevice(
+            id: AppleDeviceID.trustedDevice("phone-c").rowID, name: "Phone", kind: .mobile(.phone),
+            isConnected: false, appleMobileModel: "iPhone18,1", isReadOverTheAir: true
+        )
+
+        for hiddenID in [ble.id, trusted.id] {
+            let scanner = NearbyBatteryScannerSpy()
+            let monitor = NearbyBatteryStateMonitorSpy()
+            let controller = makeReadyController(scanner: scanner, monitor: monitor)
+            controller.configureNearbyBLEDevices(enabled: true, knownIDs: [bleID], hiddenIDs: [])
+            controller.requestNearbyBLEDiscovery("foreground-summary")
+            let reading = NearbyBluetoothBatteryDevice(
+                id: bleID, name: "Phone", batteryLevel: 52, model: "iPhone18,1",
+                manufacturer: nil, lastUpdated: Date()
+            )
+            controller.setVisibleNearbyBLEDevices([bleID], for: "panel")
+            XCTAssertEqual(scanner.allowedReadDeviceIDs, [bleID])
+            scanner.publish([reading])
+            await Task.yield()
+            XCTAssertEqual(controller.nearbyBatteryDevices, [reading])
+            let callbackBeforeHide = scanner.onDevicesChanged
+
+            let options = BluetoothDeviceListOptions(
+                showsList: true, maxVisibleDevices: 5, order: [],
+                hiddenDeviceAddresses: [hiddenID]
+            )
+            let effectiveOptions = BluetoothDeviceListPresentation.expandingHiddenAliases(
+                in: options, among: [ble, trusted]
+            )
+            let hiddenBLEIDs = Set(effectiveOptions.hiddenDeviceAddresses.compactMap {
+                BluetoothDeviceIdentity.bleUUID(from: $0)
+            })
+            controller.configureNearbyBLEDevices(enabled: true, knownIDs: [bleID], hiddenIDs: hiddenBLEIDs)
+
+            XCTAssertTrue(scanner.allowedReadDeviceIDs.isEmpty, "hiding either alias immediately revokes the BLE read")
+            XCTAssertTrue(controller.nearbyBatteryDevices.isEmpty, "hiding an alias purges its cached BLE reading")
+            callbackBeforeHide?([reading])
+            await Task.yield()
+            XCTAssertTrue(controller.nearbyBatteryDevices.isEmpty, "the previous read callback cannot restore the hidden row")
+            controller.deactivate()
+        }
     }
 
     func testReleasingPopoverStopsImmediatelyAndRejectsOldCallbacks() async {
         let scanner = NearbyBatteryScannerSpy()
         let monitor = NearbyBatteryStateMonitorSpy()
         let controller = makeReadyController(scanner: scanner, monitor: monitor)
-        controller.configureNearbyBLEDevices(enabled: true, selectedIDs: [], hiddenIDs: [])
+        controller.configureNearbyBLEDevices(enabled: true, knownIDs: [], hiddenIDs: [])
         controller.requestNearbyBLEDiscovery("settings")
         XCTAssertEqual(scanner.startCount, 1)
 
         let device = nearbyDevice(name: "Sensor", level: 52)
+        controller.setVisibleNearbyBLEDevices([device.id], for: "panel")
         scanner.publish([device])
         await Task.yield()
-        XCTAssertTrue(controller.nearbyBatteryDevices.isEmpty, "passive discovery results never become battery readings")
+        XCTAssertEqual(controller.nearbyBatteryDevices, [device], "a visible row accepts its reading")
+        let callbackFromStoppedScan = scanner.onDevicesChanged
 
         controller.releaseVisibleSurface(BluetoothDeviceController.popoverSurfaceToken)
         controller.releaseNearbyBLEDiscovery("settings")
         XCTAssertEqual(scanner.stopCount, 1)
         XCTAssertFalse(scanner.isRunning)
+        XCTAssertTrue(scanner.allowedReadDeviceIDs.isEmpty)
 
         var lateDevice = device
         lateDevice.batteryLevel = 91
         lateDevice.lastUpdated = Date().addingTimeInterval(1)
-        let callbackFromStoppedScan = scanner.onDevicesChanged
         callbackFromStoppedScan?([lateDevice])
         await Task.yield()
-        XCTAssertTrue(controller.nearbyBatteryDevices.isEmpty, "nearby BLE callbacks never populate battery readings")
+        XCTAssertEqual(controller.nearbyBatteryDevices, [device], "a captured callback from the stopped generation cannot replace the visible-row cache")
 
         controller.deactivate()
     }
@@ -74,12 +129,19 @@ final class BluetoothNearbyBatteryLifecycleTests: XCTestCase {
     func testLeavingBluetoothSummaryStopsNearbyScanWhilePopoverRemainsOpen() async {
         let scanner = NearbyBatteryScannerSpy()
         let monitor = NearbyBatteryStateMonitorSpy()
-        let controller = makeReadyController(scanner: scanner, monitor: monitor)
-        controller.configureNearbyBLEDevices(enabled: true, selectedIDs: [], hiddenIDs: [])
+        let controller = makeController(scanner: scanner, monitor: monitor)
+        controller.activate()
+        monitor.emit(authorization: .allowed, state: .poweredOn)
+        controller.holdVisibleSurface(BluetoothDeviceController.popoverSurfaceToken)
+        controller.holdVisibleSurface(BluetoothDeviceController.bluetoothSummarySurfaceToken)
+        controller.configureNearbyBLEDevices(enabled: true, knownIDs: [], hiddenIDs: [])
         controller.requestNearbyBLEDiscovery("settings")
+        XCTAssertEqual(scanner.startCount, 1, "an active Bluetooth summary demands a foreground scan")
         let device = nearbyDevice(name: "Sensor", level: 52)
         scanner.publish([device])
         await Task.yield()
+        XCTAssertEqual(controller.nearbyBatteryDevices, [device], "a visible summary row accepts its reading")
+        let callbackFromStoppedScan = scanner.onDevicesChanged
 
         controller.releaseVisibleSurface(BluetoothDeviceController.bluetoothSummarySurfaceToken)
         controller.releaseNearbyBLEDiscovery("settings")
@@ -87,53 +149,60 @@ final class BluetoothNearbyBatteryLifecycleTests: XCTestCase {
         XCTAssertTrue(controller.hasVisibleSurface, "the overall popover remains open")
         XCTAssertEqual(scanner.stopCount, 1)
         XCTAssertFalse(scanner.isRunning)
-        XCTAssertTrue(controller.nearbyBatteryDevices.isEmpty, "passive discovery never caches battery readings")
+        XCTAssertTrue(scanner.allowedReadDeviceIDs.isEmpty)
+        var lateDevice = device
+        lateDevice.batteryLevel = 91
+        lateDevice.lastUpdated = Date().addingTimeInterval(1)
+        callbackFromStoppedScan?([lateDevice])
+        await Task.yield()
+        XCTAssertEqual(controller.nearbyBatteryDevices, [device], "a captured callback from the stopped summary cannot replace its cached reading")
         controller.deactivate()
     }
 
-    /// Turning off nearby discovery stops scanning; there is no BLE battery cache to retain.
+    /// Turning off the feature stops scanning and clears consented battery readings.
     func testReleasingLastNearbyRequestClearsCacheAndStopsScanner() {
         let scanner = NearbyBatteryScannerSpy()
         let monitor = NearbyBatteryStateMonitorSpy()
         let controller = makeReadyController(scanner: scanner, monitor: monitor)
-        controller.configureNearbyBLEDevices(enabled: true, selectedIDs: [], hiddenIDs: [])
+        controller.configureNearbyBLEDevices(enabled: true, knownIDs: [], hiddenIDs: [])
         controller.requestNearbyBLEDiscovery("settings")
         scanner.publish([nearbyDevice(name: "Scale", level: 0)])
 
-        controller.configureNearbyBLEDevices(enabled: false, selectedIDs: [], hiddenIDs: [])
+        controller.configureNearbyBLEDevices(enabled: false, knownIDs: [], hiddenIDs: [])
 
         XCTAssertEqual(scanner.stopCount, 1)
         XCTAssertTrue(controller.nearbyBatteryDevices.isEmpty)
         controller.deactivate()
     }
 
-    /// Reopening a panel may rediscover nearby devices, but cannot request BLE battery reads.
-    func testReopeningThePanelNeverRetainsNearbyBLEBatteryReadings() async {
+    /// A reading accepted while visible is cached while the panel is closed.
+    func testClosingPanelRetainsVisibleReadingButStopsScanner() async {
         let scanner = NearbyBatteryScannerSpy()
         let monitor = NearbyBatteryStateMonitorSpy()
         let controller = makeReadyController(scanner: scanner, monitor: monitor)
-        controller.configureNearbyBLEDevices(enabled: true, selectedIDs: [], hiddenIDs: [])
+        controller.configureNearbyBLEDevices(enabled: true, knownIDs: [], hiddenIDs: [])
         controller.requestNearbyBLEDiscovery("settings")
         let device = nearbyDevice(name: "Ling's iPhone", level: 31)
+        controller.setVisibleNearbyBLEDevices([device.id], for: "panel")
         scanner.publish([device])
         await Task.yield()
-        XCTAssertTrue(controller.nearbyBatteryDevices.isEmpty)
+        XCTAssertEqual(controller.nearbyBatteryDevices.map(\.id), [device.id])
 
         controller.releaseVisibleSurface(BluetoothDeviceController.popoverSurfaceToken)
         controller.releaseNearbyBLEDiscovery("settings")
 
         XCTAssertEqual(scanner.stopCount, 1, "the radio still stops with the panel")
         XCTAssertFalse(scanner.isRunning)
-        XCTAssertTrue(controller.nearbyBatteryDevices.isEmpty, "no nearby BLE reading survives panel closure")
+        XCTAssertEqual(controller.nearbyBatteryDevices.map(\.id), [device.id], "visible rows retain the last read without active work")
         controller.deactivate()
     }
 
-    /// Bluetooth availability only controls discovery; it never exposes BLE battery readings.
+    /// Losing Bluetooth availability stops discovery and clears battery readings.
     func testUnavailableBluetoothStopsScannerAndClearsNearbyResults() {
         let scanner = NearbyBatteryScannerSpy()
         let monitor = NearbyBatteryStateMonitorSpy()
         let controller = makeReadyController(scanner: scanner, monitor: monitor)
-        controller.configureNearbyBLEDevices(enabled: true, selectedIDs: [], hiddenIDs: [])
+        controller.configureNearbyBLEDevices(enabled: true, knownIDs: [], hiddenIDs: [])
         controller.requestNearbyBLEDiscovery("settings")
         scanner.publish([nearbyDevice(name: "Sensor", level: 61)])
 
@@ -148,7 +217,7 @@ final class BluetoothNearbyBatteryLifecycleTests: XCTestCase {
         let scanner = NearbyBatteryScannerSpy()
         let monitor = NearbyBatteryStateMonitorSpy()
         let controller = makeReadyController(scanner: scanner, monitor: monitor)
-        controller.configureNearbyBLEDevices(enabled: true, selectedIDs: [], hiddenIDs: [])
+        controller.configureNearbyBLEDevices(enabled: true, knownIDs: [], hiddenIDs: [])
         controller.requestNearbyBLEDiscovery("settings")
         scanner.publish([nearbyDevice(name: "Sensor", level: 73)])
 
@@ -162,12 +231,13 @@ final class BluetoothNearbyBatteryLifecycleTests: XCTestCase {
         let scanner = NearbyBatteryScannerSpy()
         let monitor = NearbyBatteryStateMonitorSpy()
         let controller = makeReadyController(scanner: scanner, monitor: monitor)
-        controller.configureNearbyBLEDevices(enabled: true, selectedIDs: [], hiddenIDs: [])
+        controller.configureNearbyBLEDevices(enabled: true, knownIDs: [], hiddenIDs: [])
         controller.requestNearbyBLEDiscovery("settings")
         let device = nearbyDevice(name: "Sensor", level: 68)
+        controller.setVisibleNearbyBLEDevices([device.id], for: "panel")
         scanner.publish([device])
         await Task.yield()
-        XCTAssertTrue(controller.nearbyBatteryDevices.isEmpty)
+        XCTAssertEqual(controller.nearbyBatteryDevices, [device])
 
         controller.releaseVisibleSurface(BluetoothDeviceController.popoverSurfaceToken)
         controller.releaseVisibleSurface(BluetoothDeviceController.bluetoothSummarySurfaceToken)
@@ -189,7 +259,7 @@ final class BluetoothNearbyBatteryLifecycleTests: XCTestCase {
         var controller: BluetoothDeviceController? = makeController(scanner: scanner, monitor: monitor)
         controller?.activate()
         monitor.emit(authorization: .allowed, state: .poweredOn)
-        controller?.configureNearbyBLEDevices(enabled: true, selectedIDs: [], hiddenIDs: [])
+        controller?.configureNearbyBLEDevices(enabled: true, knownIDs: [], hiddenIDs: [])
         controller?.requestNearbyBLEDiscovery("settings")
         controller?.holdVisibleSurface(BluetoothDeviceController.popoverSurfaceToken)
         controller?.holdVisibleSurface(BluetoothDeviceController.bluetoothSummarySurfaceToken)
@@ -207,7 +277,7 @@ final class BluetoothNearbyBatteryLifecycleTests: XCTestCase {
         let controller = makeController(scanner: scanner, monitor: monitor, worker: worker)
         controller.activate()
         monitor.emit(authorization: .allowed, state: .poweredOn)
-        controller.configureNearbyBLEDevices(enabled: true, selectedIDs: [], hiddenIDs: [])
+        controller.configureNearbyBLEDevices(enabled: true, knownIDs: [], hiddenIDs: [])
         controller.requestNearbyBLEDiscovery("settings")
         controller.holdVisibleSurface(BluetoothDeviceController.bluetoothSummarySurfaceToken)
         controller.holdVisibleSurface(BluetoothDeviceController.popoverSurfaceToken)
@@ -254,7 +324,7 @@ final class BluetoothNearbyBatteryLifecycleTests: XCTestCase {
     private func nearbyDevice(name: String, level: Int) -> NearbyBluetoothBatteryDevice {
         let id = UUID()
         testSelectedIDs.insert(id)
-        testController?.configureNearbyBLEDevices(enabled: true, selectedIDs: testSelectedIDs, hiddenIDs: [])
+        testController?.configureNearbyBLEDevices(enabled: true, knownIDs: testSelectedIDs, hiddenIDs: [])
         testController?.setVisibleNearbyBLEDevices(testSelectedIDs, for: "panel")
         return NearbyBluetoothBatteryDevice(
             id: id,
@@ -286,6 +356,8 @@ final class NearbyBatteryScannerSpy: BluetoothLEBatteryScanning {
     var onReadFailures: ((Set<UUID>) -> Void)?
     var onIsScanningChanged: ((Bool) -> Void)?
     private(set) var allowedReadDeviceIDs: Set<UUID> = []
+    private(set) var initialReadDeviceIDs: Set<UUID> = []
+    var discoveredCandidates: [NearbyBLEDeviceCandidate] = []
     private(set) var isRunning = false
     private(set) var isScanning = false
     private(set) var startCount = 0
@@ -294,6 +366,9 @@ final class NearbyBatteryScannerSpy: BluetoothLEBatteryScanning {
 
     func setAllowedReadDeviceIDs(_ ids: Set<UUID>) {
         allowedReadDeviceIDs = ids
+    }
+    func setInitialReadCandidateIDs(_ ids: Set<UUID>) {
+        initialReadDeviceIDs = ids
     }
 
     func start() {

@@ -385,9 +385,6 @@
 "wifi.summary.band" = "%@ GHz";
 "wifi.summary.signal" = "%d dBm";
 "wifi.summary.bandAndSignal" = "%@ · %@";
-"settings.bluetooth.hideUnpairedDevices" = "Nascondi dispositivi non presenti in Impostazioni di sistema";
-"settings.bluetooth.hideUnpairedDevicesDescription" = "Nasconde i dispositivi rilevati ma non abbinati che il sistema non elenca. Disattiva per mostrare tutto.";
-"settings.bluetooth.notInSystemSettings" = "Non presente in Impostazioni di sistema";
 "settings.bluetooth.hideDevice" = "Nascondi dispositivo";
 "settings.bluetooth.showDevice" = "Mostra dispositivo";
 "settings.bluetooth.permissionRequired" = "Autorizzazione Bluetooth richiesta";
@@ -410,5 +407,8 @@
 "bluetooth.nearbyBLE.notNearby" = "Non nelle vicinanze";
 "bluetooth.nearbyBLE.unavailable" = "Temporaneamente non disponibile";
 "settings.appleDevicesAndBattery" = "Mostra dispositivi Apple e batteria";
-"settings.appleDevicesAndBattery.description" = "Gli iPhone e iPad verificati e già autorizzati su questo Mac, insieme agli Apple Watch verificati tramite un iPhone abbinato e autorizzato, compaiono automaticamente nell’elenco Bluetooth. Una trasmissione Apple nelle vicinanze o il nome del dispositivo da soli non ne dimostrano la proprietà. La batteria viene letta, se disponibile, tramite USB autorizzato o Wi-Fi già configurato; le letture seguono l’impostazione globale della batteria Bluetooth. I dispositivi senza un’identità stabile condivisa restano separati.";
-"bluetooth.nearbyBLE.source" = "Bluetooth vicino";
+"settings.appleDevicesAndBattery.description" = "I dispositivi Apple attendibili e vicini con nome appaiono nell’elenco Bluetooth.";
+"settings.appleBackgroundRefresh" = "Aggiorna le batterie Apple in background";
+"settings.appleBackgroundRefresh.description" = "Aggiorna le batterie dei dispositivi Apple selezionati quando il pannello è chiuso.";
+"settings.appleBackgroundRefresh.interval" = "Intervallo di aggiornamento della batteria in background";
+"settings.appleBackgroundRefresh.intervalValue" = "%d minuto/i";

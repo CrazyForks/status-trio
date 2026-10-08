@@ -9,7 +9,8 @@ final class BluetoothUsageDescriptionTests: XCTestCase {
 
         XCTAssertTrue(purpose.contains("connection status"))
         XCTAssertTrue(purpose.contains("already trusted"))
-        XCTAssertTrue(purpose.contains("metadata and battery values"))
+        XCTAssertTrue(purpose.contains("battery/model metadata"))
+        XCTAssertTrue(purpose.contains("explicitly authorized by BLE UUID"))
         XCTAssertFalse(purpose.contains("Battery Service"))
     }
 

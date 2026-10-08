@@ -4,7 +4,7 @@ import Foundation
 @MainActor
 final class MobileBatteryController: ObservableObject {
     private static let refreshInterval: Duration = .seconds(60)
-    private static let cacheLifetime: TimeInterval = 1_800
+    private static let cacheLifetime: TimeInterval = 1_200
 
     @Published private(set) var snapshots: [MobileBatterySnapshot] = []
     @Published private(set) var failures: [MobileBatteryReadFailure] = []
@@ -15,11 +15,15 @@ final class MobileBatteryController: ObservableObject {
     private let sleep: @Sendable (Duration) async throws -> Void
     private var claims: Set<String> = []
     private var authorizedDeviceIDs: Set<AppleDeviceID> = []
+    private var backgroundAuthorizedDeviceIDs: Set<AppleDeviceID> = []
     private var isSurfaceVisible = false
     private var isReadingEnabled = true
+    private var isBackgroundRefreshEnabled = false
+    private var backgroundRefreshInterval: Duration = .seconds(60)
     private var isStopped = false
     private var generation: UInt64 = 0
     private var readTask: Task<Void, Never>?
+    private var activeReadIDs: Set<AppleDeviceID> = []
     private var refreshTask: Task<Void, Never>?
     private var expiryTask: Task<Void, Never>?
 
@@ -51,8 +55,8 @@ final class MobileBatteryController: ObservableObject {
     func release(_ token: String, keepingResults: Bool = false) {
         guard !isStopped, claims.remove(token) != nil else { return }
         if claims.isEmpty {
-            cancelActiveWork()
-            if !keepingResults {
+            updateLifecycle()
+            if !keepingResults && !isBackgroundRefreshEnabled {
                 snapshots = []
                 failures = []
             }
@@ -69,13 +73,30 @@ final class MobileBatteryController: ObservableObject {
         guard !isStopped, authorizedDeviceIDs != ids else { return }
         let wasEnabled = isEnabled
         authorizedDeviceIDs = ids
-        let authorizedIdentities = Set(ids.map(\.readIdentity))
-        snapshots.removeAll { !authorizedIdentities.contains($0.identity) }
         failures.removeAll { failure in
             guard let deviceID = failure.deviceID else { return true }
             return !ids.contains { id in id.matchesHelperIdentifier(deviceID) }
         }
         if wasEnabled || isEnabled { updateLifecycle() }
+    }
+
+    func setBackgroundAuthorizedDeviceIDs(_ ids: Set<AppleDeviceID>) {
+        guard !isStopped, backgroundAuthorizedDeviceIDs != ids else { return }
+        backgroundAuthorizedDeviceIDs = ids
+        updateLifecycle()
+    }
+
+    func revokeDeviceIDs(_ ids: Set<AppleDeviceID>) {
+        guard !isStopped, !ids.isEmpty else { return }
+        let identities = Set(ids.map(\.readIdentity))
+        snapshots.removeAll { identities.contains($0.identity) }
+        failures.removeAll { failure in
+            guard let deviceID = failure.deviceID else { return false }
+            return ids.contains { $0.matchesHelperIdentifier(deviceID) }
+        }
+        authorizedDeviceIDs.subtract(ids)
+        backgroundAuthorizedDeviceIDs.subtract(ids)
+        updateLifecycle()
     }
 
     /// Gates the controller from central settings so disabling the opt-in also
@@ -92,6 +113,15 @@ final class MobileBatteryController: ObservableObject {
             failures = []
             return
         }
+        updateLifecycle()
+    }
+
+    func setBackgroundRefresh(enabled: Bool, interval: Duration) {
+        guard !isStopped else { return }
+        let interval = interval < .seconds(60) ? .seconds(60) : interval
+        guard isBackgroundRefreshEnabled != enabled || backgroundRefreshInterval != interval else { return }
+        isBackgroundRefreshEnabled = enabled
+        backgroundRefreshInterval = interval
         updateLifecycle()
     }
 
@@ -116,8 +146,24 @@ final class MobileBatteryController: ObservableObject {
 
     private var isEnabled: Bool { isReadingEnabled && isSurfaceVisible && !claims.isEmpty && !authorizedDeviceIDs.isEmpty }
 
+    private var hasReadDemand: Bool {
+        isReadingEnabled && !effectiveReadIDs.isEmpty
+            && ((isSurfaceVisible && !claims.isEmpty) || isBackgroundRefreshEnabled)
+    }
+
+    private var effectiveReadIDs: Set<AppleDeviceID> {
+        isBackgroundRefreshEnabled
+            ? authorizedDeviceIDs.union(backgroundAuthorizedDeviceIDs)
+            : authorizedDeviceIDs
+    }
+
+    var backgroundReadDeviceIDs: Set<AppleDeviceID> {
+        backgroundAuthorizedDeviceIDs
+    }
+
     private func updateLifecycle() {
-        if isEnabled {
+        if hasReadDemand {
+            if readTask != nil, activeReadIDs == effectiveReadIDs { return }
             beginRead(superseding: true)
         } else {
             cancelActiveWork()
@@ -128,13 +174,14 @@ final class MobileBatteryController: ObservableObject {
         generation &+= 1
         readTask?.cancel()
         readTask = nil
+        activeReadIDs = []
         isRefreshing = false
         refreshTask?.cancel()
         refreshTask = nil
     }
 
     private func beginRead(superseding: Bool) {
-        guard !isStopped, isEnabled else { return }
+        guard !isStopped, hasReadDemand else { return }
         if superseding {
             generation &+= 1
             readTask?.cancel()
@@ -147,7 +194,8 @@ final class MobileBatteryController: ObservableObject {
 
         let readGeneration = generation
         let reader = self.reader
-        let selectedIDs = authorizedDeviceIDs
+        let selectedIDs = effectiveReadIDs
+        activeReadIDs = selectedIDs
         isRefreshing = true
         readTask = Task { [weak self, reader] in
             do {
@@ -165,14 +213,15 @@ final class MobileBatteryController: ObservableObject {
     }
 
     private func finishRead(_ result: MobileBatteryReadResult, generation readGeneration: UInt64) {
-        guard !isStopped, readGeneration == generation, isEnabled else { return }
-        let currentIdentities = Set(authorizedDeviceIDs.map(\.readIdentity))
+        guard !isStopped, readGeneration == generation, hasReadDemand else { return }
+        let currentIdentities = Set(effectiveReadIDs.map(\.readIdentity))
         let snapshots = result.snapshots.filter { currentIdentities.contains($0.identity) }
         readTask = nil
+        activeReadIDs = []
         isRefreshing = false
         failures = result.failures.filter { failure in
             guard let deviceID = failure.deviceID else { return false }
-            return authorizedDeviceIDs.contains { $0.matchesHelperIdentifier(deviceID) }
+            return effectiveReadIDs.contains { $0.matchesHelperIdentifier(deviceID) }
         }
 
         if !snapshots.isEmpty {
@@ -188,13 +237,14 @@ final class MobileBatteryController: ObservableObject {
     }
 
     private func scheduleNextRefresh(generation readGeneration: UInt64) {
-        guard !isStopped, readGeneration == generation, isEnabled else { return }
+        guard !isStopped, readGeneration == generation, hasReadDemand else { return }
         let sleep = self.sleep
+        let interval = isBackgroundRefreshEnabled ? backgroundRefreshInterval : Self.refreshInterval
         refreshTask = Task { [weak self, sleep] in
-            do { try await sleep(Self.refreshInterval) }
+            do { try await sleep(interval) }
             catch { return }
             guard !Task.isCancelled else { return }
-            guard let self, self.generation == readGeneration, self.isEnabled else { return }
+            guard let self, self.generation == readGeneration, self.hasReadDemand else { return }
             self.refreshTask = nil
             self.beginRead(superseding: false)
         }
@@ -223,6 +273,7 @@ final class MobileBatteryController: ObservableObject {
         let fresh = snapshots.filter { now < $0.observedAt.addingTimeInterval(Self.cacheLifetime) }
         if fresh.count != snapshots.count { snapshots = fresh }
     }
+
 }
 
 private extension AppleDeviceID {

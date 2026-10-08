@@ -3,35 +3,27 @@ import Testing
 @testable import StatusTrioCore
 
 struct NearbyBLEDeviceCatalogTests {
-    @Test func selectedDeviceWithoutReadingRemainsVisibleAndAppleVendorDoesNotIdentifyFamily() {
+    @Test func candidateOnlyMetadataDoesNotCreatePanelRows() {
         let selection = selection(name: "My Phone", vendor: .apple)
 
         let rows = NearbyBLEDeviceCatalog.panelRows(
             selections: [selection],
-            candidates: [],
             readings: [],
             failures: [],
             options: .standard,
             now: Date()
         )
 
-        #expect(rows.count == 1)
-        #expect(rows[0].batteryLevel == nil)
-        #expect(!rows[0].device.isConnected)
-        #expect(rows[0].device.id == BluetoothDeviceIdentity.bleRowID(selection.id))
-        #expect(rows[0].device.kind == .unknown)
-        #expect(rows[0].device.isReadOverTheAir)
-        #expect(!rows[0].device.isUnpairedGhost)
+        #expect(rows.isEmpty)
     }
 
     @Test func zeroBatteryIsDifferentFromMissingAndExpiredReading() {
         let now = Date(timeIntervalSince1970: 10_000)
-        let zero = selection(name: "Zero")
+        let zero = selection(name: "Zero", verifiedAt: now)
         let missing = selection(name: "Missing")
-        let expired = selection(name: "Expired")
+        let expired = selection(name: "Expired", verifiedAt: now.addingTimeInterval(-1801))
         let rows = NearbyBLEDeviceCatalog.panelRows(
             selections: [zero, missing, expired],
-            candidates: [],
             readings: [
                 reading(zero.id, name: zero.name, level: 0, updatedAt: now),
                 reading(expired.id, name: expired.name, level: 78, updatedAt: now.addingTimeInterval(-1_801))
@@ -41,29 +33,53 @@ struct NearbyBLEDeviceCatalogTests {
             now: now
         )
 
-        #expect(rows.map(\.id) == [zero.id, missing.id, expired.id])
-        #expect(rows.map(\.batteryLevel) == [0, nil, nil])
+        #expect(rows.map(\.id) == [zero.id])
+        #expect(rows.map(\.batteryLevel) == [0])
+    }
+
+    @Test func failedReadDoesNotGiveNearbyRowAnExtraStatus() {
+        let failed = selection(name: "Nearby phone")
+        let rows = NearbyBLEDeviceCatalog.panelRows(
+            selections: [failed], readings: [], failures: [failed.id],
+            options: .standard, now: Date()
+        )
+
+        #expect(rows.isEmpty, "a failed first read must not create a row")
+    }
+
+    @Test func disabledBatteryPresentationRetainsCachedIdentityButHidesBatteryAndFailure() {
+        let now = Date(timeIntervalSince1970: 15_000)
+        let selected = NearbyBLEDeviceSelection(
+            id: UUID(), name: "iPhone", vendor: .apple, model: "iPhone6,2",
+            batteryLevel: 84, batteryLastUpdated: now
+        )
+        let failed = selection(name: "Other")
+        let rows = NearbyBLEDeviceCatalog.panelRows(
+            selections: [selected, failed],
+            readings: [reading(selected.id, name: selected.name, level: 84, updatedAt: now)],
+            failures: [failed.id],
+            options: .standard,
+            now: now,
+            batteryLevelsEnabled: false
+        )
+
+        #expect(rows.map(\.batteryLevel) == [84], "the cached value remains attached to the validated row")
+        #expect(rows[0].device.appleMobileModel == "iPhone6,2")
+        #expect(rows.allSatisfy { $0.presentationStatus == nil }, "visual and accessible battery status is suppressed")
     }
 
     @Test func hiddenRowsAreFilteredAndSavedOrderBeatsAppleFirstDiscoveryOrder() {
-        let apple = selection(name: "Apple", vendor: .apple)
-        let other = selection(name: "Other", vendor: .other)
-        let hidden = selection(name: "Hidden")
+        let apple = selection(name: "Apple", vendor: .apple, verifiedAt: Date())
+        let other = selection(name: "Other", vendor: .apple, verifiedAt: Date())
+        let hidden = selection(name: "Hidden", verifiedAt: Date())
         let options = BluetoothDeviceListOptions(
             showsList: true,
             maxVisibleDevices: 5,
             order: [BluetoothDeviceIdentity.bleRowID(other.id), BluetoothDeviceIdentity.bleRowID(apple.id)],
             hiddenDeviceAddresses: [BluetoothDeviceIdentity.bleRowID(hidden.id)]
         )
-        let candidates = [
-            candidate(apple.id, name: apple.name, vendor: .apple),
-            candidate(other.id, name: other.name, vendor: .other),
-            candidate(hidden.id, name: hidden.name, vendor: .unknown)
-        ]
-
         let rows = NearbyBLEDeviceCatalog.panelRows(
             selections: [apple, other, hidden],
-            candidates: candidates,
             readings: [],
             failures: [hidden.id],
             options: options,
@@ -71,16 +87,15 @@ struct NearbyBLEDeviceCatalogTests {
         )
 
         #expect(rows.map(\.id) == [other.id, apple.id])
-        #expect(rows.map(\.wasSeenRecently) == [true, true])
+        #expect(rows.map(\.wasSeenRecently) == [false, false])
         #expect(rows.allSatisfy { !$0.readFailed })
     }
 
     @Test func sameNamedSelectedUUIDsStayDistinctFromEachOtherAndSystemRows() {
-        let first = selection(name: "Shared Name")
-        let second = selection(name: "Shared Name")
+        let first = selection(name: "Shared Name", verifiedAt: Date())
+        let second = selection(name: "Shared Name", verifiedAt: Date())
         let rows = NearbyBLEDeviceCatalog.panelRows(
             selections: [first, second],
-            candidates: [],
             readings: [],
             failures: [],
             options: .standard,
@@ -95,39 +110,114 @@ struct NearbyBLEDeviceCatalogTests {
         #expect(rows.allSatisfy { $0.device.id != system.id })
     }
 
-    @Test func recentCandidateAndReadFailureAreReportedBySelectedUUIDOnly() {
+    @Test func failedReadIsAttachedOnlyToFreshValidatedRows() {
         let now = Date(timeIntervalSince1970: 20_000)
-        let fresh = selection(name: "Fresh")
-        let stale = selection(name: "Stale")
+        let fresh = selection(name: "Fresh", verifiedAt: now)
+        let stale = selection(name: "Stale", verifiedAt: now)
         let stranger = UUID()
         let rows = NearbyBLEDeviceCatalog.panelRows(
             selections: [fresh, stale],
-            candidates: [
-                candidate(fresh.id, name: "Fresh", vendor: .apple, seenAt: now),
-                candidate(stale.id, name: "Stale", vendor: .unknown, seenAt: now.addingTimeInterval(-61)),
-                candidate(stranger, name: "Not selected", vendor: .other, seenAt: now)
-            ],
             readings: [],
             failures: [fresh.id, stranger],
             options: .standard,
             now: now
         )
 
-        #expect(rows.map(\.wasSeenRecently) == [true, false])
+        #expect(rows.map(\.wasSeenRecently) == [false, false])
         #expect(rows.map(\.readFailed) == [true, false])
     }
 
-    @Test func settingsDevicesUseNamespacedIdentityAndPreserveSelectionOrder() {
-        let first = selection(name: "Same")
-        let second = selection(name: "Same")
-        let devices = NearbyBLEDeviceCatalog.settingsDevices(selections: [first, second])
+    @Test func settingsDevicesExcludeGhostsAndShowNamedAppleMetadataAsOrdinaryRows() {
+        let first = selection(name: "Same", vendor: .apple, verifiedAt: Date())
+        let second = selection(name: "Same", vendor: .apple, verifiedAt: Date())
+        let nonApple = selection(name: "Mouse", vendor: .other)
+        let ghost = BluetoothDevice(id: "AA:00:00:00:00:01", name: "Ghost", kind: .unknown, isConnected: false, isUnpairedGhost: true)
+        let paired = BluetoothDevice(id: "AA:00:00:00:00:02", name: "Keyboard", kind: .unknown, isConnected: false)
+        let devices = NearbyBLEDeviceCatalog.settingsDevices([ghost, paired], selections: [first, second, nonApple])
 
-        #expect(devices.map(\.id) == [BluetoothDeviceIdentity.bleRowID(first.id), BluetoothDeviceIdentity.bleRowID(second.id)])
-        #expect(devices.allSatisfy { $0.kind == .unknown && !$0.isConnected && $0.isReadOverTheAir })
+        #expect(devices.map(\.id) == [paired.id, BluetoothDeviceIdentity.bleRowID(first.id), BluetoothDeviceIdentity.bleRowID(second.id)])
+        #expect(devices.filter(\.isReadOverTheAir).allSatisfy { $0.kind == .unknown && !$0.isConnected })
+        #expect(!devices.contains { $0.id == ghost.id || $0.name == nonApple.name })
     }
 
-    private func selection(name: String, vendor: NearbyBLEVendor = .unknown) -> NearbyBLEDeviceSelection {
-        NearbyBLEDeviceSelection(id: UUID(), name: name, vendor: vendor, model: nil)
+    @Test func discoveredAppleMetadataDeduplicatesPersistedAndRefreshedUUIDs() {
+        let existingID = UUID(uuidString: "00000000-0000-0000-0000-000000000071")!
+        let otherID = UUID(uuidString: "00000000-0000-0000-0000-000000000072")!
+        let existing = [
+            NearbyBLEDeviceSelection(id: existingID, name: "Old name", vendor: .apple, model: "iPhone18,1"),
+            NearbyBLEDeviceSelection(id: existingID, name: "Duplicate old name", vendor: .apple, model: nil),
+            NearbyBLEDeviceSelection(id: otherID, name: "Other phone", vendor: .apple, model: "iPad16,1")
+        ]
+        let live = [NearbyBLEDeviceCandidate(
+            id: existingID, name: "Current name", vendor: .apple, lastSeen: Date(timeIntervalSince1970: 100)
+        )]
+
+        let refreshed = NearbyBLEDeviceCatalog.discoveredAppleMetadata(from: live, existing: existing)
+        let refreshedAgain = NearbyBLEDeviceCatalog.discoveredAppleMetadata(from: live, existing: refreshed)
+
+        #expect(refreshed.map(\.id) == [existingID, otherID])
+        #expect(refreshed[0].name == "Current name")
+        #expect(refreshed[0].model == "iPhone18,1")
+        #expect(refreshedAgain == refreshed)
+    }
+
+    @Test func candidatesStayInvisibleUntilAValidBatteryReadingExistsAndRowsExpireAfterTwentyMinutes() {
+        let now = Date(timeIntervalSince1970: 50_000)
+        let current = selection(name: "Current", verifiedAt: now.addingTimeInterval(-1200))
+        let expired = selection(name: "Expired", verifiedAt: now.addingTimeInterval(-1201))
+        let rows = NearbyBLEDeviceCatalog.panelRows(
+            selections: [current, expired],
+            readings: [
+                reading(current.id, name: current.name, level: 75, updatedAt: now),
+                reading(expired.id, name: expired.name, level: 42, updatedAt: now.addingTimeInterval(-1201))
+            ],
+            failures: [], options: .standard, now: now
+        )
+
+        #expect(rows.map(\.id) == [current.id])
+        #expect(rows[0].batteryLevel == 75)
+        #expect(NearbyBLEDeviceCatalog.settingsCandidates(selections: [], now: now).isEmpty)
+        #expect(NearbyBLEDeviceCatalog.settingsDevices([], selections: []).isEmpty)
+    }
+
+    @Test func disablingBatteryReadsKeepsPreviouslyValidatedRowVisibleUntilExpiry() {
+        let now = Date(timeIntervalSince1970: 60_000)
+        let validated = selection(name: "Previously read", verifiedAt: now)
+        let rows = NearbyBLEDeviceCatalog.panelRows(
+            selections: [validated],
+            readings: [reading(validated.id, name: validated.name, level: 51, updatedAt: now)],
+            failures: [], options: .standard, now: now, batteryLevelsEnabled: false
+        )
+
+        #expect(rows.map(\.id) == [validated.id])
+        #expect(rows[0].batteryLevel == 51)
+        #expect(rows[0].presentationStatus == nil)
+    }
+
+    @Test func nextVerifiedRowExpirationIgnoresExpiredRowsWhenFutureRowsRemain() {
+        let now = Date(timeIntervalSince1970: 80_000)
+        let expired = selection(name: "Expired", verifiedAt: now.addingTimeInterval(-1201))
+        let future = selection(name: "Future", verifiedAt: now.addingTimeInterval(-900))
+        let allExpired = selection(name: "Also expired", verifiedAt: now.addingTimeInterval(-1800))
+
+        #expect(NearbyBLEDeviceCatalog.nextVerifiedRowExpiration(
+            selections: [expired, future], now: now
+        ) == now.addingTimeInterval(300))
+        #expect(NearbyBLEDeviceCatalog.nextVerifiedRowExpiration(
+            selections: [expired, allExpired], now: now
+        ) == nil)
+    }
+
+    private func selection(
+        name: String,
+        vendor: NearbyBLEVendor = .apple,
+        verifiedAt: Date? = nil
+    ) -> NearbyBLEDeviceSelection {
+        NearbyBLEDeviceSelection(
+            id: UUID(), name: name, vendor: vendor, model: nil,
+            batteryLevel: verifiedAt == nil ? nil : 50,
+            batteryLastUpdated: verifiedAt
+        )
     }
 
     private func reading(_ id: UUID, name: String, level: Int, updatedAt: Date) -> NearbyBluetoothBatteryDevice {

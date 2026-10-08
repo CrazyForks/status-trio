@@ -1,47 +1,34 @@
 # Apple device battery rows
 
-Enable **Show Apple devices and battery** in **Settings → Bluetooth**. Status
-Trio automatically discovers and adds verified iPhone and iPad routes already
-trusted by this Mac, plus Apple Watch devices verified through a trusted paired
-iPhone. There is no per-device picker. The rows share the Bluetooth list's
-ordering, hidden-device rules, visible limit, expansion, and viewport.
+Enable **Show Apple devices and battery** in **Settings → Bluetooth**. The
+Bluetooth list can show trusted Apple devices from the companion helper and
+named nearby Apple BLE discoveries. A nearby name or advertisement is not proof
+of ownership. BLE devices retain separate UUID identities; they are never
+merged with paired devices by name.
 
-Discovery reads device model/name and companion metadata only. It does not read
-battery values or connect to arbitrary nearby Apple advertisements. A nearby
-Apple company identifier, a device name, and an untrusted USB/network route do
-not prove that a device belongs to this user. Eligible phone/tablet reads require
-a verified iPhone/iPad model on USB or network transport. Watch rows require a
-verified Watch model or trusted companion provenance and a trusted parent route.
+The Bluetooth battery setting controls reads. A nearby BLE battery read runs
+only while its row is actually visible in the status popover. The Apple-device
+setting, Bluetooth list setting, unhidden row, and viewport visibility must all
+allow the row. Closing the popover, hiding/folding/scolling the row out of view,
+turning either setting off, or losing Bluetooth availability revokes the read
+permit and cancels active work. Opening Settings may perform bounded discovery
+to populate named rows, but never reads a battery there.
 
-The global Bluetooth battery setting still controls reads. A read additionally
-requires the Apple master toggle, a visible row in the viewport, and current
-verified discovery evidence. Reads use the helper's exact trusted IDs. Starting
-a new discovery generation revokes old read permits until that generation
-re-verifies the candidate. Turning either battery setting off cancels reads.
+Named Apple BLE UUID metadata is retained after a discovery scan expires so row
+name, order, and hide preferences remain stable. Existing UUID metadata is
+retained across upgrade. These UUIDs identify rows only; they do not represent
+consent or a claim that a device belongs to the user. Classic Bluetooth and BLE
+identities remain distinct. Profiler rows classified as unpaired ghosts are
+excluded from Settings and the status popover; ordinary paired devices remain.
 
-Verified metadata is retained by typed stable identity during the current app
-session so a temporarily offline device can keep its row and retain its
-order/hide preference. A later verified name refresh updates that same row. USB
-and network observations for one UDID deduplicate. Legacy nearby BLE selections
-are archived and cleared; they never become trusted identities or read permits.
+The scanner recognises Apple Continuity advertisement types `0x10` and `0x0C`,
+and reads the standard Battery Service `180F/2A19`. Device Information reads are
+limited to model `180A/2A24` and manufacturer `180A/2A29`. It opens no more than
+two concurrent connections, applies an eight-second deadline and per-device
+cooldown, and cancels work when visibility is lost. It performs no writes and
+does not request USB access.
 
-The trusted helper is passive and does not invoke BLE GATT operations or
-pairing-producing Bluetooth connect/read calls. Phone/iPad battery values use
-already trusted USB or previously configured Wi-Fi routes. A Watch battery is
-read through its already trusted paired iPhone. Status Trio does not pair devices
-or change trust/Wi-Fi-sync settings.
-
-Classic Bluetooth addresses and trusted helper UDIDs/Watch IDs are different
-identity namespaces. When no stable cross-provider mapping exists, Status Trio
-keeps same-named rows separate rather than guessing ownership or transferring a
-battery value. The classic row retains its normal connect/disconnect actions;
-the trusted helper row is read-only. Ordinary paired Bluetooth devices are
-unaffected by the Apple master toggle.
-
-Automated tests cover metadata-only discovery, unowned nearby broadcasts,
-strict trust/model/transport eligibility, stable-ID rename and transport
-deduplication, hidden/order behavior, viewport permits, master-off revocation,
-and separation of ambiguous provider identities. The helper on this machine
-currently lists zero trusted devices. USB/Wi-Fi/Watch battery behavior on
-physical hardware remains unverified; automated tests do not establish hardware
-acceptance.
+Automated tests cover UUID-based row persistence, same-name identity separation,
+ghost exclusion, visible-viewport permits, Settings-only discovery, cancellation,
+timeouts, and connection limits. Hardware behavior remains subject to testing
+on supported devices.

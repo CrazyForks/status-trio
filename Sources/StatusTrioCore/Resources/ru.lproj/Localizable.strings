@@ -385,9 +385,6 @@
 "wifi.summary.band" = "%@ GHz";
 "wifi.summary.signal" = "%d dBm";
 "wifi.summary.bandAndSignal" = "%@ · %@";
-"settings.bluetooth.hideUnpairedDevices" = "Скрывать устройства, отсутствующие в Системных настройках";
-"settings.bluetooth.hideUnpairedDevicesDescription" = "Скрывает отсканированные, но не сопряжённые устройства, которых нет в системе. Выключите, чтобы показать все.";
-"settings.bluetooth.notInSystemSettings" = "Отсутствует в Системных настройках";
 "settings.bluetooth.hideDevice" = "Скрыть устройство";
 "settings.bluetooth.showDevice" = "Показать устройство";
 "settings.bluetooth.permissionRequired" = "Требуется разрешение Bluetooth";
@@ -410,5 +407,8 @@
 "bluetooth.nearbyBLE.notNearby" = "Не поблизости";
 "bluetooth.nearbyBLE.unavailable" = "Временно недоступно";
 "settings.appleDevicesAndBattery" = "Показывать устройства Apple и заряд";
-"settings.appleDevicesAndBattery.description" = "Проверенные iPhone и iPad, уже доверенные этому Mac, а также Apple Watch, подтверждённые через доверенный сопряжённый iPhone, автоматически появляются в списке Bluetooth. Близлежащая трансляция Apple или имя устройства сами по себе не подтверждают принадлежность. Заряд считывается, если доступен, через доверенный USB или настроенную Wi-Fi-сеть; чтение подчиняется общей настройке заряда Bluetooth. Устройства без общего стабильного идентификатора остаются отдельными.";
-"bluetooth.nearbyBLE.source" = "Bluetooth поблизости";
+"settings.appleDevicesAndBattery.description" = "Доверенные и находящиеся рядом устройства Apple с именами отображаются в списке Bluetooth.";
+"settings.appleBackgroundRefresh" = "Обновлять заряд Apple в фоновом режиме";
+"settings.appleBackgroundRefresh.description" = "Обновляет заряд выбранных устройств Apple, когда панель закрыта.";
+"settings.appleBackgroundRefresh.interval" = "Интервал фонового обновления заряда";
+"settings.appleBackgroundRefresh.intervalValue" = "%d мин.";

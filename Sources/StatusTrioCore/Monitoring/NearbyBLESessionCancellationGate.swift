@@ -17,7 +17,8 @@ struct NearbyBLESessionCancellationGate {
     }
 
     mutating func retire(_ id: UUID, session: UUID) -> Bool {
-        guard active.removeValue(forKey: id) == session else { return false }
+        guard active[id] == session else { return false }
+        active.removeValue(forKey: id)
         cancelling[id] = session
         return true
     }

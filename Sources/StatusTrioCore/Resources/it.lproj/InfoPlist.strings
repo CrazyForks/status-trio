@@ -1,3 +1,3 @@
 "NSLocationUsageDescription" = "Used to show the current Wi-Fi network name in the popover and, when you open Wi-Fi details, to read network names, scan results, and connection information.";
 "NSLocationWhenInUseUsageDescription" = "Used to show the current Wi-Fi network name in the popover and, when you open Wi-Fi details, to read network names, scan results, and connection information.";
-"NSBluetoothAlwaysUsageDescription" = "Usato per mostrare lo stato di connessione dei dispositivi Bluetooth. Quando è attiva la visualizzazione della batteria Apple, Status Trio legge anche i metadati e il livello batteria dei dispositivi Apple già autorizzati su questo Mac.";
+"NSBluetoothAlwaysUsageDescription" = "Mostra lo stato Bluetooth e i dispositivi Apple vicini con nome; la batteria viene letta solo per le righe visibili.";

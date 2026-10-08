@@ -70,20 +70,18 @@ final class LocalizationTests: XCTestCase {
         }
     }
 
-    func testAppleDeviceBatteryCopyDescribesAutomaticTrustedDisplayInEveryLanguage() throws {
+    func testAppleDeviceBatteryCopyDescribesNearbyNamedRowsWithoutConsentInEveryLanguage() throws {
         let english = try XCTUnwrap(Localization.resourceBundle(for: .english))
         let description = english.localizedString(
             forKey: LocalizationKey.settingsAppleDevicesAndBatteryDescription.rawValue,
             value: nil,
             table: nil
         )
-        XCTAssertTrue(description.contains("iPhone"))
-        XCTAssertTrue(description.contains("iPad"))
-        XCTAssertTrue(description.contains("Apple Watch"))
-        XCTAssertTrue(description.localizedCaseInsensitiveContains("automatically"))
-        XCTAssertTrue(description.localizedCaseInsensitiveContains("trusted"))
-        XCTAssertFalse(description.localizedCaseInsensitiveContains("select"))
-        XCTAssertFalse(description.contains("iWatch"))
+        XCTAssertTrue(description.localizedCaseInsensitiveContains("nearby"))
+        XCTAssertTrue(description.localizedCaseInsensitiveContains("named"))
+        XCTAssertTrue(description.localizedCaseInsensitiveContains("apple"))
+        XCTAssertFalse(description.localizedCaseInsensitiveContains("authorized"))
+        XCTAssertFalse(description.localizedCaseInsensitiveContains("allow battery"))
 
         let chinese = try XCTUnwrap(Localization.resourceBundle(for: .simplifiedChinese))
         let chineseDescription = chinese.localizedString(
@@ -91,14 +89,13 @@ final class LocalizationTests: XCTestCase {
             value: nil,
             table: nil
         )
-        for term in ["iPhone", "iPad", "Apple Watch", "USB", "信任", "自动"] {
+        for term in ["Apple", "附近", "名称"] {
             XCTAssertTrue(chineseDescription.contains(term), "Simplified Chinese copy is missing \(term)")
         }
         XCTAssertEqual(
             chinese.localizedString(forKey: LocalizationKey.settingsAppleDevicesAndBattery.rawValue, value: nil, table: nil),
             "显示苹果设备与电量"
         )
-        XCTAssertTrue(chineseDescription.localizedCaseInsensitiveContains("自动"))
 
         for language in AppLanguage.allCases {
             let bundle = try XCTUnwrap(Localization.resourceBundle(for: language))
@@ -107,9 +104,8 @@ final class LocalizationTests: XCTestCase {
                 value: nil,
                 table: nil
             )
-            XCTAssertFalse(localized.localizedCaseInsensitiveContains("select devices"), "\(language.rawValue) still describes per-device selection")
-            XCTAssertFalse(localized.localizedCaseInsensitiveContains("select iPhone"), "\(language.rawValue) still describes per-device selection")
-            XCTAssertFalse(localized.localizedCaseInsensitiveContains("choose Apple"), "\(language.rawValue) still describes a picker")
+            XCTAssertFalse(localized.localizedCaseInsensitiveContains("authorized"), "\(language.rawValue) still describes BLE authorization")
+            XCTAssertFalse(localized.localizedCaseInsensitiveContains("allow battery"), "\(language.rawValue) still describes BLE authorization")
         }
     }
 

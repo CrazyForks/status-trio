@@ -130,6 +130,51 @@ struct BluetoothSectionView: View {
                     isOn: $store.showsAppleDevicesAndBattery
                 )
 
+                if store.showsAppleDevicesAndBattery {
+                    SettingsDivider()
+
+                    SettingsToggleRow(
+                        symbol: "arrow.clockwise.circle",
+                        tint: .green,
+                        title: localization.string(.settingsAppleBackgroundRefresh),
+                        subtitle: localization.string(.settingsAppleBackgroundRefreshDescription),
+                        isOn: $store.refreshesAppleBatteriesInBackground
+                    )
+
+                    if store.refreshesAppleBatteriesInBackground {
+                        SettingsDivider()
+
+                        SettingsRow(
+                            "clock",
+                            tint: .teal,
+                            title: localization.string(.settingsAppleBackgroundRefreshInterval)
+                        ) {
+                            HStack(spacing: 8) {
+                                Text(localization.format(
+                                    .settingsAppleBackgroundRefreshIntervalValue,
+                                    store.appleBatteryRefreshIntervalMinutes
+                                ))
+                                .monospacedDigit()
+                                .font(.system(size: 13, design: .monospaced))
+                                .foregroundStyle(.secondary)
+
+                                Stepper(
+                                    "",
+                                    value: $store.appleBatteryRefreshIntervalMinutes,
+                                    in: SettingsStore.appleBatteryRefreshIntervalMinutesRange
+                                )
+                                .labelsHidden()
+                                .fixedSize()
+                                .accessibilityLabel(localization.string(.settingsAppleBackgroundRefreshInterval))
+                                .accessibilityValue(localization.format(
+                                    .settingsAppleBackgroundRefreshIntervalValue,
+                                    store.appleBatteryRefreshIntervalMinutes
+                                ))
+                            }
+                        }
+                    }
+                }
+
                 SettingsDivider()
 
                 SettingsToggleRow(
@@ -211,7 +256,13 @@ struct BluetoothSectionView: View {
             deviceOrderGroup
         }
         .onAppear { claimDeviceSurface() }
-        .onDisappear { bluetoothDevices.releaseVisibleSurface(Self.orderSurfaceToken) }
+        .task(id: bluetoothDevices.authorization == .allowed) {
+            if bluetoothDevices.authorization == .allowed { claimDeviceSurface() }
+            else { bluetoothDevices.releaseVisibleSurface(Self.orderSurfaceToken) }
+        }
+        .onDisappear {
+            bluetoothDevices.releaseVisibleSurface(Self.orderSurfaceToken)
+        }
     }
 
     private static let orderSurfaceToken = "bluetooth.settings.order.surface"
@@ -348,15 +399,6 @@ struct BluetoothSectionView: View {
                     }
                 )
 
-                SettingsDivider()
-
-                SettingsToggleRow(
-                    symbol: "eye.slash",
-                    tint: .indigo,
-                    title: localization.string(.settingsBluetoothHideUnpairedDevices),
-                    subtitle: localization.string(.settingsBluetoothHideUnpairedDevicesDescription),
-                    isOn: $store.hidesGhostBluetoothDevices
-                )
             }
         }
     }
@@ -382,87 +424,53 @@ struct BluetoothSectionView: View {
                     .padding(.vertical, 8)
                 } else {
                     List {
-                        ForEach(orderedBluetoothDevices) { device in
-                            let key = BluetoothDeviceIdentity.preferenceKey(device.id)
-                            let orderLabel = BluetoothDeviceSettingsPresentation.orderLabel(
-                                device: device,
-                                nearbyBLENames: [:],
-                                fallback: localization.string(.bluetoothNearbyDeviceFallback),
-                                nearbySource: localization.string(.bluetoothNearbyBLESource)
-                            )
-                            let ghostHiddenByFilter = device.isUnpairedGhost
-                                && store.hidesGhostBluetoothDevices
-                                && !store.revealedGhostBluetoothDeviceAddresses.contains(key)
-                            let isHidden = ghostHiddenByFilter
-                                || store.hiddenBluetoothDeviceAddresses.contains(key)
-                            // Ghost devices: a per-row eye only makes sense while the
-                            // global filter is on — it reveals one ghost without showing
-                            // all. With the filter off every ghost already shows, so there
-                            // is nothing to toggle individually.
-                            let showsEyeButton = !device.isUnpairedGhost || store.hidesGhostBluetoothDevices
+                        ForEach(orderedBluetoothDisplayRows, id: \.device.id) { displayRow in
+                            let device = displayRow.device
+                            let isHidden = displayRow.sourceIDs.allSatisfy {
+                                store.hiddenBluetoothDeviceAddresses.contains(BluetoothDeviceIdentity.preferenceKey($0))
+                            }
                             HStack(spacing: 10) {
                                 Image(systemName: BluetoothDeviceRowIcon.symbolName(for: device))
                                     .foregroundStyle(device.isConnected ? Color.accentColor : Color.secondary)
                                     .frame(width: 18)
 
-                                Text(orderLabel.title)
+                                Text(device.name)
                                     .font(.system(size: 13))
                                     .lineLimit(1)
                                     .frame(maxWidth: .infinity, alignment: .leading)
 
-                                if let source = orderLabel.source {
-                                    Text(source)
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                        .accessibilityIdentifier("bluetooth.deviceOrder.nearbyBLESource")
-                                }
-
-                                if device.isUnpairedGhost {
-                                    Text(localization.string(.settingsBluetoothNotInSystemSettings))
-                                        .font(.system(size: 10))
-                                        .padding(.horizontal, 6)
-                                        .padding(.vertical, 2)
-                                        .background(Capsule().fill(Color.secondary.opacity(0.18)))
-                                        .foregroundStyle(.secondary)
-                                        .accessibilityHidden(true)
-                                }
-
-                                if showsEyeButton {
-                                    Button {
-                                        if device.isUnpairedGhost {
-                                            store.setBluetoothGhostRevealed(
-                                                device.id,
-                                                revealed: !store.revealedGhostBluetoothDeviceAddresses.contains(key)
-                                            )
-                                        } else {
-                                            store.setBluetoothDeviceHidden(device.id, hidden: !isHidden)
-                                        }
-                                    } label: {
-                                        Image(systemName: isHidden ? "eye.slash" : "eye")
-                                            .font(.system(size: 13))
+                                Button {
+                                    for sourceID in displayRow.sourceIDs {
+                                        store.setBluetoothDeviceHidden(sourceID, hidden: !isHidden)
                                     }
-                                    .buttonStyle(.plain)
-                                    .help(isHidden
-                                          ? localization.string(.settingsBluetoothShowDevice)
-                                          : localization.string(.settingsBluetoothHideDevice))
-                                    .accessibilityLabel(isHidden
-                                          ? localization.string(.settingsBluetoothShowDevice)
-                                          : localization.string(.settingsBluetoothHideDevice))
+                                } label: {
+                                    Image(systemName: isHidden ? "eye.slash" : "eye")
+                                        .font(.system(size: 13))
+                                        .frame(width: 22, height: 22)
                                 }
+                                .buttonStyle(.plain)
+                                .help(isHidden
+                                      ? localization.string(.settingsBluetoothShowDevice)
+                                      : localization.string(.settingsBluetoothHideDevice))
+                                .accessibilityLabel(isHidden
+                                      ? localization.string(.settingsBluetoothShowDevice)
+                                      : localization.string(.settingsBluetoothHideDevice))
+                                .frame(width: 26)
 
                                 Image(systemName: "line.3.horizontal")
                                     .font(.caption)
                                     .foregroundStyle(.tertiary)
                                     .accessibilityHidden(true)
+                                    .frame(width: 18)
                             }
-                            .padding(.vertical, 3)
+                            .frame(height: 30)
                             .opacity(isHidden ? 0.45 : 1)
                         }
                         .onMove { source, destination in
                             store.moveBluetoothDevices(
                                 fromOffsets: source,
                                 toOffset: destination,
-                                in: orderedBluetoothDevices
+                                in: orderedBluetoothDisplayRows.map(\.device)
                             )
                         }
                     }
@@ -519,7 +527,7 @@ struct BluetoothSectionView: View {
     /// The order list shows the same sequence the panel renders, so dragging in
     /// Settings moves the row the user is looking at. Read from the observed
     /// controller, not the store, so a read that lands later repaints it.
-    private var orderedBluetoothDevices: [BluetoothDevice] {
+    private var sourceBluetoothDevices: [BluetoothDevice] {
         let trustedDevices = store.showsAppleDevicesAndBattery
             ? AppleDeviceCatalog.candidates(trusted: store.trustedAppleDeviceMetadata + appleDeviceDiscovery.candidates)
                 .map { candidate in
@@ -533,11 +541,35 @@ struct BluetoothSectionView: View {
                     )
                 }
             : []
-        let devices = BluetoothDeviceListPresentation.uniquelyIdentifiedDevices(bluetoothDevices.devices + trustedDevices)
-        return BluetoothDeviceListPresentation.orderedDevices(
-            devices,
-            using: store.bluetoothDeviceOrder
+        let bleDevices = nearbySettingsCandidates.map { candidate in
+            let selection = store.nearbyBLESelections.first { $0.id == candidate.id }
+            return BluetoothDevice(
+                id: BluetoothDeviceIdentity.bleRowID(candidate.id),
+                name: candidate.name,
+                kind: BluetoothMobileDeviceModel.kind(forModel: selection?.model) ?? .unknown,
+                isConnected: false,
+                appleMobileModel: selection?.model,
+                isReadOverTheAir: true
+            )
+        }
+        return bluetoothDevices.devices.filter { !$0.isUnpairedGhost } + trustedDevices + bleDevices
+    }
+
+    private var orderedBluetoothDevices: [BluetoothDevice] {
+        orderedBluetoothDisplayRows.map(\.device)
+    }
+
+    private var orderedBluetoothDisplayRows: [BluetoothDisplayRow] {
+        BluetoothDeviceListPresentation.settingsDisplayRows(
+            sourceBluetoothDevices,
+            order: store.bluetoothDeviceOrder,
+            options: store.bluetoothDeviceListOptions
         )
+    }
+
+    private var nearbySettingsCandidates: [NearbyBLEDeviceCandidate] {
+        guard store.showsAppleDevicesAndBattery, bluetoothDevices.authorization == .allowed else { return [] }
+        return NearbyBLEDeviceCatalog.settingsCandidates(selections: store.nearbyBLESelections)
     }
 
     private var orderListHeight: CGFloat {

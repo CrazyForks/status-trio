@@ -100,7 +100,7 @@ struct MobileBatteryPresentationTests {
         ))
     }
 
-    @Test func watchPresentationUsesLocalizedFallbackAndSource() {
+    @Test func watchPresentationUsesLocalizedFallbackWithoutSourceOrTimeDetail() {
         let watch = MobileBatterySnapshot(
             id: "watch-1", parentID: "phone-1", name: "  ", model: "Watch7,1",
             batteryLevel: 61, isCharging: nil, transport: .usb,
@@ -108,7 +108,7 @@ struct MobileBatteryPresentationTests {
         )
 
         #expect(MobileBatteryDeviceRowPresentation.displayName(watch, fallbackWatchName: "Apple Watch") == "Apple Watch")
-        #expect(MobileBatteryDeviceRowPresentation.sourceText(watch, viaIPhone: "Via iPhone") == "Via iPhone")
+        #expect(MobileBatteryDeviceRowPresentation.sourceText(watch, viaIPhone: "Via iPhone") == nil)
         #expect(MobileBatteryDeviceRowPresentation.chargingText(watch, charging: "Charging") == nil)
     }
 }

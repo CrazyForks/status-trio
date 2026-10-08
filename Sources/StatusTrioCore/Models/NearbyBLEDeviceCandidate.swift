@@ -32,6 +32,8 @@ struct NearbyBLEDeviceSelection: Identifiable, Codable, Equatable, Sendable {
     var name: String
     var vendor: NearbyBLEVendor
     var model: String?
+    var batteryLevel: Int? = nil
+    var batteryLastUpdated: Date? = nil
 }
 
 enum NearbyBLEDiscoveryPresentation {

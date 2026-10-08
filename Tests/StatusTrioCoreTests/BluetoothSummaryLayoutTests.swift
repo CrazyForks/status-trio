@@ -697,10 +697,12 @@ private final class SummaryNearbyBatteryScanner: BluetoothLEBatteryScanning {
     var onCandidatesChanged: (([NearbyBLEDeviceCandidate]) -> Void)?
     var onReadFailures: ((Set<UUID>) -> Void)?
     var onIsScanningChanged: ((Bool) -> Void)?
+    var discoveredCandidates: [NearbyBLEDeviceCandidate] = []
     private(set) var isRunning = false
     private(set) var isScanning = false
 
     func setAllowedReadDeviceIDs(_ ids: Set<UUID>) {}
+    func setInitialReadCandidateIDs(_ ids: Set<UUID>) {}
 
     func start() { isRunning = true }
     func refresh() {}

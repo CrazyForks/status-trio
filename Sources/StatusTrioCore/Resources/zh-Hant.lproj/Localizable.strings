@@ -385,9 +385,6 @@
 "wifi.summary.band" = "%@ GHz";
 "wifi.summary.signal" = "%d dBm";
 "wifi.summary.bandAndSignal" = "%@ · %@";
-"settings.bluetooth.hideUnpairedDevices" = "隱藏系統設定未列出的裝置";
-"settings.bluetooth.hideUnpairedDevicesDescription" = "隱藏系統未配對、僅被掃描到的裝置；關閉則顯示全部。";
-"settings.bluetooth.notInSystemSettings" = "未在系統設定中";
 "settings.bluetooth.hideDevice" = "隱藏此裝置";
 "settings.bluetooth.showDevice" = "顯示此裝置";
 "settings.bluetooth.permissionRequired" = "需要藍牙權限";
@@ -410,5 +407,8 @@
 "bluetooth.nearbyBLE.notNearby" = "目前不在附近";
 "bluetooth.nearbyBLE.unavailable" = "暫時無法讀取";
 "settings.appleDevicesAndBattery" = "顯示 Apple 裝置與電量";
-"settings.appleDevicesAndBattery.description" = "已透過此 Mac 信任驗證的 iPhone 和 iPad，以及透過已信任配對 iPhone 驗證的 Apple Watch，會自動顯示在藍牙列表中。僅附近 Apple 廣播或裝置名稱不能證明裝置歸屬。可用時透過已信任的 USB 或已設定的 Wi-Fi 讀取電量；讀取仍受藍牙電量總開關控制。無法透過穩定識別碼匹配的藍牙列會保持獨立。";
-"bluetooth.nearbyBLE.source" = "附近藍牙";
+"settings.appleDevicesAndBattery.description" = "已信任的 Apple 裝置和附近有名稱的裝置會顯示在藍牙列表中。";
+"settings.appleBackgroundRefresh" = "在背景更新 Apple 裝置電量";
+"settings.appleBackgroundRefresh.description" = "狀態面板關閉時，繼續更新已選 Apple 裝置的電量。";
+"settings.appleBackgroundRefresh.interval" = "背景更新電量的時間間隔";
+"settings.appleBackgroundRefresh.intervalValue" = "%d 分鐘";

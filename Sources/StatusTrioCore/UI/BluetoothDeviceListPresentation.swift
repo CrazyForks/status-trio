@@ -11,25 +11,24 @@ struct BluetoothDeviceListModel: Equatable {
         devices: [BluetoothDevice],
         nearbyRows: [NearbyBLEPanelRow] = [],
         appleRows: [AppleDevicePanelRow] = [],
-        selectedBLEShadowRows: [BluetoothDevice] = [],
         order: [String],
         limit: Int,
         isExpanded: Bool,
         options: BluetoothDeviceListOptions
     ) -> BluetoothDeviceListModel {
-        let selectedBLEDevices = (selectedBLEShadowRows + nearbyRows.map(\.device) + appleRows.compactMap { row in
-            if case .ble = row.id { return row.device }
-            return nil
-        })
+        let shadowRows = nearbyRows.map(\.device) + appleRows.compactMap { row in
+            if case .ble = row.id { row.device } else { nil }
+        }
         let systemRows = BluetoothDeviceListPresentation.panelSystemRows(
             from: devices,
-            selectedNearbyBLEDevices: selectedBLEDevices,
-            showsNearbyBatteryLevels: !selectedBLEDevices.isEmpty,
+            selectedNearbyBLERows: shadowRows,
+            showsNearbyBatteryLevels: !shadowRows.isEmpty,
             listOptions: options
         )
-        let unifiedDevices = BluetoothDeviceListPresentation.uniquelyIdentifiedDevices(
-            systemRows + nearbyRows.map(\.device) + appleRows.map(\.device)
+        let rawDevices = BluetoothDeviceListPresentation.uniquelyIdentifiedDevices(
+            (systemRows + nearbyRows.map(\.device) + appleRows.map(\.device)).filter { !$0.isUnpairedGhost }
         )
+        let unifiedDevices = rawDevices
         let filteredDevices = BluetoothDeviceListPresentation.filteredDevices(unifiedDevices, options: options)
         let orderedDevices = BluetoothDeviceListPresentation.orderedDevices(filteredDevices, using: order)
         return BluetoothDeviceListModel(
@@ -47,56 +46,209 @@ struct BluetoothDeviceListModel: Equatable {
     }
 }
 
+struct BluetoothDisplayRow: Equatable {
+    let device: BluetoothDevice
+    let sourceIDs: [String]
+}
+
+struct BluetoothDisplayBatteryReading: Equatable {
+    let level: Int
+    let observedAt: Date
+    let sourceID: String
+}
+
 enum BluetoothDeviceListPresentation {
-    /// Applies the shared system-row shadow rule while the nearby battery list
-    /// is enabled. Saved selections are deliberately independent of row-level
-    /// hiding: hiding the BLE row must not make its duplicate system ghost reappear.
-    static func panelSystemRows(
-        from systemRows: [BluetoothDevice],
-        selectedNearbyBLEDevices: [BluetoothDevice],
-        showsNearbyBatteryLevels: Bool,
-        listOptions: BluetoothDeviceListOptions
-    ) -> [BluetoothDevice] {
-        guard showsNearbyBatteryLevels,
-              listOptions.showsList,
-              listOptions.maxVisibleDevices > 0 else { return systemRows }
-        return removingSelectedNearbyBLEGhostShadows(
-            from: systemRows,
-            selectedNearbyBLERows: selectedNearbyBLEDevices
+    static func expandingHiddenAliases(
+        in options: BluetoothDeviceListOptions,
+        among devices: [BluetoothDevice]
+    ) -> BluetoothDeviceListOptions {
+        let hiddenIDs = expandedAliasIDs(forHiddenIDs: options.hiddenDeviceAddresses, among: devices)
+        return BluetoothDeviceListOptions(
+            showsList: options.showsList,
+            maxVisibleDevices: options.maxVisibleDevices,
+            order: options.order,
+            hidesGhostDevices: options.hidesGhostDevices,
+            hiddenDeviceAddresses: Set(hiddenIDs.map { BluetoothDeviceIdentity.preferenceKey($0) }),
+            revealedGhostDeviceAddresses: options.revealedGhostDeviceAddresses
         )
     }
 
-    /// Removes only a uniquely name-matched unpaired ghost that shadows one
-    /// selected Nearby BLE row. This is presentation-only: neither row identity,
-    /// readings, nor the UUID-based read permit is merged or changed by a name.
-    static func removingSelectedNearbyBLEGhostShadows(
+    static func panelSystemRows(
         from devices: [BluetoothDevice],
-        selectedNearbyBLERows: [BluetoothDevice]
+        selectedNearbyBLERows: [BluetoothDevice],
+        showsNearbyBatteryLevels: Bool,
+        listOptions: BluetoothDeviceListOptions
     ) -> [BluetoothDevice] {
-        var selectedIDsByName: [String: Set<UUID>] = [:]
-        for device in selectedNearbyBLERows {
+        let rows = systemDevicesExcludingGhosts(devices)
+        guard showsNearbyBatteryLevels, listOptions.showsList, listOptions.maxVisibleDevices > 0 else { return rows }
+        var selectedNames: [String: Int] = [:]
+        for row in selectedNearbyBLERows where row.isReadOverTheAir && BluetoothDeviceIdentity.bleUUID(from: row.id) != nil {
+            let name = normalizedMeaningfulName(row.name)
+            if !name.isEmpty { selectedNames[name, default: 0] += 1 }
+        }
+        return rows.filter { row in
+            guard row.isUnpairedGhost, !row.isConnected else { return true }
+            let name = normalizedMeaningfulName(row.name)
+            return name.isEmpty || selectedNames[name] != 1
+        }
+    }
+
+    static func sharedDisplayRows(
+        _ devices: [BluetoothDevice],
+        options: BluetoothDeviceListOptions = .standard
+    ) -> [BluetoothDisplayRow] {
+        let names = Dictionary(grouping: devices.filter { !normalizedMeaningfulName($0.name).isEmpty }) {
+            normalizedMeaningfulName($0.name)
+        }
+        let bleByName = Dictionary(grouping: devices.compactMap { device -> (String, BluetoothDevice)? in
+            guard BluetoothDeviceIdentity.bleUUID(from: device.id) != nil,
+                  isSpecificPhoneOrTablet(device.appleMobileModel ?? "") else { return nil }
+            let name = normalizedMeaningfulName(device.name)
+            return name.isEmpty ? nil : (name, device)
+        }, by: \.0)
+        let trustedByName = Dictionary(grouping: devices.compactMap { device -> (String, BluetoothDevice)? in
             guard device.isReadOverTheAir,
-                  let id = BluetoothDeviceIdentity.bleUUID(from: device.id),
-                  let name = normalizedPresentationName(device.name) else { continue }
-            selectedIDsByName[name, default: []].insert(id)
+                  BluetoothDeviceIdentity.bleUUID(from: device.id) == nil,
+                  isSpecificPhoneOrTablet(device.appleMobileModel ?? "") else { return nil }
+            let name = normalizedMeaningfulName(device.name)
+            return name.isEmpty ? nil : (name, device)
+        }, by: \.0)
+        var trustedForBLE: [String: BluetoothDevice] = [:]
+        var consumedPairs = Set<String>()
+        for (name, bleRows) in bleByName where names[name]?.count == 2 && bleRows.count == 1 {
+            guard let trustedRows = trustedByName[name], trustedRows.count == 1,
+                  let ble = bleRows.first?.1, let trusted = trustedRows.first?.1,
+                  compatibleMobileModels(ble.appleMobileModel ?? "", trusted.appleMobileModel) else { continue }
+            trustedForBLE[ble.id] = trusted
+            consumedPairs.insert(trusted.id)
         }
-
-        var ghostCountsByName: [String: Int] = [:]
-        for device in devices where device.isUnpairedGhost && !device.isConnected {
-            guard let name = normalizedPresentationName(device.name) else { continue }
-            ghostCountsByName[name, default: 0] += 1
+        var consumed = Set<String>()
+        var rows: [BluetoothDisplayRow] = []
+        for device in devices where !consumed.contains(device.id) && !consumedPairs.contains(device.id) {
+            if let trusted = trustedForBLE[device.id] {
+                consumed.insert(device.id)
+                rows.append(BluetoothDisplayRow(device: device, sourceIDs: [device.id, trusted.id]))
+            } else {
+                consumed.insert(device.id)
+                rows.append(BluetoothDisplayRow(device: device, sourceIDs: [device.id]))
+            }
         }
+        return rows
+    }
 
-        let shadowNames = Set(selectedIDsByName.compactMap { name, ids in
-            ids.count == 1 && ghostCountsByName[name] == 1 ? name : nil
+    static func settingsDisplayRows(
+        _ devices: [BluetoothDevice],
+        order: [String],
+        options: BluetoothDeviceListOptions
+    ) -> [BluetoothDisplayRow] {
+        let rows = sharedDisplayRows(uniquelyIdentifiedDevices(devices))
+        let connected = rows.filter { $0.device.isConnected }
+        let disconnected = rows.filter { !$0.device.isConnected }
+        return orderedDisplayRows(connected, using: order) + orderedDisplayRows(disconnected, using: order)
+    }
+
+    static func expandedAliasIDs(
+        forHiddenIDs hiddenIDs: Set<String>,
+        among devices: [BluetoothDevice]
+    ) -> Set<String> {
+        let hiddenKeys = Set(hiddenIDs.map { BluetoothDeviceIdentity.preferenceKey($0) })
+        var result = hiddenIDs
+        for row in sharedDisplayRows(devices) {
+            let aliases = Set(row.sourceIDs)
+            if aliases.contains(where: { hiddenKeys.contains(BluetoothDeviceIdentity.preferenceKey($0)) }) {
+                result.formUnion(aliases)
+            }
+        }
+        return result
+    }
+
+    static func newestValidReading(
+        for row: BluetoothDisplayRow,
+        nearbyReadings: [NearbyBluetoothBatteryDevice],
+        nearbyRows: [NearbyBLEPanelRow],
+        trustedSnapshots: [MobileBatterySnapshot],
+        now: Date = Date()
+    ) -> BluetoothDisplayBatteryReading? {
+        let nearbyByID = Dictionary(nearbyReadings.map { ($0.id, $0) }, uniquingKeysWith: { old, new in
+            new.lastUpdated >= old.lastUpdated ? new : old
         })
-        guard !shadowNames.isEmpty else { return devices }
-
-        return devices.filter { device in
-            guard device.isUnpairedGhost, !device.isConnected,
-                  let name = normalizedPresentationName(device.name) else { return true }
-            return !shadowNames.contains(name)
+        var readings: [BluetoothDisplayBatteryReading] = []
+        for sourceID in row.sourceIDs {
+            if let uuid = BluetoothDeviceIdentity.bleUUID(from: sourceID) {
+                let nearby = nearbyByID[uuid]
+                if let nearby,
+                   (0...100).contains(nearby.batteryLevel),
+                   isFresh(nearby.lastUpdated, now: now) {
+                    readings.append(BluetoothDisplayBatteryReading(
+                        level: nearby.batteryLevel,
+                        observedAt: nearby.lastUpdated,
+                        sourceID: sourceID
+                    ))
+                } else if nearby == nil,
+                          let nearbyRow = nearbyRows.first(where: { $0.id == uuid }),
+                          let observedAt = nearbyRow.observedAt,
+                          let level = nearbyRow.batteryLevel,
+                          (0...100).contains(level),
+                          isFresh(observedAt, now: now) {
+                    readings.append(BluetoothDisplayBatteryReading(
+                        level: level,
+                        observedAt: observedAt,
+                        sourceID: sourceID
+                    ))
+                }
+            }
+            if let snapshot = trustedSnapshots.first(where: { snapshot in
+                if let parentID = snapshot.parentID { return sourceID == AppleDeviceID.trustedWatch(parentID: parentID, id: snapshot.id).rowID }
+                return sourceID == AppleDeviceID.trustedDevice(snapshot.id).rowID
+            }), (0...100).contains(snapshot.batteryLevel), isFresh(snapshot.observedAt, now: now) {
+                readings.append(BluetoothDisplayBatteryReading(
+                    level: snapshot.batteryLevel,
+                    observedAt: snapshot.observedAt,
+                    sourceID: sourceID
+                ))
+            }
         }
+        return readings.max { $0.observedAt < $1.observedAt }
+    }
+
+    static func externalBatteryStatus(
+        for device: BluetoothDevice,
+        canonicalStatus: NearbyBLEPanelRowStatus?,
+        nearbyStatus: NearbyBLEPanelRowStatus?,
+        appleStatus: NearbyBLEPanelRowStatus?
+    ) -> NearbyBLEPanelRowStatus? {
+        if let canonicalStatus { return canonicalStatus }
+        if device.isReadOverTheAir, device.id.hasPrefix("ble:") {
+            guard case let .battery(level)? = nearbyStatus else { return nil }
+            return .battery(level)
+        }
+        return nearbyStatus ?? appleStatus
+    }
+
+    private static func isFresh(_ timestamp: Date, now: Date) -> Bool {
+        (0...BluetoothLEBatteryScanPolicy.resultLifetime).contains(now.timeIntervalSince(timestamp))
+    }
+
+    private static func normalizedMeaningfulName(_ value: String) -> String {
+        value.trimmingCharacters(in: .whitespacesAndNewlines)
+            .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "en_US_POSIX"))
+    }
+
+    private static func isSpecificPhoneOrTablet(_ model: String) -> Bool {
+        let value = model.lowercased()
+        return (value.hasPrefix("iphone") || value.hasPrefix("ipad"))
+            && value.contains(where: \.isNumber)
+    }
+
+    private static func compatibleMobileModels(_ lhs: String, _ rhs: String?) -> Bool {
+        guard let rhs, isSpecificPhoneOrTablet(rhs) else { return false }
+        return lhs.lowercased().hasPrefix("iphone") == rhs.lowercased().hasPrefix("iphone")
+            && lhs.lowercased().hasPrefix("ipad") == rhs.lowercased().hasPrefix("ipad")
+    }
+
+    /// Excludes profiler-only ghosts before list ordering and manual hides.
+    static func systemDevicesExcludingGhosts(_ devices: [BluetoothDevice]) -> [BluetoothDevice] {
+        devices.filter { !$0.isUnpairedGhost }
     }
 
     /// Exact IDs may recur when a trusted paired row and a battery projection
@@ -125,12 +277,6 @@ enum BluetoothDeviceListPresentation {
         return 2
     }
 
-    private static func normalizedPresentationName(_ name: String) -> String? {
-        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return nil }
-        return trimmed.folding(options: [.caseInsensitive], locale: Locale(identifier: "en_US_POSIX"))
-    }
-
     /// Connected devices always lead; the saved order only reorders devices
     /// **within** their own group, so a drag can never lift a disconnected
     /// device above a connected one. Devices with no saved rank keep the
@@ -146,36 +292,38 @@ enum BluetoothDeviceListPresentation {
         return ranked(groups.connected, using: order) + ranked(groups.disconnected, using: order)
     }
 
-    /// Drops devices the user cannot act on or has chosen to hide: unpaired
-    /// "ghost" devices the profiler reports but System Settings does not (when
-    /// `options.hidesGhostDevices` is on, unless the device is in
-    /// `options.revealedGhostDeviceAddresses`), and any device whose normalized
-    /// address the user has hidden. The status panel renders the result; the
-    /// Settings order list renders the raw devices so the user can still reveal
-    /// or rearrange a hidden one.
+    static func orderedDisplayRows(
+        _ rows: [BluetoothDisplayRow],
+        using order: [String]
+    ) -> [BluetoothDisplayRow] {
+        let rankByKey = Dictionary(order.enumerated().map {
+            (BluetoothDeviceIdentity.preferenceKey($0.element), $0.offset)
+        }, uniquingKeysWith: { first, _ in first })
+        return rows.enumerated().sorted { lhs, rhs in
+            let left = lhs.element.sourceIDs.compactMap { rankByKey[BluetoothDeviceIdentity.preferenceKey($0)] }.min() ?? Int.max
+            let right = rhs.element.sourceIDs.compactMap { rankByKey[BluetoothDeviceIdentity.preferenceKey($0)] }.min() ?? Int.max
+            if left != right { return left < right }
+            return lhs.offset < rhs.offset
+        }.map(\.element)
+    }
+
+    /// Drops manually hidden devices. Profiler ghosts are excluded before this
+    /// stage in both Settings and the status panel.
     static func filteredDevices(
         _ devices: [BluetoothDevice],
         options: BluetoothDeviceListOptions
     ) -> [BluetoothDevice] {
-        devices.filter { !isDeviceHidden($0, options: options) }
+        devices.filter { !$0.isUnpairedGhost && !isDeviceHidden($0, options: options) }
     }
 
-    /// Whether the panel drops `device` under `options`. Ghost devices are hidden
-    /// when `hidesGhostDevices` is on and the device is not in the reveal set;
-    /// any device whose normalized address is in `hiddenDeviceAddresses` is
-    /// hidden regardless of type. Centralized so the Settings row and the panel
-    /// agree on what "hidden" means.
+    /// Whether the panel drops `device` under the user's manual-hide setting.
     static func isDeviceHidden(
         _ device: BluetoothDevice,
         options: BluetoothDeviceListOptions
     ) -> Bool {
+        if device.isUnpairedGhost { return true }
         let key = BluetoothDeviceIdentity.preferenceKey(device.id)
         if !key.isEmpty, options.hiddenDeviceAddresses.contains(key) {
-            return true
-        }
-        if options.hidesGhostDevices,
-           device.isUnpairedGhost,
-           !options.revealedGhostDeviceAddresses.contains(key) {
             return true
         }
         return false
@@ -220,34 +368,6 @@ enum BluetoothDeviceListPresentation {
                 return lhs.offset < rhs.offset
             }
             .map(\.element)
-    }
-}
-
-struct BluetoothDeviceSettingsOrderLabel: Equatable {
-    let title: String
-    let source: String?
-}
-
-enum BluetoothDeviceSettingsPresentation {
-    static func orderLabel(
-        device: BluetoothDevice,
-        nearbyBLENames: [UUID: String],
-        fallback: String,
-        nearbySource: String
-    ) -> BluetoothDeviceSettingsOrderLabel {
-        guard let id = BluetoothDeviceIdentity.bleUUID(from: device.id) else {
-            return BluetoothDeviceSettingsOrderLabel(title: device.name, source: nil)
-        }
-        let candidate = NearbyBLEDeviceCandidate(
-            id: id,
-            name: nearbyBLENames[id] ?? device.name,
-            vendor: .unknown,
-            lastSeen: .distantPast
-        )
-        return BluetoothDeviceSettingsOrderLabel(
-            title: candidate.displayName(fallback: fallback),
-            source: nearbySource
-        )
     }
 }
 

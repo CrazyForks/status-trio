@@ -4,11 +4,42 @@ import Testing
 
 @MainActor
 @Suite struct AppleDeviceSettingsTests {
+    @Test func appleRefreshIntervalTitleNamesBackgroundBatteryRefreshInChinese() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+        let localization = Localization(defaults: suite.defaults, preferredLanguages: ["en"])
+
+        #expect(localization.string(.settingsAppleBackgroundRefreshInterval, language: .simplifiedChinese) == "后台更新电量的时间间隔")
+        #expect(localization.string(.settingsAppleBackgroundRefreshInterval, language: .traditionalChinese) == "背景更新電量的時間間隔")
+    }
+
     @Test func sourceIDsAreDistinct() {
         let uuid = UUID(uuidString: "D0B64B72-63E2-45CE-A1B2-0F48E7EF83B8")!
         #expect(AppleDeviceID.ble(uuid).rowID == "ble:d0b64b72-63e2-45ce-a1b2-0f48e7ef83b8")
         #expect(AppleDeviceID.ble(uuid).rowID != AppleDeviceID.trustedDevice(uuid.uuidString).rowID)
         #expect(AppleDeviceID.trustedWatch(parentID: "a", id: "w") != .trustedWatch(parentID: "b", id: "w"))
+    }
+
+    @Test func appleRefreshIntervalValueIsVisibleBesideTheHiddenStepperLabel() throws {
+        let sourceURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("Sources/StatusTrioCore/UI/Settings/BluetoothSectionView.swift")
+        let source = try String(contentsOf: sourceURL, encoding: .utf8)
+        let intervalRowStart = try #require(source.range(of: "title: localization.string(.settingsAppleBackgroundRefreshInterval)"))
+        let intervalRowEnd = try #require(source[intervalRowStart.upperBound...].range(of: "\n                    }\n                }"))
+        let intervalRow = source[intervalRowStart.lowerBound..<intervalRowEnd.upperBound]
+        let stepperStart = try #require(intervalRow.range(of: "Stepper("))
+        let hiddenLabel = try #require(intervalRow.range(of: ".labelsHidden()"))
+        let hiddenStepper = intervalRow[stepperStart.lowerBound..<hiddenLabel.upperBound]
+
+        #expect(intervalRow.range(of: "Text(localization.format(")?.lowerBound ?? intervalRow.endIndex < stepperStart.lowerBound)
+        #expect(hiddenStepper.range(of: ".settingsAppleBackgroundRefreshIntervalValue") == nil)
+        #expect(intervalRow.contains(".monospacedDigit()"))
+        #expect(intervalRow.contains(".accessibilityLabel(localization.string(.settingsAppleBackgroundRefreshInterval))"))
+        #expect(intervalRow.contains(".accessibilityValue(localization.format("))
+        #expect(intervalRow.contains(".settingsAppleBackgroundRefreshIntervalValue"))
     }
 
     @Test(arguments: [

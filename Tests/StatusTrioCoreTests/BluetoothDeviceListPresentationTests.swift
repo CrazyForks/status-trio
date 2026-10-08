@@ -2,6 +2,282 @@ import XCTest
 @testable import StatusTrioCore
 
 final class BluetoothDeviceListPresentationTests: XCTestCase {
+    func testSharedProjectionDeduplicatesOnlyOneUnambiguousCompatibleCrossSourcePair() {
+        let bleID = UUID(uuidString: "00000000-0000-0000-0000-000000000091")!
+        let ble = BluetoothDevice(
+            id: BluetoothDeviceIdentity.bleRowID(bleID), name: "Phone", kind: .mobile(.phone),
+            isConnected: false, appleMobileModel: "iPhone18,1", isReadOverTheAir: true
+        )
+        let trusted = BluetoothDevice(
+            id: "trusted:phone", name: " phone ", kind: .mobile(.phone),
+            isConnected: false, appleMobileModel: "iPhone18,1", isReadOverTheAir: true
+        )
+
+        let projection = BluetoothDeviceListPresentation.sharedDisplayRows([ble, trusted])
+
+        XCTAssertEqual(projection.map(\.device.id), [ble.id])
+        XCTAssertEqual(projection.first?.sourceIDs.sorted(), [ble.id, trusted.id].sorted())
+    }
+
+    func testSharedProjectionMergesPairRegardlessOfInputOrderAndUsesEitherAliasRank() {
+        let bleID = UUID(uuidString: "00000000-0000-0000-0000-000000000095")!
+        let ble = BluetoothDevice(
+            id: BluetoothDeviceIdentity.bleRowID(bleID), name: "Phone", kind: .mobile(.phone),
+            isConnected: false, appleMobileModel: "iPhone18,1", isReadOverTheAir: true
+        )
+        let trusted = BluetoothDevice(
+            id: AppleDeviceID.trustedDevice("phone").rowID,
+            name: "Phone", kind: .mobile(.phone), isConnected: false,
+            appleMobileModel: "iPhone18,1", isReadOverTheAir: true
+        )
+        let forward = BluetoothDeviceListPresentation.sharedDisplayRows([ble, trusted])
+        let reverse = BluetoothDeviceListPresentation.sharedDisplayRows([trusted, ble])
+
+        XCTAssertEqual(forward.count, 1)
+        XCTAssertEqual(reverse.count, 1)
+        XCTAssertEqual(forward.first?.sourceIDs.sorted(), reverse.first?.sourceIDs.sorted())
+        XCTAssertEqual(reverse.first?.device.id, ble.id)
+        let ordered = BluetoothDeviceListPresentation.orderedDisplayRows(
+            reverse,
+            using: [trusted.id, ble.id]
+        )
+        XCTAssertEqual(ordered.first?.device.id, ble.id)
+    }
+
+    func testSharedProjectionChoosesNewestValidReadingWithoutUsingBatteryEqualityAsIdentity() {
+        let bleID = UUID(uuidString: "00000000-0000-0000-0000-000000000098")!
+        let ble = BluetoothDevice(
+            id: BluetoothDeviceIdentity.bleRowID(bleID), name: "Phone", kind: .mobile(.phone),
+            isConnected: false, appleMobileModel: "iPhone18,1", isReadOverTheAir: true
+        )
+        let trusted = BluetoothDevice(
+            id: AppleDeviceID.trustedDevice("phone").rowID,
+            name: "Phone", kind: .mobile(.phone), isConnected: false,
+            appleMobileModel: "iPhone18,1", isReadOverTheAir: true
+        )
+        let oldBLE = NearbyBluetoothBatteryDevice(id: bleID, name: "Phone", batteryLevel: 18,
+                                                  model: "iPhone18,1", manufacturer: nil,
+                                                  lastUpdated: Date(timeIntervalSince1970: 100))
+        let newerTrusted = MobileBatterySnapshot(
+            id: "phone", parentID: nil, name: "Phone", model: "iPhone18,1",
+            batteryLevel: 20, isCharging: false, transport: .usb,
+            observedAt: Date(timeIntervalSince1970: 200)
+        )
+        let displayPair = BluetoothDeviceListPresentation.sharedDisplayRows([trusted, ble]).first!
+        let bleRow = NearbyBLEPanelRow(id: bleID, device: ble, batteryLevel: 18,
+                                       wasSeenRecently: false, readFailed: false,
+                                       observedAt: Date(timeIntervalSince1970: 100))
+
+        let newerBLE = NearbyBluetoothBatteryDevice(id: bleID, name: "Phone", batteryLevel: 18,
+                                                    model: "iPhone18,1", manufacturer: nil,
+                                                    lastUpdated: Date(timeIntervalSince1970: 250))
+        let olderTrusted = MobileBatterySnapshot(
+            id: "phone", parentID: nil, name: "Phone", model: "iPhone18,1",
+            batteryLevel: 20, isCharging: false, transport: .usb,
+            observedAt: Date(timeIntervalSince1970: 200)
+        )
+        XCTAssertEqual(BluetoothDeviceListPresentation.newestValidReading(
+            for: displayPair, nearbyReadings: [newerBLE], nearbyRows: [bleRow],
+            trustedSnapshots: [olderTrusted], now: Date(timeIntervalSince1970: 300)
+        )?.level, 18, "live BLE lastUpdated must outrank the panel row's older timestamp")
+        XCTAssertEqual(BluetoothDeviceListPresentation.newestValidReading(
+            for: displayPair, nearbyReadings: [oldBLE], nearbyRows: [bleRow],
+            trustedSnapshots: [newerTrusted], now: Date(timeIntervalSince1970: 300)
+        )?.level, 20, "a genuinely newer trusted snapshot must outrank older BLE data")
+        XCTAssertEqual(BluetoothDeviceListPresentation.newestValidReading(
+            for: displayPair, nearbyReadings: [], nearbyRows: [
+                NearbyBLEPanelRow(id: bleID, device: ble, batteryLevel: 17, wasSeenRecently: false,
+                                  readFailed: false, observedAt: Date(timeIntervalSince1970: 250))
+            ], trustedSnapshots: [olderTrusted], now: Date(timeIntervalSince1970: 300)
+        )?.level, 17, "a fresh retained panel reading remains usable when no live cache exists")
+        XCTAssertNil(BluetoothDeviceListPresentation.newestValidReading(
+            for: displayPair,
+            nearbyReadings: [NearbyBluetoothBatteryDevice(id: bleID, name: "Phone", batteryLevel: 18,
+                                                          model: "iPhone18,1", manufacturer: nil,
+                                                          lastUpdated: Date(timeIntervalSince1970: 301))],
+            nearbyRows: [], trustedSnapshots: [], now: Date(timeIntervalSince1970: 300)
+        ), "future timestamps are not fresh")
+        XCTAssertNil(BluetoothDeviceListPresentation.newestValidReading(
+            for: displayPair,
+            nearbyReadings: [NearbyBluetoothBatteryDevice(id: bleID, name: "Phone", batteryLevel: 150,
+                                                          model: "iPhone18,1", manufacturer: nil,
+                                                          lastUpdated: Date(timeIntervalSince1970: 290))],
+            nearbyRows: [],
+            trustedSnapshots: []
+        ))
+        let unrelated = BluetoothDisplayRow(device: ble, sourceIDs: [ble.id])
+        XCTAssertNil(BluetoothDeviceListPresentation.newestValidReading(
+            for: unrelated,
+            nearbyReadings: [],
+            nearbyRows: [],
+            trustedSnapshots: [newerTrusted]
+        ))
+    }
+
+    func testRowStatusUsesCanonicalReadingBeforeSourceFallback() {
+        let device = BluetoothDevice(
+            id: "ble:00000000-0000-0000-0000-000000000098", name: "Phone", kind: .mobile(.phone),
+            isConnected: false, appleMobileModel: "iPhone18,1", isReadOverTheAir: true
+        )
+
+        XCTAssertEqual(BluetoothDeviceListPresentation.externalBatteryStatus(
+            for: device, canonicalStatus: .battery(20), nearbyStatus: .battery(18), appleStatus: nil
+        ), .battery(20))
+        XCTAssertEqual(BluetoothDeviceListPresentation.externalBatteryStatus(
+            for: device, canonicalStatus: .battery(18), nearbyStatus: .battery(20), appleStatus: nil
+        ), .battery(18))
+    }
+
+    func testSettingsProjectionUsesSharedPairingAndAliasAwareOrdering() {
+        let bleID = UUID(uuidString: "00000000-0000-0000-0000-000000000096")!
+        let ble = BluetoothDevice(
+            id: BluetoothDeviceIdentity.bleRowID(bleID), name: "Phone", kind: .mobile(.phone),
+            isConnected: false, appleMobileModel: "iPhone18,1", isReadOverTheAir: true
+        )
+        let trusted = BluetoothDevice(
+            id: "trusted:phone", name: "Phone", kind: .mobile(.phone), isConnected: false,
+            appleMobileModel: "iPhone18,1", isReadOverTheAir: true
+        )
+        let rows = BluetoothDeviceListPresentation.settingsDisplayRows(
+            [trusted, ble], order: [trusted.id, ble.id], options: .standard
+        )
+        XCTAssertEqual(rows.count, 1)
+        XCTAssertEqual(rows.first?.device.id, ble.id)
+        XCTAssertEqual(rows.first?.sourceIDs.sorted(), [ble.id, trusted.id].sorted())
+    }
+
+    func testSettingsProjectionHidesAndRestoresBothPairAliases() {
+        let bleID = UUID(uuidString: "00000000-0000-0000-0000-000000000097")!
+        let ble = BluetoothDevice(
+            id: BluetoothDeviceIdentity.bleRowID(bleID), name: "Phone", kind: .mobile(.phone),
+            isConnected: false, appleMobileModel: "iPhone18,1", isReadOverTheAir: true
+        )
+        let trusted = BluetoothDevice(
+            id: "trusted:phone", name: "Phone", kind: .mobile(.phone), isConnected: false,
+            appleMobileModel: "iPhone18,1", isReadOverTheAir: true
+        )
+        let pair = try! XCTUnwrap(BluetoothDeviceListPresentation.settingsDisplayRows(
+            [trusted, ble], order: [], options: .standard
+        ).first)
+        let hidden = BluetoothDeviceListPresentation.expandedAliasIDs(
+            forHiddenIDs: [trusted.id], among: [trusted, ble]
+        )
+        XCTAssertEqual(Set(pair.sourceIDs).subtracting(hidden).count, 0)
+        XCTAssertEqual(BluetoothDeviceListPresentation.settingsDisplayRows(
+            [trusted, ble], order: [], options: .standard
+        ).count, 1, "removing the hide restores the same canonical row")
+    }
+
+    func testSharedProjectionKeepsAmbiguousOrBatteryOnlyNameMatchesSeparate() {
+        let bleID = UUID(uuidString: "00000000-0000-0000-0000-000000000092")!
+        let ble = BluetoothDevice(
+            id: BluetoothDeviceIdentity.bleRowID(bleID), name: "Phone", kind: .unknown,
+            isConnected: false, isReadOverTheAir: true
+        )
+        let first = BluetoothDevice(
+            id: "trusted:phone-a", name: "Phone", kind: .mobile(.phone), isConnected: false,
+            appleMobileModel: "iPhone18,1", isReadOverTheAir: true
+        )
+        let second = BluetoothDevice(
+            id: "trusted:phone-b", name: "phone", kind: .mobile(.phone), isConnected: false,
+            appleMobileModel: "iPhone18,1", isReadOverTheAir: true
+        )
+
+        XCTAssertEqual(BluetoothDeviceListPresentation.sharedDisplayRows([ble, first, second]).count, 3)
+        XCTAssertEqual(BluetoothDeviceListPresentation.sharedDisplayRows([ble, first]).count, 2)
+    }
+
+    func testSharedProjectionPreservesBothAliasIDsAndHonorsHideFromEitherSource() {
+        let bleID = UUID(uuidString: "00000000-0000-0000-0000-000000000093")!
+        let ble = BluetoothDevice(
+            id: BluetoothDeviceIdentity.bleRowID(bleID), name: "Phone", kind: .mobile(.phone),
+            isConnected: false, appleMobileModel: "iPhone18,1", isReadOverTheAir: true
+        )
+        let trusted = BluetoothDevice(
+            id: "trusted:phone", name: "Phone", kind: .mobile(.phone), isConnected: false,
+            appleMobileModel: "iPhone18,1", isReadOverTheAir: true
+        )
+        let pair = BluetoothDeviceListPresentation.sharedDisplayRows([ble, trusted]).first
+        XCTAssertEqual(pair?.sourceIDs.sorted(), [ble.id, trusted.id].sorted())
+
+        XCTAssertEqual(BluetoothDeviceListPresentation.expandedAliasIDs(
+            forHiddenIDs: [trusted.id], among: [ble, trusted]
+        ), Set([ble.id, trusted.id]))
+    }
+
+    func testSourceCatalogsHideBothCompatibleAliasesBeforeSharedRowsMerge() {
+        let bleID = UUID(uuidString: "00000000-0000-0000-0000-0000000000B1")!
+        let now = Date()
+        let ble = BluetoothDevice(
+            id: BluetoothDeviceIdentity.bleRowID(bleID), name: "Phone", kind: .mobile(.phone),
+            isConnected: false, appleMobileModel: "iPhone18,1", isReadOverTheAir: true
+        )
+        let trustedCandidate = AppleDeviceCandidate(
+            id: .trustedDevice("phone-b"), name: "Phone", model: "iPhone18,1",
+            transports: [.usb], trustRequired: false, evidence: .verifiedAppleModel
+        )
+        let trusted = BluetoothDevice(
+            id: trustedCandidate.id.rowID, name: trustedCandidate.name, kind: .mobile(.phone),
+            isConnected: false, appleMobileModel: trustedCandidate.model, isReadOverTheAir: true
+        )
+        let selection = NearbyBLEDeviceSelection(
+            id: bleID, name: "Phone", vendor: .apple, model: "iPhone18,1",
+            batteryLevel: 50, batteryLastUpdated: now
+        )
+
+        for hiddenID in [ble.id, trustedCandidate.id.rowID] {
+            let options = BluetoothDeviceListOptions(
+                showsList: true, maxVisibleDevices: 5, order: [],
+                hiddenDeviceAddresses: [hiddenID]
+            )
+            let sourceOptions = BluetoothDeviceListPresentation.expandingHiddenAliases(
+                in: options, among: [ble, trusted]
+            )
+            let appleRows = AppleDeviceCatalog.projection(
+                candidates: [trustedCandidate], trustedSnapshots: [], options: sourceOptions
+            ).rows
+            let nearbyRows = NearbyBLEDeviceCatalog.panelRows(
+                selections: [selection], readings: [], failures: [], options: sourceOptions, now: now
+            )
+
+            XCTAssertTrue(appleRows.isEmpty, "hiding either alias must suppress the trusted source row")
+            XCTAssertTrue(nearbyRows.isEmpty, "hiding either alias must suppress the BLE source row")
+        }
+    }
+
+    func testSharedProjectionRetainsUniqueSelectedBLEGhostShadowRule() {
+        let bleID = UUID(uuidString: "00000000-0000-0000-0000-000000000094")!
+        let ble = BluetoothDevice(
+            id: BluetoothDeviceIdentity.bleRowID(bleID), name: "Phone", kind: .mobile(.phone),
+            isConnected: false, appleMobileModel: "iPhone18,1", isReadOverTheAir: true
+        )
+        let uniqueGhost = BluetoothDevice(
+            id: "AA:00:00:00:00:91", name: "Phone", kind: .unknown,
+            isConnected: false, isUnpairedGhost: true
+        )
+        let pairedPeer = BluetoothDevice(
+            id: "AA:00:00:00:00:92", name: "Phone", kind: .mobile(.phone),
+            isConnected: true, appleMobileModel: "iPhone18,1"
+        )
+
+        let projected = BluetoothDeviceListModel.make(
+            devices: [uniqueGhost, pairedPeer], nearbyRows: [nearbyRow(id: bleID, name: "Phone")],
+            order: [], limit: 10, isExpanded: true, options: .standard
+        )
+        XCTAssertTrue(projected.orderedDevices.contains { $0.id == pairedPeer.id })
+        XCTAssertTrue(projected.orderedDevices.contains { $0.id == ble.id })
+        XCTAssertFalse(projected.orderedDevices.contains { $0.id == uniqueGhost.id })
+    }
+
+    func testGhostExclusionDoesNotMergeSameNamedClassicAndBLERows() {
+        let id = UUID()
+        let classic = BluetoothDevice(id: "AA:00:00:00:00:01", name: "Phone", kind: .unknown,
+                                      isConnected: false, isUnpairedGhost: true)
+        let ble = BluetoothDevice(id: BluetoothDeviceIdentity.bleRowID(id), name: "Phone", kind: .unknown,
+                                  isConnected: false, isReadOverTheAir: true)
+        XCTAssertTrue(BluetoothDeviceListPresentation.systemDevicesExcludingGhosts([classic]).isEmpty)
+        XCTAssertNotEqual(classic.id, ble.id)
+    }
     func testUnifiedListSharesOrderHideLimitExpansionAndVisibleBLESelection() {
         let firstBLEID = UUID(uuidString: "00000000-0000-0000-0000-000000000011")!
         let secondBLEID = UUID(uuidString: "00000000-0000-0000-0000-000000000012")!
@@ -86,7 +362,7 @@ final class BluetoothDeviceListPresentationTests: XCTestCase {
         )
     }
 
-    func testUnifiedModelSuppressesUniqueGhostAndPrefersExactPairedIdentity() {
+    func testUnifiedModelExcludesEveryUnpairedGhostAndKeepsIndependentPairedAndBLERows() {
         let selectedID = UUID(uuidString: "00000000-0000-0000-0000-000000000099")!
         let selectedRow = nearbyRow(id: selectedID, name: "Ling's iPhone")
         let ghost = makeDevice(
@@ -113,10 +389,11 @@ final class BluetoothDeviceListPresentationTests: XCTestCase {
         XCTAssertEqual(model.orderedDevices.filter { $0.id == paired.id }.count, 1)
         XCTAssertFalse(model.orderedDevices.contains { $0.id == ghost.id })
         XCTAssertTrue(model.orderedDevices.contains { $0.id == distinctSameNamePaired.id })
+        XCTAssertTrue(model.orderedDevices.contains { $0.id == selectedRow.device.id })
         XCTAssertEqual(model.orderedDevices.first { $0.id == paired.id }, paired)
     }
 
-    func testUnifiedModelSuppressesShadowForSavedBLESelectionEvenWhenItsRowIsHidden() {
+    func testUnifiedModelExcludesGhostEvenWhenItHasSavedBLESelectionAndThatRowIsHidden() {
         let selected = makeSelectedBLERow(name: "Ling's iPhone")
         let ghost = makeDevice(
             address: "AA:00:00:00:00:98", name: "Ling's iPhone", isConnected: false, isUnpairedGhost: true
@@ -127,7 +404,7 @@ final class BluetoothDeviceListPresentationTests: XCTestCase {
         )
 
         let model = BluetoothDeviceListModel.make(
-            devices: [ghost], selectedBLEShadowRows: [selected], order: [], limit: 20,
+            devices: [ghost], order: [], limit: 20,
             isExpanded: true, options: options
         )
 
@@ -391,7 +668,7 @@ final class BluetoothDeviceListPresentationTests: XCTestCase {
         )
     }
 
-    func testFilteredDevicesDropsGhostsWhenTheOptionIsOn() {
+    func testFilteredDevicesAlwaysDropsSystemGhostsRegardlessOfLegacyOption() {
         let ghost = makeDevice(address: "AA:00:00:00:00:01", name: "Ghost", isConnected: false, isUnpairedGhost: true)
         let paired = makeDevice(address: "AA:00:00:00:00:02", name: "Paired", isConnected: true)
 
@@ -402,10 +679,7 @@ final class BluetoothDeviceListPresentationTests: XCTestCase {
         )
 
         let showing = BluetoothDeviceListOptions(showsList: true, maxVisibleDevices: 5, order: [], hidesGhostDevices: false)
-        XCTAssertEqual(
-            BluetoothDeviceListPresentation.filteredDevices([ghost, paired], options: showing).map(\.id),
-            [ghost.id, paired.id]
-        )
+        XCTAssertEqual(BluetoothDeviceListPresentation.filteredDevices([ghost, paired], options: showing).map(\.id), [paired.id])
     }
 
     func testFilteredDevicesDropsManuallyHiddenDevicesByNormalizedAddress() {
@@ -442,13 +716,11 @@ final class BluetoothDeviceListPresentationTests: XCTestCase {
         )
     }
 
-    func testFilteredDevicesRevealsIndividualGhost() {
+    func testLegacyGhostRevealPreferencesCannotShowSystemGhosts() {
         let ghostA = makeDevice(address: "AA:00:00:00:00:01", name: "Ghost A", isConnected: false, isUnpairedGhost: true)
         let ghostB = makeDevice(address: "AA:00:00:00:00:02", name: "Ghost B", isConnected: false, isUnpairedGhost: true)
         let paired = makeDevice(address: "AA:00:00:00:00:03", name: "Paired", isConnected: true)
 
-        // The global filter hides ghosts, but a revealed ghost overrides it for
-        // that one device while the rest stay hidden.
         let options = BluetoothDeviceListOptions(
             showsList: true,
             maxVisibleDevices: 5,
@@ -456,11 +728,7 @@ final class BluetoothDeviceListPresentationTests: XCTestCase {
             hidesGhostDevices: true,
             revealedGhostDeviceAddresses: ["AA0000000001"]
         )
-        XCTAssertEqual(
-            BluetoothDeviceListPresentation.filteredDevices([ghostA, ghostB, paired], options: options)
-                .map(\.id),
-            [ghostA.id, paired.id]
-        )
+        XCTAssertEqual(BluetoothDeviceListPresentation.filteredDevices([ghostA, ghostB, paired], options: options).map(\.id), [paired.id])
 
         // With the filter off, the reveal set is irrelevant: everything shows.
         let off = BluetoothDeviceListOptions(
@@ -470,14 +738,10 @@ final class BluetoothDeviceListPresentationTests: XCTestCase {
             hidesGhostDevices: false,
             revealedGhostDeviceAddresses: ["AA0000000001"]
         )
-        XCTAssertEqual(
-            BluetoothDeviceListPresentation.filteredDevices([ghostA, ghostB, paired], options: off)
-                .map(\.id),
-            [ghostA.id, ghostB.id, paired.id]
-        )
+        XCTAssertEqual(BluetoothDeviceListPresentation.filteredDevices([ghostA, ghostB, paired], options: off).map(\.id), [paired.id])
     }
 
-    func testSettingsSuppressesOnlyUniqueUnpairedGhostShadowOfSelectedBLE() {
+    func testSettingsExcludesSystemGhostsButPreservesPairedAndBLERows() {
         let selected = makeSelectedBLERow(name: " Ling's iPhone ")
         let shadow = makeDevice(
             address: "AA:00:00:00:00:01",
@@ -496,18 +760,16 @@ final class BluetoothDeviceListPresentationTests: XCTestCase {
             isConnected: false,
             isUnpairedGhost: true
         )
-        let settingsRows = BluetoothDeviceListPresentation.removingSelectedNearbyBLEGhostShadows(
-            from: [shadow, pairedPeer, unrelatedGhost, selected],
-            selectedNearbyBLERows: [selected]
-        )
+        let settingsRows = BluetoothDeviceListPresentation.systemDevicesExcludingGhosts([shadow, pairedPeer, unrelatedGhost, selected])
 
-        XCTAssertEqual(Set(settingsRows.map(\.id)), Set([pairedPeer.id, unrelatedGhost.id, selected.id]))
+        XCTAssertEqual(Set(settingsRows.map(\.id)), Set([pairedPeer.id, selected.id]))
         XCTAssertTrue(settingsRows.contains { $0.id == pairedPeer.id }, "a truly paired peer must remain")
         XCTAssertTrue(settingsRows.contains { $0.id == selected.id }, "the selected BLE row keeps its own identity")
-        XCTAssertTrue(settingsRows.contains { $0.id == unrelatedGhost.id }, "unrelated ghosts remain available in Settings")
+        XCTAssertFalse(settingsRows.contains { $0.id == shadow.id })
+        XCTAssertFalse(settingsRows.contains { $0.id == unrelatedGhost.id })
     }
 
-    func testPanelGhostShadowRemainsSuppressedWhenSelectedBLERowIsHidden() {
+    func testPanelNeverShowsGhostsWhenSelectedBLERowIsHidden() {
         let selectedID = UUID()
         let selected = makeSelectedBLERow(name: "Ling's iPhone", id: selectedID)
         let shadow = makeDevice(
@@ -535,16 +797,8 @@ final class BluetoothDeviceListPresentationTests: XCTestCase {
             revealedGhostDeviceAddresses: [BluetoothBatteryReader.normalizedAddress(revealedGhost.id)]
         )
 
-        let panelRows = BluetoothDeviceListPresentation.panelSystemRows(
-            from: [shadow, revealedGhost, pairedPeer],
-            selectedNearbyBLEDevices: [selected],
-            showsNearbyBatteryLevels: true,
-            listOptions: options
-        )
-        XCTAssertEqual(
-            BluetoothDeviceListPresentation.filteredDevices(panelRows, options: options).map(\.id),
-            [revealedGhost.id, pairedPeer.id]
-        )
+        let panelRows = BluetoothDeviceListPresentation.systemDevicesExcludingGhosts([shadow, revealedGhost, pairedPeer])
+        XCTAssertEqual(BluetoothDeviceListPresentation.filteredDevices(panelRows, options: options).map(\.id), [pairedPeer.id])
 
         // The actual panel catalog omits a manually hidden selected UUID. Its
         // former name therefore must not continue suppressing a separately
@@ -553,7 +807,9 @@ final class BluetoothDeviceListPresentationTests: XCTestCase {
             id: selectedID,
             name: selected.name,
             vendor: .unknown,
-            model: nil
+            model: nil,
+            batteryLevel: 50,
+            batteryLastUpdated: .now
         )
         let hiddenOptions = BluetoothDeviceListOptions(
             showsList: true,
@@ -563,7 +819,6 @@ final class BluetoothDeviceListPresentationTests: XCTestCase {
         )
         let hiddenNearbyRows = NearbyBLEDeviceCatalog.panelRows(
             selections: [selection],
-            candidates: [],
             readings: [],
             failures: [],
             options: hiddenOptions,
@@ -578,31 +833,16 @@ final class BluetoothDeviceListPresentationTests: XCTestCase {
             hiddenDeviceAddresses: [BluetoothDeviceIdentity.bleRowID(selectedID)],
             revealedGhostDeviceAddresses: [BluetoothBatteryReader.normalizedAddress(shadow.id)]
         )
-        let canonicalSelectedRows = NearbyBLEDeviceCatalog.settingsDevices(selections: [selection])
-        let panelSystemRows = BluetoothDeviceListPresentation.panelSystemRows(
-            from: [shadow, pairedPeer],
-            selectedNearbyBLEDevices: canonicalSelectedRows,
-            showsNearbyBatteryLevels: true,
-            listOptions: revealShadow
-        )
+        let panelSystemRows = BluetoothDeviceListPresentation.systemDevicesExcludingGhosts([shadow, pairedPeer])
+        XCTAssertEqual(BluetoothDeviceListPresentation.filteredDevices(panelSystemRows, options: revealShadow).map(\.id), [pairedPeer.id])
         XCTAssertEqual(
-            BluetoothDeviceListPresentation.filteredDevices(panelSystemRows, options: revealShadow).map(\.id),
-            [pairedPeer.id],
-            "Hiding a saved BLE row must not reveal its duplicate macOS ghost; truly paired peers remain"
-        )
-        XCTAssertEqual(
-            BluetoothDeviceListPresentation.panelSystemRows(
-                from: [shadow],
-                selectedNearbyBLEDevices: canonicalSelectedRows,
-                showsNearbyBatteryLevels: false,
-                listOptions: revealShadow
-            ).map(\.id),
-            [shadow.id],
-            "Shadow suppression is limited to the nearby battery feature"
+            BluetoothDeviceListPresentation.systemDevicesExcludingGhosts([shadow]).map(\.id),
+            [],
+            "Profiler ghosts are excluded regardless of nearby battery rows"
         )
     }
 
-    func testAmbiguousNamesAndNonBLEReadingsNeverSuppressGhosts() {
+    func testSystemGhostsAreExcludedWithoutNameBasedMerging() {
         let selectedA = makeSelectedBLERow(name: "Shared phone")
         let selectedB = makeSelectedBLERow(name: "Shared phone")
         let ghost = makeDevice(
@@ -611,18 +851,12 @@ final class BluetoothDeviceListPresentationTests: XCTestCase {
             isConnected: false,
             isUnpairedGhost: true
         )
-        let ambiguousSelection = BluetoothDeviceListPresentation.removingSelectedNearbyBLEGhostShadows(
-            from: [ghost, selectedA, selectedB],
-            selectedNearbyBLERows: [selectedA, selectedB]
-        )
-        XCTAssertTrue(ambiguousSelection.contains { $0.id == ghost.id })
+        let ambiguousSelection = BluetoothDeviceListPresentation.systemDevicesExcludingGhosts([ghost, selectedA, selectedB])
+        XCTAssertFalse(ambiguousSelection.contains { $0.id == ghost.id })
 
         let nonBLEReading = makeReadingDevice(address: "CB-1", name: "Shared phone")
-        let nonSelectedSource = BluetoothDeviceListPresentation.removingSelectedNearbyBLEGhostShadows(
-            from: [ghost, nonBLEReading],
-            selectedNearbyBLERows: []
-        )
-        XCTAssertTrue(nonSelectedSource.contains { $0.id == ghost.id })
+        let nonSelectedSource = BluetoothDeviceListPresentation.systemDevicesExcludingGhosts([ghost, nonBLEReading])
+        XCTAssertFalse(nonSelectedSource.contains { $0.id == ghost.id })
 
         let ghostA = makeDevice(
             address: "AA:00:00:00:00:22",
@@ -636,12 +870,9 @@ final class BluetoothDeviceListPresentationTests: XCTestCase {
             isConnected: false,
             isUnpairedGhost: true
         )
-        let ambiguousGhosts = BluetoothDeviceListPresentation.removingSelectedNearbyBLEGhostShadows(
-            from: [ghostA, ghostB, selectedA],
-            selectedNearbyBLERows: [selectedA]
-        )
-        XCTAssertTrue(ambiguousGhosts.contains { $0.id == ghostA.id })
-        XCTAssertTrue(ambiguousGhosts.contains { $0.id == ghostB.id })
+        let ambiguousGhosts = BluetoothDeviceListPresentation.systemDevicesExcludingGhosts([ghostA, ghostB, selectedA])
+        XCTAssertFalse(ambiguousGhosts.contains { $0.id == ghostA.id })
+        XCTAssertFalse(ambiguousGhosts.contains { $0.id == ghostB.id })
     }
 
     func testTrustedRowsFollowSavedOrderWithinTheirConnectionGroup() {

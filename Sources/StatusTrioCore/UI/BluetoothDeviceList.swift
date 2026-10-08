@@ -9,11 +9,11 @@ struct BluetoothDeviceList: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let devices: [BluetoothDevice]
     let batteryLevels: [String: BluetoothBatteryLevel]
+    var nearbyReadingsByID: [UUID: NearbyBluetoothBatteryDevice] = [:]
     var mobileMetadataByDeviceID: [String: MobileBatterySnapshot] = [:]
     var nearbyRows: [NearbyBLEPanelRow] = []
     var onVisibleNearbyIDsChanged: (Set<UUID>) -> Void = { _ in }
     var appleRows: [AppleDevicePanelRow] = []
-    var selectedBLEShadowRows: [BluetoothDevice] = []
     var onVisibleAppleIDsChanged: (Set<AppleDeviceID>) -> Void = { _ in }
     let actionStates: [String: BluetoothDeviceActionState]
     /// The device whose disconnect is waiting for confirmation, by normalized
@@ -32,6 +32,28 @@ struct BluetoothDeviceList: View {
     @State private var rowFrames: [String: CGRect] = [:]
     @State private var reportedAppleIDs = Set<AppleDeviceID>()
 
+    private var displayRows: [BluetoothDisplayRow] {
+        let sourceModel = BluetoothDeviceListModel.make(
+            devices: devices,
+            nearbyRows: nearbyRows,
+            appleRows: appleRows,
+            order: options.order,
+            limit: Int.max,
+            isExpanded: true,
+            options: options
+        )
+        let rows = BluetoothDeviceListPresentation.sharedDisplayRows(sourceModel.orderedDevices)
+            .filter { row in
+                !row.sourceIDs.contains {
+                    options.hiddenDeviceAddresses.contains(BluetoothDeviceIdentity.preferenceKey($0))
+                }
+            }
+        let connected = rows.filter { $0.device.isConnected }
+        let disconnected = rows.filter { !$0.device.isConnected }
+        return BluetoothDeviceListPresentation.orderedDisplayRows(connected, using: options.order)
+            + BluetoothDeviceListPresentation.orderedDisplayRows(disconnected, using: options.order)
+    }
+
     private static let geometryCoordinateSpace = "BluetoothDeviceList"
 
     /// How tall the rows may grow before they scroll, matching the Wi-Fi list's
@@ -45,23 +67,22 @@ struct BluetoothDeviceList: View {
     private static let rowSpacing: CGFloat = 2
 
     var body: some View {
-        let model = BluetoothDeviceListModel.make(
-            devices: devices,
-            nearbyRows: nearbyRows,
-            appleRows: appleRows,
-            selectedBLEShadowRows: selectedBLEShadowRows,
-            order: options.order,
+        let orderedDisplayDevices = displayRows.map(\.device)
+        let visibleDisplayDevices = BluetoothDeviceListPresentation.visibleDevices(
+            from: orderedDisplayDevices,
             limit: options.maxVisibleDevices,
-            isExpanded: isExpanded,
-            options: options
+            isExpanded: isExpanded
         )
 
         VStack(spacing: Self.rowSpacing) {
-            rows(model.visibleDevices)
+            rows(visibleDisplayDevices)
 
             // Deliberately outside the scroll region: collapsing a long list must
             // not require scrolling to the bottom first.
-            if model.canToggleExpansion {
+            if BluetoothDeviceListPresentation.canToggleExpansion(
+                for: orderedDisplayDevices,
+                limit: options.maxVisibleDevices
+            ) {
                 Button {
                     withAnimation(reduceMotion ? nil : .snappy(duration: 0.2)) {
                         isExpanded.toggle()
@@ -94,26 +115,26 @@ struct BluetoothDeviceList: View {
                 guard let id = BluetoothDeviceIdentity.bleUUID(from: key) else { return nil }
                 return (id, frame)
             }, uniquingKeysWith: { _, latest in latest })
-            publishVisibleNearbyIDs(in: model.visibleDevices)
+            publishVisibleNearbyIDs(in: visibleDisplayDevices)
         }
         .onPreferenceChange(BluetoothDeviceListViewportPreferenceKey.self) { frame in
             rowsViewportFrame = frame
-            publishVisibleNearbyIDs(in: model.visibleDevices)
+            publishVisibleNearbyIDs(in: visibleDisplayDevices)
         }
-        .onChange(of: model.visibleDevices) { _, visibleDevices in
+        .onChange(of: visibleDisplayDevices) { _, visibleDevices in
             publishVisibleNearbyIDs(in: visibleDevices)
         }
         .onChange(of: isExpanded) { _, _ in
-            publishVisibleNearbyIDs(in: model.visibleDevices)
+            publishVisibleNearbyIDs(in: visibleDisplayDevices)
         }
         .onChange(of: nearbyRows) { _, _ in
-            publishVisibleNearbyIDs(in: model.visibleDevices)
+            publishVisibleNearbyIDs(in: visibleDisplayDevices)
         }
         .onChange(of: appleRows) { _, _ in
-            publishVisibleNearbyIDs(in: model.visibleDevices)
+            publishVisibleNearbyIDs(in: visibleDisplayDevices)
         }
         .onChange(of: options) { _, _ in
-            publishVisibleNearbyIDs(in: model.visibleDevices)
+            publishVisibleNearbyIDs(in: visibleDisplayDevices)
         }
         .onDisappear {
             reportVisibleNearbyIDs([])
@@ -168,10 +189,11 @@ struct BluetoothDeviceList: View {
                 let address = BluetoothBatteryReader.normalizedAddress(device.id)
                 BluetoothDeviceRow(
                     device: device,
-                    batteryLevels: batteryLevels,
-                    mobileMetadataByDeviceID: mobileMetadataByDeviceID,
-                    nearbyMetadataByDeviceID: nearbyRowByDeviceID,
-                    appleStatusByDeviceID: Dictionary(appleRows.map { ($0.device.id, $0.status) }, uniquingKeysWith: { _, latest in latest }),
+                    batteryLevels: batteryLevels(for: device),
+                    mobileMetadataByDeviceID: mobileMetadata(for: device),
+                    nearbyMetadataByDeviceID: nearbyMetadata(for: device),
+                    appleStatusByDeviceID: appleStatus(for: device),
+                    canonicalStatusByDeviceID: canonicalStatus(for: device),
                     actionState: actionStates[address],
                     isConfirmingDisconnect: confirmingAddress == address
                         && BluetoothDeviceActionPolicy.requiresConfirmation(for: device),
@@ -197,6 +219,72 @@ struct BluetoothDeviceList: View {
         Dictionary(nearbyRows.map { ($0.device.id, $0) }, uniquingKeysWith: { _, latest in latest })
     }
 
+    private func mobileMetadata(for device: BluetoothDevice) -> [String: MobileBatterySnapshot] {
+        guard let displayRow = displayRows.first(where: { $0.device.id == device.id }) else {
+            return mobileMetadataByDeviceID
+        }
+        var values = mobileMetadataByDeviceID
+        if let selected = selectedReading(for: displayRow),
+           let snapshot = displayRow.sourceIDs.compactMap({ mobileMetadataByDeviceID[$0] })
+            .first(where: { $0.observedAt == selected.observedAt && $0.batteryLevel == selected.level }) {
+            values[device.id] = snapshot
+        }
+        return values
+    }
+
+    private func batteryLevels(for device: BluetoothDevice) -> [String: BluetoothBatteryLevel] {
+        guard let displayRow = displayRows.first(where: { $0.device.id == device.id }) else { return batteryLevels }
+        var values = batteryLevels
+        if let selected = selectedReading(for: displayRow) {
+            values[BluetoothBatteryReader.normalizedAddress(device.id)] = BluetoothBatteryLevel(
+                deviceAddress: device.id, main: selected.level, left: nil, right: nil, caseLevel: nil
+            )
+        }
+        return values
+    }
+
+    private func nearbyMetadata(for device: BluetoothDevice) -> [String: NearbyBLEPanelRow] {
+        guard let displayRow = displayRows.first(where: { $0.device.id == device.id }) else { return nearbyRowByDeviceID }
+        var values = nearbyRowByDeviceID
+        if let sourceRow = displayRow.sourceIDs.compactMap({ sourceID in
+            BluetoothDeviceIdentity.bleUUID(from: sourceID)
+                .flatMap { uuid in nearbyRows.first(where: { $0.id == uuid }) }
+        }).first {
+            values[device.id] = NearbyBLEPanelRow(
+                id: sourceRow.id, device: device, batteryLevel: sourceRow.batteryLevel,
+                wasSeenRecently: sourceRow.wasSeenRecently, readFailed: sourceRow.readFailed,
+                batteryLevelsEnabled: sourceRow.batteryLevelsEnabled, observedAt: sourceRow.observedAt
+            )
+        }
+        return values
+    }
+
+    private func appleStatus(for device: BluetoothDevice) -> [String: NearbyBLEPanelRowStatus] {
+        var values = Dictionary(appleRows.map { ($0.device.id, $0.status) }, uniquingKeysWith: { _, latest in latest })
+        guard let displayRow = displayRows.first(where: { $0.device.id == device.id }) else { return values }
+        if let selected = selectedReading(for: displayRow) {
+            values[device.id] = .battery(selected.level)
+        } else if let row = appleRows.first(where: { displayRow.sourceIDs.contains($0.device.id) }) {
+            values[device.id] = row.status
+        }
+        return values
+    }
+
+    private func canonicalStatus(for device: BluetoothDevice) -> [String: NearbyBLEPanelRowStatus] {
+        guard let displayRow = displayRows.first(where: { $0.device.id == device.id }),
+              let reading = selectedReading(for: displayRow) else { return [:] }
+        return [device.id: .battery(reading.level)]
+    }
+
+    private func selectedReading(for row: BluetoothDisplayRow) -> BluetoothDisplayBatteryReading? {
+        BluetoothDeviceListPresentation.newestValidReading(
+            for: row,
+            nearbyReadings: Array(nearbyReadingsByID.values),
+            nearbyRows: nearbyRows,
+            trustedSnapshots: Array(mobileMetadataByDeviceID.values)
+        )
+    }
+
     private var viewportFrameReader: some View {
         GeometryReader { proxy in
             Color.clear.preference(
@@ -207,17 +295,25 @@ struct BluetoothDeviceList: View {
     }
 
     private func publishVisibleNearbyIDs(in visibleDevices: [BluetoothDevice]) {
-        reportVisibleNearbyIDs(NearbyBLEPanelVisibility.visibleSelectedIDs(
+        var nearbyIDs = NearbyBLEPanelVisibility.visibleSelectedIDs(
             in: visibleDevices,
             frames: nearbyRowFrames,
             viewport: rowsViewportFrame
-        ))
-        let appleIDs = AppleDevicePanelVisibility.visibleIDs(
+        )
+        var appleIDs = AppleDevicePanelVisibility.visibleIDs(
             in: visibleDevices,
             rowIDs: AppleDeviceCatalog.rowIdentityMap(appleRows),
             frames: rowFrames,
             viewport: rowsViewportFrame
         )
+        let visibleIDs = Set(visibleDevices.map(\.id))
+        for row in displayRows where visibleIDs.contains(row.device.id) {
+            for sourceID in row.sourceIDs {
+                if let uuid = BluetoothDeviceIdentity.bleUUID(from: sourceID) { nearbyIDs.insert(uuid) }
+                if let appleID = appleRows.first(where: { $0.device.id == sourceID })?.id { appleIDs.insert(appleID) }
+            }
+        }
+        reportVisibleNearbyIDs(nearbyIDs)
         reportVisibleAppleIDs(appleIDs)
     }
 

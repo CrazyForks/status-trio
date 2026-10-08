@@ -17,6 +17,7 @@ struct BluetoothStatusView: View {
     @EnvironmentObject private var localization: Localization
     let showsBatteryLevels: Bool
     var showsAppleDevicesAndBattery = false
+    var nearbyBLESelections: [NearbyBLEDeviceSelection] = []
     var trustedAppleDeviceMetadata: [AppleDeviceCandidate] = []
     var currentTrustedAppleCandidates: [AppleDeviceCandidate] = []
     var trustedDiscoveryGeneration: UInt64 = 0
@@ -26,6 +27,47 @@ struct BluetoothStatusView: View {
     let onOpenBluetoothPermissionSettings: () -> Void
 
     @State private var visibleTrustedAppleIDs = Set<AppleDeviceID>()
+    @State private var visibleNearbyBLEIDs = Set<UUID>()
+
+    private var unhiddenListOptions: BluetoothDeviceListOptions {
+        BluetoothDeviceListOptions(
+            showsList: listOptions.showsList,
+            maxVisibleDevices: listOptions.maxVisibleDevices,
+            order: listOptions.order,
+            hidesGhostDevices: listOptions.hidesGhostDevices,
+            revealedGhostDeviceAddresses: listOptions.revealedGhostDeviceAddresses
+        )
+    }
+
+    private var sourceRowsForAliasHiding: [BluetoothDevice] {
+        let options = unhiddenListOptions
+        let trustedCandidates = showsAppleDevicesAndBattery
+            ? AppleDeviceCatalog.candidates(trusted: trustedAppleDeviceMetadata)
+            : []
+        let trustedRows = AppleDeviceCatalog.projection(
+            candidates: trustedCandidates,
+            trustedSnapshots: showsAppleDevicesAndBattery && showsMobileBatteryFeature
+                ? mobileBatteryController.snapshots
+                : [],
+            options: options
+        ).rows.map(\.device)
+        let nearbyRows = NearbyBLEDeviceCatalog.panelRows(
+            selections: showsAppleDevicesAndBattery ? nearbyBLESelections : [],
+            readings: controller.nearbyBatteryDevices,
+            failures: controller.nearbyBLEReadFailures,
+            options: options,
+            now: Date(),
+            batteryLevelsEnabled: showsBatteryLevels
+        ).map(\.device)
+        return trustedRows + nearbyRows
+    }
+
+    private var effectiveListOptions: BluetoothDeviceListOptions {
+        BluetoothDeviceListPresentation.expandingHiddenAliases(
+            in: listOptions,
+            among: sourceRowsForAliasHiding
+        )
+    }
 
     private var appleProjection: AppleDeviceCatalog.Projection {
         let candidates = showsAppleDevicesAndBattery
@@ -47,13 +89,19 @@ struct BluetoothStatusView: View {
             candidates: candidates,
             trustedSnapshots: showsAppleDevicesAndBattery && showsMobileBatteryFeature ? mobileBatteryController.snapshots : [],
             failures: showsMobileBatteryFeature ? failures : [],
-            options: listOptions
+            options: effectiveListOptions
         )
     }
 
     var body: some View {
         let appleProjection = appleProjection
         let appleRows = appleProjection.rows
+        let nearbyRows = NearbyBLEDeviceCatalog.panelRows(
+            selections: showsAppleDevicesAndBattery ? nearbyBLESelections : [],
+            readings: controller.nearbyBatteryDevices,
+            failures: controller.nearbyBLEReadFailures, options: effectiveListOptions, now: Date(),
+            batteryLevelsEnabled: showsBatteryLevels
+        )
 
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 10) {
@@ -89,11 +137,19 @@ struct BluetoothStatusView: View {
                     .frame(width: 24, height: 24)
             }
 
-            if listOptions.showsList && (BluetoothPanelListVisibility.showsList(availability: controller.availability, devices: controller.devices, options: listOptions) || !appleRows.isEmpty) {
+            if listOptions.showsList && (BluetoothPanelListVisibility.showsList(availability: controller.availability, devices: controller.devices, options: listOptions) || !appleRows.isEmpty || !nearbyRows.isEmpty) {
                 BluetoothDeviceList(
                     devices: controller.devices,
                     batteryLevels: controller.batteryLevels.merging(appleProjection.batteryLevels, uniquingKeysWith: { _, apple in apple }),
+                    nearbyReadingsByID: Dictionary(controller.nearbyBatteryDevices.map { ($0.id, $0) }, uniquingKeysWith: { old, new in
+                        new.lastUpdated >= old.lastUpdated ? new : old
+                    }),
                     mobileMetadataByDeviceID: appleProjection.mobileMetadataByDeviceID,
+                    nearbyRows: nearbyRows,
+                    onVisibleNearbyIDsChanged: { ids in
+                        visibleNearbyBLEIDs = ids
+                        updateNearbyReadAuthorization()
+                    },
                     appleRows: appleRows,
                     onVisibleAppleIDsChanged: { ids in
                         visibleTrustedAppleIDs = ids
@@ -101,7 +157,7 @@ struct BluetoothStatusView: View {
                     },
                     actionStates: controller.deviceActionStates,
                     confirmingAddress: controller.pendingDisconnectConfirmation,
-                    options: listOptions,
+                    options: effectiveListOptions,
                     onPerformAction: { controller.performDeviceAction(for: $0) },
                     onRequestDisconnect: { controller.requestDisconnectConfirmation(for: $0) },
                     onCancelDisconnect: { controller.cancelDisconnectConfirmation() }
@@ -152,7 +208,10 @@ struct BluetoothStatusView: View {
         .onChange(of: currentTrustedAppleCandidates) { _, _ in
             updateTrustedReadAuthorization()
         }
+        .onChange(of: showsBatteryLevels) { _, _ in updateNearbyReadAuthorization() }
+        .onChange(of: showsAppleDevicesAndBattery) { _, _ in updateNearbyReadAuthorization() }
         .onDisappear {
+            controller.setVisibleNearbyBLEDevices([], for: "bluetooth.summary.ble")
             controller.releaseVisibleSurface(BluetoothDeviceController.bluetoothSummarySurfaceToken)
             controller.releaseBatteryLevels(Self.summaryBatteryLevelsToken)
             mobileBatteryController.release(
@@ -223,6 +282,13 @@ struct BluetoothStatusView: View {
             visibleIDs: visibleTrustedAppleIDs,
             currentCandidates: currentTrustedAppleCandidates
         ))
+    }
+
+    private func updateNearbyReadAuthorization() {
+        controller.setVisibleNearbyBLEDevices(
+            showsAppleDevicesAndBattery && showsBatteryLevels && listOptions.showsList ? visibleNearbyBLEIDs : [],
+            for: "bluetooth.summary.ble"
+        )
     }
 
     private var showsMobileBatteryFeature: Bool {

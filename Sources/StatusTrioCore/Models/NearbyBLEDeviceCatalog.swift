@@ -6,11 +6,17 @@ struct NearbyBLEPanelRow: Identifiable, Equatable, Sendable {
     let batteryLevel: Int?
     let wasSeenRecently: Bool
     let readFailed: Bool
+    var batteryLevelsEnabled = true
+    var observedAt: Date? = nil
 
     var status: NearbyBLEPanelRowStatus {
         if let batteryLevel { return .battery(batteryLevel) }
         if readFailed { return .unavailable }
         return wasSeenRecently ? .pending : .notNearby
+    }
+
+    var presentationStatus: NearbyBLEPanelRowStatus? {
+        batteryLevelsEnabled ? status : nil
     }
 }
 
@@ -22,13 +28,19 @@ enum NearbyBLEPanelRowStatus: Equatable, Sendable {
 }
 
 enum NearbyBLEDeviceCatalog {
-    static let recentCandidateLifetime: TimeInterval = 60
+    static let recentCandidateLifetime = BluetoothLEBatteryScanPolicy.resultLifetime
 
-    /// Rows shown in Settings, in the user's saved order. The explicit BLE
-    /// identity keeps controls for a nearby peripheral separate from any
-    /// same-named row in the system Bluetooth report.
-    static func settingsDevices(selections: [NearbyBLEDeviceSelection]) -> [BluetoothDevice] {
-        selections.map { selection in
+    /// Rows shown in Settings, in the user's saved order. BLE UUID identity
+    /// remains separate from any same-named system Bluetooth row.
+    static func settingsDevices(
+        _ devices: [BluetoothDevice],
+        selections: [NearbyBLEDeviceSelection],
+        now: Date = Date()
+    ) -> [BluetoothDevice] {
+        devices.filter { !$0.isUnpairedGhost } + selections.filter {
+            $0.vendor == .apple && !$0.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                && isVerifiedAndFresh($0, now: now)
+        }.map { selection in
             device(
                 id: selection.id,
                 name: selection.name,
@@ -37,43 +49,79 @@ enum NearbyBLEDeviceCatalog {
         }
     }
 
-    /// A selection first discovery picker that retains saved UUIDs which are
-    /// no longer broadcasting, so users can still remove them.
-    static func settingsCandidates(
-        selections: [NearbyBLEDeviceSelection],
-        candidates: [NearbyBLEDeviceCandidate]
-    ) -> [NearbyBLEDeviceCandidate] {
-        var byID: [UUID: NearbyBLEDeviceCandidate] = [:]
-        for candidate in NearbyBLEDiscoveryPresentation.ordered(candidates) {
-            byID[candidate.id] = candidate
+    static func discoveredAppleMetadata(
+        from candidates: [NearbyBLEDeviceCandidate],
+        existing: [NearbyBLEDeviceSelection]
+    ) -> [NearbyBLEDeviceSelection] {
+        var byID: [UUID: NearbyBLEDeviceSelection] = [:]
+        var orderedIDs: [UUID] = []
+        for selection in existing {
+            if var saved = byID[selection.id] {
+                if saved.model == nil { saved.model = selection.model }
+                byID[selection.id] = saved
+            } else {
+                byID[selection.id] = selection
+                orderedIDs.append(selection.id)
+            }
         }
-        var result = selections.map { selection in
-            let live = byID.removeValue(forKey: selection.id)
-            let liveName = live?.name.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-            return NearbyBLEDeviceCandidate(
-                id: selection.id,
-                name: liveName.isEmpty ? selection.name : liveName,
-                vendor: live?.vendor ?? selection.vendor,
-                lastSeen: live?.lastSeen ?? .distantPast
-            )
+        for candidate in candidates where candidate.vendor == .apple &&
+            !candidate.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            if var saved = byID[candidate.id] {
+                saved.name = candidate.name
+                saved.vendor = candidate.vendor
+                byID[candidate.id] = saved
+            } else {
+                byID[candidate.id] = NearbyBLEDeviceSelection(
+                    id: candidate.id,
+                    name: candidate.name,
+                    vendor: candidate.vendor,
+                    model: nil
+                )
+                orderedIDs.append(candidate.id)
+            }
         }
-        result.append(contentsOf: NearbyBLEDiscoveryPresentation.ordered(Array(byID.values)))
-        return NearbyBLEDiscoveryPresentation.ordered(result)
+        return orderedIDs.compactMap { byID[$0] }
     }
 
-    /// Projects the selected UUID allowlist into panel rows. Broadcast names
-    /// and vendor data describe discovery only; neither can create a row or
-    /// classify it as an iPhone. Only selected metadata and a trusted GATT model
-    /// may contribute identity details.
+    /// Rows created by successful battery reads remain available across scans;
+    /// candidate-only advertisements do not enter persisted selections.
+    static func settingsCandidates(
+        selections: [NearbyBLEDeviceSelection],
+        now: Date = Date()
+    ) -> [NearbyBLEDeviceCandidate] {
+        return selections.filter { $0.vendor == .apple && isVerifiedAndFresh($0, now: now) }
+            .map { selection in
+                NearbyBLEDeviceCandidate(
+                    id: selection.id,
+                    name: selection.name,
+                    vendor: .apple,
+                    lastSeen: selection.batteryLastUpdated ?? .distantPast
+                )
+            }
+    }
+
+    static func nextVerifiedRowExpiration(
+        selections: [NearbyBLEDeviceSelection],
+        now: Date = Date()
+    ) -> Date? {
+        selections.compactMap { selection -> Date? in
+            guard selection.vendor == .apple,
+                  let level = selection.batteryLevel,
+                  (0...100).contains(level),
+                  let timestamp = selection.batteryLastUpdated else { return nil }
+            return timestamp.addingTimeInterval(BluetoothLEBatteryScanPolicy.resultLifetime)
+        }.filter { $0 > now }.min()
+    }
+
+    /// Projects battery-verified Apple UUID metadata into panel rows.
     static func panelRows(
         selections: [NearbyBLEDeviceSelection],
-        candidates: [NearbyBLEDeviceCandidate],
         readings: [NearbyBluetoothBatteryDevice],
         failures: Set<UUID>,
         options: BluetoothDeviceListOptions,
-        now: Date
+        now: Date,
+        batteryLevelsEnabled: Bool = true
     ) -> [NearbyBLEPanelRow] {
-        let candidatesByID = Dictionary(candidates.map { ($0.id, $0) }, uniquingKeysWith: { _, latest in latest })
         let readingsByID = Dictionary(readings.map { ($0.id, $0) }, uniquingKeysWith: { older, newer in
             older.lastUpdated >= newer.lastUpdated ? older : newer
         })
@@ -81,6 +129,8 @@ enum NearbyBLEDeviceCatalog {
 
         let indexedRows: [(Int, NearbyBLEPanelRow)] = selections.enumerated().compactMap { element in
             let (index, selection) = element
+            guard selection.vendor == .apple,
+                  isVerifiedAndFresh(selection, now: now) else { return nil }
             let row = device(
                 id: selection.id,
                 name: selection.name,
@@ -90,9 +140,11 @@ enum NearbyBLEDeviceCatalog {
             return (index, NearbyBLEPanelRow(
                 id: selection.id,
                 device: row,
-                batteryLevel: validLevel(readingsByID[selection.id], now: now),
-                wasSeenRecently: candidatesByID[selection.id].map { isRecent($0, now: now) } ?? false,
-                readFailed: failures.contains(selection.id)
+                batteryLevel: validLevel(selection, reading: readingsByID[selection.id], now: now),
+                wasSeenRecently: false,
+                readFailed: failures.contains(selection.id),
+                batteryLevelsEnabled: batteryLevelsEnabled,
+                observedAt: readingsByID[selection.id]?.lastUpdated ?? selection.batteryLastUpdated
             ))
         }
         return indexedRows.sorted { lhs, rhs in
@@ -116,17 +168,24 @@ enum NearbyBLEDeviceCatalog {
         )
     }
 
-    private static func validLevel(_ reading: NearbyBluetoothBatteryDevice?, now: Date) -> Int? {
-        guard let reading,
-              (0...100).contains(reading.batteryLevel),
-              now.timeIntervalSince(reading.lastUpdated) <= BluetoothLEBatteryScanPolicy.resultLifetime else {
-            return nil
+    private static func validLevel(
+        _ selection: NearbyBLEDeviceSelection,
+        reading: NearbyBluetoothBatteryDevice?,
+        now: Date
+    ) -> Int? {
+        if let reading,
+           (0...100).contains(reading.batteryLevel),
+           now.timeIntervalSince(reading.lastUpdated) <= BluetoothLEBatteryScanPolicy.resultLifetime {
+            return reading.batteryLevel
         }
-        return reading.batteryLevel
+        guard let batteryLevel = selection.batteryLevel,
+              (0...100).contains(batteryLevel) else { return nil }
+        return batteryLevel
     }
 
-    private static func isRecent(_ candidate: NearbyBLEDeviceCandidate, now: Date) -> Bool {
-        now.timeIntervalSince(candidate.lastSeen) <= recentCandidateLifetime
+    private static func isVerifiedAndFresh(_ selection: NearbyBLEDeviceSelection, now: Date) -> Bool {
+        guard let batteryLastUpdated = selection.batteryLastUpdated else { return false }
+        return now.timeIntervalSince(batteryLastUpdated) <= BluetoothLEBatteryScanPolicy.resultLifetime
     }
 
     private static func ranks(from order: [String]) -> [String: Int] {

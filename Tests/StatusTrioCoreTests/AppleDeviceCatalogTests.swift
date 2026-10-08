@@ -80,6 +80,7 @@ struct AppleDeviceCatalogTests {
             candidates: [cached], trustedSnapshots: [], options: .standard
         )
         #expect(projection.rows.count == 1)
+        #expect(projection.rows.first?.status == .pending)
         #expect(AppleDeviceCatalog.readAuthorizedIDs(
             visibleIDs: [rowID], currentCandidates: []
         ).isEmpty)

@@ -101,6 +101,384 @@ final class SystemStatusStoreTests: XCTestCase {
         await reader.finishAll()
     }
 
+    func testSettingsMasterToggleDoesNotStartAppleDiscoveryOrBatteryReads() async {
+        let reader = ControlledMobileBatteryReader()
+        let discovery = AppleDeviceDiscoveryController(reader: reader)
+        let mobile = MobileBatteryController(reader: reader)
+        let suite = makeSuite()
+        defer { suite.defaults.removeTestSuite(named: suite.name) }
+        let settings = SettingsStore(defaults: suite.defaults)
+        settings.showsAppleDevicesAndBattery = true
+        settings.showsBluetoothBatteryLevels = true
+        settings.showsBluetoothDeviceList = true
+        let store = SystemStatusStore(
+            batteryMonitor: FakeBatteryMonitor(),
+            wifiMonitor: FakeWiFiMonitor(),
+            volumeMonitor: FakeVolumeMonitor(),
+            mobileBattery: mobile,
+            appleDeviceDiscovery: discovery
+        )
+
+        store.bindMobileBatterySettings(settings)
+        XCTAssertFalse(discovery.isDiscovering)
+        for _ in 0..<12 { await Task.yield() }
+
+        let discoveryCount = await reader.discoveryCount
+        let readCount = await reader.readCount
+        XCTAssertEqual(discoveryCount, 0)
+        XCTAssertEqual(readCount, 0)
+        store.stop()
+        await reader.finishAll()
+    }
+
+    func testBackgroundPreferenceOwnsClosedPanelDiscoveryOnlyWhenAllGatesAreOn() async {
+        let reader = ControlledMobileBatteryReader()
+        let discovery = AppleDeviceDiscoveryController(reader: reader)
+        let mobile = MobileBatteryController(reader: reader)
+        let suite = makeSuite()
+        defer { suite.defaults.removeTestSuite(named: suite.name) }
+        let settings = SettingsStore(defaults: suite.defaults)
+        settings.showsAppleDevicesAndBattery = true
+        settings.showsBluetoothBatteryLevels = true
+        settings.showsBluetoothDeviceList = true
+        let store = SystemStatusStore(
+            batteryMonitor: FakeBatteryMonitor(),
+            wifiMonitor: FakeWiFiMonitor(),
+            volumeMonitor: FakeVolumeMonitor(),
+            mobileBattery: mobile,
+            appleDeviceDiscovery: discovery
+        )
+        store.bindMobileBatterySettings(settings)
+        for _ in 0..<12 { await Task.yield() }
+        XCTAssertFalse(discovery.isDiscovering)
+
+        settings.refreshesAppleBatteriesInBackground = true
+        for _ in 0..<50 where !discovery.isDiscovering { await Task.yield() }
+        await waitForMobileReader { await reader.discoveryCount == 1 }
+        let isDiscoveringAfterEnable = discovery.isDiscovering
+        let discoveryCountAfterEnable = await reader.discoveryCount
+        XCTAssertTrue(isDiscoveringAfterEnable, "background preference must own discovery while closed")
+        XCTAssertEqual(discoveryCountAfterEnable, 1)
+        for _ in 0..<12 { await Task.yield() }
+        let batteryReadCountWithoutSelection = await reader.readCount
+        XCTAssertEqual(batteryReadCountWithoutSelection, 0)
+        mobile.setBackgroundAuthorizedDeviceIDs([.trustedDevice("phone-1")])
+        await waitForMobileReader { await reader.readCount == 1 }
+        settings.showsBluetoothBatteryLevels = false
+        for _ in 0..<50 where discovery.isDiscovering { await Task.yield() }
+        XCTAssertFalse(discovery.isDiscovering)
+
+        store.stop()
+        await reader.finishAll()
+    }
+
+    func testStoreExpandsHiddenAliasAcrossTrustedAndBLEBackgroundTargets() async throws {
+        let reader = ControlledMobileBatteryReader()
+        let discovery = AppleDeviceDiscoveryController(reader: reader)
+        let mobile = MobileBatteryController(reader: reader)
+        let suite = makeSuite()
+        defer { suite.defaults.removeTestSuite(named: suite.name) }
+        let bleID = UUID(uuidString: "00000000-0000-0000-0000-0000000000A2")!
+        let bleSelection = NearbyBLEDeviceSelection(
+            id: bleID, name: "Phone", vendor: .apple, model: "iPhone18,1",
+            batteryLevel: 51, batteryLastUpdated: Date()
+        )
+        let trusted = AppleDeviceCandidate(
+            id: .trustedDevice("phone-a"), name: "Phone", model: "iPhone18,1",
+            transports: [.usb], trustRequired: false, evidence: .verifiedAppleModel
+        )
+        suite.defaults.set(try JSONEncoder().encode([bleSelection]), forKey: SettingsStore.nearbyBLEConsentDefaultsKey)
+        suite.defaults.set(try JSONEncoder().encode([trusted]), forKey: SettingsStore.trustedAppleDeviceMetadataDefaultsKey)
+        let settings = SettingsStore(defaults: suite.defaults)
+        settings.showsAppleDevicesAndBattery = true
+        settings.showsBluetoothBatteryLevels = true
+        settings.showsBluetoothDeviceList = true
+        settings.refreshesAppleBatteriesInBackground = true
+        let store = SystemStatusStore(
+            batteryMonitor: FakeBatteryMonitor(), wifiMonitor: FakeWiFiMonitor(),
+            volumeMonitor: FakeVolumeMonitor(), mobileBattery: mobile,
+            appleDeviceDiscovery: discovery
+        )
+        store.bindMobileBatterySettings(settings)
+        await waitForMobileReader { mobile.backgroundReadDeviceIDs == [.trustedDevice("phone-a")] }
+
+        settings.setBluetoothDeviceHidden(BluetoothDeviceIdentity.bleRowID(bleID), hidden: true)
+        await waitForMobileReader { mobile.backgroundReadDeviceIDs.isEmpty }
+        XCTAssertTrue(mobile.backgroundReadDeviceIDs.isEmpty)
+
+        settings.setBluetoothDeviceHidden(BluetoothDeviceIdentity.bleRowID(bleID), hidden: false)
+        await waitForMobileReader { mobile.backgroundReadDeviceIDs == [.trustedDevice("phone-a")] }
+        XCTAssertEqual(mobile.backgroundReadDeviceIDs, [.trustedDevice("phone-a")])
+        store.stop()
+        await reader.finishAll()
+    }
+
+    func testBackgroundIntervalReachesBLEScannerAndClearsWhenDisabled() async {
+        let scanner = StoreIntervalScannerSpy()
+        let bluetooth = BluetoothDeviceController(
+            stateMonitor: DeniedBluetoothStateMonitor(),
+            nearbyBatteryScanner: scanner
+        )
+        let suite = makeSuite()
+        defer { suite.defaults.removeTestSuite(named: suite.name) }
+        let settings = SettingsStore(defaults: suite.defaults)
+        settings.showsAppleDevicesAndBattery = true
+        settings.showsBluetoothBatteryLevels = true
+        settings.showsBluetoothDeviceList = true
+        settings.appleBatteryRefreshIntervalMinutes = 3
+        settings.refreshesAppleBatteriesInBackground = true
+        let store = SystemStatusStore(
+            batteryMonitor: FakeBatteryMonitor(),
+            wifiMonitor: FakeWiFiMonitor(),
+            volumeMonitor: FakeVolumeMonitor(),
+            bluetoothDevices: bluetooth
+        )
+
+        store.bindMobileBatterySettings(settings)
+        await waitUntil { !scanner.backgroundRefreshIntervals.isEmpty }
+        XCTAssertEqual(scanner.backgroundRefreshIntervals, [.seconds(180)])
+        XCTAssertEqual(scanner.backgroundRefreshIntervals.last!, .seconds(180))
+
+        settings.appleBatteryRefreshIntervalMinutes = 4
+        await waitUntil { scanner.backgroundRefreshIntervals.contains(.seconds(240)) }
+        XCTAssertEqual(scanner.backgroundRefreshIntervals.last!, .seconds(240))
+
+        settings.refreshesAppleBatteriesInBackground = false
+        await waitUntil { !scanner.backgroundRefreshIntervals.isEmpty && scanner.backgroundRefreshIntervals[scanner.backgroundRefreshIntervals.count - 1] == nil }
+        XCTAssertNil(scanner.backgroundRefreshIntervals[scanner.backgroundRefreshIntervals.count - 1])
+        store.stop()
+    }
+
+    func testHiddenAliasRevokesBothBackgroundReadRoutesAndRestoreReenablesThem() async throws {
+        let trustedReader = ControlledMobileBatteryReader()
+        let discoveryReader = ControlledMobileBatteryReader()
+        let discovery = AppleDeviceDiscoveryController(reader: discoveryReader)
+        let mobile = MobileBatteryController(reader: trustedReader)
+        let suite = makeSuite()
+        defer { suite.defaults.removeTestSuite(named: suite.name) }
+        let settings = SettingsStore(defaults: suite.defaults)
+        settings.showsAppleDevicesAndBattery = true
+        settings.showsBluetoothBatteryLevels = true
+        settings.showsBluetoothDeviceList = true
+        settings.refreshesAppleBatteriesInBackground = true
+        let bleID = UUID(uuidString: "00000000-0000-0000-0000-0000000000A1")!
+        let bleSelection = NearbyBLEDeviceSelection(
+            id: bleID, name: "Phone", vendor: .apple, model: "iPhone18,1",
+            batteryLevel: 50, batteryLastUpdated: Date()
+        )
+        suite.defaults.set(try JSONEncoder().encode([bleSelection]), forKey: SettingsStore.nearbyBLEConsentDefaultsKey)
+        let trustedCandidate = AppleDeviceCandidate(
+            id: .trustedDevice("phone-a"), name: "Phone", model: "iPhone18,1",
+            transports: [.usb], trustRequired: false, evidence: .verifiedAppleModel
+        )
+        suite.defaults.set(try JSONEncoder().encode([trustedCandidate]), forKey: SettingsStore.trustedAppleDeviceMetadataDefaultsKey)
+        let reloaded = SettingsStore(defaults: suite.defaults)
+        reloaded.refreshesAppleBatteriesInBackground = true
+        let store = SystemStatusStore(
+            batteryMonitor: FakeBatteryMonitor(), wifiMonitor: FakeWiFiMonitor(),
+            volumeMonitor: FakeVolumeMonitor(), mobileBattery: mobile,
+            appleDeviceDiscovery: discovery
+        )
+        let bleController = store.bluetoothDevices
+        store.bindMobileBatterySettings(reloaded)
+        await waitForMobileReader { await discoveryReader.discoveryCount == 1 }
+        await waitForMobileReader { mobile.backgroundReadDeviceIDs == [.trustedDevice("phone-a")] }
+        XCTAssertEqual(bleController.backgroundReadNearbyBLEDeviceIDs, [bleID])
+        await waitForMobileReader { await trustedReader.readCount == 1 }
+
+        reloaded.setBluetoothDeviceHidden(BluetoothDeviceIdentity.bleRowID(bleID), hidden: true)
+        await waitForMobileReader { mobile.backgroundReadDeviceIDs.isEmpty }
+        let idsWhileBLEAliasHidden = await trustedReader.selectedIDHistory.last
+        XCTAssertEqual(idsWhileBLEAliasHidden, [.trustedDevice("phone-a")])
+        XCTAssertTrue(mobile.backgroundReadDeviceIDs.isEmpty)
+        XCTAssertTrue(bleController.backgroundReadNearbyBLEDeviceIDs.isEmpty)
+
+        reloaded.setBluetoothDeviceHidden(BluetoothDeviceIdentity.bleRowID(bleID), hidden: false)
+        await waitForMobileReader { mobile.backgroundReadDeviceIDs == [.trustedDevice("phone-a")] }
+        XCTAssertEqual(mobile.backgroundReadDeviceIDs, [.trustedDevice("phone-a")])
+        XCTAssertEqual(bleController.backgroundReadNearbyBLEDeviceIDs, [bleID])
+
+        reloaded.setBluetoothDeviceHidden(trustedCandidate.id.rowID, hidden: true)
+        await waitForMobileReader { mobile.backgroundReadDeviceIDs.isEmpty }
+        XCTAssertTrue(mobile.backgroundReadDeviceIDs.isEmpty)
+        XCTAssertTrue(bleController.backgroundReadNearbyBLEDeviceIDs.isEmpty)
+        reloaded.setBluetoothDeviceHidden(trustedCandidate.id.rowID, hidden: false)
+        await waitForMobileReader { mobile.backgroundReadDeviceIDs == [.trustedDevice("phone-a")] }
+        XCTAssertEqual(mobile.backgroundReadDeviceIDs, [.trustedDevice("phone-a")])
+        XCTAssertEqual(bleController.backgroundReadNearbyBLEDeviceIDs, [bleID])
+
+        store.stop()
+        await trustedReader.finishAll()
+        await discoveryReader.finishAll()
+    }
+
+    func testHidingBLEAliasImmediatelyRevokesForegroundTrustedReadAndRejectsLateResult() async throws {
+        let reader = ControlledMobileBatteryReader()
+        let discovery = AppleDeviceDiscoveryController(reader: reader)
+        let mobile = MobileBatteryController(reader: reader)
+        let suite = makeSuite()
+        defer { suite.defaults.removeTestSuite(named: suite.name) }
+        let bleID = UUID(uuidString: "00000000-0000-0000-0000-0000000000B2")!
+        let selection = NearbyBLEDeviceSelection(
+            id: bleID, name: "Phone", vendor: .apple, model: "iPhone18,1",
+            batteryLevel: 50, batteryLastUpdated: Date()
+        )
+        let trustedCandidate = AppleDeviceCandidate(
+            id: .trustedDevice("phone-b"), name: "Phone", model: "iPhone18,1",
+            transports: [.usb], trustRequired: false, evidence: .verifiedAppleModel
+        )
+        suite.defaults.set(
+            try JSONEncoder().encode([selection]),
+            forKey: SettingsStore.nearbyBLEConsentDefaultsKey
+        )
+        suite.defaults.set(
+            try JSONEncoder().encode([trustedCandidate]),
+            forKey: SettingsStore.trustedAppleDeviceMetadataDefaultsKey
+        )
+        let settings = SettingsStore(defaults: suite.defaults)
+        settings.showsAppleDevicesAndBattery = true
+        settings.showsBluetoothBatteryLevels = true
+        settings.showsBluetoothDeviceList = true
+        settings.setPopupSection(.bluetooth, enabled: true)
+        let store = SystemStatusStore(
+            batteryMonitor: FakeBatteryMonitor(), wifiMonitor: FakeWiFiMonitor(),
+            volumeMonitor: FakeVolumeMonitor(), mobileBattery: mobile,
+            appleDeviceDiscovery: discovery
+        )
+        store.bindMobileBatterySettings(settings)
+        store.setPopoverVisible(true)
+        mobile.setAuthorizedDeviceIDs(AppleDeviceCatalog.readAuthorizedIDs(
+            visibleIDs: [trustedCandidate.id],
+            currentCandidates: [trustedCandidate]
+        ))
+        mobile.request("bluetooth.summary.mobileBatteryDevices")
+        await waitForMobileReader { await reader.readCount == 1 }
+
+        settings.setBluetoothDeviceHidden(BluetoothDeviceIdentity.bleRowID(bleID), hidden: true)
+        await waitForMobileReader { await reader.cancellationCount == 1 }
+        await reader.complete(0, with: MobileBatteryReadResult(snapshots: [MobileBatterySnapshot(
+            id: "phone-b", parentID: nil, name: "Phone", model: "iPhone18,1",
+            batteryLevel: 76, isCharging: false, transport: .usb, observedAt: Date()
+        )]))
+        XCTAssertTrue(mobile.snapshots.isEmpty, "a result from the revoked BLE-alias read cannot be published")
+
+        settings.setBluetoothDeviceHidden(BluetoothDeviceIdentity.bleRowID(bleID), hidden: false)
+        mobile.setAuthorizedDeviceIDs(AppleDeviceCatalog.readAuthorizedIDs(
+            visibleIDs: [trustedCandidate.id],
+            currentCandidates: [trustedCandidate]
+        ))
+        await waitForMobileReader { await reader.readCount == 2 }
+        settings.setBluetoothDeviceHidden(trustedCandidate.id.rowID, hidden: true)
+        await waitForMobileReader { await reader.cancellationCount == 2 }
+        await reader.complete(1, with: MobileBatteryReadResult(snapshots: [MobileBatterySnapshot(
+            id: "phone-b", parentID: nil, name: "Phone", model: "iPhone18,1",
+            batteryLevel: 81, isCharging: false, transport: .usb, observedAt: Date()
+        )]))
+
+        XCTAssertTrue(mobile.snapshots.isEmpty, "a result from the revoked trusted-alias read cannot be published")
+        store.stop()
+        await reader.finishAll()
+    }
+
+    func testHiddenAliasSettingsImmediatelyRevokeForegroundBLEPermit() async throws {
+        let suite = makeSuite()
+        defer { suite.defaults.removeTestSuite(named: suite.name) }
+        let bleID = UUID(uuidString: "00000000-0000-0000-0000-0000000000B4")!
+        let selection = NearbyBLEDeviceSelection(
+            id: bleID, name: "Phone", vendor: .apple, model: "iPhone18,1",
+            batteryLevel: 50, batteryLastUpdated: Date()
+        )
+        let trustedCandidate = AppleDeviceCandidate(
+            id: .trustedDevice("phone-d"), name: "Phone", model: "iPhone18,1",
+            transports: [.usb], trustRequired: false, evidence: .verifiedAppleModel
+        )
+        suite.defaults.set(
+            try JSONEncoder().encode([selection]),
+            forKey: SettingsStore.nearbyBLEConsentDefaultsKey
+        )
+        suite.defaults.set(
+            try JSONEncoder().encode([trustedCandidate]),
+            forKey: SettingsStore.trustedAppleDeviceMetadataDefaultsKey
+        )
+        let settings = SettingsStore(defaults: suite.defaults)
+        settings.showsAppleDevicesAndBattery = true
+        settings.showsBluetoothBatteryLevels = true
+        settings.showsBluetoothDeviceList = true
+        settings.setPopupSection(.bluetooth, enabled: true)
+        let scanner = StoreIntervalScannerSpy()
+        let stateMonitor = StoreBluetoothStateMonitorSpy()
+        let bluetooth = BluetoothDeviceController(
+            stateMonitor: stateMonitor,
+            nearbyBatteryScanner: scanner
+        )
+        let store = SystemStatusStore(
+            batteryMonitor: FakeBatteryMonitor(), wifiMonitor: FakeWiFiMonitor(),
+            volumeMonitor: FakeVolumeMonitor(), bluetoothDevices: bluetooth
+        )
+        store.bindMobileBatterySettings(settings)
+        bluetooth.activate()
+        stateMonitor.emit(authorization: .allowed, state: .poweredOn)
+        store.setPopoverVisible(true)
+        bluetooth.holdVisibleSurface(BluetoothDeviceController.bluetoothSummarySurfaceToken)
+        bluetooth.requestNearbyBLEDiscovery("foreground-summary")
+        bluetooth.setVisibleNearbyBLEDevices([bleID], for: "bluetooth.summary.ble")
+
+        XCTAssertEqual(scanner.allowedReadDeviceIDs, [bleID], "the visible foreground BLE row owns its read permit")
+        let reading = NearbyBluetoothBatteryDevice(
+            id: bleID, name: "Phone", batteryLevel: 50, model: "iPhone18,1",
+            manufacturer: nil, lastUpdated: Date()
+        )
+        let callbackBeforeHide = scanner.onDevicesChanged
+
+        for hiddenID in [BluetoothDeviceIdentity.bleRowID(bleID), trustedCandidate.id.rowID] {
+            callbackBeforeHide?([reading])
+            settings.setBluetoothDeviceHidden(hiddenID, hidden: true)
+
+            XCTAssertTrue(scanner.allowedReadDeviceIDs.isEmpty, "hiding either alias synchronously revokes the foreground BLE permit")
+            await Task.yield()
+            XCTAssertTrue(bluetooth.nearbyBatteryDevices.isEmpty, "a pre-hide callback cannot restore a hidden BLE reading")
+
+            settings.setBluetoothDeviceHidden(hiddenID, hidden: false)
+            XCTAssertEqual(scanner.allowedReadDeviceIDs, [bleID], "revealing the aliases restores the still-visible row permit")
+        }
+
+        store.stop()
+    }
+
+    func testSystemSleepStopsBackgroundBLEAndWakeResumesDemand() async {
+        let reader = ControlledMobileBatteryReader()
+        let discovery = AppleDeviceDiscoveryController(reader: reader)
+        let mobile = MobileBatteryController(reader: reader)
+        let suite = makeSuite()
+        defer { suite.defaults.removeTestSuite(named: suite.name) }
+        let settings = SettingsStore(defaults: suite.defaults)
+        settings.showsAppleDevicesAndBattery = true
+        settings.showsBluetoothBatteryLevels = true
+        settings.showsBluetoothDeviceList = true
+        settings.refreshesAppleBatteriesInBackground = true
+        let wakeCenter = NotificationCenter()
+        let store = SystemStatusStore(
+            batteryMonitor: FakeBatteryMonitor(),
+            wifiMonitor: FakeWiFiMonitor(),
+            volumeMonitor: FakeVolumeMonitor(),
+            wakeNotificationCenter: wakeCenter,
+            mobileBattery: mobile,
+            appleDeviceDiscovery: discovery
+        )
+        store.bindMobileBatterySettings(settings)
+        store.start()
+        await waitForMobileReader { await reader.discoveryCount == 1 }
+
+        wakeCenter.post(name: NSWorkspace.willSleepNotification, object: nil)
+        XCTAssertTrue(discovery.isDiscovering, "trusted USB/Wi-Fi discovery is independent of Bluetooth radio sleep")
+
+        wakeCenter.post(name: NSWorkspace.didWakeNotification, object: nil)
+        let discoveryCount = await reader.discoveryCount
+        XCTAssertEqual(discoveryCount, 1, "wake does not trigger an extra trusted helper cycle")
+        store.stop()
+        await reader.finishAll()
+    }
+
     func testDisablingMobileBatteryWhileBluetoothViewIsAbsentClearsCacheAndReenableReadsFreshData() async {
         let reader = ControlledMobileBatteryReader()
         let mobile = MobileBatteryController(reader: reader)
@@ -111,6 +489,7 @@ final class SystemStatusStoreTests: XCTestCase {
         settings.showsBluetoothBatteryLevels = true
         settings.showsAppleDevicesAndBattery = true
         settings.showsBluetoothDeviceList = true
+        settings.setPopupSection(.bluetooth, enabled: true)
         let store = SystemStatusStore(
             batteryMonitor: FakeBatteryMonitor(),
             wifiMonitor: FakeWiFiMonitor(),
@@ -163,6 +542,7 @@ final class SystemStatusStoreTests: XCTestCase {
         settings.showsBluetoothBatteryLevels = true
         settings.showsAppleDevicesAndBattery = true
         settings.showsBluetoothDeviceList = true
+        settings.setPopupSection(.bluetooth, enabled: true)
         let store = SystemStatusStore(
             batteryMonitor: FakeBatteryMonitor(),
             wifiMonitor: FakeWiFiMonitor(),
@@ -174,19 +554,21 @@ final class SystemStatusStoreTests: XCTestCase {
         store.setPopoverVisible(true)
         mobile.setAuthorizedDeviceIDs([.trustedDevice("phone-1")])
         mobile.request("summary")
-        await waitForMobileReader { await discoveryReader.discoveryCount == 1 }
-        await waitForMobileReader { await batteryReader.readCount == 1 }
+        await waitForMobileReader("initial Apple discovery") { await discoveryReader.discoveryCount == 1 }
+        await waitForMobileReader("initial mobile battery read") { await batteryReader.readCount == 1 }
         await discoveryReader.completeDiscovery(0, with: [AppleDeviceCandidate(
             id: .trustedDevice("phone-1"), name: "Phone", model: "iPhone18,1",
             transports: [.usb], trustRequired: false, evidence: .verifiedAppleModel
         )])
-        await waitForMobileReader { discovery.candidates.count == 1 }
+        await waitForMobileReader("discovered Apple candidate publication") { discovery.candidates.count == 1 }
 
         settings.showsAppleDevicesAndBattery = false
 
         XCTAssertTrue(discovery.candidates.isEmpty)
         XCTAssertTrue(mobile.snapshots.isEmpty)
-        await waitForMobileReader { await batteryReader.cancellationCount == 1 }
+        await waitForMobileReader("mobile read cancellation after master disable") {
+            await batteryReader.cancellationCount == 1
+        }
         store.stop()
         await batteryReader.finishAll()
         await discoveryReader.finishAll()
@@ -1815,9 +2197,9 @@ final class SystemStatusStoreTests: XCTestCase {
         battery.onRefresh = { noRefresh.fulfill() }
 
         store.start()
-        XCTAssertEqual(wakeCenter.addCount, 3)
+        XCTAssertEqual(wakeCenter.addCount, 4)
         store.stop()
-        XCTAssertEqual(wakeCenter.removeCount, 3)
+        XCTAssertEqual(wakeCenter.removeCount, 4)
         wakeCenter.post(
             name: NSWorkspace.didWakeNotification,
             object: nil
@@ -2020,13 +2402,16 @@ final class SystemStatusStoreTests: XCTestCase {
         }
     }
 
-    private func waitForMobileReader(_ condition: () async -> Bool) async {
+    private func waitForMobileReader(
+        _ message: String = "mobile reader state did not settle",
+        condition: () async -> Bool
+    ) async {
         let deadline = ContinuousClock.now + .seconds(2)
         while !(await condition()), ContinuousClock.now < deadline {
             await Task.yield()
         }
         let reached = await condition()
-        XCTAssertTrue(reached, "mobile reader state did not settle")
+        XCTAssertTrue(reached, message)
     }
 }
 
@@ -2153,6 +2538,40 @@ private final class SpyWakeNotificationCenter: NotificationCenter, @unchecked Se
     override func removeObserver(_ observer: Any) {
         removeCount += 1
         super.removeObserver(observer)
+    }
+}
+
+@MainActor
+private final class StoreIntervalScannerSpy: BluetoothLEBatteryScanning {
+    var onDevicesChanged: (([NearbyBluetoothBatteryDevice]) -> Void)?
+    var onCandidatesChanged: (([NearbyBLEDeviceCandidate]) -> Void)?
+    var onReadFailures: ((Set<UUID>) -> Void)?
+    var onIsScanningChanged: ((Bool) -> Void)?
+    private(set) var allowedReadDeviceIDs: Set<UUID> = []
+    private(set) var isRunning = false
+    private(set) var isScanning = false
+    private(set) var backgroundRefreshIntervals: [Duration?] = []
+
+    func setAllowedReadDeviceIDs(_ ids: Set<UUID>) { allowedReadDeviceIDs = ids }
+    func revokeReadDeviceIDs(_ ids: Set<UUID>) { allowedReadDeviceIDs.subtract(ids) }
+    func setInitialReadCandidateIDs(_ ids: Set<UUID>) { _ = ids }
+    func setBackgroundRefreshInterval(_ interval: Duration?) { backgroundRefreshIntervals.append(interval) }
+    func start() { isRunning = true }
+    func refresh() {}
+    func stop() { isRunning = false; isScanning = false }
+}
+
+@MainActor
+private final class StoreBluetoothStateMonitorSpy: BluetoothStateMonitoring {
+    var onStateChange: ((BluetoothAuthorizationStatus, BluetoothManagerState) -> Void)?
+    private(set) var authorization: BluetoothAuthorizationStatus = .allowed
+
+    func start() {}
+    func stop() {}
+
+    func emit(authorization: BluetoothAuthorizationStatus, state: BluetoothManagerState) {
+        self.authorization = authorization
+        onStateChange?(authorization, state)
     }
 }
 

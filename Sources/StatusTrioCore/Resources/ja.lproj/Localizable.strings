@@ -385,9 +385,6 @@
 "wifi.summary.band" = "%@ GHz";
 "wifi.summary.signal" = "%d dBm";
 "wifi.summary.bandAndSignal" = "%@ · %@";
-"settings.bluetooth.hideUnpairedDevices" = "システム設定にないデバイスを非表示";
-"settings.bluetooth.hideUnpairedDevicesDescription" = "システムに表示されない、スキャンされただけでペアリングされていないデバイスを非表示にします。すべて表示するにはオフにします。";
-"settings.bluetooth.notInSystemSettings" = "システム設定にありません";
 "settings.bluetooth.hideDevice" = "デバイスを非表示";
 "settings.bluetooth.showDevice" = "デバイスを表示";
 "settings.bluetooth.permissionRequired" = "Bluetooth の権限が必要です";
@@ -410,5 +407,8 @@
 "bluetooth.nearbyBLE.notNearby" = "近くにありません";
 "bluetooth.nearbyBLE.unavailable" = "一時的に利用できません";
 "settings.appleDevicesAndBattery" = "Appleデバイスとバッテリーを表示";
-"settings.appleDevicesAndBattery.description" = "この Mac で信頼済みと確認された iPhone と iPad、および信頼済みのペアリング iPhone を通じて確認された Apple Watch は、Bluetooth リストに自動表示されます。近くの Apple のブロードキャストやデバイス名だけでは所有者を確認できません。電池残量は利用可能な場合、信頼済み USB または設定済み Wi-Fi 経由で読み取り、読み取りは Bluetooth 電池の全体設定に従います。安定した共通 ID で照合できない Bluetooth 行は別々に表示します。";
-"bluetooth.nearbyBLE.source" = "近くのBluetooth";
+"settings.appleDevicesAndBattery.description" = "信頼済みの Apple デバイスと近くの名前付きデバイスを Bluetooth リストに表示します。";
+"settings.appleBackgroundRefresh" = "Apple デバイスのバッテリーをバックグラウンドで更新";
+"settings.appleBackgroundRefresh.description" = "ステータスパネルを閉じている間も、選択した Apple デバイスの電池残量を更新します。";
+"settings.appleBackgroundRefresh.interval" = "バックグラウンドでのバッテリー残量更新間隔";
+"settings.appleBackgroundRefresh.intervalValue" = "%d 分";

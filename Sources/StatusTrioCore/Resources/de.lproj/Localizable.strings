@@ -385,9 +385,6 @@
 "wifi.summary.band" = "%@ GHz";
 "wifi.summary.signal" = "%d dBm";
 "wifi.summary.bandAndSignal" = "%@ · %@";
-"settings.bluetooth.hideUnpairedDevices" = "Geräte ausblenden, die nicht in den Systemeinstellungen sind";
-"settings.bluetooth.hideUnpairedDevicesDescription" = "Blendet gescannt, aber nicht gepaarte Geräte aus, die das System nicht aufführt. Ausschalten zeigt alles.";
-"settings.bluetooth.notInSystemSettings" = "Nicht in den Systemeinstellungen";
 "settings.bluetooth.hideDevice" = "Gerät ausblenden";
 "settings.bluetooth.showDevice" = "Gerät anzeigen";
 "settings.bluetooth.permissionRequired" = "Bluetooth-Berechtigung erforderlich";
@@ -410,5 +407,8 @@
 "bluetooth.nearbyBLE.notNearby" = "Nicht in der Nähe";
 "bluetooth.nearbyBLE.unavailable" = "Vorübergehend nicht verfügbar";
 "settings.appleDevicesAndBattery" = "Apple-Geräte und Batteriestand anzeigen";
-"settings.appleDevicesAndBattery.description" = "Verifizierte iPhones und iPads, denen dieser Mac bereits vertraut, sowie über ein vertrauenswürdiges gekoppeltes iPhone verifizierte Apple Watches erscheinen automatisch in der Bluetooth-Liste. Ein Apple-Funksignal oder Gerätename allein belegt keine Zugehörigkeit. Akkustände werden, sofern verfügbar, über vertrauenswürdiges USB oder eingerichtetes WLAN gelesen; Abrufe folgen der globalen Bluetooth-Batterieeinstellung. Bluetooth-Einträge ohne stabile Identitätszuordnung bleiben getrennt.";
-"bluetooth.nearbyBLE.source" = "Bluetooth in der Nähe";
+"settings.appleDevicesAndBattery.description" = "Vertrauenswürdige und benannte Apple-Geräte in der Nähe erscheinen in der Bluetooth-Liste.";
+"settings.appleBackgroundRefresh" = "Apple-Batteriestände im Hintergrund aktualisieren";
+"settings.appleBackgroundRefresh.description" = "Aktualisiert die Batteriestände ausgewählter Apple-Geräte bei geschlossenem Statusmenü.";
+"settings.appleBackgroundRefresh.interval" = "Intervall für Batterieaktualisierungen im Hintergrund";
+"settings.appleBackgroundRefresh.intervalValue" = "%d Minute(n)";

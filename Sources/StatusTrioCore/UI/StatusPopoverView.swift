@@ -406,6 +406,7 @@ struct StatusPopoverView: View {
                 mobileBatteryController: store.mobileBattery,
                 showsBatteryLevels: settings.showsBluetoothBatteryLevels,
                 showsAppleDevicesAndBattery: settings.showsAppleDevicesAndBattery,
+                nearbyBLESelections: settings.nearbyBLESelections,
                 trustedAppleDeviceMetadata: settings.trustedAppleDeviceMetadata,
                 currentTrustedAppleCandidates: store.trustedAppleDeviceCandidates,
                 trustedDiscoveryGeneration: store.trustedAppleDeviceDiscoveryGeneration,

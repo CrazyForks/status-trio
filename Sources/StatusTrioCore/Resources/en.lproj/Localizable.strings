@@ -68,7 +68,7 @@
 "settings.bluetooth.networkErrorPriority" = "Let network errors take priority";
 "settings.bluetooth.networkErrorPriorityDescription" = "Connection errors and offline states keep the network icon instead of the Bluetooth device icon.";
 "settings.bluetooth.batteryLevels" = "Show Bluetooth battery levels";
-"settings.bluetooth.batteryLevelsDescription" = "Reads AirPods battery levels while the Bluetooth entry is shown. No additional permission prompt is shown.";
+"settings.bluetooth.batteryLevelsDescription" = "Reads battery levels for visible Bluetooth and Apple device rows in the status panel.";
 "settings.bluetooth.listeningModePreview" = "Preview the listening mode switch";
 "settings.bluetooth.listeningModePreviewDescription" = "Show the mode capsules on every connected AirPods for interface testing. Tapping a capsule animates as it does on a real device, but changes nothing on the AirPods.";
 "settings.bluetooth.listeningModePreviewDeviceName" = "Preview device name";
@@ -385,9 +385,6 @@
 "wifi.summary.band" = "%@ GHz";
 "wifi.summary.signal" = "%d dBm";
 "wifi.summary.bandAndSignal" = "%@ · %@";
-"settings.bluetooth.hideUnpairedDevices" = "Hide devices not in System Settings";
-"settings.bluetooth.hideUnpairedDevicesDescription" = "Hides scanned but unpaired devices the system does not list. Turn off to show everything.";
-"settings.bluetooth.notInSystemSettings" = "Not in System Settings";
 "settings.bluetooth.hideDevice" = "Hide device";
 "settings.bluetooth.showDevice" = "Show device";
 "settings.bluetooth.permissionRequired" = "Bluetooth permission required";
@@ -410,5 +407,8 @@
 "bluetooth.nearbyBLE.notNearby" = "Not nearby";
 "bluetooth.nearbyBLE.unavailable" = "Temporarily unavailable";
 "settings.appleDevicesAndBattery" = "Show Apple devices and battery";
-"settings.appleDevicesAndBattery.description" = "Verified iPhone and iPad devices previously trusted by this Mac, plus Apple Watch devices verified through a trusted paired iPhone, appear automatically in the Bluetooth list. No nearby Apple broadcast or device name alone establishes ownership. Battery readings use trusted USB or configured Wi-Fi when available; the Bluetooth battery setting controls reads. A Bluetooth row that cannot be matched by stable identity stays separate.";
-"bluetooth.nearbyBLE.source" = "Nearby Bluetooth";
+"settings.appleDevicesAndBattery.description" = "Shows trusted Apple devices and nearby named Apple Bluetooth devices in the Bluetooth list.";
+"settings.appleBackgroundRefresh" = "Refresh Apple batteries in the background";
+"settings.appleBackgroundRefresh.description" = "Refresh selected Apple device batteries while the status panel is closed.";
+"settings.appleBackgroundRefresh.interval" = "Background battery refresh interval";
+"settings.appleBackgroundRefresh.intervalValue" = "%d minute(s)";

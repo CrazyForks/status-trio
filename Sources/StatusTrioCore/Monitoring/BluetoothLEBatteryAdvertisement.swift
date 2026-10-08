@@ -18,9 +18,8 @@ import Foundation
 /// Reading an iOS device therefore starts with recognising that payload, which
 /// is what makes the iPhone row work in AirBattery, whose parser this follows.
 ///
-/// Advertisement recognition controls what appears in the user's picker only.
-/// It never grants a connection; the UUID allowlist is checked separately before
-/// the scanner queues or opens a GATT session.
+/// Advertisement recognition identifies Apple mobile candidates. A GATT session
+/// is separately limited to a UUID whose row is currently visible in the panel.
 enum BluetoothLEBatteryAdvertisement {
     /// Apple's Bluetooth SIG company identifier, first on the wire.
     static let appleCompanyIdentifier: UInt8 = 0x4C

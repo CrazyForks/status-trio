@@ -3,15 +3,16 @@ import XCTest
 
 @MainActor
 final class AppleDeviceDiscoveryControllerTests: XCTestCase {
-    func testMasterSwitchAloneDiscoversTrustedCandidatesWithoutPickerClaim() async {
+    func testMasterSwitchAloneDoesNotDiscoverWithoutForegroundClaim() async {
         let reader = ControlledMobileBatteryReader()
         let controller = AppleDeviceDiscoveryController(reader: reader)
         controller.setEnabled(true)
-        await waitUntil { await reader.discoveryCount == 1 }
-        await reader.completeDiscovery(0, with: [candidate(id: "phone-1", model: "iPhone18,1")])
-        await waitUntil { controller.candidates.count == 1 && !controller.isDiscovering }
+        await settle()
 
-        XCTAssertEqual(controller.candidates.map(\.id), [.trustedDevice("phone-1")])
+        let discoveries = await reader.discoveryCount
+        XCTAssertEqual(discoveries, 0)
+        XCTAssertTrue(controller.candidates.isEmpty)
+        XCTAssertFalse(controller.isDiscovering)
         let reads = await reader.readCount
         XCTAssertEqual(reads, 0)
         controller.stop()
@@ -20,6 +21,7 @@ final class AppleDeviceDiscoveryControllerTests: XCTestCase {
     func testMasterOffStopsDiscoveryAndRemovesCandidates() async {
         let reader = ControlledMobileBatteryReader()
         let controller = AppleDeviceDiscoveryController(reader: reader)
+        controller.request("foreground-summary")
         controller.setEnabled(true)
         await waitUntil { await reader.discoveryCount == 1 }
         await reader.completeDiscovery(0, with: [candidate(id: "phone-1", model: "iPhone18,1")])
@@ -33,10 +35,10 @@ final class AppleDeviceDiscoveryControllerTests: XCTestCase {
         await reader.finishAll()
     }
 
-    func testDiscoveryRequiresEnabledPickerClaimAndNeverReadsBattery() async {
+    func testForegroundClaimRequiresEnabledMasterAndNeverReadsBattery() async {
         let reader = ControlledMobileBatteryReader()
         let controller = AppleDeviceDiscoveryController(reader: reader)
-        controller.request("picker")
+        controller.request("foreground-summary")
         await settle()
         let countBeforeEnable = await reader.discoveryCount
         XCTAssertEqual(countBeforeEnable, 0)
@@ -50,7 +52,7 @@ final class AppleDeviceDiscoveryControllerTests: XCTestCase {
         await reader.completeDiscovery(0, with: [candidate(id: "phone-1", model: "iPhone18,1")])
         await waitUntil { controller.candidates.count == 1 && !controller.isDiscovering }
 
-        controller.release("picker")
+        controller.release("foreground-summary")
         let readsAfterRelease = await reader.readCount
         XCTAssertEqual(readsAfterRelease, 0)
         controller.stop()
@@ -59,6 +61,7 @@ final class AppleDeviceDiscoveryControllerTests: XCTestCase {
     func testMasterOffRejectsLateDiscoveryResult() async {
         let reader = ControlledMobileBatteryReader()
         let controller = AppleDeviceDiscoveryController(reader: reader)
+        controller.request("foreground-summary")
         controller.setEnabled(true)
         await waitUntil { await reader.discoveryCount == 1 }
         controller.setEnabled(false)
@@ -73,6 +76,7 @@ final class AppleDeviceDiscoveryControllerTests: XCTestCase {
     func testRefreshStartsANewReadAuthorityGeneration() async {
         let reader = ControlledMobileBatteryReader()
         let controller = AppleDeviceDiscoveryController(reader: reader)
+        controller.request("foreground-summary")
         controller.setEnabled(true)
         await waitUntil { await reader.discoveryCount == 1 }
         await reader.completeDiscovery(0, with: [candidate(id: "phone-1", model: "iPhone18,1")])

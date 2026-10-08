@@ -385,9 +385,6 @@
 "wifi.summary.band" = "%@ GHz";
 "wifi.summary.signal" = "%d dBm";
 "wifi.summary.bandAndSignal" = "%@ · %@";
-"settings.bluetooth.hideUnpairedDevices" = "إخفاء الأجهزة غير الموجودة في إعدادات النظام";
-"settings.bluetooth.hideUnpairedDevicesDescription" = "يخفي الأجهزة التي تم مسحها فقط ولم تتم مزامنتها والتي لا يسردها النظام. أوقف التشغيل لإظهار الكل.";
-"settings.bluetooth.notInSystemSettings" = "غير موجود في إعدادات النظام";
 "settings.bluetooth.hideDevice" = "إخفاء الجهاز";
 "settings.bluetooth.showDevice" = "إظهار الجهاز";
 "settings.bluetooth.permissionRequired" = "يلزم إذن Bluetooth";
@@ -410,5 +407,8 @@
 "bluetooth.nearbyBLE.notNearby" = "غير قريب";
 "bluetooth.nearbyBLE.unavailable" = "غير متاح مؤقتًا";
 "settings.appleDevicesAndBattery" = "إظهار أجهزة Apple والبطارية";
-"settings.appleDevicesAndBattery.description" = "تظهر تلقائيًا في قائمة Bluetooth أجهزة iPhone وiPad التي تم التحقق من أنها موثوقة مسبقًا على هذا الـ Mac، وكذلك أجهزة Apple Watch التي تم التحقق منها عبر iPhone موثوق ومقترن. لا يثبت بث Apple القريب أو اسم الجهاز وحده ملكيته. تُقرأ البطارية، عند توفرها، عبر USB موثوق أو Wi-Fi مُعدّة مسبقًا؛ وتخضع القراءة لإعداد بطارية Bluetooth العام. تبقى صفوف Bluetooth التي لا يمكن مطابقتها بهوية ثابتة مشتركة منفصلة.";
-"bluetooth.nearbyBLE.source" = "Bluetooth قريب";
+"settings.appleDevicesAndBattery.description" = "تظهر أجهزة Apple الموثوقة والقريبة ذات الأسماء في قائمة Bluetooth.";
+"settings.appleBackgroundRefresh" = "تحديث بطاريات Apple في الخلفية";
+"settings.appleBackgroundRefresh.description" = "تحديث بطاريات أجهزة Apple المحددة عند إغلاق لوحة الحالة.";
+"settings.appleBackgroundRefresh.interval" = "فترة تحديث شحن البطارية في الخلفية";
+"settings.appleBackgroundRefresh.intervalValue" = "%d دقيقة";
