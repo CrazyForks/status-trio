@@ -1,3 +1,4 @@
+import AppKit
 import Combine
 import Foundation
 
@@ -56,6 +57,7 @@ final class SettingsStore: ObservableObject {
     static let bluetoothSymbolScaleRange = statusCenterSymbolScaleRange
     static let defaultBluetoothSymbolScale = defaultStatusCenterSymbolScale
     static let bluetoothSymbolScaleDefaultsKey = "bluetoothSymbolScale"
+    static let bluetoothAudioIconChoiceDefaultsKey = "bluetoothAudioIconChoice"
     static let wifiSymbolScaleRange = statusCenterSymbolScaleRange
     static let defaultWifiSymbolScale = defaultStatusCenterSymbolScale
     static let wifiSymbolScaleDefaultsKey = "wifiSymbolScale"
@@ -463,6 +465,19 @@ final class SettingsStore: ObservableObject {
             }
             defaults.set(clamped, forKey: Self.bluetoothSymbolScaleDefaultsKey)
         }
+    }
+
+    @Published var bluetoothAudioIconChoiceRawValue: String {
+        didSet { defaults.set(bluetoothAudioIconChoiceRawValue, forKey: Self.bluetoothAudioIconChoiceDefaultsKey) }
+    }
+
+    var bluetoothAudioIconChoice: BluetoothAudioIconChoice {
+        get {
+            BluetoothAudioIconChoice.persisted(bluetoothAudioIconChoiceRawValue) { symbol in
+                NSImage(systemSymbolName: symbol, accessibilityDescription: nil) != nil
+            }
+        }
+        set { bluetoothAudioIconChoiceRawValue = newValue.rawValue }
     }
 
     @Published var wifiSymbolScale: Double {
@@ -898,7 +913,8 @@ final class SettingsStore: ObservableObject {
             usesVolumeColor: usesBluetoothAudioVolumeColor,
             prioritizesNetworkErrors: prioritizesNetworkErrorsOverBluetoothAudio,
             symbolScale: bluetoothSymbolScale,
-            networkIconSymbolOverride: bluetoothNetworkIconSymbolName
+            networkIconSymbolOverride: bluetoothNetworkIconSymbolName,
+            iconChoice: bluetoothAudioIconChoice
         )
     }
 
@@ -1162,6 +1178,9 @@ final class SettingsStore: ObservableObject {
         self.bluetoothNetworkIconSymbolName = defaults.string(
             forKey: Self.bluetoothNetworkIconSymbolNameDefaultsKey
         )
+        self.bluetoothAudioIconChoiceRawValue = defaults.string(
+            forKey: Self.bluetoothAudioIconChoiceDefaultsKey
+        ) ?? BluetoothAudioIconChoice.automatic.rawValue
         self.alwaysShowsAllOutputDevices = defaults.object(
             forKey: Self.alwaysShowsAllOutputDevicesDefaultsKey
         ) as? Bool ?? false

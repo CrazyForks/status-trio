@@ -32,6 +32,21 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertTrue(second.batteryIconOptions.showsPercentageWhenConnected)
     }
 
+    func testBluetoothAudioIconChoiceDefaultsToAutomaticAndPersists() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+
+        let first = SettingsStore(defaults: suite.defaults)
+        XCTAssertEqual(first.bluetoothAudioIconChoice, .automatic)
+        XCTAssertEqual(first.bluetoothAudioIconOptions.iconChoice, .automatic)
+
+        first.bluetoothAudioIconChoice = .airpods
+
+        let reopened = SettingsStore(defaults: suite.defaults)
+        XCTAssertEqual(reopened.bluetoothAudioIconChoice, .airpods)
+        XCTAssertEqual(reopened.bluetoothAudioIconOptions.iconChoice, .airpods)
+    }
+
     func testRefreshIntervalDefaultsAndRange() {
         let store = SettingsStore(defaults: makeSuite().defaults)
 

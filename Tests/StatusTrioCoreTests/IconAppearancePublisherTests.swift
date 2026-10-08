@@ -196,6 +196,7 @@ final class IconAppearancePublisherTests: XCTestCase {
             $0.prioritizesNetworkErrorsOverBluetoothAudio = false
         },
         IconMutation(name: "bluetoothSymbolScale") { $0.bluetoothSymbolScale = 1.4 },
+        IconMutation(name: "bluetoothAudioIconChoice") { $0.bluetoothAudioIconChoice = .airpods },
         IconMutation(name: "bluetoothNetworkIconDevice") {
             $0.setBluetoothNetworkIconDevice(address: "aa-bb-cc-dd-ee-ff", symbolName: "keyboard")
         },

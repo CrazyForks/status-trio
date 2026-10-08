@@ -1,3 +1,4 @@
+import AppKit
 import Combine
 import Foundation
 
@@ -107,12 +108,18 @@ extension SettingsStore {
             $bluetoothSymbolScale
         )
         .combineLatest($bluetoothNetworkIconSymbolName) { values, symbolOverride in
+            (values, symbolOverride)
+        }
+        .combineLatest($bluetoothAudioIconChoiceRawValue) { values, choiceRawValue in
             BluetoothAudioIconOptions(
-                replacesNetworkIcon: values.0,
-                usesVolumeColor: values.1,
-                prioritizesNetworkErrors: values.2,
-                symbolScale: values.3,
-                networkIconSymbolOverride: symbolOverride
+                replacesNetworkIcon: values.0.0,
+                usesVolumeColor: values.0.1,
+                prioritizesNetworkErrors: values.0.2,
+                symbolScale: values.0.3,
+                networkIconSymbolOverride: values.1,
+                iconChoice: BluetoothAudioIconChoice.persisted(choiceRawValue) { symbol in
+                    NSImage(systemSymbolName: symbol, accessibilityDescription: nil) != nil
+                }
             )
         }
         .removeDuplicates()

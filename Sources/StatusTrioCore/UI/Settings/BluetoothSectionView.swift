@@ -81,6 +81,14 @@ struct BluetoothSectionView: View {
 
                     networkIconSourceRow
 
+                    if BluetoothNetworkIconSource.shouldShowAudioIconChoice(
+                        replacingNetworkIcon: store.replacesNetworkIconWithBluetoothAudio,
+                        selectedSource: selectedOption.source
+                    ) {
+                        SettingsDivider()
+                        bluetoothAudioIconChoiceRow
+                    }
+
                     if !sourceOptionsOffersDevices {
                         SettingsDivider()
 
@@ -266,6 +274,35 @@ struct BluetoothSectionView: View {
     }
 
     private static let orderSurfaceToken = "bluetooth.settings.order.surface"
+
+    private var bluetoothAudioIconChoiceRow: some View {
+        SettingsRow(
+            "headphones",
+            tint: .blue,
+            title: localization.string(.settingsBluetoothIconChoice),
+            subtitle: localization.string(.settingsBluetoothIconChoiceDescription)
+        ) {
+            Picker(
+                localization.string(.settingsBluetoothIconChoice),
+                selection: Binding(
+                    get: { store.bluetoothAudioIconChoice },
+                    set: { store.bluetoothAudioIconChoice = $0 }
+                )
+            ) {
+                ForEach(IconPresentationResourceResolver.availableBluetoothAudioIconChoices) { choice in
+                    Label(
+                        choice.displayName(using: localization),
+                        systemImage: choice.symbolName ?? "arrow.clockwise"
+                    )
+                    .tag(choice)
+                }
+            }
+            .pickerStyle(.menu)
+            .labelsHidden()
+            .accessibilityLabel(localization.string(.settingsBluetoothIconChoice))
+            .accessibilityIdentifier("bluetooth.audioIconChoice")
+        }
+    }
 
     /// Which glyph replaces the network icon, as one flat pop-up menu: the audio
     /// device leads, and every classified paired device follows.

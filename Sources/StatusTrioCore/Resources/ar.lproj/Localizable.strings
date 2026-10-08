@@ -70,6 +70,17 @@
 "settings.bluetooth.showInStatusPanelDescription" = "يتحكم في عنصر Bluetooth بلوحة الحالة ويبقى متزامنًا مع إعدادات لوحة الحالة.";
 "settings.bluetooth.symbolScale" = "حجم أيقونة Bluetooth";
 "settings.bluetooth.symbolScaleDescription" = "يضبط مقياس أيقونة جهاز Bluetooth داخل حلقة الحالة من 100% إلى 180%.";
+"settings.bluetooth.iconChoice" = "أيقونة صوت Bluetooth";
+"settings.bluetooth.iconChoiceDescription" = "اختر رمز صوت Bluetooth المستخدم لأيقونة اتصال الشبكة. يتبع الخيار التلقائي جهاز صوت Bluetooth الحالي.";
+"settings.bluetooth.iconChoice.automatic" = "تلقائي";
+"settings.bluetooth.iconChoice.earbuds" = "سماعات أذن";
+"settings.bluetooth.iconChoice.overEar" = "سماعات فوق الأذن";
+"settings.bluetooth.iconChoice.headset" = "سماعة رأس";
+"settings.bluetooth.iconChoice.earPods" = "EarPods";
+"settings.bluetooth.iconChoice.headphones" = "سماعات رأس";
+"settings.bluetooth.iconChoice.hiFiSpeaker" = "مكبر صوت عالي الدقة";
+"settings.bluetooth.iconChoice.speaker" = "مكبر صوت";
+"settings.bluetooth.iconChoice.stereoPair" = "زوج استريو";
 "settings.bluetooth.showDeviceList" = "إظهار قائمة أجهزة Bluetooth";
 "settings.bluetooth.showDeviceListDescription" = "يسرد الأجهزة المقترنة أسفل إدخال Bluetooth في لوحة الحالة. تظهر الأجهزة المتصلة أولًا.";
 "settings.bluetooth.deviceListGroup" = "قائمة لوحة الحالة";

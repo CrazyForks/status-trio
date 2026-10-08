@@ -87,6 +87,17 @@
 "settings.bluetooth.showInStatusPanelDescription" = "Управляет элементом Bluetooth на панели состояния и синхронизируется с настройками панели состояния.";
 "settings.bluetooth.symbolScale" = "Размер значка Bluetooth";
 "settings.bluetooth.symbolScaleDescription" = "Масштаб значка устройства Bluetooth внутри кольца состояния от 100% до 180%.";
+"settings.bluetooth.iconChoice" = "Значок аудио Bluetooth";
+"settings.bluetooth.iconChoiceDescription" = "Выберите символ Bluetooth-аудио для значка сетевого подключения. Автоматически использует текущее Bluetooth-аудиоустройство.";
+"settings.bluetooth.iconChoice.automatic" = "Автоматически";
+"settings.bluetooth.iconChoice.earbuds" = "Наушники-вкладыши";
+"settings.bluetooth.iconChoice.overEar" = "Полноразмерные наушники";
+"settings.bluetooth.iconChoice.headset" = "Гарнитура";
+"settings.bluetooth.iconChoice.earPods" = "EarPods";
+"settings.bluetooth.iconChoice.headphones" = "Наушники";
+"settings.bluetooth.iconChoice.hiFiSpeaker" = "Hi-Fi-колонка";
+"settings.bluetooth.iconChoice.speaker" = "Колонка";
+"settings.bluetooth.iconChoice.stereoPair" = "Стереопара";
 "settings.bluetooth.showDeviceList" = "Показывать список устройств Bluetooth";
 "settings.bluetooth.showDeviceListDescription" = "Показывает сопряжённые устройства под пунктом Bluetooth на панели состояния. Подключённые устройства идут первыми.";
 "settings.bluetooth.deviceListGroup" = "Список на панели состояния";

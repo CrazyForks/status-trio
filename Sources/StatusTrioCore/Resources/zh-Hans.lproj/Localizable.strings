@@ -87,6 +87,17 @@
 "settings.bluetooth.showInStatusPanelDescription" = "控制状态面板里的蓝牙项目，并与状态面板设置保持同步。";
 "settings.bluetooth.symbolScale" = "蓝牙图标大小";
 "settings.bluetooth.symbolScaleDescription" = "调节状态环内蓝牙设备图标的缩放比例（100% - 180%）。";
+"settings.bluetooth.iconChoice" = "蓝牙音频图标";
+"settings.bluetooth.iconChoiceDescription" = "选择用于网络连接图标的蓝牙音频符号。“自动”将跟随当前蓝牙音频设备。";
+"settings.bluetooth.iconChoice.automatic" = "自动";
+"settings.bluetooth.iconChoice.earbuds" = "入耳式耳机";
+"settings.bluetooth.iconChoice.overEar" = "头戴式耳机";
+"settings.bluetooth.iconChoice.headset" = "耳麦";
+"settings.bluetooth.iconChoice.earPods" = "EarPods";
+"settings.bluetooth.iconChoice.headphones" = "耳机";
+"settings.bluetooth.iconChoice.hiFiSpeaker" = "高保真扬声器";
+"settings.bluetooth.iconChoice.speaker" = "扬声器";
+"settings.bluetooth.iconChoice.stereoPair" = "立体声组合";
 "settings.bluetooth.showDeviceList" = "显示蓝牙设备列表";
 "settings.bluetooth.showDeviceListDescription" = "在状态面板的蓝牙行下方列出已配对设备，已连接的排在前面。";
 "settings.bluetooth.deviceListGroup" = "状态面板列表";

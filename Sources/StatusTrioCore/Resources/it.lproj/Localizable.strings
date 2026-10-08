@@ -87,6 +87,17 @@
 "settings.bluetooth.showInStatusPanelDescription" = "Controlla l’elemento Bluetooth nel pannello di stato e resta sincronizzato con le impostazioni del pannello di stato.";
 "settings.bluetooth.symbolScale" = "Dimensione icona Bluetooth";
 "settings.bluetooth.symbolScaleDescription" = "Regola la scala dell’icona del dispositivo Bluetooth nell’anello di stato dal 100% al 180%.";
+"settings.bluetooth.iconChoice" = "Icona audio Bluetooth";
+"settings.bluetooth.iconChoiceDescription" = "Scegli il simbolo audio Bluetooth per l’icona della connessione di rete. Automatico segue il dispositivo audio Bluetooth attuale.";
+"settings.bluetooth.iconChoice.automatic" = "Automatico";
+"settings.bluetooth.iconChoice.earbuds" = "Auricolari";
+"settings.bluetooth.iconChoice.overEar" = "Cuffie over-ear";
+"settings.bluetooth.iconChoice.headset" = "Cuffie con microfono";
+"settings.bluetooth.iconChoice.earPods" = "EarPods";
+"settings.bluetooth.iconChoice.headphones" = "Cuffie";
+"settings.bluetooth.iconChoice.hiFiSpeaker" = "Altoparlante Hi-Fi";
+"settings.bluetooth.iconChoice.speaker" = "Altoparlante";
+"settings.bluetooth.iconChoice.stereoPair" = "Coppia stereo";
 "settings.bluetooth.showDeviceList" = "Mostra l’elenco dei dispositivi Bluetooth";
 "settings.bluetooth.showDeviceListDescription" = "Elenca i dispositivi abbinati sotto la voce Bluetooth nel pannello di stato. I dispositivi connessi vengono mostrati per primi.";
 "settings.bluetooth.deviceListGroup" = "Elenco del pannello di stato";

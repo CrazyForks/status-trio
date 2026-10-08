@@ -89,7 +89,12 @@ enum IconPresentationMapper {
         ) {
             let source: IconSymbolSource
             if let override = bluetoothOptions.networkIconSymbolOverride {
+                // The explicitly picked Bluetooth device always wins over the
+                // global audio glyph, including when that device is inactive.
                 source = .symbol(name: override, variableValue: nil, fallback: "dot.radiowaves.left.and.right")
+            } else if snapshot.volume.currentDevice?.isBluetoothAudio == true,
+                      let selectedSymbol = bluetoothOptions.iconChoice.symbolName {
+                source = .symbol(name: selectedSymbol, variableValue: nil, fallback: "headphones")
             } else if let audioIcon = inputs.audioIcon {
                 source = audioIcon
             } else {

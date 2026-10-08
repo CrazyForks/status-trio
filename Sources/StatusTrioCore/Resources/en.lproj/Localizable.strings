@@ -87,6 +87,17 @@
 "settings.bluetooth.showInStatusPanelDescription" = "Controls the Bluetooth item in the status panel and stays in sync with the Status Panel settings.";
 "settings.bluetooth.symbolScale" = "Bluetooth icon size";
 "settings.bluetooth.symbolScaleDescription" = "Scales the Bluetooth device icon inside the status ring from 100% to 180%.";
+"settings.bluetooth.iconChoice" = "Choose Bluetooth audio icon";
+"settings.bluetooth.iconChoiceDescription" = "Choose the Bluetooth audio glyph for the network connection icon. Automatic follows the current Bluetooth audio device.";
+"settings.bluetooth.iconChoice.automatic" = "Automatic";
+"settings.bluetooth.iconChoice.earbuds" = "Earbuds";
+"settings.bluetooth.iconChoice.overEar" = "Over-Ear Headphones";
+"settings.bluetooth.iconChoice.headset" = "Headset";
+"settings.bluetooth.iconChoice.earPods" = "EarPods";
+"settings.bluetooth.iconChoice.headphones" = "Headphones";
+"settings.bluetooth.iconChoice.hiFiSpeaker" = "Hi-Fi Speaker";
+"settings.bluetooth.iconChoice.speaker" = "Speaker";
+"settings.bluetooth.iconChoice.stereoPair" = "Stereo Pair";
 "settings.bluetooth.showDeviceList" = "Show the Bluetooth device list";
 "settings.bluetooth.showDeviceListDescription" = "Lists paired devices under the Bluetooth entry in the status panel. Connected devices come first.";
 "settings.bluetooth.deviceListGroup" = "Status Panel List";

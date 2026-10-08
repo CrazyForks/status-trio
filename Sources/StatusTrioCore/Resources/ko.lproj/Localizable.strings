@@ -87,6 +87,17 @@
 "settings.bluetooth.showInStatusPanelDescription" = "상태 패널의 Bluetooth 항목을 전환하며 상태 패널 설정과 동기화됩니다.";
 "settings.bluetooth.symbolScale" = "Bluetooth 아이콘 크기";
 "settings.bluetooth.symbolScaleDescription" = "상태 링 안의 Bluetooth 기기 아이콘 크기를 100% ~ 180%로 조절합니다.";
+"settings.bluetooth.iconChoice" = "Bluetooth 오디오 아이콘";
+"settings.bluetooth.iconChoiceDescription" = "네트워크 연결 아이콘에 사용할 Bluetooth 오디오 기호를 선택합니다. 자동은 현재 Bluetooth 오디오 기기를 따릅니다.";
+"settings.bluetooth.iconChoice.automatic" = "자동";
+"settings.bluetooth.iconChoice.earbuds" = "이어버드";
+"settings.bluetooth.iconChoice.overEar" = "오버이어 헤드폰";
+"settings.bluetooth.iconChoice.headset" = "헤드셋";
+"settings.bluetooth.iconChoice.earPods" = "EarPods";
+"settings.bluetooth.iconChoice.headphones" = "헤드폰";
+"settings.bluetooth.iconChoice.hiFiSpeaker" = "Hi-Fi 스피커";
+"settings.bluetooth.iconChoice.speaker" = "스피커";
+"settings.bluetooth.iconChoice.stereoPair" = "스테레오 페어";
 "settings.bluetooth.showDeviceList" = "Bluetooth 기기 목록 표시";
 "settings.bluetooth.showDeviceListDescription" = "상태 패널의 Bluetooth 항목 아래에 페어링된 기기를 표시합니다. 연결된 기기가 먼저 표시됩니다.";
 "settings.bluetooth.deviceListGroup" = "상태 패널 목록";

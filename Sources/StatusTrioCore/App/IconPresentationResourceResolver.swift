@@ -3,6 +3,12 @@ import Foundation
 
 @MainActor
 enum IconPresentationResourceResolver {
+    static let availableBluetoothAudioIconChoices = BluetoothAudioIconChoice.availableChoices(
+        isSymbolAvailable: { symbol in
+            NSImage(systemSymbolName: symbol, accessibilityDescription: nil) != nil
+        }
+    )
+
     static func inputs(
         snapshot: StatusSnapshot,
         fileExists: (URL) -> Bool = { FileManager.default.fileExists(atPath: $0.path) },
