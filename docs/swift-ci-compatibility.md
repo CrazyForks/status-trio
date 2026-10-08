@@ -758,4 +758,10 @@ macOS 13 review-fix 分支的三个 `publish=false` 预检
 - **失败阶段**：`Run tests`。
 - **根因**：测试用精确 `Duration == .seconds(600)` 匹配调度请求；控制器把剩余刷新时间换算为毫秒并向上取整，CI 调度延迟会把它变成 `599.999s` 一类的近似值。测试等待和计数因此看不到目标请求，随后读取到 `0`。这是测试等待逻辑的时间精度问题，不是 `MobileBatteryController` 的 API/行为回归。
 - **修复**：测试辅助 actor 的 duration 等待、活跃请求和计数改为 10ms 容差，并保留有界 `ContinuousClock` deadline；只修改测试 helper，不改生产调度代码。
-- **后续验证**：第四个 `publish=false` 预检必须覆盖同一测试；该失败不按 flaky 处理。
+- **后续验证**：第四个 `publish=false` 预检 [`37765927373`](https://github.com/lingyired/status-trio/actions/runs/37765927373)
+  （head `c2ea2cc`、`version=1.5.1`、`build=19`、`publish=false`）全绿，耗时 14m23s。
+  `Run tests` 通过（1390 XCTest、7 skipped、0 failures；570 Swift Testing / 90 suites），
+  `Run native compatibility tests` 通过，Universal release 构建、Ad-hoc 签名、DMG 打包与 artifact 上传通过；
+  `Build, sign, notarize, and publish` 在 `publish=false` 下只生成 `StatusTrio-1.5.1.dmg`，未创建 GitHub Release，
+  也未更新 appcast。二进制检查显示主程序 x86_64/arm64 均为 `minos 13.0 / sdk 26.0`，Helper 与 dylib 均为
+  `minos 13.0`，Sparkle 5 个 Mach-O 文件均满足 Ventura 最低版本，MobileBattery bundle 验证通过。
