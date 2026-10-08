@@ -41,13 +41,15 @@ final class SymbolFallbackTests: XCTestCase {
             "beats.powerbeats.pro.2",
             "homepod.mini",
             "macbook",
-            "macmini.gen2"
+            "macmini.gen2",
+            "translate"
         ]
         let checks: [(String, [String])] = [
             ("battery.100percent", ["battery.100"]),
             ("battery.75percent", ["battery.75"]),
             ("flask.fill", ["testtube.2"]),
             ("powerplug.portrait.fill", ["powerplug.fill", "bolt.fill"]),
+            ("translate", ["character.bubble", "globe"]),
             ("watch.analog", ["applewatch", "clock"]),
             ("airpods.gen4", ["airpods", "headphones"]),
             ("airpods.pro", ["airpodspro", "headphones"]),

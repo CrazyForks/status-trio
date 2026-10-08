@@ -229,7 +229,7 @@ struct BluetoothSectionView: View {
                     SettingsDivider()
 
                     SettingsRow(
-                        "translate",
+                        SymbolFallback.name("translate", "character.bubble", "globe"),
                         tint: .purple,
                         title: localization.string(.settingsBluetoothListeningModePreviewLanguage),
                         subtitle: localization.string(.settingsBluetoothListeningModePreviewLanguageDescription)
