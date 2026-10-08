@@ -77,7 +77,7 @@ struct BatterySectionView: View {
                 SettingsDivider()
 
                 SettingsToggleRow(
-                    symbol: "flask.fill",
+                    symbol: SymbolFallback.name("flask.fill", "testtube.2"),
                     tint: .orange,
                     title: localization.string(.settingsBatteryChargingEffectTest),
                     subtitle: localization.string(.settingsBatteryChargingEffectTestDescription),

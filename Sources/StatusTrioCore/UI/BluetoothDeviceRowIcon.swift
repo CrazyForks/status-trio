@@ -21,7 +21,7 @@ enum BluetoothDeviceRowIcon {
         default:
             if device.kind == .mobile(.watch),
                BluetoothMobileDeviceModel.kind(forModel: device.appleMobileModel) == .mobile(.watch) {
-                return availableSymbol(from: ["applewatch", "watch.analog"])
+                return availableSymbol(from: ["applewatch", "watch.analog", "clock"])
             }
             return symbolName(for: device.kind, name: device.name)
         }
@@ -121,7 +121,7 @@ enum BluetoothDeviceRowIcon {
         // A wristwatch class covers every brand, so the generic watch leads and
         // the Apple one is only the fallback.
         case .mobile(.watch):
-            ["watch.analog", "applewatch"]
+            ["watch.analog", "applewatch", "clock"]
         // Reached only when the row draws this class without a device to
         // resolve it by; `symbolName(for:)` sends every real audio device
         // through `AudioOutputDeviceIcon` first.

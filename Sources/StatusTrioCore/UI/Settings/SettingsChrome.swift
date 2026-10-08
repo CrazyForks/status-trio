@@ -109,7 +109,7 @@ struct SettingsIcon: View {
             .fill(tint.gradient)
             .frame(width: SettingsMetrics.iconSize, height: SettingsMetrics.iconSize)
             .overlay(
-                Image(systemName: symbol)
+                Image(systemName: SymbolFallback.name(symbol, "questionmark.circle"))
                     .font(.system(size: SettingsMetrics.iconSize * 0.52, weight: .semibold))
                     .foregroundStyle(.white)
             )

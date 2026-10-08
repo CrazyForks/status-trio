@@ -113,7 +113,7 @@ struct BluetoothSectionView: View {
                 SettingsDivider()
 
                 SettingsToggleRow(
-                    symbol: "battery.75percent",
+                    symbol: SymbolFallback.name("battery.75percent", "battery.75"),
                     tint: .green,
                     title: localization.string(.settingsBluetoothBatteryLevels),
                     subtitle: localization.string(.settingsBluetoothBatteryLevelsDescription),
