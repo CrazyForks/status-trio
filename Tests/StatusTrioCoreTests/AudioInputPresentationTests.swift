@@ -306,6 +306,20 @@ final class AudioInputPresentationTests: XCTestCase {
         XCTAssertEqual(draft.value, 0.31, accuracy: 0.0001)
     }
 
+    func testVolumeDraftRejectsUnreadableScalarDuringEditing() {
+        var draft = AudioInputVolumeDraft()
+        draft.receiveSystemScalar(0.4)
+        draft.setEditing(true)
+
+        var writeCount = 0
+        draft.setSliderValue(0.8, systemScalar: nil) { _ in writeCount += 1 }
+        draft.setSliderValue(0.8, systemScalar: -0.1) { _ in writeCount += 1 }
+        draft.setSliderValue(0.8, systemScalar: 1.1) { _ in writeCount += 1 }
+
+        XCTAssertEqual(writeCount, 0)
+        XCTAssertEqual(draft.value, 0.4, accuracy: 0.0001)
+    }
+
     func testVolumeDraftKeepsActiveDraftForSameInputIdentityScalarUpdates() {
         var draft = AudioInputVolumeDraft()
         let device = PanelAudioInputIdentity(rawValue: 11)

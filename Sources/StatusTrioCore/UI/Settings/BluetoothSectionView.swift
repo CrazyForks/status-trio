@@ -113,7 +113,7 @@ struct BluetoothSectionView: View {
                 SettingsDivider()
 
                 SettingsToggleRow(
-                    symbol: "battery.75percent",
+                    symbol: SymbolFallback.name("battery.75percent", "battery.75"),
                     tint: .green,
                     title: localization.string(.settingsBluetoothBatteryLevels),
                     subtitle: localization.string(.settingsBluetoothBatteryLevelsDescription),
@@ -229,7 +229,7 @@ struct BluetoothSectionView: View {
                     SettingsDivider()
 
                     SettingsRow(
-                        "translate",
+                        SymbolFallback.name("translate", "character.bubble", "globe"),
                         tint: .purple,
                         title: localization.string(.settingsBluetoothListeningModePreviewLanguage),
                         subtitle: localization.string(.settingsBluetoothListeningModePreviewLanguageDescription)
@@ -585,7 +585,7 @@ struct BluetoothSectionView: View {
 
                 guard enabled != wasEnabled else { return }
                 if enabled {
-                    NSApp.activate()
+                    NSApp.activate(ignoringOtherApps: true)
                 }
                 statusStore.setBluetoothEnabled(enabled)
             }

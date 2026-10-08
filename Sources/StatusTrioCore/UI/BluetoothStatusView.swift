@@ -161,12 +161,12 @@ struct BluetoothStatusView: View {
                     nearbyRows: nearbyRows,
                     onVisibleNearbyIDsChanged: { ids in
                         visibleNearbyBLEIDs = ids
-                        updateNearbyReadAuthorization()
+                        updateReadAuthorization(readAuthorizationSnapshot)
                     },
                     appleRows: appleRows,
                     onVisibleAppleIDsChanged: { ids in
                         visibleTrustedAppleIDs = ids
-                        updateTrustedReadAuthorization()
+                        updateReadAuthorization(readAuthorizationSnapshot)
                     },
                     actionStates: controller.deviceActionStates,
                     confirmingAddress: controller.pendingDisconnectConfirmation,
@@ -218,11 +218,9 @@ struct BluetoothStatusView: View {
         .task(id: currentTrustedAppleGeneration) {
             mobileBatteryController.setAuthorizedDeviceIDs([])
         }
-        .onChange(of: currentTrustedAppleCandidates) { _, _ in
-            updateTrustedReadAuthorization()
+        .onChange(of: readAuthorizationSnapshot) { snapshot in
+            updateReadAuthorization(snapshot)
         }
-        .onChange(of: showsBatteryLevels) { _, _ in updateNearbyReadAuthorization() }
-        .onChange(of: showsAppleDevicesAndBattery) { _, _ in updateNearbyReadAuthorization() }
         .onDisappear {
             controller.setVisibleNearbyBLEDevices([], for: "bluetooth.summary.ble")
             controller.releaseVisibleSurface(BluetoothDeviceController.bluetoothSummarySurfaceToken)
@@ -286,20 +284,31 @@ struct BluetoothStatusView: View {
         showsAppleDevicesAndBattery ? trustedDiscoveryGeneration : 0
     }
 
-    private func updateTrustedReadAuthorization() {
-        guard showsMobileBatteryFeature else {
-            mobileBatteryController.setAuthorizedDeviceIDs([])
-            return
-        }
-        mobileBatteryController.setAuthorizedDeviceIDs(AppleDeviceCatalog.readAuthorizedIDs(
-            visibleIDs: visibleTrustedAppleIDs,
-            currentCandidates: currentTrustedAppleCandidates
-        ))
+    private var readAuthorizationSnapshot: BluetoothSummaryReadAuthorizationSnapshot {
+        BluetoothSummaryReadAuthorizationSnapshot(
+            showsBatteryLevels: showsBatteryLevels,
+            showsAppleDevicesAndBattery: showsAppleDevicesAndBattery,
+            showsList: listOptions.showsList,
+            currentTrustedAppleCandidates: currentTrustedAppleCandidates
+        )
     }
 
-    private func updateNearbyReadAuthorization() {
+    private func updateReadAuthorization(_ snapshot: BluetoothSummaryReadAuthorizationSnapshot) {
+        mobileBatteryController.setAuthorizedDeviceIDs(
+            snapshot.showsMobileBatteryFeature
+                ? BluetoothVisibilityAuthorization.trustedIDs(
+                    visibleIDs: visibleTrustedAppleIDs,
+                    currentCandidates: snapshot.currentTrustedAppleCandidates
+                )
+                : []
+        )
         controller.setVisibleNearbyBLEDevices(
-            showsAppleDevicesAndBattery && showsBatteryLevels && listOptions.showsList ? visibleNearbyBLEIDs : [],
+            BluetoothVisibilityAuthorization.nearbyIDs(
+                visibleIDs: visibleNearbyBLEIDs,
+                showsBatteryLevels: snapshot.showsBatteryLevels,
+                showsAppleDevicesAndBattery: snapshot.showsAppleDevicesAndBattery,
+                showsList: snapshot.showsList
+            ),
             for: "bluetooth.summary.ble"
         )
     }

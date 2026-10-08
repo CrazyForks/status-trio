@@ -15,7 +15,7 @@
 <p align="center"><strong>Trois signaux système. Une seule icône d’état native macOS — dans votre barre des menus ou dans le Dock.</strong></p>
 
 <p align="center">
-  <a href="https://github.com/lingyired/status-trio/releases/latest"><img src="https://img.shields.io/badge/Download%20for%20macOS-Universal%20%C2%B7%20macOS%2015%2B-000000?logo=apple&logoColor=white&style=for-the-badge" alt="Télécharger pour macOS — version universelle, macOS 15 ou version ultérieure"></a>
+  <a href="https://github.com/lingyired/status-trio/releases/latest"><img src="https://img.shields.io/badge/Download%20for%20macOS-Universal%20%C2%B7%20macOS%2013%20target-000000?logo=apple&logoColor=white&style=for-the-badge" alt="Télécharger pour macOS — version universelle, macOS 13 comme cible de déploiement (validation Ventura en attente)"></a>
 </p>
 
 <p align="center">
@@ -29,7 +29,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/macOS-15%2B%20supported-blue?logo=apple&logoColor=white" alt="macOS 15 ou version ultérieure pris en charge">
+  <img src="https://img.shields.io/badge/macOS-13%20target%20%28validation%20pending%29-blue?logo=apple&logoColor=white" alt="macOS 13 comme cible de déploiement (validation Ventura en attente) pris en charge">
   <img src="https://img.shields.io/badge/Universal-Apple%20Silicon%20%7C%20Intel-lightgrey" alt="Binaire universel pour Apple Silicon et Intel">
 </p>
 
@@ -121,7 +121,7 @@ Les mêmes états rendus pour une barre des menus sombre :
 
 ## Configuration requise
 
-- macOS 15 ou version ultérieure pour exécuter l’app
+- macOS 13 comme cible de déploiement (validation Ventura en attente) pour exécuter l’app
 - Une chaîne d’outils Swift 6 avec le SDK macOS 26 (Xcode 26 ou version ultérieure) pour la compiler. Compiler avec un
   SDK plus ancien produit silencieusement l’apparence de popover antérieure à Tahoe, c’est pourquoi `scripts/build-app.sh` échoue
   lorsque le SDK est antérieur à 26.
@@ -229,7 +229,7 @@ Le verrou d’instance unique est propre à l’identifiant de paquet, de sorte 
 
 - Swift 6
 - SwiftUI + AppKit
-- macOS 15+
+- macOS 13 deployment target (Ventura runtime validation pending)
 - `LSUIElement`, accessoire de la barre des menus qui bascule vers une politique d’activation standard pendant que l’icône du Dock est affichée
 - Sparkle pour la recherche de mises à jour
 

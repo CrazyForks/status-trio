@@ -73,10 +73,16 @@ final class OnboardingWindowController: NSWindowController, NSWindowDelegate {
         }
 
         let hostingController = NSHostingController(rootView: rootView)
-        hostingController.sizingOptions = [.preferredContentSize]
+        if #available(macOS 14.0, *) {
+            // Ventura can recurse through SwiftUI's preferred-content-size
+            // pass while AppKit is installing the hosting view. Keep the
+            // deterministic size below on Ventura and use preferred sizing
+            // only where the hosting controller supports it reliably.
+            hostingController.sizingOptions = [.preferredContentSize]
+        }
         window.contentViewController = hostingController
-        hostingController.view.layoutSubtreeIfNeeded()
-        if hostingController.preferredContentSize.height > 0 {
+        if #available(macOS 14.0, *),
+           hostingController.preferredContentSize.height > 0 {
             window.setContentSize(hostingController.preferredContentSize)
         }
         window.delegate = self

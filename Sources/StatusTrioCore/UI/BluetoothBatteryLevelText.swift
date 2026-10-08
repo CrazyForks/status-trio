@@ -10,7 +10,10 @@ import SwiftUI
 /// glyph on one and a word on the other.
 enum BluetoothBatteryLevelText {
     /// The pieces as one drawable run, in the order they were built.
-    static func drawn(_ segments: [BluetoothBatterySegment]) -> Text {
+    static func drawn(
+        _ segments: [BluetoothBatterySegment],
+        symbolImage: (String) -> NSImage? = { NSImage(systemSymbolName: $0, accessibilityDescription: nil) }
+    ) -> Text {
         segments.reduce(Text(verbatim: "")) { run, segment in
             switch segment {
             case .text(let value):
@@ -19,7 +22,7 @@ enum BluetoothBatteryLevelText {
                 // A symbol Apple drops in a later release must not take the
                 // meaning with it: the label stands in for the glyph, the way
                 // the row's other icon lookups fall back rather than draw blank.
-                guard NSImage(systemSymbolName: name, accessibilityDescription: nil) != nil else {
+                guard symbolImage(name) != nil else {
                     return run + Text(verbatim: label)
                 }
                 return run + Text(Image(systemName: name))

@@ -15,7 +15,7 @@
 <p align="center"><strong>三種系統訊號，一個原生 macOS 狀態圖示 —— 就在你的選單列或 Dock。</strong></p>
 
 <p align="center">
-  <a href="https://github.com/lingyired/status-trio/releases/latest"><img src="https://img.shields.io/badge/Download%20for%20macOS-Universal%20%C2%B7%20macOS%2015%2B-000000?logo=apple&logoColor=white&style=for-the-badge" alt="下載 macOS 版 —— 通用二進位檔，需 macOS 15 或以上版本"></a>
+  <a href="https://github.com/lingyired/status-trio/releases/latest"><img src="https://img.shields.io/badge/Download%20for%20macOS-Universal%20%C2%B7%20macOS%2013%20target-000000?logo=apple&logoColor=white&style=for-the-badge" alt="下載 macOS 版 —— 通用二進位檔，需 macOS 13 部署目標（Ventura 執行驗證待完成）"></a>
 </p>
 
 <p align="center">
@@ -29,7 +29,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/macOS-15%2B%20supported-blue?logo=apple&logoColor=white" alt="支援 macOS 15 或以上版本">
+  <img src="https://img.shields.io/badge/macOS-13%20target%20%28validation%20pending%29-blue?logo=apple&logoColor=white" alt="支援 macOS 13 部署目標（Ventura 執行驗證待完成）">
   <img src="https://img.shields.io/badge/Universal-Apple%20Silicon%20%7C%20Intel-lightgrey" alt="通用二進位檔，支援 Apple Silicon 與 Intel">
 </p>
 
@@ -121,7 +121,7 @@ Dock 圖示繪製的是與選單列相同的組合圖示，因此開啟藍牙音
 
 ## 系統需求
 
-- 執行應用程式需要 macOS 15 或以上版本
+- 執行應用程式需要 macOS 13 部署目標（Ventura 執行驗證待完成）
 - 建置則需要搭配 macOS 26 SDK 的 Swift 6 工具鏈（Xcode 26 或以上版本）。使用較舊的 SDK
   建置會悄悄產生 Tahoe 之前的彈出式視窗外觀，因此當 SDK 低於 26 時，
   `scripts/build-app.sh` 會直接失敗。
@@ -229,7 +229,7 @@ bash scripts/build-worktree.sh release
 
 - Swift 6
 - SwiftUI + AppKit
-- macOS 15+
+- macOS 13 deployment target (Ventura runtime validation pending)
 - `LSUIElement` 選單列輔助應用程式，在顯示 Dock 圖示時切換為一般啟用策略
 - 使用 Sparkle 檢查更新
 

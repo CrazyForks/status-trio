@@ -23,7 +23,7 @@ enum PopupSection: String, CaseIterable, Identifiable, Sendable {
 
     var systemImage: String {
         switch self {
-        case .battery: "battery.100percent"
+        case .battery: SymbolFallback.name("battery.100percent", "battery.100")
         case .network: "wifi"
         case .vpn: "lock.shield"
         case .bluetooth: "antenna.radiowaves.left.and.right"

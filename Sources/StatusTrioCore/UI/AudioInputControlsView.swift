@@ -111,10 +111,10 @@ struct AudioInputControlsView: View {
                 scalar: state.scalar
             )
         }
-        .onChange(of: state.selectedDeviceIdentity) { _, identity in
+        .onChange(of: state.selectedDeviceIdentity) { identity in
             volumeDraft.receiveSystemState(deviceIdentity: identity, scalar: state.scalar)
         }
-        .onChange(of: state.scalar) { _, scalar in
+        .onChange(of: state.scalar) { scalar in
             volumeDraft.receiveSystemScalar(scalar)
         }
     }

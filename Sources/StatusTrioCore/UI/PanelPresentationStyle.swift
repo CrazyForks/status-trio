@@ -20,18 +20,23 @@ struct PanelSymbolView: View {
 
     var body: some View {
         switch source {
-        case let .symbol(name, variableValue, _):
-            Image(systemName: name, variableValue: variableValue)
+        case let .symbol(name, variableValue, fallback):
+            Image(systemName: resolvedSymbolName(name, fallback: fallback), variableValue: variableValue)
                 .font(.system(size: size, weight: weight))
         case let .image(url, fallbackSymbol):
             if let image = NSImage(contentsOf: url) {
                 Image(nsImage: image).resizable().scaledToFit().frame(width: size, height: size)
             } else {
-                Image(systemName: fallbackSymbol).font(.system(size: size, weight: weight))
+                Image(systemName: resolvedSymbolName(fallbackSymbol, fallback: nil))
+                    .font(.system(size: size, weight: weight))
             }
         case let .primitive(primitive):
             Image(systemName: symbolName(for: primitive)).font(.system(size: size, weight: weight))
         }
+    }
+
+    private func resolvedSymbolName(_ name: String, fallback: String?) -> String {
+        SymbolFallback.name(name, [fallback ?? "questionmark.circle", "questionmark.circle"])
     }
 
     private func symbolName(for primitive: IconPrimitive) -> String {
