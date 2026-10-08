@@ -39,6 +39,19 @@ struct BluetoothStatusView: View {
         )
     }
 
+    /// The nearby rows are persisted readings, kept across scans so a missed
+    /// scan does not flicker a row away. That retention only applies while the
+    /// app can still read Bluetooth: under an authorization prompt or with
+    /// Bluetooth off, a cached level would claim a live status the app cannot
+    /// corroborate.
+    private var visibleNearbyBLESelections: [NearbyBLEDeviceSelection] {
+        NearbyBLEDeviceCatalog.revealedSelections(
+            nearbyBLESelections,
+            enabled: showsAppleDevicesAndBattery,
+            availability: controller.availability
+        )
+    }
+
     private var sourceRowsForAliasHiding: [BluetoothDevice] {
         let options = unhiddenListOptions
         let trustedCandidates = showsAppleDevicesAndBattery
@@ -52,7 +65,7 @@ struct BluetoothStatusView: View {
             options: options
         ).rows.map(\.device)
         let nearbyRows = NearbyBLEDeviceCatalog.panelRows(
-            selections: showsAppleDevicesAndBattery ? nearbyBLESelections : [],
+            selections: visibleNearbyBLESelections,
             readings: controller.nearbyBatteryDevices,
             failures: controller.nearbyBLEReadFailures,
             options: options,
@@ -97,7 +110,7 @@ struct BluetoothStatusView: View {
         let appleProjection = appleProjection
         let appleRows = appleProjection.rows
         let nearbyRows = NearbyBLEDeviceCatalog.panelRows(
-            selections: showsAppleDevicesAndBattery ? nearbyBLESelections : [],
+            selections: visibleNearbyBLESelections,
             readings: controller.nearbyBatteryDevices,
             failures: controller.nearbyBLEReadFailures, options: effectiveListOptions, now: Date(),
             batteryLevelsEnabled: showsBatteryLevels

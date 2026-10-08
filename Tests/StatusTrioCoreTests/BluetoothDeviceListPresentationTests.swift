@@ -997,6 +997,56 @@ final class BluetoothDeviceListPresentationTests: XCTestCase {
         XCTAssertEqual(ordered.first?.device.id, batteryRow.device.id)
     }
 
+    /// Regression: the popover builds nearby rows from persisted selections, and
+    /// those rows carry their level on the row itself rather than in the system
+    /// report's dictionary. When the row level was not folded into the ordering
+    /// dictionary, a disconnected phone with a charge sorted behind every
+    /// battery-less accessory macOS reported.
+    func testNearbyRowBatteryLevelsLeadTheDisconnectedGroup() {
+        let iPhoneID = UUID(uuidString: "00000000-0000-0000-0000-0000000000A1")!
+        let iPadID = UUID(uuidString: "00000000-0000-0000-0000-0000000000A2")!
+        let headset = makeDevice(address: "AA:00:00:00:00:0A", name: "EDIFIER LolliPods", isConnected: false)
+        let mouse = makeDevice(address: "AA:00:00:00:00:0B", name: "M585/M590", isConnected: false)
+        let iPhone = makeSelectedBLERow(name: "Ling's iPhone", id: iPhoneID)
+        let iPad = makeSelectedBLERow(name: "Lingsipad", id: iPadID)
+        let nearbyRows = [
+            NearbyBLEPanelRow(id: iPhoneID, device: iPhone, batteryLevel: 36,
+                              wasSeenRecently: false, readFailed: false),
+            NearbyBLEPanelRow(id: iPadID, device: iPad, batteryLevel: 35,
+                              wasSeenRecently: false, readFailed: false)
+        ]
+
+        let model = BluetoothDeviceListModel.make(
+            devices: [headset, mouse], nearbyRows: nearbyRows,
+            order: [], limit: 10, isExpanded: true, options: .standard
+        )
+
+        XCTAssertEqual(
+            model.orderedDevices.map(\.name),
+            ["Ling's iPhone", "Lingsipad", "EDIFIER LolliPods", "M585/M590"]
+        )
+    }
+
+    /// The row level only ranks while the row actually draws it: with battery
+    /// presentation off the row must not claim a slot it does not explain.
+    func testNearbyRowWithoutVisibleBatteryDoesNotLeadTheDisconnectedGroup() {
+        let iPhoneID = UUID(uuidString: "00000000-0000-0000-0000-0000000000A3")!
+        let headset = makeDevice(address: "AA:00:00:00:00:0A", name: "EDIFIER LolliPods", isConnected: false)
+        let iPhone = makeSelectedBLERow(name: "Ling's iPhone", id: iPhoneID)
+        let nearbyRows = [
+            NearbyBLEPanelRow(id: iPhoneID, device: iPhone, batteryLevel: 36,
+                              wasSeenRecently: false, readFailed: false,
+                              batteryLevelsEnabled: false)
+        ]
+
+        let model = BluetoothDeviceListModel.make(
+            devices: [headset], nearbyRows: nearbyRows,
+            order: [], limit: 10, isExpanded: true, options: .standard
+        )
+
+        XCTAssertEqual(model.orderedDevices.map(\.name), ["EDIFIER LolliPods", "Ling's iPhone"])
+    }
+
     func testAConnectedDeviceStillLeadsAReading() {
         let devices = [
             makeReadingDevice(address: "CB-1", name: "Ling's iPhone"),

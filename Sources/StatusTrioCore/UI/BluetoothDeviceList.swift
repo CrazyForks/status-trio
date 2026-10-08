@@ -33,11 +33,16 @@ struct BluetoothDeviceList: View {
     @State private var reportedAppleIDs = Set<AppleDeviceID>()
 
     private var displayRows: [BluetoothDisplayRow] {
+        let orderingLevels = BluetoothDeviceListPresentation.includingRowBatteryLevels(
+            batteryLevels,
+            nearbyRows: nearbyRows,
+            appleRows: appleRows
+        )
         let sourceModel = BluetoothDeviceListModel.make(
             devices: devices,
             nearbyRows: nearbyRows,
             appleRows: appleRows,
-            batteryLevels: batteryLevels,
+            batteryLevels: orderingLevels,
             order: options.order,
             limit: Int.max,
             isExpanded: true,
@@ -48,11 +53,11 @@ struct BluetoothDeviceList: View {
                 !row.sourceIDs.contains {
                     options.hiddenDeviceAddresses.contains(BluetoothDeviceIdentity.preferenceKey($0))
                 }
-            }
+        }
         let connected = rows.filter { $0.device.isConnected }
         let disconnected = rows.filter { !$0.device.isConnected }
-        return BluetoothDeviceListPresentation.orderedDisplayRows(connected, using: options.order, batteryLevels: batteryLevels)
-            + BluetoothDeviceListPresentation.orderedDisplayRows(disconnected, using: options.order, batteryLevels: batteryLevels)
+        return BluetoothDeviceListPresentation.orderedDisplayRows(connected, using: options.order, batteryLevels: orderingLevels)
+            + BluetoothDeviceListPresentation.orderedDisplayRows(disconnected, using: options.order, batteryLevels: orderingLevels)
     }
 
     private static let geometryCoordinateSpace = "BluetoothDeviceList"

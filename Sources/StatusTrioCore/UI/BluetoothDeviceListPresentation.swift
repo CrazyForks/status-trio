@@ -34,7 +34,11 @@ struct BluetoothDeviceListModel: Equatable {
         let orderedDevices = BluetoothDeviceListPresentation.orderedDevices(
             filteredDevices,
             using: order,
-            batteryLevels: batteryLevels
+            batteryLevels: BluetoothDeviceListPresentation.includingRowBatteryLevels(
+                batteryLevels,
+                nearbyRows: nearbyRows,
+                appleRows: appleRows
+            )
         )
         return BluetoothDeviceListModel(
             orderedDevices: orderedDevices,
@@ -294,6 +298,33 @@ enum BluetoothDeviceListPresentation {
     /// the devices without one: the level is the row's reason to exist for the
     /// reader, so a phone with a live reading outranks a headset macOS reports
     /// no charge for. The saved order still ranks inside this battery group.
+    ///
+    /// Read-over-the-air rows carry their level on the row itself rather than in
+    /// the system report's dictionary. Fold those levels in before ordering so a
+    /// row the list draws a charge for ranks where that charge says it should.
+    static func includingRowBatteryLevels(
+        _ batteryLevels: [String: BluetoothBatteryLevel],
+        nearbyRows: [NearbyBLEPanelRow] = [],
+        appleRows: [AppleDevicePanelRow] = []
+    ) -> [String: BluetoothBatteryLevel] {
+        var merged = batteryLevels
+        func add(deviceID: String, level: Int?) {
+            guard let level, (0...100).contains(level) else { return }
+            let key = BluetoothBatteryReader.normalizedAddress(deviceID)
+            guard !key.isEmpty, merged[key] == nil else { return }
+            merged[key] = BluetoothBatteryLevel(
+                deviceAddress: deviceID, main: level, left: nil, right: nil, caseLevel: nil
+            )
+        }
+        for row in nearbyRows where row.batteryLevelsEnabled {
+            add(deviceID: row.device.id, level: row.batteryLevel)
+        }
+        for row in appleRows {
+            add(deviceID: row.device.id, level: row.batteryLevel)
+        }
+        return merged
+    }
+
     static func orderedDevices(
         _ devices: [BluetoothDevice],
         using order: [String],

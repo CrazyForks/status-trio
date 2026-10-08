@@ -114,6 +114,20 @@ enum NearbyBLEDeviceCatalog {
     }
 
     /// Projects battery-verified Apple UUID metadata into panel rows.
+    ///
+    /// Nearby rows are persisted readings, kept across scans so a missed scan
+    /// does not flicker a row away. That retention only holds while the app can
+    /// still read Bluetooth: under an authorization prompt or with the radio
+    /// off, a cached level would claim a live status the app cannot corroborate.
+    static func revealedSelections(
+        _ selections: [NearbyBLEDeviceSelection],
+        enabled: Bool,
+        availability: BluetoothAvailability
+    ) -> [NearbyBLEDeviceSelection] {
+        guard enabled, availability == .available else { return [] }
+        return selections
+    }
+
     static func panelRows(
         selections: [NearbyBLEDeviceSelection],
         readings: [NearbyBluetoothBatteryDevice],

@@ -47,6 +47,32 @@ struct NearbyBLEDeviceCatalogTests {
         #expect(rows.isEmpty, "a failed first read must not create a row")
     }
 
+    @Test func persistedNearbyRowsAreHiddenUntilBluetoothCanBeRead() {
+        let saved = selection(name: "Cached phone", verifiedAt: Date())
+
+        for availability: BluetoothAvailability in [
+            .idle, .initializing, .authorizationNotDetermined, .authorizationDenied,
+            .authorizationRestricted, .poweredOff, .unavailable, .failed
+        ] {
+            #expect(
+                NearbyBLEDeviceCatalog.revealedSelections(
+                    [saved], enabled: true, availability: availability
+                ).isEmpty,
+                "a cached level must not back \(availability)"
+            )
+        }
+        #expect(
+            NearbyBLEDeviceCatalog.revealedSelections(
+                [saved], enabled: true, availability: .available
+            ).map(\.id) == [saved.id]
+        )
+        #expect(
+            NearbyBLEDeviceCatalog.revealedSelections(
+                [saved], enabled: false, availability: .available
+            ).isEmpty
+        )
+    }
+
     @Test func disabledBatteryPresentationRetainsCachedIdentityButHidesBatteryAndFailure() {
         let now = Date(timeIntervalSince1970: 15_000)
         let selected = NearbyBLEDeviceSelection(
