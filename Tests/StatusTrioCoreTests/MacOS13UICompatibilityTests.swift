@@ -28,6 +28,25 @@ final class MacOS13UICompatibilityTests: XCTestCase {
         }
     }
 
+    func testStatusPopoverUsesVenturaSafeHostingSizing() throws {
+        let source = try String(
+            contentsOf: packageRoot.appendingPathComponent("Sources/StatusTrioCore/UI/StatusBarController.swift"),
+            encoding: .utf8
+        )
+        XCTAssertTrue(source.contains("if #available(macOS 14.0, *)"))
+        XCTAssertTrue(source.contains("hostingController.sizingOptions = [.preferredContentSize]"))
+    }
+
+    func testOnboardingUsesVenturaSafeHostingSizing() throws {
+        let source = try String(
+            contentsOf: packageRoot.appendingPathComponent("Sources/StatusTrioCore/UI/OnboardingWindowController.swift"),
+            encoding: .utf8
+        )
+        XCTAssertTrue(source.contains("if #available(macOS 14.0, *)"))
+        XCTAssertTrue(source.contains("hostingController.sizingOptions = [.preferredContentSize]"))
+        XCTAssertFalse(source.contains("hostingController.view.layoutSubtreeIfNeeded()"))
+    }
+
     func testBluetoothViewsRouteEveryVisibilityChangeThroughASnapshot() throws {
         let statusSource = try String(
             contentsOf: packageRoot.appendingPathComponent("Sources/StatusTrioCore/UI/BluetoothStatusView.swift"),
