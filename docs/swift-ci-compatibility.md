@@ -746,3 +746,15 @@ macOS 13 兼容性分支 `codex/macos13-compatibility` 的首次 non-publishing 
   `Run tests`、`Run native compatibility tests`、Universal release 构建、Ad-hoc 签名、`StatusTrio-1.5.1.dmg`
   打包、`Verify Ventura binary metadata` 和 artifact 上传全部通过；`publish=false` 未创建 GitHub Release，
   也未更新 appcast。
+
+## 37763140072：macOS 13 review-fix 预检在既有 Watch 重试测试上失败
+
+macOS 13 review-fix 分支（head `29bad4e`）的 `publish=false` 预检
+[`37763140072`](https://github.com/lingyired/status-trio/actions/runs/37763140072)
+在 `Run tests` 阶段失败。其余步骤未执行。
+
+- **失败阶段**：`Run tests`。
+- **失败测试**：`MobileBatteryControllerTests.testMissingWatchRetryBudgetSurvivesRepublishedDemandAndBackgroundToggle`，断言 `configuredRefreshRequests` 为 `0`，期望 `1`。
+- **根因判断**：该测试验证 `MobileBatteryController` 的后台重试调度；本次 review-fix 没有修改该控制器或相关测试。失败表现为一次调度时序偶发，而非编译或 API 兼容错误。
+- **当前证据**：同一提交在本机完整 `swift test` 通过；单独重复运行该失败测试 5 次均通过（`swift test --filter 'MobileBatteryControllerTests/testMissingWatchRetryBudgetSurvivesRepublishedDemandAndBackgroundToggle'`）。
+- **后续动作**：需要重新触发同一 `publish=false` preflight；若再次出现，应按 `systematic-debugging` 将该测试的调度时序作为独立问题修复，而不是当作一次性 flaky 忽略。
