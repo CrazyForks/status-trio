@@ -32,7 +32,7 @@ final class AppIconController {
     private var cancellables: Set<AnyCancellable> = []
     private var renderCache = DockIconRenderCache()
     private let imageCache = DockIconImageCache()
-    private let renderCoalescer = IconRenderCoalescer()
+    private let renderCoalescer: IconRenderCoalescer
     private var hasRenderedDockIcon = false
     private var currentPlacement: AppIconPlacement
     private var currentBackgroundPreference: DockIconBackgroundPreference
@@ -54,7 +54,8 @@ final class AppIconController {
             NSApplication.shared.effectiveAppearance
                 .bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
         },
-        notificationCenter: NotificationCenter = .default
+        notificationCenter: NotificationCenter = .default,
+        renderCoalescer: IconRenderCoalescer? = nil
     ) {
         self.settings = settings
         self.iconPresentation = iconPresentation
@@ -62,6 +63,7 @@ final class AppIconController {
         self.application = application
         self.setMenuBarVisible = setMenuBarVisible
         self.renderDockIcon = renderDockIcon
+        self.renderCoalescer = renderCoalescer ?? IconRenderCoalescer()
         self.theme = theme
         self.isDarkAppearance = isDarkAppearance
         self.monitor = SystemIconAppearanceMonitor(
