@@ -18,6 +18,10 @@ enum MobileBatteryDeviceRowPresentation {
     static func chargingText(_ snapshot: MobileBatterySnapshot, charging: String) -> String? {
         snapshot.isCharging == true ? charging : nil
     }
+
+    static func detailText(_ snapshot: MobileBatterySnapshot, charging: String) -> String? {
+        chargingText(snapshot, charging: charging)
+    }
 }
 
 /// The observation detail drawn under a row backed by the trusted-phone helper.
@@ -28,20 +32,15 @@ struct MobileBatteryDeviceRows: View {
     let snapshot: MobileBatterySnapshot
 
     var body: some View {
-        Text(detailText)
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            .lineLimit(1)
-            .truncationMode(.tail)
-    }
-
-    private var detailText: String {
-        let parts = [
-            MobileBatteryDeviceRowPresentation.chargingText(
-                snapshot,
-                charging: localization.string(.mobileBatteryCharging)
-            )
-        ].compactMap { $0 }
-        return parts.joined(separator: " · ")
+        if let detailText = MobileBatteryDeviceRowPresentation.detailText(
+            snapshot,
+            charging: localization.string(.mobileBatteryCharging)
+        ) {
+            Text(detailText)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .truncationMode(.tail)
+        }
     }
 }

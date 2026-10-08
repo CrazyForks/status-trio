@@ -52,8 +52,7 @@ enum BluetoothDeviceRowMetrics {
     static func estimatedHeight(
         for device: BluetoothDevice,
         batteryLevels: [String: BluetoothBatteryLevel],
-        hasMobileDetails: Bool = false,
-        hasNearbyDetails: Bool = false
+        hasMobileDetailLine: Bool = false
     ) -> CGFloat {
         let baseHeight = BluetoothDevicePresentation.batteryLayout(
             for: device,
@@ -61,7 +60,7 @@ enum BluetoothDeviceRowMetrics {
         ) == .components
             ? componentHeight
             : inlineHeight
-        return hasMobileDetails || hasNearbyDetails
+        return hasMobileDetailLine
             ? baseHeight + mobileObservationLineHeight
             : baseHeight
     }

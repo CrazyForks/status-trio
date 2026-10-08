@@ -219,8 +219,11 @@ enum BluetoothDeviceListPresentation {
     ) -> NearbyBLEPanelRowStatus? {
         if let canonicalStatus { return canonicalStatus }
         if device.isReadOverTheAir, device.id.hasPrefix("ble:") {
-            guard case let .battery(level)? = nearbyStatus else { return nil }
-            return .battery(level)
+            switch nearbyStatus {
+            case let .battery(level)?: return .battery(level)
+            case .pending?: return .pending
+            case .unavailable?, .notNearby?, nil: return nil
+            }
         }
         return nearbyStatus ?? appleStatus
     }

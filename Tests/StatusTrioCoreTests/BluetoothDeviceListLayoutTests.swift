@@ -25,6 +25,33 @@ final class BluetoothDeviceListLayoutTests: XCTestCase {
         )
     }
 
+    func testAliasResolvedMobileDetailsDriveTheActualScrollHeight() throws {
+        let (devices, unchargedSnapshots) = mobileLayoutFixture(isCharging: false)
+        let unchargedHosting = try renderList(
+            devices: devices,
+            batteryLevels: [:],
+            mobileMetadataByDeviceID: unchargedSnapshots
+        )
+        defer { unchargedHosting.removeFromSuperview() }
+
+        XCTAssertNil(
+            firstScrollView(in: unchargedHosting),
+            "metadata without a visible detail line must not inflate the viewport estimate"
+        )
+
+        let chargingHosting = try renderList(
+            devices: devices,
+            batteryLevels: [:],
+            mobileMetadataByDeviceID: mobileLayoutFixture(isCharging: true).snapshots
+        )
+        defer { chargingHosting.removeFromSuperview() }
+
+        XCTAssertNotNil(
+            firstScrollView(in: chargingHosting),
+            "a real charging detail line must count toward the viewport estimate"
+        )
+    }
+
     /// The regression the count model could not see. Twelve rows were exactly what
     /// the old `rowsThatFit` allowed — twelve inline rows still fit. But the same
     /// twelve rows, each carrying a component level, render two lines apiece and
@@ -122,6 +149,47 @@ final class BluetoothDeviceListLayoutTests: XCTestCase {
         return (devices, levels)
     }
 
+    private func mobileLayoutFixture(
+        isCharging: Bool
+    ) -> (devices: [BluetoothDevice], snapshots: [String: MobileBatterySnapshot]) {
+        var devices: [BluetoothDevice] = []
+        var snapshots: [String: MobileBatterySnapshot] = [:]
+        for index in 1...12 {
+            let name = "iPhone \(index)"
+            let phoneID = "phone-\(index)"
+            let bleID = UUID(uuidString: String(format: "00000000-0000-0000-0000-%012X", index))!
+            let ble = BluetoothDevice(
+                id: BluetoothDeviceIdentity.bleRowID(bleID),
+                name: name,
+                kind: .mobile(.phone),
+                isConnected: false,
+                appleMobileModel: "iPhone18,1",
+                isReadOverTheAir: true
+            )
+            let trustedID = AppleDeviceID.trustedDevice(phoneID).rowID
+            let trusted = BluetoothDevice(
+                id: trustedID,
+                name: name,
+                kind: .mobile(.phone),
+                isConnected: false,
+                appleMobileModel: "iPhone18,1",
+                isReadOverTheAir: true
+            )
+            devices.append(contentsOf: [ble, trusted])
+            snapshots[trustedID] = MobileBatterySnapshot(
+                id: phoneID,
+                parentID: nil,
+                name: name,
+                model: "iPhone18,1",
+                batteryLevel: 61,
+                isCharging: isCharging,
+                transport: .bluetooth,
+                observedAt: Date(timeIntervalSince1970: 1_700_000_000 + Double(index))
+            )
+        }
+        return (devices, snapshots)
+    }
+
     // MARK: - Harness
 
     /// Renders the device list at the width the panel gives it, every device
@@ -130,7 +198,8 @@ final class BluetoothDeviceListLayoutTests: XCTestCase {
     /// panel — to isolate the rows from the summary and the expansion control.
     private func renderList(
         devices: [BluetoothDevice],
-        batteryLevels: [String: BluetoothBatteryLevel]
+        batteryLevels: [String: BluetoothBatteryLevel],
+        mobileMetadataByDeviceID: [String: MobileBatterySnapshot] = [:]
     ) throws -> NSHostingView<AnyView> {
         let suite = "StatusTrioCoreTests.BluetoothDeviceList.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
@@ -139,6 +208,7 @@ final class BluetoothDeviceListLayoutTests: XCTestCase {
         let list = BluetoothDeviceList(
             devices: devices,
             batteryLevels: batteryLevels,
+            mobileMetadataByDeviceID: mobileMetadataByDeviceID,
             actionStates: [:],
             confirmingAddress: nil,
             options: BluetoothDeviceListOptions(showsList: true, maxVisibleDevices: devices.count, order: []),

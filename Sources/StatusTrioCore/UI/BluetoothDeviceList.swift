@@ -173,11 +173,17 @@ struct BluetoothDeviceList: View {
     private func estimatedContentHeight(for visibleDevices: [BluetoothDevice]) -> CGFloat {
         guard !visibleDevices.isEmpty else { return 0 }
         let rowHeights = visibleDevices.reduce(CGFloat(0)) { total, device in
-            total + BluetoothDeviceRowMetrics.estimatedHeight(
+            let mobileSnapshot = mobileMetadata(for: device)[device.id]
+            let hasMobileDetailLine = mobileSnapshot.map {
+                MobileBatteryDeviceRowPresentation.detailText(
+                    $0,
+                    charging: localization.string(.mobileBatteryCharging)
+                ) != nil
+            } ?? false
+            return total + BluetoothDeviceRowMetrics.estimatedHeight(
                 for: device,
                 batteryLevels: batteryLevels,
-                hasMobileDetails: mobileMetadataByDeviceID[device.id] != nil,
-                hasNearbyDetails: nearbyRowByDeviceID[device.id] != nil
+                hasMobileDetailLine: hasMobileDetailLine
             )
         }
         return rowHeights + Self.rowSpacing * CGFloat(visibleDevices.count - 1)
@@ -224,10 +230,14 @@ struct BluetoothDeviceList: View {
             return mobileMetadataByDeviceID
         }
         var values = mobileMetadataByDeviceID
-        if let selected = selectedReading(for: displayRow),
-           let snapshot = displayRow.sourceIDs.compactMap({ mobileMetadataByDeviceID[$0] })
-            .first(where: { $0.observedAt == selected.observedAt && $0.batteryLevel == selected.level }) {
+        let snapshots = displayRow.sourceIDs.compactMap { mobileMetadataByDeviceID[$0] }
+        let selectedSnapshot = selectedReading(for: displayRow).flatMap { selected in
+            snapshots.first { $0.observedAt == selected.observedAt && $0.batteryLevel == selected.level }
+        }
+        if let snapshot = selectedSnapshot ?? snapshots.max(by: { $0.observedAt < $1.observedAt }) {
             values[device.id] = snapshot
+        } else {
+            values.removeValue(forKey: device.id)
         }
         return values
     }

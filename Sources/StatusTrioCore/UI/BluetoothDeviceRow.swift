@@ -1,5 +1,28 @@
 import SwiftUI
 
+enum BluetoothDeviceRowExternalStatusPresentation {
+    static func text(
+        _ status: NearbyBLEPanelRowStatus,
+        unavailable: String,
+        notNearby: String
+    ) -> String? {
+        switch status {
+        case let .battery(level): "\(level)%"
+        case .unavailable: unavailable
+        case .notNearby: notNearby
+        case .pending: nil
+        }
+    }
+
+    static func accessibilityValue(
+        _ status: NearbyBLEPanelRowStatus,
+        unavailable: String,
+        notNearby: String
+    ) -> String {
+        text(status, unavailable: unavailable, notNearby: notNearby) ?? ""
+    }
+}
+
 /// One paired-device row. The status panel's list and the detail page share it
 /// so the two surfaces cannot drift, and a device the report carries no level
 /// for simply draws no battery text.
@@ -100,12 +123,14 @@ struct BluetoothDeviceRow: View {
 
             Spacer(minLength: 8)
 
-            if let externalStatus = externalBatteryStatus {
-                Text(nearbyStatusText(externalStatus))
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .accessibilityHidden(true)
+            if let externalBatteryStatus {
+                if let text = externalStatusText(for: externalBatteryStatus) {
+                    Text(text)
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .accessibilityHidden(true)
+                }
             } else {
                 batteryText
                 trailingStatus(status)
@@ -188,21 +213,20 @@ struct BluetoothDeviceRow: View {
         }
     }
 
-    private func nearbyStatusText(_ status: NearbyBLEPanelRowStatus) -> String {
-        switch status {
-        case let .battery(level): "\(level)%"
-        case .unavailable: localization.string(.bluetoothNearbyBLEUnavailable)
-        case .notNearby: localization.string(.bluetoothNearbyBLENotNearby)
-        case .pending: "—"
-        }
-    }
-
     private var externalBatteryStatus: NearbyBLEPanelRowStatus? {
         BluetoothDeviceListPresentation.externalBatteryStatus(
             for: device,
             canonicalStatus: canonicalStatusByDeviceID[device.id],
             nearbyStatus: nearbyMetadataByDeviceID[device.id]?.presentationStatus,
             appleStatus: appleStatusByDeviceID[device.id]
+        )
+    }
+
+    private func externalStatusText(for status: NearbyBLEPanelRowStatus) -> String? {
+        BluetoothDeviceRowExternalStatusPresentation.text(
+            status,
+            unavailable: localization.string(.bluetoothNearbyBLEUnavailable),
+            notNearby: localization.string(.bluetoothNearbyBLENotNearby)
         )
     }
 
@@ -252,8 +276,12 @@ struct BluetoothDeviceRow: View {
     /// `Text` run and has no label of its own: a combined element would otherwise
     /// announce the case's percentage with nothing saying what it belongs to.
     private var rowAccessibilityValue: String {
-        if let externalStatus = externalBatteryStatus {
-            return nearbyStatusText(externalStatus)
+        if let externalBatteryStatus {
+            return BluetoothDeviceRowExternalStatusPresentation.accessibilityValue(
+                externalBatteryStatus,
+                unavailable: localization.string(.bluetoothNearbyBLEUnavailable),
+                notNearby: localization.string(.bluetoothNearbyBLENotNearby)
+            )
         }
         let state = stateAccessibilityValue
         guard let level = BluetoothDevicePresentation.batteryLevelSegments(

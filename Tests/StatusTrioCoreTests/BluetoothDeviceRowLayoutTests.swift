@@ -18,6 +18,156 @@ import XCTest
 /// row's `ProgressView`.
 @MainActor
 final class BluetoothDeviceRowLayoutTests: XCTestCase {
+    func testSupportedDeviceKindsDoNotReserveEmptySubtitleSpace() async throws {
+        let fixtures: [(name: String, kind: BluetoothDeviceKind, model: String?)] = [
+            ("iPhone", .mobile(.phone), "iPhone18,1"),
+            ("iPad", .mobile(.tablet), "iPad14,1"),
+            ("Apple Watch", .mobile(.watch), "Watch7,1"),
+            ("Bluetooth Speaker", .audio, nil),
+            ("Headphones", .audio, nil),
+            ("Mouse", .peripheral(.mouse), nil),
+            ("Keyboard", .peripheral(.keyboard), nil),
+            ("MacBook", .computer(.laptop), nil),
+            ("Mac mini", .computer(.desktop), nil)
+        ]
+
+        for language in [AppLanguage.english, .simplifiedChinese] {
+            for (index, fixture) in fixtures.enumerated() {
+                let device = BluetoothDevice(
+                    id: String(format: "AA:00:00:00:01:%02X", index),
+                    name: fixture.name,
+                    kind: fixture.kind,
+                    isConnected: fixture.model == nil,
+                    appleMobileModel: fixture.model,
+                    isReadOverTheAir: fixture.model != nil
+                )
+                let baseline = try await renderRow(language: language, device: device)
+                for level in [Optional<Int>.none, 61] {
+                    let batteryLevels = auditLevels(for: device, main: level)
+                    let context = "\(fixture.name), \(language.rawValue), battery \(String(describing: level))"
+                    let ordinary = try await renderRow(
+                        language: language, device: device, batteryLevels: batteryLevels
+                    )
+                    XCTAssertEqual(ordinary.size.height, baseline.size.height, accuracy: 1, context)
+
+                    // Deliberate presentation-only injection also exercises the
+                    // type-agnostic detail view for non-mobile device kinds.
+                    for charging in [Optional<Bool>.none, false] {
+                        let row = try await renderRow(
+                            language: language,
+                            device: device,
+                            batteryLevels: batteryLevels,
+                            mobileMetadataByDeviceID: [device.id: auditSnapshot(
+                                for: device, model: fixture.model ?? "iPhone18,1", charging: charging
+                            )],
+                            fixtureName: fixture.model != nil && level != nil && charging == false
+                                ? "audit-\(index)-\(language.rawValue)" : nil
+                        )
+                        XCTAssertEqual(row.size.height, baseline.size.height, accuracy: 1,
+                                       "\(context), charging \(String(describing: charging))")
+                    }
+
+                    let nearbyID = UUID()
+                    let nearbyDevice = BluetoothDevice(
+                        id: BluetoothDeviceIdentity.bleRowID(nearbyID),
+                        name: fixture.name,
+                        kind: fixture.kind,
+                        isConnected: false,
+                        isReadOverTheAir: true
+                    )
+                    let nearbyBaseline = try await renderRow(language: language, device: nearbyDevice)
+                    let nearby = try await renderRow(
+                        language: language,
+                        device: nearbyDevice,
+                        nearbyMetadataByDeviceID: [nearbyDevice.id: NearbyBLEPanelRow(
+                            id: nearbyID, device: nearbyDevice, batteryLevel: level,
+                            wasSeenRecently: true, readFailed: false
+                        )]
+                    )
+                    XCTAssertEqual(nearby.size.height, nearbyBaseline.size.height, accuracy: 1,
+                                   "\(context), nearby metadata only")
+                    if level != nil {
+                        XCTAssertTrue(nearby.hasInk(from: 280, to: 315), context)
+                    }
+                }
+
+                if let model = fixture.model {
+                    let charging = try await renderRow(
+                        language: language,
+                        device: device,
+                        batteryLevels: auditLevels(for: device, main: 61),
+                        mobileMetadataByDeviceID: [device.id: auditSnapshot(
+                            for: device, model: model, charging: true
+                        )],
+                        fixtureName: "audit-charging-\(index)-\(language.rawValue)"
+                    )
+                    XCTAssertGreaterThan(charging.size.height, baseline.size.height, fixture.name)
+                    XCTAssertLessThanOrEqual(charging.size.height - baseline.size.height, 16,
+                                             "only the meaningful charging line may add height")
+                }
+            }
+        }
+    }
+
+    func testAirPodsComponentLineDoesNotGainAnEmptyThirdLine() async throws {
+        let device = rowDevice(name: "AirPods Pro")
+        let componentLevels = levels(left: 85, right: 80, caseLevel: 70)
+        for language in [AppLanguage.english, .simplifiedChinese] {
+            let inline = try await renderRow(language: language, device: device)
+            let components = try await renderRow(
+                language: language, device: device, batteryLevels: componentLevels,
+                fixtureName: "audit-airpods-components-\(language.rawValue)"
+            )
+            XCTAssertEqual(components.size.height - inline.size.height, 12, accuracy: 1,
+                           "the real component line and bottom padding remain")
+            for charging in [Optional<Bool>.none, false] {
+                let row = try await renderRow(
+                    language: language,
+                    device: device,
+                    batteryLevels: componentLevels,
+                    mobileMetadataByDeviceID: [device.id: mobileSnapshot(isCharging: charging)]
+                )
+                XCTAssertEqual(row.size.height, components.size.height, accuracy: 1,
+                               "empty injected detail must not create a third line")
+            }
+            let nearby = try await renderRow(
+                language: language,
+                device: device,
+                batteryLevels: componentLevels,
+                nearbyMetadataByDeviceID: [device.id: nearbyRow(device, status: .battery(61))]
+            )
+            XCTAssertEqual(nearby.size.height, components.size.height, accuracy: 1,
+                           "nearby metadata must not create a third line")
+            // A true charging detail is intentional content, not an empty line.
+            let charging = try await renderRow(
+                language: language,
+                device: device,
+                batteryLevels: componentLevels,
+                mobileMetadataByDeviceID: [device.id: mobileSnapshot(isCharging: true)],
+                fixtureName: "audit-airpods-charging-detail-\(language.rawValue)"
+            )
+            XCTAssertGreaterThan(charging.size.height, components.size.height)
+            XCTAssertLessThanOrEqual(charging.size.height - components.size.height, 16)
+        }
+    }
+
+    private func auditLevels(for device: BluetoothDevice, main: Int?) -> [String: BluetoothBatteryLevel] {
+        guard let main else { return [:] }
+        return [BluetoothBatteryReader.normalizedAddress(device.id): BluetoothBatteryLevel(
+            deviceAddress: device.id, main: main, left: nil, right: nil, caseLevel: nil
+        )]
+    }
+
+    private func auditSnapshot(
+        for device: BluetoothDevice, model: String, charging: Bool?
+    ) -> MobileBatterySnapshot {
+        MobileBatterySnapshot(
+            id: device.id, parentID: device.kind == .mobile(.watch) ? "phone-1" : nil,
+            name: device.name, model: model, batteryLevel: 61, isCharging: charging,
+            transport: .bluetooth, observedAt: Date(timeIntervalSince1970: 1_700_000_000)
+        )
+    }
+
     func testNearbyBLERowDoesNotAddASourceSubtitle() async throws {
         let id = UUID()
         let device = BluetoothDevice(
@@ -41,6 +191,179 @@ final class BluetoothDeviceRowLayoutTests: XCTestCase {
                            "Nearby BLE must not add a subtitle in \(language.rawValue)")
             XCTAssertTrue(nearby.hasInk(from: 280, to: 315), "Battery remains visible")
             XCTAssertEqual(nearby.controls.count, 0, "BLE row remains read-only")
+        }
+    }
+
+    func testMobileMetadataAddsNoEmptySecondLineButKeepsObservedCharging() async throws {
+        let device = BluetoothDevice(
+            id: "trusted:watch-1",
+            name: "Apple Watch",
+            kind: .mobile(.watch),
+            isConnected: false,
+            isReadOverTheAir: true
+        )
+        let plain = try await renderRow(language: .english, device: device)
+        let watchBattery: [String: BluetoothBatteryLevel] = [
+            BluetoothBatteryReader.normalizedAddress(device.id): BluetoothBatteryLevel(
+                deviceAddress: device.id,
+                main: 61,
+                left: nil,
+                right: nil,
+                caseLevel: nil
+            )
+        ]
+
+        for charging in [false, Optional<Bool>.none] {
+            let snapshot = mobileSnapshot(isCharging: charging)
+            let row = try await renderRow(
+                language: .english,
+                device: device,
+                batteryLevels: watchBattery,
+                mobileMetadataByDeviceID: [device.id: snapshot],
+                fixtureName: charging == false ? "uncharged-watch" : nil
+            )
+
+            XCTAssertEqual(
+                row.size.height,
+                plain.size.height,
+                accuracy: 1,
+                "an unobserved charging detail must not leave a blank second line"
+            )
+        }
+
+        let chargingRow = try await renderRow(
+            language: .english,
+            device: device,
+            batteryLevels: watchBattery,
+            mobileMetadataByDeviceID: [device.id: mobileSnapshot(isCharging: true)],
+            fixtureName: "charging-watch"
+        )
+        XCTAssertGreaterThan(
+            chargingRow.size.height,
+            plain.size.height,
+            "an observed charging state must keep its detail line"
+        )
+        XCTAssertTrue(
+            chargingRow.hasInk(from: 35, to: 180),
+            "the observed Charging detail must remain visibly rendered"
+        )
+        XCTAssertEqual(
+            MobileBatteryDeviceRowPresentation.detailText(
+                mobileSnapshot(isCharging: true),
+                charging: "Charging"
+            ),
+            "Charging"
+        )
+    }
+
+    func testPendingExternalBatteryStatusIsBlankButAvailabilityStatusIsVisible() async throws {
+        let device = BluetoothDevice(
+            id: "trusted:phone-1",
+            name: "iPhone",
+            kind: .mobile(.phone),
+            isConnected: false,
+            isReadOverTheAir: true
+        )
+
+        let pendingNearby = try await renderRow(
+            language: .english,
+            device: device,
+            batteryLevels: [BluetoothBatteryReader.normalizedAddress(device.id): BluetoothBatteryLevel(
+                deviceAddress: device.id,
+                main: 73,
+                left: nil,
+                right: nil,
+                caseLevel: nil
+            )],
+            nearbyMetadataByDeviceID: [device.id: nearbyRow(device, status: .pending)]
+        )
+        let bleID = UUID(uuidString: "00000000-0000-0000-0000-0000000000B2")!
+        let bleDevice = BluetoothDevice(
+            id: BluetoothDeviceIdentity.bleRowID(bleID),
+            name: "iPhone BLE",
+            kind: .mobile(.phone),
+            isConnected: false,
+            appleMobileModel: "iPhone18,1",
+            isReadOverTheAir: true
+        )
+        let pendingBLE = try await renderRow(
+            language: .english,
+            device: bleDevice,
+            batteryLevels: [BluetoothBatteryReader.normalizedAddress(bleDevice.id): BluetoothBatteryLevel(
+                deviceAddress: bleDevice.id,
+                main: 73,
+                left: nil,
+                right: nil,
+                caseLevel: nil
+            )],
+            nearbyMetadataByDeviceID: [bleDevice.id: NearbyBLEPanelRow(
+                id: bleID,
+                device: bleDevice,
+                batteryLevel: nil,
+                wasSeenRecently: true,
+                readFailed: false
+            )]
+        )
+        let ipad = BluetoothDevice(
+            id: "trusted:ipad-1",
+            name: "iPad",
+            kind: .mobile(.tablet),
+            isConnected: false,
+            isReadOverTheAir: true
+        )
+        let pendingApple = try await renderRow(
+            language: .english,
+            device: ipad,
+            batteryLevels: [BluetoothBatteryReader.normalizedAddress(ipad.id): BluetoothBatteryLevel(
+                deviceAddress: ipad.id,
+                main: 73,
+                left: nil,
+                right: nil,
+                caseLevel: nil
+            )],
+            appleStatusByDeviceID: [ipad.id: .pending],
+            fixtureName: "pending-ipad"
+        )
+        XCTAssertFalse(pendingNearby.hasInk(from: 280, to: 315), "pending nearby battery has no placeholder")
+        XCTAssertFalse(pendingBLE.hasInk(from: 280, to: 315), "pending BLE battery must suppress a stale level")
+        XCTAssertFalse(pendingApple.hasInk(from: 280, to: 315), "pending Apple battery has no placeholder")
+        XCTAssertEqual(
+            BluetoothDeviceListPresentation.externalBatteryStatus(
+                for: bleDevice,
+                canonicalStatus: nil,
+                nearbyStatus: .pending,
+                appleStatus: nil
+            ),
+            .pending,
+            "pending BLE status remains authoritative without adding a proximity label"
+        )
+        XCTAssertEqual(
+            BluetoothDeviceRowExternalStatusPresentation.accessibilityValue(
+                .pending,
+                unavailable: "Temporarily unavailable",
+                notNearby: "Not nearby"
+            ),
+            "",
+            "pending read-only battery status must not announce a connection state"
+        )
+        XCTAssertEqual(
+            BluetoothDeviceRowExternalStatusPresentation.text(
+                .battery(0), unavailable: "Temporarily unavailable", notNearby: "Not nearby"
+            ),
+            "0%",
+            "a measured empty battery is still a meaningful zero, not a placeholder"
+        )
+
+        for status in [NearbyBLEPanelRowStatus.unavailable, .notNearby] {
+            let row = try await renderRow(
+                language: .english,
+                device: device,
+                appleStatusByDeviceID: [device.id: status]
+            )
+            XCTAssertTrue(
+                row.hasInk(from: 260, to: 315),
+                "availability remains explicit for \(status)"
+            )
         }
     }
 
@@ -324,6 +647,35 @@ final class BluetoothDeviceRowLayoutTests: XCTestCase {
         )
     }
 
+    private func mobileSnapshot(isCharging: Bool?) -> MobileBatterySnapshot {
+        MobileBatterySnapshot(
+            id: "watch-1",
+            parentID: "phone-1",
+            name: "Apple Watch",
+            model: "Watch7,1",
+            batteryLevel: 61,
+            isCharging: isCharging,
+            transport: .bluetooth,
+            observedAt: Date(timeIntervalSince1970: 1_700_000_000)
+        )
+    }
+
+    private func nearbyRow(
+        _ device: BluetoothDevice,
+        status: NearbyBLEPanelRowStatus
+    ) -> NearbyBLEPanelRow {
+        NearbyBLEPanelRow(
+            id: UUID(),
+            device: device,
+            batteryLevel: {
+                if case let .battery(level) = status { return level }
+                return nil
+            }(),
+            wasSeenRecently: status == .pending,
+            readFailed: status == .unavailable
+        )
+    }
+
     private func levels(
         main: Int? = nil,
         left: Int? = nil,
@@ -383,9 +735,12 @@ final class BluetoothDeviceRowLayoutTests: XCTestCase {
         language: AppLanguage,
         device: BluetoothDevice,
         batteryLevels: [String: BluetoothBatteryLevel] = [:],
+        mobileMetadataByDeviceID: [String: MobileBatterySnapshot] = [:],
         nearbyMetadataByDeviceID: [String: NearbyBLEPanelRow] = [:],
+        appleStatusByDeviceID: [String: NearbyBLEPanelRowStatus] = [:],
         actionState: BluetoothDeviceActionState? = nil,
-        isConfirmingDisconnect: Bool = false
+        isConfirmingDisconnect: Bool = false,
+        fixtureName: String? = nil
     ) async throws -> RenderedRow {
         let suite = "StatusTrioCoreTests.BluetoothDeviceRow.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
@@ -396,7 +751,9 @@ final class BluetoothDeviceRowLayoutTests: XCTestCase {
         let view = BluetoothDeviceRow(
             device: device,
             batteryLevels: batteryLevels,
+            mobileMetadataByDeviceID: mobileMetadataByDeviceID,
             nearbyMetadataByDeviceID: nearbyMetadataByDeviceID,
+            appleStatusByDeviceID: appleStatusByDeviceID,
             actionState: actionState,
             isConfirmingDisconnect: isConfirmingDisconnect,
             onPerformAction: {},
@@ -419,6 +776,13 @@ final class BluetoothDeviceRowLayoutTests: XCTestCase {
 
         let bitmap = try XCTUnwrap(hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds))
         hosting.cacheDisplay(in: hosting.bounds, to: bitmap)
+        if ProcessInfo.processInfo.environment["STATUS_TRIO_EXPORT_ROW_FIXTURES"] == "1",
+           let fixtureName {
+            let directory = URL(fileURLWithPath: "/tmp/watch-first-read-ui", isDirectory: true)
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let data = try XCTUnwrap(bitmap.representation(using: .png, properties: [:]))
+            try data.write(to: directory.appendingPathComponent("\(fixtureName).png"), options: .atomic)
+        }
 
         var controls: [NSRect] = []
         var spinners = 0

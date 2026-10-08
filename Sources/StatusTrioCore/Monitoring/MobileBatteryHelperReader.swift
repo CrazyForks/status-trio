@@ -270,19 +270,23 @@ struct MobileBatteryHelperReader: MobileBatteryReading {
             return nil
         }
         let requestedPhoneRoutes = Array(routes.filter { selectedPhones.contains($0.id) }.prefix(8))
-        _ = await readPhones(requestedPhoneRoutes, accumulator: accumulator)
-        guard !Task.isCancelled else { return await accumulator.snapshot() }
-
         let routesByParent = Dictionary(uniqueKeysWithValues: routes.map { ($0.id, $0.transports) })
         let requestedWatches = selectedWatches.compactMap { parentID, watchID -> WatchCandidate? in
             guard let transports = routesByParent[parentID], !transports.isEmpty else { return nil }
             let route = WatchRoute(id: watchID, parentID: parentID, transport: transports[0])
             return WatchCandidate(route: route, transports: transports)
         }
-        await readWatches(requestedWatches.sorted { $0.route.parentID == $1.route.parentID
+        let sortedWatches = requestedWatches.sorted { $0.route.parentID == $1.route.parentID
             ? $0.route.id < $1.route.id
             : $0.route.parentID < $1.route.parentID
-        }.prefix(8).map { $0 }, accumulator: accumulator)
+        }.prefix(8).map { $0 }
+        var jobs: [MobileBatteryHelperReadJob] = []
+        let jobCount = max(requestedPhoneRoutes.count, sortedWatches.count)
+        for index in 0..<jobCount {
+            if index < requestedPhoneRoutes.count { jobs.append(.phone(requestedPhoneRoutes[index])) }
+            if index < sortedWatches.count { jobs.append(.watch(sortedWatches[index])) }
+        }
+        await readJobs(jobs, accumulator: accumulator)
         return await accumulator.snapshot()
     }
 
@@ -304,31 +308,34 @@ struct MobileBatteryHelperReader: MobileBatteryReading {
         return candidates
     }
 
-    private func readPhones(_ phones: [PhoneRoute], accumulator: MobileBatteryReadAccumulator) async -> [WatchCandidate] {
-        await withTaskGroup(of: PhoneResult.self, returning: [WatchCandidate].self) { group in
+    private func readJobs(_ jobs: [MobileBatteryHelperReadJob], accumulator: MobileBatteryReadAccumulator) async {
+        await withTaskGroup(of: MobileBatteryReadResult.self) { group in
             var nextIndex = 0
-            for _ in 0..<min(2, phones.count) {
-                let phone = phones[nextIndex]
+            for _ in 0..<min(2, jobs.count) {
+                let job = jobs[nextIndex]
                 nextIndex += 1
-                group.addTask { await readPhone(phone) }
+                group.addTask { await read(job) }
             }
-            var candidates: [WatchCandidate] = []
             while let result = await group.next() {
-                await accumulator.append(result.result)
-                candidates.append(contentsOf: result.watchCandidates)
-                if !Task.isCancelled, nextIndex < phones.count {
-                    let phone = phones[nextIndex]
+                await accumulator.append(result)
+                if !Task.isCancelled, nextIndex < jobs.count {
+                    let job = jobs[nextIndex]
                     nextIndex += 1
-                    group.addTask { await readPhone(phone) }
+                    group.addTask { await read(job) }
                 }
             }
-            return candidates
         }
     }
 
-    private func readPhone(_ phone: PhoneRoute) async -> PhoneResult {
+    private func read(_ job: MobileBatteryHelperReadJob) async -> MobileBatteryReadResult {
+        switch job {
+        case let .phone(phone): await readPhone(phone)
+        case let .watch(watch): await readWatch(watch)
+        }
+    }
+
+    private func readPhone(_ phone: PhoneRoute) async -> MobileBatteryReadResult {
         var collected = MobileBatteryReadResult()
-        var candidates: [WatchCandidate] = []
         let deadline = ContinuousClock.now + .seconds(5)
         for transport in phone.transports {
             let remainingBudget = ContinuousClock.now.duration(to: deadline)
@@ -339,7 +346,6 @@ struct MobileBatteryHelperReader: MobileBatteryReading {
                     timeout: remainingBudget
                 )
                 let decoded = try MobileBatteryWire.decode(data, expectedParentID: phone.id, observedAt: Date())
-                let discovered = try MobileBatteryWire.decodeWatchCandidates(data, expectedParentID: phone.id)
                 var returnedPhone = false
                 for snapshot in decoded.snapshots {
                     guard snapshot.parentID == nil, snapshot.id == phone.id else {
@@ -350,35 +356,15 @@ struct MobileBatteryHelperReader: MobileBatteryReading {
                     returnedPhone = true
                 }
                 collected.failures.append(contentsOf: decoded.failures)
-                candidates.append(contentsOf: discovered.map { WatchCandidate(route: $0, transports: phone.transports) })
                 if returnedPhone { break }
             } catch is CancellationError {
-                return PhoneResult(result: collected, watchCandidates: candidates)
+                return collected
             } catch {
-                if Task.isCancelled { return PhoneResult(result: collected, watchCandidates: candidates) }
+                if Task.isCancelled { return collected }
                 collected.failures.append(MobileBatteryReadFailure(category: "read-failed", deviceID: phone.id))
             }
         }
-        return PhoneResult(result: collected, watchCandidates: candidates)
-    }
-
-    private func readWatches(_ candidates: [WatchCandidate], accumulator: MobileBatteryReadAccumulator) async {
-        await withTaskGroup(of: MobileBatteryReadResult.self, returning: Void.self) { group in
-            var nextIndex = 0
-            for _ in 0..<min(2, candidates.count) {
-                let candidate = candidates[nextIndex]
-                nextIndex += 1
-                group.addTask { await readWatch(candidate) }
-            }
-            while let result = await group.next() {
-                await accumulator.append(result)
-                if !Task.isCancelled, nextIndex < candidates.count {
-                    let candidate = candidates[nextIndex]
-                    nextIndex += 1
-                    group.addTask { await readWatch(candidate) }
-                }
-            }
-        }
+        return collected
     }
 
     private func readWatch(_ candidate: WatchCandidate) async -> MobileBatteryReadResult {
@@ -456,9 +442,9 @@ struct MobileBatteryHelperReader: MobileBatteryReading {
     }
 }
 
-private struct PhoneResult: Sendable {
-    let result: MobileBatteryReadResult
-    let watchCandidates: [WatchCandidate]
+private enum MobileBatteryHelperReadJob: Sendable {
+    case phone(PhoneRoute)
+    case watch(WatchCandidate)
 }
 
 private struct WatchCandidate: Sendable {
