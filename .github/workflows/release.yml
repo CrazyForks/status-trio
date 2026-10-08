@@ -278,7 +278,7 @@ jobs:
         if: success()
         run: |
           set -euo pipefail
-          APP="$PWD/dist/Status Trio.app"
+          APP="$PWD/dist/StatusTrio.app"
           bash scripts/verify-platform-version.sh "$APP/Contents/MacOS/StatusTrio" 13.0 26
           UNIVERSAL_BUILD=1 bash scripts/verify-mobile-battery-bundle.sh "$APP"
           bash scripts/test-macos13-sparkle-metadata.sh "$APP"

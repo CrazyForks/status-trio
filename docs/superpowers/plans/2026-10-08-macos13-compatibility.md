@@ -1,6 +1,6 @@
 # macOS 13 Compatibility Implementation Plan
 
-> **For agentic workers:** 使用 `executing-plans` 逐任务执行；只有用户明确选择并行代理后才使用 `subagent-driven-development`。实现必须交给用户指定的 `gpt-6-luna`，不要在其他模型上开始实现。下面的复选框追踪执行状态；本轮仅制定计划。
+> **For agentic workers:** 使用 `executing-plans` 逐任务执行；只有用户明确选择并行代理后才使用 `subagent-driven-development`。实现必须交给当次用户明确指定的模型；本次为 `ccs-cliproxyapi-workbuddy/deepseek-v4.1-flash`。下面的复选框追踪执行状态；本轮仅制定计划。
 
 **Goal:** 同一个 Universal App 真正运行于 macOS 13+，保持 macOS 26+ 原生外观、现有功能和同一更新渠道。
 
@@ -114,7 +114,7 @@ swift build -c release
 
 **Files:** Helper 构建 / 验证脚本；必要时 `Support/MobileBatteryHelper/` 中实际报错文件；新增 `scripts/test-macos13-bundle-contract.sh`。
 
-**Interfaces:** 保留 `UNIVERSAL_BUILD=1 bash scripts/build-app.sh release no-open`；输出实际默认路径 `dist/Status Trio.app`（参考文档的 `dist/StatusTrio.app` 与当前默认不符）。
+**Interfaces:** 保留 `UNIVERSAL_BUILD=1 bash scripts/build-app.sh release no-open`；输出实际默认路径 `dist/StatusTrio.app`。
 
 - [ ] 1. 先写 bundle 负例测试：一片为 minos 15.0、缺 x86_64、dylib 绝对 Homebrew 路径、缺合法 RPATH、错误签名分别必须拒绝。可用命令 shim 测试脚本判断，但真实验收必须读取真实 Mach-O。
 - [ ] 2. 核实 Helper BUILD_KEY 含 MINIMUM_MACOS，更新至 13.0 后双架构原生依赖必须重建；只清理本 worktree 的对应 native cache，保留 pinned manifest、LICENSE/NOTICE。不能拿原 15.0 binary 用 vtool 降 minos。
@@ -207,7 +207,7 @@ git diff --check
 
 执行交付必须包含文件变更、测试数量/命令、二进制矩阵、CI run ID、逐 OS 实机矩阵、硬件限制、baseline/final SHA、Git 状态和未发布声明。本轮只新增参考副本与本计划；不修改 Swift、最低系统版本、依赖或产物，不运行 release workflow。
 
-实施建议：Luna 按 Task 1→2→3→4→5 串行执行；Task 1/2 有编译依赖，Helper 与 CI 依赖最终最低目标，不提前并行开发。人工 Ventura 验收缺设备时可完成自动阶段并交付明确 checklist，但不能标为全面完成。
+实施建议：按 Task 1→2→3→4→5 串行执行；Task 1/2 有编译依赖，Helper 与 CI 依赖最终最低目标，不提前并行开发。人工 Ventura 验收缺设备时可完成自动阶段并交付明确 checklist，但不能标为全面完成。
 
 ## 本轮基线验证结果
 
