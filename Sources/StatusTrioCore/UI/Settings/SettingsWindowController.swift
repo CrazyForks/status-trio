@@ -13,10 +13,9 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     private var localizationCancellable: AnyCancellable?
     private var authorizationCancellable: AnyCancellable?
     private var ownsActivationPolicy = false
-    /// Last Bluetooth grant we saw, so we only re-surface Settings after a real
-    /// permission decision (`.notDetermined` → granted/denied), never on launch
-    /// or on a no-op refresh of an already-granted app.
-    private var lastBluetoothAuthorization: BluetoothAuthorizationStatus = .notDetermined
+    /// Track the published initial state as well as subsequent updates, so a
+    /// refresh of an already-known grant is not mistaken for a permission decision.
+    private var lastBluetoothAuthorization: BluetoothAuthorizationStatus
 
     init(
         store: SettingsStore,
@@ -32,6 +31,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         self.localization = localization
         self.activationPolicy = activationPolicy
         self.showIconGuide = showIconGuide
+        self.lastBluetoothAuthorization = statusStore.bluetoothDevices.authorizationStatus
         super.init(window: nil)
 
         localizationCancellable = localization.$resolvedLanguage
@@ -77,26 +77,15 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         window = nil
     }
 
-    /// Brings Settings back to the front after a system dialog (such as the
-    /// Bluetooth permission prompt) hid or dismissed it. Re-fronts the existing
-    /// window when it survived, or rebuilds it when the dialog closed it — in
-    /// the latter case the temporary regular-mode claim is re-entered so the
-    /// rebuilt window is not hidden behind an accessory app.
+    /// Re-fronts an existing Settings window after a system permission dialog.
+    /// Reading Bluetooth authorization for the first popover also publishes a
+    /// transition from `.notDetermined`; it must never create a Settings window
+    /// or reopen one the user has closed.
     func resurface() {
-        if let window {
-            window.makeKeyAndOrderFront(nil)
-            window.orderFrontRegardless()
-            NSApp.activate(ignoringOtherApps: true)
-        } else {
-            let window = makeWindow()
-            self.window = window
-            statusStore.setSettingsVisible(true)
-            applyLocalization()
-            enterActivationPolicyIfNeeded()
-            window.makeKeyAndOrderFront(nil)
-            window.orderFrontRegardless()
-            NSApp.activate(ignoringOtherApps: true)
-        }
+        guard let window else { return }
+        window.makeKeyAndOrderFront(nil)
+        window.orderFrontRegardless()
+        NSApp.activate(ignoringOtherApps: true)
     }
 
     private func makeWindow() -> NSWindow {

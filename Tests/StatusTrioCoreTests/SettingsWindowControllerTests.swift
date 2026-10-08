@@ -113,6 +113,110 @@ final class SettingsWindowControllerTests: XCTestCase {
         XCTAssertEqual(volume.detailsVisibility, [true, false])
     }
 
+    func testFirstBluetoothAuthorizationReadDoesNotOpenSettings() throws {
+        for authorization in [BluetoothAuthorizationStatus.allowed, .denied, .restricted] {
+            try withAuthorizationFixture { controller, statusStore, monitor, application in
+                monitor.authorization = authorization
+                statusStore.setPopoverVisible(true)
+                defer {
+                    statusStore.setPopoverVisible(false)
+                    controller.window?.close()
+                }
+
+                XCTAssertTrue(statusStore.isPopoverVisible)
+                XCTAssertEqual(statusStore.bluetoothDevices.authorizationStatus, authorization)
+                XCTAssertNil(controller.window)
+                XCTAssertTrue(application.policies.isEmpty)
+            }
+        }
+    }
+
+    func testBluetoothAuthorizationChangeDoesNotReopenClosedSettings() throws {
+        try withAuthorizationFixture { controller, statusStore, monitor, application in
+            controller.show()
+            try XCTUnwrap(controller.window).close()
+            let policies = application.policies
+
+            monitor.authorization = .allowed
+            statusStore.bluetoothDevices.prepareForPresentation()
+            defer { controller.window?.close() }
+
+            XCTAssertNil(controller.window)
+            XCTAssertEqual(application.policies, policies)
+        }
+    }
+
+    func testPermissionDecisionResurfacesExistingSettingsWindow() throws {
+        try withAuthorizationFixture { controller, statusStore, monitor, application in
+            controller.show()
+            let window = try XCTUnwrap(controller.window)
+            defer { window.close() }
+            window.orderOut(nil)
+            let policies = application.policies
+
+            monitor.authorization = .allowed
+            statusStore.bluetoothDevices.prepareForPresentation()
+
+            XCTAssertTrue(controller.window === window)
+            XCTAssertTrue(window.isVisible)
+            XCTAssertEqual(application.policies, policies)
+        }
+    }
+
+    func testAlreadyKnownAuthorizationDoesNotResurfaceSettingsOnRefresh() throws {
+        try withAuthorizationFixture(initialAuthorization: .allowed) {
+            controller, statusStore, _, _ in
+            controller.show()
+            let window = try XCTUnwrap(controller.window)
+            defer { window.close() }
+            window.orderOut(nil)
+
+            statusStore.bluetoothDevices.prepareForPresentation()
+
+            XCTAssertFalse(window.isVisible)
+        }
+    }
+
+    func testResurfaceDoesNotCreateAnUnopenedSettingsWindow() throws {
+        try withAuthorizationFixture { controller, statusStore, _, application in
+            controller.resurface()
+            defer { controller.window?.close() }
+
+            XCTAssertNil(controller.window)
+            XCTAssertTrue(application.policies.isEmpty)
+        }
+    }
+
+    private func withAuthorizationFixture(
+        initialAuthorization: BluetoothAuthorizationStatus = .notDetermined,
+        _ body: (SettingsWindowController, SystemStatusStore,
+                 SettingsBluetoothStateMonitor, SettingsActivationPolicyApplicationSpy) throws -> Void
+    ) throws {
+        let suiteName = "StatusTrioCoreTests.SettingsAuthorization.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removeTestSuite(named: suiteName) }
+        let monitor = SettingsBluetoothStateMonitor()
+        monitor.authorization = initialAuthorization
+        let bluetooth = BluetoothDeviceController(stateMonitor: monitor)
+        bluetooth.prepareForPresentation()
+        let statusStore = SystemStatusStore(
+            batteryMonitor: NoopBatteryMonitor(),
+            wifiMonitor: NoopWiFiMonitor(),
+            volumeMonitor: NoopVolumeMonitor(),
+            bluetoothDevices: bluetooth
+        )
+        defer { statusStore.stop() }
+        let application = SettingsActivationPolicyApplicationSpy()
+        let controller = SettingsWindowController(
+            store: SettingsStore(defaults: defaults),
+            statusStore: statusStore,
+            localization: Localization(defaults: defaults, preferredLanguages: ["en"]),
+            activationPolicy: AppActivationPolicy(application: application),
+            showIconGuide: {}
+        )
+        try body(controller, statusStore, monitor, application)
+    }
+
     private func makeStatusStore() -> SystemStatusStore {
         SystemStatusStore(
             batteryMonitor: NoopBatteryMonitor(),
@@ -180,4 +284,13 @@ private final class NoopVolumeMonitor: VolumeMonitoring {
     func setDetailsVisible(_ visible: Bool) {
         detailsVisibility.append(visible)
     }
+}
+
+@MainActor
+private final class SettingsBluetoothStateMonitor: BluetoothStateMonitoring {
+    var onStateChange: ((BluetoothAuthorizationStatus, BluetoothManagerState) -> Void)?
+    var authorization: BluetoothAuthorizationStatus = .notDetermined
+
+    func start() {}
+    func stop() {}
 }
