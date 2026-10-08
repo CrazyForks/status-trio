@@ -6,13 +6,13 @@ import Testing
 struct AudioOutputDeviceIconTests {
     @Test("Built-in speakers draw the machine, not a speaker")
     func builtInSpeakersDrawTheMachine() {
-        #expect(candidates(name: "MacBook Pro扬声器", transport: .builtIn, dataSource: .internalSpeaker).first == "macbook")
+        #expect(candidates(name: "MacBook Pro扬声器", transport: .builtIn, dataSource: .internalSpeaker).first == "laptopcomputer")
         #expect(candidates(name: "Mac mini扬声器", transport: .builtIn, dataSource: .internalSpeaker).first == "macmini.gen2")
         #expect(candidates(name: "Mac Studio扬声器", transport: .builtIn, dataSource: .internalSpeaker).first == "macstudio")
         #expect(candidates(name: "Mac Pro扬声器", transport: .builtIn, dataSource: .internalSpeaker).first == "macpro.gen3")
         #expect(candidates(name: "iMac扬声器", transport: .builtIn, dataSource: .internalSpeaker).first == "desktopcomputer")
         // A localized name that does not name the machine falls back to the host.
-        #expect(candidates(name: "内置扬声器", transport: .builtIn, dataSource: .other, host: .unknown).first == "macbook")
+        #expect(candidates(name: "内置扬声器", transport: .builtIn, dataSource: .other, host: .unknown).first == "laptopcomputer")
         #expect(candidates(name: "内置扬声器", transport: .builtIn, dataSource: .other, host: .mini).first == "macmini.gen2")
     }
 
@@ -24,7 +24,7 @@ struct AudioOutputDeviceIconTests {
             host: .laptop,
             isSymbolAvailable: { !unavailable.contains($0) }
         )
-        #expect(resolved == "hifispeaker.fill")
+        #expect(resolved == "laptopcomputer")
         #expect(resolved != "macbook")
     }
 
@@ -147,7 +147,7 @@ struct AudioOutputDeviceIconTests {
                 transport: .builtIn,
                 dataSource: .internalSpeaker,
                 modelUID: "200f 4c"
-            ).first == "macbook"
+            ).first == "laptopcomputer"
         )
     }
 

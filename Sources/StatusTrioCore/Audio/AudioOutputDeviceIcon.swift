@@ -441,13 +441,15 @@ enum AudioOutputDeviceIcon {
         }
     }
 
-    /// `macbook` was introduced after Ventura. Keep a stable, system-visible
-    /// fallback for laptop speakers so an unavailable symbol never renders as
-    /// a blank output row.
+    /// Laptop speakers lead with `laptopcomputer`: it keeps the machine
+    /// silhouette the other hosts use, and because it shipped in macOS 11 it
+    /// renders on Ventura, where the more literal `macbook` (14.0) does not.
+    /// The trailing speaker names keep a system-visible fallback so an
+    /// unavailable symbol never renders as a blank output row.
     private static func builtInSpeakerCandidates(for host: HostMacKind) -> [String] {
         switch host {
         case .laptop:
-            ["macbook", "hifispeaker.fill", "laptopcomputer", "hifispeaker"]
+            ["laptopcomputer", "macbook", "hifispeaker.fill", "hifispeaker"]
         case .mini:
             ["macmini.gen2", "macmini", "desktopcomputer"]
         case .studio:
@@ -457,7 +459,7 @@ enum AudioOutputDeviceIcon {
         case .desktop:
             ["desktopcomputer"]
         case .unknown:
-            ["macbook", "hifispeaker.fill", "laptopcomputer", "desktopcomputer", "hifispeaker"]
+            ["laptopcomputer", "macbook", "hifispeaker.fill", "desktopcomputer", "hifispeaker"]
         }
     }
 

@@ -61,7 +61,7 @@ Ventura ships:
 | `battery.75percent` | 14.0 | `battery.75` |
 | `beats.fitpro` | 14.0 | `beats.headphones` -> `headphones` |
 | `flask.fill` | 14.0 | `testtube.2` |
-| `macbook` | 14.0 | `hifispeaker.fill` -> `laptopcomputer` -> `hifispeaker` |
+| `macbook` | 14.0 | `laptopcomputer` (the laptop speaker chain now leads with it) |
 | `smartphone` | 14.0 | `iphone` |
 | `watch.analog` | 14.0 | `applewatch` -> `clock` |
 | `translate` | 14.4 | `character.bubble` -> `globe` |
