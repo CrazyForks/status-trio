@@ -1074,6 +1074,44 @@ final class BluetoothDeviceListPresentationTests: XCTestCase {
         )
     }
 
+    /// The reported state, run through the same three steps the popover runs:
+    /// the unified model order, the shared cross-source rows, then the
+    /// per-group display pass. The fix first landed in the model alone and the
+    /// display pass put the charged rows back at the bottom.
+    func testPopoverPipelineKeepsChargedNearbyRowsAtTheTopOfTheDisconnectedGroup() {
+        let headset = makeDevice(address: "AA:00:00:00:00:0D", name: "EDIFIER LolliPods", isConnected: false)
+        let mouse = makeDevice(address: "AA:00:00:00:00:0E", name: "M585/M590", isConnected: false)
+        let iPhoneID = UUID(uuidString: "00000000-0000-0000-0000-0000000000A5")!
+        let iPadID = UUID(uuidString: "00000000-0000-0000-0000-0000000000A6")!
+        let iPhone = makeSelectedBLERow(name: "Ling's iPhone", id: iPhoneID)
+        let iPad = makeSelectedBLERow(name: "Lingsipad", id: iPadID)
+        let nearbyRows = [
+            NearbyBLEPanelRow(id: iPhoneID, device: iPhone, batteryLevel: 36,
+                              wasSeenRecently: false, readFailed: false),
+            NearbyBLEPanelRow(id: iPadID, device: iPad, batteryLevel: 35,
+                              wasSeenRecently: false, readFailed: false)
+        ]
+        // Both charged rows were appended to the saved order after the
+        // accessories, so a saved-order-first pass buries them.
+        let order = [headset.id, mouse.id, iPhone.id, iPad.id]
+
+        let model = BluetoothDeviceListModel.make(
+            devices: [headset, mouse], nearbyRows: nearbyRows,
+            order: order, limit: 10, isExpanded: true, options: .standard
+        )
+        let levels = BluetoothDeviceListPresentation.includingRowBatteryLevels([:], nearbyRows: nearbyRows)
+        let rows = BluetoothDeviceListPresentation.sharedDisplayRows(model.orderedDevices)
+        let disconnected = rows.filter { !$0.device.isConnected }
+        let finalRows = BluetoothDeviceListPresentation.orderedDisplayRows(
+            disconnected, using: order, batteryLevels: levels
+        )
+
+        XCTAssertEqual(
+            finalRows.map(\.device.name),
+            ["Ling's iPhone", "Lingsipad", "EDIFIER LolliPods", "M585/M590"]
+        )
+    }
+
     func testAConnectedDeviceStillLeadsAReading() {
         let devices = [
             makeReadingDevice(address: "CB-1", name: "Ling's iPhone"),
