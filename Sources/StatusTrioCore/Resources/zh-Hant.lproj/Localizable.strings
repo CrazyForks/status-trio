@@ -249,6 +249,7 @@
 "wifi.power" = "Wi-Fi";
 "wifi.refresh" = "重新整理網路";
 "wifi.knownNetworks" = "已知網路";
+"wifi.personalHotspot" = "個人熱點";
 "wifi.otherNetworks" = "其他網路";
 "wifi.scanning" = "正在掃描網路…";
 "wifi.noNetworks" = "找不到附近的網路。";

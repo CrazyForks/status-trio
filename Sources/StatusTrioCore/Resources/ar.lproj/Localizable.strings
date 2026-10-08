@@ -249,6 +249,7 @@
 "wifi.power" = "Wi-Fi";
 "wifi.refresh" = "تحديث الشبكات";
 "wifi.knownNetworks" = "الشبكات المعروفة";
+"wifi.personalHotspot" = "نقطة الاتصال الشخصية";
 "wifi.otherNetworks" = "شبكات أخرى";
 "wifi.scanning" = "جارٍ البحث عن الشبكات…";
 "wifi.noNetworks" = "لم يتم العثور على شبكات قريبة.";

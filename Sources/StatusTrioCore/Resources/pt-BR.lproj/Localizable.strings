@@ -249,6 +249,7 @@
 "wifi.power" = "Wi-Fi";
 "wifi.refresh" = "Atualizar redes";
 "wifi.knownNetworks" = "Redes conhecidas";
+"wifi.personalHotspot" = "Acesso Pessoal";
 "wifi.otherNetworks" = "Outras redes";
 "wifi.scanning" = "Procurando redes…";
 "wifi.noNetworks" = "Nenhuma rede próxima encontrada.";

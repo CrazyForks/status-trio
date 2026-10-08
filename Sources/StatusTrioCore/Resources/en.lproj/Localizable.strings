@@ -249,6 +249,7 @@
 "wifi.power" = "Wi-Fi";
 "wifi.refresh" = "Refresh networks";
 "wifi.knownNetworks" = "Known Networks";
+"wifi.personalHotspot" = "Personal Hotspot";
 "wifi.otherNetworks" = "Other Networks";
 "wifi.scanning" = "Scanning for networks…";
 "wifi.noNetworks" = "No nearby networks found.";

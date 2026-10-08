@@ -716,3 +716,15 @@ swift-testing 380 项 0 失败、`swift build -c release` 通过。
 （`version=1.3.3`、`build=17`、`publish=false`，head `5f3f8ea`），5m39s 全绿：
 `Run tests`、通用 release 构建/签名、`Upload release artifacts` 全部成功。这才是随 main 一起落地的验证；
 两轮预检都只构建并上传预检产物，没有发布正式版本。
+
+## 37641006582：个人热点分组预检因缺少 1.4.1 发布说明中止
+
+个人热点分组提交 `e62db3b` 的首次非发布预检
+[`37641006582`](https://github.com/lingyired/status-trio/actions/runs/37641006582)
+使用 `version=1.4.1`、`build=18`、`publish=false`，在
+`Build, sign, notarize, and publish` 阶段失败。
+
+- **根因**：仓库缺少 `release-notes/1.4.1/`。前置 `Validate appcast notes` 允许非发布预检在目录不存在时跳过校验，但 `scripts/release.sh` 的目录检查仍要求该目录存在，因此在进入 release 构建、签名和 DMG 打包之前中止。此次失败不涉及 Swift 代码或工具链兼容性。
+- **修复**：新增 `release-notes/1.4.1/en.md` 与 `release-notes/1.4.1/zh-Hans.md`，标题均包含 `%VERSION%` 与 `%BUILD%` 占位符；说明仅描述已连接且被识别的个人热点分组，未连接网络的发现与分组保持不变。不修改产品代码、工作流或应用版本元数据。
+- **首轮验证结果**：该 run 的 `Run tests` 全部通过；打包阶段因上述发布说明目录缺失而停止，尚未完成 release 构建、签名、DMG 打包和预检产物上传验证。
+- **后续验证**：修复后的非发布预检 [`37642150046`](https://github.com/lingyired/status-trio/actions/runs/37642150046)（head `eb8f644`，`version=1.4.1`、`build=18`、`publish=false`）全绿，耗时 15m6s：说明校验、全量测试、arm64/x86_64 通用 release 构建、Ad-hoc 签名验证、`LC_BUILD_VERSION` 检查、`StatusTrio-1.4.1.dmg` 打包与 artifact 上传全部通过。本次没有创建 GitHub Release 或更新 appcast；后续提交仅补充本条验证记录，不改变已验证的产品代码。

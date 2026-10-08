@@ -249,6 +249,7 @@
 "wifi.power" = "Wi-Fi";
 "wifi.refresh" = "Обновить сети";
 "wifi.knownNetworks" = "Известные сети";
+"wifi.personalHotspot" = "Режим модема";
 "wifi.otherNetworks" = "Другие сети";
 "wifi.scanning" = "Поиск сетей…";
 "wifi.noNetworks" = "Поблизости сети не найдены.";

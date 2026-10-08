@@ -14,7 +14,7 @@ struct WiFiNetworkListView: View {
     @State private var showsDetails = false
 
     var body: some View {
-        let grouped = WiFiNetworkPresentation.grouped(controller.networks)
+        let grouped = WiFiNetworkPresentation.grouped(controller.networks, wifiState: wifi.state)
         VStack(alignment: .leading, spacing: 12) {
             header
             Toggle(
@@ -28,10 +28,19 @@ struct WiFiNetworkListView: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 10) {
-                    knownNetworksSection(grouped.known)
+                    personalHotspotSection(
+                        grouped.personalHotspot,
+                        ownsConnectionDetails: WiFiNetworkPresentation.detailsSection(for: wifi.state) == .personalHotspot
+                    )
+                    knownNetworksSection(
+                        grouped.known,
+                        ownsConnectionDetails: WiFiNetworkPresentation.detailsSection(for: wifi.state) == .known
+                    )
                     otherNetworksSection(grouped.other)
                     stateMessage(
-                        hasVisibleNetworks: !grouped.known.isEmpty || !grouped.other.isEmpty
+                        hasVisibleNetworks: !grouped.personalHotspot.isEmpty
+                            || !grouped.known.isEmpty
+                            || !grouped.other.isEmpty
                     )
                 }
             }
@@ -69,8 +78,34 @@ struct WiFiNetworkListView: View {
     }
 
     @ViewBuilder
-    private func knownNetworksSection(_ networks: [WiFiNetwork]) -> some View {
-        if !networks.isEmpty || controller.details.ssid != nil {
+    private func personalHotspotSection(
+        _ networks: [WiFiNetwork],
+        ownsConnectionDetails: Bool
+    ) -> some View {
+        if !networks.isEmpty || (ownsConnectionDetails && controller.details.ssid != nil) {
+            Text(localization.string(.wifiPersonalHotspot))
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            ForEach(networks) { network in
+                networkRow(network)
+            }
+
+            if networks.contains(where: \.isConnected) || (ownsConnectionDetails && controller.details.ssid != nil) {
+                WiFiDetailsToggleRow(isExpanded: $showsDetails)
+
+                if showsDetails {
+                    WiFiDetailsView(details: controller.details)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func knownNetworksSection(
+        _ networks: [WiFiNetwork],
+        ownsConnectionDetails: Bool
+    ) -> some View {
+        if !networks.isEmpty || (ownsConnectionDetails && controller.details.ssid != nil) {
             Text(localization.string(.wifiKnownNetworks))
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
@@ -78,7 +113,7 @@ struct WiFiNetworkListView: View {
                 networkRow(network)
             }
 
-            if networks.contains(where: \.isConnected) || controller.details.ssid != nil {
+            if ownsConnectionDetails && (networks.contains(where: \.isConnected) || controller.details.ssid != nil) {
                 WiFiDetailsToggleRow(isExpanded: $showsDetails)
 
                 if showsDetails {
@@ -162,9 +197,15 @@ struct WiFiNetworkListView: View {
                         .foregroundStyle(.secondary)
                         .accessibilityHidden(true)
                 }
-                networkSignalIcon(for: network.rssi)
-                    .foregroundStyle(.secondary)
-                    .accessibilityHidden(true)
+                if let symbol = WiFiNetworkPresentation.trailingSymbol(for: network, wifiState: wifi.state) {
+                    Image(systemName: symbol)
+                        .foregroundStyle(.secondary)
+                        .accessibilityHidden(true)
+                } else {
+                    networkSignalIcon(for: network.rssi)
+                        .foregroundStyle(.secondary)
+                        .accessibilityHidden(true)
+                }
             }
             .contentShape(Rectangle())
         }
