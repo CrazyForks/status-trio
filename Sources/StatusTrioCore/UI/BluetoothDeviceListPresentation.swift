@@ -11,6 +11,7 @@ struct BluetoothDeviceListModel: Equatable {
         devices: [BluetoothDevice],
         nearbyRows: [NearbyBLEPanelRow] = [],
         appleRows: [AppleDevicePanelRow] = [],
+        batteryLevels: [String: BluetoothBatteryLevel] = [:],
         order: [String],
         limit: Int,
         isExpanded: Bool,
@@ -30,7 +31,11 @@ struct BluetoothDeviceListModel: Equatable {
         )
         let unifiedDevices = rawDevices
         let filteredDevices = BluetoothDeviceListPresentation.filteredDevices(unifiedDevices, options: options)
-        let orderedDevices = BluetoothDeviceListPresentation.orderedDevices(filteredDevices, using: order)
+        let orderedDevices = BluetoothDeviceListPresentation.orderedDevices(
+            filteredDevices,
+            using: order,
+            batteryLevels: batteryLevels
+        )
         return BluetoothDeviceListModel(
             orderedDevices: orderedDevices,
             visibleDevices: BluetoothDeviceListPresentation.visibleDevices(
@@ -284,17 +289,46 @@ enum BluetoothDeviceListPresentation {
     ///
     /// Every row in a group follows the same saved identity order, regardless
     /// of which provider supplied its metadata or battery value.
+    ///
+    /// Within each group a device the list can draw a battery level for leads
+    /// the devices without one: the level is the row's reason to exist for the
+    /// reader, so a phone with a live reading outranks a headset macOS reports
+    /// no charge for. The saved order still ranks inside this battery group.
     static func orderedDevices(
         _ devices: [BluetoothDevice],
-        using order: [String]
+        using order: [String],
+        batteryLevels: [String: BluetoothBatteryLevel] = [:]
     ) -> [BluetoothDevice] {
         let groups = BluetoothDevicePresentation.grouped(devices)
-        return ranked(groups.connected, using: order) + ranked(groups.disconnected, using: order)
+        return batteryRankedList(groups.connected, using: order, batteryLevels: batteryLevels)
+            + batteryRankedList(groups.disconnected, using: order, batteryLevels: batteryLevels)
+    }
+
+    private static func batteryRankedList(
+        _ devices: [BluetoothDevice],
+        using order: [String],
+        batteryLevels: [String: BluetoothBatteryLevel]
+    ) -> [BluetoothDevice] {
+        let withLevels = devices.filter { hasReportedBatteryLevel($0, batteryLevels: batteryLevels) }
+        let withoutLevels = devices.filter { !hasReportedBatteryLevel($0, batteryLevels: batteryLevels) }
+        return ranked(withLevels, using: order) + ranked(withoutLevels, using: order)
+    }
+
+    /// Whether the row can draw any battery reading at all: a device with no
+    /// channel the report or a fallback carries is the one that loses the
+    /// battery-first ordering inside its connection group.
+    private static func hasReportedBatteryLevel(
+        _ device: BluetoothDevice,
+        batteryLevels: [String: BluetoothBatteryLevel]
+    ) -> Bool {
+        guard let level = batteryLevels[BluetoothBatteryReader.normalizedAddress(device.id)] else { return false }
+        return level.main != nil || level.left != nil || level.right != nil || level.caseLevel != nil
     }
 
     static func orderedDisplayRows(
         _ rows: [BluetoothDisplayRow],
-        using order: [String]
+        using order: [String],
+        batteryLevels: [String: BluetoothBatteryLevel] = [:]
     ) -> [BluetoothDisplayRow] {
         let rankByKey = Dictionary(order.enumerated().map {
             (BluetoothDeviceIdentity.preferenceKey($0.element), $0.offset)
@@ -303,8 +337,25 @@ enum BluetoothDeviceListPresentation {
             let left = lhs.element.sourceIDs.compactMap { rankByKey[BluetoothDeviceIdentity.preferenceKey($0)] }.min() ?? Int.max
             let right = rhs.element.sourceIDs.compactMap { rankByKey[BluetoothDeviceIdentity.preferenceKey($0)] }.min() ?? Int.max
             if left != right { return left < right }
+            // Cross-source rows can carry their level under an alias, so the
+            // battery test reads every source the row draws from.
+            let leftHasLevel = hasReportedBatteryLevel(lhs.element, batteryLevels: batteryLevels)
+            let rightHasLevel = hasReportedBatteryLevel(rhs.element, batteryLevels: batteryLevels)
+            if leftHasLevel != rightHasLevel {
+                return leftHasLevel
+            }
             return lhs.offset < rhs.offset
         }.map(\.element)
+    }
+
+    private static func hasReportedBatteryLevel(
+        _ row: BluetoothDisplayRow,
+        batteryLevels: [String: BluetoothBatteryLevel]
+    ) -> Bool {
+        row.sourceIDs.contains { sourceID in
+            guard let level = batteryLevels[BluetoothBatteryReader.normalizedAddress(sourceID)] else { return false }
+            return level.main != nil || level.left != nil || level.right != nil || level.caseLevel != nil
+        }
     }
 
     /// Drops manually hidden devices. Profiler ghosts are excluded before this

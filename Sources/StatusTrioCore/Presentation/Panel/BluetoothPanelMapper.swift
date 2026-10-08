@@ -32,6 +32,7 @@ enum BluetoothPanelMapper {
         )
         let list = BluetoothDeviceListModel.make(
             devices: merged.devices,
+            batteryLevels: merged.batteryLevels,
             order: options.order,
             limit: options.maxVisibleDevices,
             isExpanded: isExpanded,

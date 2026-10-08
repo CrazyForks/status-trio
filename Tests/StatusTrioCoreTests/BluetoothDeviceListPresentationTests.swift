@@ -908,6 +908,95 @@ final class BluetoothDeviceListPresentationTests: XCTestCase {
 
     /// A reading leads its own group and no further: a device the report has
     /// connected is still connected, and still first.
+    /// Within the connected group, devices whose battery the row can draw lead
+    /// the devices macOS reports no level for; the AirPods rule still wins among
+    /// rows that both carry a level.
+    func testConnectedDevicesWithBatteryLeadWithinTheirGroup() {
+        let keyboard = BluetoothDevice(
+            id: "AA:00:00:00:00:01", name: "Keyboard", kind: .audio, isConnected: true
+        )
+        let mouse = BluetoothDevice(
+            id: "AA:00:00:00:00:02", name: "Mouse", kind: .audio, isConnected: true
+        )
+        let trackpad = BluetoothDevice(
+            id: "AA:00:00:00:00:03", name: "Trackpad", kind: .audio, isConnected: true
+        )
+        let idle = makeDevice(address: "AA:00:00:00:00:04", name: "Idle", isConnected: false)
+        let levels = [BluetoothBatteryReader.normalizedAddress(mouse.id): BluetoothBatteryLevel(
+            deviceAddress: mouse.id, main: 80, left: nil, right: nil, caseLevel: nil
+        )]
+
+        XCTAssertEqual(
+            BluetoothDeviceListPresentation.orderedDevices(
+                [keyboard, idle, trackpad, mouse], using: [], batteryLevels: levels
+            ).map(\.name),
+            ["Mouse", "Keyboard", "Trackpad", "Idle"]
+        )
+    }
+
+    func testAirPodsWithBatteryStillLeadOtherBatteryRows() {
+        let airpods = BluetoothDevice(
+            id: "AA:00:00:00:00:01", name: "AirPods Pro", kind: .audio, isConnected: true,
+            airPodsModel: AirPodsModel.airPodsPro
+        )
+        let keyboard = BluetoothDevice(
+            id: "AA:00:00:00:00:02", name: "Keyboard", kind: .audio, isConnected: true
+        )
+        let levels = [
+            BluetoothBatteryReader.normalizedAddress(airpods.id): BluetoothBatteryLevel(
+                deviceAddress: airpods.id, main: nil, left: 90, right: 80, caseLevel: 70
+            ),
+            BluetoothBatteryReader.normalizedAddress(keyboard.id): BluetoothBatteryLevel(
+                deviceAddress: keyboard.id, main: 50, left: nil, right: nil, caseLevel: nil
+            )
+        ]
+
+        XCTAssertEqual(
+            BluetoothDeviceListPresentation.orderedDevices(
+                [keyboard, airpods], using: [], batteryLevels: levels
+            ).map(\.name),
+            ["AirPods Pro", "Keyboard"]
+        )
+    }
+
+    func testDisconnectedDevicesWithBatteryLeadDisconnectedGroup() {
+        let phone = makeReadingDevice(address: "CB-1", name: "Phone")
+        let mouse = makeDevice(address: "AA:00:00:00:00:02", name: "Mouse", isConnected: false)
+        let levels = [BluetoothBatteryReader.normalizedAddress(phone.id): BluetoothBatteryLevel(
+            deviceAddress: phone.id, main: 65, left: nil, right: nil, caseLevel: nil
+        )]
+
+        XCTAssertEqual(
+            BluetoothDeviceListPresentation.orderedDevices(
+                [mouse, phone], using: [], batteryLevels: levels
+            ).map(\.name),
+            ["Phone", "Mouse"]
+        )
+    }
+
+    func testCrossSourceRowBatteryAliasCountsForOrdering() {
+        let bleID = UUID(uuidString: "00000000-0000-0000-0000-000000000099")!
+        let ble = BluetoothDevice(
+            id: BluetoothDeviceIdentity.bleRowID(bleID), name: "Phone", kind: .mobile(.phone),
+            isConnected: false, appleMobileModel: "iPhone18,1", isReadOverTheAir: true
+        )
+        let system = makeDevice(address: "AA:00:00:00:00:05", name: "Phone", isConnected: false)
+        let rows = BluetoothDeviceListPresentation.sharedDisplayRows([system, ble])
+        XCTAssertEqual(rows.count, 2, "same name alone never merges; keep both rows")
+        let keyboardRow = BluetoothDisplayRow(
+            device: makeDevice(address: "AA:00:00:00:00:06", name: "Keyboard", isConnected: false),
+            sourceIDs: ["AA:00:00:00:00:06"]
+        )
+        let levels = [BluetoothBatteryReader.normalizedAddress(ble.id): BluetoothBatteryLevel(
+            deviceAddress: ble.id, main: 60, left: nil, right: nil, caseLevel: nil
+        )]
+        let batteryRow = rows.first { $0.device.id == ble.id }!
+        let ordered = BluetoothDeviceListPresentation.orderedDisplayRows(
+            [keyboardRow, batteryRow], using: [], batteryLevels: levels
+        )
+        XCTAssertEqual(ordered.first?.device.id, batteryRow.device.id)
+    }
+
     func testAConnectedDeviceStillLeadsAReading() {
         let devices = [
             makeReadingDevice(address: "CB-1", name: "Ling's iPhone"),

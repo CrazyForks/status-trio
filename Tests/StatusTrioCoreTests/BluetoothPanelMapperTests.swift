@@ -331,15 +331,14 @@ final class BluetoothPanelMapperTests: XCTestCase {
             localization: makeLocalization()
         )
 
-        // 1.5.0 keeps main's list rule: the saved order only reorders devices
-        // within their group, so the synthesized mobile row — which has no
-        // saved rank — lands after the ranked rows.
-        XCTAssertEqual(state.pairedRows.map(\.title), ["Mouse", "Headphones", "Travel Phone"])
-        guard let mobileRow = state.pairedRows.last else {
+        // The saved order only reorders devices within their group, and a row
+        // the list can draw a battery for leads rows without one: the phone's
+        // live reading outranks the unranked peripherals despite no saved rank.
+        XCTAssertEqual(state.pairedRows.map(\.title), ["Travel Phone", "Mouse", "Headphones"])
+        guard let mobileRow = state.pairedRows.first(where: { $0.title == "Travel Phone" }) else {
             XCTFail("the synthesized mobile row is missing")
             return
         }
-        XCTAssertEqual(mobileRow.title, "Travel Phone")
         XCTAssertFalse(mobileRow.isActionable)
         XCTAssertFalse(mobileRow.actionEnabled)
     }

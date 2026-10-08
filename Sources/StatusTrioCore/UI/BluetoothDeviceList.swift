@@ -37,6 +37,7 @@ struct BluetoothDeviceList: View {
             devices: devices,
             nearbyRows: nearbyRows,
             appleRows: appleRows,
+            batteryLevels: batteryLevels,
             order: options.order,
             limit: Int.max,
             isExpanded: true,
@@ -50,8 +51,8 @@ struct BluetoothDeviceList: View {
             }
         let connected = rows.filter { $0.device.isConnected }
         let disconnected = rows.filter { !$0.device.isConnected }
-        return BluetoothDeviceListPresentation.orderedDisplayRows(connected, using: options.order)
-            + BluetoothDeviceListPresentation.orderedDisplayRows(disconnected, using: options.order)
+        return BluetoothDeviceListPresentation.orderedDisplayRows(connected, using: options.order, batteryLevels: batteryLevels)
+            + BluetoothDeviceListPresentation.orderedDisplayRows(disconnected, using: options.order, batteryLevels: batteryLevels)
     }
 
     private static let geometryCoordinateSpace = "BluetoothDeviceList"
