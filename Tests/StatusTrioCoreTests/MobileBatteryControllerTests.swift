@@ -956,9 +956,18 @@ private actor ControlledMobileBatterySleeper {
         }
     }
 
+    private func approximatelyMatches(_ lhs: Duration, _ rhs: Duration) -> Bool {
+        func seconds(_ duration: Duration) -> Double {
+            let components = duration.components
+            return Double(components.seconds)
+                + Double(components.attoseconds) / 1_000_000_000_000_000_000
+        }
+        return abs(seconds(lhs) - seconds(rhs)) < 0.01
+    }
+
     func waitForDuration(_ duration: Duration, timeout: Duration = .seconds(5)) async {
         let deadline = ContinuousClock.now + timeout
-        while !continuations.values.contains(where: { $0.duration == duration }),
+        while !continuations.values.contains(where: { approximatelyMatches($0.duration, duration) }),
               ContinuousClock.now < deadline {
             await Task.yield()
         }
@@ -966,7 +975,7 @@ private actor ControlledMobileBatterySleeper {
 
     func waitForRequestCount(_ count: Int, duration: Duration, timeout: Duration = .seconds(5)) async {
         let deadline = ContinuousClock.now + timeout
-        while requestedDurations.filter({ $0 == duration }).count < count,
+        while requestedDurations.filter({ approximatelyMatches($0, duration) }).count < count,
               ContinuousClock.now < deadline {
             await Task.yield()
         }
@@ -974,18 +983,18 @@ private actor ControlledMobileBatterySleeper {
 
     func waitForActiveRequestCount(_ count: Int, duration: Duration, timeout: Duration = .seconds(5)) async {
         let deadline = ContinuousClock.now + timeout
-        while continuations.values.filter({ $0.duration == duration }).count != count,
+        while continuations.values.filter({ approximatelyMatches($0.duration, duration) }).count != count,
               ContinuousClock.now < deadline {
             await Task.yield()
         }
     }
 
     func requestCount(for duration: Duration) -> Int {
-        requestedDurations.filter { $0 == duration }.count
+        requestedDurations.filter { approximatelyMatches($0, duration) }.count
     }
 
     func hasActiveRequest(for duration: Duration) -> Bool {
-        continuations.values.contains { $0.duration == duration }
+        continuations.values.contains { approximatelyMatches($0.duration, duration) }
     }
 
     func fire(duration: Duration) {

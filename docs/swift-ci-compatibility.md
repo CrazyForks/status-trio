@@ -747,14 +747,15 @@ macOS 13 兼容性分支 `codex/macos13-compatibility` 的首次 non-publishing 
   打包、`Verify Ventura binary metadata` 和 artifact 上传全部通过；`publish=false` 未创建 GitHub Release，
   也未更新 appcast。
 
-## 37763140072 / 37763923306：macOS 13 review-fix 预检在既有 Watch 重试测试上失败
+## 37763140072 / 37763923306 / 37765173557：macOS 13 review-fix 预检在既有 Watch 重试测试上失败
 
-macOS 13 review-fix 分支的两个 `publish=false` 预检
-[`37763140072`](https://github.com/lingyired/status-trio/actions/runs/37763140072)（head `29bad4e`）和
-[`37763923306`](https://github.com/lingyired/status-trio/actions/runs/37763923306)（head `97323cf`）
+macOS 13 review-fix 分支的三个 `publish=false` 预检
+[`37763140072`](https://github.com/lingyired/status-trio/actions/runs/37763140072)（head `29bad4e`）、
+[`37763923306`](https://github.com/lingyired/status-trio/actions/runs/37763923306)（head `97323cf`）和
+[`37765173557`](https://github.com/lingyired/status-trio/actions/runs/37765173557)（head `88848ff`）
 都在 `Run tests` 阶段失败，均为 `MobileBatteryControllerTests.testMissingWatchRetryBudgetSurvivesRepublishedDemandAndBackgroundToggle` 的第 416 行断言：`configuredRefreshRequests` 为 `0`，期望 `1`。其余步骤未执行。
 
 - **失败阶段**：`Run tests`。
-- **根因**：测试辅助 actor 的 `waitForRequestCount` 只做 1000 次 `Task.yield()`，CI 调度慢时会在条件尚未满足时静默返回；随后立即读取计数得到 `0`。这是测试等待逻辑的时序竞态，不是 `MobileBatteryController` 的 API/行为回归。
-- **修复**：把 `waitForDuration`、`waitForRequestCount`、`waitForActiveRequestCount` 改为带真实 `ContinuousClock` deadline 的有界等待，并保持 `Task.yield()` 让被测任务获得调度机会；不改变生产代码。
-- **后续验证**：第三个 `publish=false` 预检必须覆盖同一测试；若仍失败，则继续按测试调度逻辑排查，不将其归为 flaky。
+- **根因**：测试用精确 `Duration == .seconds(600)` 匹配调度请求；控制器把剩余刷新时间换算为毫秒并向上取整，CI 调度延迟会把它变成 `599.999s` 一类的近似值。测试等待和计数因此看不到目标请求，随后读取到 `0`。这是测试等待逻辑的时间精度问题，不是 `MobileBatteryController` 的 API/行为回归。
+- **修复**：测试辅助 actor 的 duration 等待、活跃请求和计数改为 10ms 容差，并保留有界 `ContinuousClock` deadline；只修改测试 helper，不改生产调度代码。
+- **后续验证**：第四个 `publish=false` 预检必须覆盖同一测试；该失败不按 flaky 处理。
