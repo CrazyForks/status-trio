@@ -156,10 +156,27 @@ jobs:
 
           CERT_PATH="${RUNNER_TEMP}/developer-id.p12"
           KEYCHAIN_PATH="${RUNNER_TEMP}/app-signing.keychain-db"
+          KEYCHAIN_LIST_BACKUP="${RUNNER_TEMP}/app-signing-keychains.original"
+          KEYCHAIN_LIST_PARSED="${RUNNER_TEMP}/app-signing-keychains.parsed"
           KEYCHAIN_PASSWORD="$(openssl rand -hex 24)"
-          trap 'rm -f "${CERT_PATH:-}"' EXIT
+          SMOKE_PATH="${RUNNER_TEMP}/codesign-smoke"
+          trap 'rm -f "${CERT_PATH:-}" "${SMOKE_PATH:-}" "${KEYCHAIN_LIST_PARSED:-}"' EXIT
           # The always-run cleanup step also handles partial keychain setup.
           echo "KEYCHAIN_PATH=${KEYCHAIN_PATH}" >> "${GITHUB_ENV}"
+
+          security list-keychains -d user > "${KEYCHAIN_LIST_BACKUP}"
+          ruby -rjson -e '
+            File.foreach(ARGV[0]) { |line| STDOUT.write(JSON.parse(line), "\0") }
+          ' "${KEYCHAIN_LIST_BACKUP}" > "${KEYCHAIN_LIST_PARSED}"
+          ORIGINAL_KEYCHAINS=()
+          while IFS= read -r -d '' keychain; do
+            ORIGINAL_KEYCHAINS+=("${keychain}")
+          done < "${KEYCHAIN_LIST_PARSED}"
+          if [[ "${#ORIGINAL_KEYCHAINS[@]}" -eq 0 ]]; then
+            echo "::error::Could not read the existing user keychain search list; refusing to replace it."
+            exit 1
+          fi
+          echo "KEYCHAIN_LIST_BACKUP=${KEYCHAIN_LIST_BACKUP}" >> "${GITHUB_ENV}"
 
           printf '%s' "${DEVELOPER_ID_CERTIFICATE_P12}" | base64 -D > "${CERT_PATH}"
 
@@ -189,6 +206,19 @@ jobs:
             echo "::error::No Developer ID Application identity was found in the imported certificate."
             exit 1
           fi
+
+          security list-keychains -d user -s "${KEYCHAIN_PATH}" "${ORIGINAL_KEYCHAINS[@]}"
+
+          cp /usr/bin/true "${SMOKE_PATH}"
+          if ! /usr/bin/codesign --force --sign "${IDENTITY}" "${SMOKE_PATH}"; then
+            echo "::error::Developer ID identity could not sign the disposable codesign smoke-test binary."
+            exit 1
+          fi
+          if ! /usr/bin/codesign --verify --strict "${SMOKE_PATH}"; then
+            echo "::error::Developer ID codesign smoke-test binary did not verify."
+            exit 1
+          fi
+          rm -f "${SMOKE_PATH}"
 
           {
             echo "CODE_SIGN_IDENTITY=${IDENTITY}"
@@ -331,6 +361,32 @@ jobs:
         if: always() && env.KEYCHAIN_PATH != ''
         run: |
           set -euo pipefail
-          if [[ -n "${KEYCHAIN_PATH}" && -f "${KEYCHAIN_PATH}" ]]; then
-            security delete-keychain "${KEYCHAIN_PATH}"
+          CLEANUP_STATUS=0
+          if [[ -n "${KEYCHAIN_LIST_BACKUP:-}" && -f "${KEYCHAIN_LIST_BACKUP}" ]]; then
+            KEYCHAIN_LIST_PARSED="${RUNNER_TEMP}/app-signing-keychains.restore"
+            if ruby -rjson -e '
+              File.foreach(ARGV[0]) { |line| STDOUT.write(JSON.parse(line), "\0") }
+            ' "${KEYCHAIN_LIST_BACKUP}" > "${KEYCHAIN_LIST_PARSED}"; then
+              ORIGINAL_KEYCHAINS=()
+              while IFS= read -r -d '' keychain; do
+                ORIGINAL_KEYCHAINS+=("${keychain}")
+              done < "${KEYCHAIN_LIST_PARSED}"
+              if [[ "${#ORIGINAL_KEYCHAINS[@]}" -gt 0 ]] && security list-keychains -d user -s "${ORIGINAL_KEYCHAINS[@]}"; then
+                rm -f "${KEYCHAIN_LIST_BACKUP}"
+              else
+                echo "::error::Could not restore the original user keychain search list."
+                CLEANUP_STATUS=1
+              fi
+            else
+              echo "::error::Could not parse the saved user keychain search list."
+              CLEANUP_STATUS=1
+            fi
+            rm -f "${KEYCHAIN_LIST_PARSED}"
           fi
+          if [[ -n "${KEYCHAIN_PATH}" && -f "${KEYCHAIN_PATH}" ]]; then
+            if ! security delete-keychain "${KEYCHAIN_PATH}"; then
+              echo "::error::Could not delete the temporary signing keychain."
+              CLEANUP_STATUS=1
+            fi
+          fi
+          exit "${CLEANUP_STATUS}"

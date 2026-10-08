@@ -18,8 +18,21 @@ ruby -ryaml -rjson -e '
   steps = job.fetch("steps")
   ["Validate notarization test mode", "Configure Developer ID signing", "Configure Apple notarization"].each do |name|
     step = steps.find { |candidate| candidate["name"] == name }
-    File.write(File.join(ENV.fetch("TEST_ROOT"), name + ".sh"), step ? step.fetch("run") : "")
+    script = step ? step.fetch("run") : ""
+    script = script.gsub("/usr/bin/codesign", "codesign") if name == "Configure Developer ID signing"
+    File.write(File.join(ENV.fetch("TEST_ROOT"), name + ".sh"), script)
   end
+  signing_step = steps.find { |candidate| candidate["name"] == "Configure Developer ID signing" } || abort("missing signing setup step")
+  signing_script = signing_step.fetch("run")
+  ["security list-keychains -d user", "security list-keychains -d user -s", "/usr/bin/true", "codesign --force --sign"].each do |required|
+    abort "Developer ID setup must register and smoke-test its identity (missing #{required})" unless signing_script.include?(required)
+  end
+  backup_step = steps.find { |candidate| candidate["name"] == "Clean up signing keychain" } || abort("missing signing cleanup step")
+  backup_script = backup_step.fetch("run")
+  ["KEYCHAIN_LIST_BACKUP", "security list-keychains -d user -s", "security delete-keychain"].each do |required|
+    abort "signing cleanup must restore and delete temporary keychain (missing #{required})" unless backup_script.include?(required)
+  end
+  File.write(File.join(ENV.fetch("TEST_ROOT"), "Clean up signing keychain.sh"), backup_script)
   ["Configure Developer ID signing", "Configure Apple notarization"].each do |name|
     step = steps.find { |candidate| candidate["name"] == name } || abort("missing step #{name}")
     guard = step.fetch("if", "")
@@ -71,9 +84,34 @@ cat > "$TEST_ROOT/bin/tool" <<'TOOL'
 set -euo pipefail
 name="$(basename "$0")"
 printf '%s' "$name" >> "$TRACE"
-printf ' <%s>' "$@" >> "$TRACE"
+previous=''
+for argument in "$@"; do
+    if [[ "$name" == security && "$previous" == -p || "$name" == security && "$previous" == -P || "$name" == security && "$previous" == -k ]]; then
+        printf ' <REDACTED>' >> "$TRACE"
+    else
+        printf ' <%s>' "$argument" >> "$TRACE"
+    fi
+    previous="$argument"
+done
 printf '\n' >> "$TRACE"
 case "$name" in
+    security)
+        case "$1" in
+            create-keychain) touch "${!#}" ;;
+            list-keychains)
+                if [[ "$*" == 'list-keychains -d user' ]]; then
+                    printf '"%s"\n"%s"\n' "$ORIGINAL_KEYCHAIN_ONE" "$ORIGINAL_KEYCHAIN_TWO"
+                else
+                    if [[ "${FAIL_SEARCH_RESTORE:-false}" == true && "$*" != *app-signing.keychain-db* ]]; then exit 43; fi
+                    shift 4
+                    printf '%s\n' "$@" > "$SEARCH_LIST"
+                fi ;;
+            find-identity)
+                echo '  1) 0123456789ABCDEF0123456789ABCDEF01234567 "Developer ID Application: Fixture (TEAM123456)"'
+                echo '     1 valid identities found' ;;
+        esac ;;
+    codesign)
+        if [[ "${SMOKE_CODESIGN_FAIL:-false}" == true && "$*" == *codesign-smoke* ]]; then exit 42; fi ;;
     hdiutil) touch "${!#}" ;;
     ditto)
         if [[ "$1" != '-c' ]]; then cp -R "$1" "$2"; else touch "${!#}"; fi ;;
@@ -85,7 +123,7 @@ case "$name" in
 esac
 TOOL
 chmod +x "$TEST_ROOT/bin/tool"
-for command in swift hdiutil ditto codesign xcrun spctl plutil xmllint gh sign_update shasum; do
+for command in swift hdiutil ditto codesign xcrun spctl plutil xmllint gh sign_update shasum security openssl; do
     ln -s tool "$TEST_ROOT/bin/$command"
 done
 ln -s /bin/bash "$TEST_ROOT/bin/bash"
@@ -124,6 +162,86 @@ for missing in key-id issuer-id; do
     fi
 done
 export PATH="$TEST_ROOT/bin:$PATH" TRACE="$TEST_ROOT/trace"
+
+# Signing setup must preserve the existing user search list, register the
+# imported keychain before the real smoke sign, and fail before building if it cannot sign.
+export ORIGINAL_KEYCHAIN_ONE="$TEST_ROOT/login.keychain-db" ORIGINAL_KEYCHAIN_TWO="$TEST_ROOT/System.keychain"
+export SEARCH_LIST="$TEST_ROOT/search-list"
+printf 'fixture' | base64 | tr -d '\n' > "$TEST_ROOT/certificate.p12.base64"
+CERTIFICATE_FIXTURE="$(<"$TEST_ROOT/certificate.p12.base64")"
+: > "$TRACE"
+env PUBLISH=false NOTARIZE=true DEVELOPER_ID_CERTIFICATE_P12="$CERTIFICATE_FIXTURE" \
+    CERTIFICATE_PASSWORD='fixture-password' RUNNER_TEMP="$TEST_ROOT/signing" \
+    GITHUB_ENV="$TEST_ROOT/signing-github-env" SEARCH_LIST="$SEARCH_LIST" TRACE="$TRACE" \
+    ORIGINAL_KEYCHAIN_ONE="$ORIGINAL_KEYCHAIN_ONE" ORIGINAL_KEYCHAIN_TWO="$ORIGINAL_KEYCHAIN_TWO" \
+    mkdir -p "$TEST_ROOT/signing"
+env PUBLISH=false NOTARIZE=true DEVELOPER_ID_CERTIFICATE_P12="$CERTIFICATE_FIXTURE" \
+    CERTIFICATE_PASSWORD='fixture-password' RUNNER_TEMP="$TEST_ROOT/signing" \
+    GITHUB_ENV="$TEST_ROOT/signing-github-env" SEARCH_LIST="$SEARCH_LIST" TRACE="$TRACE" \
+    ORIGINAL_KEYCHAIN_ONE="$ORIGINAL_KEYCHAIN_ONE" ORIGINAL_KEYCHAIN_TWO="$ORIGINAL_KEYCHAIN_TWO" \
+    /bin/bash "$TEST_ROOT/Configure Developer ID signing.sh" > "$TEST_ROOT/signing-setup.log" 2>&1 || {
+        cat "$TEST_ROOT/signing-setup.log" >&2
+        exit 1
+    }
+grep -Fxq "$TEST_ROOT/signing/app-signing.keychain-db" "$SEARCH_LIST" || {
+    echo 'FAIL: temporary signing keychain was not added to the user search list' >&2; cat "$TRACE" >&2; exit 1;
+}
+grep -Fxq "$ORIGINAL_KEYCHAIN_ONE" "$SEARCH_LIST" && grep -Fxq "$ORIGINAL_KEYCHAIN_TWO" "$SEARCH_LIST" || {
+    echo 'FAIL: signing setup did not preserve all original user keychains' >&2; cat "$TRACE" >&2; exit 1;
+}
+ruby -e '
+  lines = File.readlines(ARGV[0])
+  search = lines.index { |line| line.start_with?("security ") && line.include?("<-s>") } or abort "missing search-list update"
+  sign = lines.index { |line| line.start_with?("codesign ") && line.include?("<--sign>") && line.include?("codesign-smoke") } or abort "missing real smoke sign"
+  verify = lines.index { |line| line.start_with?("codesign ") && line.include?("<--verify>") && line.include?("codesign-smoke") } or abort "missing smoke verification"
+  abort "smoke test ran before search-list registration" unless search < sign && sign < verify
+' "$TRACE"
+if grep -q 'fixture-password\|fixture-private-key\|CERTIFICATE_FIXTURE' "$TEST_ROOT/signing-setup.log"; then
+    echo 'FAIL: signing diagnostics exposed fixture credentials' >&2; exit 1
+fi
+
+: > "$TRACE"
+mkdir -p "$TEST_ROOT/signing-fail"
+if env PUBLISH=false NOTARIZE=true DEVELOPER_ID_CERTIFICATE_P12="$CERTIFICATE_FIXTURE" \
+    CERTIFICATE_PASSWORD='fixture-password' RUNNER_TEMP="$TEST_ROOT/signing-fail" \
+    GITHUB_ENV="$TEST_ROOT/signing-fail-github-env" SEARCH_LIST="$SEARCH_LIST" TRACE="$TRACE" \
+    ORIGINAL_KEYCHAIN_ONE="$ORIGINAL_KEYCHAIN_ONE" ORIGINAL_KEYCHAIN_TWO="$ORIGINAL_KEYCHAIN_TWO" \
+    SMOKE_CODESIGN_FAIL=true /bin/bash "$TEST_ROOT/Configure Developer ID signing.sh" \
+    > "$TEST_ROOT/signing-fail.log" 2>&1; then
+    echo 'FAIL: signing setup accepted a failed codesign smoke test' >&2; exit 1
+fi
+grep -q 'disposable codesign smoke-test binary' "$TEST_ROOT/signing-fail.log" || {
+    echo 'FAIL: failed smoke sign did not produce the targeted diagnostic' >&2; cat "$TEST_ROOT/signing-fail.log" >&2; exit 1;
+}
+if grep -q '^build' "$TRACE"; then echo 'FAIL: failed smoke test reached build' >&2; exit 1; fi
+
+env KEYCHAIN_PATH="$TEST_ROOT/signing/app-signing.keychain-db" \
+    KEYCHAIN_LIST_BACKUP="$TEST_ROOT/signing/app-signing-keychains.original" RUNNER_TEMP="$TEST_ROOT/signing" \
+    /bin/bash "$TEST_ROOT/Clean up signing keychain.sh" > "$TEST_ROOT/signing-cleanup.log" 2>&1 || {
+        cat "$TEST_ROOT/signing-cleanup.log" >&2; cat "$TRACE" >&2; exit 1;
+    }
+grep -q '^security <list-keychains> <-d> <user> <-s>' "$TRACE" || {
+    echo 'FAIL: cleanup did not restore the original keychain search list' >&2; cat "$TRACE" >&2; exit 1;
+}
+grep -q '^security <delete-keychain>' "$TRACE" || {
+    echo 'FAIL: cleanup did not delete the temporary keychain' >&2; cat "$TRACE" >&2; exit 1;
+}
+
+: > "$TRACE"
+printf '"%s"\n"%s"\n' "$ORIGINAL_KEYCHAIN_ONE" "$ORIGINAL_KEYCHAIN_TWO" \
+    > "$TEST_ROOT/signing/app-signing-keychains.original"
+if env KEYCHAIN_PATH="$TEST_ROOT/signing/app-signing.keychain-db" \
+    KEYCHAIN_LIST_BACKUP="$TEST_ROOT/signing/app-signing-keychains.original" RUNNER_TEMP="$TEST_ROOT/signing" \
+    FAIL_SEARCH_RESTORE=true /bin/bash "$TEST_ROOT/Clean up signing keychain.sh" \
+    > "$TEST_ROOT/signing-cleanup-failure.log" 2>&1; then
+    echo 'FAIL: cleanup hid a keychain search-list restore failure' >&2; exit 1
+fi
+grep -q '^security <delete-keychain>' "$TRACE" || {
+    echo 'FAIL: temporary keychain deletion was skipped after search-list restore failed' >&2; cat "$TRACE" >&2; exit 1;
+}
+grep -q 'Could not restore the original user keychain search list' "$TEST_ROOT/signing-cleanup-failure.log" || {
+    echo 'FAIL: cleanup did not report search-list restore failure' >&2; cat "$TEST_ROOT/signing-cleanup-failure.log" >&2; exit 1;
+}
 
 : > "$TRACE"
 env PUBLISH=false NOTARIZE=true NOTARY_API_PRIVATE_KEY='fixture-private-key' \
