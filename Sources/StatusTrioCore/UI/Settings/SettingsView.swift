@@ -27,7 +27,7 @@ struct SettingsView: View {
         var symbol: String {
             switch self {
             case .appIcon: return "macwindow.on.rectangle"
-            case .battery: return "battery.100percent"
+            case .battery: return SymbolFallback.name("battery.100percent", "battery.100")
             case .network: return "wifi"
             case .bluetooth: return "wave.3.right.circle.fill"
             case .audio:   return "hifispeaker.fill"

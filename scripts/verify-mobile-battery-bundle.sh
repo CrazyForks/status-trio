@@ -9,7 +9,7 @@ fi
 CONTENTS="$APP/Contents"
 HELPER="$CONTENTS/Helpers/StatusTrioMobileBatteryHelper"
 LIBRARY_DIR="$CONTENTS/Frameworks/MobileBattery"
-EXPECTED_MINOS="15.0"
+EXPECTED_MINOS="13.0"
 
 if [[ ! -x "$HELPER" || ! -d "$LIBRARY_DIR" ]]; then
     echo "Error: the packaged mobile battery helper or its library directory is missing." >&2

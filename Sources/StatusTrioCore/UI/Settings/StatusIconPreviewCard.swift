@@ -23,17 +23,17 @@ struct StatusIconPreviewCard: View {
                 .font(.system(size: 11))
                 .foregroundStyle(.tertiary)
         }
-        .onChange(of: store.showsChargingEffect) { _, isEnabled in
+        .onChange(of: store.showsChargingEffect) { isEnabled in
             if isEnabled {
                 startPreviewIfAllowed()
             } else {
                 previewPlayback.stop()
             }
         }
-        .onChange(of: isLiveChargingActive) { _, isActive in
+        .onChange(of: isLiveChargingActive) { isActive in
             if isActive { previewPlayback.stop() }
         }
-        .onChange(of: reduceMotion) { _, isEnabled in
+        .onChange(of: reduceMotion) { isEnabled in
             if isEnabled {
                 previewPlayback.stop()
             }

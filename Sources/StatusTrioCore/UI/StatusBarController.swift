@@ -262,7 +262,12 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         }
         panelViewModel.start()
         let hostingController = NSHostingController(rootView: rootView)
-        hostingController.sizingOptions = [.preferredContentSize]
+        if #available(macOS 14.0, *) {
+            // The Ventura hosting pass can recurse while AppKit installs the
+            // popover content. Leave sizing to the popover's measured content
+            // there, and keep preferred sizing on the newer path.
+            hostingController.sizingOptions = [.preferredContentSize]
+        }
         popover.contentViewController = hostingController
     }
 
@@ -668,14 +673,14 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
 
     @objc private func handleRequestWiFiNameAccess() {
         popover.performClose(nil)
-        NSApp.activate()
+        NSApp.activate(ignoringOtherApps: true)
         if store.requestWiFiNameAccess() == .openLocationSettings {
             Self.openSystemSettings(Self.locationSettingsURLs)
         }
     }
 
     @objc private func handleRequestBluetoothAuthorization() {
-        NSApp.activate()
+        NSApp.activate(ignoringOtherApps: true)
         store.requestBluetoothAuthorization()
     }
 

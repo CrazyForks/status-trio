@@ -100,6 +100,16 @@ struct BatteryDetailsReader: Sendable {
             cycleCount: (registry["CycleCount"] as? Int).flatMap { $0 >= 0 ? $0 : nil },
             systemPower: systemPower
         )
+        // A connected Mac can report useful whole-system power even when the
+        // battery current is zero or negative because the pack is no longer
+        // charging (common on Intel Macs at the charge limit or with an
+        // undersized adapter). Treat the system sample as the authoritative
+        // connected-power reading and keep the battery sample optional.
+        if state.isConnected, let systemPower {
+            result.powerAvailability = .available
+            result.systemPower = systemPower
+        }
+
         guard let millivolts = (registry["Voltage"] as? NSNumber)?.doubleValue,
               let current = registry["Amperage"] as? NSNumber,
               CFGetTypeID(current) != CFBooleanGetTypeID(),
@@ -108,11 +118,15 @@ struct BatteryDetailsReader: Sendable {
               millivolts.isFinite, timestamp.isFinite,
               (1_000...30_000).contains(millivolts)
         else {
-            result.powerAvailability = .unavailable
+            result.powerAvailability = state.isConnected && systemPower != nil
+                ? .available
+                : .unavailable
             return result
         }
         // From here a usable sample may exist; failures mean it is not in yet.
-        result.powerAvailability = .collecting
+        result.powerAvailability = state.isConnected && systemPower != nil
+            ? .available
+            : .collecting
         // A registry that still describes the previous power source is a
         // transition, not a machine that cannot report battery power.
         guard let connected = registry["ExternalConnected"] as? Bool,
@@ -130,13 +144,19 @@ struct BatteryDetailsReader: Sendable {
         guard
               milliamps > 0 ? (connected && charging) : !charging
         else {
-            result.powerAvailability = .unavailable
+            result.powerAvailability = state.isConnected && systemPower != nil
+                ? .available
+                : .unavailable
             return result
         }
         let updatedAt = Date(timeIntervalSince1970: timestamp)
         let sample = BatteryPowerSample(volts: millivolts / 1_000, amps: milliamps / 1_000, updatedAt: updatedAt)
         // Stale or pre-transition samples are simply not in yet.
         guard sample.isFresh(at: now, notBefore: notBefore) else { return collecting(&result) }
+        if state.isConnected {
+            result.powerAvailability = systemPower != nil ? .available : .collecting
+            return result
+        }
         result.power = sample
         result.powerAvailability = .available
         return result

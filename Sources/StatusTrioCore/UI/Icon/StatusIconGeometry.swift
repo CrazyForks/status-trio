@@ -27,7 +27,7 @@ enum StatusIconGeometry {
 
     /// SF Symbol drawn in the top gap when the battery is connected to power
     /// without charging.
-    static let batteryPlugSymbolName = "powerplug.portrait.fill"
+    static var batteryPlugSymbolName: String { SymbolFallback.name("powerplug.portrait.fill", "powerplug.fill", "bolt.fill") }
 
     /// Optical size of the plug relative to the bolt. The plug's strokes are
     /// thinner than the bolt's solid body, so it is drawn slightly taller to

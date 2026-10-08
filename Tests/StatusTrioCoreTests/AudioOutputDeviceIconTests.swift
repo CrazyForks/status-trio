@@ -6,14 +6,26 @@ import Testing
 struct AudioOutputDeviceIconTests {
     @Test("Built-in speakers draw the machine, not a speaker")
     func builtInSpeakersDrawTheMachine() {
-        #expect(candidates(name: "MacBook Pro扬声器", transport: .builtIn, dataSource: .internalSpeaker).first == "macbook")
+        #expect(candidates(name: "MacBook Pro扬声器", transport: .builtIn, dataSource: .internalSpeaker).first == "laptopcomputer")
         #expect(candidates(name: "Mac mini扬声器", transport: .builtIn, dataSource: .internalSpeaker).first == "macmini.gen2")
         #expect(candidates(name: "Mac Studio扬声器", transport: .builtIn, dataSource: .internalSpeaker).first == "macstudio")
         #expect(candidates(name: "Mac Pro扬声器", transport: .builtIn, dataSource: .internalSpeaker).first == "macpro.gen3")
         #expect(candidates(name: "iMac扬声器", transport: .builtIn, dataSource: .internalSpeaker).first == "desktopcomputer")
         // A localized name that does not name the machine falls back to the host.
-        #expect(candidates(name: "内置扬声器", transport: .builtIn, dataSource: .other, host: .unknown).first == "macbook")
+        #expect(candidates(name: "内置扬声器", transport: .builtIn, dataSource: .other, host: .unknown).first == "laptopcomputer")
         #expect(candidates(name: "内置扬声器", transport: .builtIn, dataSource: .other, host: .mini).first == "macmini.gen2")
+    }
+
+    @Test("MacBook Pro built-in speakers keep a Ventura-visible glyph")
+    func macBookProBuiltInSpeakersFallBackOnVentura() {
+        let unavailable: Set<String> = ["macbook"]
+        let resolved = AudioOutputDeviceIcon.symbolName(
+            for: .builtInSpeaker,
+            host: .laptop,
+            isSymbolAvailable: { !unavailable.contains($0) }
+        )
+        #expect(resolved == "laptopcomputer")
+        #expect(resolved != "macbook")
     }
 
     @Test("The headphone jack keeps the headphone symbol on built-in hardware")
@@ -135,7 +147,7 @@ struct AudioOutputDeviceIconTests {
                 transport: .builtIn,
                 dataSource: .internalSpeaker,
                 modelUID: "200f 4c"
-            ).first == "macbook"
+            ).first == "laptopcomputer"
         )
     }
 
@@ -202,6 +214,48 @@ struct AudioOutputDeviceIconTests {
                 #expect(
                     NSImage(systemSymbolName: resolved, accessibilityDescription: nil) != nil,
                     "\(kind) \(host) produced the unavailable symbol \(resolved)"
+                )
+            }
+        }
+    }
+
+    @Test("Every audio device class has a Ventura-safe fallback")
+    func everyKindHasVenturaSafeFallback() {
+        let unavailable: Set<String> = [
+            "macbook",
+            "macmini.gen2",
+            "airpods.pro",
+            "airpods.pro.gen1",
+            "airpods.pro.gen3",
+            "airpods.gen4",
+            "airpods.gen5",
+            "airpods.max",
+            "beats.pill",
+            "beats.solobuds",
+            "beats.studiobuds.plus",
+            "beats.fitpro",
+            "beats.powerbeats.pro",
+            "beats.powerbeats.pro.2",
+            "homepod.mini"
+        ]
+
+        for kind in AudioOutputDeviceKind.allCases {
+            for host in [HostMacKind.laptop, .mini, .studio, .macPro, .desktop, .unknown] {
+                let candidates = AudioOutputDeviceIcon.symbolCandidates(for: kind, host: host)
+                let resolved = AudioOutputDeviceIcon.symbolName(
+                    for: kind,
+                    host: host,
+                    isSymbolAvailable: { !unavailable.contains($0) }
+                )
+
+                #expect(!candidates.isEmpty, "\(kind) \(host)")
+                #expect(
+                    !unavailable.contains(resolved),
+                    "\(kind) \(host) resolved to Ventura-unavailable \(resolved)"
+                )
+                #expect(
+                    !unavailable.contains(candidates.last ?? ""),
+                    "\(kind) \(host) loses its Ventura fallback"
                 )
             }
         }

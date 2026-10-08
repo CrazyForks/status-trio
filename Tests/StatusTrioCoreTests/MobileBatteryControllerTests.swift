@@ -998,19 +998,19 @@ private actor ControlledMobileBatterySleeper {
 
     func waitForDuration(_ duration: Duration, timeout: Duration = .seconds(5)) async throws {
         try await waitUntil(timeout: timeout) {
-            self.continuations.values.contains { $0.duration == duration }
+            self.continuations.values.contains { Self.approximatelyMatches($0.duration, duration) }
         }
     }
 
     func waitForRequestCount(_ count: Int, duration: Duration, timeout: Duration = .seconds(5)) async throws {
         try await waitUntil(timeout: timeout) {
-            self.requestedDurations.filter { $0 == duration }.count >= count
+            self.requestedDurations.filter { Self.approximatelyMatches($0, duration) }.count >= count
         }
     }
 
     func waitForActiveRequestCount(_ count: Int, duration: Duration, timeout: Duration = .seconds(5)) async throws {
         try await waitUntil(timeout: timeout) {
-            self.continuations.values.filter { $0.duration == duration }.count == count
+            self.continuations.values.filter { Self.approximatelyMatches($0.duration, duration) }.count == count
         }
     }
 
@@ -1023,11 +1023,26 @@ private actor ControlledMobileBatterySleeper {
     }
 
     func requestCount(for duration: Duration) -> Int {
-        requestedDurations.filter { $0 == duration }.count
+        requestedDurations.filter { Self.approximatelyMatches($0, duration) }.count
     }
 
     func hasActiveRequest(for duration: Duration) -> Bool {
-        continuations.values.contains { $0.duration == duration }
+        continuations.values.contains { Self.approximatelyMatches($0.duration, duration) }
+    }
+
+    /// The scheduler converts the remaining interval to whole milliseconds and
+    /// rounds up, so a request made from the real clock can land a sub-
+    /// millisecond away from the exact interval the test names. Compare with a
+    /// 10 ms tolerance: large enough to absorb that rounding and CI scheduling
+    /// delay, small enough that neighbouring whole-second intervals (599 s and
+    /// 600 s) never alias.
+    private static func approximatelyMatches(_ lhs: Duration, _ rhs: Duration) -> Bool {
+        func seconds(_ duration: Duration) -> Double {
+            let components = duration.components
+            return Double(components.seconds)
+                + Double(components.attoseconds) / 1_000_000_000_000_000_000
+        }
+        return abs(seconds(lhs) - seconds(rhs)) < 0.01
     }
 
     func fire(duration: Duration) {

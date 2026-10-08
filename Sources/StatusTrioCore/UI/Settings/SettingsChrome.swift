@@ -109,7 +109,7 @@ struct SettingsIcon: View {
             .fill(tint.gradient)
             .frame(width: SettingsMetrics.iconSize, height: SettingsMetrics.iconSize)
             .overlay(
-                Image(systemName: symbol)
+                Image(systemName: SymbolFallback.name(symbol, "questionmark.circle"))
                     .font(.system(size: SettingsMetrics.iconSize * 0.52, weight: .semibold))
                     .foregroundStyle(.white)
             )
@@ -230,6 +230,83 @@ struct SettingsMenuRow<T: Hashable & Identifiable>: View {
     }
 }
 
+/// Keeps the picture-card keyboard path native on every supported release.
+///
+/// macOS 14+ keeps the existing `onKeyPress` handling and suppresses the
+/// duplicate system focus effect. Ventura has neither API, so it keeps the
+/// system focus ring and maps arrow keys through `onMoveCommand`; Space and
+/// Return remain native `Button` activation.
+private struct SettingsPictureRowKeyboardBehavior: ViewModifier {
+    let backwardStep: Int
+    let forwardStep: Int
+    let onSelect: () -> Void
+    let onMove: (Int) -> Void
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if #available(macOS 14.0, *) {
+            content
+                .focusEffectDisabled()
+                .onKeyPress(.leftArrow) {
+                    onMove(backwardStep)
+                    return .handled
+                }
+                .onKeyPress(.rightArrow) {
+                    onMove(forwardStep)
+                    return .handled
+                }
+                .onKeyPress(.upArrow) {
+                    onMove(-1)
+                    return .handled
+                }
+                .onKeyPress(.downArrow) {
+                    onMove(1)
+                    return .handled
+                }
+                .onKeyPress(.space) {
+                    onSelect()
+                    return .handled
+                }
+                .onKeyPress(.return) {
+                    onSelect()
+                    return .handled
+                }
+        } else {
+            content
+                .onMoveCommand { direction in
+                    switch direction {
+                    case .left:
+                        onMove(backwardStep)
+                    case .right:
+                        onMove(forwardStep)
+                    case .up:
+                        onMove(-1)
+                    case .down:
+                        onMove(1)
+                    default:
+                        break
+                    }
+                }
+        }
+    }
+}
+
+private extension View {
+    func settingsPictureRowKeyboardBehavior(
+        backwardStep: Int,
+        forwardStep: Int,
+        onSelect: @escaping () -> Void,
+        onMove: @escaping (Int) -> Void
+    ) -> some View {
+        modifier(SettingsPictureRowKeyboardBehavior(
+            backwardStep: backwardStep,
+            forwardStep: forwardStep,
+            onSelect: onSelect,
+            onMove: onMove
+        ))
+    }
+}
+
 /// Extension for concentric Apple-style selection rings around preview cards.
 extension View {
     /// Concentric with the picture card: the ring's inner corner is the card's
@@ -327,34 +404,16 @@ struct SettingsPictureRow<T: Hashable & Identifiable, Leading: View, Preview: Vi
                         .buttonStyle(.plain)
                         .focusable()
                         .focused($focusedOption, equals: option)
-                        // The selection ring above already marks the picked card,
-                        // so the system focus effect would draw a second, slightly
-                        // offset ring around it on every click.
-                        .focusEffectDisabled()
-                        .onKeyPress(.leftArrow) {
-                            selectRelative(offset: backwardStep)
-                            return .handled
-                        }
-                        .onKeyPress(.rightArrow) {
-                            selectRelative(offset: forwardStep)
-                            return .handled
-                        }
-                        .onKeyPress(.upArrow) {
-                            selectRelative(offset: -1)
-                            return .handled
-                        }
-                        .onKeyPress(.downArrow) {
-                            selectRelative(offset: 1)
-                            return .handled
-                        }
-                        .onKeyPress(.space) {
-                            selectOption(option)
-                            return .handled
-                        }
-                        .onKeyPress(.return) {
-                            selectOption(option)
-                            return .handled
-                        }
+                        // macOS 13 has no onKeyPress/focusEffectDisabled.
+                        // Keep the selected card's own ring as the only visual
+                        // focus treatment on macOS 14+, while Ventura keeps the
+                        // system focus ring and handles arrows via onMoveCommand.
+                        .settingsPictureRowKeyboardBehavior(
+                            backwardStep: backwardStep,
+                            forwardStep: forwardStep,
+                            onSelect: { selectOption(option) },
+                            onMove: { selectRelative(offset: $0) }
+                        )
                         .accessibilityElement(children: .combine)
                         .accessibilityLabel(caption(option))
                         .accessibilityAddTraits(isSelected ? [.isSelected, .isButton] : [.isButton])

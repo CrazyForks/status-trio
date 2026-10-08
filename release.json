@@ -3,7 +3,7 @@
   "bundle_id": "com.lingsmbp.StatusTrio",
   "github_repo": "lingyired/status-trio",
   "git_branch": "main",
-  "min_system_version": "15.0",
+  "min_system_version": "13.0",
   "bundle_name": "Status Trio.app",
   "dmg_name": "StatusTrio.dmg",
   "appcast_file": "appcast.xml",

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "minimumMacOS": "15.0",
+  "minimumMacOS": "13.0",
   "sourceBuildOrder": [
     "openssl",
     "libplist",

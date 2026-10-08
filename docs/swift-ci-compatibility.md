@@ -754,3 +754,53 @@ swift-testing 380 项 0 失败、`swift build -c release` 通过。
 - **修复**：改用已有 12/12 语言发布说明的 `version=1.5.0`、`build=19` 重新调度预检；不修改产品代码、工作流或应用版本元数据。
 - **首轮验证结果**：该 run 的 `Run tests` 全部通过；打包阶段因上述发布说明目录缺失而停止，尚未完成 release 构建、签名、DMG 打包和预检产物上传验证。
 - **后续验证**：改用 `version=1.5.0` 的非发布预检 [`37794632312`](https://github.com/lingyired/status-trio/actions/runs/37794632312) 全绿，耗时 15m29s：说明校验、全量测试、通用 release 构建、签名验证、`LC_BUILD_VERSION` 检查、DMG 打包与 artifact 上传全部通过。同时本机同一 head 上 `swift test` 为 571 项 0 失败、`swift build -c release` 通过。本次没有创建 GitHub Release 或更新 appcast。
+
+## 37757549323：macOS 13 兼容性首次预检在产物路径检查处失败
+
+macOS 13 兼容性分支 `codex/macos13-compatibility` 的首次 non-publishing 预检
+[`37757549323`](https://github.com/lingyired/status-trio/actions/runs/37757549323)
+（`version=1.5.1`、`build=19`、`publish=false`、head `ec1dd4b`）在
+`Verify Ventura binary metadata` 阶段失败，`Run tests` 与 `Run native compatibility tests` 已通过。
+
+- **根因**：新增的 metadata step 使用了错误的硬编码产物路径 `dist/Status Trio.app`。`scripts/build-app.sh`
+  实际输出 `dist/StatusTrio.app`（bundle 显示名仍为 `Status Trio`），因此 `verify-platform-version.sh`
+  在读取 `Contents/MacOS/StatusTrio` 前以“no such file”退出。此次失败不涉及产品代码、二进制元数据或工具链兼容性。
+- **修复**：工作流改为读取 `dist/StatusTrio.app`；计划文档同步修正该路径记录。
+- **后续验证**：修复后的非发布预检
+  [`37758928359`](https://github.com/lingyired/status-trio/actions/runs/37758928359)
+  （`version=1.5.1`、`build=19`、`publish=false`、head `8ee4b6d`）全绿，耗时 11m4s：
+  `Run tests`、`Run native compatibility tests`、Universal release 构建、Ad-hoc 签名、`StatusTrio-1.5.1.dmg`
+  打包、`Verify Ventura binary metadata` 和 artifact 上传全部通过；`publish=false` 未创建 GitHub Release，
+  也未更新 appcast。
+
+## 37763140072 / 37763923306 / 37765173557：macOS 13 review-fix 预检在既有 Watch 重试测试上失败
+
+macOS 13 review-fix 分支的三个 `publish=false` 预检
+[`37763140072`](https://github.com/lingyired/status-trio/actions/runs/37763140072)（head `29bad4e`）、
+[`37763923306`](https://github.com/lingyired/status-trio/actions/runs/37763923306)（head `97323cf`）和
+[`37765173557`](https://github.com/lingyired/status-trio/actions/runs/37765173557)（head `88848ff`）
+都在 `Run tests` 阶段失败，均为 `MobileBatteryControllerTests.testMissingWatchRetryBudgetSurvivesRepublishedDemandAndBackgroundToggle` 的第 416 行断言：`configuredRefreshRequests` 为 `0`，期望 `1`。其余步骤未执行。
+
+- **失败阶段**：`Run tests`。
+- **根因**：测试用精确 `Duration == .seconds(600)` 匹配调度请求；控制器把剩余刷新时间换算为毫秒并向上取整，CI 调度延迟会把它变成 `599.999s` 一类的近似值。测试等待和计数因此看不到目标请求，随后读取到 `0`。这是测试等待逻辑的时间精度问题，不是 `MobileBatteryController` 的 API/行为回归。
+- **修复**：测试辅助 actor 的 duration 等待、活跃请求和计数改为 10ms 容差，并保留有界 `ContinuousClock` deadline；只修改测试 helper，不改生产调度代码。
+- **后续验证**：第四个 `publish=false` 预检 [`37765927373`](https://github.com/lingyired/status-trio/actions/runs/37765927373)
+  （head `c2ea2cc`、`version=1.5.1`、`build=19`、`publish=false`）全绿，耗时 14m23s。
+  `Run tests` 通过（1390 XCTest、7 skipped、0 failures；570 Swift Testing / 90 suites），
+  `Run native compatibility tests` 通过，Universal release 构建、Ad-hoc 签名、DMG 打包与 artifact 上传通过；
+  `Build, sign, notarize, and publish` 在 `publish=false` 下只生成 `StatusTrio-1.5.1.dmg`，未创建 GitHub Release，
+  也未更新 appcast。二进制检查显示主程序 x86_64/arm64 均为 `minos 13.0 / sdk 26.0`，Helper 与 dylib 均为
+  `minos 13.0`，Sparkle 5 个 Mach-O 文件均满足 Ventura 最低版本，MobileBattery bundle 验证通过。
+
+### 合并 main 后的测试辅助 actor
+
+合并 `codex/macos13-compatibility` 到 main 时，这条 10ms 容差修复与 main 上更晚的
+`e9ab294`（retry-budget 测试注入固定时钟、三个 wait helper 改为带 5 秒 deadline 的
+`async throws` 条件等待、超时抛 `WaitTimeout`）落在同一个 helper 上。两边都保留：
+
+- 保留 main 的 throwing/deadline 设计，因为它是唯一能让「缺失调度事件」确定性失败的路径；
+- 保留本条的 10ms 容差，因为它覆盖的是 main 未覆盖的那半边——仍使用真实时钟的用例
+  （`waitForDuration(.seconds(120))`、`.seconds(1_200)` 等）。调度器把剩余时间换算成
+  整毫秒并向上取整，真实时钟上超过 1ms 的调度延迟就会让记录值变成 `119.998s` 一类，
+  精确 `==` 匹配不到。容差取 0.01s，相邻的整秒区间（599s 与 600s）相距 1s，不会互相别名。
+- `fire(duration:)` 仍是精确匹配：它要唤醒的是某个具体 waiter，近似匹配可能唤醒错误的那个。

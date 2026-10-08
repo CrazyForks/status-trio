@@ -15,7 +15,7 @@
 <p align="center"><strong>세 가지 시스템 신호. 하나의 네이티브 macOS 상태 아이콘 — 메뉴 막대 또는 Dock에서.</strong></p>
 
 <p align="center">
-  <a href="https://github.com/lingyired/status-trio/releases/latest"><img src="https://img.shields.io/badge/Download%20for%20macOS-Universal%20%C2%B7%20macOS%2015%2B-000000?logo=apple&logoColor=white&style=for-the-badge" alt="macOS용 다운로드 — 유니버설 빌드, macOS 15 이상"></a>
+  <a href="https://github.com/lingyired/status-trio/releases/latest"><img src="https://img.shields.io/badge/Download%20for%20macOS-Universal%20%C2%B7%20macOS%2013%20target-000000?logo=apple&logoColor=white&style=for-the-badge" alt="macOS용 다운로드 — 유니버설 빌드, macOS 13 배포 대상(Ventura 런타임 검증 대기 중)"></a>
 </p>
 
 <p align="center">
@@ -29,7 +29,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/macOS-15%2B%20supported-blue?logo=apple&logoColor=white" alt="macOS 15 이상 지원">
+  <img src="https://img.shields.io/badge/macOS-13%20target%20%28validation%20pending%29-blue?logo=apple&logoColor=white" alt="macOS 13 배포 대상(Ventura 런타임 검증 대기 중) 지원">
   <img src="https://img.shields.io/badge/Universal-Apple%20Silicon%20%7C%20Intel-lightgrey" alt="Apple Silicon 및 Intel용 유니버설 바이너리">
 </p>
 
@@ -121,7 +121,7 @@ Dock 아이콘은 메뉴 막대와 동일한 결합 아이콘을 그리므로, B
 
 ## 요구 사항
 
-- 앱을 실행하려면 macOS 15 이상이 필요합니다.
+- 앱을 실행하려면 macOS 13 배포 대상(Ventura 런타임 검증 대기 중)이 필요합니다.
 - 빌드하려면 macOS 26 SDK(Xcode 26 이상)가 포함된 Swift 6 툴체인이 필요합니다. 이전 SDK로 빌드하면
   아무 알림 없이 Tahoe 이전 팝오버 모양이 만들어지므로, SDK가 26보다 이전이면 `scripts/build-app.sh`가 실패합니다.
 
@@ -228,7 +228,7 @@ bash scripts/build-worktree.sh release
 
 - Swift 6
 - SwiftUI + AppKit
-- macOS 15+
+- macOS 13 deployment target (Ventura runtime validation pending)
 - Dock 아이콘이 표시되는 동안 일반 활성화 정책으로 전환하는 `LSUIElement` 메뉴 막대 액세서리
 - 업데이트 확인을 위한 Sparkle
 

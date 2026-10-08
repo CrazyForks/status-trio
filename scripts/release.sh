@@ -178,6 +178,11 @@ env -u GH_TOKEN -u SPARKLE_PRIVATE_KEY \
     KEYCHAIN_PATH="$KEYCHAIN_PATH" \
     bash "$ROOT/scripts/build-app.sh" release no-open
 
+APP_DIR="$ROOT/dist/StatusTrio.app"
+bash "$ROOT/scripts/verify-platform-version.sh" "$APP_DIR/Contents/MacOS/StatusTrio" "$MINIMUM_SYSTEM_VERSION" 26
+UNIVERSAL_BUILD="$UNIVERSAL_BUILD" bash "$ROOT/scripts/verify-mobile-battery-bundle.sh" "$APP_DIR"
+bash "$ROOT/scripts/test-macos13-sparkle-metadata.sh" "$APP_DIR"
+
 STAGING_DIR="$TEMP_ROOT/dmg"
 mkdir -p "$STAGING_DIR"
 ditto "$ROOT/dist/StatusTrio.app" "$STAGING_DIR/$APP_NAME.app"
