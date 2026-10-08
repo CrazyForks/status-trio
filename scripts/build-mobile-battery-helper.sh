@@ -55,7 +55,8 @@ for arch in "${ARCHES[@]}"; do
     export MACOSX_DEPLOYMENT_TARGET="$MINIMUM_MACOS"
     CLANG="$(xcrun --sdk macosx --find clang)"
     CLANGXX="$(xcrun --sdk macosx --find clang++)"
-    CLANG_VERSION="$("$CLANG" --version | head -n 1)"
+    CLANG_VERSION="$("$CLANG" --version)"
+    CLANG_VERSION="${CLANG_VERSION%%$'\n'*}"
     BUILD_KEY="$(printf '%s\n%s\n%s\n%s\n%s\n' "$arch" "$SDK_VERSION" "$MINIMUM_MACOS" "$CLANG_VERSION" "source-pinned-dynamic-v1" "$(shasum -a 256 "$MANIFEST" | awk '{print $1}')" | shasum -a 256 | awk '{print $1}')"
     REBUILD_DEPENDENCIES=1
     if [[ "${MOBILE_BATTERY_FORCE_SOURCE_BUILD:-0}" != "1" && -f "$arch_root/.dependencies-build-key" && "$(cat "$arch_root/.dependencies-build-key")" == "$BUILD_KEY" && -f "$prefix/lib/libimobiledevice-1.0.dylib" && -f "$prefix/lib/libtatsu.dylib" ]]; then
