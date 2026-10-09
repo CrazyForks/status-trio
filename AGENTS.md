@@ -73,12 +73,12 @@ run ID, failed stage, root cause, fix, and verification result.
 - GitHub Release notes must use a top-level `# Version X.Y.Z （English + 中文， 中文在下方）` heading, followed by English notes and then Chinese notes, taken from `release-notes/<version>/en.md` and `release-notes/<version>/zh-Hans.md`; the release workflow combines them.
 - Sparkle appcast items are localized per language: emit one `<title xml:lang="…">` and one `<description xml:lang="…">` for every language present in `release-notes/<version>/`, give every variant an explicit `xml:lang`, and keep `en` first because Sparkle falls back to the first node in document order when the user's preferred languages match nothing. Never stack two languages inside one `<description>`.
 - User-facing release notes live in `release-notes/<version>/<language>.md`, one file per language the app ships (`Sources/StatusTrioCore/Resources/*.lproj` names, case-sensitive). `en.md` and `zh-Hans.md` are always required and also form the GitHub Release body; `publish=true` additionally requires all 12 languages. Every file starts with a `# <title>` line containing the `%VERSION%` and `%BUILD%` placeholders. Terminology must match the language's existing `.lproj` strings. `bash scripts/validate-appcast-notes.sh` checks coverage and the generated appcast XML, and the release workflow runs it on every dispatch, including `publish=false` preflights.
-- GitHub Release bodies must append the first-launch commands `xattr -dr com.apple.quarantine "/Applications/Status Trio.app"` and `open "/Applications/Status Trio.app"` after the bilingual notes. Do not include these commands in the Sparkle appcast.
+- Notarized GitHub Release bodies must not include first-launch `xattr` / quarantine instructions; Developer ID signing plus Apple notarization makes them unnecessary. Append those commands (never in the Sparkle appcast) only when a release is Ad-hoc signed because the signing and notarization secrets were unavailable.
 - Release announcements remain in English.
 - Release through `.github/workflows/release.yml`; do not publish manually unless the workflow is unavailable and the user explicitly asks for a manual fallback.
 - Version and build numbers must be explicit and must increase the published build number.
 - Confirm tests, DMG creation, Release upload, and appcast publication in the workflow result.
-- The current repository has no Developer ID certificate or notarization secrets. Releases are Ad-hoc signed; document this limitation rather than claiming notarization.
+- Releases with the `distribution` Environment secrets present are Developer ID signed and notarized; verify notarization and stapling in the workflow result rather than claiming it from configuration alone. Ad-hoc signing is the fallback only when those secrets are missing.
 
 ## Project Skills
 
