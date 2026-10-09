@@ -141,8 +141,7 @@ struct StatusPopoverView: View {
             VolumeControlsView(
                 state: panel.volume,
                 actions: panel.actions,
-                scrollTargets: scrollTargets,
-                onOpenSoundSettings: openSoundSettings
+                scrollTargets: scrollTargets
             )
         case .audioInput:
             AudioInputControlsView(
