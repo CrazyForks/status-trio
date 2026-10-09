@@ -2,13 +2,44 @@ import AppKit
 import CoreGraphics
 import CoreText
 
+/// Cache key for the measured ink offset of one SF Symbol configuration.
+/// The layout box SF Symbols report is not centred on the glyph ink; the
+/// offset lets the renderer anchor what the user sees, not the image's
+/// bounding box. Measurement is keyed by every input that changes the shape.
+private struct SymbolInkKey: Hashable {
+    let name: String
+    let variableValue: Double
+    let pointSize: Double
+}
+
+/// A small locked cache because the renderer is called from animation frames
+/// and from background-free previews. Measuring the ink involves a bitmap
+/// draw, so it must happen once per distinct symbol configuration.
+private final class SymbolInkOffsetCache: @unchecked Sendable {
+    private let lock = NSLock()
+    private var storage: [SymbolInkKey: CGFloat] = [:]
+
+    func offsetX(for key: SymbolInkKey, measure: () -> CGFloat) -> CGFloat {
+        lock.lock()
+        defer { lock.unlock() }
+        if let cached = storage[key] { return cached }
+        let measured = measure()
+        storage[key] = measured
+        return measured
+    }
+}
+
 enum StatusIconRenderer {
+    private static let symbolInkOffsetCache = SymbolInkOffsetCache()
+
     static let centerSymbolBasePointSize: CGFloat = 38
     private static let defaultBatteryValueTextScale = 1.8
 
     /// Anchored to the artwork's centre, not the canvas midpoint: the vector
     /// art is drawn on a 119-unit box centred at 59.5, so `canvas.midX` (60.0)
-    /// puts every SF Symbol half a unit right of it. See issue #30.
+    /// puts every SF Symbol half a unit right of it. The symbol's ink is then
+    /// measured and compensated separately; see issue #30 and
+    /// `drawOfficialSymbol`.
     private static let wifiSymbolCenter = CGPoint(
         x: StatusIconGeometry.artworkCenterX,
         y: 64.0
@@ -231,7 +262,7 @@ enum StatusIconRenderer {
             name: StatusIconGeometry.batteryPlugSymbolName,
             pointSize: referencePointSize,
             foreground: .labelColor
-        )?.size.height, height.isFinite, height > 0 else {
+        )?.image.size.height, height.isFinite, height > 0 else {
             return 1.34
         }
         return height / referencePointSize
@@ -413,6 +444,15 @@ enum StatusIconRenderer {
 
 
 
+    /// Draws an SF Symbol so its visible ink, not its layout box, lands on
+    /// `center`.
+    ///
+    /// `NSImage`'s symbol box carries side bearings, and the ink is not
+    /// symmetric inside it: `wifi` at the default size reports an 81-point box
+    /// while its ink bbox centre sits 0.344 points left of the box centre.
+    /// Centering the box therefore still leaves the glyph visibly left of the
+    /// hand-drawn battery ring, which is the recurrence of #30. Measure and
+    /// apply that bearing here, once per symbol configuration.
     private static func drawOfficialSymbol(
         name: String,
         variableValue: Double = 1.0,
@@ -439,12 +479,17 @@ enum StatusIconRenderer {
         context.scaleBy(x: 1, y: -1)
 
         let targetRect = CGRect(
-            x: center.x - symbol.size.width / 2,
-            y: -(center.y + symbol.size.height / 2),
-            width: symbol.size.width,
-            height: symbol.size.height
+            x: center.x - symbol.image.size.width / 2 - symbol.inkCenterOffsetX,
+            y: -(center.y + symbol.image.size.height / 2),
+            width: symbol.image.size.width,
+            height: symbol.image.size.height
         )
-        symbol.draw(in: targetRect)
+        symbol.image.draw(in: targetRect)
+    }
+
+    private struct ConfiguredSymbol {
+        let image: NSImage
+        let inkCenterOffsetX: CGFloat
     }
 
     private static func configuredSymbol(
@@ -452,16 +497,77 @@ enum StatusIconRenderer {
         variableValue: Double = 1.0,
         pointSize: CGFloat,
         foreground: NSColor
-    ) -> NSImage? {
+    ) -> ConfiguredSymbol? {
         let config = NSImage.SymbolConfiguration(pointSize: pointSize, weight: .semibold)
             .applying(.init(hierarchicalColor: foreground))
 
-        return NSImage(
+        guard let image = NSImage(
             systemSymbolName: name,
             variableValue: variableValue,
             accessibilityDescription: nil
-        )?.withSymbolConfiguration(config)
+        )?.withSymbolConfiguration(config) else {
+            return nil
+        }
+
+        let key = SymbolInkKey(
+            name: name,
+            variableValue: variableValue,
+            pointSize: Double(pointSize)
+        )
+        let offset = symbolInkOffsetCache.offsetX(for: key) {
+            measureInkCenterOffsetX(of: image)
+        }
+        return ConfiguredSymbol(image: image, inkCenterOffsetX: offset)
     }
+
+    /// Horizontal distance from the image's layout-box centre to the centre of
+    /// its visible ink. Rasterising at 8x keeps the measurement well below the
+    /// 0.25-point quantum of the 120-unit icon grid.
+    private static func measureInkCenterOffsetX(of image: NSImage) -> CGFloat {
+        let pixelScale: CGFloat = 8
+        let width = Int((image.size.width * pixelScale).rounded(.up))
+        let height = Int((image.size.height * pixelScale).rounded(.up))
+        guard width > 0, height > 0,
+              width <= 16_384, height <= 16_384,
+              let context = CGContext(
+                  data: nil,
+                  width: width,
+                  height: height,
+                  bitsPerComponent: 8,
+                  bytesPerRow: width * 4,
+                  space: CGColorSpaceCreateDeviceRGB(),
+                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+              )
+        else {
+            return 0
+        }
+
+        context.scaleBy(x: pixelScale, y: pixelScale)
+        let graphicsContext = NSGraphicsContext(cgContext: context, flipped: false)
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = graphicsContext
+        image.draw(in: CGRect(origin: .zero, size: image.size))
+        NSGraphicsContext.restoreGraphicsState()
+
+        guard let data = context.data else { return 0 }
+        let bytesPerRow = context.bytesPerRow
+        let bytes = data.assumingMemoryBound(to: UInt8.self)
+        var minX = width
+        var maxX = -1
+        for y in 0..<height {
+            let row = y * bytesPerRow
+            for x in 0..<width {
+                guard bytes[row + x * 4 + 3] > 0 else { continue }
+                minX = min(minX, x)
+                maxX = max(maxX, x)
+            }
+        }
+        guard minX <= maxX else { return 0 }
+
+        let inkMidX = (CGFloat(minX) + CGFloat(maxX) + 1) / 2 / pixelScale
+        return inkMidX - image.size.width / 2
+    }
+
 }
 
 extension StatusIconRenderer {

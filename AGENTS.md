@@ -59,6 +59,13 @@ run ID, failed stage, root cause, fix, and verification result.
 - When adding or changing an icon option, update both paths end-to-end as applicable: `SettingsStore` option derivation, `StatusBarController` subscriptions, `AppIconController` subscriptions/state, `DockIconRenderKey` cache inputs, `DockIconRenderer` rendering, and tests covering both menu bar and Dock output.
 - If a setting is intentionally menu-bar-only, the issue or specification must say so explicitly, and the limitation must be documented and covered by a test.
 
+## Issue #30 Icon Centering
+
+- Run `swift test --filter Issue30WiFiAlignmentTests` after any change to `StatusIconRenderer`, `StatusIconGeometry`, `IconPresentationMapper`, `IconSceneState`, `StatusBarController` icon rendering, or the Dock icon renderer.
+- SF Symbols are not centred inside the layout box `NSImage.size` reports. The visible ink carries side bearings; anchor the measured ink centre, not the box centre, whenever a symbol is placed against the hand-drawn ring. `StatusIconRenderer.drawOfficialSymbol` owns that compensation and caches it per symbol configuration.
+- Keep the full-composite regression (`testWiFiGlyphIsHorizontallyCenteredInMenuBarIcon`) and the isolated ink regression (`testCenterSymbolInkLandsOnTheArtworkCenterLine`) in `Issue30WiFiAlignmentTests`. Do not replace either with a tolerance that can hide a half-unit shift. Re-record `ChargingEffectRenderingTests` fingerprints only when the intentional pixel change is explained in the commit and `docs/swift-ci-compatibility.md`.
+- A UI or icon-presentation refactor must prove the rendered menu bar ink still lands on `StatusIconGeometry.artworkCenterX`; unit tests that assert the 59.5 constant alone are not enough. See `docs/issue-30-wifi-centering-analysis.md`.
+
 ## System Settings Pane Routes
 
 - Every settings control must open the pane it promises, with that pane's own extension identifier first: the Wi-Fi gear goes to the Wi-Fi pane, and a wired row's gear goes to the Network pane, which is where a cable's own settings live. The Network pane lists services (Wi-Fi, Ethernet, VPNs) rather than networks, so routing the Wi-Fi gear through it lands users on the wrong list.
