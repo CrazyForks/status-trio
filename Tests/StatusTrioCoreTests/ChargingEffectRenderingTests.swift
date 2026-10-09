@@ -24,14 +24,16 @@ struct ChargingEffectRenderingTests {
         // supported macOS 26 CI runner and the macOS 27 local toolchain. Keep
         // both observed static baselines so other pixel changes still fail.
         //
-        // These baselines were re-recorded for the #30 fix, which moved the
-        // Wi-Fi symbol from `canvas.midX` (60.0) to `artworkCenterX` (59.5).
-        // `staticSnapshot` reports `.off`, so it draws `wifi.slash` through the
-        // same anchor and its pixels change too — that is the expected effect
-        // of the fix, not a regression.
+        // These baselines were re-recorded for the 2026-10-09 recurrence of
+        // #30, which centred the measured SF Symbol ink instead of its layout
+        // box. `staticSnapshot` reports `.off`, so it draws `wifi.slash`
+        // through the same compensation and its pixels change too — that is
+        // the expected effect of the fix, not a regression. Replace the old
+        // pair rather than appending: keeping pre-fix hashes would let the
+        // defect back in unnoticed.
         let knownPlatformFingerprints = [
-            "9f0c892e2602f4d4f9c541be1d93963e14d46e76f3ef24b46cd2dfbc25a22d1d", // macOS 26 CI, artworkCenterX anchor
-            "0ef6d483e344f6056fa3799f9f33bac0092246e3dbfbb3619a4666d7e9e9c190", // macOS 27 local, artworkCenterX anchor
+            "9dcba3184f0953f8c173cc2f846977f01b84510a8505166bd6a8048f44d8fd97", // macOS 26 CI, measured ink centering
+            "1930db19c8a2f14400b25cf8f9228320b3d2bb9eb3f3360f93cc1e9ae8b1bf52", // macOS 27 local, measured ink centering
         ]
         #expect(knownPlatformFingerprints.contains(fingerprint))
     }
