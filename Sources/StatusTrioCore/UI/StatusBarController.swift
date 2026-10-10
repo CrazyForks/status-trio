@@ -252,6 +252,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
                 openBatterySettings: { self.handleOpenBatterySettings() },
                 openWiFiSettings: { self.handleOpenWiFiSettings() },
                 openNetworkSettings: { self.handleOpenNetworkSettings() },
+                openSharingSettings: { self.handleOpenSharingSettings() },
                 openLocationSettings: { self.handleOpenLocationSettings() },
                 openBluetoothSettings: { self.handleOpenBluetoothSettings() },
                 openBluetoothPermissionSettings: { self.handleOpenBluetoothPermissionSettings() },
@@ -707,6 +708,15 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         Self.openSystemSettings(Self.locationSettingsURLs)
     }
 
+    /// Where the wired row's Internet Sharing action goes. Status Trio does not
+    /// toggle Internet Sharing itself — that needs an undocumented write to
+    /// `com.apple.nat.plist` and the NetworkSharing daemon — so it opens the
+    /// Sharing pane, where the switch lives.
+    @objc private func handleOpenSharingSettings() {
+        popover.performClose(nil)
+        Self.openSystemSettings(Self.sharingSettingsURLs)
+    }
+
     @objc private func handleOpenSoundSettings() {
         popover.performClose(nil)
         Self.openSystemSoundSettings()
@@ -758,6 +768,16 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     static let networkSettingsURLs = [
         "x-apple.systempreferences:com.apple.Network-Settings.extension",
         "x-apple.systempreferences:com.apple.preference.network"
+    ]
+    .compactMap(URL.init(string:))
+
+    /// The Sharing pane is where Internet Sharing lives. Its own Settings
+    /// extension declares `com.apple.Sharing-Settings.extension` (legacy bundle
+    /// id `com.apple.preferences.sharing`), so the first route goes straight
+    /// there rather than through General or Network.
+    static let sharingSettingsURLs = [
+        "x-apple.systempreferences:com.apple.Sharing-Settings.extension",
+        "x-apple.systempreferences:com.apple.preferences.sharing"
     ]
     .compactMap(URL.init(string:))
 

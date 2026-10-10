@@ -199,6 +199,8 @@
 "ethernet.subtitle.connected" = "Подключено";
 "ethernet.subtitle.constrained" = "Ограниченная сеть";
 "ethernet.action.openSettings" = "Открыть настройки сети";
+"ethernet.action.shareInternet" = "Общий доступ к Интернету…";
+"ethernet.action.shareInternetHelp" = "Открывает раздел «Общий доступ», где можно включить общий доступ к Интернету.";
 "volume.title" = "Громкость · %d%%";
 "volume.titleUnavailable" = "Громкость · —";
 "volume.muted" = "Без звука";

@@ -199,6 +199,8 @@
 "ethernet.subtitle.connected" = "已连接";
 "ethernet.subtitle.constrained" = "受限网络";
 "ethernet.action.openSettings" = "打开网络设置";
+"ethernet.action.shareInternet" = "共享互联网…";
+"ethernet.action.shareInternetHelp" = "打开“共享”面板，可在其中开启互联网共享。";
 "volume.title" = "音量 · %d%%";
 "volume.titleUnavailable" = "音量 · —";
 "volume.muted" = "静音";

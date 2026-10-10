@@ -199,6 +199,8 @@
 "ethernet.subtitle.connected" = "Conectado";
 "ethernet.subtitle.constrained" = "Rede restrita";
 "ethernet.action.openSettings" = "Abrir Ajustes de Rede";
+"ethernet.action.shareInternet" = "Compartilhar Internet…";
+"ethernet.action.shareInternetHelp" = "Abre o painel «Compartilhamento», onde o Compartilhamento de Internet pode ser ativado.";
 "volume.title" = "Volume · %d%%";
 "volume.titleUnavailable" = "Volume · —";
 "volume.muted" = "Mudo";

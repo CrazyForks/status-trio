@@ -199,6 +199,8 @@
 "ethernet.subtitle.connected" = "متصل";
 "ethernet.subtitle.constrained" = "شبكة مقيّدة";
 "ethernet.action.openSettings" = "فتح إعدادات الشبكة";
+"ethernet.action.shareInternet" = "مشاركة الإنترنت…";
+"ethernet.action.shareInternetHelp" = "يفتح لوحة «المشاركة»، حيث يمكن تشغيل مشاركة الإنترنت.";
 "volume.title" = "مستوى الصوت · %d%%";
 "volume.titleUnavailable" = "مستوى الصوت · —";
 "volume.muted" = "صامت";

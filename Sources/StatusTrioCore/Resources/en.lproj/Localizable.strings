@@ -199,6 +199,8 @@
 "ethernet.subtitle.connected" = "Connected";
 "ethernet.subtitle.constrained" = "Restricted network";
 "ethernet.action.openSettings" = "Open Network Settings";
+"ethernet.action.shareInternet" = "Share Internet…";
+"ethernet.action.shareInternetHelp" = "Opens the Sharing pane, where Internet Sharing can be turned on.";
 "volume.title" = "Volume · %d%%";
 "volume.titleUnavailable" = "Volume · —";
 "volume.muted" = "Muted";

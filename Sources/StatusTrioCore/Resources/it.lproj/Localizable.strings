@@ -199,6 +199,8 @@
 "ethernet.subtitle.connected" = "Connesso";
 "ethernet.subtitle.constrained" = "Rete limitata";
 "ethernet.action.openSettings" = "Apri impostazioni Rete";
+"ethernet.action.shareInternet" = "Condividi Internet…";
+"ethernet.action.shareInternetHelp" = "Apre il pannello «Condivisione», dove si può attivare la condivisione di Internet.";
 "volume.title" = "Volume · %d%%";
 "volume.titleUnavailable" = "Volume · —";
 "volume.muted" = "Muto";
