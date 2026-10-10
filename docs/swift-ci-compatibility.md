@@ -8,6 +8,29 @@
 
 下表中 2026-09-19 之前的记录都发生在旧 CI 工具链（`macos-15` / Xcode 16.4 / Swift 6.1.2）上：`isolated deinit`、`weak let`、`Bundle.module` 资源布局、IRGen 崩溃这些具体症状属于那个编译器，而由它们归纳出的规则至今有效。
 
+## 新子系统的预检证据
+
+首个特权 helper（issue #72 低电量模式）加入了一个新的 SwiftPM executable target
+（`StatusTrioPowerHelper`）、一个 LaunchDaemon property list，以及构建变体开关
+`PRIVILEGED_HELPER`。非发布预检
+[`38067773966`](https://github.com/lingyired/status-trio/actions/runs/38067773966)
+（head `4c3daf00`、`version=1.6.0`、`build=25`、`publish=false`、`notarize=false`）在
+CI 工具链（`macos-26` / Xcode 26.6 / Swift 6.3.3）上全绿，耗时 15m27s：
+
+- `Run tests` 通过（1,439 XCTest、7 skipped、0 failures；554 Swift Testing / 88 suites）。
+- `Run native compatibility tests` 通过，含新增的
+  `scripts/test-privileged-helper-bundle-contract.sh`（`privileged helper bundle-contract regressions passed`）。
+- Universal release 构建产出 `StatusTrioPowerHelper` 的 `x86_64 arm64` 双架构切片，
+  `LC_BUILD_VERSION` 为 `minos 13.0 / sdk 26.0`，`Privileged helper bundle verified: x86_64 arm64`。
+- 该预检 `publish=false` 且 `notarize=false`，因此走 Ad-hoc 签名，构建打印了预期警告
+  （“bundled but Ad-hoc signed”）；Apple 锚定的客户端 requirement 在 Ad-hoc 下无法满足，
+  运行时 XPC 往返与真实 `pmset` 写入必须在 Developer ID 签名并安装到 `/Applications` 后手工验证，
+  见 [privileged helper](privileged-helper.md)。未创建 GitHub Release，也未更新 appcast。
+
+本机同一 head 上 `swift test` 与 `swift build -c release` 均通过；
+`PRIVILEGED_HELPER=0` 变体构建验证了 helper 与 LaunchDaemon plist 被排除且
+`STIncludesPrivilegedHelper=false`。
+
 ## 失败记录
 
 | Run | 失败阶段 | 根因 | 修复方式 |
