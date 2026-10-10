@@ -6,6 +6,10 @@ struct BatteryStatusView: View {
     var cautionColor: Color = .yellow
     let onOpenBatteryDetails: () -> Void
     let onOpenBatterySettings: () -> Void
+    /// The Low Power Mode write path, shown as a quick toggle beside the gear.
+    /// Nil in previews and layout tests, where the row stays read-only.
+    var lowPowerMode: LowPowerModeController?
+    var showsLowPowerToggle: Bool = false
 
     private var hasDetails: Bool { state.intent == .batteryDetails }
 
@@ -44,6 +48,10 @@ struct BatteryStatusView: View {
             .accessibilityLabel(state.accessibilityLabel)
             .accessibilityValue(state.accessibilityValue)
 
+            if showsLowPowerToggle, let lowPowerMode {
+                lowPowerToggleButton(lowPowerMode)
+            }
+
             if state.showsSettings {
                 Button(
                     localization.string(.batteryActionOpenSettings),
@@ -57,6 +65,26 @@ struct BatteryStatusView: View {
                 .frame(width: 24, height: 24)
             }
         }
+    }
+
+    /// A one-click Low Power Mode switch, mirroring the system battery menu's
+    /// quick toggle. Filled when on, outlined when off.
+    private func lowPowerToggleButton(_ controller: LowPowerModeController) -> some View {
+        Button {
+            controller.setLowPowerMode(!controller.isLowPowerMode)
+        } label: {
+            Image(systemName: controller.isLowPowerMode ? "leaf.fill" : "leaf")
+        }
+        .labelStyle(.iconOnly)
+        .buttonStyle(.plain)
+        .foregroundStyle(controller.isLowPowerMode ? Color.green : Color.secondary)
+        .help(localization.string(.lowPowerModeToggleDescription))
+        .disabled(controller.isApplying)
+        .accessibilityLabel(localization.string(.lowPowerModeToggle))
+        .accessibilityValue(
+            localization.string(controller.isLowPowerMode ? .batteryDetailsOn : .batteryDetailsOff)
+        )
+        .frame(width: 24, height: 24)
     }
 
     var showsDetailAffordance: Bool { hasDetails }

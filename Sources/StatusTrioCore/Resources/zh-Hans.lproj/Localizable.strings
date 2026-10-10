@@ -159,6 +159,13 @@
 "battery.state.connectedToPower" = "已连接电源";
 "battery.state.onBattery" = "电池供电";
 "battery.action.openSettings" = "打开电源设置";
+"battery.lowPowerMode.control" = "低电量模式控制";
+"battery.lowPowerMode.controlDescription" = "在电池详情中增加一个开关，用于打开或关闭低电量模式。需要先在“登录项”中批准一次。";
+"battery.lowPowerMode.requiresApproval" = "正在等待在“登录项”中批准。";
+"battery.lowPowerMode.openLoginItems" = "打开登录项";
+"battery.lowPowerMode.failure" = "无法注册电源辅助程序。";
+"battery.lowPowerMode.toggle" = "低电量模式";
+"battery.lowPowerMode.toggleDescription" = "降低能耗以延长电池续航。";
 "battery.accessibility.value" = "电池 %d%%";
 "common.parenthetical" = "%@（%@）";
 "common.labelValue" = "%@ %@";

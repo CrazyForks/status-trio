@@ -35,6 +35,7 @@ final class SettingsStore: ObservableObject {
     static let usesBluetoothAudioVolumeColorDefaultsKey = "usesBluetoothAudioVolumeColor"
     static let prioritizesNetworkErrorsOverBluetoothAudioDefaultsKey = "prioritizesNetworkErrorsOverBluetoothAudio"
     static let showsBluetoothBatteryLevelsDefaultsKey = "showsBluetoothBatteryLevels"
+    static let controlsLowPowerModeDefaultsKey = "controlsLowPowerMode"
     static let showsNearbyBluetoothBatteryDevicesDefaultsKey = "showsNearbyBluetoothBatteryDevices"
     static let showsMobileDeviceBatteryLevelsDefaultsKey = "showsMobileDeviceBatteryLevels"
     static let showsAppleDevicesAndBatteryDefaultsKey = "showsAppleDevicesAndBattery"
@@ -339,6 +340,12 @@ final class SettingsStore: ObservableObject {
                 showsBluetoothBatteryLevels,
                 forKey: Self.showsBluetoothBatteryLevelsDefaultsKey
             )
+        }
+    }
+
+    @Published var controlsLowPowerMode: Bool {
+        didSet {
+            defaults.set(controlsLowPowerMode, forKey: Self.controlsLowPowerModeDefaultsKey)
         }
     }
 
@@ -1109,6 +1116,9 @@ final class SettingsStore: ObservableObject {
         self.showsBluetoothBatteryLevels = defaults.object(
             forKey: Self.showsBluetoothBatteryLevelsDefaultsKey
         ) as? Bool ?? true
+        self.controlsLowPowerMode = defaults.object(
+            forKey: Self.controlsLowPowerModeDefaultsKey
+        ) as? Bool ?? false
         self.showsNearbyBluetoothBatteryDevices = defaults.object(
             forKey: Self.showsNearbyBluetoothBatteryDevicesDefaultsKey
         ) as? Bool ?? false

@@ -159,6 +159,13 @@
 "battery.state.connectedToPower" = "Sur secteur";
 "battery.state.onBattery" = "Sur batterie";
 "battery.action.openSettings" = "Ouvrir les réglages de batterie";
+"battery.lowPowerMode.control" = "Contrôle du mode économie d'énergie";
+"battery.lowPowerMode.controlDescription" = "Ajoute un interrupteur dans les détails de la batterie pour activer ou désactiver le mode économie d'énergie. Nécessite une approbation unique dans « Ouverture à la connexion ».";
+"battery.lowPowerMode.requiresApproval" = "En attente d'approbation dans « Ouverture à la connexion ».";
+"battery.lowPowerMode.openLoginItems" = "Ouvrir les éléments d'ouverture";
+"battery.lowPowerMode.failure" = "L'assistant d'alimentation n'a pas pu être enregistré.";
+"battery.lowPowerMode.toggle" = "Mode économie d'énergie";
+"battery.lowPowerMode.toggleDescription" = "Réduit la consommation d'énergie pour prolonger la batterie.";
 "battery.accessibility.value" = "Batterie %d%%";
 "common.parenthetical" = "%@ (%@)";
 "common.labelValue" = "%@, %@";

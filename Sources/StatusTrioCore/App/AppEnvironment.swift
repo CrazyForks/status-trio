@@ -71,6 +71,7 @@ final class AppEnvironment {
         )
         store.bindInputSettings(settings)
         store.bindMobileBatterySettings(settings)
+        store.bindLowPowerModeSettings(settings)
         store.start()
         telemetryReporter.start()
     }

@@ -159,6 +159,13 @@
 "battery.state.connectedToPower" = "Conectado a la corriente";
 "battery.state.onBattery" = "Con batería";
 "battery.action.openSettings" = "Abrir ajustes de batería";
+"battery.lowPowerMode.control" = "Control del modo de bajo consumo";
+"battery.lowPowerMode.controlDescription" = "Añade un interruptor en los detalles de la batería para activar o desactivar el modo de bajo consumo. Requiere una aprobación única en «Ítems de inicio de sesión».";
+"battery.lowPowerMode.requiresApproval" = "Esperando aprobación en «Ítems de inicio de sesión».";
+"battery.lowPowerMode.openLoginItems" = "Abrir ítems de inicio de sesión";
+"battery.lowPowerMode.failure" = "No se pudo registrar el asistente de energía.";
+"battery.lowPowerMode.toggle" = "Modo de bajo consumo";
+"battery.lowPowerMode.toggleDescription" = "Reduce el consumo de energía para prolongar la batería.";
 "battery.accessibility.value" = "Batería %d%%";
 "common.parenthetical" = "%@ (%@)";
 "common.labelValue" = "%@, %@";

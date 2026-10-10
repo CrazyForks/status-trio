@@ -329,6 +329,7 @@ jobs:
           bash scripts/test-macos13-deployment-contract.sh
           bash scripts/test-appcast-minimum-system-version.sh
           bash scripts/test-macos13-bundle-contract.sh
+          bash scripts/test-privileged-helper-bundle-contract.sh
           bash scripts/test-mobile-battery-helper.sh
           bash scripts/test-mobile-battery-rpaths.sh
           bash scripts/test-otool-dependencies.sh

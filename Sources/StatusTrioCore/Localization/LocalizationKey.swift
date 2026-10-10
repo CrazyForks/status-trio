@@ -256,6 +256,14 @@ enum LocalizationKey: String, CaseIterable, Hashable, Sendable {
     case batteryActionOpenSettings = "battery.action.openSettings"
     case batteryAccessibilityValue = "battery.accessibility.value"
 
+    case lowPowerModeControl = "battery.lowPowerMode.control"
+    case lowPowerModeControlDescription = "battery.lowPowerMode.controlDescription"
+    case lowPowerModeRequiresApproval = "battery.lowPowerMode.requiresApproval"
+    case lowPowerModeOpenLoginItems = "battery.lowPowerMode.openLoginItems"
+    case lowPowerModeFailure = "battery.lowPowerMode.failure"
+    case lowPowerModeToggle = "battery.lowPowerMode.toggle"
+    case lowPowerModeToggleDescription = "battery.lowPowerMode.toggleDescription"
+
     case commonParenthetical = "common.parenthetical"
     case commonLabelValue = "common.labelValue"
     case commonExpand = "common.expand"

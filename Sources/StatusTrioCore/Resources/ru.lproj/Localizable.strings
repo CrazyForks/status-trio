@@ -159,6 +159,13 @@
 "battery.state.connectedToPower" = "Питание от сети";
 "battery.state.onBattery" = "От батареи";
 "battery.action.openSettings" = "Открыть настройки батареи";
+"battery.lowPowerMode.control" = "Управление режимом энергосбережения";
+"battery.lowPowerMode.controlDescription" = "Добавляет переключатель режима энергосбережения в сведения о батарее. Требуется однократное подтверждение в разделе «Объекты входа».";
+"battery.lowPowerMode.requiresApproval" = "Ожидается подтверждение в разделе «Объекты входа».";
+"battery.lowPowerMode.openLoginItems" = "Открыть объекты входа";
+"battery.lowPowerMode.failure" = "Не удалось зарегистрировать помощник питания.";
+"battery.lowPowerMode.toggle" = "Режим энергосбережения";
+"battery.lowPowerMode.toggleDescription" = "Снижает энергопотребление для продления работы батареи.";
 "battery.accessibility.value" = "Батарея %d%%";
 "common.parenthetical" = "%@ (%@)";
 "common.labelValue" = "%@, %@";

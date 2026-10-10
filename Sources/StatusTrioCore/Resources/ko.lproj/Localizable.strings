@@ -159,6 +159,13 @@
 "battery.state.connectedToPower" = "전원 연결됨";
 "battery.state.onBattery" = "배터리 사용 중";
 "battery.action.openSettings" = "배터리 설정 열기";
+"battery.lowPowerMode.control" = "저전력 모드 제어";
+"battery.lowPowerMode.controlDescription" = "배터리 세부 정보에 저전력 모드를 켜고 끄는 스위치를 추가합니다. 최초 1회 '로그인 항목'에서 승인이 필요합니다.";
+"battery.lowPowerMode.requiresApproval" = "'로그인 항목'에서 승인을 기다리는 중입니다.";
+"battery.lowPowerMode.openLoginItems" = "로그인 항목 열기";
+"battery.lowPowerMode.failure" = "전원 도우미를 등록하지 못했습니다.";
+"battery.lowPowerMode.toggle" = "저전력 모드";
+"battery.lowPowerMode.toggleDescription" = "에너지 사용을 줄여 배터리 사용 시간을 늘립니다.";
 "battery.accessibility.value" = "배터리 %d%%";
 "common.parenthetical" = "%@(%@)";
 "common.labelValue" = "%@ %@";

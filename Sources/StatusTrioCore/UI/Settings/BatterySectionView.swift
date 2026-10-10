@@ -6,6 +6,7 @@ struct BatterySectionView: View {
     @ObservedObject var statusStore: SystemStatusStore
     @Binding var previewIsDark: Bool
     @EnvironmentObject private var localization: Localization
+    @ObservedObject private var helper: PrivilegedHelperManager = .shared
 
     var body: some View {
         SettingsPage(pinnedHeader: {
@@ -21,6 +22,15 @@ struct BatterySectionView: View {
 
     private var batteryGroup: some View {
         SettingsGroup(localization.string(.settingsBatteryTitle)) {
+            // Low Power Mode control is offered only when this build bundled the
+            // privileged helper, so an App-Store-style build never shows a
+            // toggle it cannot honour.
+            if helper.isAvailable {
+                lowPowerModeGroup
+
+                SettingsDivider()
+            }
+
             // Show Percentage Switch
             SettingsToggleRow(
                 symbol: "percent",
@@ -177,6 +187,52 @@ struct BatterySectionView: View {
                             .frame(width: 44, alignment: .trailing)
                     }
                 }
+            }
+        }
+    }
+
+    /// The opt-in that registers the privileged helper. The helper is only
+    /// contacted — and only then started by launchd — once this is on.
+    private var lowPowerModeGroup: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            SettingsToggleRow(
+                symbol: "leaf.fill",
+                tint: .green,
+                title: localization.string(.lowPowerModeControl),
+                subtitle: localization.string(.lowPowerModeControlDescription),
+                isOn: Binding(
+                    get: { store.controlsLowPowerMode },
+                    set: { store.controlsLowPowerMode = $0 }
+                )
+            )
+            .disabled(!helper.isAvailable)
+
+            if helper.requiresApproval {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+                    Text(localization.string(.lowPowerModeRequiresApproval))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Button(localization.string(.lowPowerModeOpenLoginItems)) {
+                        helper.openLoginItemsSettings()
+                    }
+                    .controlSize(.small)
+                }
+                .padding(.horizontal, SettingsMetrics.rowPaddingH)
+                .padding(.bottom, 6)
+            }
+
+            if helper.didFailLastOperation {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Image(systemName: "exclamationmark.octagon.fill")
+                        .foregroundStyle(.red)
+                    Text(localization.string(.lowPowerModeFailure))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.horizontal, SettingsMetrics.rowPaddingH)
+                .padding(.bottom, 6)
             }
         }
     }

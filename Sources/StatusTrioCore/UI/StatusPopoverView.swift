@@ -39,7 +39,10 @@ struct StatusPopoverView: View {
                     },
                     onOpenBatterySettings: openBatterySettings,
                     onCopyValue: { copyValue($0) },
-                    onAppear: { panel.actions.batteryDetailsAppeared() }
+                    onAppear: { panel.actions.batteryDetailsAppeared() },
+                    lowPowerMode: panel.store.lowPowerMode,
+                    showsLowPowerControl: panel.settings.controlsLowPowerMode
+                        && PrivilegedHelperManager.shared.isAvailable
                 )
             case .wifi(let showDetails):
                 WiFiNetworkListView(
@@ -102,7 +105,10 @@ struct StatusPopoverView: View {
                 onOpenBatteryDetails: {
                     currentPanel = .battery
                 },
-                onOpenBatterySettings: openBatterySettings
+                onOpenBatterySettings: openBatterySettings,
+                lowPowerMode: panel.store.lowPowerMode,
+                showsLowPowerToggle: panel.settings.controlsLowPowerMode
+                    && PrivilegedHelperManager.shared.isAvailable
             )
         case .network:
             NetworkStatusView(

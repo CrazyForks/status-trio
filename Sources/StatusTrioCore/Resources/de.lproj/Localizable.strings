@@ -159,6 +159,13 @@
 "battery.state.connectedToPower" = "Mit Netzstrom verbunden";
 "battery.state.onBattery" = "Im Batteriebetrieb";
 "battery.action.openSettings" = "Batterieeinstellungen öffnen";
+"battery.lowPowerMode.control" = "Steuerung des Energiesparmodus";
+"battery.lowPowerMode.controlDescription" = "Fügt in den Batteriedetails einen Schalter zum Ein- und Ausschalten des Energiesparmodus hinzu. Erfordert eine einmalige Freigabe unter „Anmeldeobjekte“.";
+"battery.lowPowerMode.requiresApproval" = "Warte auf Freigabe unter „Anmeldeobjekte“.";
+"battery.lowPowerMode.openLoginItems" = "Anmeldeobjekte öffnen";
+"battery.lowPowerMode.failure" = "Der Energiehelfer konnte nicht registriert werden.";
+"battery.lowPowerMode.toggle" = "Energiesparmodus";
+"battery.lowPowerMode.toggleDescription" = "Reduziert den Energieverbrauch, um die Batterielaufzeit zu verlängern.";
 "battery.accessibility.value" = "Batterie %d%%";
 "common.parenthetical" = "%@ (%@)";
 "common.labelValue" = "%@, %@";

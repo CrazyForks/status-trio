@@ -269,6 +269,23 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertTrue(SettingsStore(defaults: suite.defaults).showsMobileDeviceBatteryLevels)
     }
 
+    func testLowPowerModeControlDefaultsOff() {
+        let store = SettingsStore(defaults: makeSuite().defaults)
+
+        XCTAssertFalse(store.controlsLowPowerMode)
+    }
+
+    func testLowPowerModeControlPersistsAcrossStoreInstances() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+
+        let first = SettingsStore(defaults: suite.defaults)
+        XCTAssertFalse(first.controlsLowPowerMode)
+        first.controlsLowPowerMode = true
+
+        XCTAssertTrue(SettingsStore(defaults: suite.defaults).controlsLowPowerMode)
+    }
+
     func testBluetoothAudioDisplaySettingsPersistAcrossStoreInstances() {
         let suite = makeSuite()
         defer { clear(suite) }

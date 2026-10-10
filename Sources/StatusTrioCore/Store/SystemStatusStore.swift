@@ -65,6 +65,9 @@ final class SystemStatusStore: ObservableObject {
     /// paired-device controller is not widened by it. The Bluetooth view drives it
     /// from the same appear/disappear and refresh hooks the device list uses.
     let bluetoothListeningModes: BluetoothListeningModeController
+    /// The Low Power Mode write path. Dormant until the opt-in enables it, so
+    /// the privileged helper is never contacted while the feature is off.
+    let lowPowerMode: LowPowerModeController
 
     private let batteryMonitor: any BatteryMonitoring
     private let wifiMonitor: any WiFiMonitoring
@@ -85,6 +88,8 @@ final class SystemStatusStore: ObservableObject {
     private var inputUpdateTask: Task<Void, Never>?
     private var inputSettingsCancellable: AnyCancellable?
     private var mobileBatterySettingsCancellable: AnyCancellable?
+    private var lowPowerModeSettingsCancellable: AnyCancellable?
+    private var lowPowerModeSnapshotCancellable: AnyCancellable?
     private var appleDeviceSettingsCancellable: AnyCancellable?
     private var appleBackgroundSettingsCancellable: AnyCancellable?
     private var appleEligibilitySettingsCancellable: AnyCancellable?
@@ -158,6 +163,7 @@ final class SystemStatusStore: ObservableObject {
         mobileBattery: MobileBatteryController = MobileBatteryController(),
         appleDeviceDiscovery: AppleDeviceDiscoveryController = AppleDeviceDiscoveryController(),
         bluetoothListeningModes: BluetoothListeningModeController = BluetoothListeningModeController(),
+        lowPowerMode: LowPowerModeController = LowPowerModeController(),
         initialSnapshot: StatusSnapshot = .placeholder
     ) {
         self.batteryMonitor = batteryMonitor
@@ -180,6 +186,7 @@ final class SystemStatusStore: ObservableObject {
         self.mobileBattery = mobileBattery
         self.appleDeviceDiscovery = appleDeviceDiscovery
         self.bluetoothListeningModes = bluetoothListeningModes
+        self.lowPowerMode = lowPowerMode
         self.snapshot = initialSnapshot
         self.popupSnapshot = initialSnapshot
         self.vpnStatus = .placeholder
@@ -346,6 +353,10 @@ final class SystemStatusStore: ObservableObject {
         inputSettingsCancellable = nil
         mobileBatterySettingsCancellable?.cancel()
         mobileBatterySettingsCancellable = nil
+        lowPowerModeSettingsCancellable?.cancel()
+        lowPowerModeSettingsCancellable = nil
+        lowPowerModeSnapshotCancellable?.cancel()
+        lowPowerModeSnapshotCancellable = nil
         appleDeviceSettingsCancellable?.cancel()
         appleDeviceSettingsCancellable = nil
         appleBackgroundSettingsCancellable?.cancel()
@@ -377,6 +388,7 @@ final class SystemStatusStore: ObservableObject {
 
         batteryDetails.deactivate()
         mobileBattery.stop()
+        lowPowerMode.stop()
         appleDeviceDiscovery.stop()
         batteryMonitor.stop()
         wifiMonitor.stop()
@@ -780,6 +792,23 @@ final class SystemStatusStore: ObservableObject {
     }
 
     private weak var boundAppleRefreshSettings: SettingsStore?
+
+    /// Binds the Low Power Mode opt-in to the write controller and seeds its
+    /// displayed value from the battery snapshot the app already reads.
+    func bindLowPowerModeSettings(_ settings: SettingsStore) {
+        guard !hasStopped else { return }
+        lowPowerModeSettingsCancellable = settings.$controlsLowPowerMode
+            .removeDuplicates()
+            .sink { [weak self] enabled in
+                self?.lowPowerMode.setEnabled(enabled)
+            }
+        lowPowerModeSnapshotCancellable = $snapshot
+            .map(\.battery.isLowPowerMode)
+            .removeDuplicates()
+            .sink { [weak self] enabled in
+                self?.lowPowerMode.updateFromSystemRead(enabled)
+            }
+    }
 
     private func updateAppleRefreshDemand() {
         guard let settings = boundAppleRefreshSettings else { return }

@@ -159,6 +159,13 @@
 "battery.state.connectedToPower" = "Connected to power";
 "battery.state.onBattery" = "On battery";
 "battery.action.openSettings" = "Open Battery Settings";
+"battery.lowPowerMode.control" = "Low Power Mode Control";
+"battery.lowPowerMode.controlDescription" = "Adds a switch in the battery details that turns Low Power Mode on or off. Requires a one-time approval in Login Items.";
+"battery.lowPowerMode.requiresApproval" = "Waiting for approval in Login Items.";
+"battery.lowPowerMode.openLoginItems" = "Open Login Items";
+"battery.lowPowerMode.failure" = "The power helper could not be registered.";
+"battery.lowPowerMode.toggle" = "Low Power Mode";
+"battery.lowPowerMode.toggleDescription" = "Reduces energy use to extend battery life.";
 "battery.accessibility.value" = "Battery %d%%";
 "common.parenthetical" = "%@ (%@)";
 "common.labelValue" = "%@, %@";

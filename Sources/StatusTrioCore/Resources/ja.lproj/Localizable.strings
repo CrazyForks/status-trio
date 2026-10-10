@@ -159,6 +159,13 @@
 "battery.state.connectedToPower" = "電源に接続";
 "battery.state.onBattery" = "バッテリー駆動";
 "battery.action.openSettings" = "バッテリー設定を開く";
+"battery.lowPowerMode.control" = "低電力モードの制御";
+"battery.lowPowerMode.controlDescription" = "バッテリー詳細に低電力モードをオン／オフするスイッチを追加します。初回は「ログイン項目」での承認が必要です。";
+"battery.lowPowerMode.requiresApproval" = "「ログイン項目」での承認を待っています。";
+"battery.lowPowerMode.openLoginItems" = "ログイン項目を開く";
+"battery.lowPowerMode.failure" = "電源ヘルパーを登録できませんでした。";
+"battery.lowPowerMode.toggle" = "低電力モード";
+"battery.lowPowerMode.toggleDescription" = "エネルギー使用を抑えてバッテリーを長持ちさせます。";
 "battery.accessibility.value" = "バッテリー %d%%";
 "common.parenthetical" = "%@（%@）";
 "common.labelValue" = "%@ %@";

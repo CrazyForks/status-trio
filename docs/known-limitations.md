@@ -55,11 +55,12 @@ no "charge to full" button.
 There is no public API to charge past the limit macOS is holding. An app can only do
 it through the SMC with the firmware's charge-control keys — the approach third-party
 charge limiters take — or through an undocumented PowerUI charging interface. Status
-Trio reads the SMC for the system power estimate only, sends read-key-info and
-read-bytes commands only, and ships no privileged helper (see [battery
-details](battery-details.md)), so charge control stays where Apple put it: System
-Settings › Battery, and the battery section of Control Center where macOS offers its
-own charge-to-full action.
+Trio reads the SMC for the system power estimate only and sends read-key-info and
+read-bytes commands only (see [battery details](battery-details.md)), so charge
+control stays where Apple put it: System Settings › Battery, and the battery section
+of Control Center where macOS offers its own charge-to-full action. The app's one
+privileged helper exists only for Low Power Mode and does not touch charge control;
+see [privileged helper](privileged-helper.md).
 
 macOS 26.4 and later add a native charge limit from 80% through 100% on Apple
 silicon Macs, with its own charge-to-full action, so on those versions the limit and

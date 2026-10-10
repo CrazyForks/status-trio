@@ -142,6 +142,13 @@
 "battery.state.connectedToPower" = "متصل بالطاقة";
 "battery.state.onBattery" = "على البطارية";
 "battery.action.openSettings" = "فتح إعدادات البطارية";
+"battery.lowPowerMode.control" = "التحكم في وضع الطاقة المنخفضة";
+"battery.lowPowerMode.controlDescription" = "يضيف مفتاحًا في تفاصيل البطارية لتشغيل وضع الطاقة المنخفضة أو إيقافه. يتطلب موافقة لمرة واحدة في «عناصر تسجيل الدخول».";
+"battery.lowPowerMode.requiresApproval" = "في انتظار الموافقة في «عناصر تسجيل الدخول».";
+"battery.lowPowerMode.openLoginItems" = "فتح عناصر تسجيل الدخول";
+"battery.lowPowerMode.failure" = "تعذّر تسجيل مساعد الطاقة.";
+"battery.lowPowerMode.toggle" = "وضع الطاقة المنخفضة";
+"battery.lowPowerMode.toggleDescription" = "يقلل استهلاك الطاقة لإطالة عمر البطارية.";
 "battery.accessibility.value" = "البطارية %d%%";
 "common.parenthetical" = "%@ (%@)";
 "common.labelValue" = "%@، %@";
