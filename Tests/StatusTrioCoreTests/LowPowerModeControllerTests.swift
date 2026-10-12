@@ -22,7 +22,7 @@ final class LowPowerModeControllerTests: XCTestCase {
 
         controller.setEnabled(true)
         controller.refresh()
-        await settle()
+        await waitUntil { client.readCallCount == 1 }
 
         XCTAssertEqual(client.readCallCount, 1)
         XCTAssertTrue(controller.isLowPowerMode)
@@ -35,7 +35,7 @@ final class LowPowerModeControllerTests: XCTestCase {
         controller.setEnabled(true)
 
         controller.setLowPowerMode(true)
-        await settle()
+        await waitUntil { !controller.isApplying && client.setCallCount == 1 }
 
         XCTAssertEqual(client.setCallCount, 1)
         XCTAssertEqual(client.lastSetValue, true)
@@ -51,7 +51,7 @@ final class LowPowerModeControllerTests: XCTestCase {
         controller.setEnabled(true)
 
         controller.setLowPowerMode(true)
-        await settle()
+        await waitUntil { controller.lastError != nil }
 
         XCTAssertFalse(controller.isLowPowerMode)
         XCTAssertNotNil(controller.lastError)
@@ -77,7 +77,7 @@ final class LowPowerModeControllerTests: XCTestCase {
         let controller = LowPowerModeController(client: client, initialIsLowPowerMode: false)
         controller.setEnabled(true)
         controller.refresh()
-        await settle()
+        await waitUntil { controller.isLowPowerMode }
         XCTAssertTrue(controller.isLowPowerMode)
 
         controller.updateFromSystemRead(false)
@@ -91,7 +91,7 @@ final class LowPowerModeControllerTests: XCTestCase {
         let controller = LowPowerModeController(client: client, initialIsLowPowerMode: false)
         controller.setEnabled(true)
         controller.setLowPowerMode(true)
-        await settle()
+        await waitUntil { controller.lastError != nil }
         XCTAssertNotNil(controller.lastError)
 
         controller.setEnabled(false)
@@ -102,10 +102,35 @@ final class LowPowerModeControllerTests: XCTestCase {
         XCTAssertEqual(client.readCallCount, 0)
     }
 
-    private func settle() async {
-        // Let the controller's detached Task run to completion.
-        for _ in 0..<10 {
+    /// Waits until `condition` holds, giving the controller's detached MainActor
+    /// tasks real time to finish.
+    ///
+    /// Counting `Task.yield()`s is not a synchronization guarantee: the write
+    /// path suspends on a nonisolated `await` and resumes back on the main actor,
+    /// and on a loaded CI runner ten yields did not cover that round trip, which
+    /// flaked `testDisablingClearsErrorAndStopsContact` (runs 38262423399 and
+    /// 38278475902). The deadline makes a genuine regression fail instead of hang.
+    private func waitUntil(
+        timeout: Duration = .seconds(5),
+        _ condition: @MainActor () -> Bool
+    ) async {
+        let deadline = ContinuousClock.now.advanced(by: timeout)
+        while !condition() {
+            if ContinuousClock.now >= deadline {
+                XCTFail("Timed out waiting for the low power mode controller to settle.")
+                return
+            }
             await Task.yield()
+            try? await Task.sleep(for: .milliseconds(2))
+        }
+    }
+
+    /// Drains the main actor for a bounded moment when a test asserts that *no*
+    /// asynchronous work happened and therefore has no condition to wait on.
+    private func settle() async {
+        for _ in 0..<25 {
+            await Task.yield()
+            try? await Task.sleep(for: .milliseconds(2))
         }
     }
 
