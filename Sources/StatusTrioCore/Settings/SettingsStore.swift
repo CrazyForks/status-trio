@@ -16,6 +16,10 @@ final class SettingsStore: ObservableObject {
 
     static let batteryCriticalThresholdRange: ClosedRange<Double> = 0...100
     static let defaultBatteryCriticalThreshold: Double = 20
+    /// The ring closes at the level the user picks. The floor keeps the arc a
+    /// usable fraction of the circle instead of a hairline at 1%.
+    static let batteryFullThresholdRange: ClosedRange<Double> = 50...100
+    static let defaultBatteryFullThreshold: Double = Double(BatteryIconOptions.defaultFullThreshold)
     static let batterySymbolScaleRange: ClosedRange<Double> = 0.9...1.1
     static let defaultBatterySymbolScale: Double = 1
     static let showsBatteryPercentageDefaultsKey = "showsBatteryPercentage"
@@ -25,6 +29,7 @@ final class SettingsStore: ObservableObject {
     static let showsPercentageWhenConnectedDefaultsKey = "showsPercentageWhenConnected"
     static let usesBatteryStatusColorsDefaultsKey = "usesBatteryStatusColors"
     static let batteryCriticalThresholdDefaultsKey = "batteryCriticalThreshold"
+    static let batteryFullThresholdDefaultsKey = "batteryFullThreshold"
     static let batterySymbolScaleDefaultsKey = "batterySymbolScale"
     static let showsWiFiIconForEthernetDefaultsKey = "showsWiFiIconForEthernet"
     static let showsWiFiIconForHotspotDefaultsKey = "showsWiFiIconForHotspot"
@@ -259,6 +264,40 @@ final class SettingsStore: ObservableObject {
             }
             defaults.set(clamped, forKey: Self.batteryCriticalThresholdDefaultsKey)
         }
+    }
+
+    /// The level at which the battery ring counts as full (#105).
+    ///
+    /// Charge limiting holds a plugged-in battery below 100%, so a ring scaled
+    /// to a fixed 100% never closes. Rescaling the arc to this level makes the
+    /// ring close at the cap the user actually reaches.
+    @Published var batteryFullThreshold: Double {
+        didSet {
+            let clamped = Self.clampedBatteryFullThreshold(batteryFullThreshold)
+            guard clamped == batteryFullThreshold else {
+                batteryFullThreshold = clamped
+                return
+            }
+            defaults.set(clamped, forKey: Self.batteryFullThresholdDefaultsKey)
+        }
+    }
+
+    /// Test seam: a recorded plist to read instead of the live one, so the
+    /// follow path is tested against a known limit rather than whatever this
+    /// Mac happens to be set to. `nil` in the app, which reads the real file.
+    var chargeLimitURLForTesting: URL?
+
+    /// Whether the macOS charge limit can be read at all (#105).
+    ///
+    /// The value lives in a private, root-owned plist that no public API
+    /// exposes. It is readable on an unsandboxed build, but it is not guaranteed
+    /// to be there, so the button that fills the slider in from it is hidden
+    /// behind this rather than failing silently when pressed.
+    var canReadSystemChargeLimit: Bool {
+        if let url = chargeLimitURLForTesting {
+            return SystemChargeLimitReader.chargeLimit(from: url) != nil
+        }
+        return SystemChargeLimitReader.chargeLimit() != nil
     }
 
     @Published var showsWiFiIconForEthernet: Bool {
@@ -882,6 +921,26 @@ final class SettingsStore: ObservableObject {
         showsBatteryPercentage || showsChargingIndicator
     }
 
+    /// Re-reads the macOS charge limit into the full-ring level.
+    ///
+    /// Called on launch and whenever the follow toggle is switched on. A limit
+    /// the plist does not carry, or a plist that no longer parses, leaves the
+    /// level exactly where it was: the setting follows the system when it can
+    /// and silently stays manual when it cannot, rather than resetting the
+    /// user's level on a read failure.
+    ///
+    /// - Parameter url: The plist to read. Injectable so tests can record one
+    ///   instead of depending on what this Mac happens to be set to.
+    func applySystemChargeLimit(from url: URL? = nil) {
+        // The test seam wins when it is set, so a test never reads whatever
+        // limit the machine running it happens to be set to.
+        let url = url ?? chargeLimitURLForTesting
+        let limit = url.map { SystemChargeLimitReader.chargeLimit(from: $0) }
+            ?? SystemChargeLimitReader.chargeLimit()
+        guard let limit else { return }
+        batteryFullThreshold = Double(limit)
+    }
+
     var batteryIconOptions: BatteryIconOptions {
         BatteryIconOptions(
             showsPercentage: showsBatteryPercentage,
@@ -891,6 +950,7 @@ final class SettingsStore: ObservableObject {
             usesStatusColors: usesBatteryStatusColors,
             criticalThreshold: Int(batteryCriticalThreshold.rounded()),
             showsPercentageWhenConnected: showsPercentageWhenConnected,
+            fullThreshold: Int(batteryFullThreshold.rounded()),
             textScale: batterySymbolScale * BatteryIconOptions.defaultTextScale,
             ringStrokeScale: ringStrokeStyle.scale
         )
@@ -1014,6 +1074,7 @@ final class SettingsStore: ObservableObject {
         }
         let storedIconSize = (defaults.object(forKey: Self.iconSizeDefaultsKey) as? NSNumber)?.doubleValue
         let storedCriticalThreshold = (defaults.object(forKey: Self.batteryCriticalThresholdDefaultsKey) as? NSNumber)?.doubleValue
+        let storedFullThreshold = (defaults.object(forKey: Self.batteryFullThresholdDefaultsKey) as? NSNumber)?.doubleValue
         let storedBatterySymbolScale = (defaults.object(forKey: Self.batterySymbolScaleDefaultsKey) as? NSNumber)?.doubleValue
         let storedOutputDeviceLimit = (defaults.object(forKey: Self.maxVisibleOutputDevicesDefaultsKey) as? NSNumber)?.intValue
         let storedBluetoothDeviceLimit = (defaults.object(
@@ -1081,6 +1142,9 @@ final class SettingsStore: ObservableObject {
         )
         self.batteryCriticalThreshold = Self.clampedBatteryCriticalThreshold(
             storedCriticalThreshold ?? Self.defaultBatteryCriticalThreshold
+        )
+        self.batteryFullThreshold = Self.clampedBatteryFullThreshold(
+            storedFullThreshold ?? Self.defaultBatteryFullThreshold
         )
         self.showsWiFiIconForEthernet = defaults.object(
             forKey: Self.showsWiFiIconForEthernetDefaultsKey
@@ -1278,6 +1342,14 @@ final class SettingsStore: ObservableObject {
         return min(
             batteryCriticalThresholdRange.upperBound,
             max(batteryCriticalThresholdRange.lowerBound, value)
+        ).rounded()
+    }
+
+    static func clampedBatteryFullThreshold(_ value: Double) -> Double {
+        guard value.isFinite else { return defaultBatteryFullThreshold }
+        return min(
+            batteryFullThresholdRange.upperBound,
+            max(batteryFullThresholdRange.lowerBound, value)
         ).rounded()
     }
 
