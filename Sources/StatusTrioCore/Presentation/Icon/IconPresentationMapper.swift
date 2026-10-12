@@ -154,7 +154,13 @@ enum IconPresentationMapper {
         case 1: 0.33
         default: 0
         }
-        return wifiSymbol(variableValue: variableValue, color: bars == 0 ? .inactive : .primary, scale: scale)
+        // An associated interface must never render as a faded, disabled glyph.
+        // A missing reading means "unknown", not "no signal", so it keeps the
+        // full foreground tint; only a genuinely weak-but-known reading uses the
+        // muted track. Otherwise a transient invalid `rssiValue()` blanks the
+        // connected icon (issue #110).
+        let color: IconColorRole = (rssi == nil) ? .primary : (bars == 0 ? .inactive : .primary)
+        return wifiSymbol(variableValue: variableValue, color: color, scale: scale)
     }
 
     private static func wifiSymbol(
