@@ -208,9 +208,12 @@ struct BatterySectionView: View {
 
             // The approval lives in Login Items, and a user who misses the
             // one-time prompt has no other way to find it — so the guidance is
-            // always shown, emphasised while it still needs action.
+            // always shown, emphasised while it still needs action. The whole
+            // line is the button that opens the pane, with no separate control.
             if helper.isAvailable {
-                VStack(alignment: .leading, spacing: 4) {
+                Button {
+                    helper.openLoginItemsSettings()
+                } label: {
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         Image(systemName: helper.requiresApproval
                             ? "exclamationmark.triangle.fill"
@@ -223,13 +226,13 @@ struct BatterySectionView: View {
                         ))
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
                     }
-                    Button(localization.string(.lowPowerModeOpenLoginItems)) {
-                        helper.openLoginItemsSettings()
-                    }
-                    .controlSize(.small)
+                    .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
+                .accessibilityLabel(localization.string(.lowPowerModeOpenLoginItems))
                 .padding(.horizontal, SettingsMetrics.rowPaddingH)
                 .padding(.bottom, 6)
             }
