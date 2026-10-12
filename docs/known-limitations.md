@@ -1,6 +1,6 @@
 # Known limitations
 
-Status Trio is a status app, not a system control panel. Two boundaries are worth
+Status Trio is a status app, not a system control panel. A few boundaries are worth
 stating plainly, so the popover does what users expect and the same questions do not
 have to be answered one issue at a time.
 
@@ -43,6 +43,20 @@ Current versions neither read nor write those items. They are left in place on
 purpose, so a future version that reintroduces switching could reuse them instead of
 asking for every password again. To remove one yourself, open Keychain Access, search
 for `com.lingsmbp.StatusTrio.wifi-password`, and delete the item.
+
+## Internet Sharing is toggled in System Settings
+
+When a wired link is active, the wired details page offers **Share Internet…**, which
+opens the Sharing pane. It does not turn Internet Sharing on or off itself.
+
+That is a deliberate boundary. Enabling Internet Sharing means writing the system's
+network configuration — `com.apple.nat.plist` under
+`/Library/Preferences/SystemConfiguration` — and starting the `InternetSharing`
+daemon. Neither is a public API: the plist's own man page calls it "a contract
+between the Sharing preferences pane and InternetSharing" and warns its details
+"are subject to change and are not completely documented". Driving it from the app
+would be a version-sensitive write to a root-owned file that the system can change
+underneath it, so the popover hands this one job back to the pane that owns it.
 
 ## "Charge to Full Now" stays in macOS
 

@@ -133,6 +133,16 @@ final class StatusMenuBuilderTests: XCTestCase {
                 "x-apple.systempreferences:com.apple.preference.security?Privacy_Bluetooth"
             ]
         )
+        // Internet Sharing lives in the Sharing pane, which has its own Settings
+        // extension. Verified on macOS 27: this identifier starts Sharing.appex,
+        // not Network.appex.
+        XCTAssertEqual(
+            StatusBarController.sharingSettingsURLs.map(\.absoluteString),
+            [
+                "x-apple.systempreferences:com.apple.Sharing-Settings.extension",
+                "x-apple.systempreferences:com.apple.preferences.sharing"
+            ]
+        )
     }
 
     private func makeLocalization(_ language: AppLanguage) -> Localization {

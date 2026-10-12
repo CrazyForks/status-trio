@@ -206,6 +206,8 @@
 "ethernet.subtitle.connected" = "연결됨";
 "ethernet.subtitle.constrained" = "제한된 네트워크";
 "ethernet.action.openSettings" = "네트워크 설정 열기";
+"ethernet.action.shareInternet" = "인터넷 공유…";
+"ethernet.action.shareInternetHelp" = "인터넷 공유를 켤 수 있는 '공유' 패널을 엽니다.";
 "volume.title" = "볼륨 · %d%%";
 "volume.titleUnavailable" = "볼륨 · —";
 "volume.muted" = "음소거됨";

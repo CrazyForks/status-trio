@@ -17,6 +17,7 @@ struct StatusPopoverView: View {
     let openBatterySettings: () -> Void
     let openWiFiSettings: () -> Void
     let openNetworkSettings: () -> Void
+    let openSharingSettings: () -> Void
     let openLocationSettings: () -> Void
     let openBluetoothSettings: () -> Void
     let openBluetoothPermissionSettings: () -> Void
@@ -67,6 +68,7 @@ struct StatusPopoverView: View {
                         currentPanel = .summary
                     },
                     onOpenNetworkSettings: openNetworkSettings,
+                    onOpenSharingSettings: openSharingSettings,
                     onCopyValue: { copyValue($0) }
                 )
             }

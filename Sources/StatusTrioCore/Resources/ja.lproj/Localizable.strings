@@ -206,6 +206,8 @@
 "ethernet.subtitle.connected" = "接続済み";
 "ethernet.subtitle.constrained" = "制限付きネットワーク";
 "ethernet.action.openSettings" = "ネットワーク設定を開く";
+"ethernet.action.shareInternet" = "インターネット共有…";
+"ethernet.action.shareInternetHelp" = "「共有」パネルを開きます。ここでインターネット共有をオンにできます。";
 "volume.title" = "音量 · %d%%";
 "volume.titleUnavailable" = "音量 · —";
 "volume.muted" = "ミュート中";

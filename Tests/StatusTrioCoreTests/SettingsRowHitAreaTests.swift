@@ -27,6 +27,7 @@ final class SettingsRowHitAreaTests: XCTestCase {
             openBatterySettings: {},
             openWiFiSettings: {},
             openNetworkSettings: {},
+            openSharingSettings: {},
             openLocationSettings: {},
             openBluetoothSettings: {},
             openBluetoothPermissionSettings: {},

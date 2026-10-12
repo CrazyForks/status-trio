@@ -10,6 +10,7 @@ route without a screen-recording or accessibility grant.
 | --- | --- | --- |
 | Wi-Fi gear, Wi-Fi row | `x-apple.systempreferences:com.apple.wifi-settings-extension` | Wi-Fi (`Wi-Fi.appex`) |
 | A wired row's gear | `x-apple.systempreferences:com.apple.Network-Settings.extension` | Network (`Network.appex`) |
+| Wired row's **Share Internet…** | `x-apple.systempreferences:com.apple.Sharing-Settings.extension` | Sharing (`Sharing.appex`) |
 
 `com.apple.Network-Settings.extension?Wi-Fi` is **not** a Wi-Fi route. It opens the
 Network pane — the list of network services — and its `?Wi-Fi` anchor does not
@@ -54,6 +55,7 @@ Measured on macOS 27.0 (26A428):
 | --- | --- |
 | `com.apple.wifi-settings-extension` | `Wi-Fi.appex`, launch args `serviceName = com.apple.wifi-settings-extension`; `Network.appex` never started |
 | `com.apple.Network-Settings.extension?Wi-Fi` | `Network.appex` |
+| `com.apple.Sharing-Settings.extension` | `Sharing.appex` |
 
 `screencapture` fails without a screen-recording grant (`could not create image
 from display`) and `log show` returns nothing in a sandboxed shell, so the process
