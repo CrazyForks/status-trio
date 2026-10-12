@@ -144,7 +144,7 @@ final class PrivilegedHelperManagerTests: XCTestCase {
 }
 
 @MainActor
-private final class FakePrivilegedHelperService: PrivilegedHelperServicing {
+final class FakePrivilegedHelperService: PrivilegedHelperServicing {
     var status: PrivilegedHelperStatus
     var statusAfterRegister: PrivilegedHelperStatus?
     var registerError: Error?

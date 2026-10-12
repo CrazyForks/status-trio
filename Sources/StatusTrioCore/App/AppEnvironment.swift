@@ -18,6 +18,7 @@ final class AppEnvironment {
     let telemetryReporter: any TelemetryReporting
     let bluetoothAudioIconOverrideSynchronizer = BluetoothAudioIconOverrideSynchronizer()
     private let bluetoothNearbyBatteryOptOutSynchronizer = BluetoothNearbyBatteryOptOutSynchronizer()
+    private let lowPowerModeControlSynchronizer = LowPowerModeControlSynchronizer()
 
     private var chargingEffectCancellables = Set<AnyCancellable>()
 
@@ -69,6 +70,10 @@ final class AppEnvironment {
             settings: settings,
             actions: StatusPanelActions(store: store, settings: settings)
         )
+        lowPowerModeControlSynchronizer.start(
+            settings: settings,
+            helper: PrivilegedHelperManager.shared
+        )
         store.bindInputSettings(settings)
         store.bindMobileBatterySettings(settings)
         store.bindLowPowerModeSettings(settings)
@@ -84,6 +89,7 @@ final class AppEnvironment {
         chargingEffectCancellables.removeAll()
         bluetoothAudioIconOverrideSynchronizer.stop()
         bluetoothNearbyBatteryOptOutSynchronizer.stop()
+        lowPowerModeControlSynchronizer.stop()
         appIconController.stop()
         mainMenuController.stop()
         store.stop()

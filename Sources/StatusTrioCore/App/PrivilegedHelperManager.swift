@@ -94,6 +94,7 @@ final class PrivilegedHelperManager: ObservableObject {
 
     @Published private(set) var status: PrivilegedHelperStatus
     @Published private(set) var didFailLastOperation = false
+    @Published private(set) var lastErrorMessage: String?
 
     private let service: PrivilegedHelperServicing
 
@@ -113,6 +114,13 @@ final class PrivilegedHelperManager: ObservableObject {
         status == .requiresApproval
     }
 
+    /// True only once the helper is approved and launchd can start it. The Low
+    /// Power Mode control is offered on this, not on `isEnabled`: a registration
+    /// that still awaits approval has no daemon behind it yet.
+    var isApproved: Bool {
+        status == .enabled
+    }
+
     /// False when this build or process cannot offer the helper at all.
     var isAvailable: Bool {
         service.isSupported
@@ -128,6 +136,7 @@ final class PrivilegedHelperManager: ObservableObject {
     func setEnabled(_ enabled: Bool) {
         guard isAvailable else { return }
         didFailLastOperation = false
+        lastErrorMessage = nil
 
         do {
             if enabled {
@@ -139,6 +148,7 @@ final class PrivilegedHelperManager: ObservableObject {
             }
         } catch {
             didFailLastOperation = true
+            lastErrorMessage = error.localizedDescription
         }
 
         refresh()

@@ -69,6 +69,22 @@ final class LowPowerModeControllerTests: XCTestCase {
         XCTAssertTrue(controller.isLowPowerMode)
     }
 
+    func testHelperReadingWinsOverTheLaggingProcessInfoSeed() async {
+        // `ProcessInfo.isLowPowerModeEnabled` is cached per process and can lag
+        // the real state; once the helper has answered, its value must stand or
+        // the toggle would send the wrong direction.
+        let client = FakeLowPowerModeClient(reads: true)
+        let controller = LowPowerModeController(client: client, initialIsLowPowerMode: false)
+        controller.setEnabled(true)
+        controller.refresh()
+        await settle()
+        XCTAssertTrue(controller.isLowPowerMode)
+
+        controller.updateFromSystemRead(false)
+
+        XCTAssertTrue(controller.isLowPowerMode)
+    }
+
     func testDisablingClearsErrorAndStopsContact() async {
         let client = FakeLowPowerModeClient(reads: false)
         client.setError = FakeError.denied

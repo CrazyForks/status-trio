@@ -66,6 +66,9 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         statusStore.setSettingsVisible(true)
         applyLocalization()
         enterActivationPolicyIfNeeded()
+        // The user may have approved the power helper in System Settings since
+        // the last look; refresh so the toggle and its approval note are current.
+        PrivilegedHelperManager.shared.refresh()
         window.makeKeyAndOrderFront(nil)
         window.orderFrontRegardless()
         NSApp.activate(ignoringOtherApps: true)

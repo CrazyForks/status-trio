@@ -16,6 +16,9 @@ final class LowPowerModeController: ObservableObject {
 
     private let client: any LowPowerModeClienting
     private var isEnabled = false
+    /// True once the helper has answered a read, after which its value is the
+    /// source of truth and the lagging `ProcessInfo` seed is ignored.
+    private var hasAuthoritativeReading = false
     private var isStopped = false
     private var refreshTask: Task<Void, Never>?
     private var generation: UInt64 = 0
@@ -48,8 +51,12 @@ final class LowPowerModeController: ObservableObject {
 
     /// Seeds the displayed value from the system read side without contacting
     /// the helper. Called when `BatteryMonitor` reports a fresh snapshot.
+    ///
+    /// Only a fallback: `ProcessInfo.isLowPowerModeEnabled` is cached per process
+    /// and can lag the real system state, so once the helper has answered a read
+    /// this value must not overwrite it.
     func updateFromSystemRead(_ enabled: Bool) {
-        guard !isStopped, !isApplying else { return }
+        guard !isStopped, !isApplying, !hasAuthoritativeReading else { return }
         isLowPowerMode = enabled
     }
 
@@ -64,6 +71,7 @@ final class LowPowerModeController: ObservableObject {
                 let enabled = try await self.client.readLowPowerMode()
                 guard !Task.isCancelled, self.generation == requestGeneration else { return }
                 self.isLowPowerMode = enabled
+                self.hasAuthoritativeReading = true
                 self.lastError = nil
             } catch {
                 guard !Task.isCancelled, self.generation == requestGeneration else { return }
@@ -86,6 +94,7 @@ final class LowPowerModeController: ObservableObject {
                 let observed = try await self.client.setLowPowerMode(enabled)
                 guard self.generation == requestGeneration else { return }
                 self.isLowPowerMode = observed
+                self.hasAuthoritativeReading = true
             } catch {
                 guard self.generation == requestGeneration else { return }
                 self.isLowPowerMode = previous

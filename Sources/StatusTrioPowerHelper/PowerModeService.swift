@@ -41,10 +41,26 @@ struct SystemPmsetRunner: PmsetRunning {
     }
 
     func currentLowPowerMode() -> Bool? {
-        // `ProcessInfo` is the same source the app reads, so a state set here is
-        // reported back consistently rather than through a second, drifting
-        // interpretation of `pmset -g`.
-        ProcessInfo.processInfo.isLowPowerModeEnabled
+        // Read the system state from `pmset -g` rather than
+        // `ProcessInfo.isLowPowerModeEnabled`: that value is cached per process
+        // and only refreshes when the process receives a power-state-change
+        // notification, so a freshly started daemon reports `false` even when the
+        // system is in Low Power Mode.
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: LowPowerModeCommand.pmsetPath)
+        process.arguments = ["-g"]
+        let stdout = Pipe()
+        process.standardOutput = stdout
+        process.standardError = Pipe()
+        do {
+            try process.run()
+        } catch {
+            return nil
+        }
+        process.waitUntilExit()
+        guard process.terminationStatus == 0 else { return nil }
+        let output = String(data: stdout.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+        return LowPowerModeCommand.parseEnabled(fromPmsetOutput: output)
     }
 }
 

@@ -70,6 +70,22 @@ struct BatteryStatusView: View {
     /// A one-click Low Power Mode switch, mirroring the system battery menu's
     /// quick toggle. Filled when on, outlined when off.
     private func lowPowerToggleButton(_ controller: LowPowerModeController) -> some View {
+        // A dedicated observing subview: the row itself holds the controller as a
+        // plain value, so reading `isLowPowerMode` here would not re-render the
+        // leaf when the state changes.
+        LowPowerModeToggleButton(controller: controller, localization: localization)
+    }
+
+    var showsDetailAffordance: Bool { hasDetails }
+}
+
+/// The leaf switch, split out so it observes the controller and re-renders when
+/// the Low Power Mode state changes.
+private struct LowPowerModeToggleButton: View {
+    @ObservedObject var controller: LowPowerModeController
+    let localization: Localization
+
+    var body: some View {
         Button {
             controller.setLowPowerMode(!controller.isLowPowerMode)
         } label: {
@@ -86,6 +102,4 @@ struct BatteryStatusView: View {
         )
         .frame(width: 24, height: 24)
     }
-
-    var showsDetailAffordance: Bool { hasDetails }
 }

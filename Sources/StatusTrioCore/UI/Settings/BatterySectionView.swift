@@ -192,7 +192,9 @@ struct BatterySectionView: View {
     }
 
     /// The opt-in that registers the privileged helper. The helper is only
-    /// contacted — and only then started by launchd — once this is on.
+    /// contacted — and only then started by launchd — once this is on. The
+    /// toggle drives the manager directly, because registering the daemon is
+    /// what the switch does; the persisted flag follows the registration.
     private var lowPowerModeGroup: some View {
         VStack(alignment: .leading, spacing: 6) {
             SettingsToggleRow(
@@ -200,10 +202,7 @@ struct BatterySectionView: View {
                 tint: .green,
                 title: localization.string(.lowPowerModeControl),
                 subtitle: localization.string(.lowPowerModeControlDescription),
-                isOn: Binding(
-                    get: { store.controlsLowPowerMode },
-                    set: { store.controlsLowPowerMode = $0 }
-                )
+                isOn: helper.isEnabledBinding
             )
             .disabled(!helper.isAvailable)
 
@@ -227,9 +226,17 @@ struct BatterySectionView: View {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Image(systemName: "exclamationmark.octagon.fill")
                         .foregroundStyle(.red)
-                    Text(localization.string(.lowPowerModeFailure))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(localization.string(.lowPowerModeFailure))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        if let message = helper.lastErrorMessage {
+                            Text(message)
+                                .font(.caption2)
+                                .foregroundStyle(.red)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
                 }
                 .padding(.horizontal, SettingsMetrics.rowPaddingH)
                 .padding(.bottom, 6)

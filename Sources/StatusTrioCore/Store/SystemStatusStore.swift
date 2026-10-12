@@ -536,6 +536,10 @@ final class SystemStatusStore: ObservableObject {
     func setPopoverVisible(_ visible: Bool) {
         guard !hasStopped else { return }
         isPopoverVisible = visible
+        // The system's own state may have changed while the popover was closed
+        // (Control Center, the battery menu), so re-read it through the helper
+        // before the battery row shows a stale Low Power Mode value.
+        if visible { lowPowerMode.refresh() }
         mobileBattery.setSurfaceVisible(visible)
         updateAppleRefreshDemand()
         inputMonitor?.setVisible(visible)
