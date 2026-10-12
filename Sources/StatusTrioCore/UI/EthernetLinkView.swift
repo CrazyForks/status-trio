@@ -31,9 +31,9 @@ struct EthernetLinkView: View {
                 // Internet Sharing needs root to toggle and has no public API, so
                 // this hands the user to the Sharing pane rather than writing the
                 // system's network configuration from the app.
-                Button(localization.string(.ethernetActionShareInternet), action: onOpenSharingSettings)
+                Button(localization.string(.networkActionShareInternet), action: onOpenSharingSettings)
                     .buttonStyle(.plain)
-                    .help(localization.string(.ethernetActionShareInternetHelp))
+                    .help(localization.string(.networkActionShareInternetHelp))
             }
         }
     }

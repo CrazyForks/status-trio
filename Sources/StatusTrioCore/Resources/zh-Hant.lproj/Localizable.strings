@@ -161,8 +161,9 @@
 "battery.action.openSettings" = "打開電池設定";
 "battery.lowPowerMode.control" = "低耗電模式控制";
 "battery.lowPowerMode.controlDescription" = "在電池詳細資訊中新增開關，用來開啟或關閉低耗電模式。需要先在「登入項目」中批准一次。";
-"battery.lowPowerMode.requiresApproval" = "正在等待在「登入項目」中批准。";
+"battery.lowPowerMode.requiresApproval" = "正在等待批准。請開啟 系統設定 › 一般 › 登入項目與擴充功能，在「允許在背景執行」中開啟 Status Trio。";
 "battery.lowPowerMode.openLoginItems" = "打開登入項目";
+"battery.lowPowerMode.approvalHint" = "開啟後，請在 系統設定 › 一般 › 登入項目與擴充功能 的「允許在背景執行」中批准 Status Trio。";
 "battery.lowPowerMode.failure" = "無法註冊電源輔助程式。";
 "battery.lowPowerMode.toggle" = "低耗電模式";
 "battery.lowPowerMode.toggleDescription" = "降低能耗以延長電池續航。";
@@ -206,8 +207,8 @@
 "ethernet.subtitle.connected" = "已連接";
 "ethernet.subtitle.constrained" = "受限網路";
 "ethernet.action.openSettings" = "打開網路設定";
-"ethernet.action.shareInternet" = "共享互聯網…";
-"ethernet.action.shareInternetHelp" = "打開「共享」面板，可在其中開啟互聯網共享。";
+"network.action.shareInternet" = "共享互聯網…";
+"network.action.shareInternetHelp" = "打開「共享」面板，可在其中開啟互聯網共享。";
 "volume.title" = "音量 · %d%%";
 "volume.titleUnavailable" = "音量 · —";
 "volume.muted" = "已靜音";

@@ -161,8 +161,9 @@
 "battery.action.openSettings" = "Open Battery Settings";
 "battery.lowPowerMode.control" = "Low Power Mode Control";
 "battery.lowPowerMode.controlDescription" = "Adds a switch in the battery details that turns Low Power Mode on or off. Requires a one-time approval in Login Items.";
-"battery.lowPowerMode.requiresApproval" = "Waiting for approval in Login Items.";
+"battery.lowPowerMode.requiresApproval" = "Waiting for approval. Open System Settings › General › Login Items and turn on Status Trio under “Allow in the Background”.";
 "battery.lowPowerMode.openLoginItems" = "Open Login Items";
+"battery.lowPowerMode.approvalHint" = "After turning this on, approve Status Trio in System Settings › General › Login Items under “Allow in the Background”.";
 "battery.lowPowerMode.failure" = "The power helper could not be registered.";
 "battery.lowPowerMode.toggle" = "Low Power Mode";
 "battery.lowPowerMode.toggleDescription" = "Reduces energy use to extend battery life.";
@@ -206,8 +207,8 @@
 "ethernet.subtitle.connected" = "Connected";
 "ethernet.subtitle.constrained" = "Restricted network";
 "ethernet.action.openSettings" = "Open Network Settings";
-"ethernet.action.shareInternet" = "Share Internet…";
-"ethernet.action.shareInternetHelp" = "Opens the Sharing pane, where Internet Sharing can be turned on.";
+"network.action.shareInternet" = "Share Internet…";
+"network.action.shareInternetHelp" = "Opens the Sharing pane, where Internet Sharing can be turned on.";
 "volume.title" = "Volume · %d%%";
 "volume.titleUnavailable" = "Volume · —";
 "volume.muted" = "Muted";

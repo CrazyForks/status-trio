@@ -161,8 +161,9 @@
 "battery.action.openSettings" = "Batterieeinstellungen öffnen";
 "battery.lowPowerMode.control" = "Steuerung des Energiesparmodus";
 "battery.lowPowerMode.controlDescription" = "Fügt in den Batteriedetails einen Schalter zum Ein- und Ausschalten des Energiesparmodus hinzu. Erfordert eine einmalige Freigabe unter „Anmeldeobjekte“.";
-"battery.lowPowerMode.requiresApproval" = "Warte auf Freigabe unter „Anmeldeobjekte“.";
+"battery.lowPowerMode.requiresApproval" = "Warte auf Freigabe. Öffne Systemeinstellungen › Allgemein › Anmeldeobjekte und aktiviere Status Trio unter „Im Hintergrund zulassen“.";
 "battery.lowPowerMode.openLoginItems" = "Anmeldeobjekte öffnen";
+"battery.lowPowerMode.approvalHint" = "Nach dem Einschalten gib Status Trio in den Systemeinstellungen › Allgemein › Anmeldeobjekte unter „Im Hintergrund zulassen“ frei.";
 "battery.lowPowerMode.failure" = "Der Energiehelfer konnte nicht registriert werden.";
 "battery.lowPowerMode.toggle" = "Energiesparmodus";
 "battery.lowPowerMode.toggleDescription" = "Reduziert den Energieverbrauch, um die Batterielaufzeit zu verlängern.";
@@ -206,8 +207,8 @@
 "ethernet.subtitle.connected" = "Verbunden";
 "ethernet.subtitle.constrained" = "Eingeschränktes Netzwerk";
 "ethernet.action.openSettings" = "Netzwerkeinstellungen öffnen";
-"ethernet.action.shareInternet" = "Internet teilen…";
-"ethernet.action.shareInternetHelp" = "Öffnet den Bereich „Teilen“, in dem „Internet teilen“ aktiviert werden kann.";
+"network.action.shareInternet" = "Internet teilen…";
+"network.action.shareInternetHelp" = "Öffnet den Bereich „Teilen“, in dem „Internet teilen“ aktiviert werden kann.";
 "volume.title" = "Lautstärke · %d%%";
 "volume.titleUnavailable" = "Lautstärke · —";
 "volume.muted" = "Stumm";

@@ -34,12 +34,6 @@ struct BatteryStatusView: View {
                     }
 
                     Spacer()
-
-                    if hasDetails {
-                        Image(systemName: "chevron.right")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.tertiary)
-                    }
                 }
                 .contentShape(Rectangle())
             }
@@ -50,6 +44,16 @@ struct BatteryStatusView: View {
 
             if showsLowPowerToggle, let lowPowerMode {
                 lowPowerToggleButton(lowPowerMode)
+            }
+
+            // The chevron sits immediately left of the gear so its right edge
+            // lines up with the same affordance in the rows below; the leaf would
+            // otherwise push it one slot to the left.
+            if hasDetails {
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+                    .accessibilityHidden(true)
             }
 
             if state.showsSettings {

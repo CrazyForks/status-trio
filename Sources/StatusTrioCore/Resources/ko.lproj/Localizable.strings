@@ -161,8 +161,9 @@
 "battery.action.openSettings" = "배터리 설정 열기";
 "battery.lowPowerMode.control" = "저전력 모드 제어";
 "battery.lowPowerMode.controlDescription" = "배터리 세부 정보에 저전력 모드를 켜고 끄는 스위치를 추가합니다. 최초 1회 '로그인 항목'에서 승인이 필요합니다.";
-"battery.lowPowerMode.requiresApproval" = "'로그인 항목'에서 승인을 기다리는 중입니다.";
+"battery.lowPowerMode.requiresApproval" = "승인 대기 중입니다. 시스템 설정 › 일반 › 로그인 항목 및 확장을 열고 '백그라운드에서 허용'에서 Status Trio를 켜십시오.";
 "battery.lowPowerMode.openLoginItems" = "로그인 항목 열기";
+"battery.lowPowerMode.approvalHint" = "켠 후 시스템 설정 › 일반 › 로그인 항목 및 확장의 '백그라운드에서 허용'에서 Status Trio를 승인하십시오.";
 "battery.lowPowerMode.failure" = "전원 도우미를 등록하지 못했습니다.";
 "battery.lowPowerMode.toggle" = "저전력 모드";
 "battery.lowPowerMode.toggleDescription" = "에너지 사용을 줄여 배터리 사용 시간을 늘립니다.";
@@ -206,8 +207,8 @@
 "ethernet.subtitle.connected" = "연결됨";
 "ethernet.subtitle.constrained" = "제한된 네트워크";
 "ethernet.action.openSettings" = "네트워크 설정 열기";
-"ethernet.action.shareInternet" = "인터넷 공유…";
-"ethernet.action.shareInternetHelp" = "인터넷 공유를 켤 수 있는 '공유' 패널을 엽니다.";
+"network.action.shareInternet" = "인터넷 공유…";
+"network.action.shareInternetHelp" = "인터넷 공유를 켤 수 있는 '공유' 패널을 엽니다.";
 "volume.title" = "볼륨 · %d%%";
 "volume.titleUnavailable" = "볼륨 · —";
 "volume.muted" = "음소거됨";

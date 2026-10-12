@@ -206,13 +206,25 @@ struct BatterySectionView: View {
             )
             .disabled(!helper.isAvailable)
 
-            if helper.requiresApproval {
-                HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundStyle(.orange)
-                    Text(localization.string(.lowPowerModeRequiresApproval))
+            // The approval lives in Login Items, and a user who misses the
+            // one-time prompt has no other way to find it — so the guidance is
+            // always shown, emphasised while it still needs action.
+            if helper.isAvailable {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        Image(systemName: helper.requiresApproval
+                            ? "exclamationmark.triangle.fill"
+                            : "info.circle")
+                            .foregroundStyle(helper.requiresApproval ? Color.orange : Color.secondary)
+                        Text(localization.string(
+                            helper.requiresApproval
+                                ? .lowPowerModeRequiresApproval
+                                : .lowPowerModeApprovalHint
+                        ))
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    }
                     Button(localization.string(.lowPowerModeOpenLoginItems)) {
                         helper.openLoginItemsSettings()
                     }

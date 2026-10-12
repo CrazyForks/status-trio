@@ -161,8 +161,9 @@
 "battery.action.openSettings" = "Abrir ajustes de batería";
 "battery.lowPowerMode.control" = "Control del modo de bajo consumo";
 "battery.lowPowerMode.controlDescription" = "Añade un interruptor en los detalles de la batería para activar o desactivar el modo de bajo consumo. Requiere una aprobación única en «Ítems de inicio de sesión».";
-"battery.lowPowerMode.requiresApproval" = "Esperando aprobación en «Ítems de inicio de sesión».";
+"battery.lowPowerMode.requiresApproval" = "Esperando aprobación. Abre Ajustes del Sistema › General › Ítems de inicio de sesión y activa Status Trio en «Permitir en segundo plano».";
 "battery.lowPowerMode.openLoginItems" = "Abrir ítems de inicio de sesión";
+"battery.lowPowerMode.approvalHint" = "Tras activarlo, aprueba Status Trio en Ajustes del Sistema › General › Ítems de inicio de sesión, en «Permitir en segundo plano».";
 "battery.lowPowerMode.failure" = "No se pudo registrar el asistente de energía.";
 "battery.lowPowerMode.toggle" = "Modo de bajo consumo";
 "battery.lowPowerMode.toggleDescription" = "Reduce el consumo de energía para prolongar la batería.";
@@ -206,8 +207,8 @@
 "ethernet.subtitle.connected" = "Conectado";
 "ethernet.subtitle.constrained" = "Red restringida";
 "ethernet.action.openSettings" = "Abrir ajustes de red";
-"ethernet.action.shareInternet" = "Compartir Internet…";
-"ethernet.action.shareInternetHelp" = "Abre el panel «Compartir», donde se puede activar Compartir Internet.";
+"network.action.shareInternet" = "Compartir Internet…";
+"network.action.shareInternetHelp" = "Abre el panel «Compartir», donde se puede activar Compartir Internet.";
 "volume.title" = "Volumen · %d%%";
 "volume.titleUnavailable" = "Volumen · —";
 "volume.muted" = "Silenciado";

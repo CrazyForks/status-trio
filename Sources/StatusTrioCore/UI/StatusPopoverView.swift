@@ -61,6 +61,7 @@ struct StatusPopoverView: View {
                     onOpenLocationSettings: openLocationSettings,
                     onSetPower: { panel.actions.setWiFiPower($0) },
                     onRefresh: { panel.actions.refreshWiFi() },
+                    onOpenSharingSettings: openSharingSettings,
                     onCopyValue: { copyValue($0) },
                     showsDetailsInitially: showDetails
                 )

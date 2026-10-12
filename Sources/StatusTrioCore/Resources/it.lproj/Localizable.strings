@@ -161,8 +161,9 @@
 "battery.action.openSettings" = "Apri impostazioni batteria";
 "battery.lowPowerMode.control" = "Controllo modalità risparmio energia";
 "battery.lowPowerMode.controlDescription" = "Aggiunge un interruttore nei dettagli della batteria per attivare o disattivare la modalità risparmio energia. Richiede un'approvazione una tantum in «Elementi login».";
-"battery.lowPowerMode.requiresApproval" = "In attesa di approvazione in «Elementi login».";
+"battery.lowPowerMode.requiresApproval" = "In attesa di approvazione. Apri Impostazioni di Sistema › Generali › Elementi login e attiva Status Trio in «Consenti in background».";
 "battery.lowPowerMode.openLoginItems" = "Apri elementi login";
+"battery.lowPowerMode.approvalHint" = "Dopo l'attivazione, approva Status Trio in Impostazioni di Sistema › Generali › Elementi login, in «Consenti in background».";
 "battery.lowPowerMode.failure" = "Impossibile registrare l'helper di alimentazione.";
 "battery.lowPowerMode.toggle" = "Modalità risparmio energia";
 "battery.lowPowerMode.toggleDescription" = "Riduce il consumo di energia per prolungare la batteria.";
@@ -206,8 +207,8 @@
 "ethernet.subtitle.connected" = "Connesso";
 "ethernet.subtitle.constrained" = "Rete limitata";
 "ethernet.action.openSettings" = "Apri impostazioni Rete";
-"ethernet.action.shareInternet" = "Condividi Internet…";
-"ethernet.action.shareInternetHelp" = "Apre il pannello «Condivisione», dove si può attivare la condivisione di Internet.";
+"network.action.shareInternet" = "Condividi Internet…";
+"network.action.shareInternetHelp" = "Apre il pannello «Condivisione», dove si può attivare la condivisione di Internet.";
 "volume.title" = "Volume · %d%%";
 "volume.titleUnavailable" = "Volume · —";
 "volume.muted" = "Muto";

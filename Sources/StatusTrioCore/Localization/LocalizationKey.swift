@@ -259,6 +259,7 @@ enum LocalizationKey: String, CaseIterable, Hashable, Sendable {
     case lowPowerModeControl = "battery.lowPowerMode.control"
     case lowPowerModeControlDescription = "battery.lowPowerMode.controlDescription"
     case lowPowerModeRequiresApproval = "battery.lowPowerMode.requiresApproval"
+    case lowPowerModeApprovalHint = "battery.lowPowerMode.approvalHint"
     case lowPowerModeOpenLoginItems = "battery.lowPowerMode.openLoginItems"
     case lowPowerModeFailure = "battery.lowPowerMode.failure"
     case lowPowerModeToggle = "battery.lowPowerMode.toggle"
@@ -275,8 +276,10 @@ enum LocalizationKey: String, CaseIterable, Hashable, Sendable {
     case ethernetSubtitleConnected = "ethernet.subtitle.connected"
     case ethernetSubtitleConstrained = "ethernet.subtitle.constrained"
     case ethernetActionOpenSettings = "ethernet.action.openSettings"
-    case ethernetActionShareInternet = "ethernet.action.shareInternet"
-    case ethernetActionShareInternetHelp = "ethernet.action.shareInternetHelp"
+    /// Offered for every active network, not only a wired one, so the key is
+    /// network-neutral rather than ethernet-scoped.
+    case networkActionShareInternet = "network.action.shareInternet"
+    case networkActionShareInternetHelp = "network.action.shareInternetHelp"
 
     case wifiSummaryBand = "wifi.summary.band"
     case wifiSummarySignal = "wifi.summary.signal"

@@ -144,8 +144,9 @@
 "battery.action.openSettings" = "فتح إعدادات البطارية";
 "battery.lowPowerMode.control" = "التحكم في وضع الطاقة المنخفضة";
 "battery.lowPowerMode.controlDescription" = "يضيف مفتاحًا في تفاصيل البطارية لتشغيل وضع الطاقة المنخفضة أو إيقافه. يتطلب موافقة لمرة واحدة في «عناصر تسجيل الدخول».";
-"battery.lowPowerMode.requiresApproval" = "في انتظار الموافقة في «عناصر تسجيل الدخول».";
+"battery.lowPowerMode.requiresApproval" = "في انتظار الموافقة. افتح إعدادات النظام › عام › عناصر تسجيل الدخول وشغّل Status Trio ضمن «السماح في الخلفية».";
 "battery.lowPowerMode.openLoginItems" = "فتح عناصر تسجيل الدخول";
+"battery.lowPowerMode.approvalHint" = "بعد التشغيل، وافق على Status Trio في إعدادات النظام › عام › عناصر تسجيل الدخول ضمن «السماح في الخلفية».";
 "battery.lowPowerMode.failure" = "تعذّر تسجيل مساعد الطاقة.";
 "battery.lowPowerMode.toggle" = "وضع الطاقة المنخفضة";
 "battery.lowPowerMode.toggleDescription" = "يقلل استهلاك الطاقة لإطالة عمر البطارية.";
@@ -206,8 +207,8 @@
 "ethernet.subtitle.connected" = "متصل";
 "ethernet.subtitle.constrained" = "شبكة مقيّدة";
 "ethernet.action.openSettings" = "فتح إعدادات الشبكة";
-"ethernet.action.shareInternet" = "مشاركة الإنترنت…";
-"ethernet.action.shareInternetHelp" = "يفتح لوحة «المشاركة»، حيث يمكن تشغيل مشاركة الإنترنت.";
+"network.action.shareInternet" = "مشاركة الإنترنت…";
+"network.action.shareInternetHelp" = "يفتح لوحة «المشاركة»، حيث يمكن تشغيل مشاركة الإنترنت.";
 "volume.title" = "مستوى الصوت · %d%%";
 "volume.titleUnavailable" = "مستوى الصوت · —";
 "volume.muted" = "صامت";

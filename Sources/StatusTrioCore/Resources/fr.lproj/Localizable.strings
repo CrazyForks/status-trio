@@ -161,8 +161,9 @@
 "battery.action.openSettings" = "Ouvrir les réglages de batterie";
 "battery.lowPowerMode.control" = "Contrôle du mode économie d'énergie";
 "battery.lowPowerMode.controlDescription" = "Ajoute un interrupteur dans les détails de la batterie pour activer ou désactiver le mode économie d'énergie. Nécessite une approbation unique dans « Ouverture à la connexion ».";
-"battery.lowPowerMode.requiresApproval" = "En attente d'approbation dans « Ouverture à la connexion ».";
+"battery.lowPowerMode.requiresApproval" = "En attente d'approbation. Ouvrez Réglages Système › Général › Ouverture à la connexion et activez Status Trio dans « Autoriser en arrière-plan ».";
 "battery.lowPowerMode.openLoginItems" = "Ouvrir les éléments d'ouverture";
+"battery.lowPowerMode.approvalHint" = "Après l'activation, approuvez Status Trio dans Réglages Système › Général › Ouverture à la connexion, sous « Autoriser en arrière-plan ».";
 "battery.lowPowerMode.failure" = "L'assistant d'alimentation n'a pas pu être enregistré.";
 "battery.lowPowerMode.toggle" = "Mode économie d'énergie";
 "battery.lowPowerMode.toggleDescription" = "Réduit la consommation d'énergie pour prolonger la batterie.";
@@ -206,8 +207,8 @@
 "ethernet.subtitle.connected" = "Connecté";
 "ethernet.subtitle.constrained" = "Réseau limité";
 "ethernet.action.openSettings" = "Ouvrir les réglages Réseau";
-"ethernet.action.shareInternet" = "Partager la connexion…";
-"ethernet.action.shareInternetHelp" = "Ouvre le panneau « Partage », où le partage de connexion peut être activé.";
+"network.action.shareInternet" = "Partager la connexion…";
+"network.action.shareInternetHelp" = "Ouvre le panneau « Partage », où le partage de connexion peut être activé.";
 "volume.title" = "Volume · %d%%";
 "volume.titleUnavailable" = "Volume · —";
 "volume.muted" = "En sourdine";

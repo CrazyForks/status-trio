@@ -161,8 +161,9 @@
 "battery.action.openSettings" = "Открыть настройки батареи";
 "battery.lowPowerMode.control" = "Управление режимом энергосбережения";
 "battery.lowPowerMode.controlDescription" = "Добавляет переключатель режима энергосбережения в сведения о батарее. Требуется однократное подтверждение в разделе «Объекты входа».";
-"battery.lowPowerMode.requiresApproval" = "Ожидается подтверждение в разделе «Объекты входа».";
+"battery.lowPowerMode.requiresApproval" = "Ожидается подтверждение. Откройте Системные настройки › Основные › Объекты входа и включите Status Trio в разделе «Разрешить в фоне».";
 "battery.lowPowerMode.openLoginItems" = "Открыть объекты входа";
+"battery.lowPowerMode.approvalHint" = "После включения подтвердите Status Trio в Системных настройках › Основные › Объекты входа в разделе «Разрешить в фоне».";
 "battery.lowPowerMode.failure" = "Не удалось зарегистрировать помощник питания.";
 "battery.lowPowerMode.toggle" = "Режим энергосбережения";
 "battery.lowPowerMode.toggleDescription" = "Снижает энергопотребление для продления работы батареи.";
@@ -206,8 +207,8 @@
 "ethernet.subtitle.connected" = "Подключено";
 "ethernet.subtitle.constrained" = "Ограниченная сеть";
 "ethernet.action.openSettings" = "Открыть настройки сети";
-"ethernet.action.shareInternet" = "Общий доступ к Интернету…";
-"ethernet.action.shareInternetHelp" = "Открывает раздел «Общий доступ», где можно включить общий доступ к Интернету.";
+"network.action.shareInternet" = "Общий доступ к Интернету…";
+"network.action.shareInternetHelp" = "Открывает раздел «Общий доступ», где можно включить общий доступ к Интернету.";
 "volume.title" = "Громкость · %d%%";
 "volume.titleUnavailable" = "Громкость · —";
 "volume.muted" = "Без звука";

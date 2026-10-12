@@ -161,8 +161,9 @@
 "battery.action.openSettings" = "バッテリー設定を開く";
 "battery.lowPowerMode.control" = "低電力モードの制御";
 "battery.lowPowerMode.controlDescription" = "バッテリー詳細に低電力モードをオン／オフするスイッチを追加します。初回は「ログイン項目」での承認が必要です。";
-"battery.lowPowerMode.requiresApproval" = "「ログイン項目」での承認を待っています。";
+"battery.lowPowerMode.requiresApproval" = "承認待ちです。システム設定 › 一般 › ログイン項目と機能拡張 を開き、「バックグラウンドでの実行を許可」で Status Trio をオンにしてください。";
 "battery.lowPowerMode.openLoginItems" = "ログイン項目を開く";
+"battery.lowPowerMode.approvalHint" = "オンにしたら、システム設定 › 一般 › ログイン項目と機能拡張 の「バックグラウンドでの実行を許可」で Status Trio を承認してください。";
 "battery.lowPowerMode.failure" = "電源ヘルパーを登録できませんでした。";
 "battery.lowPowerMode.toggle" = "低電力モード";
 "battery.lowPowerMode.toggleDescription" = "エネルギー使用を抑えてバッテリーを長持ちさせます。";
@@ -206,8 +207,8 @@
 "ethernet.subtitle.connected" = "接続済み";
 "ethernet.subtitle.constrained" = "制限付きネットワーク";
 "ethernet.action.openSettings" = "ネットワーク設定を開く";
-"ethernet.action.shareInternet" = "インターネット共有…";
-"ethernet.action.shareInternetHelp" = "「共有」パネルを開きます。ここでインターネット共有をオンにできます。";
+"network.action.shareInternet" = "インターネット共有…";
+"network.action.shareInternetHelp" = "「共有」パネルを開きます。ここでインターネット共有をオンにできます。";
 "volume.title" = "音量 · %d%%";
 "volume.titleUnavailable" = "音量 · —";
 "volume.muted" = "ミュート中";
