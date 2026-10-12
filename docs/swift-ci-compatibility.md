@@ -837,3 +837,31 @@ macOS 13 review-fix 分支的三个 `publish=false` 预检
 DMG 打包与 artifact 上传全部通过；`publish=false` 未创建 GitHub Release，也未更新 appcast。
 本机同一 head 上 `swift test` 为 573 Swift Testing / 90 suites 通过、`swift build -c release` 通过。
 这条记录本身的提交只补充验证说明，不改变已通过预检的产品代码。
+
+## 38262423399 / 38278475902 / 38279498535：低电量模式控制器测试的时间竞态
+
+`LowPowerModeControllerTests.testDisablingClearsErrorAndStopsContact` 在 CI 上间歇失败。主干预检
+[`38262423399`](https://github.com/lingyired/status-trio/actions/runs/38262423399)
+（head 为 `test/72-103-combined`）与 issue #110 分支的首次非发布预检
+[`38278475902`](https://github.com/lingyired/status-trio/actions/runs/38278475902)
+（head `14b050e3`、`version=1.6.0`、`build=25`、`publish=false`、`notarize=false`）
+都停在 `Run tests` 阶段、第 95 行 `XCTAssertNotNil(controller.lastError)`，同一行号，其余步骤未执行。
+#110 的改动只涉及 Wi-Fi，与低电量模式无关。
+
+- **失败阶段**：`Run tests`（XCTest；同一次 run 的 563 项 Swift Testing 已全部通过）。
+- **根因**：该断言靠 `settle()` 里固定 10 次 `Task.yield()` 等控制器写路径完成。写路径在 nonisolated 的
+  `await client.setLowPowerMode(...)` 上挂起后再回到 main actor，这个跨执行器的往返不是 yield 计数能保证的；
+  CI 负载高时十次 yield 覆盖不到，`lastError` 尚未写入即断言。这是测试等待逻辑的缺陷，不是
+  `LowPowerModeController` 的行为回归。
+- **修复**：只改测试 helper。新增带 5 秒 deadline 的 `waitUntil { ... }` 条件等待（与 main 上 `e9ab294`
+  已确立的 throwing/deadline 约定一致），把依赖异步完成的断言改为等待具体条件；只在“断言没有异步工作发生”的
+  用例保留一个有时限的 `settle()` 排空。生产代码不变。
+- **后续验证**：修复后 head `907624ad` 的非发布预检
+  [`38279498535`](https://github.com/lingyired/status-trio/actions/runs/38279498535)
+  （`version=1.6.0`、`build=25`、`publish=false`、`notarize=false`）全绿，耗时 15m6s：
+  `Run tests` 通过（1,461 XCTest、7 skipped、0 failures；563 Swift Testing / 89 suites），
+  `Run native compatibility tests` 通过，appcast 说明 12/12 语言校验通过，Universal release 构建产出
+  `StatusTrio-1.6.0.dmg`（`LC_BUILD_VERSION` 检查对主程序、两个 helper 与 MobileBattery 动态库全部通过），
+  Ad-hoc 签名与 artifact 上传通过；`publish=false` 未创建 GitHub Release，也未更新 appcast。本机同一 head 上
+  `swift test` 563 项、`swift build -c release` 均通过，且 `LowPowerModeControllerTests` 单独连续三次运行 0 失败。
+  本条记录本身的提交只补充说明，不改变已验证的产品代码。
