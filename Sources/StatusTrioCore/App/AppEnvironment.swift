@@ -75,6 +75,7 @@ final class AppEnvironment {
             helper: PrivilegedHelperManager.shared
         )
         store.bindInputSettings(settings)
+        store.bindLocalIPSettings(settings)
         store.bindMobileBatterySettings(settings)
         store.bindLowPowerModeSettings(settings)
         store.start()

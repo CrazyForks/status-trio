@@ -213,6 +213,9 @@
 "ethernet.action.openSettings" = "Netzwerkeinstellungen öffnen";
 "network.action.shareInternet" = "Internet teilen…";
 "network.action.shareInternetHelp" = "Öffnet den Bereich „Teilen“, in dem „Internet teilen“ aktiviert werden kann.";
+"settings.network.panelGroup" = "Panel";
+"settings.network.showLocalIP" = "Lokale IP anzeigen";
+"settings.network.showLocalIP.description" = "Zeigt die private LAN-Adresse dieses Macs in der Netzwerkzeile an, vor den WLAN-Details.";
 "volume.title" = "Lautstärke · %d%%";
 "volume.titleUnavailable" = "Lautstärke · —";
 "volume.muted" = "Stumm";

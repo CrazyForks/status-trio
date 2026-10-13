@@ -213,6 +213,9 @@
 "ethernet.action.openSettings" = "Ouvrir les réglages Réseau";
 "network.action.shareInternet" = "Partager la connexion…";
 "network.action.shareInternetHelp" = "Ouvre le panneau « Partage », où le partage de connexion peut être activé.";
+"settings.network.panelGroup" = "Panneau";
+"settings.network.showLocalIP" = "Afficher l’IP locale";
+"settings.network.showLocalIP.description" = "Affiche l’adresse LAN privée de ce Mac sur la ligne réseau, avant les détails Wi-Fi.";
 "volume.title" = "Volume · %d%%";
 "volume.titleUnavailable" = "Volume · —";
 "volume.muted" = "En sourdine";

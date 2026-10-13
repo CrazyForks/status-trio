@@ -18,6 +18,22 @@ struct NetworkSectionView: View {
             )
         }) {
             connectionIconsGroup
+            panelGroup
+        }
+    }
+
+    /// What the network row itself reports, as opposed to how the status icon
+    /// draws it. Kept in its own group because the icon options above describe
+    /// the menu bar artwork and this decides the panel's second line.
+    private var panelGroup: some View {
+        SettingsGroup(localization.string(.settingsNetworkPanelGroup)) {
+            SettingsToggleRow(
+                symbol: "network",
+                tint: .cyan,
+                title: localization.string(.settingsNetworkShowLocalIP),
+                subtitle: localization.string(.settingsNetworkShowLocalIPDescription),
+                isOn: $store.showsLocalIPAddress
+            )
         }
     }
 

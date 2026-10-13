@@ -213,6 +213,9 @@
 "ethernet.action.openSettings" = "Открыть настройки сети";
 "network.action.shareInternet" = "Общий доступ к Интернету…";
 "network.action.shareInternetHelp" = "Открывает раздел «Общий доступ», где можно включить общий доступ к Интернету.";
+"settings.network.panelGroup" = "Панель";
+"settings.network.showLocalIP" = "Показывать локальный IP";
+"settings.network.showLocalIP.description" = "Показывает частный адрес локальной сети этого Mac в строке сети, перед сведениями Wi-Fi.";
 "volume.title" = "Громкость · %d%%";
 "volume.titleUnavailable" = "Громкость · —";
 "volume.muted" = "Без звука";

@@ -213,6 +213,9 @@
 "ethernet.action.openSettings" = "打開網路設定";
 "network.action.shareInternet" = "共享互聯網…";
 "network.action.shareInternetHelp" = "打開「共享」面板，可在其中開啟互聯網共享。";
+"settings.network.panelGroup" = "面板";
+"settings.network.showLocalIP" = "顯示內網 IP";
+"settings.network.showLocalIP.description" = "在網路的第二行顯示本機內網 IP，位於 Wi-Fi 資訊之前。";
 "volume.title" = "音量 · %d%%";
 "volume.titleUnavailable" = "音量 · —";
 "volume.muted" = "已靜音";

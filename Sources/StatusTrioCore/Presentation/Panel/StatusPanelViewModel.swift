@@ -26,6 +26,7 @@ final class StatusPanelViewModel: ObservableObject {
         static let bluetooth = Self(rawValue: 1 << 3)
         static let all = Self(rawValue: 1 << 4)
         static let volume = Self(rawValue: 1 << 5)
+        static let localIP = Self(rawValue: 1 << 6)
     }
     @Published private(set) var battery: PanelSummaryState
     @Published private(set) var network: PanelSummaryState
@@ -69,6 +70,9 @@ final class StatusPanelViewModel: ObservableObject {
             wired: store.primaryLink.details,
             isConstrained: store.isNetworkConstrained,
             isResolvingName: store.isResolvingWiFiName,
+            // Read inline: `self`'s computed accessor is not available until
+            // every stored property below is initialized.
+            localIPAddress: settings.showsLocalIPAddress ? store.localIP.details.address : nil,
             localization: localization
         )
         vpn = PanelPresentationMapper.vpn(store.vpnStatus, localization: localization)
@@ -153,6 +157,10 @@ final class StatusPanelViewModel: ObservableObject {
             .dropFirst()
             .sink { [weak self] _ in self?.coalesceControllerUpdate(.wiredDetailsAndNetwork) }
             .store(in: &cancellables)
+        store.localIP.$details
+            .dropFirst()
+            .sink { [weak self] _ in self?.coalesceControllerUpdate(.localIP) }
+            .store(in: &cancellables)
         store.bluetoothDevices.objectWillChange
             .sink { [weak self] in self?.coalesceControllerUpdate([.bluetooth, .volume]) }
             .store(in: &cancellables)
@@ -201,6 +209,14 @@ final class StatusPanelViewModel: ObservableObject {
             localization: localization
         )
         if bluetooth != state { bluetooth = state }
+    }
+
+    /// The address the network row shows, or `nil` while the setting is off or
+    /// nothing has been read yet. Read through one place so the row cannot show
+    /// an address a user has since switched off.
+    private var resolvedLocalIPAddress: String? {
+        guard settings.showsLocalIPAddress else { return nil }
+        return store.localIP.details.address
     }
 
     private var outputPreferences: AudioOutputListPreferences {
@@ -289,6 +305,7 @@ final class StatusPanelViewModel: ObservableObject {
             wired: store.primaryLink.details,
             isConstrained: isConstrained,
             isResolvingName: isResolvingName,
+            localIPAddress: resolvedLocalIPAddress,
             localization: localization
         )
         if network != networkState { network = networkState }
@@ -331,10 +348,12 @@ final class StatusPanelViewModel: ObservableObject {
             wired: store.primaryLink.details,
             isConstrained: store.isNetworkConstrained,
             isResolvingName: store.isResolvingWiFiName,
+            localIPAddress: resolvedLocalIPAddress,
             localization: localization
         )
         if network != networkState { network = networkState }
     }
+
 
     private func coalesceControllerUpdate(_ regions: RefreshRegions) {
         guard isStarted else { return }
@@ -356,6 +375,7 @@ final class StatusPanelViewModel: ObservableObject {
             if regions.contains(.wiredDetailsAndNetwork) { refreshWiredDetailsAndNetwork() }
             if regions.contains(.bluetooth) { refreshBluetooth() }
             if regions.contains(.volume) { publishVolume(mapVolume(store.liveVolume)) }
+            if regions.contains(.localIP) { refreshWiredDetailsAndNetwork() }
         }
     }
 

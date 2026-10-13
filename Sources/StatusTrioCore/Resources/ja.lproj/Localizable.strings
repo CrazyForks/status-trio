@@ -213,6 +213,9 @@
 "ethernet.action.openSettings" = "ネットワーク設定を開く";
 "network.action.shareInternet" = "インターネット共有…";
 "network.action.shareInternetHelp" = "「共有」パネルを開きます。ここでインターネット共有をオンにできます。";
+"settings.network.panelGroup" = "パネル";
+"settings.network.showLocalIP" = "ローカル IP を表示";
+"settings.network.showLocalIP.description" = "ネットワーク行の 2 行目に、Wi-Fi の情報より前にこの Mac のプライベート LAN アドレスを表示します。";
 "volume.title" = "音量 · %d%%";
 "volume.titleUnavailable" = "音量 · —";
 "volume.muted" = "ミュート中";

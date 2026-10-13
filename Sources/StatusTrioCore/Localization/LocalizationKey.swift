@@ -285,6 +285,12 @@ enum LocalizationKey: String, CaseIterable, Hashable, Sendable {
     case networkActionShareInternet = "network.action.shareInternet"
     case networkActionShareInternetHelp = "network.action.shareInternetHelp"
 
+    /// Draws the private LAN address on the network row's second line, ahead of
+    /// the Wi-Fi measurements. Off by default, so an upgrade looks unchanged.
+    case settingsNetworkPanelGroup = "settings.network.panelGroup"
+    case settingsNetworkShowLocalIP = "settings.network.showLocalIP"
+    case settingsNetworkShowLocalIPDescription = "settings.network.showLocalIP.description"
+
     case wifiSummaryBand = "wifi.summary.band"
     case wifiSummarySignal = "wifi.summary.signal"
     case wifiSummaryBandAndSignal = "wifi.summary.bandAndSignal"
