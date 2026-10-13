@@ -125,6 +125,10 @@ final class PrivilegedHelperManager: ObservableObject {
         self.status = service.status
         self.wantsRegistration = service.status != .notRegistered
         self.retryInterval = retryInterval
+        // A previous session may have quit while the registration was still
+        // waiting for approval, so pick the retry up without waiting for the
+        // user to open Settings again.
+        updateRetryLoop()
     }
 
     /// A registration that still awaits approval counts as on, so the toggle

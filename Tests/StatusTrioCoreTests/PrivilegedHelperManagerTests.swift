@@ -248,6 +248,22 @@ final class PrivilegedHelperManagerTests: XCTestCase {
         XCTAssertFalse(manager.didFailLastOperation)
     }
 
+    func testLaunchFinishesARegistrationLeftWaitingByAnEarlierSession() async {
+        // Quitting the app while the helper waits for approval must not leave
+        // the registration stranded: the retry starts with the manager.
+        let service = FakePrivilegedHelperService(status: .requiresApproval)
+        let manager = PrivilegedHelperManager(service: service, retryInterval: .milliseconds(20))
+
+        let deadline = Date().addingTimeInterval(5)
+        while manager.status != .enabled, Date() < deadline {
+            try? await Task.sleep(for: .milliseconds(20))
+        }
+
+        XCTAssertEqual(manager.status, .enabled)
+        XCTAssertTrue(manager.isApproved)
+        XCTAssertFalse(manager.didFailLastOperation)
+    }
+
     func testOpenLoginItemsSettingsIsForwardedToTheService() {
         let service = FakePrivilegedHelperService(status: .requiresApproval)
         let manager = PrivilegedHelperManager(service: service)
