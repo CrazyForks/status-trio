@@ -118,10 +118,11 @@ final class PrivilegedHelperManagerTests: XCTestCase {
         XCTAssertEqual(manager.status, .enabled)
     }
 
-    func testRefreshClearsAFailureOnceTheSystemCatchesUp() {
-        // The reported bug: registration fails while the item is still
-        // disallowed, the user approves it in Login Items, and the banner stayed
-        // on screen because only `setEnabled` ever cleared it.
+    func testRefreshKeepsTheFailureWhileTheDaemonOnlyAwaitsApproval() {
+        // A `register()` rejected with "Operation not permitted" leaves the item
+        // in `requiresApproval`, which is the same state a healthy registration
+        // passes through. Retiring the failure there would hide the error while
+        // the daemon is still unusable, so the banner stays until `.enabled`.
         let service = FakePrivilegedHelperService(status: .notRegistered)
         service.registerError = TestFailure.registration
         let manager = PrivilegedHelperManager(service: service)
@@ -133,8 +134,15 @@ final class PrivilegedHelperManagerTests: XCTestCase {
         manager.refresh()
 
         XCTAssertEqual(manager.status, .requiresApproval)
-        XCTAssertFalse(manager.didFailLastOperation)
+        XCTAssertTrue(manager.didFailLastOperation)
         XCTAssertTrue(manager.isEnabled)
+
+        service.status = .enabled
+        manager.refresh()
+
+        XCTAssertFalse(manager.didFailLastOperation)
+        XCTAssertNil(manager.lastErrorMessage)
+        XCTAssertTrue(manager.isApproved)
     }
 
     func testRefreshClearsAFailureOnceTheDaemonIsApproved() {

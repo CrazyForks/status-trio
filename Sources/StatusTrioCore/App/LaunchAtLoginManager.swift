@@ -131,14 +131,15 @@ final class LaunchAtLoginManager: ObservableObject {
     }
 
     /// Re-reads the system state and retires a failure the system has since
-    /// satisfied. A registration that failed while the item still needed
-    /// approval reaches `requiresApproval` or `enabled` once the user acts in
-    /// Login Items, and a failed unregister is settled by the item disappearing.
+    /// satisfied. `requiresApproval` is not enough to retire a failed
+    /// registration: a rejected `register()` leaves the item in exactly that
+    /// state, so the banner stays until the item is really `.enabled`. A failed
+    /// unregister is settled by the item disappearing.
     func refresh() {
         status = service.status
 
         guard let target = failedOperationTarget else { return }
-        let satisfied = target ? isEnabled : status == .notRegistered
+        let satisfied = target ? status == .enabled : status == .notRegistered
         guard satisfied else { return }
 
         failedOperationTarget = nil
