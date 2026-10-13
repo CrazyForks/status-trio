@@ -18,9 +18,11 @@ final class LowPowerModeControlSynchronizer {
     func start(settings: SettingsStore, helper: PrivilegedHelperManager) {
         guard cancellables.isEmpty, activationObserver == nil else { return }
 
-        // Mirror the manager's registration state into the persisted flag.
-        helper.$status
-            .map { $0 != .notRegistered }
+        // Mirror the user's opt-in into the persisted flag. It follows the
+        // switch, not the raw system status: a registration macOS has not
+        // approved yet is still what the user asked for, and the switch must not
+        // flicker with the status while the app waits for that approval.
+        helper.$isEnabled
             .removeDuplicates()
             .sink { [weak settings] isRegistered in
                 guard let settings, settings.controlsLowPowerMode != isRegistered else { return }

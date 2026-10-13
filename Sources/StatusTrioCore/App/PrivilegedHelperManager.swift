@@ -87,7 +87,9 @@ final class SystemPrivilegedHelperService: PrivilegedHelperServicing {
 /// Registering a LaunchDaemon does not start it: launchd only bootstraps the
 /// daemon once an administrator approves it and the app first connects. So the
 /// opt-in both requests registration and, on untick, unregisters — the daemon
-/// never runs unless the user asked for the feature.
+/// never runs unless the user asked for the feature. Approval itself happens in
+/// System Settings, so a registration that is still pending is watched until the
+/// system accepts it.
 @MainActor
 final class PrivilegedHelperManager: ObservableObject {
     static let shared = PrivilegedHelperManager()
@@ -107,34 +109,26 @@ final class PrivilegedHelperManager: ObservableObject {
     /// touch the toggle again.
     private var failedOperationTarget: Bool?
 
-    /// Whether the user wants the helper registered.
-    ///
-    /// Seeded from the system state so a registration that an earlier session
-    /// left waiting for approval is finished on the next launch.
-    private var wantsRegistration: Bool
+    /// Whether the user wants the helper registered. Seeded from the system
+    /// state so a registration that an earlier session left waiting for approval
+    /// is still shown as on.
+    @Published private(set) var isEnabled: Bool
 
-    /// How often a registration that macOS has not approved yet is retried.
-    private let retryInterval: Duration
-    private var retryTask: Task<Void, Never>?
+    /// How often the system state is re-read while a registration is pending.
+    private let pollInterval: Duration
+    private var pollTask: Task<Void, Never>?
 
     init(
         service: PrivilegedHelperServicing = SystemPrivilegedHelperService(),
-        retryInterval: Duration = .seconds(2)
+        pollInterval: Duration = .seconds(2)
     ) {
         self.service = service
         self.status = service.status
-        self.wantsRegistration = service.status != .notRegistered
-        self.retryInterval = retryInterval
+        self.isEnabled = service.status != .notRegistered
+        self.pollInterval = pollInterval
         // A previous session may have quit while the registration was still
-        // waiting for approval, so pick the retry up without waiting for the
-        // user to open Settings again.
-        updateRetryLoop()
-    }
-
-    /// A registration that still awaits approval counts as on, so the toggle
-    /// keeps showing what the user asked for instead of silently flipping back.
-    var isEnabled: Bool {
-        status == .enabled || status == .requiresApproval
+        // waiting for approval, so start watching for the system to accept it.
+        updateStatusPolling()
     }
 
     /// True while the system is waiting for the user to approve the helper.
@@ -166,30 +160,38 @@ final class PrivilegedHelperManager: ObservableObject {
         didFailLastOperation = false
         lastErrorMessage = nil
         failedOperationTarget = nil
-        wantsRegistration = enabled
+        isEnabled = enabled
 
-        if !enabled, isEnabled {
-            do {
-                try service.unregister()
-            } catch {
-                didFailLastOperation = true
-                lastErrorMessage = error.localizedDescription
-                failedOperationTarget = false
-            }
+        if enabled {
+            registerIfNeeded()
+        } else if status != .notRegistered {
+            unregister()
         }
 
-        refresh()
+        publishSystemState()
+        updateStatusPolling()
     }
 
-    /// Re-reads the system state and retires a failure the system has since
+    /// Re-reads the system state after the user acted — the toggle, returning to
+    /// the app, or opening Settings.
+    ///
+    /// Approval happens outside the app, so this also re-asks for the
+    /// registration: the state the app is waiting for is exactly the one the
+    /// user just changed somewhere else.
+    func refresh() {
+        registerIfNeeded()
+        publishSystemState()
+        updateStatusPolling()
+    }
+
+    /// Reads the system state and retires a failure the system has since
     /// satisfied. `requiresApproval` is not enough to retire a failed
     /// registration: a `register()` that macOS rejects with "Operation not
-    /// permitted" leaves the item in exactly that state, so the banner has to
-    /// stay until the daemon is really `.enabled`. A failed unregister is
-    /// settled by the item disappearing.
-    func refresh() {
+    /// permitted" leaves the item in exactly that state, so the banner stays
+    /// until the daemon is really `.enabled`. A failed unregister is settled by
+    /// the item disappearing.
+    private func publishSystemState() {
         status = service.status
-        registerIfNeeded()
 
         if let target = failedOperationTarget {
             let satisfied = target ? status == .enabled : status == .notRegistered
@@ -199,8 +201,6 @@ final class PrivilegedHelperManager: ObservableObject {
                 lastErrorMessage = nil
             }
         }
-
-        updateRetryLoop()
     }
 
     /// Re-issues `register()` while the user wants the helper but macOS has not
@@ -213,8 +213,13 @@ final class PrivilegedHelperManager: ObservableObject {
     /// permitted". Clearing the pending registration first is what makes the
     /// system accept the item again — that is the unregister-then-register dance
     /// the user otherwise has to perform by hand.
+    ///
+    /// Only ever called from a user action. Doing this from the poll instead left
+    /// the item flapping between registered and not registered every couple of
+    /// seconds while macOS kept refusing the registration.
     private func registerIfNeeded() {
-        guard wantsRegistration, isAvailable, status != .enabled else { return }
+        guard isEnabled, isAvailable, status != .enabled else { return }
+        let previous = status
 
         do {
             if status == .requiresApproval {
@@ -226,28 +231,43 @@ final class PrivilegedHelperManager: ObservableObject {
             didFailLastOperation = true
             lastErrorMessage = error.localizedDescription
             failedOperationTarget = true
+            // A refused attempt knocks the item back to `notRegistered`; keep
+            // showing the state whose approval the user still has to grant.
+            let observed = service.status
+            status = observed == .notRegistered ? previous : observed
         }
     }
 
-    /// Keeps a light poll running while a registration is pending.
+    private func unregister() {
+        do {
+            try service.unregister()
+        } catch {
+            didFailLastOperation = true
+            lastErrorMessage = error.localizedDescription
+            failedOperationTarget = false
+        }
+    }
+
+    /// Watches the system state while a registration is pending.
     ///
     /// The state the app waits for can only be reached from System Settings, and
     /// macOS posts no notification when it changes, so re-reading on a timer is
-    /// the only way the settings toggle catches up without the user having to
-    /// touch the app again.
-    private func updateRetryLoop() {
-        guard wantsRegistration, isAvailable, status != .enabled else {
-            retryTask?.cancel()
-            retryTask = nil
+    /// the only way the settings pane catches up without the user having to
+    /// touch the app's switch again. The poll is read-only on purpose.
+    private func updateStatusPolling() {
+        guard isEnabled, isAvailable, status != .enabled else {
+            pollTask?.cancel()
+            pollTask = nil
             return
         }
-        guard retryTask == nil else { return }
+        guard pollTask == nil else { return }
 
-        retryTask = Task { [weak self, retryInterval] in
+        pollTask = Task { [weak self, pollInterval] in
             while !Task.isCancelled {
-                try? await Task.sleep(for: retryInterval)
+                try? await Task.sleep(for: pollInterval)
                 guard !Task.isCancelled, let self else { return }
-                self.refresh()
+                self.publishSystemState()
+                self.updateStatusPolling()
             }
         }
     }
