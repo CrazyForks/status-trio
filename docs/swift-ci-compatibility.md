@@ -31,6 +31,30 @@ CI 工具链（`macos-26` / Xcode 26.6 / Swift 6.3.3）上全绿，耗时 15m27s
 `PRIVILEGED_HELPER=0` 变体构建验证了 helper 与 LaunchDaemon plist 被排除且
 `STIncludesPrivilegedHelper=false`。
 
+#72 的后续修复（helper 在 app 退出后不退出：daemon 现在自己管生命周期，见
+[privileged helper](privileged-helper.md) 的 Idle exit）走了同一条预检路径。非发布预检
+[`38328318162`](https://github.com/lingyired/status-trio/actions/runs/38328318162)
+（head `85247588`、`version=1.6.0`、`build=26`、`publish=false`、`notarize=false`）在 CI
+工具链（`macos-26` / Xcode 26.6 / Swift 6.3.3）上全绿，耗时 11m40s：
+
+- `Run tests` 通过（1,471 XCTest、7 skipped、0 failures；563 Swift Testing / 89 suites）。新增的
+  测试 target `StatusTrioPowerHelperTests` 在 CI 上正常编译并参与运行：SwiftPM 会把
+  executable target 链进测试 bundle，`main.swift` 的顶层代码不会执行，因此 `swift test`
+  里 daemon 不会真的启动（本机与 CI 同样的行为，日志可见 `Emitting module
+  StatusTrioPowerHelperTests`）。
+- `Run native compatibility tests` 通过，含更新后的
+  `scripts/test-privileged-helper-bundle-contract.sh`（新增“缺少 `ThrottleInterval` 的 plist
+  必须被拒绝”的负例）。
+- Universal release 构建产出 `x86_64 arm64` 双架构切片，`Privileged helper bundle verified: x86_64 arm64`；
+  新增的 `ThrottleInterval=1` 断言随 `verify-privileged-helper-bundle.sh` 一起通过。
+- 该预检 `publish=false` 且 `notarize=false`，仍走 Ad-hoc 签名（构建打印 “the privileged helper is
+  bundled but Ad-hoc signed”）。未创建 GitHub Release，也未更新 appcast。
+
+本机同一 head 上 `swift test`（1,461 XCTest、7 skipped、0 failures；563 Swift Testing / 89 suites）
+和 `swift build -c release` 均通过。helper 的运行时行为不在 CI：daemon 的退出时序在 macOS 27 上用
+等价的 user LaunchAgent 手工测量（`MachServices` job 空闲时 launchd 不会停它，加
+`EnableTransactions` 也不会），测量方法与结果记在 [privileged helper](privileged-helper.md)。
+
 ## 失败记录
 
 | Run | 失败阶段 | 根因 | 修复方式 |
