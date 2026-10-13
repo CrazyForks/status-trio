@@ -118,6 +118,79 @@ final class PrivilegedHelperManagerTests: XCTestCase {
         XCTAssertEqual(manager.status, .enabled)
     }
 
+    func testRefreshClearsAFailureOnceTheSystemCatchesUp() {
+        // The reported bug: registration fails while the item is still
+        // disallowed, the user approves it in Login Items, and the banner stayed
+        // on screen because only `setEnabled` ever cleared it.
+        let service = FakePrivilegedHelperService(status: .notRegistered)
+        service.registerError = TestFailure.registration
+        let manager = PrivilegedHelperManager(service: service)
+        manager.setEnabled(true)
+        XCTAssertTrue(manager.didFailLastOperation)
+
+        service.registerError = nil
+        service.status = .requiresApproval
+        manager.refresh()
+
+        XCTAssertEqual(manager.status, .requiresApproval)
+        XCTAssertFalse(manager.didFailLastOperation)
+        XCTAssertTrue(manager.isEnabled)
+    }
+
+    func testRefreshClearsAFailureOnceTheDaemonIsApproved() {
+        let service = FakePrivilegedHelperService(status: .notRegistered)
+        service.registerError = TestFailure.registration
+        let manager = PrivilegedHelperManager(service: service)
+        manager.setEnabled(true)
+        XCTAssertTrue(manager.didFailLastOperation)
+
+        service.status = .enabled
+        manager.refresh()
+
+        XCTAssertFalse(manager.didFailLastOperation)
+        XCTAssertTrue(manager.isApproved)
+    }
+
+    func testRefreshKeepsAFailureThatIsStillUnsettled() {
+        let service = FakePrivilegedHelperService(status: .notRegistered)
+        service.registerError = TestFailure.registration
+        let manager = PrivilegedHelperManager(service: service)
+        manager.setEnabled(true)
+        XCTAssertTrue(manager.didFailLastOperation)
+
+        manager.refresh()
+
+        XCTAssertTrue(manager.didFailLastOperation)
+        XCTAssertEqual(manager.status, .notRegistered)
+    }
+
+    func testFailedUnregistrationIsClearedOnceTheItemIsGone() {
+        let service = FakePrivilegedHelperService(status: .enabled)
+        service.unregisterError = TestFailure.unregistration
+        let manager = PrivilegedHelperManager(service: service)
+        manager.setEnabled(false)
+        XCTAssertTrue(manager.didFailLastOperation)
+        XCTAssertEqual(manager.status, .enabled)
+
+        service.unregisterError = nil
+        service.status = .notRegistered
+        manager.refresh()
+
+        XCTAssertFalse(manager.didFailLastOperation)
+        XCTAssertFalse(manager.isEnabled)
+    }
+
+    func testRefreshWithoutAFailureLeavesTheFlagClear() {
+        let service = FakePrivilegedHelperService(status: .notRegistered)
+        let manager = PrivilegedHelperManager(service: service)
+
+        service.status = .enabled
+        manager.refresh()
+
+        XCTAssertFalse(manager.didFailLastOperation)
+        XCTAssertEqual(manager.status, .enabled)
+    }
+
     func testOpenLoginItemsSettingsIsForwardedToTheService() {
         let service = FakePrivilegedHelperService(status: .requiresApproval)
         let manager = PrivilegedHelperManager(service: service)
@@ -140,6 +213,7 @@ final class PrivilegedHelperManagerTests: XCTestCase {
 
     private enum TestFailure: Error {
         case registration
+        case unregistration
     }
 }
 

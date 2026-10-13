@@ -98,6 +98,15 @@ final class PrivilegedHelperManager: ObservableObject {
 
     private let service: PrivilegedHelperServicing
 
+    /// The opt-in value whose last attempt failed.
+    ///
+    /// Approval happens in System Settings, so the state the failed call wanted
+    /// can arrive later without any further action in the app. Remembering what
+    /// was attempted lets `refresh()` drop the error once the system catches up
+    /// instead of leaving the failure banner on screen until the user happens to
+    /// touch the toggle again.
+    private var failedOperationTarget: Bool?
+
     init(service: PrivilegedHelperServicing = SystemPrivilegedHelperService()) {
         self.service = service
         self.status = service.status
@@ -137,6 +146,7 @@ final class PrivilegedHelperManager: ObservableObject {
         guard isAvailable else { return }
         didFailLastOperation = false
         lastErrorMessage = nil
+        failedOperationTarget = nil
 
         do {
             if enabled {
@@ -149,13 +159,26 @@ final class PrivilegedHelperManager: ObservableObject {
         } catch {
             didFailLastOperation = true
             lastErrorMessage = error.localizedDescription
+            failedOperationTarget = enabled
         }
 
         refresh()
     }
 
+    /// Re-reads the system state and retires a failure the system has since
+    /// satisfied. A registration that failed while the item was still
+    /// disallowed reaches `requiresApproval` or `enabled` once the user acts in
+    /// Login Items, and a failed unregister is settled by the item disappearing.
     func refresh() {
         status = service.status
+
+        guard let target = failedOperationTarget else { return }
+        let satisfied = target ? isEnabled : status == .notRegistered
+        guard satisfied else { return }
+
+        failedOperationTarget = nil
+        didFailLastOperation = false
+        lastErrorMessage = nil
     }
 
     func openLoginItemsSettings() {
