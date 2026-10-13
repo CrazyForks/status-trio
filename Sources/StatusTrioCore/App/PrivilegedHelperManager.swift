@@ -107,9 +107,16 @@ final class PrivilegedHelperManager: ObservableObject {
     /// touch the toggle again.
     private var failedOperationTarget: Bool?
 
+    /// Whether the user wants the helper registered.
+    ///
+    /// Seeded from the system state so a registration that an earlier session
+    /// left waiting for approval is finished on the next launch.
+    private var wantsRegistration: Bool
+
     init(service: PrivilegedHelperServicing = SystemPrivilegedHelperService()) {
         self.service = service
         self.status = service.status
+        self.wantsRegistration = service.status != .notRegistered
     }
 
     /// A registration that still awaits approval counts as on, so the toggle
@@ -147,19 +154,16 @@ final class PrivilegedHelperManager: ObservableObject {
         didFailLastOperation = false
         lastErrorMessage = nil
         failedOperationTarget = nil
+        wantsRegistration = enabled
 
-        do {
-            if enabled {
-                if !isEnabled {
-                    try service.register()
-                }
-            } else if isEnabled {
+        if !enabled, isEnabled {
+            do {
                 try service.unregister()
+            } catch {
+                didFailLastOperation = true
+                lastErrorMessage = error.localizedDescription
+                failedOperationTarget = false
             }
-        } catch {
-            didFailLastOperation = true
-            lastErrorMessage = error.localizedDescription
-            failedOperationTarget = enabled
         }
 
         refresh()
@@ -173,6 +177,7 @@ final class PrivilegedHelperManager: ObservableObject {
     /// settled by the item disappearing.
     func refresh() {
         status = service.status
+        registerIfNeeded()
 
         guard let target = failedOperationTarget else { return }
         let satisfied = target ? status == .enabled : status == .notRegistered
@@ -181,6 +186,29 @@ final class PrivilegedHelperManager: ObservableObject {
         failedOperationTarget = nil
         didFailLastOperation = false
         lastErrorMessage = nil
+    }
+
+    /// Re-issues `register()` while the user wants the helper but macOS has not
+    /// approved it yet.
+    ///
+    /// `SMAppService` does not promote an existing registration to `.enabled`
+    /// when the user switches the app back on under System Settings › General ›
+    /// Login Items & Extensions › Allow in the Background: the pending
+    /// registration is only accepted by the *next* `register()` call. Without
+    /// this retry the toggle keeps saying "waiting for approval" and the daemon
+    /// is never bootstrapped until the user happens to flick the app's own
+    /// switch off and on again.
+    private func registerIfNeeded() {
+        guard wantsRegistration, isAvailable, status != .enabled else { return }
+
+        do {
+            try service.register()
+            status = service.status
+        } catch {
+            didFailLastOperation = true
+            lastErrorMessage = error.localizedDescription
+            failedOperationTarget = true
+        }
     }
 
     func openLoginItemsSettings() {

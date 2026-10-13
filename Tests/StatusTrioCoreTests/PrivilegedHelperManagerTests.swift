@@ -64,9 +64,11 @@ final class PrivilegedHelperManagerTests: XCTestCase {
         XCTAssertFalse(manager.isEnabled)
     }
 
-    func testRegistrationAwaitingApprovalKeepsToggleOn() {
+    func testReenablingWhileWaitingRetriesRegistration() {
         // A LaunchDaemon needs an administrator to approve it before launchd
-        // starts it, so `requiresApproval` is the expected state after register.
+        // starts it, so `requiresApproval` is an expected intermediate state.
+        // Flicking the switch on again re-asks, because the approval the system
+        // is waiting for arrives outside the app.
         let service = FakePrivilegedHelperService(status: .notRegistered)
         service.statusAfterRegister = .requiresApproval
         let manager = PrivilegedHelperManager(service: service)
@@ -76,9 +78,10 @@ final class PrivilegedHelperManagerTests: XCTestCase {
         XCTAssertEqual(manager.status, .requiresApproval)
         XCTAssertTrue(manager.isEnabled)
         XCTAssertTrue(manager.requiresApproval)
+        XCTAssertEqual(service.registerCallCount, 1)
 
         manager.setEnabled(true)
-        XCTAssertEqual(service.registerCallCount, 1)
+        XCTAssertEqual(service.registerCallCount, 2)
     }
 
     func testDisablingAPendingRegistrationUnregisters() {
@@ -118,28 +121,36 @@ final class PrivilegedHelperManagerTests: XCTestCase {
         XCTAssertEqual(manager.status, .enabled)
     }
 
-    func testRefreshKeepsTheFailureWhileTheDaemonOnlyAwaitsApproval() {
-        // A `register()` rejected with "Operation not permitted" leaves the item
-        // in `requiresApproval`, which is the same state a healthy registration
-        // passes through. Retiring the failure there would hide the error while
-        // the daemon is still unusable, so the banner stays until `.enabled`.
+    func testRefreshRetriesRegistrationUntilTheSystemAcceptsIt() {
+        // The reported flow: the app's switch is on while Status Trio is off in
+        // System Settings › General › Login Items & Extensions › Allow in the
+        // Background. `register()` is refused and macOS answers
+        // `requiresApproval`, so the app has to ask again after the user enables
+        // it — otherwise the toggle sits on "waiting for approval" and the
+        // daemon is never bootstrapped until the user flicks the app's own
+        // switch off and on again.
         let service = FakePrivilegedHelperService(status: .notRegistered)
         service.registerError = TestFailure.registration
         let manager = PrivilegedHelperManager(service: service)
         manager.setEnabled(true)
         XCTAssertTrue(manager.didFailLastOperation)
 
-        service.registerError = nil
+        // macOS reports the refused registration as `requiresApproval`.
         service.status = .requiresApproval
         manager.refresh()
 
         XCTAssertEqual(manager.status, .requiresApproval)
         XCTAssertTrue(manager.didFailLastOperation)
+        XCTAssertEqual(service.registerCallCount, 2)
         XCTAssertTrue(manager.isEnabled)
 
-        service.status = .enabled
+        // The user switches Status Trio back on in System Settings; the next
+        // refresh re-registers and macOS accepts it.
+        service.registerError = nil
         manager.refresh()
 
+        XCTAssertEqual(manager.status, .enabled)
+        XCTAssertEqual(service.registerCallCount, 3)
         XCTAssertFalse(manager.didFailLastOperation)
         XCTAssertNil(manager.lastErrorMessage)
         XCTAssertTrue(manager.isApproved)
