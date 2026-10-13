@@ -3,6 +3,50 @@ import XCTest
 
 @MainActor
 final class LowPowerModeControlSynchronizerTests: XCTestCase {
+    func testRelaunchPreservesOptOutAfterFailedUnregister() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+        let settings = SettingsStore(defaults: suite.defaults)
+        let service = FakePrivilegedHelperService(status: .enabled)
+        let helper = PrivilegedHelperManager(service: service)
+        let synchronizer = LowPowerModeControlSynchronizer()
+        synchronizer.start(settings: settings, helper: helper)
+        service.unregisterError = NSError(domain: "test", code: 1)
+        helper.setEnabled(false)
+        synchronizer.stop()
+
+        let relaunchedSettings = SettingsStore(defaults: suite.defaults)
+        let relaunchedHelper = PrivilegedHelperManager(service: service)
+        synchronizer.start(settings: relaunchedSettings, helper: relaunchedHelper)
+
+        XCTAssertFalse(relaunchedHelper.isEnabled)
+        XCTAssertFalse(relaunchedSettings.controlsLowPowerMode)
+        XCTAssertEqual(service.unregisterCallCount, 1)
+        synchronizer.stop()
+    }
+
+    func testRelaunchPreservesOptInAfterFailedRegistration() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+        let settings = SettingsStore(defaults: suite.defaults)
+        let service = FakePrivilegedHelperService(status: .notRegistered)
+        let helper = PrivilegedHelperManager(service: service)
+        let synchronizer = LowPowerModeControlSynchronizer()
+        synchronizer.start(settings: settings, helper: helper)
+        service.registerError = NSError(domain: "test", code: 1)
+        helper.setEnabled(true)
+        synchronizer.stop()
+
+        let relaunchedSettings = SettingsStore(defaults: suite.defaults)
+        let relaunchedHelper = PrivilegedHelperManager(service: service)
+        synchronizer.start(settings: relaunchedSettings, helper: relaunchedHelper)
+
+        XCTAssertTrue(relaunchedHelper.isEnabled)
+        XCTAssertTrue(relaunchedSettings.controlsLowPowerMode)
+        XCTAssertEqual(service.registerCallCount, 1)
+        synchronizer.stop()
+    }
+
     func testRegistrationMirrorsIntoThePersistedFlag() {
         let suite = makeSuite()
         defer { clear(suite) }
@@ -50,9 +94,8 @@ final class LowPowerModeControlSynchronizerTests: XCTestCase {
         XCTAssertTrue(settings.controlsLowPowerMode)
     }
 
-    func testStaleFlagIsClearedWhenTheHelperIsGone() {
-        // A flag left on by a previous install whose daemon is no longer
-        // registered must not show a control with nothing behind it.
+    func testSavedOptInIsPreservedWhenTheHelperIsGone() {
+        // Preserve user intent even if the system has lost the registration.
         let suite = makeSuite()
         defer { clear(suite) }
         let defaults = suite.defaults
@@ -64,7 +107,9 @@ final class LowPowerModeControlSynchronizerTests: XCTestCase {
         let synchronizer = LowPowerModeControlSynchronizer()
         synchronizer.start(settings: settings, helper: helper)
 
-        XCTAssertFalse(settings.controlsLowPowerMode)
+        XCTAssertTrue(settings.controlsLowPowerMode)
+        XCTAssertTrue(helper.isEnabled)
+        synchronizer.stop()
     }
 
     private func makeSuite() -> (defaults: UserDefaults, name: String) {

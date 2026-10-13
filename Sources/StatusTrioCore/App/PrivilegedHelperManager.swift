@@ -123,8 +123,9 @@ final class PrivilegedHelperManager: ObservableObject {
         pollInterval: Duration = .seconds(2)
     ) {
         self.service = service
-        self.status = service.status
-        self.isEnabled = service.status != .notRegistered
+        let initialStatus = service.status
+        self.status = initialStatus
+        self.isEnabled = initialStatus != .notRegistered
         self.pollInterval = pollInterval
         // A previous session may have quit while the registration was still
         // waiting for approval, so start watching for the system to accept it.
@@ -157,6 +158,7 @@ final class PrivilegedHelperManager: ObservableObject {
 
     func setEnabled(_ enabled: Bool) {
         guard isAvailable else { return }
+        publishSystemState()
         didFailLastOperation = false
         lastErrorMessage = nil
         failedOperationTarget = nil
@@ -172,14 +174,14 @@ final class PrivilegedHelperManager: ObservableObject {
         updateStatusPolling()
     }
 
-    /// Re-reads the system state after the user acted — the toggle, returning to
-    /// the app, or opening Settings.
-    ///
-    /// Approval happens outside the app, so this also re-asks for the
-    /// registration: the state the app is waiting for is exactly the one the
-    /// user just changed somewhere else.
+    /// Restores a saved opt-in without mutating registration during startup.
+    func restoreUserIntent(_ enabled: Bool) {
+        isEnabled = enabled
+        updateStatusPolling()
+    }
+
+    /// Activation and polling observe approval without changing registration.
     func refresh() {
-        registerIfNeeded()
         publishSystemState()
         updateStatusPolling()
     }
@@ -203,27 +205,13 @@ final class PrivilegedHelperManager: ObservableObject {
         }
     }
 
-    /// Re-issues `register()` while the user wants the helper but macOS has not
-    /// approved it yet.
-    ///
-    /// `SMAppService` does not promote an existing registration to `.enabled`
-    /// when the user switches the app back on under System Settings › General ›
-    /// Login Items & Extensions › Allow in the Background, and a bare
-    /// `register()` on the pending item is refused with "Operation not
-    /// permitted". Clearing the pending registration first is what makes the
-    /// system accept the item again — that is the unregister-then-register dance
-    /// the user otherwise has to perform by hand.
-    ///
-    /// Only ever called from a user action. Doing this from the poll instead left
-    /// the item flapping between registered and not registered every couple of
-    /// seconds while macOS kept refusing the registration.
+    /// An explicit enable retries a pending registration. Background refreshes
+    /// never perform this unregister/register sequence.
     private func registerIfNeeded() {
         guard isEnabled, isAvailable, status != .enabled else { return }
-        let previous = status
-
         do {
             if status == .requiresApproval {
-                try? service.unregister()
+                try service.unregister()
             }
             try service.register()
             status = service.status
@@ -231,10 +219,6 @@ final class PrivilegedHelperManager: ObservableObject {
             didFailLastOperation = true
             lastErrorMessage = error.localizedDescription
             failedOperationTarget = true
-            // A refused attempt knocks the item back to `notRegistered`; keep
-            // showing the state whose approval the user still has to grant.
-            let observed = service.status
-            status = observed == .notRegistered ? previous : observed
         }
     }
 
@@ -255,7 +239,7 @@ final class PrivilegedHelperManager: ObservableObject {
     /// the only way the settings pane catches up without the user having to
     /// touch the app's switch again. The poll is read-only on purpose.
     private func updateStatusPolling() {
-        guard isEnabled, isAvailable, status != .enabled else {
+        guard isAvailable, isEnabled || failedOperationTarget != nil else {
             pollTask?.cancel()
             pollTask = nil
             return
@@ -266,8 +250,7 @@ final class PrivilegedHelperManager: ObservableObject {
             while !Task.isCancelled {
                 try? await Task.sleep(for: pollInterval)
                 guard !Task.isCancelled, let self else { return }
-                self.publishSystemState()
-                self.updateStatusPolling()
+                self.refresh()
             }
         }
     }

@@ -4,6 +4,52 @@ import XCTest
 
 @MainActor
 final class PrivilegedHelperManagerTests: XCTestCase {
+    func testRefreshDoesNotUnregisterApprovalThatArrivedBeforeThePoll() {
+        let service = FakePrivilegedHelperService(status: .requiresApproval)
+        let manager = PrivilegedHelperManager(service: service)
+        service.status = .enabled
+        service.registerError = TestFailure.registration
+
+        manager.refresh()
+
+        XCTAssertEqual(manager.status, .enabled)
+        XCTAssertEqual(service.unregisterCallCount, 0)
+        XCTAssertEqual(service.registerCallCount, 0)
+        XCTAssertFalse(manager.didFailLastOperation)
+    }
+
+    func testDisablingReadsRegistrationThatArrivedBeforeThePoll() {
+        let service = FakePrivilegedHelperService(status: .notRegistered)
+        let manager = PrivilegedHelperManager(service: service)
+        service.registerError = TestFailure.registration
+        manager.setEnabled(true)
+        service.status = .enabled
+
+        manager.setEnabled(false)
+
+        XCTAssertEqual(service.unregisterCallCount, 1)
+        XCTAssertEqual(service.status, .notRegistered)
+        XCTAssertFalse(manager.isEnabled)
+    }
+
+    func testFailedUnregisterSettlesWithoutForegroundRefresh() async {
+        let service = FakePrivilegedHelperService(status: .enabled)
+        let manager = PrivilegedHelperManager(service: service, pollInterval: .milliseconds(20))
+        service.unregisterError = TestFailure.unregistration
+        manager.setEnabled(false)
+        XCTAssertTrue(manager.didFailLastOperation)
+        service.status = .notRegistered
+
+        let deadline = Date().addingTimeInterval(1)
+        while manager.didFailLastOperation, Date() < deadline {
+            try? await Task.sleep(for: .milliseconds(20))
+        }
+
+        XCTAssertFalse(manager.didFailLastOperation)
+        XCTAssertEqual(manager.status, .notRegistered)
+        XCTAssertEqual(service.unregisterCallCount, 1)
+    }
+
     func testStatusAndAvailabilityReflectTheService() {
         let enabled = PrivilegedHelperManager(service: FakePrivilegedHelperService(status: .enabled))
         XCTAssertEqual(enabled.status, .enabled)
@@ -123,39 +169,26 @@ final class PrivilegedHelperManagerTests: XCTestCase {
         XCTAssertEqual(manager.status, .enabled)
     }
 
-    func testRefreshRetriesRegistrationUntilTheSystemAcceptsIt() {
-        // The reported flow: the app's switch is on while Status Trio is off in
-        // System Settings › General › Login Items & Extensions › Allow in the
-        // Background. `register()` is refused and macOS answers
-        // `requiresApproval`, so the app has to ask again after the user enables
-        // it — otherwise the toggle sits on "waiting for approval" and the
-        // daemon is never bootstrapped until the user flicks the app's own
-        // switch off and on again.
+    func testRefreshObservesPendingApprovalWithoutRewritingRegistration() {
         let service = FakePrivilegedHelperService(status: .notRegistered)
         service.registerError = TestFailure.registration
         let manager = PrivilegedHelperManager(service: service)
         manager.setEnabled(true)
-        XCTAssertTrue(manager.didFailLastOperation)
 
-        // macOS reports the refused registration as `requiresApproval`.
         service.status = .requiresApproval
         manager.refresh()
-
-        XCTAssertEqual(manager.status, .requiresApproval)
         XCTAssertTrue(manager.didFailLastOperation)
-        XCTAssertEqual(service.registerCallCount, 2)
         XCTAssertTrue(manager.isEnabled)
+        XCTAssertEqual(service.registerCallCount, 1)
+        XCTAssertEqual(service.unregisterCallCount, 0)
 
-        // The user switches Status Trio back on in System Settings; the next
-        // refresh re-registers and macOS accepts it.
-        service.registerError = nil
+        service.status = .enabled
         manager.refresh()
-
-        XCTAssertEqual(manager.status, .enabled)
-        XCTAssertEqual(service.registerCallCount, 3)
+        XCTAssertTrue(manager.isApproved)
         XCTAssertFalse(manager.didFailLastOperation)
         XCTAssertNil(manager.lastErrorMessage)
-        XCTAssertTrue(manager.isApproved)
+        XCTAssertEqual(service.registerCallCount, 1)
+        XCTAssertEqual(service.unregisterCallCount, 0)
     }
 
     func testRefreshClearsAFailureOnceTheDaemonIsApproved() {

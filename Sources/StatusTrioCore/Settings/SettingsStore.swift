@@ -382,6 +382,11 @@ final class SettingsStore: ObservableObject {
         }
     }
 
+    /// Nil on first launch, allowing adoption of an existing helper registration.
+    var savedLowPowerModeControlPreference: Bool? {
+        defaults.object(forKey: Self.controlsLowPowerModeDefaultsKey) as? Bool
+    }
+
     @Published var controlsLowPowerMode: Bool {
         didSet {
             defaults.set(controlsLowPowerMode, forKey: Self.controlsLowPowerModeDefaultsKey)

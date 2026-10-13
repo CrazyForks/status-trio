@@ -4,12 +4,9 @@ import Combine
 /// Keeps the privileged helper's registration and the persisted Low Power Mode
 /// opt-in in step.
 ///
-/// The registration is the source of truth: `SMAppService` owns the daemon's
-/// state, and the user can also change it from System Settings, so a persisted
-/// bool alone would drift. The toggle writes through `PrivilegedHelperManager`
-/// (which registers or unregisters), and this synchronizer copies the resulting
-/// status back into `SettingsStore.controlsLowPowerMode` so the feature stays
-/// on across launches only while the helper is actually registered.
+/// The persisted opt-in records user intent; the manager separately observes
+/// system approval. A failed registration or unregister must not reverse that
+/// intent when the app is relaunched.
 @MainActor
 final class LowPowerModeControlSynchronizer {
     private var cancellables = Set<AnyCancellable>()
@@ -17,6 +14,10 @@ final class LowPowerModeControlSynchronizer {
 
     func start(settings: SettingsStore, helper: PrivilegedHelperManager) {
         guard cancellables.isEmpty, activationObserver == nil else { return }
+
+        if let savedPreference = settings.savedLowPowerModeControlPreference {
+            helper.restoreUserIntent(savedPreference)
+        }
 
         // Mirror the user's opt-in into the persisted flag. It follows the
         // switch, not the raw system status: a registration macOS has not
@@ -29,13 +30,6 @@ final class LowPowerModeControlSynchronizer {
                 settings.controlsLowPowerMode = isRegistered
             }
             .store(in: &cancellables)
-
-        // On launch, reconcile: if the user asked for the feature previously but
-        // the helper is no longer registered (uninstalled, revoked in System
-        // Settings), clear the flag rather than showing a dead control.
-        if settings.controlsLowPowerMode && !helper.isEnabled {
-            settings.controlsLowPowerMode = false
-        }
 
         // Approval happens in System Settings, so re-read the status when the app
         // comes back to the foreground. Without this, a registration approved
