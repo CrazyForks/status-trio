@@ -210,6 +210,44 @@ final class PrivilegedHelperManagerTests: XCTestCase {
         XCTAssertEqual(manager.status, .enabled)
     }
 
+    func testPendingRegistrationIsRetriedUntilTheSystemApprovesIt() async {
+        // macOS posts nothing when the user enables the app under System
+        // Settings › Login Items, so the manager has to keep asking on its own
+        // or the toggle stays on "waiting for approval" forever.
+        let service = FakePrivilegedHelperService(status: .notRegistered)
+        service.registerError = TestFailure.registration
+        let manager = PrivilegedHelperManager(service: service, retryInterval: .milliseconds(20))
+
+        manager.setEnabled(true)
+        XCTAssertTrue(manager.didFailLastOperation)
+        XCTAssertEqual(manager.status, .notRegistered)
+
+        service.registerError = nil
+
+        let deadline = Date().addingTimeInterval(5)
+        while manager.status != .enabled, Date() < deadline {
+            try? await Task.sleep(for: .milliseconds(20))
+        }
+
+        XCTAssertEqual(manager.status, .enabled)
+        XCTAssertTrue(manager.isApproved)
+        XCTAssertFalse(manager.didFailLastOperation)
+    }
+
+    func testTurningTheHelperOffStopsTheRetryLoop() async {
+        let service = FakePrivilegedHelperService(status: .notRegistered)
+        service.registerError = TestFailure.registration
+        let manager = PrivilegedHelperManager(service: service, retryInterval: .milliseconds(20))
+        manager.setEnabled(true)
+
+        manager.setEnabled(false)
+        let callsAfterDisabling = service.registerCallCount
+        try? await Task.sleep(for: .milliseconds(120))
+
+        XCTAssertEqual(service.registerCallCount, callsAfterDisabling)
+        XCTAssertFalse(manager.didFailLastOperation)
+    }
+
     func testOpenLoginItemsSettingsIsForwardedToTheService() {
         let service = FakePrivilegedHelperService(status: .requiresApproval)
         let manager = PrivilegedHelperManager(service: service)

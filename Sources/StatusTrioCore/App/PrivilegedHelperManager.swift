@@ -113,10 +113,18 @@ final class PrivilegedHelperManager: ObservableObject {
     /// left waiting for approval is finished on the next launch.
     private var wantsRegistration: Bool
 
-    init(service: PrivilegedHelperServicing = SystemPrivilegedHelperService()) {
+    /// How often a registration that macOS has not approved yet is retried.
+    private let retryInterval: Duration
+    private var retryTask: Task<Void, Never>?
+
+    init(
+        service: PrivilegedHelperServicing = SystemPrivilegedHelperService(),
+        retryInterval: Duration = .seconds(2)
+    ) {
         self.service = service
         self.status = service.status
         self.wantsRegistration = service.status != .notRegistered
+        self.retryInterval = retryInterval
     }
 
     /// A registration that still awaits approval counts as on, so the toggle
@@ -179,13 +187,16 @@ final class PrivilegedHelperManager: ObservableObject {
         status = service.status
         registerIfNeeded()
 
-        guard let target = failedOperationTarget else { return }
-        let satisfied = target ? status == .enabled : status == .notRegistered
-        guard satisfied else { return }
+        if let target = failedOperationTarget {
+            let satisfied = target ? status == .enabled : status == .notRegistered
+            if satisfied {
+                failedOperationTarget = nil
+                didFailLastOperation = false
+                lastErrorMessage = nil
+            }
+        }
 
-        failedOperationTarget = nil
-        didFailLastOperation = false
-        lastErrorMessage = nil
+        updateRetryLoop()
     }
 
     /// Re-issues `register()` while the user wants the helper but macOS has not
@@ -193,21 +204,47 @@ final class PrivilegedHelperManager: ObservableObject {
     ///
     /// `SMAppService` does not promote an existing registration to `.enabled`
     /// when the user switches the app back on under System Settings › General ›
-    /// Login Items & Extensions › Allow in the Background: the pending
-    /// registration is only accepted by the *next* `register()` call. Without
-    /// this retry the toggle keeps saying "waiting for approval" and the daemon
-    /// is never bootstrapped until the user happens to flick the app's own
-    /// switch off and on again.
+    /// Login Items & Extensions › Allow in the Background, and a bare
+    /// `register()` on the pending item is refused with "Operation not
+    /// permitted". Clearing the pending registration first is what makes the
+    /// system accept the item again — that is the unregister-then-register dance
+    /// the user otherwise has to perform by hand.
     private func registerIfNeeded() {
         guard wantsRegistration, isAvailable, status != .enabled else { return }
 
         do {
+            if status == .requiresApproval {
+                try? service.unregister()
+            }
             try service.register()
             status = service.status
         } catch {
             didFailLastOperation = true
             lastErrorMessage = error.localizedDescription
             failedOperationTarget = true
+        }
+    }
+
+    /// Keeps a light poll running while a registration is pending.
+    ///
+    /// The state the app waits for can only be reached from System Settings, and
+    /// macOS posts no notification when it changes, so re-reading on a timer is
+    /// the only way the settings toggle catches up without the user having to
+    /// touch the app again.
+    private func updateRetryLoop() {
+        guard wantsRegistration, isAvailable, status != .enabled else {
+            retryTask?.cancel()
+            retryTask = nil
+            return
+        }
+        guard retryTask == nil else { return }
+
+        retryTask = Task { [weak self, retryInterval] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: retryInterval)
+                guard !Task.isCancelled, let self else { return }
+                self.refresh()
+            }
         }
     }
 
