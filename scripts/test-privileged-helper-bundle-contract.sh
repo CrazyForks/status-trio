@@ -90,6 +90,8 @@ PLIST
     <array>
         <string>com.lingsmbp.StatusTrio</string>
     </array>
+    <key>ThrottleInterval</key>
+    <integer>1</integer>
 </dict>
 </plist>
 PLIST
@@ -129,6 +131,14 @@ expect_rejected "a helper with the wrong minos" \
 make_app no-requirement true 1 1
 expect_rejected "a helper without the embedded requirement" \
     env PATH="$WORK:$PATH" MOCK_REQUIREMENT=0 bash "$ROOT/scripts/verify-privileged-helper-bundle.sh" "$WORK/no-requirement"
+
+# A plist that leaves launchd's default throttle in place must be rejected: the
+# helper exits itself when idle, and the default would make the next request
+# wait out the throttle instead of starting it again.
+make_app slow-restart true 1 1
+/usr/libexec/PlistBuddy -c 'Delete :ThrottleInterval' \
+    "$WORK/slow-restart/Contents/Library/LaunchDaemons/com.lingsmbp.StatusTrio.PowerHelper.plist"
+expect_rejected "a plist without the restart throttle" run "$WORK/slow-restart"
 
 # Positive control: a well-formed flagged bundle passes.
 make_app valid true 1 1

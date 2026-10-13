@@ -15,5 +15,10 @@
 	<array>
 		<string>com.lingsmbp.StatusTrio</string>
 	</array>
+	<!-- The job exits itself as soon as the app is done with it, so allow
+	     launchd to start it again immediately; the 10-second default would make
+	     the next toggle wait out the throttle. -->
+	<key>ThrottleInterval</key>
+	<integer>1</integer>
 </dict>
 </plist>

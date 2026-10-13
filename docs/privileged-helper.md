@@ -42,10 +42,43 @@ three gates must all open before root code runs:
 1. The user ticks **Low Power Mode Control** in Settings › Battery.
 2. The user approves the helper in System Settings › General › Login Items.
 3. The app opens an XPC connection (the daemon starts lazily on that first
-   connection and is not kept alive otherwise).
+   connection and exits itself again once the app is done with it).
 
 Unticking the control unregisters the daemon. The plist deliberately has no
 `RunAtLoad` and no `KeepAlive`.
+
+## Idle exit
+
+launchd does **not** stop an idle job for us. A `MachServices` job that never
+exits itself keeps running after the client is gone — measured on macOS 27 with
+an equivalent user LaunchAgent, both with and without `EnableTransactions`
+(`EnableTransactions` only tells launchd how to kill the job once something
+else decides to stop it). Without help, quitting the app left
+`StatusTrioPowerHelper` running as root until logout.
+
+So the daemon owns its own lifetime (`IdleExitMonitor`, `Sources/StatusTrioPowerHelper`):
+
+- The listener counts accepted connections. Each accepted connection is a
+  reason for a root process to exist.
+- When the last one ends — invalidated or interrupted, which is what the daemon
+  sees both when the app invalidates its connection and when the app quits or
+  dies mid-connection — the process exits after 5 seconds of no clients. The
+  window is short enough that the helper is gone soon after a quit, and long
+  enough for one app interaction (a popover read, then a toggle a few seconds
+  later) to reuse the same process.
+- The window starts when the daemon starts, too. launchd spawns the daemon for
+  any Mach message, so a daemon that never gets a *usable* connection — a peer
+  the code-signing requirement rejects, a request cancelled in flight — would
+  otherwise linger forever with a connection count of zero.
+
+Exiting is safe because launchd starts the job again on the next Mach message,
+and `Support/StatusTrioPowerHelper.plist` sets `ThrottleInterval` to 1 second.
+launchd's 10-second default would otherwise delay the relaunch that follows an
+idle exit, so the next toggle would wait out the throttle instead of reaching a
+fresh helper; `scripts/verify-privileged-helper-bundle.sh` pins that value.
+`IdleExitMonitorTests` covers the policy: an exit after an idle window, no exit
+while a client is connected, a connection cancelling a pending exit, and never
+exiting twice for one window.
 
 ## Client authorization
 
@@ -85,15 +118,30 @@ is false.
 
 - **CI / static**: the daemon is signed and hardened, its `minos` is 13.0 and its
   SDK is 26+, its plist names the right `Label`/`BundleProgram`/`MachServices`/
-  `AssociatedBundleIdentifiers`, and it embeds the Apple-anchored client
-  requirement. `scripts/verify-privileged-helper-bundle.sh` checks all of this,
-  and the non-publishing release workflow runs it.
+  `AssociatedBundleIdentifiers`/`ThrottleInterval`, and it embeds the
+  Apple-anchored client requirement. `scripts/verify-privileged-helper-bundle.sh`
+  checks all of this, and the non-publishing release workflow runs it.
 - **Not in CI**: the live XPC round trip and the actual `pmset` write. A CI
   runner cannot grant the administrator approval a LaunchDaemon needs, so these
   are a manual Developer-ID check: build with a Developer ID identity, install
   the app, tick the control, approve it in Login Items, and confirm
   `sudo launchctl print system/com.lingsmbp.StatusTrio.PowerHelper` shows the
   daemon and that toggling the switch changes `pmset -g`.
+- **Local, without root or a Developer ID**: the daemon's own lifetime, because a
+  user LaunchAgent can run the same binary under the same `MachServices` name
+  (`logout` moves the name back to the system domain). `swift build -c release
+  --product StatusTrioPowerHelper`, copy the binary somewhere outside
+  `~/Documents`, register a LaunchAgent for it with `ThrottleInterval 1`, and
+  send it one Mach message. There is no approved app here, so the connection is
+  rejected — the daemon still has to disappear about 5 seconds later, which is
+  the case that used to leak a root process. Measured on macOS 27: the daemon
+  exited with status 0 five seconds after the rejected connection, and a second
+  message one second later started a new one immediately. A copy of the daemon
+  built with the client requirement removed was used to confirm the other half —
+  a connection that stays open keeps the process alive, and it exits 5 seconds
+  after that connection is invalidated. Running the helper out of `~/Documents`
+  hangs it inside `dyld` instead: a launchd-spawned process gets no TCC grant for
+  that folder.
 
 ## Notes
 

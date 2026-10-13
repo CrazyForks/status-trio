@@ -66,6 +66,14 @@ let package = Package(
             name: "StatusTrioCoreTests",
             dependencies: ["StatusTrioCore", "PowerHelperProtocol"],
             path: "Tests/StatusTrioCoreTests"
+        ),
+        // The daemon owns its own lifetime, so its idle policy is exercised
+        // directly: the executable target is linked into this bundle, and the
+        // top-level code in main.swift never runs here.
+        .testTarget(
+            name: "StatusTrioPowerHelperTests",
+            dependencies: ["StatusTrioPowerHelper"],
+            path: "Tests/StatusTrioPowerHelperTests"
         )
     ]
 )

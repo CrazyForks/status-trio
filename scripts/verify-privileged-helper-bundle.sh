@@ -80,6 +80,15 @@ if [[ "$ASSOCIATED" != "$BUNDLE_ID" ]]; then
     exit 1
 fi
 
+# The daemon exits itself once the app is done with it, so launchd must be able
+# to start it again right away; the 10-second default would make the next
+# toggle wait out the throttle instead of reaching a freshly started helper.
+THROTTLE="$(/usr/libexec/PlistBuddy -c 'Print :ThrottleInterval' "$PLIST" 2>/dev/null || echo "")"
+if [[ "$THROTTLE" != "1" ]]; then
+    echo "Error: LaunchDaemon ThrottleInterval is '$THROTTLE', expected '1' so the idle-exited helper restarts on demand." >&2
+    exit 1
+fi
+
 # The daemon must carry the client code-signing requirement that pins the app's
 # bundle identifier and signing team. The string is embedded in the binary, so a
 # regression that loosened it would show up here rather than at runtime.
