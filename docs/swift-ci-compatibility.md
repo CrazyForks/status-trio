@@ -889,3 +889,25 @@ DMG 打包与 artifact 上传全部通过；`publish=false` 未创建 GitHub Rel
   Ad-hoc 签名与 artifact 上传通过；`publish=false` 未创建 GitHub Release，也未更新 appcast。本机同一 head 上
   `swift test` 563 项、`swift build -c release` 均通过，且 `LowPowerModeControllerTests` 单独连续三次运行 0 失败。
   本条记录本身的提交只补充说明，不改变已验证的产品代码。
+
+## 38541853330：helper 审批恢复预检中的 Dock 测试失败
+
+非发布预检 [`38541853330`](https://github.com/lingyired/status-trio/actions/runs/38541853330)
+（head `5fd71618`、`version=1.6.0`、`build=27`、`publish=false`）在 `Run tests` 阶段失败。
+
+- **失败位置**：`ChargingEffectControllerTests.batteryLevelChangesStillUpdateStaticDockArtwork`，
+  第 48 行；等待 5 秒后 `renderCount` 仍为 `1`，未超过初始值 `1`。helper 测试通过。
+- **根因状态**：尚未确认。该用例已经使用有界条件等待，不能归因于固定 `Task.yield()` 次数，
+  也没有 Swift 编译错误的证据。本机完整测试通过；单次 CI 失败不足以证明这是偶发调度问题。
+- **处理**：保留原测试与断言，不增加超时或绕过用例。先核对后续预检的同一测试结果；
+  若再次失败，继续检查电池更新、presentation 调度和 Dock 重绘之间的路径。
+- **验证**：包含最后一项审批错误修复的 head `2135e0eb` 本机 `swift test` 通过
+  （1497 XCTest、7 skipped、0 failures；587 Swift Testing / 91 suites），
+  `swift build -c release` 通过。后续非发布预检
+  [`38542541814`](https://github.com/lingyired/status-trio/actions/runs/38542541814)
+  （同一产品代码 head `2135e0eb`、`version=1.6.0`、`build=28`、`publish=false`）全绿：
+  `Run tests`、原生兼容检查、Universal release 构建、DMG 打包和 artifact 上传全部通过。
+  原 Dock 测试未修改，后续运行通过，但首次失败的具体根因仍未确认。
+  CI 使用 Ad-hoc 签名；本机安装版单独通过 Developer ID 签名、公证与 stapler 验证。
+  用户按“系统关闭 → App 开启 → 系统开启”的流程确认等待提示自动消失、绿叶可用，
+  本机日志也记录自动 `register()` 返回成功、状态从 `2` 转为 `1`。没有发布 Release 或修改 appcast。
