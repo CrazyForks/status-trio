@@ -40,7 +40,7 @@ final class LowPowerModeControlSynchronizer {
             object: nil,
             queue: .main
         ) { [weak helper] _ in
-            Task { @MainActor in helper?.refresh() }
+            Task { @MainActor in helper?.refreshAfterActivation() }
         }
     }
 

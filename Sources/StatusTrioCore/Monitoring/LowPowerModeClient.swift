@@ -30,6 +30,11 @@ enum LowPowerModeClientError: LocalizedError {
 /// guessing why.
 final class XPCPrivilegedHelperClient: LowPowerModeClienting, @unchecked Sendable {
     private let queue = DispatchQueue(label: "StatusTrio.PowerHelper.XPC")
+    private let requestTimeout: TimeInterval
+
+    init(requestTimeout: TimeInterval = 3) {
+        self.requestTimeout = requestTimeout
+    }
 
     func readLowPowerMode() async throws -> Bool {
         try await withProxy { proxy, finish in
@@ -67,7 +72,12 @@ final class XPCPrivilegedHelperClient: LowPowerModeClienting, @unchecked Sendabl
 
                 // A reply, an interruption, and an invalidation can race; the
                 // first one to arrive wins and the connection is torn down once.
-                let finish = OneShotReply(continuation: continuation, connection: connection)
+                let finish = OneShotReply(
+                    continuation: continuation,
+                    connection: connection,
+                    timeout: self.requestTimeout,
+                    queue: self.queue
+                )
                 connection.interruptionHandler = {
                     finish.resolve(.failure(LowPowerModeClientError.helperUnavailable))
                 }
@@ -89,15 +99,23 @@ final class XPCPrivilegedHelperClient: LowPowerModeClienting, @unchecked Sendabl
 }
 
 /// Resumes the XPC continuation exactly once, then invalidates the connection.
-private final class OneShotReply: @unchecked Sendable {
+final class OneShotReply: @unchecked Sendable {
     private let lock = NSLock()
     private var finished = false
     private let continuation: CheckedContinuation<Bool, any Error>
     private let connection: NSXPCConnection
 
-    init(continuation: CheckedContinuation<Bool, any Error>, connection: NSXPCConnection) {
+    init(
+        continuation: CheckedContinuation<Bool, any Error>,
+        connection: NSXPCConnection,
+        timeout: TimeInterval,
+        queue: DispatchQueue
+    ) {
         self.continuation = continuation
         self.connection = connection
+        queue.asyncAfter(deadline: .now() + timeout) { [self] in
+            resolve(.failure(LowPowerModeClientError.helperUnavailable))
+        }
     }
 
     func resolve(_ result: Result<Bool, any Error>) {

@@ -27,12 +27,16 @@ protocol PrivilegedHelperServicing: AnyObject {
     var status: PrivilegedHelperStatus { get }
     func register() throws
     func unregister() throws
+    func unregisterForRecovery() async throws
+    func verifyConnection() async throws
     func openLoginItemsSettings()
 }
 
 @MainActor
 final class SystemPrivilegedHelperService: PrivilegedHelperServicing {
-    private let service = SMAppService.daemon(plistName: PowerHelperConstants.launchDaemonPlistName)
+    private var service: SMAppService {
+        SMAppService.daemon(plistName: PowerHelperConstants.launchDaemonPlistName)
+    }
 
     /// The daemon must be present in the bundle for registration to mean
     /// anything; an Ad-hoc build cannot satisfy the daemon's signing
@@ -76,6 +80,14 @@ final class SystemPrivilegedHelperService: PrivilegedHelperServicing {
         try service.unregister()
     }
 
+    func unregisterForRecovery() async throws {
+        try await service.unregister()
+    }
+
+    func verifyConnection() async throws {
+        _ = try await XPCPrivilegedHelperClient().readLowPowerMode()
+    }
+
     func openLoginItemsSettings() {
         SMAppService.openSystemSettingsLoginItems()
     }
@@ -97,6 +109,7 @@ final class PrivilegedHelperManager: ObservableObject {
     @Published private(set) var status: PrivilegedHelperStatus
     @Published private(set) var didFailLastOperation = false
     @Published private(set) var lastErrorMessage: String?
+    @Published private(set) var isHelperResponsive = false
 
     private let service: PrivilegedHelperServicing
 
@@ -117,6 +130,13 @@ final class PrivilegedHelperManager: ObservableObject {
     /// How often the system state is re-read while a registration is pending.
     private let pollInterval: Duration
     private var pollTask: Task<Void, Never>?
+    private var verificationTask: Task<Void, Never>?
+    private var generation: UInt64 = 0
+    private var recoveryAttempts = 0
+    private var approvalRetryAttempts = 0
+    private var recoveringGeneration: UInt64?
+    private static let maximumRecoveryAttempts = 2
+    private static let maximumApprovalRetryAttempts = 3
 
     init(
         service: PrivilegedHelperServicing = SystemPrivilegedHelperService(),
@@ -130,6 +150,7 @@ final class PrivilegedHelperManager: ObservableObject {
         // A previous session may have quit while the registration was still
         // waiting for approval, so start watching for the system to accept it.
         updateStatusPolling()
+        checkHelperIfNeeded()
     }
 
     /// True while the system is waiting for the user to approve the helper.
@@ -141,7 +162,7 @@ final class PrivilegedHelperManager: ObservableObject {
     /// Power Mode control is offered on this, not on `isEnabled`: a registration
     /// that still awaits approval has no daemon behind it yet.
     var isApproved: Bool {
-        status == .enabled
+        isEnabled && status == .enabled && isHelperResponsive
     }
 
     /// False when this build or process cannot offer the helper at all.
@@ -158,6 +179,9 @@ final class PrivilegedHelperManager: ObservableObject {
 
     func setEnabled(_ enabled: Bool) {
         guard isAvailable else { return }
+        invalidateVerification()
+        recoveryAttempts = 0
+        approvalRetryAttempts = 0
         publishSystemState()
         didFailLastOperation = false
         lastErrorMessage = nil
@@ -172,31 +196,54 @@ final class PrivilegedHelperManager: ObservableObject {
 
         publishSystemState()
         updateStatusPolling()
+        checkHelperIfNeeded()
     }
 
     /// Restores a saved opt-in without mutating registration during startup.
     func restoreUserIntent(_ enabled: Bool) {
+        if isEnabled != enabled { invalidateVerification() }
         isEnabled = enabled
         updateStatusPolling()
+        checkHelperIfNeeded()
     }
 
     /// Activation and polling observe approval without changing registration.
     func refresh() {
         publishSystemState()
         updateStatusPolling()
+        checkHelperIfNeeded()
     }
 
-    /// Reads the system state and retires a failure the system has since
-    /// satisfied. `requiresApproval` is not enough to retire a failed
-    /// registration: a `register()` that macOS rejects with "Operation not
-    /// permitted" leaves the item in exactly that state, so the banner stays
-    /// until the daemon is really `.enabled`. A failed unregister is settled by
-    /// the item disappearing.
+    /// Retry only registration when returning from the approval UI. Never
+    /// unregister a pending service, and stop after three attempts per opt-in.
+    func refreshAfterActivation() {
+        if verificationTask == nil, isEnabled, status == .enabled {
+            isHelperResponsive = false
+        }
+        refresh()
+        if status == .enabled { checkHelperIfNeeded(forceRead: true) }
+        guard isEnabled, isAvailable, status == .requiresApproval,
+              approvalRetryAttempts < Self.maximumApprovalRetryAttempts else { return }
+        approvalRetryAttempts += 1
+        registerIfNeeded()
+        refresh()
+    }
+
+    /// Pending approval is expected. A usable helper or a completed unregister
+    /// retires a failure; an owned recovery's intermediate removal is ignored.
     private func publishSystemState() {
-        status = service.status
+        guard recoveringGeneration != generation else { return }
+        let observed = service.status
+        if observed != status {
+            invalidateVerification()
+            status = observed
+            if observed == .enabled { checkHelperIfNeeded(forceRead: true) }
+        }
 
         if let target = failedOperationTarget {
-            let satisfied = target ? status == .enabled : status == .notRegistered
+            let satisfied = target
+                ? status == .requiresApproval || (status == .enabled && isHelperResponsive)
+                : status == .notRegistered
             if satisfied {
                 failedOperationTarget = nil
                 didFailLastOperation = false
@@ -205,20 +252,87 @@ final class PrivilegedHelperManager: ObservableObject {
         }
     }
 
-    /// An explicit enable retries a pending registration. Background refreshes
-    /// never perform this unregister/register sequence.
+    /// A pending approval is an expected intermediate state, including when
+    /// macOS reports EPERM from register(). Leave its registration intact.
     private func registerIfNeeded() {
         guard isEnabled, isAvailable, status != .enabled else { return }
         do {
-            if status == .requiresApproval {
-                try service.unregister()
-            }
             try service.register()
-            status = service.status
         } catch {
-            didFailLastOperation = true
-            lastErrorMessage = error.localizedDescription
-            failedOperationTarget = true
+            recordRegistrationError(error)
+        }
+    }
+
+    private func recordRegistrationError(_ error: any Error) {
+        guard service.status != .requiresApproval else { return }
+        didFailLastOperation = true
+        lastErrorMessage = error.localizedDescription
+        failedOperationTarget = true
+    }
+
+    private func invalidateVerification() {
+        generation &+= 1
+        verificationTask?.cancel()
+        verificationTask = nil
+        isHelperResponsive = false
+    }
+
+    /// Only a failed read from an approved service can trigger recovery. A
+    /// daemon that has idle-exited will answer the read after launchd starts it.
+    private func checkHelperIfNeeded(forceRead: Bool = false) {
+        guard isEnabled, isAvailable, status == .enabled, !isHelperResponsive,
+              verificationTask == nil,
+              forceRead || recoveryAttempts < Self.maximumRecoveryAttempts else { return }
+        let requestGeneration = generation
+        verificationTask = Task { [weak self] in
+            guard let self, !Task.isCancelled, self.isEnabled,
+                  self.generation == requestGeneration else { return }
+            defer {
+                if self.recoveringGeneration == requestGeneration {
+                    self.recoveringGeneration = nil
+                }
+                if self.generation == requestGeneration { self.verificationTask = nil }
+            }
+            do {
+                try await self.service.verifyConnection()
+            } catch {
+                guard !Task.isCancelled, self.generation == requestGeneration,
+                      self.isEnabled, self.service.status == .enabled else { return }
+                guard self.recoveryAttempts < Self.maximumRecoveryAttempts else {
+                    self.recordRegistrationError(error)
+                    return
+                }
+                self.recoveryAttempts += 1
+                NSLog("StatusTrio power helper recovery %d/%d after failed XPC read: %@",
+                      self.recoveryAttempts, Self.maximumRecoveryAttempts,
+                      error.localizedDescription)
+                do {
+                    // Await completion before registering again. A synchronous
+                    // unregister may still be removing the job when it returns.
+                    self.recoveringGeneration = requestGeneration
+                    try await self.service.unregisterForRecovery()
+                    guard !Task.isCancelled, self.generation == requestGeneration,
+                          self.isEnabled else { return }
+                    try self.service.register()
+                    self.recoveringGeneration = nil
+                    guard self.service.status == .enabled else {
+                        self.publishSystemState()
+                        return
+                    }
+                    try await self.service.verifyConnection()
+                } catch {
+                    guard !Task.isCancelled, self.generation == requestGeneration else { return }
+                    self.recoveringGeneration = nil
+                    self.recordRegistrationError(error)
+                    self.publishSystemState()
+                    return
+                }
+            }
+            guard !Task.isCancelled, self.generation == requestGeneration,
+                  self.isEnabled, self.service.status == .enabled else { return }
+            self.isHelperResponsive = true
+            NSLog("StatusTrio power helper verified by XPC")
+            self.publishSystemState()
         }
     }
 
