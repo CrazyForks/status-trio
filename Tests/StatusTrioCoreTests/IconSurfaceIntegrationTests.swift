@@ -18,7 +18,7 @@ struct IconSurfaceIntegrationTests {
             quitAction: {},
             renderMenuBarIcon: { scene, _, _, _, _ in
                 menuBarScenes.append(scene)
-                return NSImage(size: NSSize(width: 32, height: 32))
+                return StatusIconRenderer.MenuBarLayers(base: NSImage(size: NSSize(width: 32, height: 32)))
             }
         )
         defer { menuBar.setVisible(false) }
@@ -50,7 +50,7 @@ struct IconSurfaceIntegrationTests {
             openSettings: {},
             quitAction: {},
             renderMenuBarIcon: { scene, size, _, _, _ in
-                rasterSpy.render(scene, size: size)
+                rasterSpy.render(scene, size: size).map { StatusIconRenderer.MenuBarLayers(base: $0) }
             }
         )
         defer { menuBar.setVisible(false) }
@@ -99,7 +99,7 @@ struct IconSurfaceIntegrationTests {
             localization: Localization(preferredLanguages: ["en"]),
             openSettings: {},
             quitAction: {},
-            renderMenuBarIcon: { scene, size, _, _, _ in rasterSpy.render(scene, size: size) }
+            renderMenuBarIcon: { scene, size, _, _, _ in rasterSpy.render(scene, size: size).map { StatusIconRenderer.MenuBarLayers(base: $0) } }
         )
         defer { menuBar.setVisible(false) }
         harness.controller.start()
@@ -224,7 +224,7 @@ struct IconSurfaceIntegrationTests {
             quitAction: {},
             renderMenuBarIcon: { scene, _, _, _, _ in
                 menuBarScenes.append(scene)
-                return NSImage(size: NSSize(width: 32, height: 32))
+                return StatusIconRenderer.MenuBarLayers(base: NSImage(size: NSSize(width: 32, height: 32)))
             }
         )
         defer { menuBar.setVisible(false) }
@@ -368,7 +368,7 @@ struct IconSurfaceIntegrationTests {
                     appearanceName: appearance.name.rawValue,
                     phase: phase
                 ))
-                return NSImage(size: NSSize(width: 32, height: 32))
+                return StatusIconRenderer.MenuBarLayers(base: NSImage(size: NSSize(width: 32, height: 32)))
             }
         )
         defer { menuBar.setVisible(false) }
@@ -439,7 +439,7 @@ struct IconSurfaceIntegrationTests {
             quitAction: {},
             renderMenuBarIcon: { scene, _, _, _, _ in
                 menuBarScenes.append(scene)
-                return NSImage(size: NSSize(width: 32, height: 32))
+                return StatusIconRenderer.MenuBarLayers(base: NSImage(size: NSSize(width: 32, height: 32)))
             }
         )
         defer { menuBar.setVisible(false) }
@@ -489,7 +489,7 @@ struct IconSurfaceIntegrationTests {
             quitAction: {},
             renderMenuBarIcon: { scene, _, _, _, _ in
                 menuBarScenes.append(scene)
-                return NSImage(size: NSSize(width: 32, height: 32))
+                return StatusIconRenderer.MenuBarLayers(base: NSImage(size: NSSize(width: 32, height: 32)))
             }
         )
         defer { menuBar.setVisible(false) }

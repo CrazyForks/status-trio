@@ -22,7 +22,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         _ scale: CGFloat,
         _ appearance: NSAppearance,
         _ phase: ChargingEffectPhase?
-    ) -> NSImage?
+    ) -> StatusIconRenderer.MenuBarLayers?
 
     enum ClickKind: Equatable {
         case left
@@ -84,7 +84,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         chargingEffectClock: ChargingEffectClock = ChargingEffectClock(),
         accessibilityValueDidChange: @escaping @MainActor (String) -> Void = { _ in },
         renderMenuBarIcon: @escaping MenuBarRenderer = { scene, size, scale, appearance, phase in
-            StatusIconRenderer.image(
+            StatusIconRenderer.menuBarLayers(
                 scene: scene,
                 size: CGFloat(size),
                 scale: scale,
@@ -527,47 +527,54 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         )
         guard renderCache.needsRender(key) else { return }
 
-        let renderedImage: NSImage?
-        if let phase, phase.kind == .steady,
-            let cachedImage = chargingFrameCache.image(
-                for: phase,
-                key: key,
-                backingScale: backingScale,
-                renderFrame: { framePhase in
-                    StatusIconRenderer.preRenderedMenuBarImage(
-                        scene: scene,
-                        size: CGFloat(iconSize),
-                        scale: backingScale,
-                        appearance: button.effectiveAppearance,
-                        phase: framePhase
-                    )
-                }
-            )
-        {
-            presentCachedAnimationFrame(
-                cachedImage,
+        guard let layers = renderMenuBarIcon(
+            scene,
+            iconSize,
+            backingScale,
+            button.effectiveAppearance,
+            phase
+        ) else { return }
+
+        // The button always carries the monochrome template image, so the system
+        // keeps re-tinting it for the Space that is on top — including while a
+        // Space switch is being dragged (#112).
+        button.image = layers.base
+
+        guard let overlay = layers.overlay else {
+            clearAnimationPresentation()
+            renderCache.recordSuccessfulRender(key)
+            return
+        }
+
+        if let frame = overlayFrame(
+            overlay: overlay,
+            scene: scene,
+            phase: phase,
+            key: key,
+            iconSize: CGFloat(iconSize),
+            backingScale: backingScale,
+            appearance: button.effectiveAppearance
+        ) {
+            presentOverlayFrame(
+                frame,
                 button: button,
                 iconSize: CGFloat(iconSize),
                 backingScale: backingScale
             )
-            renderedImage = cachedImage
+            if phase == nil { chargingFrameCache.reset() }
         } else {
-            renderedImage = renderMenuBarIcon(
-                scene,
-                iconSize,
-                backingScale,
-                button.effectiveAppearance,
-                phase
+            // The overlay could not be produced; fall back to one custom raster so
+            // the status colours still appear, even though they cannot re-tint.
+            animationLayerPresenter.clear()
+            button.image = StatusIconRenderer.image(
+                scene: scene,
+                size: CGFloat(iconSize),
+                scale: backingScale,
+                appearance: button.effectiveAppearance,
+                phase: phase
             )
-            if let renderedImage {
-                animationLayerPresenter.clear()
-                button.image = renderedImage
-            }
         }
-        if renderedImage != nil {
-            if phase == nil { clearAnimationPresentation() }
-            renderCache.recordSuccessfulRender(key)
-        }
+        renderCache.recordSuccessfulRender(key)
     }
 
     private func clearAnimationPresentation() {
@@ -575,54 +582,52 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         animationLayerPresenter.clear()
     }
 
-    private func presentCachedAnimationFrame(
-        _ image: NSImage,
+    /// Steady animation frames are pre-rendered once per icon state, so a 20 fps
+    /// tick reuses one bitmap; every other phase renders a single overlay frame.
+    private func overlayFrame(
+        overlay: CGImage,
+        scene: IconSceneState,
+        phase: ChargingEffectPhase?,
+        key: StatusBarRenderKey,
+        iconSize: CGFloat,
+        backingScale: CGFloat,
+        appearance: NSAppearance
+    ) -> CGImage? {
+        guard let phase, phase.kind == .steady else { return overlay }
+        let image = chargingFrameCache.image(
+            for: phase,
+            key: key,
+            backingScale: backingScale,
+            renderFrame: { framePhase in
+                StatusIconRenderer.preRenderedMenuBarImage(
+                    scene: scene,
+                    size: iconSize,
+                    scale: backingScale,
+                    appearance: appearance,
+                    phase: framePhase,
+                    regions: scene.chromaticRegions
+                )
+            }
+        )
+        return image?.cgImage(forProposedRect: nil, context: nil, hints: nil)
+    }
+
+    /// Draws the chromatic overlay in a layer above the button's template image.
+    private func presentOverlayFrame(
+        _ image: CGImage,
         button: NSStatusBarButton,
         iconSize: CGFloat,
         backingScale: CGFloat
     ) {
-        guard
-            let cgImage = image.cgImage(
-                forProposedRect: nil,
-                context: nil,
-                hints: nil
-            )
-        else {
-            animationLayerPresenter.clear()
-            button.image = image
-            return
-        }
-
-        let targetImageSize = NSSize(width: iconSize, height: iconSize)
-        if button.image?.size != targetImageSize {
-            // The frame set has already rendered successfully. Update AppKit's
-            // button allocation before reinstalling the layer into its bounds.
-            animationLayerPresenter.clear()
-            button.image = image
-        }
-
-        guard let result = animationLayerPresenter.display(
-            cgImage,
+        guard animationLayerPresenter.display(
+            image,
             in: button,
+            contentSize: CGSize(width: iconSize, height: iconSize),
             backingScale: backingScale
-        ) else {
+        ) != nil else {
             animationLayerPresenter.clear()
-            button.image = image
             return
         }
-
-        guard result == .installed else { return }
-        guard
-            let placeholder = StatusIconRenderer.transparentMenuBarImage(
-                size: iconSize,
-                scale: backingScale
-            )
-        else {
-            animationLayerPresenter.clear()
-            button.image = image
-            return
-        }
-        button.image = placeholder
     }
 
     /// Clock-driven frames bypass the status/setting coalescer; the menu-bar key
