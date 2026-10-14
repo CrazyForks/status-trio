@@ -66,17 +66,24 @@ client successfully reads its state. The app preserves that native report;
 it does not relabel it as approved. Settings displays both the reported
 approval and live helper availability, and the power control uses the latter.
 
-While a registered helper is unreachable, the app makes read-only XPC probes
-on the two-second approval poll. A failed pending probe never unregisters the
-helper or writes a power setting. Once reachable but still reported pending,
+While a registered helper is unreachable but its native status is already
+`enabled`, the app probes on the two-second approval poll. A pending probe —
+reachable or not — is throttled to the health-check interval instead, because
+each probe starts the root daemon and a status that never leaves
+`requiresApproval` would otherwise restart it every two seconds. A failed
+pending probe never unregisters the helper or writes a power setting. Once
+reachable but still reported pending,
 the app stops registration retries and checks health every sixty seconds, or
 on activation, so it can detect revocation even if the native report never
 changes. Each probe starts the root daemon, which idle-exits about five
 seconds later, so the interval is deliberately much longer than the idle
 window rather than as fast as possible: a machine whose native status stays
 pending forever would otherwise spawn the daemon every few seconds
-indefinitely. Measured with a ten-second interval, that was six daemon starts
-per minute. With no activation, a stale readiness indication can last up to
+indefinitely. Measured on macOS 27 before the throttle, a ten-second
+interval produced six daemon starts per minute; a build with the interval
+raised to sixty seconds but the retry still tied to "not responsive yet"
+still restarted the daemon every few seconds, which is why the throttle is
+keyed to the interval rather than to readiness. With no activation, a stale readiness indication can last up to
 sixty seconds plus the XPC timeout and poll scheduling; this is polling,
 not an instantaneous approval notification. Feature opt-out cancels scheduled
 probes and ignores late replies. An XPC request already accepted by the client

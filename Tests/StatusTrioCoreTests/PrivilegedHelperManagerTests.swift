@@ -20,7 +20,9 @@ final class PrivilegedHelperManagerTests: XCTestCase {
 
     func testPendingHelperCanBecomeReachableWithoutANativeStatusChange() async {
         let service = FakePrivilegedHelperService(status: .requiresApproval)
-        let manager = PrivilegedHelperManager(service: service, pollInterval: .milliseconds(20))
+        let manager = PrivilegedHelperManager(
+            service: service, pollInterval: .milliseconds(20), healthCheckInterval: .milliseconds(40)
+        )
         await waitUntil { service.verificationCallCount > 0 }
         XCTAssertGreaterThan(service.verificationCallCount, 0)
         XCTAssertFalse(manager.isReady)
@@ -70,6 +72,29 @@ final class PrivilegedHelperManagerTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(
             PrivilegedHelperManager.defaultPendingHealthCheckInterval, .seconds(30)
         )
+    }
+
+    func testUnreachablePendingHelperIsNotProbedOnEveryPoll() async {
+        // A native status that never leaves pending must not turn the 2-second
+        // approval poll into a probe loop: each probe starts the root daemon.
+        let service = FakePrivilegedHelperService(status: .requiresApproval)
+        let manager = PrivilegedHelperManager(
+            service: service, pollInterval: .milliseconds(10), healthCheckInterval: .milliseconds(300)
+        )
+        await waitUntil { service.verificationCallCount > 0 }
+        let probesAfterFirst = service.verificationCallCount
+        XCTAssertEqual(probesAfterFirst, 1)
+
+        try? await Task.sleep(for: .milliseconds(150))
+
+        XCTAssertEqual(service.verificationCallCount, probesAfterFirst)
+        XCTAssertFalse(manager.isReady)
+        XCTAssertEqual(manager.status, .requiresApproval)
+
+        await waitUntil { service.verificationCallCount > probesAfterFirst }
+        XCTAssertGreaterThan(service.verificationCallCount, probesAfterFirst)
+        XCTAssertEqual(service.registerCallCount, 0)
+        XCTAssertEqual(service.recoveryUnregisterCallCount, 0)
     }
 
     func testPendingReadinessIsRecheckedEvenWhenNativeStatusNeverChanges() async {

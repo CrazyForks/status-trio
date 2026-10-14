@@ -212,17 +212,29 @@ final class PrivilegedHelperManager: ObservableObject {
     func refresh() {
         publishSystemState()
         updateStatusPolling()
-        let pendingHealthCheckDue = status == .requiresApproval && isHelperResponsive
-            && nextPendingHealthCheck.map { ContinuousClock.now >= $0 } == true
-        checkHelperIfNeeded(forceRead: pendingHealthCheckDue)
+        checkHelperIfNeeded(forceRead: pendingProbeIsDue())
     }
 
     /// Returning from approval can precede the system's permission update.
     /// Give it a bounded retry window without removing the pending service.
     func refreshAfterActivation() {
         refresh()
+        // Returning from System Settings is a user action, so an extra probe
+        // is worth one more daemon start even when the timer is not due.
         checkHelperIfNeeded(forceRead: true)
         startRegistrationRetryWindow()
+    }
+
+    /// Every probe of a pending helper starts the root daemon, which then
+    /// idle-exits. Throttle them to one per health-check interval so a native
+    /// status that never leaves `requiresApproval` cannot turn the two-second
+    /// approval poll into a daemon restart loop.
+    private func pendingProbeIsDue(
+        now: ContinuousClock.Instant = ContinuousClock.now
+    ) -> Bool {
+        guard status == .requiresApproval else { return false }
+        guard let due = nextPendingHealthCheck else { return true }
+        return now >= due
     }
 
     /// Pending approval or a usable helper retires a registration failure.
@@ -329,12 +341,23 @@ final class PrivilegedHelperManager: ObservableObject {
     /// Probe registered helpers even while native approval lags. Only a failed
     /// read with native approval enabled can trigger registration recovery;
     /// pending failures are expected and never unregister the service.
+    ///
+    /// A pending probe is throttled rather than tied to "not responsive yet":
+    /// on a machine that never grants background approval the read keeps
+    /// failing, and an unthrottled retry would start the root daemon on every
+    /// two-second approval poll.
     private func checkHelperIfNeeded(forceRead: Bool = false) {
         guard isEnabled, isAvailable, status != .notRegistered,
-              forceRead || !isHelperResponsive,
-              verificationTask == nil,
-              status == .requiresApproval || forceRead
-                || recoveryAttempts < Self.maximumRecoveryAttempts else { return }
+              verificationTask == nil else { return }
+        switch status {
+        case .enabled:
+            guard forceRead || !isHelperResponsive,
+                  forceRead || recoveryAttempts < Self.maximumRecoveryAttempts else { return }
+        case .requiresApproval:
+            guard forceRead || (!isHelperResponsive && pendingProbeIsDue()) else { return }
+        case .notRegistered:
+            return
+        }
         let requestGeneration = generation
         verificationTask = Task { [weak self] in
             guard let self, !Task.isCancelled, self.isEnabled,
@@ -351,7 +374,13 @@ final class PrivilegedHelperManager: ObservableObject {
                 guard !Task.isCancelled, self.generation == requestGeneration,
                       self.isEnabled else { return }
                 self.isHelperResponsive = false
-                self.nextPendingHealthCheck = nil
+                // A pending helper that cannot be read is expected on a machine
+                // that never grants background approval. Schedule the next
+                // probe rather than clearing the due time, which would make the
+                // two-second approval poll retry immediately and forever.
+                self.nextPendingHealthCheck = self.service.status == .requiresApproval
+                    ? ContinuousClock.now.advanced(by: self.healthCheckInterval)
+                    : nil
                 guard self.service.status == .enabled else { return }
                 guard self.recoveryAttempts < Self.maximumRecoveryAttempts else {
                     self.recordRegistrationError(error)
@@ -388,7 +417,11 @@ final class PrivilegedHelperManager: ObservableObject {
             guard !Task.isCancelled, self.generation == requestGeneration,
                   self.isEnabled, self.service.status != .notRegistered else { return }
             self.isHelperResponsive = true
-            self.nextPendingHealthCheck = ContinuousClock.now.advanced(by: self.healthCheckInterval)
+            if self.service.status == .requiresApproval {
+                self.nextPendingHealthCheck = ContinuousClock.now.advanced(by: self.healthCheckInterval)
+            } else {
+                self.nextPendingHealthCheck = nil
+            }
             self.cancelRegistrationRetry()
             NSLog("StatusTrio power helper verified by XPC")
             self.publishSystemState()
