@@ -3,6 +3,42 @@ import XCTest
 
 @MainActor
 final class LowPowerModeControllerTests: XCTestCase {
+    func testOptOutBeforeAQueuedReadPreventsHelperContact() async {
+        let client = FakeLowPowerModeClient(reads: true)
+        let controller = LowPowerModeController(client: client, initialIsLowPowerMode: false)
+        controller.setEnabled(true)
+        controller.refresh()
+        controller.setEnabled(false)
+        await settle()
+        XCTAssertEqual(client.readCallCount, 0)
+        XCTAssertNil(controller.lastError)
+    }
+
+    func testOptOutBeforeAQueuedWritePreventsHelperContact() async {
+        let client = FakeLowPowerModeClient(reads: false)
+        let controller = LowPowerModeController(client: client, initialIsLowPowerMode: false)
+        controller.setEnabled(true)
+        controller.setLowPowerMode(true)
+        controller.setEnabled(false)
+        await settle()
+        XCTAssertEqual(client.setCallCount, 0)
+        XCTAssertFalse(controller.isApplying)
+        XCTAssertNil(controller.lastError)
+    }
+
+    func testRefreshDoesNotSupersedeAQueuedPowerModeWrite() async {
+        let client = FakeLowPowerModeClient(reads: false)
+        let controller = LowPowerModeController(client: client, initialIsLowPowerMode: false)
+        controller.setEnabled(true)
+        controller.setLowPowerMode(true)
+        controller.refresh()
+        await waitUntil { !controller.isApplying }
+        XCTAssertEqual(client.setCallCount, 1)
+        XCTAssertEqual(client.readCallCount, 0)
+        XCTAssertTrue(controller.isLowPowerMode)
+        XCTAssertFalse(controller.isApplying)
+    }
+
     func testDoesNotContactTheHelperWhileDisabled() async {
         let client = FakeLowPowerModeClient(reads: true)
         let controller = LowPowerModeController(client: client, initialIsLowPowerMode: false)

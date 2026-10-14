@@ -3,7 +3,7 @@ import XCTest
 
 @MainActor
 final class LowPowerModeControlSynchronizerTests: XCTestCase {
-    func testRelaunchPreservesOptOutAfterFailedUnregister() {
+    func testRelaunchPreservesOptOutWhileHelperRemainsRegistered() {
         let suite = makeSuite()
         defer { clear(suite) }
         let settings = SettingsStore(defaults: suite.defaults)
@@ -11,7 +11,6 @@ final class LowPowerModeControlSynchronizerTests: XCTestCase {
         let helper = PrivilegedHelperManager(service: service)
         let synchronizer = LowPowerModeControlSynchronizer()
         synchronizer.start(settings: settings, helper: helper)
-        service.unregisterError = NSError(domain: "test", code: 1)
         helper.setEnabled(false)
         synchronizer.stop()
 
@@ -21,7 +20,8 @@ final class LowPowerModeControlSynchronizerTests: XCTestCase {
 
         XCTAssertFalse(relaunchedHelper.isEnabled)
         XCTAssertFalse(relaunchedSettings.controlsLowPowerMode)
-        XCTAssertEqual(service.unregisterCallCount, 1)
+        XCTAssertEqual(service.status, .enabled)
+        XCTAssertEqual(service.unregisterCallCount, 0)
         synchronizer.stop()
     }
 
@@ -62,7 +62,7 @@ final class LowPowerModeControlSynchronizerTests: XCTestCase {
         XCTAssertTrue(settings.controlsLowPowerMode)
     }
 
-    func testUnregisteringClearsThePersistedFlag() {
+    func testOptOutClearsThePersistedFlagWithoutUnregistering() {
         let suite = makeSuite()
         defer { clear(suite) }
         let settings = SettingsStore(defaults: suite.defaults)
@@ -75,6 +75,8 @@ final class LowPowerModeControlSynchronizerTests: XCTestCase {
         helper.setEnabled(false)
 
         XCTAssertFalse(settings.controlsLowPowerMode)
+        XCTAssertEqual(service.status, .enabled)
+        XCTAssertEqual(service.unregisterCallCount, 0)
     }
 
     func testPendingApprovalStillCountsAsOn() {

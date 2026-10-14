@@ -74,7 +74,11 @@ struct SystemIconAppearanceMonitorTests {
 
         let clearTheme = SystemIconAppearanceTheme(style: .clear, appearance: .dark)
         theme = clearTheme
-        try await Task.sleep(for: .milliseconds(600))
+        // A fixed sleep can finish before the timer gets a turn under load.
+        let deadline = ContinuousClock.now.advanced(by: .seconds(5))
+        while reported.isEmpty, ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(10))
+        }
 
         #expect(reported == [clearTheme])
 

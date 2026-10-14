@@ -31,21 +31,36 @@ and it is also what the daemon reads back after a change.
   that names the XPC interface and the Mach service. The daemon depends only on
   it, so a root process never links AppKit, SwiftUI, or Sparkle.
 - **Registration**: `SMAppService.daemon(plistName:)` (macOS 13+), wrapped by
-  `PrivilegedHelperManager`, which mirrors `LaunchAtLoginManager`.
+  `PrivilegedHelperManager`. Feature intent is persisted separately from the
+  system's registration and approval state.
 
 ## On-demand, not always-on
 
-The daemon is registered only while the user has opted in, and launchd only
-bootstraps it once an administrator approves it and the app first connects. So
-three gates must all open before root code runs:
+The first feature opt-in registers the daemon if needed. The app contacts it
+only while the feature is enabled, and macOS controls whether it is allowed to
+run. Normal use requires three gates:
 
 1. The user ticks **Low Power Mode Control** in Settings › Battery.
 2. The user approves the helper in System Settings › General › Login Items.
 3. The app opens an XPC connection (the daemon starts lazily on that first
    connection and exits itself again once the app is done with it).
 
-Unticking the control unregisters the daemon. The plist deliberately has no
-`RunAtLoad` and no `KeepAlive`.
+Unticking the App control stops new requests, health checks, approval retries,
+and status polling, but keeps the daemon registered. It hides the Low Power
+Mode control and persists the opt-out across app launches; it does not change
+the system's current power mode. A registered helper must not turn the feature
+back on when the app restarts.
+
+The System Settings background switch independently controls authorization.
+Turning the App feature off is not an uninstall or a revocation of that grant.
+Keeping registration avoids repeatedly rebuilding the system's approval state
+on ordinary App toggles. Health recovery may still unregister and re-register
+an approved but unreachable helper; it is bounded and stops if the user opts out.
+
+The plist deliberately has no `RunAtLoad` and no `KeepAlive`. Registration is
+not a permanently running process: after existing connections finish, the
+helper exits on the idle policy below. Launchd retains its job metadata, but
+there is no helper process consuming memory or CPU after exit.
 
 ## Idle exit
 
@@ -127,6 +142,10 @@ is false.
   the app, tick the control, approve it in Login Items, and confirm
   `sudo launchctl print system/com.lingsmbp.StatusTrio.PowerHelper` shows the
   daemon and that toggling the switch changes `pmset -g`.
+  Also disable the App feature, wait for the last connection to end plus the
+  5-second idle window, and verify the job remains registered with
+  `state = not running`. Re-enable the feature without another system grant,
+  and repeat to verify there are no ordinary unregister/register cycles.
 - **Local, without root or a Developer ID**: the daemon's own lifetime, because a
   user LaunchAgent can run the same binary under the same `MachServices` name
   (`logout` moves the name back to the system domain). `swift build -c release

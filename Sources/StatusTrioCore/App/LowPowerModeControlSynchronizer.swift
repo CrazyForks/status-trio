@@ -1,12 +1,11 @@
 import AppKit
 import Combine
 
-/// Keeps the privileged helper's registration and the persisted Low Power Mode
-/// opt-in in step.
+/// Persists the feature opt-in independently of helper registration.
 ///
 /// The persisted opt-in records user intent; the manager separately observes
-/// system approval. A failed registration or unregister must not reverse that
-/// intent when the app is relaunched.
+/// system approval. Keeping a registered helper must not re-enable a feature
+/// the user disabled when the app is relaunched.
 @MainActor
 final class LowPowerModeControlSynchronizer {
     private var cancellables = Set<AnyCancellable>()
@@ -25,9 +24,9 @@ final class LowPowerModeControlSynchronizer {
         // flicker with the status while the app waits for that approval.
         helper.$isEnabled
             .removeDuplicates()
-            .sink { [weak settings] isRegistered in
-                guard let settings, settings.controlsLowPowerMode != isRegistered else { return }
-                settings.controlsLowPowerMode = isRegistered
+            .sink { [weak settings] isEnabled in
+                guard let settings, settings.controlsLowPowerMode != isEnabled else { return }
+                settings.controlsLowPowerMode = isEnabled
             }
             .store(in: &cancellables)
 

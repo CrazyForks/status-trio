@@ -261,10 +261,8 @@ struct BatterySectionView: View {
         }
     }
 
-    /// The opt-in that registers the privileged helper. The helper is only
-    /// contacted — and only then started by launchd — once this is on. The
-    /// toggle drives the manager directly, because registering the daemon is
-    /// what the switch does; the persisted flag follows the registration.
+    /// The feature opt-in registers the helper if needed. Turning it off stops
+    /// helper contact but keeps registration and system approval intact.
     private var lowPowerModeGroup: some View {
         VStack(alignment: .leading, spacing: 6) {
             SettingsToggleRow(

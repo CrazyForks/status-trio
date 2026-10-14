@@ -4,6 +4,40 @@ import XCTest
 
 @MainActor
 final class PrivilegedHelperManagerTests: XCTestCase {
+    func testOptOutPreservesApprovalAndStopsHelperReads() async {
+        let service = FakePrivilegedHelperService(status: .enabled)
+        let manager = PrivilegedHelperManager(service: service, pollInterval: .milliseconds(10))
+        await waitUntil { manager.isApproved }
+        let reads = service.verificationCallCount
+
+        manager.setEnabled(false)
+        manager.refreshAfterActivation()
+        try? await Task.sleep(for: .milliseconds(100))
+
+        XCTAssertFalse(manager.isEnabled)
+        XCTAssertFalse(manager.isApproved)
+        XCTAssertFalse(manager.isHelperResponsive)
+        XCTAssertEqual(service.status, .enabled)
+        XCTAssertEqual(service.unregisterCallCount, 0)
+        XCTAssertEqual(service.verificationCallCount, reads)
+    }
+
+    func testRepeatedOptInChangesDoNotRewriteApprovedRegistration() async {
+        let service = FakePrivilegedHelperService(status: .enabled)
+        let manager = PrivilegedHelperManager(service: service, pollInterval: .milliseconds(10))
+        await waitUntil { manager.isApproved }
+        for _ in 0..<5 {
+            manager.setEnabled(false)
+            XCTAssertFalse(manager.isApproved)
+            manager.setEnabled(true)
+            await waitUntil { manager.isApproved }
+            XCTAssertTrue(manager.isApproved)
+        }
+        XCTAssertEqual(service.registerCallCount, 0)
+        XCTAssertEqual(service.unregisterCallCount, 0)
+        XCTAssertEqual(service.recoveryUnregisterCallCount, 0)
+    }
+
     func testPermissionDenialBeforeApprovalStatusSettlesShowsOnlyWaiting() {
         let service = FakePrivilegedHelperService(status: .notRegistered)
         service.registerError = NSError(domain: "SMAppServiceErrorDomain", code: 1)
@@ -245,7 +279,7 @@ final class PrivilegedHelperManagerTests: XCTestCase {
         XCTAssertFalse(manager.didFailLastOperation)
     }
 
-    func testDisablingReadsRegistrationThatArrivedBeforeThePoll() {
+    func testOptOutReadsButPreservesRegistrationThatArrivedBeforeThePoll() {
         let service = FakePrivilegedHelperService(status: .notRegistered)
         let manager = PrivilegedHelperManager(service: service)
         service.registerError = TestFailure.registration
@@ -254,27 +288,23 @@ final class PrivilegedHelperManagerTests: XCTestCase {
 
         manager.setEnabled(false)
 
-        XCTAssertEqual(service.unregisterCallCount, 1)
-        XCTAssertEqual(service.status, .notRegistered)
+        XCTAssertEqual(service.unregisterCallCount, 0)
+        XCTAssertEqual(service.status, .enabled)
+        XCTAssertEqual(manager.status, .enabled)
         XCTAssertFalse(manager.isEnabled)
+        XCTAssertFalse(manager.isApproved)
     }
 
-    func testFailedUnregisterSettlesWithoutForegroundRefresh() async {
+    func testOptOutBeforeVerificationStopsHelperContact() async {
         let service = FakePrivilegedHelperService(status: .enabled)
         let manager = PrivilegedHelperManager(service: service, pollInterval: .milliseconds(20))
-        service.unregisterError = TestFailure.unregistration
         manager.setEnabled(false)
-        XCTAssertTrue(manager.didFailLastOperation)
-        service.status = .notRegistered
-
-        let deadline = Date().addingTimeInterval(1)
-        while manager.didFailLastOperation, Date() < deadline {
-            try? await Task.sleep(for: .milliseconds(20))
-        }
+        try? await Task.sleep(for: .milliseconds(100))
 
         XCTAssertFalse(manager.didFailLastOperation)
-        XCTAssertEqual(manager.status, .notRegistered)
-        XCTAssertEqual(service.unregisterCallCount, 1)
+        XCTAssertEqual(manager.status, .enabled)
+        XCTAssertEqual(service.verificationCallCount, 0)
+        XCTAssertEqual(service.unregisterCallCount, 0)
     }
 
     func testStatusAndAvailabilityReflectTheService() {
@@ -325,16 +355,17 @@ final class PrivilegedHelperManagerTests: XCTestCase {
         XCTAssertFalse(manager.didFailLastOperation)
     }
 
-    func testDisablingUnregistersAndPublishesNotRegistered() {
+    func testOptOutKeepsRegistrationButMakesTheFeatureUnavailable() {
         let service = FakePrivilegedHelperService(status: .enabled)
         let manager = PrivilegedHelperManager(service: service)
 
         manager.setEnabled(false)
 
-        XCTAssertEqual(service.unregisterCallCount, 1)
+        XCTAssertEqual(service.unregisterCallCount, 0)
         XCTAssertEqual(service.registerCallCount, 0)
-        XCTAssertEqual(manager.status, .notRegistered)
+        XCTAssertEqual(manager.status, .enabled)
         XCTAssertFalse(manager.isEnabled)
+        XCTAssertFalse(manager.isApproved)
     }
 
     func testReenablingWhileWaitingRetriesRegistration() {
@@ -357,15 +388,16 @@ final class PrivilegedHelperManagerTests: XCTestCase {
         XCTAssertEqual(service.registerCallCount, 2)
     }
 
-    func testDisablingAPendingRegistrationUnregisters() {
+    func testOptOutPreservesAPendingRegistrationWithoutShowingApprovalWarning() {
         let service = FakePrivilegedHelperService(status: .requiresApproval)
         let manager = PrivilegedHelperManager(service: service)
         XCTAssertTrue(manager.isEnabled)
 
         manager.setEnabled(false)
 
-        XCTAssertEqual(service.unregisterCallCount, 1)
-        XCTAssertEqual(manager.status, .notRegistered)
+        XCTAssertEqual(service.unregisterCallCount, 0)
+        XCTAssertEqual(manager.status, .requiresApproval)
+        XCTAssertFalse(manager.requiresApproval)
     }
 
     func testRegistrationFailureIsReportedAndLeavesStatusUnchanged() {
@@ -447,20 +479,18 @@ final class PrivilegedHelperManagerTests: XCTestCase {
         XCTAssertEqual(manager.status, .notRegistered)
     }
 
-    func testFailedUnregistrationIsClearedOnceTheItemIsGone() {
-        let service = FakePrivilegedHelperService(status: .enabled)
-        service.unregisterError = TestFailure.unregistration
+    func testOptOutClearsAnUnsettledRegistrationFailure() {
+        let service = FakePrivilegedHelperService(status: .notRegistered)
+        service.registerError = TestFailure.registration
         let manager = PrivilegedHelperManager(service: service)
-        manager.setEnabled(false)
+        manager.setEnabled(true)
         XCTAssertTrue(manager.didFailLastOperation)
-        XCTAssertEqual(manager.status, .enabled)
-
-        service.unregisterError = nil
-        service.status = .notRegistered
-        manager.refresh()
+        manager.setEnabled(false)
 
         XCTAssertFalse(manager.didFailLastOperation)
+        XCTAssertNil(manager.lastErrorMessage)
         XCTAssertFalse(manager.isEnabled)
+        XCTAssertEqual(service.unregisterCallCount, 0)
     }
 
     func testRefreshWithoutAFailureLeavesTheFlagClear() {
@@ -510,18 +540,18 @@ final class PrivilegedHelperManagerTests: XCTestCase {
         XCTAssertEqual(service.unregisterCallCount, 0)
     }
 
-    func testTurningTheHelperOffStopsWatchingTheSystem() async {
+    func testFeatureOptOutStopsWatchingTheSystem() async {
         let service = FakePrivilegedHelperService(status: .requiresApproval)
         let manager = PrivilegedHelperManager(service: service, pollInterval: .milliseconds(20))
 
         manager.setEnabled(false)
-        XCTAssertEqual(manager.status, .notRegistered)
+        XCTAssertEqual(manager.status, .requiresApproval)
         XCTAssertFalse(manager.isEnabled)
 
         service.status = .enabled
         try? await Task.sleep(for: .milliseconds(120))
 
-        XCTAssertEqual(manager.status, .notRegistered)
+        XCTAssertEqual(manager.status, .requiresApproval)
     }
 
     func testOpenLoginItemsSettingsIsForwardedToTheService() {

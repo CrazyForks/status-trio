@@ -61,12 +61,14 @@ final class LowPowerModeController: ObservableObject {
     }
 
     func refresh() {
-        guard !isStopped, isEnabled else { return }
+        // A visibility-driven read must not supersede an accepted write.
+        guard !isStopped, isEnabled, !isApplying else { return }
         generation &+= 1
         let requestGeneration = generation
         refreshTask?.cancel()
         refreshTask = Task { [weak self] in
-            guard let self else { return }
+            guard let self, !Task.isCancelled, !self.isStopped, self.isEnabled,
+                  self.generation == requestGeneration else { return }
             do {
                 let enabled = try await self.client.readLowPowerMode()
                 guard !Task.isCancelled, self.generation == requestGeneration else { return }
@@ -89,7 +91,8 @@ final class LowPowerModeController: ObservableObject {
         generation &+= 1
         let requestGeneration = generation
         Task { [weak self] in
-            guard let self else { return }
+            guard let self, !Task.isCancelled, !self.isStopped, self.isEnabled,
+                  self.generation == requestGeneration else { return }
             do {
                 let observed = try await self.client.setLowPowerMode(enabled)
                 guard self.generation == requestGeneration else { return }

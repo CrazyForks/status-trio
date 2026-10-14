@@ -26,7 +26,6 @@ protocol PrivilegedHelperServicing: AnyObject {
     var isSupported: Bool { get }
     var status: PrivilegedHelperStatus { get }
     func register() throws
-    func unregister() throws
     func unregisterForRecovery() async throws
     func verifyConnection() async throws
     func openLoginItemsSettings()
@@ -76,10 +75,6 @@ final class SystemPrivilegedHelperService: PrivilegedHelperServicing {
         try service.register()
     }
 
-    func unregister() throws {
-        try service.unregister()
-    }
-
     func unregisterForRecovery() async throws {
         try await service.unregister()
     }
@@ -93,15 +88,13 @@ final class SystemPrivilegedHelperService: PrivilegedHelperServicing {
     }
 }
 
-/// Keeps the privileged helper registration in sync with the user's opt-in and
-/// republishes the system state so the settings UI can react to it.
+/// Separates the feature opt-in from the helper's registration and approval.
 ///
 /// Registering a LaunchDaemon does not start it: launchd only bootstraps the
 /// daemon once an administrator approves it and the app first connects. So the
-/// opt-in both requests registration and, on untick, unregisters — the daemon
-/// never runs unless the user asked for the feature. Approval itself happens in
-/// System Settings, so a registration that is still pending is watched until the
-/// system accepts it.
+/// first opt-in requests registration. Opting out stops requests and leaves the
+/// registration intact, so the daemon idle-exits without invalidating approval.
+/// System Settings owns background authorization independently of this switch.
 @MainActor
 final class PrivilegedHelperManager: ObservableObject {
     static let shared = PrivilegedHelperManager()
@@ -113,16 +106,7 @@ final class PrivilegedHelperManager: ObservableObject {
 
     private let service: PrivilegedHelperServicing
 
-    /// The opt-in value whose last attempt failed.
-    ///
-    /// Approval happens in System Settings, so the state the failed call wanted
-    /// can arrive later without any further action in the app. Remembering what
-    /// was attempted lets `refresh()` drop the error once the system catches up
-    /// instead of leaving the failure banner on screen until the user happens to
-    /// touch the toggle again.
-    private var failedOperationTarget: Bool?
-
-    /// Whether the user wants the helper registered. Seeded from the system
+    /// Whether the user wants Low Power Mode control. Seeded from the system
     /// state so a registration that an earlier session left waiting for approval
     /// is still shown as on.
     @Published private(set) var isEnabled: Bool
@@ -189,13 +173,10 @@ final class PrivilegedHelperManager: ObservableObject {
         publishSystemState()
         didFailLastOperation = false
         lastErrorMessage = nil
-        failedOperationTarget = nil
         isEnabled = enabled
 
         if enabled {
             registerIfNeeded()
-        } else if status != .notRegistered {
-            unregister()
         }
 
         publishSystemState()
@@ -231,8 +212,8 @@ final class PrivilegedHelperManager: ObservableObject {
         startRegistrationRetryWindow()
     }
 
-    /// Pending approval is expected. A usable helper or a completed unregister
-    /// retires a failure; an owned recovery's intermediate removal is ignored.
+    /// Pending approval or a usable helper retires a registration failure.
+    /// An owned recovery's intermediate removal is ignored.
     private func publishSystemState() {
         guard recoveringGeneration != generation else { return }
         let observed = service.status
@@ -246,15 +227,10 @@ final class PrivilegedHelperManager: ObservableObject {
             if observed == .enabled { checkHelperIfNeeded(forceRead: true) }
         }
 
-        if let target = failedOperationTarget {
-            let satisfied = target
-                ? status == .requiresApproval || (status == .enabled && isHelperResponsive)
-                : status == .notRegistered
-            if satisfied {
-                failedOperationTarget = nil
-                didFailLastOperation = false
-                lastErrorMessage = nil
-            }
+        if didFailLastOperation,
+           status == .requiresApproval || (status == .enabled && isHelperResponsive) {
+            didFailLastOperation = false
+            lastErrorMessage = nil
         }
     }
 
@@ -282,14 +258,12 @@ final class PrivilegedHelperManager: ObservableObject {
             provisionalRegistrationError = observed == .notRegistered ? error.localizedDescription : nil
             didFailLastOperation = false
             lastErrorMessage = nil
-            failedOperationTarget = nil
             return
         }
         registrationNeedsApproval = false
         provisionalRegistrationError = nil
         didFailLastOperation = true
         lastErrorMessage = error.localizedDescription
-        failedOperationTarget = true
     }
 
     private func cancelRegistrationRetry() {
@@ -327,7 +301,6 @@ final class PrivilegedHelperManager: ObservableObject {
                 self.provisionalRegistrationError = nil
                 self.didFailLastOperation = true
                 self.lastErrorMessage = error
-                self.failedOperationTarget = true
             }
         }
     }
@@ -400,16 +373,6 @@ final class PrivilegedHelperManager: ObservableObject {
         }
     }
 
-    private func unregister() {
-        do {
-            try service.unregister()
-        } catch {
-            didFailLastOperation = true
-            lastErrorMessage = error.localizedDescription
-            failedOperationTarget = false
-        }
-    }
-
     /// Watches the system state while a registration is pending.
     ///
     /// The state the app waits for can only be reached from System Settings, and
@@ -417,7 +380,7 @@ final class PrivilegedHelperManager: ObservableObject {
     /// the only way the settings pane catches up without the user having to
     /// touch the app's switch again. The poll is read-only on purpose.
     private func updateStatusPolling() {
-        guard isAvailable, isEnabled || failedOperationTarget != nil else {
+        guard isAvailable, isEnabled else {
             pollTask?.cancel()
             pollTask = nil
             return
