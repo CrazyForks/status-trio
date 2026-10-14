@@ -131,12 +131,13 @@ final class PrivilegedHelperManager: ObservableObject {
     private let pollInterval: Duration
     private var pollTask: Task<Void, Never>?
     private var verificationTask: Task<Void, Never>?
+    private var registrationRetryTask: Task<Void, Never>?
+    private var registrationRetryGeneration: UInt64 = 0
+    private var registrationNeedsApproval = false
     private var generation: UInt64 = 0
     private var recoveryAttempts = 0
-    private var approvalRetryAttempts = 0
     private var recoveringGeneration: UInt64?
     private static let maximumRecoveryAttempts = 2
-    private static let maximumApprovalRetryAttempts = 3
 
     init(
         service: PrivilegedHelperServicing = SystemPrivilegedHelperService(),
@@ -155,7 +156,7 @@ final class PrivilegedHelperManager: ObservableObject {
 
     /// True while the system is waiting for the user to approve the helper.
     var requiresApproval: Bool {
-        status == .requiresApproval
+        isEnabled && (status == .requiresApproval || registrationNeedsApproval)
     }
 
     /// True only once the helper is approved and launchd can start it. The Low
@@ -180,8 +181,9 @@ final class PrivilegedHelperManager: ObservableObject {
     func setEnabled(_ enabled: Bool) {
         guard isAvailable else { return }
         invalidateVerification()
+        cancelRegistrationRetry()
         recoveryAttempts = 0
-        approvalRetryAttempts = 0
+        registrationNeedsApproval = false
         publishSystemState()
         didFailLastOperation = false
         lastErrorMessage = nil
@@ -197,14 +199,16 @@ final class PrivilegedHelperManager: ObservableObject {
         publishSystemState()
         updateStatusPolling()
         checkHelperIfNeeded()
+        startRegistrationRetryWindow()
     }
 
-    /// Restores a saved opt-in without mutating registration during startup.
+    /// Restores intent; pending registration gets the same delayed retries.
     func restoreUserIntent(_ enabled: Bool) {
         if isEnabled != enabled { invalidateVerification() }
         isEnabled = enabled
         updateStatusPolling()
         checkHelperIfNeeded()
+        if enabled { startRegistrationRetryWindow() } else { cancelRegistrationRetry() }
     }
 
     /// Activation and polling observe approval without changing registration.
@@ -214,19 +218,15 @@ final class PrivilegedHelperManager: ObservableObject {
         checkHelperIfNeeded()
     }
 
-    /// Retry only registration when returning from the approval UI. Never
-    /// unregister a pending service, and stop after three attempts per opt-in.
+    /// Returning from approval can precede the system's permission update.
+    /// Give it a bounded retry window without removing the pending service.
     func refreshAfterActivation() {
         if verificationTask == nil, isEnabled, status == .enabled {
             isHelperResponsive = false
         }
         refresh()
         if status == .enabled { checkHelperIfNeeded(forceRead: true) }
-        guard isEnabled, isAvailable, status == .requiresApproval,
-              approvalRetryAttempts < Self.maximumApprovalRetryAttempts else { return }
-        approvalRetryAttempts += 1
-        registerIfNeeded()
-        refresh()
+        startRegistrationRetryWindow()
     }
 
     /// Pending approval is expected. A usable helper or a completed unregister
@@ -234,6 +234,7 @@ final class PrivilegedHelperManager: ObservableObject {
     private func publishSystemState() {
         guard recoveringGeneration != generation else { return }
         let observed = service.status
+        if observed == .enabled { registrationNeedsApproval = false }
         if observed != status {
             invalidateVerification()
             status = observed
@@ -264,10 +265,54 @@ final class PrivilegedHelperManager: ObservableObject {
     }
 
     private func recordRegistrationError(_ error: any Error) {
-        guard service.status != .requiresApproval else { return }
+        let observed = service.status
+        // EPERM may precede requiresApproval. Keep the native status intact,
+        // but don't present the same approval denial as two different errors.
+        let nsError = error as NSError
+        // The exported domain constant requires macOS 15; its string also
+        // identifies errors on the older macOS releases we support.
+        let approvalDenied = nsError.domain == "SMAppServiceErrorDomain" && nsError.code == 1
+        if observed == .requiresApproval || (observed == .notRegistered && approvalDenied) {
+            registrationNeedsApproval = true
+            didFailLastOperation = false
+            lastErrorMessage = nil
+            failedOperationTarget = nil
+            return
+        }
+        registrationNeedsApproval = false
         didFailLastOperation = true
         lastErrorMessage = error.localizedDescription
         failedOperationTarget = true
+    }
+
+    private func cancelRegistrationRetry() {
+        registrationRetryGeneration &+= 1
+        registrationRetryTask?.cancel()
+        registrationRetryTask = nil
+    }
+
+    /// Retry only register(), at 2, 6, 14, 30 and 60 seconds by default.
+    /// Polling stays read-only; a new user interaction may start another window.
+    private func startRegistrationRetryWindow() {
+        guard isAvailable, isEnabled, status != .enabled,
+              registrationRetryTask == nil else { return }
+        let retryGeneration = registrationRetryGeneration
+        registrationRetryTask = Task { [weak self, pollInterval] in
+            for multiplier in [1, 2, 4, 8, 15] {
+                do { try await Task.sleep(for: pollInterval * multiplier) }
+                catch { return }
+                guard !Task.isCancelled, let self,
+                      self.registrationRetryGeneration == retryGeneration else { return }
+                self.refresh()
+                guard self.isEnabled, self.isAvailable else { break }
+                if self.status == .enabled { break }
+                self.registerIfNeeded()
+                self.refresh()
+                if self.status == .enabled { break }
+            }
+            guard let self, self.registrationRetryGeneration == retryGeneration else { return }
+            self.registrationRetryTask = nil
+        }
     }
 
     private func invalidateVerification() {
@@ -317,6 +362,7 @@ final class PrivilegedHelperManager: ObservableObject {
                     self.recoveringGeneration = nil
                     guard self.service.status == .enabled else {
                         self.publishSystemState()
+                        self.startRegistrationRetryWindow()
                         return
                     }
                     try await self.service.verifyConnection()
@@ -325,6 +371,7 @@ final class PrivilegedHelperManager: ObservableObject {
                     self.recoveringGeneration = nil
                     self.recordRegistrationError(error)
                     self.publishSystemState()
+                    self.startRegistrationRetryWindow()
                     return
                 }
             }
@@ -371,5 +418,7 @@ final class PrivilegedHelperManager: ObservableObject {
 
     func openLoginItemsSettings() {
         service.openLoginItemsSettings()
+        cancelRegistrationRetry()
+        startRegistrationRetryWindow()
     }
 }
