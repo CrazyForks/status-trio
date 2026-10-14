@@ -115,3 +115,29 @@ but does not delete data already received. The service also cannot distinguish
 an uninstalled app from one that is still installed with telemetry disabled or
 that has not been used recently. See [telemetry and privacy](privacy-telemetry.md)
 for the fields, consent choices, and retention details.
+
+## Status colours cannot track a Space mid-drag
+
+While a Space switch is being dragged, the menu bar's own appearance — which
+`NSStatusBarButton.effectiveAppearance` reports — does not change until the
+switch commits, and macOS exposes no other signal for the Space being dragged
+toward. Only template images follow the switch live, because the system re-tints
+them itself; a self-drawn bitmap keeps the outgoing Space's colours for the whole
+drag and only catches up on release.
+
+The menu bar icon is therefore drawn in two layers. The monochrome chrome — the
+battery ring's unfilled track, the connection glyph, the bolt, plug, or
+percentage in the ring's top gap, and the volume dots or arc base — goes to the
+system as a template image, so it re-tints live for the target Space, exactly
+like the built-in menu bar icons. The primitives that carry a status colour (the
+battery ring's progress arc, the active volume dots or arc fill, and the whole
+ring while the charging effect animates) are drawn in a custom raster above it
+and cannot follow.
+
+So an icon that is monochrome throughout — the usual unplugged case, or any
+configuration with status colours turned off — tracks a dragged Space perfectly,
+while an icon showing `critical`, `lowPower`, `powered`, or `bluetooth` re-tints
+everything except those coloured primitives and settles on the correct colour
+when the switch completes. This is a menu-bar-only behaviour: the Dock icon is a
+single full-colour render and is unaffected. See
+[issue #112](https://github.com/lingyired/status-trio/issues/112).
