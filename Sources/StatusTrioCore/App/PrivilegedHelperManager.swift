@@ -113,6 +113,12 @@ final class PrivilegedHelperManager: ObservableObject {
 
     /// How often the system state is re-read while a registration is pending.
     private let pollInterval: Duration
+    /// How often a pending-but-reachable helper is re-probed. Every probe
+    /// starts the root daemon, which then idle-exits about five seconds later,
+    /// so this interval is a direct process-churn cost on a machine whose
+    /// native status stays pending. Activation still probes immediately, and a
+    /// revoked grant surfaces as an error on the next real operation, so the
+    /// timer only needs to keep the status line from going stale for long.
     private let healthCheckInterval: Duration
     private var nextPendingHealthCheck: ContinuousClock.Instant?
     private var pollTask: Task<Void, Never>?
@@ -125,11 +131,15 @@ final class PrivilegedHelperManager: ObservableObject {
     private var recoveryAttempts = 0
     private var recoveringGeneration: UInt64?
     private static let maximumRecoveryAttempts = 2
+    /// Kept well above the daemon's idle-exit window: every pending health
+    /// check starts the root daemon again, so a machine whose native status
+    /// stays pending would spawn it continuously at a tighter cadence.
+    static let defaultPendingHealthCheckInterval: Duration = .seconds(60)
 
     init(
         service: PrivilegedHelperServicing = SystemPrivilegedHelperService(),
         pollInterval: Duration = .seconds(2),
-        healthCheckInterval: Duration = .seconds(10)
+        healthCheckInterval: Duration = PrivilegedHelperManager.defaultPendingHealthCheckInterval
     ) {
         self.service = service
         let initialStatus = service.status

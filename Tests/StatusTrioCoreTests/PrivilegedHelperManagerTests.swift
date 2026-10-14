@@ -63,6 +63,15 @@ final class PrivilegedHelperManagerTests: XCTestCase {
         XCTAssertEqual(service.verificationCallCount, reads)
     }
 
+    func testPendingHealthCheckStaysFarSlowerThanTheApprovalPoll() {
+        // Each pending probe starts the root daemon, which idle-exits about
+        // five seconds later. A native status that never leaves pending must
+        // not turn that into a continuous daemon restart loop.
+        XCTAssertGreaterThanOrEqual(
+            PrivilegedHelperManager.defaultPendingHealthCheckInterval, .seconds(30)
+        )
+    }
+
     func testPendingReadinessIsRecheckedEvenWhenNativeStatusNeverChanges() async {
         let service = FakePrivilegedHelperService(status: .requiresApproval)
         service.allowsPendingVerification = true
