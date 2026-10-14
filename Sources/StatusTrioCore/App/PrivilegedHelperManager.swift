@@ -113,6 +113,8 @@ final class PrivilegedHelperManager: ObservableObject {
 
     /// How often the system state is re-read while a registration is pending.
     private let pollInterval: Duration
+    private let healthCheckInterval: Duration
+    private var nextPendingHealthCheck: ContinuousClock.Instant?
     private var pollTask: Task<Void, Never>?
     private var verificationTask: Task<Void, Never>?
     private var registrationRetryTask: Task<Void, Never>?
@@ -126,13 +128,15 @@ final class PrivilegedHelperManager: ObservableObject {
 
     init(
         service: PrivilegedHelperServicing = SystemPrivilegedHelperService(),
-        pollInterval: Duration = .seconds(2)
+        pollInterval: Duration = .seconds(2),
+        healthCheckInterval: Duration = .seconds(10)
     ) {
         self.service = service
         let initialStatus = service.status
         self.status = initialStatus
         self.isEnabled = initialStatus != .notRegistered
         self.pollInterval = pollInterval
+        self.healthCheckInterval = healthCheckInterval
         // A previous session may have quit while the registration was still
         // waiting for approval, so start watching for the system to accept it.
         updateStatusPolling()
@@ -144,11 +148,11 @@ final class PrivilegedHelperManager: ObservableObject {
         isEnabled && (status == .requiresApproval || registrationNeedsApproval)
     }
 
-    /// True only once the helper is approved and launchd can start it. The Low
-    /// Power Mode control is offered on this, not on `isEnabled`: a registration
-    /// that still awaits approval has no daemon behind it yet.
-    var isApproved: Bool {
-        isEnabled && status == .enabled && isHelperResponsive
+    /// Actual usability, independent of the native approval report. On some
+    /// systems the report remains pending even after launchd permits XPC.
+    /// A successful read is evidence of availability, not a rewritten approval.
+    var isReady: Bool {
+        isEnabled && status != .notRegistered && isHelperResponsive
     }
 
     /// False when this build or process cannot offer the helper at all.
@@ -198,17 +202,16 @@ final class PrivilegedHelperManager: ObservableObject {
     func refresh() {
         publishSystemState()
         updateStatusPolling()
-        checkHelperIfNeeded()
+        let pendingHealthCheckDue = status == .requiresApproval && isHelperResponsive
+            && nextPendingHealthCheck.map { ContinuousClock.now >= $0 } == true
+        checkHelperIfNeeded(forceRead: pendingHealthCheckDue)
     }
 
     /// Returning from approval can precede the system's permission update.
     /// Give it a bounded retry window without removing the pending service.
     func refreshAfterActivation() {
-        if verificationTask == nil, isEnabled, status == .enabled {
-            isHelperResponsive = false
-        }
         refresh()
-        if status == .enabled { checkHelperIfNeeded(forceRead: true) }
+        checkHelperIfNeeded(forceRead: true)
         startRegistrationRetryWindow()
     }
 
@@ -228,7 +231,7 @@ final class PrivilegedHelperManager: ObservableObject {
         }
 
         if didFailLastOperation,
-           status == .requiresApproval || (status == .enabled && isHelperResponsive) {
+           status == .requiresApproval || isReady {
             didFailLastOperation = false
             lastErrorMessage = nil
         }
@@ -237,7 +240,7 @@ final class PrivilegedHelperManager: ObservableObject {
     /// A pending approval is an expected intermediate state, including when
     /// macOS reports EPERM from register(). Leave its registration intact.
     private func registerIfNeeded() {
-        guard isEnabled, isAvailable, status != .enabled else { return }
+        guard isEnabled, isAvailable, status != .enabled, !isReady else { return }
         do {
             try service.register()
         } catch {
@@ -275,7 +278,7 @@ final class PrivilegedHelperManager: ObservableObject {
     /// Retry only register(), at 2, 6, 14, 30 and 60 seconds by default.
     /// Polling stays read-only; a new user interaction may start another window.
     private func startRegistrationRetryWindow() {
-        guard isAvailable, isEnabled, status != .enabled,
+        guard isAvailable, isEnabled, status != .enabled, !isReady,
               registrationRetryTask == nil else { return }
         let retryGeneration = registrationRetryGeneration
         registrationRetryTask = Task { [weak self, pollInterval] in
@@ -286,10 +289,10 @@ final class PrivilegedHelperManager: ObservableObject {
                       self.registrationRetryGeneration == retryGeneration else { return }
                 self.refresh()
                 guard self.isEnabled, self.isAvailable else { break }
-                if self.status == .enabled { break }
+                if self.status == .enabled || self.isReady { break }
                 self.registerIfNeeded()
                 self.refresh()
-                if self.status == .enabled { break }
+                if self.status == .enabled || self.isReady { break }
             }
             guard let self, self.registrationRetryGeneration == retryGeneration else { return }
             self.registrationRetryTask = nil
@@ -310,14 +313,18 @@ final class PrivilegedHelperManager: ObservableObject {
         verificationTask?.cancel()
         verificationTask = nil
         isHelperResponsive = false
+        nextPendingHealthCheck = nil
     }
 
-    /// Only a failed read from an approved service can trigger recovery. A
-    /// daemon that has idle-exited will answer the read after launchd starts it.
+    /// Probe registered helpers even while native approval lags. Only a failed
+    /// read with native approval enabled can trigger registration recovery;
+    /// pending failures are expected and never unregister the service.
     private func checkHelperIfNeeded(forceRead: Bool = false) {
-        guard isEnabled, isAvailable, status == .enabled, !isHelperResponsive,
+        guard isEnabled, isAvailable, status != .notRegistered,
+              forceRead || !isHelperResponsive,
               verificationTask == nil,
-              forceRead || recoveryAttempts < Self.maximumRecoveryAttempts else { return }
+              status == .requiresApproval || forceRead
+                || recoveryAttempts < Self.maximumRecoveryAttempts else { return }
         let requestGeneration = generation
         verificationTask = Task { [weak self] in
             guard let self, !Task.isCancelled, self.isEnabled,
@@ -332,7 +339,10 @@ final class PrivilegedHelperManager: ObservableObject {
                 try await self.service.verifyConnection()
             } catch {
                 guard !Task.isCancelled, self.generation == requestGeneration,
-                      self.isEnabled, self.service.status == .enabled else { return }
+                      self.isEnabled else { return }
+                self.isHelperResponsive = false
+                self.nextPendingHealthCheck = nil
+                guard self.service.status == .enabled else { return }
                 guard self.recoveryAttempts < Self.maximumRecoveryAttempts else {
                     self.recordRegistrationError(error)
                     return
@@ -366,8 +376,10 @@ final class PrivilegedHelperManager: ObservableObject {
                 }
             }
             guard !Task.isCancelled, self.generation == requestGeneration,
-                  self.isEnabled, self.service.status == .enabled else { return }
+                  self.isEnabled, self.service.status != .notRegistered else { return }
             self.isHelperResponsive = true
+            self.nextPendingHealthCheck = ContinuousClock.now.advanced(by: self.healthCheckInterval)
+            self.cancelRegistrationRetry()
             NSLog("StatusTrio power helper verified by XPC")
             self.publishSystemState()
         }

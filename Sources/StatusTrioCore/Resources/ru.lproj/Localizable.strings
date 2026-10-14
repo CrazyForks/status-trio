@@ -167,6 +167,11 @@
 "battery.lowPowerMode.controlDescription" = "Добавляет переключатель режима энергосбережения в сведения о батарее. Требуется однократное подтверждение в разделе «Объекты входа».";
 "battery.lowPowerMode.requiresApproval" = "Ожидается подтверждение. Откройте Системные настройки › Основные › Объекты входа и включите Status Trio в разделе «Разрешить в фоне».";
 "battery.lowPowerMode.openLoginItems" = "Открыть объекты входа";
+"battery.lowPowerMode.systemApproved" = "Подтверждение системой: получено";
+"battery.lowPowerMode.systemPending" = "Подтверждение системой: ожидается";
+"battery.lowPowerMode.systemNotRegistered" = "Подтверждение системой: не зарегистрировано";
+"battery.lowPowerMode.helperReady" = "Помощник питания: доступен (чтение проверено)";
+"battery.lowPowerMode.helperUnavailable" = "Помощник питания: недоступен или ещё не проверен";
 "battery.lowPowerMode.approvalHint" = "После включения подтвердите Status Trio в Системных настройках › Основные › Объекты входа в разделе «Разрешить в фоне».";
 "battery.lowPowerMode.failure" = "Не удалось зарегистрировать помощник питания.";
 "battery.lowPowerMode.toggle" = "Режим энергосбережения";

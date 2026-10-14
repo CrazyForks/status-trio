@@ -167,6 +167,11 @@
 "battery.lowPowerMode.controlDescription" = "バッテリー詳細に低電力モードをオン／オフするスイッチを追加します。初回は「ログイン項目」での承認が必要です。";
 "battery.lowPowerMode.requiresApproval" = "承認待ちです。システム設定 › 一般 › ログイン項目と機能拡張 を開き、「バックグラウンドでの実行を許可」で Status Trio をオンにしてください。";
 "battery.lowPowerMode.openLoginItems" = "ログイン項目を開く";
+"battery.lowPowerMode.systemApproved" = "システムの承認状況：承認済み";
+"battery.lowPowerMode.systemPending" = "システムの承認状況：承認待ち";
+"battery.lowPowerMode.systemNotRegistered" = "システムの承認状況：未登録";
+"battery.lowPowerMode.helperReady" = "電源ヘルパー：利用可能（読み取り確認済み）";
+"battery.lowPowerMode.helperUnavailable" = "電源ヘルパー：接続不可または未確認";
 "battery.lowPowerMode.approvalHint" = "オンにしたら、システム設定 › 一般 › ログイン項目と機能拡張 の「バックグラウンドでの実行を許可」で Status Trio を承認してください。";
 "battery.lowPowerMode.failure" = "電源ヘルパーを登録できませんでした。";
 "battery.lowPowerMode.toggle" = "低電力モード";

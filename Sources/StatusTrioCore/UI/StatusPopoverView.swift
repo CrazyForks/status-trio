@@ -11,7 +11,7 @@ private enum PopoverPanel {
 struct StatusPopoverView: View {
     @ObservedObject var panel: StatusPanelViewModel
     /// Observed so the Low Power Mode control appears the moment the helper is
-    /// approved — reading `.isApproved` off the shared manager without observing
+    /// approved — reading `.isReady` off the shared manager without observing
     /// it left the control invisible until the popover was recreated.
     @ObservedObject private var helper: PrivilegedHelperManager = .shared
     let scrollTargets: PopoverScrollTargets
@@ -47,7 +47,7 @@ struct StatusPopoverView: View {
                     onAppear: { panel.actions.batteryDetailsAppeared() },
                     lowPowerMode: panel.store.lowPowerMode,
                     showsLowPowerControl: panel.settings.controlsLowPowerMode
-                        && helper.isApproved
+                        && helper.isReady
                 )
             case .wifi(let showDetails):
                 WiFiNetworkListView(
@@ -115,7 +115,7 @@ struct StatusPopoverView: View {
                 onOpenBatterySettings: openBatterySettings,
                 lowPowerMode: panel.store.lowPowerMode,
                 showsLowPowerToggle: panel.settings.controlsLowPowerMode
-                    && helper.isApproved
+                    && helper.isReady
             )
         case .network:
             NetworkStatusView(

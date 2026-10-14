@@ -57,6 +57,29 @@ Keeping registration avoids repeatedly rebuilding the system's approval state
 on ordinary App toggles. Health recovery may still unregister and re-register
 an approved but unreachable helper; it is bounded and stops if the user opts out.
 
+### Native approval versus live availability
+
+The native `SMAppService.status` and actual XPC availability are observed
+separately. On the tested macOS 27 system, the status can remain
+`requiresApproval` while launchd starts the registered daemon and the signed
+client successfully reads its state. The app preserves that native report;
+it does not relabel it as approved. Settings displays both the reported
+approval and live helper availability, and the power control uses the latter.
+
+While a registered helper is unreachable, the app makes read-only XPC probes
+on the two-second approval poll. A failed pending probe never unregisters the
+helper or writes a power setting. Once reachable but still reported pending,
+the app stops registration retries and checks health every ten seconds, or
+on activation, so it can detect revocation even if the native report never
+changes. The ten-second interval leaves room for the five-second idle exit
+between probes. With no activation, a stale readiness indication can last up
+to ten seconds plus the XPC timeout and poll scheduling; this is polling,
+not an instantaneous approval notification. Feature opt-out cancels scheduled
+probes and ignores late replies. An XPC request already accepted by the client
+can still finish (including dispatching its queued connection) or reach its
+three-second transport timeout before the helper's idle exit begins. Opt-out
+does not synchronously tear down accepted transport work.
+
 The plist deliberately has no `RunAtLoad` and no `KeepAlive`. Registration is
 not a permanently running process: after existing connections finish, the
 helper exits on the idle policy below. Launchd retains its job metadata, but

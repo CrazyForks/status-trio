@@ -167,6 +167,11 @@
 "battery.lowPowerMode.controlDescription" = "在电池详情中增加一个开关，用于打开或关闭低电量模式。需要先在“登录项”中批准一次。";
 "battery.lowPowerMode.requiresApproval" = "正在等待批准。请打开 系统设置 › 通用 › 登录项与扩展，在“允许在后台”中打开 Status Trio。";
 "battery.lowPowerMode.openLoginItems" = "打开登录项";
+"battery.lowPowerMode.systemApproved" = "系统批准状态：已批准";
+"battery.lowPowerMode.systemPending" = "系统批准状态：待批准";
+"battery.lowPowerMode.systemNotRegistered" = "系统批准状态：未注册";
+"battery.lowPowerMode.helperReady" = "电源辅助程序：可用（已验证读取）";
+"battery.lowPowerMode.helperUnavailable" = "电源辅助程序：无法连接或尚未验证";
 "battery.lowPowerMode.approvalHint" = "打开后，请在 系统设置 › 通用 › 登录项与扩展 的“允许在后台”中批准 Status Trio。";
 "battery.lowPowerMode.failure" = "无法注册电源辅助程序。";
 "battery.lowPowerMode.toggle" = "低电量模式";

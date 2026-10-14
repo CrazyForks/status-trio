@@ -905,7 +905,11 @@ helper 生命周期分支的非发布预检
   `defaultDeviceID == 22 && !isRefreshing`，让旧状态无法满足恢复期望。保留读取次数和停用后
   回调无效的断言，不延长超时，也不改生产音频代码。
 - **本机验证**：修复后 `swift test` 通过 1502 项 XCTest（7 项跳过）与 587 项
-  Swift Testing，0 失败；`swift build -c release` 通过。后续非发布预检结果待补充。
+  Swift Testing，0 失败；`swift build -c release` 通过。修复后的非发布预检
+  [`38560578171`](https://github.com/lingyired/status-trio/actions/runs/38560578171)
+  （head `03c424d1`、`version=1.6.0`、`build=29`、`publish=false`）全部通过。
+  该 CI 结果不代表系统审批切换的实机验证通过：同一构建的手动复测仍出现 native
+  待批准与实际 XPC 可用不一致，后续就绪判定改动需另行验证。
 
 ## 38541853330：helper 审批恢复预检中的 Dock 测试失败
 

@@ -264,7 +264,9 @@ struct BatterySectionView: View {
     /// The feature opt-in registers the helper if needed. Turning it off stops
     /// helper contact but keeps registration and system approval intact.
     private var lowPowerModeGroup: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        let needsApproval = helper.requiresApproval && !helper.isReady
+
+        return VStack(alignment: .leading, spacing: 6) {
             SettingsToggleRow(
                 symbol: "leaf.fill",
                 tint: .green,
@@ -274,23 +276,36 @@ struct BatterySectionView: View {
             )
             .disabled(!helper.isAvailable)
 
-            // The approval lives in Login Items, and a user who misses the
-            // one-time prompt has no other way to find it — so the guidance is
-            // always shown, emphasised while it still needs action. The whole
-            // line is the button that opens the pane, with no separate control.
+            if helper.isEnabled {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(localization.string(lowPowerModeSystemStatusKey))
+                        .foregroundStyle(.secondary)
+                    Text(localization.string(
+                        helper.isReady ? .lowPowerModeHelperReady : .lowPowerModeHelperUnavailable
+                    ))
+                    .foregroundStyle(helper.isReady ? Color.green : Color.secondary)
+                }
+                .font(.caption)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, SettingsMetrics.rowPaddingH)
+            }
+
+            // Native approval and verified helper access can differ. Keep the
+            // pane accessible; only warn when approval is pending and access
+            // is unverified.
             if helper.isAvailable {
                 Button {
                     helper.openLoginItemsSettings()
                 } label: {
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
-                        Image(systemName: helper.requiresApproval
+                        Image(systemName: needsApproval
                             ? "exclamationmark.triangle.fill"
                             : "info.circle")
-                            .foregroundStyle(helper.requiresApproval ? Color.orange : Color.secondary)
+                            .foregroundStyle(needsApproval ? Color.orange : Color.secondary)
                         Text(localization.string(
-                            helper.requiresApproval
+                            needsApproval
                                 ? .lowPowerModeRequiresApproval
-                                : .lowPowerModeApprovalHint
+                                : (helper.isReady ? .lowPowerModeOpenLoginItems : .lowPowerModeApprovalHint)
                         ))
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -324,6 +339,17 @@ struct BatterySectionView: View {
                 .padding(.horizontal, SettingsMetrics.rowPaddingH)
                 .padding(.bottom, 6)
             }
+        }
+    }
+
+    private var lowPowerModeSystemStatusKey: LocalizationKey {
+        switch helper.status {
+        case .enabled:
+            .lowPowerModeSystemApproved
+        case .requiresApproval:
+            .lowPowerModeSystemPending
+        case .notRegistered:
+            .lowPowerModeSystemNotRegistered
         }
     }
 }
