@@ -15,6 +15,21 @@ final class PrivilegedHelperManagerTests: XCTestCase {
         XCTAssertEqual(manager.status, .notRegistered)
     }
 
+    func testPersistentPermissionErrorWithoutPendingRegistrationIsExposedAfterRetries() async {
+        let service = FakePrivilegedHelperService(status: .notRegistered)
+        service.registerError = NSError(domain: "SMAppServiceErrorDomain", code: 1)
+        let manager = PrivilegedHelperManager(service: service, pollInterval: .milliseconds(5))
+        manager.setEnabled(true)
+        XCTAssertTrue(manager.requiresApproval)
+        await waitUntil { service.registerCallCount == 6 }
+        await waitUntil { manager.didFailLastOperation }
+        XCTAssertTrue(manager.didFailLastOperation)
+        XCTAssertFalse(manager.requiresApproval)
+        XCTAssertNotNil(manager.lastErrorMessage)
+        try? await Task.sleep(for: .milliseconds(50))
+        XCTAssertEqual(service.registerCallCount, 6)
+    }
+
     func testPendingRegistrationRetriesAfterPermissionArrivesWithoutAnotherToggle() async {
         let service = FakePrivilegedHelperService(status: .requiresApproval)
         service.registerError = TestFailure.registration

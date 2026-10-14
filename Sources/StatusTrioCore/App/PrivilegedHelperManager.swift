@@ -134,6 +134,7 @@ final class PrivilegedHelperManager: ObservableObject {
     private var registrationRetryTask: Task<Void, Never>?
     private var registrationRetryGeneration: UInt64 = 0
     private var registrationNeedsApproval = false
+    private var provisionalRegistrationError: String?
     private var generation: UInt64 = 0
     private var recoveryAttempts = 0
     private var recoveringGeneration: UInt64?
@@ -184,6 +185,7 @@ final class PrivilegedHelperManager: ObservableObject {
         cancelRegistrationRetry()
         recoveryAttempts = 0
         registrationNeedsApproval = false
+        provisionalRegistrationError = nil
         publishSystemState()
         didFailLastOperation = false
         lastErrorMessage = nil
@@ -234,7 +236,10 @@ final class PrivilegedHelperManager: ObservableObject {
     private func publishSystemState() {
         guard recoveringGeneration != generation else { return }
         let observed = service.status
-        if observed == .enabled { registrationNeedsApproval = false }
+        if observed == .enabled {
+            registrationNeedsApproval = false
+            provisionalRegistrationError = nil
+        }
         if observed != status {
             invalidateVerification()
             status = observed
@@ -274,12 +279,14 @@ final class PrivilegedHelperManager: ObservableObject {
         let approvalDenied = nsError.domain == "SMAppServiceErrorDomain" && nsError.code == 1
         if observed == .requiresApproval || (observed == .notRegistered && approvalDenied) {
             registrationNeedsApproval = true
+            provisionalRegistrationError = observed == .notRegistered ? error.localizedDescription : nil
             didFailLastOperation = false
             lastErrorMessage = nil
             failedOperationTarget = nil
             return
         }
         registrationNeedsApproval = false
+        provisionalRegistrationError = nil
         didFailLastOperation = true
         lastErrorMessage = error.localizedDescription
         failedOperationTarget = true
@@ -312,6 +319,16 @@ final class PrivilegedHelperManager: ObservableObject {
             }
             guard let self, self.registrationRetryGeneration == retryGeneration else { return }
             self.registrationRetryTask = nil
+            // EPERM alone is not proof of pending consent. If the service
+            // never registered, retire the provisional hint and expose why.
+            if self.isEnabled, self.status == .notRegistered,
+               let error = self.provisionalRegistrationError {
+                self.registrationNeedsApproval = false
+                self.provisionalRegistrationError = nil
+                self.didFailLastOperation = true
+                self.lastErrorMessage = error
+                self.failedOperationTarget = true
+            }
         }
     }
 
