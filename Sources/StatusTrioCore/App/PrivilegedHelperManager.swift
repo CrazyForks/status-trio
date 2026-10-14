@@ -428,10 +428,10 @@ final class PrivilegedHelperManager: ObservableObject {
                 if observed == .requiresApproval {
                     let delay = self.pendingProbeDelayAfterFailure(userInitiated: userInitiated)
                     self.nextPendingHealthCheck = ContinuousClock.now.advanced(by: delay)
-                    // Log transitions a user could have caused — a read that
-                    // used to work, or one the user just triggered. Logging
-                    // every failure would repeat once a minute forever on a
-                    // machine that simply never grants approval.
+                    // Log the transitions a user could have caused: a read
+                    // that used to work, or one the user just triggered.
+                    // Logging every failure would repeat once a minute forever
+                    // on a machine that simply never grants approval.
                     if userInitiated || wasResponsive {
                         NSLog(
                             "StatusTrio power helper pending probe failed (%@, retry in %@): %@",
