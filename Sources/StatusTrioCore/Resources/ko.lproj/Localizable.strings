@@ -167,9 +167,6 @@
 "battery.lowPowerMode.controlDescription" = "배터리 세부 정보에 저전력 모드를 켜고 끄는 스위치를 추가합니다. 최초 1회 '로그인 항목'에서 승인이 필요합니다.";
 "battery.lowPowerMode.requiresApproval" = "승인 대기 중입니다. 시스템 설정 › 일반 › 로그인 항목 및 확장을 열고 '백그라운드에서 허용'에서 Status Trio를 켜십시오.";
 "battery.lowPowerMode.openLoginItems" = "로그인 항목 열기";
-"battery.lowPowerMode.systemApproved" = "시스템 승인 상태: 승인됨";
-"battery.lowPowerMode.systemPending" = "시스템 승인 상태: 승인 대기 중";
-"battery.lowPowerMode.systemNotRegistered" = "시스템 승인 상태: 등록되지 않음";
 "battery.lowPowerMode.helperReady" = "전원 도우미: 사용 가능 (읽기 확인됨)";
 "battery.lowPowerMode.helperUnavailable" = "전원 도우미: 연결할 수 없거나 아직 확인되지 않음";
 "battery.lowPowerMode.approvalHint" = "켠 후 시스템 설정 › 일반 › 로그인 항목 및 확장의 '백그라운드에서 허용'에서 Status Trio를 승인하십시오.";

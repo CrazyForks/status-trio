@@ -167,9 +167,6 @@
 "battery.lowPowerMode.controlDescription" = "Fügt in den Batteriedetails einen Schalter zum Ein- und Ausschalten des Energiesparmodus hinzu. Erfordert eine einmalige Freigabe unter „Anmeldeobjekte“.";
 "battery.lowPowerMode.requiresApproval" = "Warte auf Freigabe. Öffne Systemeinstellungen › Allgemein › Anmeldeobjekte und aktiviere Status Trio unter „Im Hintergrund zulassen“.";
 "battery.lowPowerMode.openLoginItems" = "Anmeldeobjekte öffnen";
-"battery.lowPowerMode.systemApproved" = "Systemfreigabe: erteilt";
-"battery.lowPowerMode.systemPending" = "Systemfreigabe: ausstehend";
-"battery.lowPowerMode.systemNotRegistered" = "Systemfreigabe: nicht registriert";
 "battery.lowPowerMode.helperReady" = "Energiehelfer: verfügbar (Lesezugriff bestätigt)";
 "battery.lowPowerMode.helperUnavailable" = "Energiehelfer: nicht erreichbar oder noch nicht geprüft";
 "battery.lowPowerMode.approvalHint" = "Nach dem Einschalten gib Status Trio in den Systemeinstellungen › Allgemein › Anmeldeobjekte unter „Im Hintergrund zulassen“ frei.";

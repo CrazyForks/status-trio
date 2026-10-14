@@ -167,9 +167,6 @@
 "battery.lowPowerMode.controlDescription" = "在電池詳細資訊中新增開關，用來開啟或關閉低耗電模式。需要先在「登入項目」中批准一次。";
 "battery.lowPowerMode.requiresApproval" = "正在等待批准。請開啟 系統設定 › 一般 › 登入項目與擴充功能，在「允許在背景執行」中開啟 Status Trio。";
 "battery.lowPowerMode.openLoginItems" = "打開登入項目";
-"battery.lowPowerMode.systemApproved" = "系統批准狀態：已批准";
-"battery.lowPowerMode.systemPending" = "系統批准狀態：待批准";
-"battery.lowPowerMode.systemNotRegistered" = "系統批准狀態：未註冊";
 "battery.lowPowerMode.helperReady" = "電源輔助程式：可用（已驗證讀取）";
 "battery.lowPowerMode.helperUnavailable" = "電源輔助程式：無法連線或尚未驗證";
 "battery.lowPowerMode.approvalHint" = "開啟後，請在 系統設定 › 一般 › 登入項目與擴充功能 的「允許在背景執行」中批准 Status Trio。";

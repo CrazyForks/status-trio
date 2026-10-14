@@ -150,9 +150,6 @@
 "battery.lowPowerMode.controlDescription" = "يضيف مفتاحًا في تفاصيل البطارية لتشغيل وضع الطاقة المنخفضة أو إيقافه. يتطلب موافقة لمرة واحدة في «عناصر تسجيل الدخول».";
 "battery.lowPowerMode.requiresApproval" = "في انتظار الموافقة. افتح إعدادات النظام › عام › عناصر تسجيل الدخول وشغّل Status Trio ضمن «السماح في الخلفية».";
 "battery.lowPowerMode.openLoginItems" = "فتح عناصر تسجيل الدخول";
-"battery.lowPowerMode.systemApproved" = "موافقة النظام: تمت الموافقة";
-"battery.lowPowerMode.systemPending" = "موافقة النظام: قيد الانتظار";
-"battery.lowPowerMode.systemNotRegistered" = "موافقة النظام: غير مسجّل";
 "battery.lowPowerMode.helperReady" = "مساعد الطاقة: متاح (تم التحقق من القراءة)";
 "battery.lowPowerMode.helperUnavailable" = "مساعد الطاقة: يتعذّر الاتصال به أو لم يتم التحقق منه بعد";
 "battery.lowPowerMode.approvalHint" = "بعد التشغيل، وافق على Status Trio في إعدادات النظام › عام › عناصر تسجيل الدخول ضمن «السماح في الخلفية».";

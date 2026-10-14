@@ -167,9 +167,6 @@
 "battery.lowPowerMode.controlDescription" = "Ajoute un interrupteur dans les détails de la batterie pour activer ou désactiver le mode économie d'énergie. Nécessite une approbation unique dans « Ouverture à la connexion ».";
 "battery.lowPowerMode.requiresApproval" = "En attente d'approbation. Ouvrez Réglages Système › Général › Ouverture à la connexion et activez Status Trio dans « Autoriser en arrière-plan ».";
 "battery.lowPowerMode.openLoginItems" = "Ouvrir les éléments d'ouverture";
-"battery.lowPowerMode.systemApproved" = "Approbation du système : accordée";
-"battery.lowPowerMode.systemPending" = "Approbation du système : en attente";
-"battery.lowPowerMode.systemNotRegistered" = "Approbation du système : non enregistré";
 "battery.lowPowerMode.helperReady" = "Assistant d'alimentation : disponible (lecture vérifiée)";
 "battery.lowPowerMode.helperUnavailable" = "Assistant d'alimentation : inaccessible ou pas encore vérifié";
 "battery.lowPowerMode.approvalHint" = "Après l'activation, approuvez Status Trio dans Réglages Système › Général › Ouverture à la connexion, sous « Autoriser en arrière-plan ».";

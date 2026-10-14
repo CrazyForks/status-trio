@@ -167,9 +167,6 @@
 "battery.lowPowerMode.controlDescription" = "Añade un interruptor en los detalles de la batería para activar o desactivar el modo de bajo consumo. Requiere una aprobación única en «Ítems de inicio de sesión».";
 "battery.lowPowerMode.requiresApproval" = "Esperando aprobación. Abre Ajustes del Sistema › General › Ítems de inicio de sesión y activa Status Trio en «Permitir en segundo plano».";
 "battery.lowPowerMode.openLoginItems" = "Abrir ítems de inicio de sesión";
-"battery.lowPowerMode.systemApproved" = "Aprobación del sistema: aprobada";
-"battery.lowPowerMode.systemPending" = "Aprobación del sistema: pendiente";
-"battery.lowPowerMode.systemNotRegistered" = "Aprobación del sistema: sin registrar";
 "battery.lowPowerMode.helperReady" = "Asistente de energía: disponible (lectura verificada)";
 "battery.lowPowerMode.helperUnavailable" = "Asistente de energía: inaccesible o aún sin verificar";
 "battery.lowPowerMode.approvalHint" = "Tras activarlo, aprueba Status Trio en Ajustes del Sistema › General › Ítems de inicio de sesión, en «Permitir en segundo plano».";

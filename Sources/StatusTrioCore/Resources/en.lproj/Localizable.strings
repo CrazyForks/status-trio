@@ -167,9 +167,6 @@
 "battery.lowPowerMode.controlDescription" = "Adds a switch in the battery details that turns Low Power Mode on or off. Requires a one-time approval in Login Items.";
 "battery.lowPowerMode.requiresApproval" = "Waiting for approval. Open System Settings › General › Login Items and turn on Status Trio under “Allow in the Background”.";
 "battery.lowPowerMode.openLoginItems" = "Open Login Items";
-"battery.lowPowerMode.systemApproved" = "System approval: approved";
-"battery.lowPowerMode.systemPending" = "System approval: pending";
-"battery.lowPowerMode.systemNotRegistered" = "System approval: not registered";
 "battery.lowPowerMode.helperReady" = "Power helper: available (read verified)";
 "battery.lowPowerMode.helperUnavailable" = "Power helper: unreachable or not yet verified";
 "battery.lowPowerMode.approvalHint" = "After turning this on, approve Status Trio in System Settings › General › Login Items under “Allow in the Background”.";

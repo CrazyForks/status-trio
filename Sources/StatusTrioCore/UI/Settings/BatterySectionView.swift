@@ -272,23 +272,12 @@ struct BatterySectionView: View {
                 tint: .green,
                 title: localization.string(.lowPowerModeControl),
                 subtitle: localization.string(.lowPowerModeControlDescription),
+                // Reported on the description's own line: one short state, not
+                // a block of rows under the switch.
+                subtitleStatus: helper.isEnabled ? lowPowerModeHelperStatus : nil,
                 isOn: helper.isEnabledBinding
             )
             .disabled(!helper.isAvailable)
-
-            if helper.isEnabled {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(localization.string(lowPowerModeSystemStatusKey))
-                        .foregroundStyle(.secondary)
-                    Text(localization.string(
-                        helper.isReady ? .lowPowerModeHelperReady : .lowPowerModeHelperUnavailable
-                    ))
-                    .foregroundStyle(helper.isReady ? Color.green : Color.secondary)
-                }
-                .font(.caption)
-                .fixedSize(horizontal: false, vertical: true)
-                .padding(.horizontal, SettingsMetrics.rowPaddingH)
-            }
 
             // Native approval and verified helper access can differ. Keep the
             // pane accessible; only warn when approval is pending and access
@@ -342,14 +331,16 @@ struct BatterySectionView: View {
         }
     }
 
-    private var lowPowerModeSystemStatusKey: LocalizationKey {
-        switch helper.status {
-        case .enabled:
-            .lowPowerModeSystemApproved
-        case .requiresApproval:
-            .lowPowerModeSystemPending
-        case .notRegistered:
-            .lowPowerModeSystemNotRegistered
-        }
+    /// One state, carried by the description instead of a line of its own.
+    ///
+    /// The native approval value is deliberately not repeated here: it can stay
+    /// "pending" on a system where the helper already answers, and the approval
+    /// hint below the row already asks for the one thing the user can do about
+    /// it.
+    private var lowPowerModeHelperStatus: Text {
+        Text(localization.string(
+            helper.isReady ? .lowPowerModeHelperReady : .lowPowerModeHelperUnavailable
+        ))
+        .foregroundColor(helper.isReady ? Color.green : Color.secondary)
     }
 }
