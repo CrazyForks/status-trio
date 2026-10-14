@@ -1,8 +1,17 @@
 import Combine
 import Foundation
+import OSLog
 import PowerHelperProtocol
 import ServiceManagement
 import SwiftUI
+
+/// Every power-helper decision worth explaining after the fact. The app runs as
+/// a menu bar app, so `NSLog` only reaches a terminal that launched it; the
+/// unified log is the only channel a user-facing report can be checked against.
+private let powerHelperLogger = Logger(
+    subsystem: "com.lingsmbp.StatusTrio",
+    category: "powerHelper"
+)
 
 /// The privileged power helper's registration as reported by the system.
 enum PrivilegedHelperStatus: Equatable, Sendable {
@@ -433,11 +442,8 @@ final class PrivilegedHelperManager: ObservableObject {
                     // Logging every failure would repeat once a minute forever
                     // on a machine that simply never grants approval.
                     if userInitiated || wasResponsive {
-                        NSLog(
-                            "StatusTrio power helper pending probe failed (%@, retry in %@): %@",
-                            userInitiated ? "user-initiated" : "scheduled",
-                            "\(delay)",
-                            error.localizedDescription
+                        powerHelperLogger.notice(
+                            "pending probe failed (\(userInitiated ? "user-initiated" : "scheduled", privacy: .public), retry in \(String(describing: delay), privacy: .public)): \(error.localizedDescription, privacy: .public)"
                         )
                     }
                 } else {
@@ -450,9 +456,9 @@ final class PrivilegedHelperManager: ObservableObject {
                     return
                 }
                 self.recoveryAttempts += 1
-                NSLog("StatusTrio power helper recovery %d/%d after failed XPC read: %@",
-                      self.recoveryAttempts, Self.maximumRecoveryAttempts,
-                      error.localizedDescription)
+                powerHelperLogger.error(
+                    "recovery \(self.recoveryAttempts)/\(Self.maximumRecoveryAttempts) after failed XPC read: \(error.localizedDescription, privacy: .public)"
+                )
                 do {
                     // Await completion before registering again. A synchronous
                     // unregister may still be removing the job when it returns.
@@ -487,7 +493,7 @@ final class PrivilegedHelperManager: ObservableObject {
                 self.nextPendingHealthCheck = nil
             }
             self.cancelRegistrationRetry()
-            NSLog("StatusTrio power helper verified by XPC")
+            powerHelperLogger.debug("helper verified by XPC")
             self.publishSystemState()
         }
     }
