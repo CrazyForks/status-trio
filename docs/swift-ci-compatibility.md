@@ -890,6 +890,23 @@ DMG 打包与 artifact 上传全部通过；`publish=false` 未创建 GitHub Rel
   `swift test` 563 项、`swift build -c release` 均通过，且 `LowPowerModeControllerTests` 单独连续三次运行 0 失败。
   本条记录本身的提交只补充说明，不改变已验证的产品代码。
 
+## 38558727357：输入音频恢复测试匹配到旧状态
+
+helper 生命周期分支的非发布预检
+[`38558727357`](https://github.com/lingyired/status-trio/actions/runs/38558727357)
+（head `5757b420`、`version=1.6.0`、`build=29`、`publish=false`）在 `Run tests` 失败。
+
+- **失败位置**：`AudioInputMonitorTests.testRecoverRefreshesAndStoppedObservationCallbackIsIgnored`
+  第 289 行；`fullReadCount` 为 `1`，期望 `2`。
+- **根因**：恢复等待只匹配 `defaultDeviceID == 11`。`recover()` 先发布仍携带旧设备 ID 的
+  `isRefreshing` 状态，新的硬件读取尚未完成就能满足该等待，导致提前断言。这不是 helper
+  生命周期改动或 Swift 编译失败。
+- **修复**：仅调整该测试。初次读取等待终态；恢复前把假硬件的默认设备改为 `22`，等待
+  `defaultDeviceID == 22 && !isRefreshing`，让旧状态无法满足恢复期望。保留读取次数和停用后
+  回调无效的断言，不延长超时，也不改生产音频代码。
+- **本机验证**：修复后 `swift test` 通过 1502 项 XCTest（7 项跳过）与 587 项
+  Swift Testing，0 失败；`swift build -c release` 通过。后续非发布预检结果待补充。
+
 ## 38541853330：helper 审批恢复预检中的 Dock 测试失败
 
 非发布预检 [`38541853330`](https://github.com/lingyired/status-trio/actions/runs/38541853330)
