@@ -83,7 +83,21 @@ indefinitely. Measured on macOS 27 before the throttle, a ten-second
 interval produced six daemon starts per minute; a build with the interval
 raised to sixty seconds but the retry still tied to "not responsive yet"
 still restarted the daemon every few seconds, which is why the throttle is
-keyed to the interval rather than to readiness. With no activation, a stale readiness indication can last up to
+keyed to the interval rather than to readiness.
+
+A read the user's own action asks for is the one exception: coming back to the
+app and ticking the App switch are the only signals that something happened,
+because switching the helper off and on in System Settings leaves the native
+status pending the whole time. The forced read made on return can land inside
+that transition and fail, and waiting out the full minute afterwards made the
+same gesture look like it randomly worked or randomly failed. A failed
+user-initiated read therefore re-probes at 3, 10 and 25 seconds; the window then
+closes and the steady interval resumes. Each new gesture opens its own window,
+so the extra daemon starts are bounded by how often the user acts, not by the
+timer, and the status line settles within seconds of the switch being turned
+back on. Pending failures are also logged when a read used to work or when the
+user just triggered it — never once a minute for a machine that simply never
+grants approval. With no activation, a stale readiness indication can last up to
 sixty seconds plus the XPC timeout and poll scheduling; this is polling,
 not an instantaneous approval notification. Feature opt-out cancels scheduled
 probes and ignores late replies. An XPC request already accepted by the client

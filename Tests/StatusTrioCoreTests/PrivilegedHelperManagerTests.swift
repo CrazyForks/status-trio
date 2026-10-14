@@ -97,6 +97,81 @@ final class PrivilegedHelperManagerTests: XCTestCase {
         XCTAssertEqual(service.recoveryUnregisterCallCount, 0)
     }
 
+    func testUserInitiatedReadFailureIsRetriedSoonerThanTheHealthInterval() async {
+        // Flipping the helper off and on in System Settings never moves the
+        // native status, so the app only learns about it from the forced read
+        // it makes when the user comes back. That read can land inside the
+        // transition; without a short window it failed and then left the status
+        // line on "not verified" for the whole health-check interval, which is
+        // what made the same gesture look randomly broken.
+        let service = FakePrivilegedHelperService(status: .requiresApproval)
+        service.allowsPendingVerification = true
+        let manager = PrivilegedHelperManager(
+            service: service,
+            pollInterval: .milliseconds(10),
+            healthCheckInterval: .seconds(30),
+            pendingProbeBackoff: [.milliseconds(30)]
+        )
+        await waitUntil { manager.isReady }
+        XCTAssertTrue(manager.isReady)
+        let readsWhileReachable = service.verificationCallCount
+
+        // The helper goes away, and the user's gesture is the only signal the
+        // app gets: the native status never moves.
+        service.allowsPendingVerification = false
+        manager.refreshAfterActivation()
+
+        // The failed gesture is retried within its window — far inside the
+        // thirty seconds the health timer would otherwise have waited out.
+        await waitUntil { service.verificationCallCount > readsWhileReachable + 1 }
+
+        XCTAssertGreaterThanOrEqual(service.verificationCallCount, readsWhileReachable + 2)
+        XCTAssertFalse(manager.isReady)
+        XCTAssertEqual(manager.status, .requiresApproval)
+        XCTAssertFalse(manager.didFailLastOperation)
+        XCTAssertEqual(service.recoveryUnregisterCallCount, 0)
+    }
+
+    func testUserInitiatedReadFailureBackoffIsBounded() async {
+        // The short window may only spend itself on the gesture that opened it.
+        // Once it is used up the steady interval rules again, so a helper that
+        // can never be read does not keep starting the root daemon.
+        let service = FakePrivilegedHelperService(status: .requiresApproval)
+        service.allowsPendingVerification = true
+        let manager = PrivilegedHelperManager(
+            service: service,
+            pollInterval: .milliseconds(10),
+            healthCheckInterval: .seconds(30),
+            pendingProbeBackoff: [.milliseconds(20), .milliseconds(20)]
+        )
+        await waitUntil { manager.isReady }
+        XCTAssertTrue(manager.isReady)
+        service.allowsPendingVerification = false
+        manager.refreshAfterActivation()
+        // Let the window spend itself, then confirm the reads stop arriving.
+        try? await Task.sleep(for: .milliseconds(200))
+        let readsAfterWindow = service.verificationCallCount
+        try? await Task.sleep(for: .milliseconds(150))
+
+        // The forced read plus both offsets of the window.
+        XCTAssertGreaterThanOrEqual(readsAfterWindow, 3)
+        XCTAssertLessThanOrEqual(readsAfterWindow, 4)
+        XCTAssertEqual(service.verificationCallCount, readsAfterWindow)
+        XCTAssertFalse(manager.isReady)
+        XCTAssertEqual(manager.status, .requiresApproval)
+        XCTAssertEqual(service.recoveryUnregisterCallCount, 0)
+    }
+
+    func testPendingProbeBackoffStaysShortAndBounded() {
+        let backoff = PrivilegedHelperManager.defaultPendingProbeBackoff
+        XCTAssertFalse(backoff.isEmpty)
+        XCTAssertLessThanOrEqual(backoff.count, 4)
+        XCTAssertLessThan(
+            backoff.reduce(Duration.zero, +),
+            PrivilegedHelperManager.defaultPendingHealthCheckInterval
+        )
+    }
+
     func testPendingReadinessIsRecheckedEvenWhenNativeStatusNeverChanges() async {
         let service = FakePrivilegedHelperService(status: .requiresApproval)
         service.allowsPendingVerification = true
