@@ -982,3 +982,24 @@ Error: release notes directory does not exist: …/release-notes/1.6.1
 `@MainActor` / SwiftUI / `Bundle.module` 相关改动的 CI 编译兼容性由此确认；
 真实前台输入切换、候选框行为与 macOS 13/15/26 设备验证不在 CI 覆盖范围，
 见 [输入法中间图标](input-source-center-slot.md)。
+
+## 38754577081：输入法图标尺寸与面板行改动的预检
+
+第二轮输入法反馈（中间图标跟随 Wi-Fi 图标大小、状态面板改为行 + 切换列表、
+行列图标的单色处理）的非发布预检
+[`38754577081`](https://github.com/lingyired/status-trio/actions/runs/38754577081)
+（head `60c8db89`、`version=1.6.0`、`build=38`、`publish=false`、`notarize=false`）
+在 CI 工具链上全绿，耗时约 20 分钟：
+
+- `Run tests` 通过（1,603 XCTest、7 skipped、0 failures；587 Swift Testing / 91 suites 也通过）。
+  本机 1,593 与 CI 1,603 的差仍是 `#available(macOS 26/27)` 门控的用例。
+  本轮新增的 `InputSourceIconMaskTests`、`InputSourcePanelLayoutTests` 和缓存用例在两个
+  macOS 版本上都运行。
+- `Run native compatibility tests` 通过，含 macOS 13 bundle/Sparkle 契约检查。
+- Universal release 构建、DMG 打包与 artifact 上传通过；该次预检 `publish=false` 且
+  `notarize=false`，走 Ad-hoc 签名，未创建 GitHub Release，也未更新 appcast。
+
+本机同一 head（Xcode 27.0 / Swift 6.4）上 `swift test`（1,593 tests、7 skipped、0 failures）、
+`swift build -c release` 和 `swift test --filter Issue30WiFiAlignmentTests`（5/5）均通过；
+面板行、图标掩膜与菜单栏尺寸条通过测试内渲染的截图人工核对。真实前台输入切换、
+候选框行为与 macOS 13/15/26 设备验证仍不在 CI 覆盖范围。
