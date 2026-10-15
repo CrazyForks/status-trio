@@ -212,6 +212,77 @@ final class Issue30WiFiAlignmentTests: XCTestCase {
         )
     }
 
+    /// An input source's short-label fallback must sit on the Wi-Fi glyph's own
+    /// centre, at every size the one size control offers.
+    ///
+    /// The slot used to place text at a second, hand-tuned anchor (`y = 87`)
+    /// and "centred" it by subtracting the glyph bounds' `midY` inside a
+    /// y-flipped text matrix. The flip makes that subtraction add the offset
+    /// instead of removing it, so the ink landed at `87 - 2 * midY`: correct at
+    /// the default percentage size, and climbing by twice its own half-height
+    /// above it. An uncached 160 % marker — the input source's default — then
+    /// overlapped the ring's charging bolt (the reported defect). The y must
+    /// not move with the scale, and it must match the Wi-Fi glyph's ink.
+    func testInputSourceLabelInkKeepsTheSlotCentreAtEveryScale() throws {
+        let wifiInk = try centerSlotInk(for: .symbol(IconSymbolState(
+            source: .symbol(name: "wifi", variableValue: 1, fallback: nil),
+            color: .primary,
+            scale: SettingsStore.defaultWifiSymbolScale
+        )))
+
+        for item in [("A", 1.0), ("A", 1.6), ("A", 1.8), ("拼", 1.6), ("100", 1.0)] {
+            let ink = try centerSlotInk(for: .text(IconTextState(
+                text: item.0,
+                color: .primary,
+                scale: item.1
+            )))
+            XCTAssertEqual(
+                (ink.minY + ink.maxY) / 2,
+                (wifiInk.minY + wifiInk.maxY) / 2,
+                accuracy: 0.5,
+                "\"\(item.0)\" at scale \(item.1) must share the Wi-Fi glyph's slot centre"
+            )
+        }
+
+        let oneX = try centerSlotInk(for: .text(IconTextState(text: "A", color: .primary, scale: 1)))
+        let enlarged = try centerSlotInk(for: .text(IconTextState(text: "A", color: .primary, scale: 1.6)))
+        XCTAssertEqual(
+            (enlarged.minY + enlarged.maxY) / 2,
+            (oneX.minY + oneX.maxY) / 2,
+            accuracy: 0.5,
+            "the size control must grow the label around the slot centre, not move it"
+        )
+    }
+
+    /// Draws one centre-slot primitive alone and measures its ink in scene
+    /// units, so nothing else in the icon can contribute to the bounds.
+    private func centerSlotInk(for center: CenterState) throws -> (
+        minX: CGFloat,
+        minY: CGFloat,
+        maxX: CGFloat,
+        maxY: CGFloat
+    ) {
+        let size: CGFloat = 120
+        let scale: CGFloat = 8
+        let image = try XCTUnwrap(StatusIconRenderer.render(
+            scene: IconSceneState(center: center),
+            environment: StatusIconRenderEnvironment(
+                size: size,
+                scale: scale,
+                foreground: CGColor(gray: 1, alpha: 1),
+                criticalColor: StatusIconRenderer.defaultCriticalColor
+            )
+        ))
+        let pixels = try PixelBuffer(image: image)
+        // The slot only: the canvas edges stay out of it, so no neighbouring
+        // primitive can move a measurement.
+        let slot = CGRect(x: 0, y: 0, width: StatusIconGeometry.canvas.width, height: 120)
+        return try XCTUnwrap(
+            pixels.alphaBounds(inSVGRect: slot, size: size, scale: scale, minimumAlpha: 40),
+            "the centre slot drew no ink"
+        )
+    }
+
 }
 
 private extension PixelBuffer {

@@ -93,4 +93,36 @@ extension PixelBuffer {
         guard minX <= maxX else { return nil }
         return (CGFloat(minX) + CGFloat(maxX) + 1) / 2 / pixelsPerSVGUnit
     }
+
+    /// Ink bounds inside `rect` (scene units), returned in scene units with the
+    /// renderer's top-down y. Lets a test measure one mark without the pixels of
+    /// a neighbour it is compared against.
+    func alphaBounds(
+        inSVGRect rect: CGRect,
+        size: CGFloat,
+        scale: CGFloat,
+        minimumAlpha: UInt8 = 0
+    ) -> (minX: CGFloat, minY: CGFloat, maxX: CGFloat, maxY: CGFloat)? {
+        let pixelsPerSVGUnit = size * scale / StatusIconGeometry.canvas.width
+        let minX = max(0, Int((rect.minX * pixelsPerSVGUnit).rounded(.down)))
+        let maxX = min(width, Int((rect.maxX * pixelsPerSVGUnit).rounded(.up)))
+        let minY = max(0, Int((rect.minY * pixelsPerSVGUnit).rounded(.down)))
+        let maxY = min(height, Int((rect.maxY * pixelsPerSVGUnit).rounded(.up)))
+        guard minX < maxX, minY < maxY else { return nil }
+
+        var left = maxX, right = -1, top = maxY, bottom = -1
+        for y in minY..<maxY {
+            for x in minX..<maxX where rgba(x: x, y: y).alpha > minimumAlpha {
+                left = min(left, x); right = max(right, x)
+                top = min(top, y); bottom = max(bottom, y)
+            }
+        }
+        guard right >= left, bottom >= top else { return nil }
+        return (
+            CGFloat(left) / pixelsPerSVGUnit,
+            CGFloat(top) / pixelsPerSVGUnit,
+            CGFloat(right + 1) / pixelsPerSVGUnit,
+            CGFloat(bottom + 1) / pixelsPerSVGUnit
+        )
+    }
 }

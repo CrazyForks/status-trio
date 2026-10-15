@@ -76,6 +76,26 @@ image's 42-unit box is calibrated against the Wi-Fi glyph's own ink width at the
 same scale — 67.75 against 67.2 units at the default — so an adjustment moves
 both together instead of resizing one of them.
 
+The short-label path is text, and text in the centre slot is anchored by its own
+visible ink (`StatusIconRenderer.centerTextInkCenter`), not by a baseline: the
+slot's other occupants are ink-anchored symbols, and a label that grows with the
+size control has to grow *around* the slot centre instead of sliding away from
+it. The renderer used to place this text at a second, hand-tuned anchor and
+"centre" it by subtracting the glyph bounds' `midY` inside a y-flipped text
+matrix; the flip turns that subtraction into an addition, so the ink landed at
+`87 - 2 * midY` — correct only at the default percentage size, and wrong by
+twice its own half-height at every other one. At the 160 % default an
+input-source marker (`A` for ABC) therefore climbed into the ring's charging
+indicator: `Issue30WiFiAlignmentTests.testInputSourceLabelInkKeepsTheSlotCentreAtEveryScale`
+pins the label and the Wi-Fi glyph to one centre at 100 %, 160 % and 180 %, for
+both an ASCII marker and a CJK one.
+
+The same path serves "battery percentage in the connection slot", which the
+plan's fallback table keeps ahead of the input source. Its text moves with this
+correction too — that is the intended effect, not a regression: it is the same
+label shape in the same slot, and leaving it on the old anchor would leave one
+of the two visibly off the glyphs they sit between.
+
 ## The status panel
 
 The section is a row, not a picker: it reports the current source next to a

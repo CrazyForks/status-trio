@@ -225,16 +225,21 @@ enum StatusIconRenderer {
 
 
 
-    /// Centre of the middle connection slot, which the Wi-Fi, Ethernet and
-    /// Bluetooth glyphs all share.
+    /// Where a label's visible ink is centred in the middle connection slot.
     ///
-    /// `y` is not `wifiSymbolCenter.y`: the Wi-Fi glyph's dense strokes sit
-    /// below the geometric middle of the slot, so text drawn from a centred
-    /// baseline reads low against them.
-    private static let connectionSlotCenter = CGPoint(
-        x: StatusIconGeometry.artworkCenterX,
-        y: 87
-    )
+    /// Text shares the slot with the Wi-Fi, Ethernet, Bluetooth and input-source
+    /// glyphs, so it is centred on the same point they are: the ink centre of
+    /// `wifiSymbolCenter`, not a second anchor of its own.
+    ///
+    /// The historic `y = 87` anchor compensated the renderer's flipped text
+    /// matrix with the wrong sign, so the drawn ink centre was
+    /// `87 - 2 * bounds.midY` instead of `87`. That cancels only at the default
+    /// percentage size: every larger label — a 160 % input-source marker above
+    /// all — climbed up into the ring's charging indicator by twice its own
+    /// half-height. Anchoring the ink centre itself makes the position
+    /// independent of the text's size, which is what a label that follows the
+    /// Wi-Fi size control needs.
+    private static let centerTextInkCenter = wifiSymbolCenter
 
     /// Uses the middle connection position for a large, label-free percentage.
 
@@ -1033,10 +1038,13 @@ extension StatusIconRenderer {
             let line = sceneTextLine(text.text, color: color, fontSize: fontSize)
             let bounds = CTLineGetBoundsWithOptions(line, [.useGlyphPathBounds])
             context.setFillColor(color)
+            // CoreText measures ink y-up while the text matrix flips glyphs, so
+            // the baseline sits *below* the target by the bounds' own midY.
+            // Subtracting it here is what pushed larger labels upwards.
             context.textMatrix = CGAffineTransform(scaleX: 1, y: -1)
             context.textPosition = CGPoint(
-                x: connectionSlotCenter.x - bounds.midX,
-                y: connectionSlotCenter.y - bounds.midY
+                x: centerTextInkCenter.x - bounds.midX,
+                y: centerTextInkCenter.y + bounds.midY
             )
             CTLineDraw(line, context)
         case let .symbol(symbol):
