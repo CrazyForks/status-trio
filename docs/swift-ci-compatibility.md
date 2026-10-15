@@ -932,3 +932,53 @@ helper 生命周期分支的非发布预检
   CI 使用 Ad-hoc 签名；本机安装版单独通过 Developer ID 签名、公证与 stapler 验证。
   用户按“系统关闭 → App 开启 → 系统开启”的流程确认等待提示自动消失、绿叶可用，
   本机日志也记录自动 `register()` 返回成功、状态从 `2` 转为 `1`。没有发布 Release 或修改 appcast。
+
+## 38741027089：预检用了还没写发布说明的版本号
+
+输入法中间图标分支的第一个非发布预检
+[`38741027089`](https://github.com/lingyired/status-trio/actions/runs/38741027089)
+（head `2b693eb3`、`version=1.6.1`、`build=38`、`publish=false`）在 `Build, sign, notarize, and publish`
+阶段失败：
+
+```
+Error: release notes directory does not exist: …/release-notes/1.6.1
+```
+
+- **失败位置**：`bash scripts/release.sh` 第 163 行的发布说明目录检查，测试与原生兼容检查已经在
+  这一步之前通过。
+- **根因**：`publish=false` 只跳过 appcast 发布，不跳过发布说明；`scripts/release.sh` 要求
+  `release-notes/<version>/` 存在。预检不是发布，随便挑一个「下一个」版本号就会在这一步中止。
+- **修复**：改用已有发布说明的 `version=1.6.0` 重跑，代码未改动。
+- **验证**：同一 head 的非发布预检
+  [`38741878250`](https://github.com/lingyired/status-trio/actions/runs/38741878250)
+  （`version=1.6.0`、`build=38`、`publish=false`、`notarize=false`）在 CI 工具链
+  （`macos-26` / Xcode 26.6 / Swift 6.3.3）上全绿：`Run tests`、`Run native compatibility tests`、
+  Universal release 构建、DMG 打包和 artifact 上传全部通过。该次预检走 Ad-hoc 签名，
+  未创建 GitHub Release，也未修改 appcast。
+
+**规则**：新子系统的非发布预检要复用当前版本号（`release-notes/<version>/` 已存在），
+除非同一次改动里已经写好新版本的发布说明。`scripts/validate-appcast-notes.sh` 在
+`publish=false` 时会对缺失目录只发 `::notice::`，而 `scripts/release.sh` 会直接报错，
+这个差异正是这次失败的位置。
+
+## 38741878250：输入法中间图标加入新子系统的预检
+
+非发布预检 [`38741878250`](https://github.com/lingyired/status-trio/actions/runs/38741878250)
+（head `2b693eb3`、`version=1.6.0`、`build=38`、`publish=false`）在 CI 工具链上全绿，
+耗时约 17 分钟：
+
+- `Run tests` 通过（1,595 XCTest、7 skipped、0 failures；587 Swift Testing / 91 suites 也通过）。
+  本机的 1,585 与 CI 的 1,595 差 10 个用例，全部是 `#available(macOS 26/27)` 门控的用例：
+  CI 运行在 macOS 26 上，本机是 macOS 27。输入法相关的新用例在两个版本上都运行。
+- `Run native compatibility tests` 通过，含 macOS 13 bundle/Sparkle 契约检查。
+- Universal release 构建产出 `x86_64 arm64` 双架构切片，`LC_BUILD_VERSION` 为
+  `minos 13.0 / sdk 26.0`；`StatusTrioPowerHelper` 与 MobileBattery 框架的签名与
+  designated requirement 校验通过。
+- 该预检 `publish=false` 且 `notarize=false`，因此走 Ad-hoc 签名。未创建 GitHub Release，
+  也未更新 appcast。
+
+本机同一 head（Xcode 27.0 / Swift 6.4）上 `swift test`（1,585 tests、7 skipped、0 failures）、
+`swift build -c release` 和 `swift test --filter Issue30WiFiAlignmentTests`（5/5）均通过。
+`@MainActor` / SwiftUI / `Bundle.module` 相关改动的 CI 编译兼容性由此确认；
+真实前台输入切换、候选框行为与 macOS 13/15/26 设备验证不在 CI 覆盖范围，
+见 [输入法中间图标](input-source-center-slot.md)。
