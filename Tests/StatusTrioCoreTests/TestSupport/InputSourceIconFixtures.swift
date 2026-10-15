@@ -49,6 +49,32 @@ enum InputSourceIconFixtures {
         try png.write(to: url)
         return url
     }
+
+    /// The same fixture as a PDF page, which is what real input sources ship
+    /// (`/Library/Input Methods/…/menu_icon.pdf`). A PDF has no pixels of its
+    /// own, so this is the case that proves the ink measurement rasterises a
+    /// vector icon at a usable resolution.
+    static func writePDFIcon(
+        pointWidth: CGFloat,
+        pointHeight: CGFloat,
+        inkRect: CGRect
+    ) throws -> URL {
+        var mediaBox = CGRect(x: 0, y: 0, width: pointWidth, height: pointHeight)
+        let data = NSMutableData()
+        let consumer = try XCTUnwrap(CGDataConsumer(data: data as CFMutableData))
+        let context = try XCTUnwrap(CGContext(consumer: consumer, mediaBox: &mediaBox, nil))
+
+        context.beginPDFPage(nil)
+        context.setFillColor(CGColor(gray: 1, alpha: 1))
+        context.fill(inkRect)
+        context.endPDFPage()
+        context.closePDF()
+
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("status-trio-input-source-\(UUID().uuidString).pdf")
+        try (data as Data).write(to: url)
+        return url
+    }
 }
 
 extension PixelBuffer {

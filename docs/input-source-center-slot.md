@@ -1,0 +1,90 @@
+# Input source in the centre slot
+
+The centre slot of the menu bar icon and the Dock icon can draw the current
+keyboard input source instead of the network icon, and the status panel can list
+the enabled sources and switch between them. Both are off by default.
+
+## API and permission boundary
+
+Everything goes through the public Carbon Text Input Sources API in
+`Sources/StatusTrioCore/InputSource/`:
+
+- reads: `TISCopyCurrentKeyboardInputSource`, `TISCreateInputSourceList`,
+  `TISGetInputSourceProperty` over `kTISPropertyInputSourceID`,
+  `kTISPropertyLocalizedName`, `kTISPropertyInputSourceLanguages`,
+  `kTISPropertyIconImageURL`, `kTISPropertyInputSourceIsEnabled`,
+  `kTISPropertyInputSourceIsSelectCapable`;
+- switching: `TISSelectInputSource` on the source whose
+  `kTISPropertyInputSourceID` matches the row;
+- change signals: `kTISNotifySelectedKeyboardInputSourceChanged` and
+  `kTISNotifyEnabledKeyboardInputSourcesChanged` through
+  `DistributedNotificationCenter`.
+
+None of these requires a TCC grant, and the app asks for none: no accessibility,
+no input monitoring, no automation. There is no key simulation and no private
+symbol — the `FrontAppSelection`-style private workaround used by other input
+switchers is deliberately not ported.
+
+## What is not implemented
+
+- **`kTISPropertyIconRef`.** The icon path reads `kTISPropertyIconImageURL`
+  only. Measured on this machine, the two properties are mutually exclusive per
+  source: `com.tencent.inputmethod.wetype.pinyin` and
+  `com.tencent.inputmethod.wetype` carry an icon image URL and no `IconRef`,
+  while `com.apple.keylayout.ABC` is the other way round. ABC therefore draws
+  its short label `A` — the same marker the system's own input-source menu shows
+  — so the gap is a styling difference, not a wrong or missing icon. Drawing an
+  `IconRef` would mean the deprecated Icon Services conversion path; revisit only
+  if a source appears that is both `IconRef`-only and has no readable name.
+- **App Sandbox.** Active switching from a sandboxed build is not covered. The
+  app ships non-sandboxed with Developer ID; do not read this as an App Store
+  compatibility claim.
+
+## Priority and fallback
+
+`ConnectionCenterSource.automatic` is the shipped default and its decision is
+byte-identical to the previous release: the input-source branch sits behind it.
+With `.inputSource` selected, the centre slot resolves in this order, and each
+step is pinned by `InputSourceIconPresentationTests`:
+
+| Priority | Condition | Drawn |
+| --- | --- | --- |
+| 1 | Battery percentage asked for in the connection slot | battery text |
+| 2 | Network outage, when the warning toggle is on (default) | Wi-Fi error glyph |
+| 3 | Current input source | its icon, else its short label, else `keyboard` |
+| 4 | Bluetooth audio replacement, when enabled | the device icon |
+| 5 | Network | Wi-Fi / wired as before |
+
+A live wired link is never an outage, so a wired user with Wi-Fi switched off
+keeps their input-source icon (`StatusMappings.isNetworkOffline`).
+
+## Icon rendering
+
+Input-source icons are files (usually PDF or PNG), and their visible ink is not
+centred in the box `NSImage.size` reports. `StatusIconRenderer` measures the ink
+centre the same way it does for SF Symbols and anchors that, so a lopsided icon
+still lands on `StatusIconGeometry.artworkCenterX`; `Issue30WiFiAlignmentTests`
+and `InputSourceIconRenderingTests` pin it for the menu bar and the Dock.
+Decoding and the ink measurement are cached per URL (`IconImageDecodeCache`), so
+a redraw never re-reads the file.
+
+## Verification status
+
+Run and passing on macOS 27.0.1 / Xcode 27.0 / Swift 6.4 (newer than the CI
+toolchain, so not proof for it):
+
+- `swift test` — 1584 tests, 7 skipped, 0 failures;
+- `swift build -c release`;
+- `swift test --filter Issue30WiFiAlignmentTests` — 5/5.
+
+The Keyboard pane route was verified by the extension that loads
+(`KeyboardSettings.appex`), not by `open`'s exit status; see
+[System Settings pane routes](settings-pane-routes.md).
+
+Not run, and not claimed:
+
+- the non-publishing `release.yml` preflight on the CI toolchain;
+- a real switch inside a focused app on a build of this branch, third-party IME
+  behaviour with a candidate window open, sleep/wake and display changes;
+- macOS 13, 15 and 26 devices. The package still targets macOS 13 and compiles
+  against it; only the local macOS 27 machine was exercised.

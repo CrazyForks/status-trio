@@ -111,6 +111,27 @@ final class InputSourceIconRenderingTests: XCTestCase {
         )
     }
 
+    /// Real input sources hand over a PDF (`menu_icon.pdf`), not a bitmap. Its
+    /// ink has no pixels to measure until the vector is rasterised, so this is
+    /// the case that proves the measurement works on the file an IME ships.
+    func testPDFInputSourceIconInkLandsOnTheCentreLine() throws {
+        let url = try InputSourceIconFixtures.writePDFIcon(
+            pointWidth: 48,
+            pointHeight: 48,
+            inkRect: CGRect(x: 20, y: 12, width: 26, height: 20)
+        )
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let scene = centerScene(url: url, scale: ConnectionIconOptions.defaultInputSourceScale)
+        let rendered = try renderedCenterPixels(for: scene)
+
+        XCTAssertEqual(
+            try XCTUnwrap(rendered.horizontalAlphaMidpoint(size: menuBarSize, scale: menuBarScale)),
+            StatusIconGeometry.artworkCenterX,
+            accuracy: 0.5
+        )
+    }
+
     /// Menu bar / Dock parity: the Dock tile draws the same scene through the
     /// same renderer, so the input source's icon has to land on the same centre
     /// line there, in both tile styles.
