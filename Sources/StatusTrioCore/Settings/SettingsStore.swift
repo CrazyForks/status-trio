@@ -35,6 +35,9 @@ final class SettingsStore: ObservableObject {
     static let showsWiFiIconForHotspotDefaultsKey = "showsWiFiIconForHotspot"
     static let showsWiFiIconForTemporaryConnectionDefaultsKey = "showsWiFiIconForTemporaryConnection"
     static let showsWiFiIconForInternetSharingDefaultsKey = "showsWiFiIconForInternetSharing"
+    /// Draws the private LAN address on the network row's second line. Off by
+    /// default: the address is a diagnostic, not something every panel needs.
+    static let showsLocalIPAddressDefaultsKey = "showsLocalIPAddress"
     static let showsBatteryPercentageInConnectionSlotDefaultsKey = "showsBatteryPercentageInConnectionSlot"
     static let replacesNetworkIconWithBluetoothAudioDefaultsKey = "replacesNetworkIconWithBluetoothAudio"
     static let usesBluetoothAudioVolumeColorDefaultsKey = "usesBluetoothAudioVolumeColor"
@@ -333,6 +336,15 @@ final class SettingsStore: ObservableObject {
             defaults.set(
                 showsWiFiIconForInternetSharing,
                 forKey: Self.showsWiFiIconForInternetSharingDefaultsKey
+            )
+        }
+    }
+
+    @Published var showsLocalIPAddress: Bool {
+        didSet {
+            defaults.set(
+                showsLocalIPAddress,
+                forKey: Self.showsLocalIPAddressDefaultsKey
             )
         }
     }
@@ -1169,6 +1181,9 @@ final class SettingsStore: ObservableObject {
         ) as? Bool ?? false
         self.showsWiFiIconForInternetSharing = defaults.object(
             forKey: Self.showsWiFiIconForInternetSharingDefaultsKey
+        ) as? Bool ?? false
+        self.showsLocalIPAddress = defaults.object(
+            forKey: Self.showsLocalIPAddressDefaultsKey
         ) as? Bool ?? false
         self.showsBatteryPercentageInConnectionSlot = defaults.object(
             forKey: Self.showsBatteryPercentageInConnectionSlotDefaultsKey

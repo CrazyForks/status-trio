@@ -215,6 +215,9 @@
 "ethernet.action.openSettings" = "Apri impostazioni Rete";
 "network.action.shareInternet" = "Condividi Internet…";
 "network.action.shareInternetHelp" = "Apre il pannello «Condivisione», dove si può attivare la condivisione di Internet.";
+"settings.network.panelGroup" = "Pannello";
+"settings.network.showLocalIP" = "Mostra IP locale";
+"settings.network.showLocalIP.description" = "Mostra l'indirizzo LAN privato di questo Mac nella riga di rete, prima dei dettagli Wi-Fi.";
 "volume.title" = "Volume · %d%%";
 "volume.titleUnavailable" = "Volume · —";
 "volume.muted" = "Muto";

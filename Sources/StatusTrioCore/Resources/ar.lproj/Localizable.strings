@@ -215,6 +215,9 @@
 "ethernet.action.openSettings" = "فتح إعدادات الشبكة";
 "network.action.shareInternet" = "مشاركة الإنترنت…";
 "network.action.shareInternetHelp" = "يفتح لوحة «المشاركة»، حيث يمكن تشغيل مشاركة الإنترنت.";
+"settings.network.panelGroup" = "لوحة";
+"settings.network.showLocalIP" = "إظهار IP المحلي";
+"settings.network.showLocalIP.description" = "يعرض عنوان الشبكة المحلية لهذا الـ Mac في سطر الشبكة، قبل تفاصيل Wi-Fi.";
 "volume.title" = "مستوى الصوت · %d%%";
 "volume.titleUnavailable" = "مستوى الصوت · —";
 "volume.muted" = "صامت";

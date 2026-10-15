@@ -215,6 +215,9 @@
 "ethernet.action.openSettings" = "네트워크 설정 열기";
 "network.action.shareInternet" = "인터넷 공유…";
 "network.action.shareInternetHelp" = "인터넷 공유를 켤 수 있는 '공유' 패널을 엽니다.";
+"settings.network.panelGroup" = "패널";
+"settings.network.showLocalIP" = "로컬 IP 표시";
+"settings.network.showLocalIP.description" = "네트워크 행의 둘째 줄에 Wi-Fi 정보보다 먼저 이 Mac의 사설 LAN 주소를 표시합니다.";
 "volume.title" = "볼륨 · %d%%";
 "volume.titleUnavailable" = "볼륨 · —";
 "volume.muted" = "음소거됨";
