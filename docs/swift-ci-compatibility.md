@@ -1003,3 +1003,25 @@ Error: release notes directory does not exist: …/release-notes/1.6.1
 `swift build -c release` 和 `swift test --filter Issue30WiFiAlignmentTests`（5/5）均通过；
 面板行、图标掩膜与菜单栏尺寸条通过测试内渲染的截图人工核对。真实前台输入切换、
 候选框行为与 macOS 13/15/26 设备验证仍不在 CI 覆盖范围。
+
+## 38770589762：中间槽文字锚点修复的预检
+
+用户第二轮反馈的第三个问题（160% 的输入法短标签 `A` 压到外环充电闪电）修好后，
+非发布预检
+[`38770589762`](https://github.com/lingyired/status-trio/actions/runs/38770589762)
+（head `7bef0428`、`version=1.6.0`、`build=38`、`publish=false`、`notarize=false`）
+在 CI 工具链上全绿，耗时约 13 分钟：
+
+- `Run tests` 通过（1,604 XCTest、7 skipped、0 failures；587 Swift Testing / 91 suites 也通过）。
+  本机 1,594 与 CI 1,604 的差仍是 `#available(macOS 26/27)` 门控的用例。
+  本轮新增的 `Issue30WiFiAlignmentTests.testInputSourceLabelInkKeepsTheSlotCentreAtEveryScale`
+  在两个 macOS 版本上都运行，并且在旧算法下会失败（160% 实测 21.6，期望 64.25），
+  证明它确实守住了这次的缺陷。
+- `Run native compatibility tests` 通过，含 macOS 13 bundle/Sparkle 契约检查。
+- Universal release 构建、DMG 打包与 artifact 上传通过；该次预检 `publish=false` 且
+  `notarize=false`，走 Ad-hoc 签名，未创建 GitHub Release，也未更新 appcast。
+
+本机同一 head（Xcode 27.0 / Swift 6.4）上 `swift test`（1,594 tests、7 skipped、0 failures）、
+`swift build -c release` 和 `swift test --filter Issue30WiFiAlignmentTests`（6/6）均通过；
+修复前后的菜单栏条带、以及"槽内电量百分比"受同一路径影响的对比条，都通过测试内渲染截图人工核对。
+真实前台输入切换、候选框行为与 macOS 13/15/26 设备验证仍不在 CI 覆盖范围。
