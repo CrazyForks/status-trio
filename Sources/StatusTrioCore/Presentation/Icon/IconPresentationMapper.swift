@@ -99,7 +99,7 @@ enum IconPresentationMapper {
                    wifi: snapshot.wifi,
                    connection: snapshot.connection
                )) {
-            return inputSourceCenterState(inputSource)
+            return inputSourceCenterState(inputSource, scale: connectionOptions.wifiScale)
         }
 
         if StatusMappings.shouldReplaceNetworkIcon(
@@ -137,8 +137,15 @@ enum IconPresentationMapper {
     /// The input-source glyph: the source's own icon, then its short label,
     /// then a neutral keyboard symbol. Never returns `nil`, so a selected
     /// source can never blank the centre slot.
-    private static func inputSourceCenterState(_ source: InputSourceDescriptor) -> CenterState {
-        let scale = ConnectionIconOptions.defaultInputSourceScale
+    ///
+    /// `scale` is the Wi-Fi size the user chose: the input source takes over
+    /// the slot the Wi-Fi glyph sits in, so it follows the same control from
+    /// the same base — the Wi-Fi symbol's point size and the image's 42-unit
+    /// box are calibrated to each other, so both grow together.
+    private static func inputSourceCenterState(
+        _ source: InputSourceDescriptor,
+        scale: Double
+    ) -> CenterState {
         if let iconURL = source.iconURL {
             return .symbol(IconSymbolState(
                 source: .image(url: iconURL, fallbackSymbol: "keyboard"),
@@ -147,7 +154,7 @@ enum IconPresentationMapper {
             ))
         }
         if let label = source.shortLabel, !label.isEmpty {
-            return .text(IconTextState(text: label, color: .primary, scale: 1))
+            return .text(IconTextState(text: label, color: .primary, scale: scale))
         }
         return .symbol(IconSymbolState(
             source: .symbol(name: "keyboard", variableValue: nil, fallback: nil),

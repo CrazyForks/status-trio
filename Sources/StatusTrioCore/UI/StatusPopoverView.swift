@@ -6,6 +6,7 @@ private enum PopoverPanel {
     case battery
     case wifi(showDetails: Bool)
     case ethernet
+    case inputSource
 }
 
 struct StatusPopoverView: View {
@@ -76,6 +77,13 @@ struct StatusPopoverView: View {
                     onOpenNetworkSettings: openNetworkSettings,
                     onOpenSharingSettings: openSharingSettings,
                     onCopyValue: { copyValue($0) }
+                )
+            case .inputSource:
+                InputSourceListView(
+                    state: panel.inputSource,
+                    onBack: { currentPanel = .summary },
+                    onSelect: { panel.actions.selectInputSource($0) },
+                    onOpenKeyboardSettings: openKeyboardSettings
                 )
             }
         }
@@ -166,7 +174,7 @@ struct StatusPopoverView: View {
         case .inputSource:
             InputSourceStatusView(
                 state: panel.inputSource,
-                onSelect: { panel.actions.selectInputSource($0) },
+                onOpen: { currentPanel = .inputSource },
                 onOpenKeyboardSettings: openKeyboardSettings
             )
         }

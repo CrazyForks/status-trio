@@ -68,6 +68,35 @@ and `InputSourceIconRenderingTests` pin it for the menu bar and the Dock.
 Decoding and the ink measurement are cached per URL (`IconImageDecodeCache`), so
 a redraw never re-reads the file.
 
+The input source takes over the slot the Wi-Fi glyph sits in, so it follows the
+one size control that slot has: "Wi-Fi Icon Size" (100 %–180 %, default 160 %).
+`IconPresentationMapper.inputSourceCenterState` receives that value as its scale
+for the icon file, the short-label text and the keyboard fallback alike, and the
+image's 42-unit box is calibrated against the Wi-Fi glyph's own ink width at the
+same scale — 67.75 against 67.2 units at the default — so an adjustment moves
+both together instead of resizing one of them.
+
+## The status panel
+
+The section is a row, not a picker: it reports the current source next to a
+disclosure chevron and the keyboard-settings gear, and clicking it opens the
+switching list in place of the panel, the same way the battery and network rows
+open their detail pages. `InputSourcePanelLayoutTests` pins that the closed row
+draws no per-source target.
+
+Every row in the opened list draws one flat mark in the row's own colour, so the
+list stays readable on a dark panel:
+
+- a source that ships an icon file goes through `InputSourceIconMask`, which
+  keeps the icon's *ink* rather than its palette — the WeChat input method's
+  black disc with a light glyph becomes a light disc with the glyph knocked out,
+  and the system's dark Pinyin art becomes a light glyph;
+- a source with no icon file gets the rounded chip macOS itself shows for ABC,
+  with the layout's letter inside it.
+
+Both are cached per URL, so a panel redraw never re-reads or re-rasterises the
+file.
+
 ## Verification status
 
 Run and passing on macOS 27.0.1 / Xcode 27.0 / Swift 6.4 (newer than the CI

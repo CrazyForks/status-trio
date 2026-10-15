@@ -4,6 +4,9 @@ import XCTest
 /// The centre-slot priority table for the input-source mode, plus proof that
 /// `.automatic` keeps the shipped behaviour bit for bit.
 final class InputSourceIconPresentationTests: XCTestCase {
+    /// The Wi-Fi size the fixtures configure. The centre slot draws the input
+    /// source at the same scale, so every expectation reuses this value.
+    private let wifiScale = 1.6
     private let iconURL = URL(fileURLWithPath: "/fixture/menu_icon.pdf")
 
     func testInputSourceIconWinsWhenItCanBeRead() {
@@ -16,7 +19,7 @@ final class InputSourceIconPresentationTests: XCTestCase {
         XCTAssertEqual(scene.center, .symbol(IconSymbolState(
             source: .image(url: iconURL, fallbackSymbol: "keyboard"),
             color: .primary,
-            scale: ConnectionIconOptions.defaultInputSourceScale
+            scale: wifiScale
         )))
     }
 
@@ -27,7 +30,37 @@ final class InputSourceIconPresentationTests: XCTestCase {
             configuration: configuration(centerSource: .inputSource)
         )
 
-        XCTAssertEqual(scene.center, .text(IconTextState(text: "A", color: .primary, scale: 1)))
+        XCTAssertEqual(scene.center, .text(IconTextState(text: "A", color: .primary, scale: wifiScale)))
+    }
+
+    /// The centre slot has one size control. The input source follows the
+    /// Wi-Fi size at the Wi-Fi symbol's own base instead of being pinned to a
+    /// private default, so an adjustment moves the whole slot together.
+    func testInputSourceGlyphFollowsTheWiFiSize() {
+        for scale in [1.0, 1.35, 1.8] {
+            let configuration = configuration(centerSource: .inputSource, wifiScale: scale)
+            let icon = scene(
+                snapshot: snapshot(),
+                inputSource: descriptor(iconURL: iconURL),
+                configuration: configuration
+            )
+            XCTAssertEqual(icon.center, .symbol(IconSymbolState(
+                source: .image(url: iconURL, fallbackSymbol: "keyboard"),
+                color: .primary,
+                scale: scale
+            )))
+
+            let label = scene(
+                snapshot: snapshot(),
+                inputSource: descriptor(iconURL: nil, shortLabel: "A"),
+                configuration: configuration
+            )
+            XCTAssertEqual(label.center, .text(IconTextState(
+                text: "A",
+                color: .primary,
+                scale: scale
+            )))
+        }
     }
 
     func testSourceWithoutIconOrLabelFallsBackToAKeyboardSymbol() {
@@ -40,7 +73,7 @@ final class InputSourceIconPresentationTests: XCTestCase {
         XCTAssertEqual(scene.center, .symbol(IconSymbolState(
             source: .symbol(name: "keyboard", variableValue: nil, fallback: nil),
             color: .primary,
-            scale: ConnectionIconOptions.defaultInputSourceScale
+            scale: wifiScale
         )))
     }
 
@@ -67,7 +100,7 @@ final class InputSourceIconPresentationTests: XCTestCase {
                 .symbol(IconSymbolState(
                     source: .image(url: iconURL, fallbackSymbol: "keyboard"),
                     color: .primary,
-                    scale: ConnectionIconOptions.defaultInputSourceScale
+                    scale: wifiScale
                 )),
                 "\(wifiState) must keep the genuine network warning"
             )
@@ -87,7 +120,7 @@ final class InputSourceIconPresentationTests: XCTestCase {
         XCTAssertEqual(scene.center, .symbol(IconSymbolState(
             source: .image(url: iconURL, fallbackSymbol: "keyboard"),
             color: .primary,
-            scale: ConnectionIconOptions.defaultInputSourceScale
+            scale: wifiScale
         )))
     }
 
@@ -104,7 +137,7 @@ final class InputSourceIconPresentationTests: XCTestCase {
         XCTAssertEqual(scene.center, .symbol(IconSymbolState(
             source: .image(url: iconURL, fallbackSymbol: "keyboard"),
             color: .primary,
-            scale: ConnectionIconOptions.defaultInputSourceScale
+            scale: wifiScale
         )))
     }
 
@@ -138,7 +171,7 @@ final class InputSourceIconPresentationTests: XCTestCase {
         XCTAssertEqual(scene.center, .symbol(IconSymbolState(
             source: .image(url: iconURL, fallbackSymbol: "keyboard"),
             color: .primary,
-            scale: ConnectionIconOptions.defaultInputSourceScale
+            scale: wifiScale
         )))
     }
 
@@ -218,7 +251,8 @@ final class InputSourceIconPresentationTests: XCTestCase {
         centerSource: ConnectionCenterSource,
         prioritizesNetworkErrors: Bool = true,
         bluetoothReplacesNetworkIcon: Bool = false,
-        showsPercentageInConnectionSlot: Bool = false
+        showsPercentageInConnectionSlot: Bool = false,
+        wifiScale: Double = 1.6
     ) -> IconPresentationConfiguration {
         IconPresentationConfiguration(
             battery: .standard,
@@ -226,7 +260,7 @@ final class InputSourceIconPresentationTests: XCTestCase {
                 showsBatteryPercentageInConnectionSlot: showsPercentageInConnectionSlot,
                 centerSource: centerSource,
                 prioritizesNetworkErrorsOverInputSource: prioritizesNetworkErrors,
-                wifiScale: 1.6
+                wifiScale: wifiScale
             ),
             volume: .standard,
             bluetooth: BluetoothAudioIconOptions(

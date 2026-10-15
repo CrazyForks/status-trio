@@ -12,9 +12,6 @@ struct ConnectionIconOptions: Equatable, Hashable, Sendable {
     let prioritizesNetworkErrorsOverInputSource: Bool
     let wifiScale: Double
 
-    /// The SF-symbol-scale analogue used for input-source icons and images.
-    static let defaultInputSourceScale: Double = 1.6
-
     static let standard = ConnectionIconOptions(
         showsWiFiIconForEthernet: false,
         showsWiFiIconForHotspot: false,

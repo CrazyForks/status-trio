@@ -23,6 +23,26 @@ final class IconImageDecodeCacheTests: XCTestCase {
         XCTAssertEqual(loads, 1)
     }
 
+    /// The panel's monochrome version is derived from the file just once per
+    /// URL: the mask is a second entry beside the decoded image, not a second
+    /// read, so deleting the file after the first row render must not change
+    /// what the next render draws.
+    func testPanelMaskIsDerivedOncePerFile() throws {
+        let cache = IconImageDecodeCache(maximumEntries: 4)
+        let url = try InputSourceIconFixtures.writeIcon(
+            pixelWidth: 32,
+            pixelHeight: 32,
+            inkRect: CGRect(x: 8, y: 8, width: 16, height: 16)
+        )
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let first = try XCTUnwrap(cache.monochromeInputSourceIcon(for: url))
+        try FileManager.default.removeItem(at: url)
+        let second = try XCTUnwrap(cache.monochromeInputSourceIcon(for: url))
+
+        XCTAssertTrue(first === second)
+    }
+
     func testDifferentURLsAreDecodedSeparately() {
         let cache = IconImageDecodeCache(maximumEntries: 4)
         var loadedURLs: [URL] = []

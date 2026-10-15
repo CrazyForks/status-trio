@@ -20,7 +20,7 @@ final class InputSourceIconRenderingTests: XCTestCase {
         ]
         let scales = [
             IconSymbolState.normalizedScale(0.8),
-            ConnectionIconOptions.defaultInputSourceScale,
+            SettingsStore.defaultWifiSymbolScale,
             2.2
         ]
 
@@ -55,7 +55,7 @@ final class InputSourceIconRenderingTests: XCTestCase {
             inkRect: CGRect(x: 48, y: 8, width: 40, height: 32)
         )
         defer { try? FileManager.default.removeItem(at: url) }
-        let scene = centerScene(url: url, scale: ConnectionIconOptions.defaultInputSourceScale)
+        let scene = centerScene(url: url, scale: SettingsStore.defaultWifiSymbolScale)
 
         let darkBar = try renderedCenterPixels(for: scene, foreground: CGColor(gray: 1, alpha: 1))
         let lightBar = try renderedCenterPixels(for: scene, foreground: CGColor(gray: 0.1, alpha: 1))
@@ -80,7 +80,7 @@ final class InputSourceIconRenderingTests: XCTestCase {
             pixelHeight: 48,
             inkRect: CGRect(x: 48, y: 8, width: 40, height: 32)
         )
-        let scene = centerScene(url: url, scale: ConnectionIconOptions.defaultInputSourceScale)
+        let scene = centerScene(url: url, scale: SettingsStore.defaultWifiSymbolScale)
 
         let first = try renderedCenterPixels(for: scene)
         try FileManager.default.removeItem(at: url)
@@ -101,7 +101,7 @@ final class InputSourceIconRenderingTests: XCTestCase {
             .appendingPathComponent("status-trio-missing-\(UUID().uuidString).png")
         XCTAssertFalse(FileManager.default.fileExists(atPath: missing.path))
 
-        let scene = centerScene(url: missing, scale: ConnectionIconOptions.defaultInputSourceScale)
+        let scene = centerScene(url: missing, scale: SettingsStore.defaultWifiSymbolScale)
         let pixels = try renderedCenterPixels(for: scene)
 
         XCTAssertEqual(
@@ -122,7 +122,7 @@ final class InputSourceIconRenderingTests: XCTestCase {
         )
         defer { try? FileManager.default.removeItem(at: url) }
 
-        let scene = centerScene(url: url, scale: ConnectionIconOptions.defaultInputSourceScale)
+        let scene = centerScene(url: url, scale: SettingsStore.defaultWifiSymbolScale)
         let rendered = try renderedCenterPixels(for: scene)
 
         XCTAssertEqual(
@@ -142,7 +142,7 @@ final class InputSourceIconRenderingTests: XCTestCase {
             inkRect: CGRect(x: 48, y: 8, width: 40, height: 32)
         )
         defer { try? FileManager.default.removeItem(at: url) }
-        let scene = centerScene(url: url, scale: ConnectionIconOptions.defaultInputSourceScale)
+        let scene = centerScene(url: url, scale: SettingsStore.defaultWifiSymbolScale)
 
         let menuBar = try renderedCenterPixels(for: scene)
         XCTAssertEqual(

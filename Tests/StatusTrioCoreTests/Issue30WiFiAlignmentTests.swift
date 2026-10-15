@@ -181,7 +181,7 @@ final class Issue30WiFiAlignmentTests: XCTestCase {
             scene: IconSceneState(center: .symbol(IconSymbolState(
                 source: .image(url: iconURL, fallbackSymbol: "keyboard"),
                 color: .primary,
-                scale: ConnectionIconOptions.defaultInputSourceScale
+                scale: SettingsStore.defaultWifiSymbolScale
             ))),
             environment: StatusIconRenderEnvironment(
                 size: 120,

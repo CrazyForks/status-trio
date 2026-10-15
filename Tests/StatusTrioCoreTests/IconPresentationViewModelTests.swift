@@ -525,7 +525,7 @@ final class IconPresentationViewModelTests: XCTestCase {
             .symbol(IconSymbolState(
                 source: .image(url: iconURL, fallbackSymbol: "keyboard"),
                 color: .primary,
-                scale: ConnectionIconOptions.defaultInputSourceScale
+                scale: 1
             ))
         )
     }
