@@ -61,6 +61,13 @@
 "settings.network.wifiIconForHotspot" = "Use Wi-Fi icon for Personal Hotspot";
 "settings.network.wifiIconForTemporaryConnection" = "Use Wi-Fi icon for Temporary Connection";
 "settings.network.wifiIconForInternetSharing" = "Use Wi-Fi icon for Internet Sharing";
+"settings.network.centerSource" = "Middle Slot";
+"settings.network.centerSource.description" = "Choose what the status icon’s middle slot shows. Automatic keeps the usual network and Bluetooth behavior.";
+"settings.network.centerSource.automatic" = "Automatic";
+"settings.network.centerSource.inputSource" = "Current Input Source";
+"settings.network.centerSource.bluetoothFallback" = "With the input source selected, Bluetooth and network icons are used only as fallbacks.";
+"settings.network.centerSource.networkWarnings" = "Show network problems instead";
+"settings.network.centerSource.networkWarnings.description" = "When the Mac is genuinely offline, the middle slot shows the network state instead of the input source.";
 "settings.bluetooth.title" = "Bluetooth Audio";
 "settings.bluetooth.replaceNetworkIcon" = "Replace the network icon with a Bluetooth device icon";
 "settings.bluetooth.replaceNetworkIconDescription" = "Replace the Wi-Fi icon with the chosen Bluetooth device's icon in blue.";
@@ -266,6 +273,12 @@
 "settings.popup.order.network" = "Network";
 "settings.popup.order.volume" = "Volume";
 "settings.popup.order.audioInput" = "Audio Input";
+"inputSource.title" = "Input Source";
+"inputSource.empty" = "No keyboard input sources are enabled. Add one in Keyboard settings.";
+"inputSource.openSettings" = "Open Keyboard Settings";
+"inputSource.switchFailed" = "Couldn’t switch to “%@”. Select it directly or try again.";
+"inputSource.switchUnconfirmed" = "macOS accepted “%@” but still reports another input source. The front app may need focus.";
+"settings.popup.order.inputSource" = "Input Source";
 "settings.popup.volumeScroll.group" = "Panel Scrolling";
 "settings.popup.volumeScroll" = "Adjust Volume by Scrolling";
 "settings.popup.volumeScroll.description" = "Scroll inside the status panel to change the output volume.";

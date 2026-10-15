@@ -61,6 +61,13 @@
 "settings.network.wifiIconForHotspot" = "Usar o ícone de Wi-Fi para ponto de acesso pessoal";
 "settings.network.wifiIconForTemporaryConnection" = "Usar o ícone de Wi-Fi para conexão temporária";
 "settings.network.wifiIconForInternetSharing" = "Usar o ícone de Wi-Fi para compartilhamento de Internet";
+"settings.network.centerSource" = "Ícone central";
+"settings.network.centerSource.description" = "Escolha o que o ícone de status mostra no centro. “Automático” mantém o comportamento de rede e Bluetooth atual.";
+"settings.network.centerSource.automatic" = "Automático";
+"settings.network.centerSource.inputSource" = "Fonte de entrada atual";
+"settings.network.centerSource.bluetoothFallback" = "Com a fonte de entrada selecionada, os ícones de Bluetooth e rede são usados apenas como alternativa.";
+"settings.network.centerSource.networkWarnings" = "Priorizar problemas de rede";
+"settings.network.centerSource.networkWarnings.description" = "Quando o Mac está realmente offline, o centro mostra o estado da rede em vez da fonte de entrada.";
 "settings.bluetooth.title" = "Áudio Bluetooth";
 "settings.bluetooth.replaceNetworkIcon" = "Substituir o ícone de rede pelo ícone de um dispositivo Bluetooth";
 "settings.bluetooth.replaceNetworkIconDescription" = "Substitui o ícone de Wi‑Fi pelo ícone azul do dispositivo Bluetooth escolhido.";
@@ -266,6 +273,12 @@
 "settings.popup.order.network" = "Rede";
 "settings.popup.order.volume" = "Volume";
 "settings.popup.order.audioInput" = "Entrada de áudio";
+"inputSource.title" = "Fonte de entrada";
+"inputSource.empty" = "Nenhuma fonte de entrada de teclado está ativada. Adicione uma nos ajustes de Teclado.";
+"inputSource.openSettings" = "Abrir ajustes de Teclado";
+"inputSource.switchFailed" = "Não foi possível mudar para “%@”. Selecione-a diretamente ou tente novamente.";
+"inputSource.switchUnconfirmed" = "O macOS aceitou “%@”, mas ainda informa outra fonte de entrada. O app em primeiro plano pode precisar de foco.";
+"settings.popup.order.inputSource" = "Fonte de entrada";
 "settings.popup.volumeScroll.group" = "Rolagem do painel";
 "settings.popup.volumeScroll" = "Ajustar o volume com a rolagem";
 "settings.popup.volumeScroll.description" = "Role dentro do painel de status para alterar o volume de saída.";

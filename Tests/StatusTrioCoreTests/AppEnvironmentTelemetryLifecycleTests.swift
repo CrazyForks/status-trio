@@ -77,6 +77,7 @@ final class AppEnvironmentTelemetryLifecycleTests: XCTestCase {
                 notificationCenter: NotificationCenter(),
                 openSettings: {}
             ),
+            inputSourceController: InputSourceController(),
             chargingEffectClock: clock,
             chargingEffectMotionMonitor: ChargingEffectMotionMonitor(
                 readReduceMotion: { false },

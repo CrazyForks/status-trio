@@ -56,15 +56,19 @@ final class IconPresentationViewModel: ObservableObject {
 
     private let snapshots: AnyPublisher<StatusSnapshot, Never>
     private let preferences: AnyPublisher<IconPresentationSettings, Never>
+    private let inputSources: AnyPublisher<InputSourceDescriptor?, Never>
     private let resolveInputs: @MainActor (StatusSnapshot) -> IconPresentationInputs
     private let mapScene: IconSceneMapper
     private let snapshotScheduler: any IconPresentationScheduling
     private var snapshotSubscription: AnyCancellable?
     private var preferencesSubscription: AnyCancellable?
+    private var inputSourcesSubscription: AnyCancellable?
     private var latestSnapshot: StatusSnapshot
     private var latestSettings: IconPresentationSettings
+    private var latestInputSource: InputSourceDescriptor?
     private var receivedSnapshotForStart = false
     private var receivedSettingsForStart = false
+    private var receivedInputSourceForStart = false
     private var synchronizedStart = false
 
     init(
@@ -72,6 +76,7 @@ final class IconPresentationViewModel: ObservableObject {
         settings: IconPresentationSettings,
         snapshots: AnyPublisher<StatusSnapshot, Never>,
         preferences: AnyPublisher<IconPresentationSettings, Never>,
+        inputSources: AnyPublisher<InputSourceDescriptor?, Never> = Empty<InputSourceDescriptor?, Never>().eraseToAnyPublisher(),
         resolveInputs: @escaping @MainActor (StatusSnapshot) -> IconPresentationInputs,
         mapScene: @escaping IconSceneMapper = { inputs, configuration in
             IconPresentationMapper.scene(inputs: inputs, configuration: configuration)
@@ -80,6 +85,7 @@ final class IconPresentationViewModel: ObservableObject {
     ) {
         self.snapshots = snapshots
         self.preferences = preferences
+        self.inputSources = inputSources
         self.resolveInputs = resolveInputs
         self.mapScene = mapScene
         self.snapshotScheduler = snapshotScheduler
@@ -88,6 +94,7 @@ final class IconPresentationViewModel: ObservableObject {
         self.output = Self.output(
             snapshot: snapshot,
             settings: settings,
+            inputSource: nil,
             resolveInputs: resolveInputs,
             mapScene: mapScene
         )
@@ -97,6 +104,7 @@ final class IconPresentationViewModel: ObservableObject {
         guard snapshotSubscription == nil, preferencesSubscription == nil else { return }
         receivedSnapshotForStart = false
         receivedSettingsForStart = false
+        receivedInputSourceForStart = false
         synchronizedStart = false
 
         snapshotSubscription = snapshots.sink { [weak self] deliveredSnapshot in
@@ -109,16 +117,24 @@ final class IconPresentationViewModel: ObservableObject {
                 self?.receive(deliveredSettings)
             }
         }
+        inputSourcesSubscription = inputSources.sink { [weak self] deliveredInputSource in
+            MainActor.assumeIsolated {
+                self?.receive(deliveredInputSource)
+            }
+        }
     }
 
     func stop() {
         snapshotScheduler.cancel()
         snapshotSubscription?.cancel()
         preferencesSubscription?.cancel()
+        inputSourcesSubscription?.cancel()
         snapshotSubscription = nil
         preferencesSubscription = nil
+        inputSourcesSubscription = nil
         receivedSnapshotForStart = false
         receivedSettingsForStart = false
+        receivedInputSourceForStart = false
         synchronizedStart = false
     }
 
@@ -149,6 +165,29 @@ final class IconPresentationViewModel: ObservableObject {
         publishLatestOutput()
     }
 
+    /// Input-source changes land immediately, like settings and unlike the
+    /// debounced network/battery snapshots: the user just pressed a key or
+    /// clicked a row, and the icon is the only feedback they get.
+    ///
+    /// The first delivery does not gate the start handshake: callers with no
+    /// input-source publisher (the default) keep the shipped two-publisher
+    /// startup, and a publisher that replays its current value still lands in
+    /// the first mapped output.
+    private func receive(_ inputSource: InputSourceDescriptor?) {
+        latestInputSource = inputSource
+        if !receivedInputSourceForStart {
+            receivedInputSourceForStart = true
+            if synchronizedStart {
+                publishLatestOutput()
+            }
+            return
+        }
+        guard synchronizedStart else { return }
+
+        snapshotScheduler.cancel()
+        publishLatestOutput()
+    }
+
     private func publishWhenStartInputsAreReady() {
         guard receivedSnapshotForStart, receivedSettingsForStart else { return }
         synchronizedStart = true
@@ -160,6 +199,7 @@ final class IconPresentationViewModel: ObservableObject {
         let next = Self.output(
             snapshot: latestSnapshot,
             settings: latestSettings,
+            inputSource: latestInputSource,
             resolveInputs: resolveInputs,
             mapScene: mapScene
         )
@@ -170,14 +210,21 @@ final class IconPresentationViewModel: ObservableObject {
     private static func output(
         snapshot: StatusSnapshot,
         settings: IconPresentationSettings,
+        inputSource: InputSourceDescriptor?,
         resolveInputs: @MainActor (StatusSnapshot) -> IconPresentationInputs,
         mapScene: IconSceneMapper
     ) -> IconPresentationOutput {
-        let scene = mapScene(resolveInputs(snapshot), settings.configuration)
+        let scene = mapScene(
+            resolvedInputs(snapshot: snapshot, inputSource: inputSource, resolveInputs: resolveInputs),
+            settings.configuration
+        )
         let menuBarTestScene: IconSceneState?
         if settings.testsChargingEffect {
             let projected = ChargingEffectTestMode.snapshot(snapshot, enabled: true)
-            menuBarTestScene = mapScene(resolveInputs(projected), settings.configuration)
+            menuBarTestScene = mapScene(
+                resolvedInputs(snapshot: projected, inputSource: inputSource, resolveInputs: resolveInputs),
+                settings.configuration
+            )
         } else {
             menuBarTestScene = nil
         }
@@ -185,6 +232,25 @@ final class IconPresentationViewModel: ObservableObject {
             scene: scene,
             menuBarTestScene: menuBarTestScene,
             menuBarSize: settings.menuBarSize
+        )
+    }
+
+    /// The view model owns the input-source field so the publisher's value is
+    /// the single truth, independent of what `resolveInputs` captured. It is
+    /// resolved for drawing here rather than by the caller's closure, because
+    /// the closure only ever sees a status snapshot: a missing icon file has to
+    /// degrade to the source's short label on the live icon exactly as it does
+    /// in the settings previews.
+    private static func resolvedInputs(
+        snapshot: StatusSnapshot,
+        inputSource: InputSourceDescriptor?,
+        resolveInputs: @MainActor (StatusSnapshot) -> IconPresentationInputs
+    ) -> IconPresentationInputs {
+        let inputs = resolveInputs(snapshot)
+        return IconPresentationInputs(
+            snapshot: inputs.snapshot,
+            audioIcon: inputs.audioIcon,
+            inputSource: inputSource?.resolvedForDrawing()
         )
     }
 }

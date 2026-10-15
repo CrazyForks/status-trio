@@ -61,6 +61,13 @@
 "settings.network.wifiIconForHotspot" = "WLAN-Symbol für persönlichen Hotspot verwenden";
 "settings.network.wifiIconForTemporaryConnection" = "WLAN-Symbol für temporäre Verbindung verwenden";
 "settings.network.wifiIconForInternetSharing" = "WLAN-Symbol für Internetfreigabe verwenden";
+"settings.network.centerSource" = "Mittleres Symbol";
+"settings.network.centerSource.description" = "Wähle, was das Status-Symbol in der Mitte zeigt. „Automatisch“ behält das bisherige Netzwerk- und Bluetooth-Verhalten bei.";
+"settings.network.centerSource.automatic" = "Automatisch";
+"settings.network.centerSource.inputSource" = "Aktuelle Eingabequelle";
+"settings.network.centerSource.bluetoothFallback" = "Bei gewählter Eingabequelle dienen Bluetooth- und Netzwerksymbole nur als Ersatz.";
+"settings.network.centerSource.networkWarnings" = "Netzwerkprobleme bevorzugen";
+"settings.network.centerSource.networkWarnings.description" = "Wenn der Mac wirklich offline ist, zeigt die Mitte den Netzwerkstatus statt der Eingabequelle.";
 "settings.bluetooth.title" = "Bluetooth-Audio";
 "settings.bluetooth.replaceNetworkIcon" = "Netzwerksymbol durch ein Bluetooth-Gerätesymbol ersetzen";
 "settings.bluetooth.replaceNetworkIconDescription" = "Ersetzt das WLAN-Symbol durch das blaue Symbol des gewählten Bluetooth-Geräts.";
@@ -266,6 +273,12 @@
 "settings.popup.order.network" = "Netzwerk";
 "settings.popup.order.volume" = "Lautstärke";
 "settings.popup.order.audioInput" = "Audioeingang";
+"inputSource.title" = "Eingabequelle";
+"inputSource.empty" = "Es ist keine Tastatureingabequelle aktiviert. Füge eine in den Tastatureinstellungen hinzu.";
+"inputSource.openSettings" = "Tastatureinstellungen öffnen";
+"inputSource.switchFailed" = "Wechsel zu „%@“ nicht möglich. Wähle sie direkt aus oder versuche es erneut.";
+"inputSource.switchUnconfirmed" = "macOS hat „%@“ akzeptiert, meldet aber weiterhin eine andere Eingabequelle. Die vorderste App braucht möglicherweise den Fokus.";
+"settings.popup.order.inputSource" = "Eingabequelle";
 "settings.popup.volumeScroll.group" = "Panel-Scrollen";
 "settings.popup.volumeScroll" = "Lautstärke durch Scrollen ändern";
 "settings.popup.volumeScroll.description" = "Im Statusbereich scrollen, um die Ausgabelautstärke zu ändern.";

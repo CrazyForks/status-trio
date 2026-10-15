@@ -61,6 +61,13 @@
 "settings.network.wifiIconForHotspot" = "개인 핫스팟에 Wi-Fi 아이콘 사용";
 "settings.network.wifiIconForTemporaryConnection" = "임시 연결에 Wi-Fi 아이콘 사용";
 "settings.network.wifiIconForInternetSharing" = "인터넷 공유에 Wi-Fi 아이콘 사용";
+"settings.network.centerSource" = "중앙 아이콘";
+"settings.network.centerSource.description" = "상태 아이콘 중앙에 표시할 내용을 선택합니다. '자동'은 기존 네트워크 및 Bluetooth 동작을 유지합니다.";
+"settings.network.centerSource.automatic" = "자동";
+"settings.network.centerSource.inputSource" = "현재 입력 소스";
+"settings.network.centerSource.bluetoothFallback" = "입력 소스를 선택하면 Bluetooth 및 네트워크 아이콘은 대체용으로만 사용됩니다.";
+"settings.network.centerSource.networkWarnings" = "네트워크 문제 우선 표시";
+"settings.network.centerSource.networkWarnings.description" = "Mac이 실제로 오프라인일 때 중앙에 입력 소스 대신 네트워크 상태를 표시합니다.";
 "settings.bluetooth.title" = "Bluetooth 오디오";
 "settings.bluetooth.replaceNetworkIcon" = "네트워크 아이콘을 Bluetooth 기기 아이콘으로 교체";
 "settings.bluetooth.replaceNetworkIconDescription" = "선택한 Bluetooth 기기의 파란색 아이콘을 Wi-Fi 아이콘 대신 표시합니다.";
@@ -266,6 +273,12 @@
 "settings.popup.order.network" = "네트워크";
 "settings.popup.order.volume" = "볼륨";
 "settings.popup.order.audioInput" = "오디오 입력";
+"inputSource.title" = "입력 소스";
+"inputSource.empty" = "사용 설정된 키보드 입력 소스가 없습니다. 키보드 설정에서 추가하십시오.";
+"inputSource.openSettings" = "키보드 설정 열기";
+"inputSource.switchFailed" = "‘%@’(으)로 전환하지 못했습니다. 직접 선택하거나 다시 시도하십시오.";
+"inputSource.switchUnconfirmed" = "macOS가 ‘%@’을(를) 수락했지만 현재 입력 소스는 다른 항목입니다. 최전면 앱에 포커스가 필요할 수 있습니다.";
+"settings.popup.order.inputSource" = "입력 소스";
 "settings.popup.volumeScroll.group" = "패널 스크롤";
 "settings.popup.volumeScroll" = "스크롤로 볼륨 조절";
 "settings.popup.volumeScroll.description" = "상태 패널 안에서 스크롤하면 출력 볼륨이 바뀝니다.";

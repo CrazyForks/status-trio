@@ -39,6 +39,11 @@ final class SettingsStore: ObservableObject {
     /// default: the address is a diagnostic, not something every panel needs.
     static let showsLocalIPAddressDefaultsKey = "showsLocalIPAddress"
     static let showsBatteryPercentageInConnectionSlotDefaultsKey = "showsBatteryPercentageInConnectionSlot"
+    /// Raw value of `ConnectionCenterSource`. Missing or unknown values decode
+    /// to `.automatic`, so a downgrade or corrupted default never changes the
+    /// shipped icon behaviour.
+    static let connectionCenterSourceDefaultsKey = "connectionCenterSource"
+    static let prioritizesNetworkErrorsOverInputSourceDefaultsKey = "prioritizesNetworkErrorsOverInputSource"
     static let replacesNetworkIconWithBluetoothAudioDefaultsKey = "replacesNetworkIconWithBluetoothAudio"
     static let usesBluetoothAudioVolumeColorDefaultsKey = "usesBluetoothAudioVolumeColor"
     static let prioritizesNetworkErrorsOverBluetoothAudioDefaultsKey = "prioritizesNetworkErrorsOverBluetoothAudio"
@@ -354,6 +359,24 @@ final class SettingsStore: ObservableObject {
             defaults.set(
                 showsBatteryPercentageInConnectionSlot,
                 forKey: Self.showsBatteryPercentageInConnectionSlotDefaultsKey
+            )
+        }
+    }
+
+    @Published var connectionCenterSource: ConnectionCenterSource {
+        didSet {
+            defaults.set(
+                connectionCenterSource.rawValue,
+                forKey: Self.connectionCenterSourceDefaultsKey
+            )
+        }
+    }
+
+    @Published var prioritizesNetworkErrorsOverInputSource: Bool {
+        didSet {
+            defaults.set(
+                prioritizesNetworkErrorsOverInputSource,
+                forKey: Self.prioritizesNetworkErrorsOverInputSourceDefaultsKey
             )
         }
     }
@@ -987,6 +1010,8 @@ final class SettingsStore: ObservableObject {
             showsWiFiIconForTemporaryConnection: showsWiFiIconForTemporaryConnection,
             showsWiFiIconForInternetSharing: showsWiFiIconForInternetSharing,
             showsBatteryPercentageInConnectionSlot: showsBatteryPercentageInConnectionSlot,
+            centerSource: connectionCenterSource,
+            prioritizesNetworkErrorsOverInputSource: prioritizesNetworkErrorsOverInputSource,
             wifiScale: wifiSymbolScale
         )
     }
@@ -1188,6 +1213,14 @@ final class SettingsStore: ObservableObject {
         self.showsBatteryPercentageInConnectionSlot = defaults.object(
             forKey: Self.showsBatteryPercentageInConnectionSlotDefaultsKey
         ) as? Bool ?? false
+        self.connectionCenterSource = defaults.string(
+            forKey: Self.connectionCenterSourceDefaultsKey
+        )
+        .flatMap(ConnectionCenterSource.init(rawValue:))
+            ?? .automatic
+        self.prioritizesNetworkErrorsOverInputSource = defaults.object(
+            forKey: Self.prioritizesNetworkErrorsOverInputSourceDefaultsKey
+        ) as? Bool ?? true
         self.replacesNetworkIconWithBluetoothAudio = defaults.object(
             forKey: Self.replacesNetworkIconWithBluetoothAudioDefaultsKey
         ) as? Bool ?? false

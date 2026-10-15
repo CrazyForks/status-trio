@@ -9,6 +9,9 @@ import SwiftUI
 struct StatusIconPreviewCard: View {
     @ObservedObject var store: SettingsStore
     @ObservedObject var statusStore: SystemStatusStore
+    /// The live source the centre slot draws. The card re-renders when
+    /// the controller publishes; `nil` in previews with no live controller.
+    var inputSourceController: InputSourceController? = nil
     @Binding var isDarkBackground: Bool
     @EnvironmentObject private var localization: Localization
     @EnvironmentObject private var chargingEffectClock: ChargingEffectClock
@@ -16,6 +19,12 @@ struct StatusIconPreviewCard: View {
     @State private var previewPlayback = ChargingEffectPreviewPlayback()
 
     var body: some View {
+        InputSourceLivePreview(controller: inputSourceController) {
+            card
+        }
+    }
+
+    private var card: some View {
         VStack(spacing: 8) {
             menuBarPreview
 
@@ -135,7 +144,8 @@ struct StatusIconPreviewCard: View {
             volumeOptions: store.volumeIconOptions,
             bluetoothAudioOptions: store.bluetoothAudioIconOptions,
             isDarkBackground: isDarkBackground,
-            phase: phase
+            phase: phase,
+            inputSource: inputSourceController?.selectedDescriptor
         ) {
             appearanceToggle
         }
@@ -181,17 +191,20 @@ struct DockIconPreviewTile: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @ObservedObject var store: SettingsStore
     @ObservedObject var statusStore: SystemStatusStore
+    var inputSourceController: InputSourceController? = nil
     var size: CGFloat = 44
     var overrideStyle: DockIconBackgroundStyle? = nil
     var previewCache: DockIconPreviewCache? = nil
 
     var body: some View {
-        tile
-            .animation(reduceMotion ? nil : .easeInOut(duration: 0.15), value: store.batteryIconOptions)
-            .animation(reduceMotion ? nil : .easeInOut(duration: 0.15), value: store.connectionIconOptions)
-            .animation(reduceMotion ? nil : .easeInOut(duration: 0.15), value: store.volumeIconOptions)
-            .animation(reduceMotion ? nil : .easeInOut(duration: 0.15), value: store.bluetoothAudioIconOptions)
-            .accessibilityHidden(true)
+        InputSourceLivePreview(controller: inputSourceController) {
+            tile
+                .animation(reduceMotion ? nil : .easeInOut(duration: 0.15), value: store.batteryIconOptions)
+                .animation(reduceMotion ? nil : .easeInOut(duration: 0.15), value: store.connectionIconOptions)
+                .animation(reduceMotion ? nil : .easeInOut(duration: 0.15), value: store.volumeIconOptions)
+                .animation(reduceMotion ? nil : .easeInOut(duration: 0.15), value: store.bluetoothAudioIconOptions)
+                .accessibilityHidden(true)
+        }
     }
 
     @MainActor
@@ -210,6 +223,7 @@ struct DockIconPreviewTile: View {
             bluetoothAudioOptions: store.bluetoothAudioIconOptions,
             backgroundStyle: resolvedBackgroundStyle,
             size: size,
+            inputSource: inputSourceController?.selectedDescriptor,
             previewCache: previewCache
         )
     }

@@ -150,25 +150,71 @@ final class Issue30WiFiAlignmentTests: XCTestCase {
         }
     }
 
+
+
+    /// The input-source centre slot draws the same slot as Wi-Fi, so its two
+    /// fallback shapes must land on the same centre line: a short CJK marker
+    /// (whose ink is what the text path centres) and an input source's own
+    /// image, which is scaled to fit inside the slot.
+    func testInputSourceCenterSlotSharesTheArtworkCenterLine() throws {
+        let textImage = try XCTUnwrap(StatusIconRenderer.render(
+            scene: IconSceneState(center: .text(IconTextState(text: "拼", color: .primary, scale: 1))),
+            environment: StatusIconRenderEnvironment(
+                size: 120,
+                scale: 8,
+                foreground: CGColor(gray: 1, alpha: 1),
+                criticalColor: StatusIconRenderer.defaultCriticalColor
+            )
+        ))
+        let textPixels = try PixelBuffer(image: textImage)
+        let textCenterX = try XCTUnwrap(textPixels.horizontalAlphaMidpoint(size: 120, scale: 8))
+        XCTAssertEqual(
+            textCenterX,
+            StatusIconGeometry.artworkCenterX,
+            accuracy: 0.5,
+            "an input-source marker must sit on the artwork centre line"
+        )
+
+        let iconURL = try writeAsymmetricFixtureIcon()
+        defer { try? FileManager.default.removeItem(at: iconURL) }
+        let imageCenter = try XCTUnwrap(StatusIconRenderer.render(
+            scene: IconSceneState(center: .symbol(IconSymbolState(
+                source: .image(url: iconURL, fallbackSymbol: "keyboard"),
+                color: .primary,
+                scale: ConnectionIconOptions.defaultInputSourceScale
+            ))),
+            environment: StatusIconRenderEnvironment(
+                size: 120,
+                scale: 8,
+                foreground: CGColor(gray: 1, alpha: 1),
+                criticalColor: StatusIconRenderer.defaultCriticalColor
+            )
+        ))
+        let imagePixels = try PixelBuffer(image: imageCenter)
+        let drawnCenterX = try XCTUnwrap(imagePixels.horizontalAlphaMidpoint(size: 120, scale: 8))
+        XCTAssertEqual(
+            drawnCenterX,
+            StatusIconGeometry.artworkCenterX,
+            accuracy: 0.5,
+            "an input-source image must be centred in the slot, not left-aligned"
+        )
+    }
+
+    /// A deliberately non-square, non-centred PNG: the drawn ink centre is the
+    /// check, so a fixture that is symmetric could pass while the layout is wrong.
+    private func writeAsymmetricFixtureIcon() throws -> URL {
+        // Inked right of the bitmap's own centre so a box-centred draw and an
+        // ink-centred draw give different answers.
+        try InputSourceIconFixtures.writeIcon(
+            pixelWidth: 96,
+            pixelHeight: 48,
+            inkRect: CGRect(x: 48, y: 8, width: 40, height: 32)
+        )
+    }
+
 }
 
 private extension PixelBuffer {
-    /// Edge-to-edge midpoint of the opaque ink, independent of how much faint
-    /// anti-aliasing each platform includes.
-    func horizontalAlphaMidpoint(size: CGFloat, scale: CGFloat) -> CGFloat? {
-        let pixelsPerSVGUnit = size * scale / StatusIconGeometry.canvas.width
-        var minX = width
-        var maxX = -1
-        for y in 0..<height {
-            for x in 0..<width where rgba(x: x, y: y).alpha > 0 {
-                minX = min(minX, x)
-                maxX = max(maxX, x)
-            }
-        }
-        guard minX <= maxX else { return nil }
-        return (CGFloat(minX) + CGFloat(maxX) + 1) / 2 / pixelsPerSVGUnit
-    }
-
     func horizontalAlphaCenter(
         inSVGRect rect: CGRect,
         size: CGFloat,

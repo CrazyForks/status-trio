@@ -72,6 +72,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         releaseDelay: StatusBarController.popoverContentReleaseDelay
     )
     private var popoverContentReleaseTask: Task<Void, Never>?
+    private let inputSourceController: InputSourceController
 
     init(
         store: SystemStatusStore,
@@ -91,17 +92,25 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
                 appearance: appearance,
                 phase: phase
             )
-        }
+        },
+        inputSourceController: InputSourceController? = nil
     ) {
         self.store = store
         self.settings = settings
-        let panelActions = StatusPanelActions(store: store, settings: settings)
+        let resolvedInputSourceController = inputSourceController ?? InputSourceController()
+        self.inputSourceController = resolvedInputSourceController
+        let panelActions = StatusPanelActions(
+            store: store,
+            settings: settings,
+            inputSourceController: resolvedInputSourceController
+        )
         self.panelActions = panelActions
         self.panelViewModel = StatusPanelViewModel(
             store: store,
             settings: settings,
             localization: localization,
-            actions: panelActions
+            actions: panelActions,
+            inputSourceController: resolvedInputSourceController
         )
         self.iconPresentation = iconPresentation
         self.localization = localization
@@ -258,6 +267,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
                 openBluetoothPermissionSettings: { self.handleOpenBluetoothPermissionSettings() },
                 openSettings: { self.handleOpenSettings() },
                 openSoundSettings: { self.handleOpenSoundSettings() },
+                openKeyboardSettings: { self.handleOpenKeyboardSettings() },
                 quit: quitAction
             )
         }
@@ -311,6 +321,9 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         popoverContentRetention.markOpened()
         store.setPopoverVisible(true)
         installPopoverContentIfNeeded()
+        // One bounded refresh per open covers a lost distributed notification
+        // without any polling while the popover is closed.
+        refreshInputSourceIfNeeded()
         // Activate first: a transient popover shown while the app is still
         // inactive can be dismissed again straight away.
         // Status-item clicks come from the system menu bar process, so the
@@ -727,6 +740,17 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         Self.openSystemSoundSettings()
     }
 
+    private func handleOpenKeyboardSettings() {
+        popover.performClose(nil)
+        Self.openSystemSettings(Self.keyboardSettingsURLs)
+    }
+
+    private func refreshInputSourceIfNeeded() {
+        guard settings.connectionCenterSource == .inputSource
+            || settings.enabledPopupSections.contains(.inputSource) else { return }
+        inputSourceController.refresh()
+    }
+
     private func handleOpenBluetoothSettings() {
         popover.performClose(nil)
         Self.openSystemSettings(Self.bluetoothSettingsURLs)
@@ -789,6 +813,16 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     static let bluetoothSettingsURLs = [
         "x-apple.systempreferences:com.apple.BluetoothSettings",
         "x-apple.systempreferences:com.apple.preference.bluetooth"
+    ]
+    .compactMap(URL.init(string:))
+
+    /// The Keyboard pane owns the input-source list this section manages, so
+    /// its own Settings extension identifier comes first. Verified by the pane
+    /// the URL actually loads (`pgrep -fl ExtensionKit/Extensions`), not by
+    /// `open`'s exit status.
+    static let keyboardSettingsURLs = [
+        "x-apple.systempreferences:com.apple.Keyboard-Settings.extension",
+        "x-apple.systempreferences:com.apple.preference.keyboard"
     ]
     .compactMap(URL.init(string:))
 

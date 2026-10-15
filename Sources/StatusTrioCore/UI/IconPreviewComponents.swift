@@ -6,19 +6,28 @@ import SwiftUI
 enum IconPreviewScene {
     static func make(
         snapshot: StatusSnapshot,
-        configuration: IconPresentationConfiguration
+        configuration: IconPresentationConfiguration,
+        inputSource: InputSourceDescriptor? = nil
     ) -> IconSceneState {
         IconPresentationMapper.scene(
-            inputs: IconPresentationResourceResolver.inputs(snapshot: snapshot),
+            inputs: IconPresentationResourceResolver.inputs(
+                snapshot: snapshot,
+                inputSource: inputSource
+            ),
             configuration: configuration
         )
     }
 
     static func make(
         status: MenuBarStatus,
-        configuration: IconPresentationConfiguration
+        configuration: IconPresentationConfiguration,
+        inputSource: InputSourceDescriptor? = nil
     ) -> IconSceneState {
-        make(snapshot: snapshot(from: status), configuration: configuration)
+        make(
+            snapshot: snapshot(from: status),
+            configuration: configuration,
+            inputSource: inputSource
+        )
     }
 
     static func snapshot(from status: MenuBarStatus) -> StatusSnapshot {
@@ -48,6 +57,9 @@ struct MenuBarPreviewBar<TrailingAccessory: View>: View {
     var phase: ChargingEffectPhase?
     var highlightedPart: IconGuidePart?
     var highlightOpacity: Double = 1
+    /// Live input source for previews that mirror the current centre-slot
+    /// choice; static guide artwork leaves it `nil`.
+    var inputSource: InputSourceDescriptor?
     /// Rendered after `rightContext` inside the same `HStack`, so a caller's
     /// control takes part in the bar's standard 14 pt element spacing instead of
     /// needing a reserved trailing inset that its localized width cannot match.
@@ -61,7 +73,8 @@ struct MenuBarPreviewBar<TrailingAccessory: View>: View {
                 connection: connectionOptions,
                 volume: volumeOptions,
                 bluetooth: bluetoothAudioOptions
-            )
+            ),
+            inputSource: inputSource
         )
     }
 
@@ -76,6 +89,7 @@ struct MenuBarPreviewBar<TrailingAccessory: View>: View {
         highlightedPart: IconGuidePart? = nil,
         highlightOpacity: Double = 1,
         phase: ChargingEffectPhase? = nil,
+        inputSource: InputSourceDescriptor? = nil,
         @ViewBuilder trailingAccessory: @escaping () -> TrailingAccessory
     ) {
         self.status = status
@@ -88,6 +102,7 @@ struct MenuBarPreviewBar<TrailingAccessory: View>: View {
         self.highlightedPart = highlightedPart
         self.highlightOpacity = highlightOpacity
         self.phase = phase
+        self.inputSource = inputSource
         self.trailingAccessory = trailingAccessory
     }
 
@@ -195,7 +210,8 @@ extension MenuBarPreviewBar where TrailingAccessory == EmptyView {
         isDarkBackground: Bool = true,
         highlightedPart: IconGuidePart? = nil,
         highlightOpacity: Double = 1,
-        phase: ChargingEffectPhase? = nil
+        phase: ChargingEffectPhase? = nil,
+        inputSource: InputSourceDescriptor? = nil
     ) {
         self.init(
             status: status,
@@ -208,6 +224,7 @@ extension MenuBarPreviewBar where TrailingAccessory == EmptyView {
             highlightedPart: highlightedPart,
             highlightOpacity: highlightOpacity,
             phase: phase,
+            inputSource: inputSource,
             trailingAccessory: { EmptyView() }
         )
     }
@@ -226,6 +243,7 @@ struct DockPreviewBar: View {
     var statusIconSize: CGFloat = 56
     var highlightedPart: IconGuidePart?
     var highlightOpacity: Double = 1
+    var inputSource: InputSourceDescriptor? = nil
 
     var body: some View {
         HStack(spacing: 12) {
@@ -248,7 +266,8 @@ struct DockPreviewBar: View {
                 backgroundStyle: backgroundStyle,
                 size: statusIconSize,
                 highlightedPart: highlightedPart,
-                highlightOpacity: highlightOpacity
+                highlightOpacity: highlightOpacity,
+                inputSource: inputSource
             )
 
             MacAppIcon(
@@ -340,6 +359,9 @@ struct DockIconTile: View {
     var size: CGFloat = 44
     var highlightedPart: IconGuidePart?
     var highlightOpacity: Double = 1
+    /// Live input source for previews that mirror the current centre-slot
+    /// choice; static guide artwork leaves it `nil`.
+    var inputSource: InputSourceDescriptor? = nil
     /// Injected by tests; the app shares one bounded cache.
     var previewCache: DockIconPreviewCache? = nil
 
@@ -368,7 +390,8 @@ struct DockIconTile: View {
                 connection: connectionOptions,
                 volume: volumeOptions,
                 bluetooth: bluetoothAudioOptions
-            )
+            ),
+            inputSource: inputSource
         )
     }
 

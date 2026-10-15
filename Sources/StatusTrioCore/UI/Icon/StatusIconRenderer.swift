@@ -29,8 +29,27 @@ private final class SymbolInkOffsetCache: @unchecked Sendable {
     }
 }
 
+/// The same ink measurement for an input source's own icon file, which is a
+/// bitmap or PDF whose visible ink is not centred in the box `NSImage.size`
+/// reports. Keying by URL matches `IconImageDecodeCache`'s identity-based
+/// invalidation: a replaced icon is a new URL, not a mutated one.
+private final class ImageInkOffsetCache: @unchecked Sendable {
+    private let lock = NSLock()
+    private var storage: [URL: CGFloat] = [:]
+
+    func offsetX(for url: URL, measure: () -> CGFloat) -> CGFloat {
+        lock.lock()
+        defer { lock.unlock() }
+        if let cached = storage[url] { return cached }
+        let measured = measure()
+        storage[url] = measured
+        return measured
+    }
+}
+
 enum StatusIconRenderer {
     private static let symbolInkOffsetCache = SymbolInkOffsetCache()
+    private static let imageInkOffsetCache = ImageInkOffsetCache()
 
     static let centerSymbolBasePointSize: CGFloat = 38
     private static let defaultBatteryValueTextScale = 1.8
@@ -325,6 +344,7 @@ enum StatusIconRenderer {
         maxDimension: CGFloat,
         center: CGPoint,
         tint: CGColor,
+        inkCenterOffsetX: CGFloat = 0,
         in context: CGContext
     ) {
         let sourceSize = image.size
@@ -344,7 +364,7 @@ enum StatusIconRenderer {
             height: sourceSize.height * scale
         )
         let targetRect = CGRect(
-            x: center.x - size.width / 2,
+            x: center.x - size.width / 2 - inkCenterOffsetX * scale,
             y: -(center.y + size.height / 2),
             width: size.width,
             height: size.height
@@ -1068,9 +1088,13 @@ extension StatusIconRenderer {
                 in: context
             )
         case let .image(url, fallbackSymbol):
-            if let image = NSImage(contentsOf: url) {
+            if let image = IconImageDecodeCache.shared.decodedImage(for: url) {
+                let inkOffsetX = imageInkOffsetCache.offsetX(for: url) {
+                    measureInkCenterOffsetX(of: image)
+                }
                 drawTintedImage(image, maxDimension: 42 * (pointSize / centerSymbolBasePointSize),
-                                center: center, tint: tint, in: context)
+                                center: center, tint: tint, inkCenterOffsetX: inkOffsetX,
+                                in: context)
             } else {
                 let fallback = availableSymbol(fallbackSymbol)
                     ? fallbackSymbol

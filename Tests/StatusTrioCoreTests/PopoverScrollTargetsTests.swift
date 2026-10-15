@@ -40,6 +40,7 @@ final class PopoverScrollTargetsTests: XCTestCase {
                 openBluetoothPermissionSettings: {},
                 openSettings: {},
                 openSoundSettings: {},
+                openKeyboardSettings: {},
                 quit: {}
             )
             .environmentObject(localization)

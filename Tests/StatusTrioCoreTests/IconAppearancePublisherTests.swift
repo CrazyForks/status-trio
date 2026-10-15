@@ -196,6 +196,12 @@ final class IconAppearancePublisherTests: XCTestCase {
         IconMutation(name: "prioritizesNetworkErrorsOverBluetoothAudio") {
             $0.prioritizesNetworkErrorsOverBluetoothAudio = false
         },
+        IconMutation(name: "connectionCenterSource") {
+            $0.connectionCenterSource = .inputSource
+        },
+        IconMutation(name: "prioritizesNetworkErrorsOverInputSource") {
+            $0.prioritizesNetworkErrorsOverInputSource = false
+        },
         IconMutation(name: "bluetoothSymbolScale") { $0.bluetoothSymbolScale = 1.4 },
         IconMutation(name: "bluetoothAudioIconChoice") { $0.bluetoothAudioIconChoice = .airpods },
         IconMutation(name: "bluetoothNetworkIconDevice") {

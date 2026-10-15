@@ -8,6 +8,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     private let statusStore: SystemStatusStore
     private let chargingEffectClock: ChargingEffectClock
     private let localization: Localization
+    private let inputSourceController: InputSourceController
     private let activationPolicy: AppActivationPolicy
     private let showIconGuide: () -> Void
     private var localizationCancellable: AnyCancellable?
@@ -23,12 +24,14 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         localization: Localization,
         activationPolicy: AppActivationPolicy,
         showIconGuide: @escaping () -> Void,
-        chargingEffectClock: ChargingEffectClock = ChargingEffectClock()
+        chargingEffectClock: ChargingEffectClock = ChargingEffectClock(),
+        inputSourceController: InputSourceController? = nil
     ) {
         self.store = store
         self.statusStore = statusStore
         self.chargingEffectClock = chargingEffectClock
         self.localization = localization
+        self.inputSourceController = inputSourceController ?? InputSourceController()
         self.activationPolicy = activationPolicy
         self.showIconGuide = showIconGuide
         self.lastBluetoothAuthorization = statusStore.bluetoothDevices.authorizationStatus
@@ -105,6 +108,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
                 store: store,
                 statusStore: statusStore,
                 localization: localization,
+                inputSourceController: inputSourceController,
                 onShowIconGuide: showIconGuide
             )
             .environmentObject(chargingEffectClock)

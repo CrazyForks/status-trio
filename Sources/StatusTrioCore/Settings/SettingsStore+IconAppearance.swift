@@ -103,6 +103,20 @@ extension SettingsStore {
                 wifiScale: options.wifiScale
             )
         }
+        .combineLatest($connectionCenterSource, $prioritizesNetworkErrorsOverInputSource) {
+            options, centerSource, prioritizesNetworkErrors in
+            ConnectionIconOptions(
+                showsWiFiIconForEthernet: options.showsWiFiIconForEthernet,
+                showsWiFiIconForHotspot: options.showsWiFiIconForHotspot,
+                showsWiFiIconForTemporaryConnection: options.showsWiFiIconForTemporaryConnection,
+                showsWiFiIconForInternetSharing: options.showsWiFiIconForInternetSharing,
+                showsBatteryPercentageInConnectionSlot: options.showsBatteryPercentageInConnectionSlot,
+                centerSource: centerSource,
+                prioritizesNetworkErrorsOverInputSource: prioritizesNetworkErrors,
+                wifiScale: options.wifiScale
+            )
+        }
+        .removeDuplicates()
         .eraseToAnyPublisher()
     }
 

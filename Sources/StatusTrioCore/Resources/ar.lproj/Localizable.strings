@@ -44,6 +44,13 @@
 "settings.network.wifiIconForHotspot" = "استخدام أيقونة Wi-Fi لنقطة الاتصال الشخصية";
 "settings.network.wifiIconForTemporaryConnection" = "استخدام أيقونة Wi-Fi للاتصال المؤقت";
 "settings.network.wifiIconForInternetSharing" = "استخدام أيقونة Wi-Fi لمشاركة الإنترنت";
+"settings.network.centerSource" = "الأيقونة الوسطى";
+"settings.network.centerSource.description" = "اختر ما تعرضه أيقونة الحالة في الوسط. «تلقائي» يحافظ على سلوك الشبكة والبلوتوث المعتاد.";
+"settings.network.centerSource.automatic" = "تلقائي";
+"settings.network.centerSource.inputSource" = "مصدر الإدخال الحالي";
+"settings.network.centerSource.bluetoothFallback" = "عند اختيار مصدر الإدخال، تُستخدم أيقونات البلوتوث والشبكة كخيار احتياطي فقط.";
+"settings.network.centerSource.networkWarnings" = "إعطاء الأولوية لمشاكل الشبكة";
+"settings.network.centerSource.networkWarnings.description" = "عندما يكون الـ Mac غير متصل فعلياً، يعرض الوسط حالة الشبكة بدلاً من مصدر الإدخال.";
 "settings.bluetooth.title" = "صوت Bluetooth";
 "settings.bluetooth.replaceNetworkIcon" = "استبدال أيقونة الشبكة بأيقونة جهاز Bluetooth";
 "settings.bluetooth.replaceNetworkIconDescription" = "تستبدل أيقونة Wi-Fi بأيقونة جهاز Bluetooth المزرقة المختارة.";
@@ -266,6 +273,12 @@
 "settings.popup.order.network" = "الشبكة";
 "settings.popup.order.volume" = "مستوى الصوت";
 "settings.popup.order.audioInput" = "إدخال الصوت";
+"inputSource.title" = "مصدر الإدخال";
+"inputSource.empty" = "لا يوجد أي مصدر إدخال لوحة مفاتيح مُفعّل. أضِف واحداً من إعدادات لوحة المفاتيح.";
+"inputSource.openSettings" = "فتح إعدادات لوحة المفاتيح";
+"inputSource.switchFailed" = "تعذّر التبديل إلى «%@». اختره مباشرة أو حاول مرة أخرى.";
+"inputSource.switchUnconfirmed" = "قبل macOS «%@» لكنه لا يزال يُبلّغ عن مصدر إدخال آخر. قد يحتاج التطبيق في المقدمة إلى التركيز.";
+"settings.popup.order.inputSource" = "مصدر الإدخال";
 "settings.popup.volumeScroll.group" = "تمرير اللوحة";
 "settings.popup.volumeScroll" = "ضبط مستوى الصوت بالتمرير";
 "settings.popup.volumeScroll.description" = "مرّر داخل لوحة الحالة لتغيير مستوى صوت الإخراج.";

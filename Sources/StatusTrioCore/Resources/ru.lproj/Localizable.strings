@@ -61,6 +61,13 @@
 "settings.network.wifiIconForHotspot" = "Использовать значок Wi-Fi для точки доступа";
 "settings.network.wifiIconForTemporaryConnection" = "Использовать значок Wi-Fi для временного подключения";
 "settings.network.wifiIconForInternetSharing" = "Использовать значок Wi-Fi для общего доступа к интернету";
+"settings.network.centerSource" = "Центральный значок";
+"settings.network.centerSource.description" = "Выберите, что показывать в центре значка состояния. «Автоматически» сохраняет прежнее поведение сети и Bluetooth.";
+"settings.network.centerSource.automatic" = "Автоматически";
+"settings.network.centerSource.inputSource" = "Текущий источник ввода";
+"settings.network.centerSource.bluetoothFallback" = "При выбранном источнике ввода значки Bluetooth и сети используются только как запасной вариант.";
+"settings.network.centerSource.networkWarnings" = "Сначала проблемы сети";
+"settings.network.centerSource.networkWarnings.description" = "Когда Mac действительно офлайн, в центре показывается состояние сети вместо источника ввода.";
 "settings.bluetooth.title" = "Звук Bluetooth";
 "settings.bluetooth.replaceNetworkIcon" = "Заменять значок сети значком устройства Bluetooth";
 "settings.bluetooth.replaceNetworkIconDescription" = "Заменяет значок Wi-Fi синим значком выбранного устройства Bluetooth.";
@@ -266,6 +273,12 @@
 "settings.popup.order.network" = "Сеть";
 "settings.popup.order.volume" = "Громкость";
 "settings.popup.order.audioInput" = "Звуковой вход";
+"inputSource.title" = "Источник ввода";
+"inputSource.empty" = "Не включён ни один клавиатурный источник ввода. Добавьте его в настройках «Клавиатура».";
+"inputSource.openSettings" = "Открыть настройки клавиатуры";
+"inputSource.switchFailed" = "Не удалось переключиться на «%@». Выберите его напрямую или повторите попытку.";
+"inputSource.switchUnconfirmed" = "macOS приняла «%@», но по-прежнему сообщает о другом источнике ввода. Возможно, активному приложению нужен фокус.";
+"settings.popup.order.inputSource" = "Источник ввода";
 "settings.popup.volumeScroll.group" = "Прокрутка панели";
 "settings.popup.volumeScroll" = "Регулировать громкость прокруткой";
 "settings.popup.volumeScroll.description" = "Прокручивайте внутри панели состояния, чтобы изменить громкость вывода.";

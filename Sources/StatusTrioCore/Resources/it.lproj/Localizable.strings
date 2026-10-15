@@ -61,6 +61,13 @@
 "settings.network.wifiIconForHotspot" = "Usa l’icona Wi-Fi per hotspot personale";
 "settings.network.wifiIconForTemporaryConnection" = "Usa l’icona Wi-Fi per connessione temporanea";
 "settings.network.wifiIconForInternetSharing" = "Usa l’icona Wi-Fi per condivisione Internet";
+"settings.network.centerSource" = "Icona centrale";
+"settings.network.centerSource.description" = "Scegli cosa mostra l’icona di stato al centro. «Automatico» mantiene il comportamento di rete e Bluetooth abituale.";
+"settings.network.centerSource.automatic" = "Automatico";
+"settings.network.centerSource.inputSource" = "Sorgente di input corrente";
+"settings.network.centerSource.bluetoothFallback" = "Con la sorgente di input selezionata, le icone Bluetooth e rete vengono usate solo come ripiego.";
+"settings.network.centerSource.networkWarnings" = "Dai priorità ai problemi di rete";
+"settings.network.centerSource.networkWarnings.description" = "Quando il Mac è davvero offline, al centro viene mostrato lo stato della rete invece della sorgente di input.";
 "settings.bluetooth.title" = "Audio Bluetooth";
 "settings.bluetooth.replaceNetworkIcon" = "Sostituisci l’icona di rete con l’icona di un dispositivo Bluetooth";
 "settings.bluetooth.replaceNetworkIconDescription" = "Sostituisce l’icona Wi‑Fi con l’icona blu del dispositivo Bluetooth scelto.";
@@ -266,6 +273,12 @@
 "settings.popup.order.network" = "Rete";
 "settings.popup.order.volume" = "Volume";
 "settings.popup.order.audioInput" = "Ingresso audio";
+"inputSource.title" = "Sorgente di input";
+"inputSource.empty" = "Nessuna sorgente di input da tastiera è attiva. Aggiungine una nelle impostazioni Tastiera.";
+"inputSource.openSettings" = "Apri impostazioni Tastiera";
+"inputSource.switchFailed" = "Impossibile passare a «%@». Selezionala direttamente o riprova.";
+"inputSource.switchUnconfirmed" = "macOS ha accettato «%@» ma segnala ancora un’altra sorgente di input. L’app in primo piano potrebbe richiedere il focus.";
+"settings.popup.order.inputSource" = "Sorgente di input";
 "settings.popup.volumeScroll.group" = "Scorrimento del pannello";
 "settings.popup.volumeScroll" = "Regola il volume scorrendo";
 "settings.popup.volumeScroll.description" = "Scorri all’interno del pannello di stato per cambiare il volume di uscita.";

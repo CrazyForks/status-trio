@@ -61,6 +61,13 @@
 "settings.network.wifiIconForHotspot" = "Usar el icono de Wi-Fi para el punto de acceso personal";
 "settings.network.wifiIconForTemporaryConnection" = "Usar el icono de Wi-Fi para la conexión temporal";
 "settings.network.wifiIconForInternetSharing" = "Usar el icono de Wi-Fi para compartir Internet";
+"settings.network.centerSource" = "Icono central";
+"settings.network.centerSource.description" = "Elige qué muestra el icono de estado en el centro. «Automático» mantiene el comportamiento de red y Bluetooth habitual.";
+"settings.network.centerSource.automatic" = "Automático";
+"settings.network.centerSource.inputSource" = "Fuente de entrada actual";
+"settings.network.centerSource.bluetoothFallback" = "Con la fuente de entrada seleccionada, los iconos de Bluetooth y red solo se usan como respaldo.";
+"settings.network.centerSource.networkWarnings" = "Priorizar problemas de red";
+"settings.network.centerSource.networkWarnings.description" = "Cuando el Mac está realmente sin conexión, el centro muestra el estado de red en lugar de la fuente de entrada.";
 "settings.bluetooth.title" = "Audio por Bluetooth";
 "settings.bluetooth.replaceNetworkIcon" = "Sustituir el icono de red por el icono de un dispositivo Bluetooth";
 "settings.bluetooth.replaceNetworkIconDescription" = "Sustituye el icono de Wi‑Fi por el icono azul del dispositivo Bluetooth elegido.";
@@ -266,6 +273,12 @@
 "settings.popup.order.network" = "Red";
 "settings.popup.order.volume" = "Volumen";
 "settings.popup.order.audioInput" = "Entrada de audio";
+"inputSource.title" = "Fuente de entrada";
+"inputSource.empty" = "No hay fuentes de entrada de teclado activadas. Añade una en los ajustes de Teclado.";
+"inputSource.openSettings" = "Abrir ajustes de Teclado";
+"inputSource.switchFailed" = "No se pudo cambiar a «%@». Selecciónala directamente o inténtalo de nuevo.";
+"inputSource.switchUnconfirmed" = "macOS aceptó «%@», pero sigue indicando otra fuente de entrada. Puede que la app en primer plano necesite el foco.";
+"settings.popup.order.inputSource" = "Fuente de entrada";
 "settings.popup.volumeScroll.group" = "Desplazamiento del panel";
 "settings.popup.volumeScroll" = "Ajustar el volumen desplazándose";
 "settings.popup.volumeScroll.description" = "Desplázate dentro del panel de estado para cambiar el volumen de salida.";

@@ -134,6 +134,26 @@ enum StatusMappings {
         if connection == .offline { return false }
         return !wifi.state.isBluetoothReplacementNetworkError
     }
+
+    /// Whether the machine is genuinely offline right now.
+    ///
+    /// Shares the Wi-Fi error vocabulary with the Bluetooth replacement rule,
+    /// with one deliberate difference: a live wired (or otherwise connected)
+    /// link is never an outage. A wired user with Wi-Fi switched off is online,
+    /// so their input-source icon must not be displaced by a Wi-Fi error.
+    static func isNetworkOffline(
+        wifi: WiFiStatus,
+        connection: NetworkConnection
+    ) -> Bool {
+        switch connection {
+        case .ethernet, .other:
+            return false
+        case .offline:
+            return true
+        case .wifi, .unknown:
+            return wifi.state.isBluetoothReplacementNetworkError
+        }
+    }
 }
 
 private extension WiFiState {

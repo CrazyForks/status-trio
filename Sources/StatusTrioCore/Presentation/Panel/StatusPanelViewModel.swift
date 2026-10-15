@@ -34,6 +34,7 @@ final class StatusPanelViewModel: ObservableObject {
     @Published private(set) var bluetooth: BluetoothPanelState
     @Published private(set) var volume: VolumePanelState
     @Published private(set) var audioInput: AudioInputPanelState
+    @Published private(set) var inputSource: InputSourcePanelState
     @Published private(set) var batteryDetails: PanelDetailState
     @Published private(set) var wifiDetails: WiFiPanelState
     @Published private(set) var wiredDetails: PanelDetailState
@@ -42,6 +43,7 @@ final class StatusPanelViewModel: ObservableObject {
     let store: SystemStatusStore
     let settings: SettingsStore
     private let localization: Localization
+    private let inputSourceController: InputSourceController
     private let updateScheduler: any PanelPresentationUpdateScheduling
     let actions: StatusPanelActions
     private var cancellables: Set<AnyCancellable> = []
@@ -55,11 +57,14 @@ final class StatusPanelViewModel: ObservableObject {
         settings: SettingsStore,
         localization: Localization,
         actions: StatusPanelActions,
-        updateScheduler: any PanelPresentationUpdateScheduling = YieldingPanelPresentationUpdateScheduler()
+        updateScheduler: any PanelPresentationUpdateScheduling = YieldingPanelPresentationUpdateScheduler(),
+        inputSourceController: InputSourceController? = nil
     ) {
+        let resolvedInputSourceController = inputSourceController ?? InputSourceController()
         self.store = store
         self.settings = settings
         self.localization = localization
+        self.inputSourceController = resolvedInputSourceController
         self.updateScheduler = updateScheduler
         self.actions = actions
         visiblePopupSections = settings.visiblePopupSections
@@ -87,6 +92,11 @@ final class StatusPanelViewModel: ObservableObject {
             localization: localization
         )
         audioInput = AudioPanelMapper.input(store.liveInput, localization: localization)
+        inputSource = InputSourcePanelMapper.map(
+            state: resolvedInputSourceController.state,
+            failure: resolvedInputSourceController.selectionFailure,
+            localization: localization
+        )
         batteryDetails = PanelDetailMapper.battery(
             status: store.popupSnapshot.battery,
             details: store.batteryDetails.details,
@@ -145,6 +155,15 @@ final class StatusPanelViewModel: ObservableObject {
             .removeDuplicates()
             .sink { [weak self] in self?.publishAudioInput($0) }
             .store(in: &cancellables)
+
+        Publishers.CombineLatest(
+            inputSourceController.$state,
+            inputSourceController.$selectionFailure
+        )
+        .sink { [weak self] state, failure in
+            self?.publishInputSource(state: state, failure: failure)
+        }
+        .store(in: &cancellables)
 
         store.batteryDetails.$details
             .dropFirst()
@@ -284,6 +303,10 @@ final class StatusPanelViewModel: ObservableObject {
         refreshBluetooth()
         publishVolume(mapVolume(store.liveVolume))
         publishAudioInput(AudioPanelMapper.input(store.liveInput, localization: localization))
+        publishInputSource(
+            state: inputSourceController.state,
+            failure: inputSourceController.selectionFailure
+        )
         refreshBatteryDetails()
         refreshWiFiDetails()
         refreshWiredDetailsAndNetwork()
@@ -392,6 +415,15 @@ final class StatusPanelViewModel: ObservableObject {
     private func publishAudioInput(_ state: AudioInputPanelState) {
         guard audioInput != state else { return }
         audioInput = state
+    }
+
+    private func publishInputSource(
+        state: InputSourceState,
+        failure: InputSourceController.SelectionFailure?
+    ) {
+        let next = InputSourcePanelMapper.map(state: state, failure: failure, localization: localization)
+        guard inputSource != next else { return }
+        inputSource = next
     }
 }
 

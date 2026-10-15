@@ -61,6 +61,13 @@
 "settings.network.wifiIconForHotspot" = "Utiliser l’icône Wi-Fi pour le partage de connexion";
 "settings.network.wifiIconForTemporaryConnection" = "Utiliser l’icône Wi-Fi pour une connexion temporaire";
 "settings.network.wifiIconForInternetSharing" = "Utiliser l’icône Wi-Fi pour le partage Internet";
+"settings.network.centerSource" = "Icône centrale";
+"settings.network.centerSource.description" = "Choisissez ce que l’icône d’état affiche au centre. « Automatique » conserve le comportement réseau et Bluetooth habituel.";
+"settings.network.centerSource.automatic" = "Automatique";
+"settings.network.centerSource.inputSource" = "Source de saisie actuelle";
+"settings.network.centerSource.bluetoothFallback" = "Avec la source de saisie sélectionnée, les icônes Bluetooth et réseau ne servent que de secours.";
+"settings.network.centerSource.networkWarnings" = "Prioriser les problèmes réseau";
+"settings.network.centerSource.networkWarnings.description" = "Quand le Mac est réellement hors ligne, le centre affiche l’état du réseau plutôt que la source de saisie.";
 "settings.bluetooth.title" = "Audio Bluetooth";
 "settings.bluetooth.replaceNetworkIcon" = "Remplacer l’icône réseau par l’icône d’un appareil Bluetooth";
 "settings.bluetooth.replaceNetworkIconDescription" = "Remplace l’icône Wi‑Fi par l’icône bleue de l’appareil Bluetooth choisi.";
@@ -266,6 +273,12 @@
 "settings.popup.order.network" = "Réseau";
 "settings.popup.order.volume" = "Volume";
 "settings.popup.order.audioInput" = "Entrée audio";
+"inputSource.title" = "Source de saisie";
+"inputSource.empty" = "Aucune source de saisie clavier n’est activée. Ajoutez-en une dans les réglages Clavier.";
+"inputSource.openSettings" = "Ouvrir les réglages Clavier";
+"inputSource.switchFailed" = "Impossible de passer à « %@ ». Sélectionnez-la directement ou réessayez.";
+"inputSource.switchUnconfirmed" = "macOS a accepté « %@ » mais signale toujours une autre source de saisie. L’app au premier plan doit peut-être être activée.";
+"settings.popup.order.inputSource" = "Source de saisie";
 "settings.popup.volumeScroll.group" = "Défilement du panneau";
 "settings.popup.volumeScroll" = "Régler le volume en défilant";
 "settings.popup.volumeScroll.description" = "Faites défiler dans le panneau d’état pour changer le volume de sortie.";

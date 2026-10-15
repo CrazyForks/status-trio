@@ -89,6 +89,19 @@ enum IconPresentationMapper {
             return .text(IconTextState(text: "\(battery.percentage)", color: .primary, scale: 1))
         }
 
+        // The user asked the centre slot to carry the current input source.
+        // Everything below this branch is the shipped `.automatic` decision,
+        // which also serves as the fallback whenever no source can be drawn.
+        if connectionOptions.centerSource == .inputSource,
+           let inputSource = inputs.inputSource,
+           !(connectionOptions.prioritizesNetworkErrorsOverInputSource
+               && StatusMappings.isNetworkOffline(
+                   wifi: snapshot.wifi,
+                   connection: snapshot.connection
+               )) {
+            return inputSourceCenterState(inputSource)
+        }
+
         if StatusMappings.shouldReplaceNetworkIcon(
             currentDevice: snapshot.volume.currentDevice,
             wifi: snapshot.wifi,
@@ -119,6 +132,28 @@ enum IconPresentationMapper {
         }
 
         return wifiState(snapshot.wifi, options: connectionOptions)
+    }
+
+    /// The input-source glyph: the source's own icon, then its short label,
+    /// then a neutral keyboard symbol. Never returns `nil`, so a selected
+    /// source can never blank the centre slot.
+    private static func inputSourceCenterState(_ source: InputSourceDescriptor) -> CenterState {
+        let scale = ConnectionIconOptions.defaultInputSourceScale
+        if let iconURL = source.iconURL {
+            return .symbol(IconSymbolState(
+                source: .image(url: iconURL, fallbackSymbol: "keyboard"),
+                color: .primary,
+                scale: scale
+            ))
+        }
+        if let label = source.shortLabel, !label.isEmpty {
+            return .text(IconTextState(text: label, color: .primary, scale: 1))
+        }
+        return .symbol(IconSymbolState(
+            source: .symbol(name: "keyboard", variableValue: nil, fallback: nil),
+            color: .primary,
+            scale: scale
+        ))
     }
 
     private static func wifiState(_ wifi: WiFiStatus, options: ConnectionIconOptions) -> CenterState {

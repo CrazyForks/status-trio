@@ -33,6 +33,7 @@ final class SettingsRowHitAreaTests: XCTestCase {
             openBluetoothPermissionSettings: {},
             openSettings: {},
             openSoundSettings: {},
+            openKeyboardSettings: {},
             quit: {}
         )
         .environmentObject(localization)

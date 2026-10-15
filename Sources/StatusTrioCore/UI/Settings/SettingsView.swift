@@ -7,6 +7,9 @@ struct SettingsView: View {
     @ObservedObject var store: SettingsStore
     @ObservedObject var statusStore: SystemStatusStore
     @ObservedObject var localization: Localization
+    /// Drives the live centre-slot source in the previews. `nil` in tests and
+    /// guides that do not carry the app's controller.
+    var inputSourceController: InputSourceController? = nil
     let onShowIconGuide: () -> Void
 
     @State private var selectedSection: Section = .appIcon
@@ -154,6 +157,7 @@ struct SettingsView: View {
             NetworkSectionView(
                 store: store,
                 statusStore: statusStore,
+                inputSourceController: inputSourceController,
                 previewIsDark: $previewIsDark
             )
         case .bluetooth:
