@@ -97,3 +97,77 @@
 - `swift test`：XCTest 1620 项（10 skipped，0 失败）+ Swift Testing 587 项 / 91 suites。
 - `swift build -c release`：通过。
 - 非发布预检 `release.yml`（`publish=false`）：见 PR 描述。
+
+## BenQ 兼容性测试 Build（第二轮）
+
+Issue #115 的报障设备是 Apple M5 Pro + BenQ，PR #116 的 Build 38 未修复。
+本轮不改匹配器（除非日志证明它阻止了唯一匹配），只排查**匹配成功之后的 DDC/CI
+读请求协议与回复校验**。
+
+### Task A：Get VCP 请求封包显式化
+
+`DDCPacket`（`Sources/StatusTrioCore/Audio/DDCReadProfile.swift`）用命名枚举而不是
+布尔参数表达协议选择：
+
+- `.standard`：校验和含数据地址 `0x51` → `82 01 62 DE`。
+- `.legacy`：原实现，不含数据地址 → `82 01 62 8F`。
+
+Set VCP 写入封包保持不变（`0x6E ^ 0x51`），写入前后仍做读回确认。
+
+### Task B：同一 Service 内的受限只读 profile 探测
+
+对**已经唯一确定的 Service**按顺序只读探测，命中即停止：
+
+| 顺序 | Get VCP 校验和 | `ReadI2C` 第三参数 |
+| --- | --- | --- |
+| P1 | standard `DE` | `0x51` |
+| P2 | standard `DE` | `0` |
+| P3 | legacy `8F` | `0x51` |
+| P4 | legacy `8F` | `0` |
+
+- 目标不唯一时连只读探测都不运行（沿用 #116 的 fail closed）。
+- 每个候选最多 2 次尝试，候选之间约 75 ms 总线空闲；实测单候选耗时约 75 ms，
+  远小于 2 s watchdog。
+- 只有通过 `DDCVolumeReply` 完整语义校验（头部、结果码、VCP 回显、校验和、范围）
+  的回复才能选中 profile；全零、未改写的 `0xFF`、坏校验、错误 VCP、非法范围、
+  显式拒绝（结果码 1）都不会解锁。
+- 显式 `vcpRefused` 直接停止探测：显示器已经理解了请求，继续换候选没有意义。
+- 选中的 profile 缓存在 `DDCDisplayTarget` 上，与当前 Service / UID / generation
+  同生命周期；重新 resolve（切换输出、拓扑变化、唤醒）即失效重选。
+- 探测整体失败后按 `readsBetweenProbes = 6` 节流，不会每次轮询都重跑全套。
+
+### Task C：诊断
+
+`os.Logger`（subsystem `com.lingsmbp.StatusTrio`，category `DDCTarget`）输出稳定命名的
+低频行，不含 UID / EDID / 序列号 / IORegistry 路径，用**会话内随机短 ID** 关联：
+
+```
+ddc.resolve result=matched branch=dispext0 framebuffers=1 services=1 session=<rand>
+ddc.resolve result=unavailable reason=noMatchingFramebuffer framebuffers=1 services=1 session=<rand>
+ddc.probe profile=P1 replyKind=valid attempts=1 session=<rand>
+ddc.selectedProfile profile=P1 result=usable elapsedMs=75 session=<rand>
+ddc.write result=ok session=<rand>
+```
+
+`replyKind` 取值：`valid`、`zeros`、`untouched`、`wrongLength`、`wrongHeader`、
+`wrongVCP`、`vcpRefused`、`badChecksum`、`invalidRange`、`transportFailure`、
+`noProfile`。读取失败按“形状变化”去重，稳态不会每 2 秒刷屏。
+
+测试者命令（已用真实设备验证可读取）：
+
+```bash
+log show --last 15m --info --style compact \
+  --predicate 'subsystem == "com.lingsmbp.StatusTrio" AND category == "DDCTarget"'
+```
+
+### 本轮验证状态
+
+| 项目 | 状态 |
+| --- | --- |
+| XV272U 在本轮的 P1（standard `DE`）读取 | **实机验证**：matched → P1 valid，读到当前值（只读，未写） |
+| 上面四条诊断行能被 `log show --info` 取出 | **实机验证**（真实设备 + 真实调用的探针） |
+| 空/未知 UID → `unavailable reason=noMatchingFramebuffer` | **实机验证** |
+| 请求字节、Set VCP 0/50/100、profile 顺序与停止、拒绝即停、缓存与节流 | **单元测试覆盖**（新增 26 项） |
+| BenQ（M5 Pro）能否用 P1–P4 之一读出 `0x62` | **未验证**：需报障用户回报日志 |
+| P3/P4（legacy）在新代码里的实机行为 | **未验证**：XV272U 在 P1 就成功，未触发回退 |
+| 双外接屏分别作为默认输出 | **未验证**（本机只有 1 台外接屏） |
