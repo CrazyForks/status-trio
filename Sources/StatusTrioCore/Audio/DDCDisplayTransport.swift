@@ -1,6 +1,12 @@
 import DDCPrivateAPI
 import Foundation
 import IOKit
+import os
+
+private let ddcTargetLogger = Logger(
+    subsystem: "com.lingsmbp.StatusTrio",
+    category: "DDCTarget"
+)
 
 // IORegistry and I2C details adapted from AppleSiliconDDC revision
 // 67ff964ab8123d9d35fadf7d8e1a7c677d31da14, Copyright © 2021 Istvan T. (MIT).
@@ -30,46 +36,6 @@ final class DDCDisplayTransport: DDCVolumeTransport {
     private static let dataAddress: UInt32 = 0x51
     private static let volumeVCP: UInt8 = 0x62
 
-    static func uniqueMatch<Handle>(
-        uid: String,
-        services: [(edidUUID: String, handle: Handle)]
-    ) -> (edidUUID: String, handle: Handle)? {
-        guard !uid.isEmpty else { return nil }
-        let matches = services.filter { $0.edidUUID == uid }
-        return matches.count == 1 ? matches[0] : nil
-    }
-
-    /// Selects identity before calling the opener, so a failed open cannot hide
-    /// a second registry entry with the same UID.
-    static func uniqueOpenedMatch<Identity, Handle>(
-        uid: String,
-        services: [(edidUUID: String, handle: Identity)],
-        open: (Identity) -> Handle?
-    ) -> (edidUUID: String, handle: Handle)? {
-        guard let candidate = uniqueMatch(uid: uid, services: services),
-              let opened = open(candidate.handle) else { return nil }
-        return (edidUUID: candidate.edidUUID, handle: opened)
-    }
-
-    /// The current Apple Silicon registry exposes the display EDID UUID on a
-    /// framebuffer branch separate from its DDC proxy. Until a stable direct
-    /// relation is available, accept only the unambiguous one-framebuffer,
-    /// one-external-service topology.
-    static func uniqueFramebufferServiceMatch<Identity, Handle>(
-        uid: String,
-        externalFramebufferUUIDs: [String?],
-        externalServices: [Identity],
-        open: (Identity) -> Handle?
-    ) -> (edidUUID: String, handle: Handle)? {
-        guard !uid.isEmpty,
-              externalFramebufferUUIDs.count == 1,
-              let framebufferUUID = externalFramebufferUUIDs[0],
-              framebufferUUID == uid,
-              externalServices.count == 1,
-              let opened = open(externalServices[0]) else { return nil }
-        return (edidUUID: framebufferUUID, handle: opened)
-    }
-
     static func isConnectedExternalFramebuffer(
         ioNameMatched: String?,
         displayWidth: Int?,
@@ -82,21 +48,61 @@ final class DDCDisplayTransport: DDCVolumeTransport {
         return displayWidth > 0 && displayHeight > 0
     }
 
+    /// Maps `IONameMatched` ("dispext0,t603x") to the branch token shared with
+    /// the owning DCP branch ("dispext0"). Returns nil for anything that is not
+    /// a numbered `dispextN` branch, which keeps matching strict.
+    static func branchToken(fromIONameMatched name: String?) -> String? {
+        guard let name else { return nil }
+        let token = name.split(separator: ",", maxSplits: 1).first.map(String.init) ?? name
+        return isExternalBranchToken(token) ? token : nil
+    }
+
+    static func isExternalBranchToken(_ token: String) -> Bool {
+        let prefix = "dispext"
+        guard token.hasPrefix(prefix) else { return false }
+        let suffix = token.dropFirst(prefix.count)
+        return !suffix.isEmpty && suffix.allSatisfy(\.isNumber)
+    }
+
+    /// Extracts the branch token an external DCP AV service proxy belongs to.
+    ///
+    /// Real Apple Silicon firmware registers the proxy's ancestor as
+    /// `dispextN:dcpav-service-epic:U` under the matching `dcpextN` branch, so
+    /// the token comes from the registry name itself rather than from
+    /// enumeration order.
+    static func branchToken(fromServiceAncestorNames names: [String]) -> String? {
+        for name in names {
+            guard let separator = name.firstIndex(of: ":") else { continue }
+            let token = String(name[name.startIndex..<separator])
+            let role = String(name[name.index(after: separator)...])
+            guard isExternalBranchToken(token), role.hasPrefix("dcpav-service-epic") else { continue }
+            return token
+        }
+        return nil
+    }
+
     func resolve(uid: String) -> DDCDisplayTarget? {
         #if arch(arm64)
-        guard !uid.isEmpty else { return nil }
+        guard !uid.isEmpty else {
+            logUnavailable(.missingAudioUID, framebuffers: 0, services: 0)
+            return nil
+        }
         let root = IORegistryGetRootEntry(kIOMainPortDefault)
-        guard root != IO_OBJECT_NULL else { return nil }
+        guard root != IO_OBJECT_NULL else {
+            logUnavailable(.transportUnavailable, framebuffers: 0, services: 0)
+            return nil
+        }
         defer { IOObjectRelease(root) }
 
         var iterator: io_iterator_t = IO_OBJECT_NULL
         guard IORegistryEntryCreateIterator(root, "IOService", IOOptionBits(kIORegistryIterateRecursively), &iterator) == KERN_SUCCESS else {
+            logUnavailable(.transportUnavailable, framebuffers: 0, services: 0)
             return nil
         }
         defer { IOObjectRelease(iterator) }
 
-        var framebufferUUIDs: [String?] = []
-        var externalServices: [io_service_t] = []
+        var framebuffers: [DDCFramebufferSnapshot] = []
+        var services: [(entryID: UInt64, snapshot: DDCServiceSnapshot, entry: io_service_t)] = []
         while true {
             let entry = IOIteratorNext(iterator)
             guard entry != IO_OBJECT_NULL else { break }
@@ -109,28 +115,63 @@ final class DDCDisplayTransport: DDCVolumeTransport {
                     ioNameMatched: ioNameMatched,
                     displayWidth: displayWidth,
                     displayHeight: displayHeight
-                ) {
-                    framebufferUUIDs.append(Self.stringProperty("EDID UUID", entry: entry, recursive: true))
+                ), let branchToken = Self.branchToken(fromIONameMatched: ioNameMatched),
+                   let entryID = Self.registryEntryID(entry) {
+                    framebuffers.append(DDCFramebufferSnapshot(
+                        entryID: entryID,
+                        branchName: branchToken,
+                        edidUUID: Self.stringProperty("EDID UUID", entry: entry, recursive: true)
+                    ))
                 }
                 IOObjectRelease(entry)
             case "DCPAVServiceProxy" where Self.stringProperty("Location", entry: entry) == "External":
-                externalServices.append(entry)
+                if let entryID = Self.registryEntryID(entry) {
+                    services.append((
+                        entryID: entryID,
+                        snapshot: DDCServiceSnapshot(
+                            entryID: entryID,
+                            branchName: Self.branchToken(fromServiceAncestorNames: Self.ancestorNames(of: entry)),
+                            location: "External"
+                        ),
+                        entry: entry
+                    ))
+                } else {
+                    IOObjectRelease(entry)
+                }
             default:
                 IOObjectRelease(entry)
             }
         }
-        defer { externalServices.forEach { _ = IOObjectRelease($0) } }
+        defer { services.forEach { _ = IOObjectRelease($0.entry) } }
 
-        guard let candidate = Self.uniqueFramebufferServiceMatch(
-            uid: uid,
-            externalFramebufferUUIDs: framebufferUUIDs,
-            externalServices: externalServices,
-            open: { entry in
-                IOAVServiceCreateWithService(kCFAllocatorDefault, entry)?.takeRetainedValue()
-            }
-        ) else { return nil }
-        return DDCDisplayTarget(uid: uid, service: candidate.handle)
+        let resolution = DDCTargetResolver.resolve(
+            outputUID: uid,
+            framebuffers: framebuffers,
+            services: services.map(\.snapshot)
+        )
+        let selected = DDCTargetResolver.openResolvedTarget(
+            resolution,
+            services: services.map { (entryID: $0.entryID, handle: $0.entry) }
+        ) { entry in
+            IOAVServiceCreateWithService(kCFAllocatorDefault, entry)?.takeRetainedValue()
+        }
+        guard let selected else {
+            logFailure(resolution, framebuffers: framebuffers.count, services: services.count)
+            return nil
+        }
+        let target = selected.opened
+        if let branchName = services.first(where: { $0.entryID == selected.serviceEntryID })?.snapshot.branchName {
+            ddcTargetLogger.debug(
+                "DDC target resolved: branch=\(branchName, privacy: .public), framebuffers=\(framebuffers.count, privacy: .public), services=\(services.count, privacy: .public)"
+            )
+        } else {
+            ddcTargetLogger.debug(
+                "DDC target resolved via legacy single-display path: framebuffers=\(framebuffers.count, privacy: .public), services=\(services.count, privacy: .public)"
+            )
+        }
+        return DDCDisplayTarget(uid: uid, service: target)
         #else
+        logUnavailable(.unsupportedArchitecture, framebuffers: 0, services: 0)
         return nil
         #endif
     }
@@ -139,6 +180,7 @@ final class DDCDisplayTransport: DDCVolumeTransport {
         #if arch(arm64)
         guard let service = target.service else { return nil }
         let request: [UInt8] = [Self.volumeVCP]
+        var sawValidTransportReply = false
         for attempt in 0..<5 {
             usleep(attempt == 0 ? 10_000 : 20_000)
             var packet = Self.packet(for: request, includeDataAddressInChecksum: false)
@@ -151,10 +193,14 @@ final class DDCDisplayTransport: DDCVolumeTransport {
             let readResult = reply.withUnsafeMutableBytes {
                 IOAVServiceReadI2C(service, Self.chipAddress, Self.dataAddress, $0.baseAddress, UInt32($0.count))
             }
+            if readResult == kIOReturnSuccess { sawValidTransportReply = true }
             if readResult == kIOReturnSuccess, let decoded = DDCVolumeReply.decode(reply) {
                 return decoded
             }
         }
+        ddcTargetLogger.debug(
+            "DDC read failed: \(sawValidTransportReply ? DDCResolutionFailure.unsupportedVolumeVCP.diagnosticName : DDCResolutionFailure.readFailed.diagnosticName, privacy: .public)"
+        )
         return nil
         #else
         return nil
@@ -190,6 +236,29 @@ final class DDCDisplayTransport: DDCVolumeTransport {
     }
 
     #if arch(arm64)
+    private static func registryEntryID(_ entry: io_registry_entry_t) -> UInt64? {
+        var identifier: UInt64 = 0
+        guard IORegistryEntryGetRegistryEntryID(entry, &identifier) == KERN_SUCCESS, identifier != 0 else { return nil }
+        return identifier
+    }
+
+    /// Ancestor entry names on the IOService plane, nearest first.
+    private static func ancestorNames(of entry: io_registry_entry_t, limit: Int = 8) -> [String] {
+        var names: [String] = []
+        var current = entry
+        IOObjectRetain(current)
+        defer { IOObjectRelease(current) }
+        for _ in 0..<limit {
+            var parent: io_registry_entry_t = IO_OBJECT_NULL
+            guard IORegistryEntryGetParentEntry(current, "IOService", &parent) == KERN_SUCCESS,
+                  parent != IO_OBJECT_NULL else { break }
+            if let name = registryName(parent) { names.append(name) }
+            IOObjectRelease(current)
+            current = parent
+        }
+        return names
+    }
+
     private static func registryName(_ entry: io_registry_entry_t) -> String? {
         var name = [CChar](repeating: 0, count: MemoryLayout<io_name_t>.size)
         guard IORegistryEntryGetName(entry, &name) == KERN_SUCCESS else { return nil }
@@ -208,4 +277,18 @@ final class DDCDisplayTransport: DDCVolumeTransport {
         return value as? Int
     }
     #endif
+
+    private func logFailure(_ resolution: DDCResolution, framebuffers: Int, services: Int) {
+        let reason: DDCResolutionFailure = switch resolution {
+        case .unavailable(let failure): failure
+        case .matched: .transportUnavailable
+        }
+        logUnavailable(reason, framebuffers: framebuffers, services: services)
+    }
+
+    private func logUnavailable(_ failure: DDCResolutionFailure, framebuffers: Int, services: Int) {
+        ddcTargetLogger.debug(
+            "DDC target unavailable: \(failure.diagnosticName, privacy: .public), framebuffers=\(framebuffers, privacy: .public), services=\(services, privacy: .public)"
+        )
+    }
 }
