@@ -1096,3 +1096,24 @@ distribution due to environment protection rules.
 另外用真实 XV272U 跑了一次只读探针，确认 P1（standard `82 01 62 DE`）可读出当前值，
 且 `ddc.resolve` / `ddc.probe` / `ddc.selectedProfile` 能被
 `log show --info` 取出。BenQ 真机与 P3/P4 回退路径仍未验证。
+
+## 38893936661 与 38893992336：1.6.1 测试 DMG
+
+同一分支改用 `version=1.6.1` 重新出包时，`release.sh` 需要
+`release-notes/1.6.1/` 存在，因此先补了 `en.md`、`zh-Hans.md`
+（`publish=false` 只要求目录存在；`publish=true` 仍要求全部 12 种语言）。
+
+- [`38893936661`](https://github.com/lingyired/status-trio/actions/runs/38893936661)
+  （head `ca3b832f`、`version=1.6.1`、`build=40`、`publish=false`、`notarize=true`）
+  **失败**，仍是 `distribution` environment 的 protection rule：
+  `Branch "codex/issue-115-ddc-output-matching" is not allowed to deploy to distribution`。
+  与 `38885873584` 同因，说明该 environment 的分支限制没有变化，不是证书或代码问题。
+- [`38893992336`](https://github.com/lingyired/status-trio/actions/runs/38893992336)
+  （同 head、`notarize=false`）在 CI 工具链上全绿，耗时约 15 分钟：
+  `Run tests` 1,653 XCTest（7 skipped、0 failures）+ 587 Swift Testing / 91 suites；
+  native compatibility tests 通过；`Built …/StatusTrio-1.6.1.dmg without publishing.`。
+  artifact `StatusTrio-308` 内含 `StatusTrio-1.6.1.dmg`（`CFBundleVersion=40`、
+  Ad-hoc 签名、无公证 ticket）与 `.sha256`；未创建 Release、未更新 appcast。
+
+要在该分支拿到**公证版**，需要把 `distribution` environment 的 deployment branch
+规则放开（或改由受保护分支/标签触发）；管理该设置属于仓库权限变更，未擅自执行。
