@@ -128,6 +128,74 @@ final class DDCDisplayTransportTests: XCTestCase {
         let transport = InvalidReplyTransport()
         XCTAssertNil(transport.read(DDCDisplayTarget(uid: "display", service: nil)))
     }
+
+    // MARK: - Get VCP request bytes (issue #115 Task A)
+
+    func testStandardGetVCPRequestFoldsInTheDataAddress() {
+        XCTAssertEqual(
+            DDCPacket.getVCPRequest(checksumMode: .standard),
+            [0x82, 0x01, 0x62, 0xDE]
+        )
+    }
+
+    func testLegacyGetVCPRequestMatchesThePreviouslyShippedBytes() {
+        XCTAssertEqual(
+            DDCPacket.getVCPRequest(checksumMode: .legacy),
+            [0x82, 0x01, 0x62, 0x8F]
+        )
+    }
+
+    func testGetVCPRequestChecksumTracksTheVCPCode() {
+        XCTAssertEqual(
+            DDCPacket.getVCPRequest(vcp: 0x10, checksumMode: .standard),
+            [0x82, 0x01, 0x10, 0xAC]
+        )
+        XCTAssertEqual(
+            DDCPacket.getVCPRequest(vcp: 0x10, checksumMode: .legacy),
+            [0x82, 0x01, 0x10, 0xFD]
+        )
+    }
+
+    func testSetVCPRequestBytesForZeroFiftyAndFullVolume() {
+        XCTAssertEqual(DDCPacket.setVCPRequest(value: 0), [0x84, 0x03, 0x62, 0x00, 0x00, 0xDA])
+        XCTAssertEqual(DDCPacket.setVCPRequest(value: 50), [0x84, 0x03, 0x62, 0x00, 0x32, 0xE8])
+        XCTAssertEqual(DDCPacket.setVCPRequest(value: 100), [0x84, 0x03, 0x62, 0x00, 0x64, 0xBE])
+    }
+
+    func testEveryGeneratedPacketCarriesAVerifiableXorChecksum() {
+        let requests = [
+            (DDCPacket.getVCPRequest(checksumMode: .standard), true),
+            (DDCPacket.getVCPRequest(checksumMode: .legacy), false),
+            (DDCPacket.setVCPRequest(value: 0), true),
+            (DDCPacket.setVCPRequest(value: 100), true)
+        ]
+        for (packet, includesDataAddress) in requests {
+            XCTAssertEqual(packet.count >= 4, true, "Packet must carry a header, opcode and checksum")
+            XCTAssertEqual(
+                packet.last,
+                DDCPacket.checksum(Array(packet.dropLast()), includeDataAddress: includesDataAddress),
+                "Checksum must be the XOR of the seed and every preceding byte"
+            )
+        }
+    }
+
+    func testWritePacketIsUnchangedByTheReadProfileWork() {
+        // The Set VCP format was verified on hardware; only Get VCP gained a
+        // second checksum candidate.
+        XCTAssertEqual(DDCPacket.setVCPRequest(value: 95), [0x84, 0x03, 0x62, 0x00, 0x5F, 0x85])
+    }
+
+    func testFreshServiceStartsWithNoProvenProfileAndProbesImmediately() {
+        // The profile cache lives on the target, so a re-resolved service
+        // (output switch, topology change, wake) always starts unproven.
+        let target = DDCDisplayTarget(uid: "display", service: nil)
+
+        XCTAssertNil(target.readProfile)
+        XCTAssertTrue(DDCReadProfilePolicy.shouldRunProbe(
+            cachedProfile: target.readProfile,
+            readsSinceLastProbe: target.readsSinceLastProbe
+        ))
+    }
 }
 
 private final class InvalidReplyTransport: DDCVolumeTransport {

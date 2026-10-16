@@ -8,6 +8,12 @@ private let ddcTargetLogger = Logger(
     category: "DDCTarget"
 )
 
+/// Short, process-local id so a tester's log lines can be correlated without
+/// recording any stable device identity. Regenerated every launch on purpose.
+private enum DDCLogSession {
+    static let id = String(UInt16.random(in: 0...UInt16.max), radix: 16)
+}
+
 // IORegistry and I2C details adapted from AppleSiliconDDC revision
 // 67ff964ab8123d9d35fadf7d8e1a7c677d31da14, Copyright © 2021 Istvan T. (MIT).
 
@@ -16,6 +22,13 @@ private let ddcTargetLogger = Logger(
 final class DDCDisplayTarget {
     let uid: String
     let service: IOAVService?
+    /// The read profile that produced a validated reply for this service.
+    /// Nil means "not yet proven", never "assume the legacy profile".
+    var readProfile: DDCReadProfile?
+    /// Bounded probe pacing for this service; reset whenever a probe runs.
+    var readsSinceLastProbe = DDCReadProfilePolicy.readsBetweenProbes
+    /// Last reply/problem shape logged, so steady state does not spam.
+    var lastLoggedKind: String?
 
     init(uid: String, service: IOAVService?) {
         self.uid = uid
@@ -32,9 +45,9 @@ protocol DDCVolumeTransport: AnyObject {
 /// Direct DDC access for external Apple Silicon displays.
 /// Construct and call this transport on its owning serial worker queue.
 final class DDCDisplayTransport: DDCVolumeTransport {
-    private static let chipAddress: UInt32 = 0x37
-    private static let dataAddress: UInt32 = 0x51
-    private static let volumeVCP: UInt8 = 0x62
+    private static let chipAddress = DDCPacket.chipAddress
+    private static let dataAddress = DDCPacket.dataAddress
+    private static let volumeVCP = DDCPacket.volumeVCP
 
     static func isConnectedExternalFramebuffer(
         ioNameMatched: String?,
@@ -161,12 +174,12 @@ final class DDCDisplayTransport: DDCVolumeTransport {
         }
         let target = selected.opened
         if let branchName = services.first(where: { $0.entryID == selected.serviceEntryID })?.snapshot.branchName {
-            ddcTargetLogger.debug(
-                "DDC target resolved: branch=\(branchName, privacy: .public), framebuffers=\(framebuffers.count, privacy: .public), services=\(services.count, privacy: .public)"
+            ddcTargetLogger.notice(
+                "ddc.resolve result=matched branch=\(branchName, privacy: .public) framebuffers=\(framebuffers.count, privacy: .public) services=\(services.count, privacy: .public) session=\(DDCLogSession.id, privacy: .public)"
             )
         } else {
-            ddcTargetLogger.debug(
-                "DDC target resolved via legacy single-display path: framebuffers=\(framebuffers.count, privacy: .public), services=\(services.count, privacy: .public)"
+            ddcTargetLogger.notice(
+                "ddc.resolve result=matched path=legacySingleDisplay framebuffers=\(framebuffers.count, privacy: .public) services=\(services.count, privacy: .public) session=\(DDCLogSession.id, privacy: .public)"
             )
         }
         return DDCDisplayTarget(uid: uid, service: target)
@@ -179,27 +192,51 @@ final class DDCDisplayTransport: DDCVolumeTransport {
     func read(_ target: DDCDisplayTarget) -> DDCVolumeReply? {
         #if arch(arm64)
         guard let service = target.service else { return nil }
-        let request: [UInt8] = [Self.volumeVCP]
-        var sawValidTransportReply = false
-        for attempt in 0..<5 {
-            usleep(attempt == 0 ? 10_000 : 20_000)
-            var packet = Self.packet(for: request, includeDataAddressInChecksum: false)
-            let writeResult = packet.withUnsafeMutableBytes {
-                IOAVServiceWriteI2C(service, Self.chipAddress, Self.dataAddress, $0.baseAddress, UInt32($0.count))
+
+        // A proven profile is reused for every later poll of this same service.
+        if let profile = target.readProfile {
+            if let reply = verifiedRead(service: service, profile: profile, target: target) {
+                return reply
             }
-            guard writeResult == kIOReturnSuccess else { continue }
-            usleep(50_000)
-            var reply = [UInt8](repeating: 0, count: 11)
-            let readResult = reply.withUnsafeMutableBytes {
-                IOAVServiceReadI2C(service, Self.chipAddress, Self.dataAddress, $0.baseAddress, UInt32($0.count))
-            }
-            if readResult == kIOReturnSuccess { sawValidTransportReply = true }
-            if readResult == kIOReturnSuccess, let decoded = DDCVolumeReply.decode(reply) {
-                return decoded
-            }
+            logReadFailureIfChanged(kind: "readFailed", profile: profile, target: target)
+            return nil
         }
-        ddcTargetLogger.debug(
-            "DDC read failed: \(sawValidTransportReply ? DDCResolutionFailure.unsupportedVolumeVCP.diagnosticName : DDCResolutionFailure.readFailed.diagnosticName, privacy: .public)"
+
+        target.readsSinceLastProbe += 1
+        guard DDCReadProfilePolicy.shouldRunProbe(
+            cachedProfile: nil,
+            readsSinceLastProbe: target.readsSinceLastProbe
+        ) else { return nil }
+        target.readsSinceLastProbe = 0
+
+        let started = DispatchTime.now()
+        var isFirstCandidate = true
+        let selection = DDCReadProfileProbe.select { profile in
+            // 50-100 ms of bus idle time between independent candidates.
+            if !isFirstCandidate { usleep(75_000) }
+            isFirstCandidate = false
+            return probeOutcome(service: service, profile: profile)
+        }
+        let elapsedMs = Int((DispatchTime.now().uptimeNanoseconds &- started.uptimeNanoseconds) / 1_000_000)
+        for attempt in selection.attempts {
+            ddcTargetLogger.info(
+                "ddc.probe profile=\(attempt.profile.label, privacy: .public) replyKind=\(attempt.outcome.diagnosticName, privacy: .public) attempts=\(selection.attempts.count, privacy: .public) session=\(DDCLogSession.id, privacy: .public)"
+            )
+        }
+
+        if let profile = selection.profile, let reply = selection.reply {
+            target.readProfile = profile
+            target.lastLoggedKind = nil
+            ddcTargetLogger.notice(
+                "ddc.selectedProfile profile=\(profile.label, privacy: .public) result=usable elapsedMs=\(elapsedMs, privacy: .public) session=\(DDCLogSession.id, privacy: .public)"
+            )
+            return reply
+        }
+
+        let reason = selection.refused ? DDCVolumeReplyKind.vcpRefused.diagnosticName : "noProfile"
+        target.lastLoggedKind = reason
+        ddcTargetLogger.notice(
+            "ddc.selectedProfile result=unavailable reason=\(reason, privacy: .public) elapsedMs=\(elapsedMs, privacy: .public) session=\(DDCLogSession.id, privacy: .public)"
         )
         return nil
         #else
@@ -209,31 +246,85 @@ final class DDCDisplayTransport: DDCVolumeTransport {
 
     func write(_ target: DDCDisplayTarget, value: UInt16) -> Bool {
         #if arch(arm64)
-        guard let service = target.service else { return false }
-        let command: [UInt8] = [Self.volumeVCP, UInt8(value >> 8), UInt8(value & 0xff)]
+        // Writing is only allowed on a service whose read path was proven.
+        guard let service = target.service, target.readProfile != nil else { return false }
+        let packet = DDCPacket.setVCPRequest(value: value)
         var succeeded = false
         for attempt in 0..<5 {
             for _ in 0..<2 {
                 usleep(attempt == 0 ? 10_000 : 20_000)
-                var packet = Self.packet(for: command, includeDataAddressInChecksum: true)
-                succeeded = packet.withUnsafeMutableBytes {
+                var mutablePacket = packet
+                succeeded = mutablePacket.withUnsafeMutableBytes {
                     IOAVServiceWriteI2C(service, Self.chipAddress, Self.dataAddress, $0.baseAddress, UInt32($0.count)) == kIOReturnSuccess
                 }
             }
-            if succeeded { return true }
+            if succeeded { break }
         }
-        return false
+        ddcTargetLogger.notice(
+            "ddc.write result=\(succeeded ? "ok" : "failed", privacy: .public) session=\(DDCLogSession.id, privacy: .public)"
+        )
+        return succeeded
         #else
         return false
         #endif
     }
 
-    private static func packet(for bytes: [UInt8], includeDataAddressInChecksum: Bool) -> [UInt8] {
-        var packet = [UInt8(0x80 | (bytes.count + 1)), UInt8(bytes.count)] + bytes + [0]
-        let seed = UInt8(0x37 << 1) ^ (includeDataAddressInChecksum ? UInt8(dataAddress) : 0)
-        packet[packet.count - 1] = packet.dropLast().reduce(seed, ^)
-        return packet
+    #if arch(arm64)
+    /// One Get VCP exchange for a specific profile, without classification.
+    private func exchangeOnce(service: IOAVService, profile: DDCReadProfile, delayMicroseconds: UInt32) -> [UInt8]? {
+        usleep(delayMicroseconds)
+        var packet = DDCPacket.getVCPRequest(checksumMode: profile.checksumMode)
+        let writeResult = packet.withUnsafeMutableBytes {
+            IOAVServiceWriteI2C(service, Self.chipAddress, Self.dataAddress, $0.baseAddress, UInt32($0.count))
+        }
+        guard writeResult == kIOReturnSuccess else { return nil }
+        usleep(50_000)
+        var reply = [UInt8](repeating: 0, count: 11)
+        let readResult = reply.withUnsafeMutableBytes {
+            IOAVServiceReadI2C(service, Self.chipAddress, profile.readAddress, $0.baseAddress, UInt32($0.count))
+        }
+        guard readResult == kIOReturnSuccess else { return nil }
+        return reply
     }
+
+    /// Bounded per-candidate probe: at most two attempts, then move on.
+    private func probeOutcome(service: IOAVService, profile: DDCReadProfile) -> DDCProbeOutcome {
+        var lastKind: DDCVolumeReplyKind?
+        for attempt in 0..<2 {
+            guard let bytes = exchangeOnce(service: service, profile: profile, delayMicroseconds: attempt == 0 ? 10_000 : 20_000) else {
+                continue
+            }
+            let kind = DDCVolumeReply.classify(bytes)
+            if case .valid = kind { return .reply(kind) }
+            lastKind = kind
+        }
+        return lastKind.map(DDCProbeOutcome.reply) ?? .transportFailure
+    }
+
+    /// Steady-state read on an already-proven profile, keeping the previous
+    /// five-attempt retry budget.
+    private func verifiedRead(service: IOAVService, profile: DDCReadProfile, target: DDCDisplayTarget) -> DDCVolumeReply? {
+        for attempt in 0..<5 {
+            guard let bytes = exchangeOnce(service: service, profile: profile, delayMicroseconds: attempt == 0 ? 10_000 : 20_000) else {
+                continue
+            }
+            if case .valid(let reply) = DDCVolumeReply.classify(bytes) {
+                target.lastLoggedKind = nil
+                return reply
+            }
+        }
+        return nil
+    }
+
+    /// One log line per distinct steady-state failure shape, not per poll.
+    private func logReadFailureIfChanged(kind: String, profile: DDCReadProfile, target: DDCDisplayTarget) {
+        guard target.lastLoggedKind != kind else { return }
+        target.lastLoggedKind = kind
+        ddcTargetLogger.notice(
+            "ddc.read result=\(kind, privacy: .public) profile=\(profile.label, privacy: .public) session=\(DDCLogSession.id, privacy: .public)"
+        )
+    }
+    #endif
 
     #if arch(arm64)
     private static func registryEntryID(_ entry: io_registry_entry_t) -> UInt64? {
@@ -287,8 +378,8 @@ final class DDCDisplayTransport: DDCVolumeTransport {
     }
 
     private func logUnavailable(_ failure: DDCResolutionFailure, framebuffers: Int, services: Int) {
-        ddcTargetLogger.debug(
-            "DDC target unavailable: \(failure.diagnosticName, privacy: .public), framebuffers=\(framebuffers, privacy: .public), services=\(services, privacy: .public)"
+        ddcTargetLogger.notice(
+            "ddc.resolve result=unavailable reason=\(failure.diagnosticName, privacy: .public) framebuffers=\(framebuffers, privacy: .public) services=\(services, privacy: .public) session=\(DDCLogSession.id, privacy: .public)"
         )
     }
 }

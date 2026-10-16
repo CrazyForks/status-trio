@@ -232,6 +232,25 @@ final class DDCVolumeCoordinatorTests: XCTestCase {
         coordinator.stop()
     }
 
+    func testProtocolFailureWithoutAValidatedReplyNeverWrites() async {
+        // The service resolves, but no read ever returns a validated reply
+        // (all profiles failed). The slider must stay unavailable and no
+        // Set VCP may be attempted.
+        let transport = FakeDDCTransport()
+        var updates: [DDCVolumeUpdate] = []
+        let coordinator = DDCVolumeCoordinator(transport: transport) { updates.append($0) }
+
+        coordinator.select(outputID: 93, uid: "DISPLAY-A")
+        await waitUntil("failed read reports unavailable") { updates.contains { $0.scalar == nil } }
+        coordinator.setVolume(0.8)
+        coordinator.flushPendingVolume()
+        await coordinator.waitForWorkerIdle()
+
+        XCTAssertTrue(transport.writeValues.isEmpty, "No write may run without a validated read reply")
+        XCTAssertFalse(updates.contains { $0.scalar != nil }, "No percentage may be published without a validated reply")
+        coordinator.stop()
+    }
+
     func testSleepCancelsDebouncedWriteBeforeWake() async {
         let clock = ManualDDCClock()
         let transport = FakeDDCTransport()
