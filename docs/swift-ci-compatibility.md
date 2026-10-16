@@ -1058,3 +1058,41 @@ Issue #115（当前默认音频输出 → 唯一 DDC Service 匹配）新增了�
 0 failures；587 Swift Testing / 91 suites）与 `swift build -c release` 均通过。
 DDC 只有单台 XV272U 实机证据；双外接屏分别作为默认输出的场景未在真机验证，
 见 [issue-115-ddc-targeting](verification/issue-115-ddc-targeting.md)。
+
+## 38885873584 与 38885964515：Issue #115 DDC 读协议预检与测试 DMG
+
+第二轮（Get VCP 校验和显式化 + 受控只读 profile 探测 + `ddc.*` 诊断）同样按规则
+走非发布预检，并额外产出一次可供报障用户安装的测试 DMG。
+
+第一次派发
+[`38885873584`](https://github.com/lingyired/status-trio/actions/runs/38885873584)
+（head `fbf8baf7`、`version=1.6.0`、`build=39`、`publish=false`、`notarize=true`）
+**失败**，失败阶段是 job `release` 本身（2 秒内结束，没有任何步骤运行），根因是
+`distribution` environment 的 protection rule：
+
+```
+Branch "codex/issue-115-ddc-output-matching" is not allowed to deploy to
+distribution due to environment protection rules.
+```
+
+这不是证书/密钥缺失，也不是代码或编译失败——该 environment 只允许受保护分支部署。
+修复方式是按 Plan 的降级路径改用 Ad-hoc：
+[`38885964515`](https://github.com/lingyired/status-trio/actions/runs/38885964515)
+（head `fbf8baf7`、`version=1.6.0`、`build=39`、`publish=false`、`notarize=false`）
+在 CI 工具链（`macos-26` / Xcode 26.6 / Swift 6.3.3）上全绿，耗时约 15 分钟：
+
+- `Run tests` 通过（1,653 XCTest、7 skipped、0 failures；587 Swift Testing / 91 suites）。
+- `Run native compatibility tests` 通过，含 macOS 13 bundle/Sparkle 契约与
+  `privileged helper bundle-contract regressions passed`。
+- `Built …/StatusTrio-1.6.0.dmg without publishing.`；artifact 名为
+  `StatusTrio-306`，内含 `StatusTrio-1.6.0.dmg`、`StatusTrio-1.6.0.dmg.sha256`、
+  `release.env`。挂载后确认 `CFBundleShortVersionString=1.6.0`、
+  `CFBundleVersion=39`、签名为 Ad-hoc；未创建 GitHub Release，也未更新 appcast。
+- 该 artifact 的 `release.env` 中 `DMG_URL` 指向
+  `releases/download/v1.6.0/...`，`publish=false` 下**并不存在**，不能当作下载地址。
+
+本机同一 head（Xcode 27.0 / Swift 6.4）上 `swift test` 1,646 XCTest（10 skipped、
+0 failures；587 Swift Testing / 91 suites）与 `swift build -c release` 均通过；
+另外用真实 XV272U 跑了一次只读探针，确认 P1（standard `82 01 62 DE`）可读出当前值，
+且 `ddc.resolve` / `ddc.probe` / `ddc.selectedProfile` 能被
+`log show --info` 取出。BenQ 真机与 P3/P4 回退路径仍未验证。
