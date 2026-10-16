@@ -1025,3 +1025,36 @@ Error: release notes directory does not exist: …/release-notes/1.6.1
 `swift build -c release` 和 `swift test --filter Issue30WiFiAlignmentTests`（6/6）均通过；
 修复前后的菜单栏条带、以及"槽内电量百分比"受同一路径影响的对比条，都通过测试内渲染截图人工核对。
 真实前台输入切换、候选框行为与 macOS 13/15/26 设备验证仍不在 CI 覆盖范围。
+
+## 38867314730 与 38868054372：Issue #115 DDC 匹配的预检
+
+Issue #115（当前默认音频输出 → 唯一 DDC Service 匹配）新增了一个泛型函数
+（`DDCTargetResolver.openResolvedTarget<Handle, Opened>`）和 IOKit 侧的 resolve 改写，
+因此按规则走非发布预检。
+
+第一次派发
+[`38867314730`](https://github.com/lingyired/status-trio/actions/runs/38867314730)
+（head `107d5493`、`version=1.6.1`、`build=38`、`publish=false`）**失败**，失败阶段是
+`Build, sign, notarize, and publish`，根因是 `version=1.6.1` 没有对应的
+`release-notes/1.6.1` 目录，`scripts/release.sh` 在打包前直接报
+`release notes directory does not exist` 并退出 1——不是工具链或代码编译问题
+（同一 run 的 `Run tests`、`Run native compatibility tests` 都已通过）。
+
+修复方式是改用已存在的版本号并只抬高 build：重新派发
+[`38868054372`](https://github.com/lingyired/status-trio/actions/runs/38868054372)
+（head `107d5493`、`version=1.6.0`、`build=38`、`publish=false`、`notarize=false`），
+在 CI 工具链（`macos-26` / Xcode 26.6 / Swift 6.3.3）上全绿，耗时约 15 分钟：
+
+- `Run tests` 通过（1,627 XCTest、7 skipped、0 failures；587 Swift Testing / 91 suites）。
+  本机 1,620 与 CI 1,627 的差仍是 `#available(macOS 26/27)` 门控的用例；
+  两边的 skipped 数（本机 10 / CI 7）同样只反映这些平台门控。
+- `Run native compatibility tests` 通过，含 macOS 13 bundle/Sparkle 契约检查与
+  `privileged helper bundle-contract regressions passed`。
+- Universal release 构建产出 `StatusTrio-1.6.0.dmg`，输出 `Built … without publishing.`；
+  该次预检 `publish=false` 且 `notarize=false`，走 Ad-hoc 签名，未创建 GitHub Release，
+  也未更新 appcast。
+
+本机同一 head（Xcode 27.0 / Swift 6.4）上 `swift test`（1,620 XCTest、10 skipped、
+0 failures；587 Swift Testing / 91 suites）与 `swift build -c release` 均通过。
+DDC 只有单台 XV272U 实机证据；双外接屏分别作为默认输出的场景未在真机验证，
+见 [issue-115-ddc-targeting](verification/issue-115-ddc-targeting.md)。
