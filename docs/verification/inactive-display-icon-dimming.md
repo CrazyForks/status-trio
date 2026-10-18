@@ -1,8 +1,9 @@
 # 非焦点显示器：彩色菜单栏图标未随系统灰化
 
-状态：**系统灰化边界已实测确认，承载方案未验证，正式修复未实现**。生产代码
-未改动，只记录证据和可行边界，等真实双屏实验选定方案后再改
-`StatusBarAnimationLayerPresenter`。
+状态：**真实双屏实验已完成；A0/A1/A3 均不能继承系统灰化，A2 能灰化但会
+回归 #112 与 20 fps 预算，正式修复暂不实施**。生产代码未改动，只记录证据与
+可复现边界；若后续要修，需要先找到能区分每个屏幕副本的公开系统信号，或接受
+A2 的已知退化。
 
 ## 现象
 
@@ -15,15 +16,16 @@
 | 项目 | 值 |
 | --- | --- |
 | 机器 | MacBook Pro，Apple M3 Max，macOS 27.0.1（26A434） |
-| 焦点屏 | 内建 Liquid Retina XDR，3456×2234 @2x（当时前台为 Edge） |
-| 非焦点屏 | XV272U，2048×1152 @2x，144 Hz |
+| 焦点屏 | 内建 Liquid Retina XDR，3456×2234 @2x；切换后两台屏幕各做过一次焦点屏 |
+| 非焦点屏 | XV272U，4096×2304 物理像素 / 2048×1152 @2x，144 Hz |
 | Space | `spans-displays = 0`，两屏各自独立菜单栏 |
-| 复现 | `screencapture -x -R <screen>` 同时抓两屏菜单栏后逐像素对比 |
+| 复现 | `screencapture -x -D 1` / `-D 2` 抓两屏后裁剪菜单栏逐像素对比 |
 
 焦点屏上 Status Trio 图标：环为明亮的绿色，AirPods 为明亮的蓝色。
 非焦点屏上同一图标：数字 `80` 降到约 1/4 亮度，而环和 AirPods 仍是高饱和的
 绿色和蓝色。两屏的直接对照见本目录的
-`inactive-display-menubar-compare.png`（上：焦点屏；下：非焦点屏）。
+`inactive-display-menubar-compare.png`（上：焦点屏；下：非焦点屏）。阶段 A 的
+六种承载策略对照见 `inactive-display-strategy-compare.png`。
 
 ## 代码侧已确认的事实
 
@@ -47,24 +49,26 @@ AppKit 头文件对 `NSStatusBarButton` 的说明是：只有模板图片会拿�
 | 策略 | 呈现方式 | 真实非焦点屏结论 |
 | --- | --- | --- |
 | A0 | 模板 `button.image` + 彩色 `CALayer`（现网做法） | **彩色不变暗，模板部分变暗** |
-| A1 | 模板 `button.image` + layer-backed 子视图承载彩色 | 待验证 |
-| A2 | 一整张非模板 `button.image` | 待验证 |
-| A3 | 模板 `button.image` + 自绘 `NSView` | 待验证 |
+| A1 | 模板 `button.image` + layer-backed 子视图承载彩色 | **彩色不变暗**，与 A0 相同 |
+| A2 | 一整张非模板 `button.image` | **彩色与模板横条一起变暗** |
+| A3 | 模板 `button.image` + 自绘 `NSView` | **彩色不变暗**，与 A0 相同 |
 
-本机合盖使用外接屏（`AppleClamshellState = Yes`），内建屏无法作为可操作屏幕。
-尝试用私有 `CGVirtualDisplay` 造第二块屏后，系统只在该屏画自己的菜单项，
-**不镜像任何第三方 status item**：真实 Status Trio 和独立探针都没有出现在
-虚拟屏上，抓到的是一份停止更新的菜单栏快照。因此 A1–A3 在虚拟屏上的结果
-全部作废，没有据此得出“各方案是否可行”的结论，也没有被当成双屏验收。
+探针在真实双屏上用同一组 6 个 status item 验证：每个 item 都有同一条模板横条，
+横条上方的色块分别是纯模板、A3 自绘子视图、A2 整张非模板图、A1 layer-backed
+子视图、A0 直接挂 layer，以及第二个模板参照。来回切换前台 app 让外接屏在焦点/
+非焦点之间切换，再抓取两块屏的菜单栏逐像素对比。
 
-目前只能由实测确认 A0 的边界：**系统灰化模板内容，但不会灰化直接挂在
-`NSStatusBarButton.layer` 上的彩色 overlay**。彩色内容改由子视图承载后，
-系统是否接管其外观，仍必须在真实非焦点显示器上验证。
+- 非焦点屏上，A0/A1/A3 的模板横条按系统规则变暗（横条亮度从约 0.94 降到
+  0.69–0.76），但彩色子视图没有跟随，仍是接近原色的高饱和值。
+- A2 的彩色块与它自带的白色横条一起变暗；它是唯一能让彩色内容继承系统
+  非焦点外观的承载方式。
+- 结果与是否先启动探针、两块屏幕的先后顺序无关；切换焦点后重复抓取得到同一
+  结论。
 
-用探针把 A0 的彩色圆放进 `button.image`（整张非模板图）做对照时，该 item 在
-非焦点屏上也没有渲染出来，说明 macOS 不会在非焦点菜单栏里为这个额外探针
-创建副本。因此“非模板整图是否会被灰化”同样没有可信结论，不以这次 A2 观察
-作为根因证据。
+本机合盖时曾用私有 `CGVirtualDisplay` 造第二块屏，系统只在该屏画自己的菜单项，
+**不镜像任何第三方 status item**：真实 Status Trio 和独立探针都没有出现在虚拟屏
+上，抓到的是一份停止更新的菜单栏快照。因此虚拟屏上的结果全部作废，不作为双屏
+验收；下面的结论全部来自真实内建屏 + XV272U。
 
 ## 外部项目证据
 
@@ -77,8 +81,10 @@ AppKit 头文件对 `NSStatusBarButton` 的说明是：只有模板图片会拿�
 ## 为什么尚未改生产代码
 
 计划要求“只有候选在真实双屏上确认彩色区域能与系统一致灰化，才推广”。
-目前只有 A0 的边界被真实复现，A1/A3 没有可信实验条件；此时改
-`StatusBarAnimationLayerPresenter`，等于把未经验证的承载方式直接发给用户。
+A1/A3 已在真实双屏上确认无效；A2 虽然能灰化，但必须把整张彩色图交给
+`NSStatusBarButton.image`。这既会在每帧更新时重新赋值 `button.image`，也会
+拿走现在由模板图层承担的 Space 拖动实时重着色路径（#112），与 20 fps 的现有
+约束冲突。计划明确把 A2 排除在正式动画方案之外，因此本轮没有可推广的最小修改。
 
 现有公开 API 里没有“当前菜单栏是否处于非焦点显示器”的查询：
 `NSApp.isActive` 表示 app 是否前台，`NSScreen.main` 表示键盘焦点屏幕，
@@ -87,17 +93,25 @@ AppKit 头文件对 `NSStatusBarButton` 的说明是：只有模板图片会拿�
 `NSApp.isActive` 猜一个全局布尔值去调暗彩色层——同一 status item 在不同屏幕上
 由系统分别合成，一个全局值会把焦点屏也调暗。
 
-## 可选下一步（需要真实双屏确认）
+## 可选下一步
 
-1. **优先**：在真实双屏上重跑 A1/A3 探针，确认 AppKit 是否会对状态栏内的子视图
-   应用非焦点外观；只有能读到逐屏状态时才接入 `StatusBarAnimationLayerPresenter`。
-2. 若均不可行：把限制写进 `docs/known-limitations.md`，与 #112 的彩色区域限制
-   并列，并附本文件和截图说明。
-3. 不建议：常驻 `layer.opacity`、按 `NSApp.isActive`/`NSScreen.main` 调暗、
-   整图改模板（会丢失状态色）、每帧换整张 `button.image`（破坏 20 fps 预算）。
+1. **系统信号优先**：继续查找能区分“当前 status item 的这个屏幕副本是否非焦点”
+   的公开 API。AppKit 的 `NSStatusBarButton` 没有该属性，`NSApp.isActive`、
+   `NSScreen.main` 和按钮所在窗口都不能代表活跃菜单栏屏幕；这次实测中切换前台
+   app 后，按钮窗口归属和 `effectiveAppearance` 都没有变化。
+2. 如果只能二选一：A2 可以修复灰化但不是合格的生产方案；常驻
+   `layer.opacity`、按 `NSApp.isActive`/`NSScreen.main` 调暗、整图改 Template
+   都属于计划明确禁止的假修复。
+3. 在找到系统信号之前，保留本文件与 `docs/known-limitations.md` 的说明，不建议
+   用每次前台 app 切换都重绘整张图的方式换取“看起来更灰”的结果。
 
 ## 回归边界
 
-本次没有生产改动，因此未触发 Issue #30、Dock、充电动画的行为变化；恢复硬件
-条件后仍需按计划运行 `swift test --filter Issue30WiFiAlignmentTests`、`swift test`
-与 `swift build -c release`。
+本次没有生产改动。已在当前 worktree 运行：
+
+- `swift test --filter Issue30WiFiAlignmentTests`：6 tests，0 failures
+- `swift test`：587 tests，0 failures
+- `swift build -c release`：通过
+
+因为生产代码未变，Issue #30、Dock 与充电动画的最终行为与改动前一致；真实双屏
+灰度结论来自独立 AppKit 探针，不代表 Status Trio 的彩色 layer 已被修复。

@@ -156,6 +156,10 @@ image, so it cannot inherit the system's per-display treatment for free.
 
 The normal-display rendering and the Dock icon are unaffected; this limitation
 only concerns the appearance of the coloured primitives on an unfocused
-display's menu bar. See
+display's menu bar. Real two-display probing confirmed that layer-backed and
+drawn subviews do not inherit the dimming either. A single non-template
+`button.image` does dim, but updating it per animation frame would take away the
+template path that keeps #112's Space drag in sync and would exceed the existing
+20 fps presentation design. See
 [inactive-display icon dimming](verification/inactive-display-icon-dimming.md)
-for the measured evidence and the remaining verification work.
+for the measured evidence and the remaining system-API question.
