@@ -14,7 +14,7 @@ final class DDCReadProfileSelectionTests: XCTestCase {
         let selection = DDCReadProfileProbe.select { profile in
             visited.append(profile.label)
             defer { index += 1 }
-            return index < outcomes.count ? outcomes[index] : .transportFailure
+            return index < outcomes.count ? outcomes[index] : .replyReadFailed
         }
         return (selection, visited)
     }
@@ -41,7 +41,7 @@ final class DDCReadProfileSelectionTests: XCTestCase {
     }
 
     func testSecondCandidateIsUsedWhenTheFirstFails() {
-        let (selection, visited) = run([.transportFailure, .reply(.valid(validReply))])
+        let (selection, visited) = run([.requestWriteFailed, .reply(.valid(validReply))])
 
         XCTAssertEqual(selection.profile?.label, "P2")
         XCTAssertEqual(visited, ["P1", "P2"])
@@ -49,7 +49,7 @@ final class DDCReadProfileSelectionTests: XCTestCase {
 
     func testLegacyProfileKeepsTheAcerZeroFailurePathAlive() {
         let (selection, visited) = run([
-            .transportFailure,
+            .replyReadFailed,
             .reply(.zeros),
             .reply(.valid(validReply))
         ])
@@ -71,7 +71,7 @@ final class DDCReadProfileSelectionTests: XCTestCase {
 
     func testEveryCandidateFailingReportsUnavailable() {
         let (selection, visited) = run([
-            .transportFailure,
+            .requestWriteFailed,
             .reply(.zeros),
             .reply(.untouched),
             .reply(.badChecksum)
@@ -81,8 +81,42 @@ final class DDCReadProfileSelectionTests: XCTestCase {
         XCTAssertFalse(selection.refused)
         XCTAssertEqual(visited, ["P1", "P2", "P3", "P4"])
         XCTAssertEqual(selection.attempts.map(\.outcome.diagnosticName), [
-            "transportFailure", "zeros", "untouched", "badChecksum"
+            "requestWriteFailed", "zeros", "untouched", "badChecksum"
         ])
+        XCTAssertEqual(
+            selection.attempts.map(\.outcome.diagnosticStage),
+            ["requestWrite", "validate", "validate", "validate"]
+        )
+        XCTAssertEqual(selection.failure, .replyRejected(.badChecksum))
+    }
+
+    func testFailureStageSurvivesInsteadOfBeingReportedAsUnsupportedVCP() {
+        // Every failure used to surface as "unsupportedVolumeVCP", including a
+        // host-side I2C failure the display never saw.
+        let allCandidates = { (outcome: DDCProbeOutcome) in Array(repeating: outcome, count: 4) }
+        XCTAssertEqual(run(allCandidates(.requestWriteFailed)).selection.failure, .requestWriteFailed)
+        XCTAssertEqual(run(allCandidates(.replyReadFailed)).selection.failure, .replyReadFailed)
+        XCTAssertEqual(run(allCandidates(.reply(.zeros))).selection.failure, .replyRejected(.zeros))
+        XCTAssertNil(run([.reply(.valid(validReply))]).selection.failure)
+    }
+
+    func testAStrayResultByteInAnInvalidFrameDoesNotEndTheProbe() {
+        // Result code 1 only means "unsupported VCP" on a frame that also has
+        // the right length, header, echoed VCP and checksum. A garbled frame
+        // that happens to carry `01` must keep P2-P4 alive.
+        var stale = validReplyBytes(changingResult: 1)
+        stale[4] = 0x8D
+        stale[10] = stale.prefix(10).reduce(UInt8(0x50), ^)
+
+        XCTAssertEqual(DDCVolumeReply.classify(stale), .wrongVCP)
+
+        let selection = DDCReadProfileProbe.select { profile in
+            profile.label == "P4" ? .reply(.valid(validReply)) : .reply(DDCVolumeReply.classify(stale))
+        }
+
+        XCTAssertEqual(selection.profile?.label, "P4", "Only a validated refusal may stop the probe")
+        XCTAssertFalse(selection.refused)
+        XCTAssertEqual(selection.attempts.map(\.profile.label), ["P1", "P2", "P3", "P4"])
     }
 
     func testMalformedRepliesNeverSelectAProfile() {
@@ -104,5 +138,13 @@ final class DDCReadProfileSelectionTests: XCTestCase {
             cachedProfile: nil,
             readsSinceLastProbe: DDCReadProfilePolicy.readsBetweenProbes
         ))
+    }
+
+    /// The measured Acer XV272U frame with a replaced result byte and a
+    /// recomputed checksum, so the frame stays internally consistent.
+    private func validReplyBytes(changingResult result: UInt8) -> [UInt8] {
+        var bytes: [UInt8] = [110, 136, 2, result, 98, 0, 0, 100, 0, 100, 214]
+        bytes[10] = bytes.prefix(10).reduce(UInt8(0x50), ^)
+        return bytes
     }
 }

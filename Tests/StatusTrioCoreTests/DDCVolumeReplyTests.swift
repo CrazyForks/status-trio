@@ -97,6 +97,41 @@ final class DDCVolumeReplyTests: XCTestCase {
         XCTAssertEqual(DDCVolumeReply.classify(reply(changing: 9, to: 101)), .invalidRange)
     }
 
+    // MARK: - Issue #115: result code 1 is a refusal only on a fully valid frame
+
+    func testResultCodeOneWithAWrongEchoedVCPIsNotARefusal() {
+        // A stale or unrelated frame can carry result code 1 while echoing a
+        // different VCP. Calling that "the display refused 0x62" ends the
+        // compatibility probe before P2-P4 are ever tried, so the monitor is
+        // reported unavailable for the wrong reason.
+        XCTAssertEqual(
+            DDCVolumeReply.classify(reply(changing: 3, to: 1, and: 4, to: 0x8D)),
+            .wrongVCP
+        )
+    }
+
+    func testResultCodeOneWithABadChecksumIsNotARefusal() {
+        var malformed = reply(changing: 3, to: 1)
+        malformed[10] ^= 0xFF
+
+        XCTAssertEqual(DDCVolumeReply.classify(malformed), .badChecksum)
+    }
+
+    func testResultCodeOneOnATruncatedBufferIsNotARefusal() {
+        XCTAssertEqual(DDCVolumeReply.classify(Array(valid.prefix(6))), .wrongLength)
+    }
+
+    func testResultCodeOneOnAFullValidFrameIsStillARefusal() {
+        XCTAssertEqual(DDCVolumeReply.classify(reply(changing: 3, to: 1)), .vcpRefused)
+    }
+
+    func testUnknownNonZeroResultCodeIsNeverSupportEvidence() {
+        // Result codes other than 0/1 are not portable. They must not be
+        // accepted as data, and must not be reported as "unsupported VCP".
+        XCTAssertEqual(DDCVolumeReply.classify(reply(changing: 3, to: 3)), .displayReportedError(3))
+        XCTAssertNil(DDCVolumeReply.decode(reply(changing: 3, to: 3)))
+    }
+
     func testDiagnosticNamesAreIdentifierFreeAndDistinct() {
         let names = [
             DDCVolumeReplyKind.valid(DDCVolumeReply(current: 1, maximum: 1)).diagnosticName,
@@ -106,6 +141,7 @@ final class DDCVolumeReplyTests: XCTestCase {
             DDCVolumeReplyKind.wrongHeader.diagnosticName,
             DDCVolumeReplyKind.wrongVCP.diagnosticName,
             DDCVolumeReplyKind.vcpRefused.diagnosticName,
+            DDCVolumeReplyKind.displayReportedError(3).diagnosticName,
             DDCVolumeReplyKind.badChecksum.diagnosticName,
             DDCVolumeReplyKind.invalidRange.diagnosticName
         ]

@@ -76,13 +76,25 @@ enum DDCPacket {
 /// Result of a single bounded read attempt against one profile.
 enum DDCProbeOutcome: Equatable, Sendable {
     case reply(DDCVolumeReplyKind)
-    /// The request write or reply read never returned `kIOReturnSuccess`.
-    case transportFailure
+    /// The Get VCP request write never returned `kIOReturnSuccess`.
+    case requestWriteFailed
+    /// The reply read never returned `kIOReturnSuccess`.
+    case replyReadFailed
 
     var diagnosticName: String {
         switch self {
         case .reply(let kind): kind.diagnosticName
-        case .transportFailure: "transportFailure"
+        case .requestWriteFailed: "requestWriteFailed"
+        case .replyReadFailed: "replyReadFailed"
+        }
+    }
+
+    /// Which stage of the exchange produced this outcome.
+    var diagnosticStage: String {
+        switch self {
+        case .reply: "validate"
+        case .requestWriteFailed: "requestWrite"
+        case .replyReadFailed: "replyRead"
         }
     }
 }
@@ -97,10 +109,27 @@ struct DDCProbeSelection: Equatable, Sendable {
     let profile: DDCReadProfile?
     /// The validated reply that selected `profile`.
     let reply: DDCVolumeReply?
-    /// The display explicitly refused VCP 0x62 (result code 1). Further
+    /// A fully validated frame refused VCP 0x62 (result code 1). Further
     /// candidates are pointless: the monitor understood the request.
+    ///
+    /// Only `DDCVolumeReply.classify` may set this, and it only returns
+    /// `.vcpRefused` for a frame whose length, header, echoed VCP and checksum
+    /// all pass, so a stray `01` byte in a stale frame cannot end the probe.
     let refused: Bool
     let attempts: [DDCProbeAttempt]
+
+    /// The stage-tagged reason no profile was selected, or nil when one was.
+    /// Diagnostics report this instead of a catch-all "unsupported VCP".
+    var failure: DDCReadFailure? {
+        guard profile == nil else { return nil }
+        if refused { return .vcpRejected }
+        guard let last = attempts.last else { return .replyReadFailed }
+        switch last.outcome {
+        case .reply(let kind): return .replyRejected(kind)
+        case .requestWriteFailed: return .requestWriteFailed
+        case .replyReadFailed: return .replyReadFailed
+        }
+    }
 }
 
 /// Bounded, ordered, read-only profile probe for one already-resolved service.
@@ -121,7 +150,7 @@ enum DDCReadProfileProbe {
                 return DDCProbeSelection(profile: profile, reply: reply, refused: false, attempts: attempts)
             case .reply(.vcpRefused):
                 return DDCProbeSelection(profile: nil, reply: nil, refused: true, attempts: attempts)
-            case .reply, .transportFailure:
+            case .reply, .requestWriteFailed, .replyReadFailed:
                 continue
             }
         }

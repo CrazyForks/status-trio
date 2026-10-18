@@ -126,7 +126,50 @@ final class DDCDisplayTransportTests: XCTestCase {
 
     func testInvalidReplyIsRejectedByDecoder() {
         let transport = InvalidReplyTransport()
-        XCTAssertNil(transport.read(DDCDisplayTarget(uid: "display", service: nil)))
+        XCTAssertEqual(
+            transport.read(DDCDisplayTarget(uid: "display", service: nil)),
+            .failure(.replyReadFailed)
+        )
+    }
+
+    func testReadOutcomeSeparatesFailureStagesFromAValidatedReply() {
+        let reply = DDCVolumeReply(current: 40, maximum: 100)
+        XCTAssertEqual(DDCVolumeReadResult.reply(reply).replyValue, reply)
+        XCTAssertNil(DDCVolumeReadResult.reply(reply).failureReason)
+
+        for failure in [
+            DDCReadFailure.serviceUnavailable,
+            .requestWriteFailed,
+            .replyReadFailed,
+            .replyRejected(.badChecksum),
+            .vcpRejected,
+            .timeout
+        ] {
+            let result = DDCVolumeReadResult.failure(failure)
+            XCTAssertEqual(result.failureReason, failure)
+            XCTAssertNil(result.replyValue, "\(failure.diagnosticName) must not publish a value")
+        }
+    }
+
+    func testFailureDiagnosticsNameTheStageAndStayIdentifierFree() {
+        let names = [
+            DDCReadFailure.serviceUnavailable,
+            .requestWriteFailed,
+            .replyReadFailed,
+            .replyRejected(.badChecksum),
+            .vcpRejected,
+            .timeout
+        ].map(\.diagnosticName)
+
+        XCTAssertEqual(Set(names).count, names.count, "Every failure stage needs its own label")
+        XCTAssertEqual(DDCReadFailure.serviceUnavailable.diagnosticName, "serviceUnavailable")
+        XCTAssertEqual(DDCReadFailure.replyRejected(.badChecksum).diagnosticName, "replyRejected(badChecksum)")
+        XCTAssertEqual(DDCReadFailure.vcpRejected.diagnosticName, "vcpRejected")
+        XCTAssertEqual(DDCReadFailure.serviceUnavailable.diagnosticStage, "resolve")
+        XCTAssertEqual(DDCReadFailure.requestWriteFailed.diagnosticStage, "requestWrite")
+        XCTAssertEqual(DDCReadFailure.replyReadFailed.diagnosticStage, "replyRead")
+        XCTAssertEqual(DDCReadFailure.replyRejected(.zeros).diagnosticStage, "validate")
+        XCTAssertEqual(DDCReadFailure.vcpRejected.diagnosticStage, "validate")
     }
 
     // MARK: - Get VCP request bytes (issue #115 Task A)
@@ -200,6 +243,9 @@ final class DDCDisplayTransportTests: XCTestCase {
 
 private final class InvalidReplyTransport: DDCVolumeTransport {
     func resolve(uid: String) -> DDCDisplayTarget? { DDCDisplayTarget(uid: uid, service: nil) }
-    func read(_ target: DDCDisplayTarget) -> DDCVolumeReply? { DDCVolumeReply.decode([0x62]) }
+    func read(_ target: DDCDisplayTarget) -> DDCVolumeReadResult {
+        guard let reply = DDCVolumeReply.decode([0x62]) else { return .failure(.replyReadFailed) }
+        return .reply(reply)
+    }
     func write(_ target: DDCDisplayTarget, value: UInt16) -> Bool { false }
 }

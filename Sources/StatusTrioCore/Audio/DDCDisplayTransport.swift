@@ -3,14 +3,14 @@ import Foundation
 import IOKit
 import os
 
-private let ddcTargetLogger = Logger(
+let ddcTargetLogger = Logger(
     subsystem: "com.lingsmbp.StatusTrio",
     category: "DDCTarget"
 )
 
 /// Short, process-local id so a tester's log lines can be correlated without
 /// recording any stable device identity. Regenerated every launch on purpose.
-private enum DDCLogSession {
+enum DDCLogSession {
     static let id = String(UInt16.random(in: 0...UInt16.max), radix: 16)
 }
 
@@ -38,7 +38,9 @@ final class DDCDisplayTarget {
 
 protocol DDCVolumeTransport: AnyObject {
     func resolve(uid: String) -> DDCDisplayTarget?
-    func read(_ target: DDCDisplayTarget) -> DDCVolumeReply?
+    func read(_ target: DDCDisplayTarget) -> DDCVolumeReadResult
+    /// `true` means the I2C write was acknowledged. It is not proof that the
+    /// display applied the value; only a read-back can say that.
     func write(_ target: DDCDisplayTarget, value: UInt16) -> Bool
 }
 
@@ -189,24 +191,24 @@ final class DDCDisplayTransport: DDCVolumeTransport {
         #endif
     }
 
-    func read(_ target: DDCDisplayTarget) -> DDCVolumeReply? {
+    func read(_ target: DDCDisplayTarget) -> DDCVolumeReadResult {
         #if arch(arm64)
-        guard let service = target.service else { return nil }
+        guard let service = target.service else { return .failure(.serviceUnavailable) }
 
         // A proven profile is reused for every later poll of this same service.
         if let profile = target.readProfile {
-            if let reply = verifiedRead(service: service, profile: profile, target: target) {
-                return reply
+            let result = verifiedRead(service: service, profile: profile, target: target)
+            if let failure = result.failureReason {
+                logReadFailureIfChanged(failure: failure, profile: profile, target: target)
             }
-            logReadFailureIfChanged(kind: "readFailed", profile: profile, target: target)
-            return nil
+            return result
         }
 
         target.readsSinceLastProbe += 1
         guard DDCReadProfilePolicy.shouldRunProbe(
             cachedProfile: nil,
             readsSinceLastProbe: target.readsSinceLastProbe
-        ) else { return nil }
+        ) else { return .failure(.replyReadFailed) }
         target.readsSinceLastProbe = 0
 
         let started = DispatchTime.now()
@@ -220,7 +222,7 @@ final class DDCDisplayTransport: DDCVolumeTransport {
         let elapsedMs = Int((DispatchTime.now().uptimeNanoseconds &- started.uptimeNanoseconds) / 1_000_000)
         for attempt in selection.attempts {
             ddcTargetLogger.info(
-                "ddc.probe profile=\(attempt.profile.label, privacy: .public) replyKind=\(attempt.outcome.diagnosticName, privacy: .public) attempts=\(selection.attempts.count, privacy: .public) session=\(DDCLogSession.id, privacy: .public)"
+                "ddc.probe profile=\(attempt.profile.label, privacy: .public) stage=\(attempt.outcome.diagnosticStage, privacy: .public) outcome=\(attempt.outcome.diagnosticName, privacy: .public) attempts=\(selection.attempts.count, privacy: .public) session=\(DDCLogSession.id, privacy: .public)"
             )
         }
 
@@ -228,19 +230,19 @@ final class DDCDisplayTransport: DDCVolumeTransport {
             target.readProfile = profile
             target.lastLoggedKind = nil
             ddcTargetLogger.notice(
-                "ddc.selectedProfile profile=\(profile.label, privacy: .public) result=usable elapsedMs=\(elapsedMs, privacy: .public) session=\(DDCLogSession.id, privacy: .public)"
+                "ddc.selectedProfile profile=\(profile.label, privacy: .public) result=usable stage=validate elapsedMs=\(elapsedMs, privacy: .public) session=\(DDCLogSession.id, privacy: .public)"
             )
-            return reply
+            return .reply(reply)
         }
 
-        let reason = selection.refused ? DDCVolumeReplyKind.vcpRefused.diagnosticName : "noProfile"
-        target.lastLoggedKind = reason
+        let failure = selection.failure ?? .replyReadFailed
+        target.lastLoggedKind = failure.diagnosticName
         ddcTargetLogger.notice(
-            "ddc.selectedProfile result=unavailable reason=\(reason, privacy: .public) elapsedMs=\(elapsedMs, privacy: .public) session=\(DDCLogSession.id, privacy: .public)"
+            "ddc.selectedProfile result=unavailable stage=\(failure.diagnosticStage, privacy: .public) reason=\(failure.diagnosticName, privacy: .public) attempts=\(selection.attempts.count, privacy: .public) elapsedMs=\(elapsedMs, privacy: .public) session=\(DDCLogSession.id, privacy: .public)"
         )
-        return nil
+        return .failure(failure)
         #else
-        return nil
+        return .failure(.serviceUnavailable)
         #endif
     }
 
@@ -261,7 +263,7 @@ final class DDCDisplayTransport: DDCVolumeTransport {
             if succeeded { break }
         }
         ddcTargetLogger.notice(
-            "ddc.write result=\(succeeded ? "ok" : "failed", privacy: .public) session=\(DDCLogSession.id, privacy: .public)"
+            "ddc.write stage=set result=\(succeeded ? "acknowledged" : "failed", privacy: .public) session=\(DDCLogSession.id, privacy: .public)"
         )
         return succeeded
         #else
@@ -270,58 +272,83 @@ final class DDCDisplayTransport: DDCVolumeTransport {
     }
 
     #if arch(arm64)
+    /// Which half of one Get VCP exchange failed, so diagnostics never collapse
+    /// "the host could not send" and "the display did not answer".
+    private enum ExchangeResult {
+        case bytes([UInt8])
+        case requestWriteFailed
+        case replyReadFailed
+    }
+
     /// One Get VCP exchange for a specific profile, without classification.
-    private func exchangeOnce(service: IOAVService, profile: DDCReadProfile, delayMicroseconds: UInt32) -> [UInt8]? {
+    private func exchangeOnce(service: IOAVService, profile: DDCReadProfile, delayMicroseconds: UInt32) -> ExchangeResult {
         usleep(delayMicroseconds)
         var packet = DDCPacket.getVCPRequest(checksumMode: profile.checksumMode)
         let writeResult = packet.withUnsafeMutableBytes {
             IOAVServiceWriteI2C(service, Self.chipAddress, Self.dataAddress, $0.baseAddress, UInt32($0.count))
         }
-        guard writeResult == kIOReturnSuccess else { return nil }
+        guard writeResult == kIOReturnSuccess else { return .requestWriteFailed }
         usleep(50_000)
         var reply = [UInt8](repeating: 0, count: 11)
         let readResult = reply.withUnsafeMutableBytes {
             IOAVServiceReadI2C(service, Self.chipAddress, profile.readAddress, $0.baseAddress, UInt32($0.count))
         }
-        guard readResult == kIOReturnSuccess else { return nil }
-        return reply
+        guard readResult == kIOReturnSuccess else { return .replyReadFailed }
+        // A successful read that never filled the buffer classifies as `.zeros`
+        // and is rejected by validation; success alone proves nothing.
+        return .bytes(reply)
     }
 
     /// Bounded per-candidate probe: at most two attempts, then move on.
     private func probeOutcome(service: IOAVService, profile: DDCReadProfile) -> DDCProbeOutcome {
-        var lastKind: DDCVolumeReplyKind?
+        var lastOutcome: DDCProbeOutcome?
         for attempt in 0..<2 {
-            guard let bytes = exchangeOnce(service: service, profile: profile, delayMicroseconds: attempt == 0 ? 10_000 : 20_000) else {
-                continue
+            switch exchangeOnce(service: service, profile: profile, delayMicroseconds: attempt == 0 ? 10_000 : 20_000) {
+            case .bytes(let bytes):
+                let kind = DDCVolumeReply.classify(bytes)
+                if case .valid = kind { return .reply(kind) }
+                lastOutcome = .reply(kind)
+            case .requestWriteFailed:
+                lastOutcome = .requestWriteFailed
+            case .replyReadFailed:
+                lastOutcome = .replyReadFailed
             }
-            let kind = DDCVolumeReply.classify(bytes)
-            if case .valid = kind { return .reply(kind) }
-            lastKind = kind
         }
-        return lastKind.map(DDCProbeOutcome.reply) ?? .transportFailure
+        return lastOutcome ?? .replyReadFailed
     }
 
     /// Steady-state read on an already-proven profile, keeping the previous
     /// five-attempt retry budget.
-    private func verifiedRead(service: IOAVService, profile: DDCReadProfile, target: DDCDisplayTarget) -> DDCVolumeReply? {
+    private func verifiedRead(service: IOAVService, profile: DDCReadProfile, target: DDCDisplayTarget) -> DDCVolumeReadResult {
+        var lastFailure: DDCReadFailure = .replyReadFailed
         for attempt in 0..<5 {
-            guard let bytes = exchangeOnce(service: service, profile: profile, delayMicroseconds: attempt == 0 ? 10_000 : 20_000) else {
-                continue
-            }
-            if case .valid(let reply) = DDCVolumeReply.classify(bytes) {
-                target.lastLoggedKind = nil
-                return reply
+            switch exchangeOnce(service: service, profile: profile, delayMicroseconds: attempt == 0 ? 10_000 : 20_000) {
+            case .bytes(let bytes):
+                let kind = DDCVolumeReply.classify(bytes)
+                switch kind {
+                case .valid(let reply):
+                    target.lastLoggedKind = nil
+                    return .reply(reply)
+                case .vcpRefused:
+                    lastFailure = .vcpRejected
+                default:
+                    lastFailure = .replyRejected(kind)
+                }
+            case .requestWriteFailed:
+                lastFailure = .requestWriteFailed
+            case .replyReadFailed:
+                lastFailure = .replyReadFailed
             }
         }
-        return nil
+        return .failure(lastFailure)
     }
 
     /// One log line per distinct steady-state failure shape, not per poll.
-    private func logReadFailureIfChanged(kind: String, profile: DDCReadProfile, target: DDCDisplayTarget) {
-        guard target.lastLoggedKind != kind else { return }
-        target.lastLoggedKind = kind
+    private func logReadFailureIfChanged(failure: DDCReadFailure, profile: DDCReadProfile, target: DDCDisplayTarget) {
+        guard target.lastLoggedKind != failure.diagnosticName else { return }
+        target.lastLoggedKind = failure.diagnosticName
         ddcTargetLogger.notice(
-            "ddc.read result=\(kind, privacy: .public) profile=\(profile.label, privacy: .public) session=\(DDCLogSession.id, privacy: .public)"
+            "ddc.read result=unavailable stage=\(failure.diagnosticStage, privacy: .public) reason=\(failure.diagnosticName, privacy: .public) profile=\(profile.label, privacy: .public) session=\(DDCLogSession.id, privacy: .public)"
         )
     }
     #endif
@@ -379,7 +406,7 @@ final class DDCDisplayTransport: DDCVolumeTransport {
 
     private func logUnavailable(_ failure: DDCResolutionFailure, framebuffers: Int, services: Int) {
         ddcTargetLogger.notice(
-            "ddc.resolve result=unavailable reason=\(failure.diagnosticName, privacy: .public) framebuffers=\(framebuffers, privacy: .public) services=\(services, privacy: .public) session=\(DDCLogSession.id, privacy: .public)"
+            "ddc.resolve result=unavailable stage=resolve reason=\(failure.diagnosticName, privacy: .public) framebuffers=\(framebuffers, privacy: .public) services=\(services, privacy: .public) session=\(DDCLogSession.id, privacy: .public)"
         )
     }
 }

@@ -248,6 +248,86 @@ final class DDCVolumeCoordinatorTests: XCTestCase {
 
         XCTAssertTrue(transport.writeValues.isEmpty, "No write may run without a validated read reply")
         XCTAssertFalse(updates.contains { $0.scalar != nil }, "No percentage may be published without a validated reply")
+        XCTAssertEqual(updates.last?.capability, .unavailable(.replyReadFailed))
+        coordinator.stop()
+    }
+
+    func testWriteAcknowledgementAndReadBackVerificationAreSeparateStates() async {
+        let transport = FakeDDCTransport()
+        transport.reply = DDCVolumeReply(current: 50, maximum: 100)
+        transport.writeEchoesValue = true
+        var updates: [DDCVolumeUpdate] = []
+        let coordinator = DDCVolumeCoordinator(transport: transport) { updates.append($0) }
+
+        coordinator.select(outputID: 93, uid: "DISPLAY-A")
+        await waitUntil("initial read") { updates.contains { $0.capability == .readable(DDCVolumeReply(current: 50, maximum: 100)) } }
+
+        coordinator.setVolume(0.8)
+        coordinator.flushPendingVolume()
+        await waitUntil("verified read-back") {
+            updates.contains { $0.capability == .writeVerified(DDCVolumeReply(current: 80, maximum: 100)) }
+        }
+        XCTAssertEqual(transport.writeValues, [80])
+        coordinator.stop()
+    }
+
+    func testAcknowledgedWriteThatTheDisplayDidNotApplyIsNotReportedAsVerified() async {
+        // I2C acceptance is not evidence that the register changed: the
+        // read-back is what decides, and a mismatch must not be called success.
+        let transport = FakeDDCTransport()
+        transport.reply = DDCVolumeReply(current: 50, maximum: 100)
+        var updates: [DDCVolumeUpdate] = []
+        let coordinator = DDCVolumeCoordinator(transport: transport) { updates.append($0) }
+
+        coordinator.select(outputID: 93, uid: "DISPLAY-A")
+        await waitUntil("initial read") { updates.contains { $0.scalar == 0.5 } }
+
+        coordinator.setVolume(0.8)
+        coordinator.flushPendingVolume()
+        await waitUntil("mismatching read-back") {
+            updates.contains { $0.capability == .writeUnverified(DDCVolumeReply(current: 50, maximum: 100)) }
+        }
+
+        XCTAssertEqual(transport.writeValues, [80], "The write was acknowledged, so it must have been attempted exactly once")
+        XCTAssertFalse(
+            updates.contains { $0.capability == .writeVerified(DDCVolumeReply(current: 50, maximum: 100)) },
+            "A display that stayed at 50 must never be reported as a verified write"
+        )
+        coordinator.stop()
+    }
+
+    func testFailedWriteStopsPublishingAValueInsteadOfKeepingTheOptimisticScalar() async {
+        let transport = FakeDDCTransport()
+        transport.reply = DDCVolumeReply(current: 50, maximum: 100)
+        transport.failWrites = true
+        var updates: [DDCVolumeUpdate] = []
+        let coordinator = DDCVolumeCoordinator(transport: transport) { updates.append($0) }
+
+        coordinator.select(outputID: 93, uid: "DISPLAY-A")
+        await waitUntil("initial read") { updates.contains { $0.scalar == 0.5 } }
+
+        coordinator.setVolume(0.8)
+        coordinator.flushPendingVolume()
+        await waitUntil("failed write publishes unavailable") {
+            updates.contains { $0.capability == .unavailable(.requestWriteFailed) }
+        }
+
+        XCTAssertNil(updates.last?.scalar)
+        coordinator.stop()
+    }
+
+    func testWatchdogPublishesATimeoutInsteadOfAGenericUnavailable() async {
+        let transport = FakeDDCTransport()
+        transport.reply = DDCVolumeReply(current: 35, maximum: 100)
+        transport.blockNextRead()
+        var updates: [DDCVolumeUpdate] = []
+        let coordinator = DDCVolumeCoordinator(transport: transport, readWatchdog: .milliseconds(20)) { updates.append($0) }
+
+        coordinator.select(outputID: 93, uid: "DISPLAY-A")
+        await waitUntil("watchdog reports a timeout") {
+            updates.contains { $0.capability == .unavailable(.timeout) }
+        }
+        transport.releaseBlockedRead()
         coordinator.stop()
     }
 
@@ -400,6 +480,8 @@ private final class FakeDDCTransport: DDCVolumeTransport, @unchecked Sendable {
     private var blockedReadCountStorage = 0
     private let blockedRead = DispatchSemaphore(value: 0)
     private var storedFailResolve = false
+    private var storedFailWrites = false
+    private var storedWriteEchoesValue = false
     private var storedNextServiceTag = 0
     private var serviceTagByTarget: [ObjectIdentifier: Int] = [:]
     private var storedReadServiceTags: [Int] = []
@@ -413,6 +495,10 @@ private final class FakeDDCTransport: DDCVolumeTransport, @unchecked Sendable {
     var maximumConcurrentReads: Int { lock.withLock { storedMaximumConcurrentReads } }
     var blockedReadCount: Int { lock.withLock { blockedReadCountStorage } }
     var failResolve: Bool { get { lock.withLock { storedFailResolve } } set { lock.withLock { storedFailResolve = newValue } } }
+    var failWrites: Bool { get { lock.withLock { storedFailWrites } } set { lock.withLock { storedFailWrites = newValue } } }
+    /// Simulates a display that applies what it was sent, so the read-back can
+    /// agree with the requested register value.
+    var writeEchoesValue: Bool { get { lock.withLock { storedWriteEchoesValue } } set { lock.withLock { storedWriteEchoesValue = newValue } } }
     var readServiceTags: [Int] { lock.withLock { storedReadServiceTags } }
 
     func blockNextRead() { lock.withLock { gateNextRead = true } }
@@ -430,7 +516,7 @@ private final class FakeDDCTransport: DDCVolumeTransport, @unchecked Sendable {
         }
     }
 
-    func read(_ target: DDCDisplayTarget) -> DDCVolumeReply? {
+    func read(_ target: DDCDisplayTarget) -> DDCVolumeReadResult {
         let shouldBlock = lock.withLock { () -> Bool in
             storedOperations.append("read")
             storedReadCount += 1
@@ -443,14 +529,22 @@ private final class FakeDDCTransport: DDCVolumeTransport, @unchecked Sendable {
         if shouldBlock { blockedRead.wait() }
         return lock.withLock {
             activeReads -= 1
-            if storedFailReads > 0 { storedFailReads -= 1; return nil }
-            return storedReply
+            if storedFailReads > 0 { storedFailReads -= 1; return .failure(.replyReadFailed) }
+            guard let storedReply else { return .failure(.replyReadFailed) }
+            return .reply(storedReply)
         }
     }
 
     func write(_ target: DDCDisplayTarget, value: UInt16) -> Bool {
-        lock.withLock { storedOperations.append("write"); storedWriteValues.append(value) }
-        return true
+        lock.withLock {
+            storedOperations.append("write")
+            storedWriteValues.append(value)
+            guard !storedFailWrites else { return false }
+            if storedWriteEchoesValue, let current = storedReply {
+                storedReply = DDCVolumeReply(current: value, maximum: current.maximum)
+            }
+            return true
+        }
     }
 }
 
