@@ -848,6 +848,9 @@ final class VolumeMonitor: VolumeMonitoring, VolumeControlling {
     private var selectedDDCOutputID: AudioDeviceID?
     private var selectedDDCUID: String?
     private var ddcStatusGeneration: UInt64?
+    /// What the DDC path currently knows. `.unknown` after any invalidation, so
+    /// a failed read can never leave the previous device's percentage on screen.
+    private var ddcCapability: DDCVolumeCapability = .unknown
     private var pendingDDCVolume: (commandID: UInt64, scalar: Double)?
     private var displayAsleep = false
 
@@ -1133,10 +1136,11 @@ final class VolumeMonitor: VolumeMonitoring, VolumeControlling {
                     selectedDDCOutputID = current.id
                     selectedDDCUID = current.uid
                     ddcStatusGeneration = nil
+                    ddcCapability = .unknown
                     pendingDDCVolume = nil
                     ddcCoordinator.select(outputID: current.id, uid: current.uid)
                 } else if ddcStatusGeneration == ddcCoordinator.generation {
-                    retainedDDCScalar = latestStatus.scalar
+                    retainedDDCScalar = ddcCapability.scalar
                 }
             } else {
                 invalidateDDCSelection()
@@ -1176,7 +1180,11 @@ final class VolumeMonitor: VolumeMonitoring, VolumeControlling {
             guard update.commandID == pendingDDCVolume.commandID else { return }
             self.pendingDDCVolume = nil
         }
-        ddcStatusGeneration = update.scalar == nil ? nil : update.generation
+        // The capability is the single source of truth for the DDC value: an
+        // unavailable read publishes no percentage at all, so the slider goes
+        // back to disabled instead of keeping the optimistic drag value.
+        ddcCapability = update.capability
+        ddcStatusGeneration = update.capability.scalar == nil ? nil : update.generation
         var devices = latestStatus.outputDevices
         if let index = devices.firstIndex(where: { $0.isCurrent && $0.id == update.outputID }) {
             devices[index] = devices[index].replacingVolume(update.scalar)
@@ -1187,7 +1195,7 @@ final class VolumeMonitor: VolumeMonitoring, VolumeControlling {
             deviceName: latestStatus.deviceName,
             currentDevice: latestStatus.currentDevice?.replacingVolume(update.scalar),
             outputDevices: devices,
-            canSetVolume: update.scalar != nil,
+            canSetVolume: update.capability.isWritable,
             canMute: false
         )
         continuation.yield(latestStatus)
@@ -1210,12 +1218,14 @@ final class VolumeMonitor: VolumeMonitoring, VolumeControlling {
         selectedDDCOutputID = nil
         selectedDDCUID = nil
         ddcStatusGeneration = nil
+        ddcCapability = .unknown
         pendingDDCVolume = nil
     }
 
     private func clearDDCStatus() {
         guard selectedDDCUID != nil else { return }
         ddcStatusGeneration = nil
+        ddcCapability = .unknown
         pendingDDCVolume = nil
         var devices = latestStatus.outputDevices
         if let id = selectedDDCOutputID,
