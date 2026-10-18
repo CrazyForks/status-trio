@@ -62,14 +62,24 @@
 ## 诊断
 
 失败原因通过 `os.Logger`（subsystem `com.lingsmbp.StatusTrio`，category `DDCTarget`）
-以枚举名 + 候选数量输出，不含 UID/EDID/序列号/path：
+输出**阶段 + 稳定枚举名字符串**，不含 UID/EDID/序列号/IORegistry 路径。
+
+解决阶段（`stage=resolve`）：
 
 `missingAudioUID`、`noMatchingFramebuffer`、`ambiguousFramebuffer`、
 `noAssociatedService`、`ambiguousService`、`unsupportedArchitecture`、
-`transportUnavailable`、`unsupportedVolumeVCP`、`readFailed`、`timeout`。
+`transportUnavailable`。
 
-读取失败时再区分 `readFailed`（无有效传输回复）与 `unsupportedVolumeVCP`
-（有回复但 VCP `0x62` 无效）。
+读取/写入阶段（`stage=requestWrite|replyRead|validate|set|readback`）：
+
+`serviceUnavailable`、`requestWriteFailed`、`replyReadFailed`、
+`replyRejected(wrongHeader|wrongVCP|wrongLength|zeros|untouched|badChecksum|invalidRange|displayReportedError)`、
+`vcpRejected`、`timeout`。
+
+> 早期 Build 38/40 的 `unsupportedVolumeVCP`、`readFailed`、`transportFailure`、
+> `noProfile` 已被上面的阶段化词表取代：把“主机发不出去”“显示器不回”
+> “回复不合法”“显示器明确拒绝”混成一个标签，是本次要修的可诊断性缺陷之一。
+> 见本文件最后的“第三轮”与 `docs/design/audio-volume-backends.md`。
 
 ## 验证状态
 
@@ -171,3 +181,67 @@ log show --last 15m --info --style compact \
 | BenQ（M5 Pro）能否用 P1–P4 之一读出 `0x62` | **未验证**：需报障用户回报日志 |
 | P3/P4（legacy）在新代码里的实机行为 | **未验证**：XV272U 在 P1 就成功，未触发回退 |
 | 双外接屏分别作为默认输出 | **未验证**（本机只有 1 台外接屏） |
+
+## 第三轮（本次）：`vcpRefused` 误判、能力状态与失败分层
+
+Build 40 之后用户仍反馈无效，但我们先修**自身可复现的协议判定缺陷**，
+不改变 PR #116 的 `Core Audio UID → framebuffer → DCPAVServiceProxy` 唯一匹配算法，
+也不改变 P1–P4 候选集合、顺序、Set VCP 封包与音量最大值映射。
+
+### Task A：`vcpRefused` 假阳性（先红后绿）
+
+旧 `DDCVolumeReply.classify()` 在检查 VCP 回显与校验和**之前**先看结果码：
+
+```swift
+if bytes[3] == 0x01 { return .vcpRefused }   // 旧行为
+```
+
+于是残留帧、错误 VCP 或坏校验和的帧只要第 4 字节是 `01`，就被判成
+“显示器明确拒绝 `0x62`”，而 `DDCReadProfileProbe.select` 把该结果当作终止信号，
+**P2–P4 再没有机会运行**。
+
+现在校验顺序为：长度 → 空数据（全 0 / 全 `0xFF`）→ reply 头 → 回显 VCP →
+完整校验和 → 结果码（`0` 通过、`1` → `vcpRefused`、其它 → `displayReportedError(UInt8)`）
+→ 范围 → 取值。结论：
+
+- 只有**长度、头、回显 VCP、校验和全部合法**的帧才能被判定为 `vcpRefused`，
+  也只有它能让探测提前终止。
+- 未知非零结果码不再被当作“支持证据”，也不再被误记为 `wrongHeader`。
+- 复现测试：`DDCVolumeReplyTests.testResultCodeOneWithAWrongEchoedVCPIsNotARefusal`、
+  `…WithABadChecksumIsNotARefusal`、`…OnATruncatedBufferIsNotARefusal`（修复前 3 项红）；
+  `DDCReadProfileSelectionTests.testAStrayResultByteInAnInvalidFrameDoesNotEndTheProbe`。
+
+### Task B：能力状态与读写验证分离
+
+- 读结果从 `nil` 改为 `DDCVolumeReadResult.reply(...)` / `.failure(DDCReadFailure)`；
+  失败分阶段：`serviceUnavailable`、`requestWriteFailed`、`replyReadFailed`、
+  `replyRejected(<分类>)`、`vcpRejected`、`timeout`。
+- 协调器发布 `DDCVolumeCapability`：`unknown`、`unavailable(reason)`、`readable`、
+  `writeVerified`、`writeUnverified`。
+- `writeVerified` **只**表示 I²C ack 之后的读回与写入寄存器值一致；
+  读回失败或数值不一致时发布 `unavailable` / `writeUnverified`，
+  UI 不会保留乐观值（`DDCVolumeCapability.scalar == nil` 即禁用滑块）。
+- 写后只有一次读回，没有重试环；切换输出、休眠/唤醒、拓扑变化、
+  worker reset 都会清空能力、待写值与 profile（沿用现有 generation fence）。
+- UI 未改动：没有新文案、新设置项或新权限；`canMute` 仍只由 Core Audio 决定。
+
+### Task C：排障矩阵
+
+| 日志形态 | 说明 | 下一步 |
+| --- | --- | --- |
+| `ddc.resolve result=unavailable reason=…` | 没定位到唯一 Service：设备身份或连接路径问题 | 检查连接方式（HDMI / DP / USB-C / 扩展坞）、只有一个外接屏且无歧义 |
+| `ddc.resolve result=matched`，但所有 `ddc.probe` 失败 | 已定位，但 Get VCP 读不回来 | 看 `stage=`/`outcome=` 分辨是主机发不出、显示器不回，还是回复不合法 |
+| 完整合法的 `vcpRejected` | 目标设备拒绝 `0x62` Get | **不等于** Set 也不支持；不要据此推测其它指令 |
+| `ddc.selectedProfile result=usable` + `ddc.write stage=set result=acknowledged` + `ddc.readback result=mismatch` | 写被 ack 但设备未接受目标值 | 协议/固件不一致；不要把它当成“已生效” |
+| `ddc.readback result=verified` 但人耳音量不变 | 寄存器一致 ≠ 可听结果 | 需要另查显示器固件/音频路径或软件混音，单次读回无法判定 |
+
+### 本轮验证状态
+
+| 项目 | 状态 |
+| --- | --- |
+| `vcpRefused` 假阳性（错误 VCP / 坏校验和 / 截断帧） | **单元测试复现并修复**（修复前 3 项红） |
+| 伪拒绝不终止探测、只有完整合法拒绝才终止 | **单元测试覆盖** |
+| `readable` / `writeVerified` / `writeUnverified` / `unavailable` 分离 | **单元测试覆盖**（fake transport） |
+| 失败不残留旧标量、无写坏目标、无重试环 | **单元测试覆盖** |
+| BenQ（M5 Pro）实际读/写行为 | **未验证**：仍需该机型日志 |
+| 真实外接屏上的读回一致性与人耳音量一致性 | **未验证**（本轮未在实机做写入测试） |
