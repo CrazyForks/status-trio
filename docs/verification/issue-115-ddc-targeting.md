@@ -244,4 +244,21 @@ if bytes[3] == 0x01 { return .vcpRefused }   // 旧行为
 | `readable` / `writeVerified` / `writeUnverified` / `unavailable` 分离 | **单元测试覆盖**（fake transport） |
 | 失败不残留旧标量、无写坏目标、无重试环 | **单元测试覆盖** |
 | BenQ（M5 Pro）实际读/写行为 | **未验证**：仍需该机型日志 |
-| 真实外接屏上的读回一致性与人耳音量一致性 | **未验证**（本轮未在实机做写入测试） |
+| 真实外接屏（XV272U）的写后读回 | **实机验证**：Build `1.6.1 (41)` 上 4 次 Set VCP 均为 `acknowledged` + `verified`（39/47/95/100） |
+| 写回一致与人耳音量一致的关系 | **未单独验证**：本轮只确认寄存器读回一致，不宣称可听结果由此证明 |
+
+实机日志（XV272U，`session=cbec`）：
+
+```
+ddc.resolve result=matched branch=dispext0 framebuffers=1 services=1 session=cbec
+ddc.probe profile=P1 stage=validate outcome=valid attempts=1 session=cbec
+ddc.selectedProfile profile=P1 result=usable stage=validate elapsedMs=96 session=cbec
+ddc.write stage=set result=acknowledged session=cbec
+ddc.readback stage=readback result=verified requested=39 readBack=39 session=cbec
+ddc.readback stage=readback result=verified requested=47 readBack=47 session=cbec
+ddc.readback stage=readback result=verified requested=95 readBack=95 session=cbec
+ddc.readback stage=readback result=verified requested=100 readBack=100 session=cbec
+```
+
+结论边界：这证明当前匹配、P1 读取、Set VCP 写入与读回确认在本机 XV272U 上工作；
+它**不**证明 BenQ（M5 Pro）可用，也不证明所有显示器在写回一致时可听音量都会变化。
