@@ -8,6 +8,7 @@ struct IconGuideOnboardingView: View {
     @EnvironmentObject private var localization: Localization
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var page: IconGuidePage = .anatomy
+    @State private var isMenuBarHelpPresented = false
     @State private var telemetryConsentDraft = TelemetryConsentDraft()
     let onCustomize: () -> Void
     let onDone: () -> Void
@@ -39,7 +40,10 @@ struct IconGuideOnboardingView: View {
 
             VStack(alignment: .leading, spacing: 16) {
                 ZStack(alignment: .topLeading) {
-                    IconGuideView(settings: settings)
+                    IconGuideView(
+                        settings: settings,
+                        isMenuBarHelpPresented: $isMenuBarHelpPresented
+                    )
                         .opacity(page == .anatomy ? 1 : 0)
                         .allowsHitTesting(page == .anatomy)
                         .accessibilityHidden(page != .anatomy)
@@ -137,6 +141,7 @@ struct IconGuideOnboardingView: View {
     }
 
     private func show(_ destination: IconGuidePage) {
+        isMenuBarHelpPresented = false
         withAnimation(
             reduceMotion
                 ? nil

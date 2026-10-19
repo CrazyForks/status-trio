@@ -316,10 +316,12 @@ enum IconGuideState: String, CaseIterable, Identifiable, Sendable {
 /// Two live previews that share one selected part and one pulse.
 struct IconGuideView: View {
     @ObservedObject var settings: SettingsStore
+    @Binding var isMenuBarHelpPresented: Bool
     @EnvironmentObject private var localization: Localization
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State var selectedPart: IconGuidePart = .battery
     @State private var pulse = false
+    private let menuBarHelpPolicy = MenuBarHelpPolicy()
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -405,13 +407,7 @@ struct IconGuideView: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(minHeight: 40, alignment: .topLeading)
 
-            Label(
-                localization.string(.guidePlacement),
-                systemImage: "arrow.left.arrow.right"
-            )
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            .fixedSize(horizontal: false, vertical: true)
+            menuBarHelpEntry
         }
         .onAppear(perform: { restartPulse() })
         .onChange(of: selectedPart) { _ in
@@ -425,6 +421,50 @@ struct IconGuideView: View {
     private var highlightOpacity: Double {
         guard !reduceMotion else { return 0.88 }
         return pulse ? 0.18 : 0.95
+    }
+
+    private var menuBarHelpEntry: some View {
+        HStack(alignment: .center, spacing: 10) {
+            Text(localization.string(.guideMenuBarHelpPrompt))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Spacer(minLength: 8)
+
+            Button {
+                isMenuBarHelpPresented.toggle()
+            } label: {
+                Label(
+                    localization.string(.guideMenuBarHelpOpen),
+                    systemImage: "questionmark.circle"
+                )
+            }
+            .buttonStyle(.borderless)
+            .controlSize(.small)
+            .accessibilityLabel(localization.string(.guideMenuBarHelpOpen))
+            .popover(
+                isPresented: $isMenuBarHelpPresented,
+                arrowEdge: .bottom
+            ) {
+                MenuBarVisibilityHelpView(
+                    policy: menuBarHelpPolicy,
+                    onClose: { isMenuBarHelpPresented = false },
+                    openSettings: { urls in Self.openSystemSettings(urls) }
+                )
+                .environmentObject(localization)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// System Settings opens even when it cannot resolve a pane, so the first
+    /// route does not prove the destination. Every policy keeps the exact
+    /// written path in the view and ends with the app itself as the fallback.
+    private static func openSystemSettings(_ urls: [URL]) {
+        for url in urls where NSWorkspace.shared.open(url) {
+            return
+        }
     }
 
     private var resolvedDockBackgroundStyle: DockIconBackgroundStyle {
