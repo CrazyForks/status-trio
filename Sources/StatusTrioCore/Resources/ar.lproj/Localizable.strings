@@ -426,7 +426,6 @@
 "guide.menuBarHelp.menuBarSettingsStep" = "افتح «شريط القوائم» من «إعدادات النظام»، ثم أخفِ عناصر شريط القوائم غير الضرورية، مثل Wi‑Fi أو البطارية أو الصوت.";
 "guide.menuBarHelp.controlCenterStep" = "افتح «مركز التحكم» من «إعدادات النظام»، ثم أوقف «إظهار في شريط القوائم» للعناصر غير الضرورية، مثل Wi‑Fi أو البطارية أو الصوت.";
 "guide.menuBarHelp.findStatusTrioStep" = "يجمع Status Trio هذه الحالات، لذا يمكنك تقليل الرموز المكررة. تظل أدوات تحكم النظام متاحة في مركز التحكم.";
-"guide.menuBarHelp.simplifyStep" = "يجمع Status Trio Wi‑Fi والبطارية ومستوى الصوت، لذا يمكنك إزالة عناصر النظام المكررة.";
 "guide.menuBarHelp.moveStep" = "بعد ظهور الرمز، اضغط باستمرار على ⌘ واسحبه إلى الجانب الأيمن من شريط القوائم.";
 "guide.menuBarHelp.openMenuBarSettings" = "فتح إعدادات شريط القوائم";
 "guide.menuBarHelp.openSystemSettings" = "فتح إعدادات النظام";

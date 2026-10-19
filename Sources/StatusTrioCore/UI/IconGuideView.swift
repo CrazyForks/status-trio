@@ -443,6 +443,7 @@ struct IconGuideView: View {
             .buttonStyle(.borderless)
             .controlSize(.small)
             .accessibilityLabel(localization.string(.guideMenuBarHelpOpen))
+            .accessibilityIdentifier("guide.menuBarHelp.open")
             .popover(
                 isPresented: $isMenuBarHelpPresented,
                 arrowEdge: .bottom

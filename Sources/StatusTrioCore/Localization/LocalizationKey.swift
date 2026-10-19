@@ -20,7 +20,6 @@ enum LocalizationKey: String, CaseIterable, Hashable, Sendable {
     case guideMenuBarHelpMenuBarSettingsStep = "guide.menuBarHelp.menuBarSettingsStep"
     case guideMenuBarHelpControlCenterStep = "guide.menuBarHelp.controlCenterStep"
     case guideMenuBarHelpFindStatusTrioStep = "guide.menuBarHelp.findStatusTrioStep"
-    case guideMenuBarHelpSimplifyStep = "guide.menuBarHelp.simplifyStep"
     case guideMenuBarHelpMoveStep = "guide.menuBarHelp.moveStep"
     case guideMenuBarHelpOpenMenuBarSettings = "guide.menuBarHelp.openMenuBarSettings"
     case guideMenuBarHelpOpenSystemSettings = "guide.menuBarHelp.openSystemSettings"

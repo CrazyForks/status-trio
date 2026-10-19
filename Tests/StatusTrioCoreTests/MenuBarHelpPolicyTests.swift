@@ -10,7 +10,7 @@ final class MenuBarHelpPolicyTests: XCTestCase {
             policy.stepKeys,
             [
                 .guideMenuBarHelpMenuBarSettingsStep,
-                .guideMenuBarHelpSimplifyStep,
+                .guideMenuBarHelpFindStatusTrioStep,
                 .guideMenuBarHelpMoveStep
             ]
         )
@@ -29,7 +29,7 @@ final class MenuBarHelpPolicyTests: XCTestCase {
             let policy = MenuBarHelpPolicy(majorVersion: version)
             XCTAssertEqual(policy.tier, .menuBarSettings)
             XCTAssertTrue(policy.showsNativeOverflowEntry)
-            XCTAssertEqual(policy.stepKeys.count, 4)
+            XCTAssertEqual(policy.stepKeys.count, 3)
             XCTAssertEqual(policy.stepKeys.first, .guideMenuBarHelpOverflowStep)
         }
     }
@@ -101,5 +101,20 @@ final class MenuBarHelpPolicyTests: XCTestCase {
             policy.systemSettingsButtonKey,
             .guideMenuBarHelpOpenMenuBarSettings
         )
+    }
+
+    func testHelpPresentationStartsClosedAndClosesOnNavigation() {
+        var presentation = MenuBarHelpPresentation()
+        XCTAssertFalse(presentation.isPresented)
+
+        presentation.toggle()
+        XCTAssertTrue(presentation.isPresented)
+
+        presentation.prepareForPageChange()
+        XCTAssertFalse(presentation.isPresented)
+
+        presentation.toggle()
+        presentation.close()
+        XCTAssertFalse(presentation.isPresented)
     }
 }

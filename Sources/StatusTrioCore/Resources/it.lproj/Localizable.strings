@@ -426,7 +426,6 @@
 "guide.menuBarHelp.menuBarSettingsStep" = "Apri Impostazioni di Sistema › Barra dei menu, poi nascondi gli elementi che non ti servono, come Wi‑Fi, Batteria o Suono.";
 "guide.menuBarHelp.controlCenterStep" = "Apri Impostazioni di Sistema › Centro di Controllo, poi disattiva “Mostra nella barra dei menu” per gli elementi che non ti servono, come Wi‑Fi, Batteria o Suono.";
 "guide.menuBarHelp.findStatusTrioStep" = "Status Trio riunisce questi stati, quindi puoi ridurre le icone duplicate. I controlli di sistema restano disponibili nel Centro di Controllo.";
-"guide.menuBarHelp.simplifyStep" = "Status Trio riunisce Wi‑Fi, batteria e volume, quindi puoi rimuovere gli elementi di sistema duplicati.";
 "guide.menuBarHelp.moveStep" = "Quando l’icona è visibile, tieni premuto ⌘ e trascinala sul lato destro della barra dei menu.";
 "guide.menuBarHelp.openMenuBarSettings" = "Apri impostazioni Barra dei menu";
 "guide.menuBarHelp.openSystemSettings" = "Apri Impostazioni di Sistema";

@@ -30,7 +30,6 @@ struct MenuBarHelpPolicy: Equatable {
             return [
                 .guideMenuBarHelpOverflowStep,
                 .guideMenuBarHelpMenuBarSettingsStep,
-                .guideMenuBarHelpFindStatusTrioStep,
                 .guideMenuBarHelpMoveStep
             ]
         }
@@ -38,7 +37,7 @@ struct MenuBarHelpPolicy: Equatable {
         if majorVersion >= 26 {
             return [
                 .guideMenuBarHelpMenuBarSettingsStep,
-                .guideMenuBarHelpSimplifyStep,
+                .guideMenuBarHelpFindStatusTrioStep,
                 .guideMenuBarHelpMoveStep
             ]
         }
@@ -80,7 +79,6 @@ struct MenuBarHelpPolicy: Equatable {
         .guideMenuBarHelpMenuBarSettingsStep,
         .guideMenuBarHelpControlCenterStep,
         .guideMenuBarHelpFindStatusTrioStep,
-        .guideMenuBarHelpSimplifyStep,
         .guideMenuBarHelpMoveStep,
         .guideMenuBarHelpOpenMenuBarSettings,
         .guideMenuBarHelpOpenSystemSettings,
@@ -88,4 +86,20 @@ struct MenuBarHelpPolicy: Equatable {
         .guideMenuBarHelpLearnMore,
         .guideMenuBarHelpClose
     ]
+}
+
+struct MenuBarHelpPresentation: Equatable {
+    var isPresented = false
+
+    mutating func toggle() {
+        isPresented.toggle()
+    }
+
+    mutating func close() {
+        isPresented = false
+    }
+
+    mutating func prepareForPageChange() {
+        close()
+    }
 }

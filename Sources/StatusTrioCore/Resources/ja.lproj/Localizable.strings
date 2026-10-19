@@ -426,7 +426,6 @@
 "guide.menuBarHelp.menuBarSettingsStep" = "「システム設定 > メニューバー」を開き、Wi‑Fi、バッテリー、サウンドなど不要な項目を非表示にします。";
 "guide.menuBarHelp.controlCenterStep" = "「システム設定 > コントロールセンター」を開き、Wi‑Fi、バッテリー、サウンドなど不要な項目の「メニューバーに表示」をオフにします。";
 "guide.menuBarHelp.findStatusTrioStep" = "Status Trio はこれらの状態をまとめて表示するため、重複するアイコンを減らせます。システムの操作機能はコントロールセンターから引き続き利用できます。";
-"guide.menuBarHelp.simplifyStep" = "Status Trio は Wi‑Fi、バッテリー、音量をまとめて表示するため、重複するシステム項目を減らせます。";
 "guide.menuBarHelp.moveStep" = "アイコンが表示されたら、⌘ を押したままメニューバーの右側へドラッグします。";
 "guide.menuBarHelp.openMenuBarSettings" = "メニューバー設定を開く";
 "guide.menuBarHelp.openSystemSettings" = "システム設定を開く";

@@ -426,7 +426,6 @@
 "guide.menuBarHelp.menuBarSettingsStep" = "Öffne Systemeinstellungen › Menüleiste und blende nicht benötigte Menüleisteneinträge aus, etwa WLAN, Batterie oder Ton.";
 "guide.menuBarHelp.controlCenterStep" = "Öffne Systemeinstellungen › Kontrollzentrum und deaktiviere „In der Menüleiste anzeigen“ für nicht benötigte Einträge wie WLAN, Batterie oder Ton.";
 "guide.menuBarHelp.findStatusTrioStep" = "Status Trio bündelt diese Status, sodass du doppelte Symbole reduzieren kannst. Die Systembedienelemente bleiben im Kontrollzentrum verfügbar.";
-"guide.menuBarHelp.simplifyStep" = "Status Trio bündelt WLAN, Batterie und Lautstärke, sodass du doppelte Systemeinträge entfernen kannst.";
 "guide.menuBarHelp.moveStep" = "Wenn das Symbol sichtbar ist, halte ⌘ gedrückt und ziehe es auf die rechte Seite der Menüleiste.";
 "guide.menuBarHelp.openMenuBarSettings" = "Menüleisteneinstellungen öffnen";
 "guide.menuBarHelp.openSystemSettings" = "Systemeinstellungen öffnen";

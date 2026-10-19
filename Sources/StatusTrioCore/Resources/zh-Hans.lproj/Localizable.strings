@@ -426,7 +426,6 @@
 "guide.menuBarHelp.menuBarSettingsStep" = "打开“系统设置 → 菜单栏”，隐藏不需要的菜单栏项目，例如 Wi-Fi、电池或声音。";
 "guide.menuBarHelp.controlCenterStep" = "打开“系统设置 → 控制中心”，关闭不需要的 Wi-Fi、电池或声音的菜单栏显示选项。";
 "guide.menuBarHelp.findStatusTrioStep" = "Status Trio 已集中显示这些状态，可以减少重复图标；系统控制功能仍可从控制中心使用。";
-"guide.menuBarHelp.simplifyStep" = "Status Trio 已集中显示 Wi-Fi、电池和音量，因此可以移除重复的系统菜单栏项目。";
 "guide.menuBarHelp.moveStep" = "图标出现后，按住 ⌘ 拖动到菜单栏右侧。";
 "guide.menuBarHelp.openMenuBarSettings" = "打开菜单栏设置";
 "guide.menuBarHelp.openSystemSettings" = "打开系统设置";

@@ -426,7 +426,6 @@
 "guide.menuBarHelp.menuBarSettingsStep" = "Open System Settings › Menu Bar, then hide menu bar items you don’t need, such as Wi-Fi, Battery, or Sound.";
 "guide.menuBarHelp.controlCenterStep" = "Open System Settings › Control Center, then turn off Show in Menu Bar for items you don’t need, such as Wi-Fi, Battery, or Sound.";
 "guide.menuBarHelp.findStatusTrioStep" = "Status Trio combines these statuses, so you can reduce duplicate icons. The system controls remain available in Control Center.";
-"guide.menuBarHelp.simplifyStep" = "Status Trio combines Wi-Fi, battery, and volume, so you can remove duplicate system items.";
 "guide.menuBarHelp.moveStep" = "Once the icon is visible, hold ⌘ and drag it to the right side of the menu bar.";
 "guide.menuBarHelp.openMenuBarSettings" = "Open Menu Bar Settings";
 "guide.menuBarHelp.openSystemSettings" = "Open System Settings";

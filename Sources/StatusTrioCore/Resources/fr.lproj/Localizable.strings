@@ -426,7 +426,6 @@
 "guide.menuBarHelp.menuBarSettingsStep" = "Ouvrez Réglages Système › Barre des menus, puis masquez les éléments inutiles, comme Wi‑Fi, Batterie ou Son.";
 "guide.menuBarHelp.controlCenterStep" = "Ouvrez Réglages Système › Centre de contrôle, puis désactivez « Afficher dans la barre des menus » pour les éléments inutiles, comme Wi‑Fi, Batterie ou Son.";
 "guide.menuBarHelp.findStatusTrioStep" = "Status Trio regroupe ces états : vous pouvez donc réduire les icônes en double. Les réglages du système restent accessibles dans le Centre de contrôle.";
-"guide.menuBarHelp.simplifyStep" = "Status Trio regroupe le Wi‑Fi, la batterie et le volume : vous pouvez donc supprimer les éléments système en double.";
 "guide.menuBarHelp.moveStep" = "Une fois l’icône visible, maintenez ⌘ enfoncée et faites-la glisser vers la droite de la barre des menus.";
 "guide.menuBarHelp.openMenuBarSettings" = "Ouvrir les réglages de la barre des menus";
 "guide.menuBarHelp.openSystemSettings" = "Ouvrir Réglages Système";
