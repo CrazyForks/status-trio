@@ -74,7 +74,7 @@ final class MenuBarHelpPolicyTests: XCTestCase {
         for version in [13, 26, 27, 28] {
             let policy = MenuBarHelpPolicy(majorVersion: version)
             XCTAssertEqual(
-            policy.systemSettingsURLs.last,
+                policy.systemSettingsURLs.last,
                 MenuBarHelpPolicy.systemSettingsAppURL
             )
         }
