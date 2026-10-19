@@ -35,16 +35,11 @@ struct MenuBarHelpPolicy: Equatable {
             ]
         }
 
-        if majorVersion >= 26 {
-            return [
-                .guideMenuBarHelpMenuBarSettingsStep,
-                .guideMenuBarHelpFindStatusTrioStep,
-                .guideMenuBarHelpMoveStep
-            ]
-        }
-
         return [
-            .guideMenuBarHelpControlCenterStep,
+            tier == .menuBarSettings
+                ? .guideMenuBarHelpMenuBarSettingsStep
+                : .guideMenuBarHelpControlCenterStep,
+            .guideMenuBarHelpFindStatusTrioStep,
             .guideMenuBarHelpMoveStep
         ]
     }

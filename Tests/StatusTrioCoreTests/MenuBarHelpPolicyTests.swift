@@ -51,6 +51,7 @@ final class MenuBarHelpPolicyTests: XCTestCase {
                 policy.stepKeys,
                 [
                     .guideMenuBarHelpControlCenterStep,
+                    .guideMenuBarHelpFindStatusTrioStep,
                     .guideMenuBarHelpMoveStep
                 ]
             )
