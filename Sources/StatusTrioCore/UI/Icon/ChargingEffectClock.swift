@@ -21,6 +21,10 @@ final class ChargingEffectClock: ObservableObject {
     private var enabled = false
     private var reduceMotion = false
     private var displayAsleep = false
+    /// The menu bar is the animation's own surface; the settings preview can keep
+    /// the clock alive while the item is hidden (Dock-only placement).
+    private var menuBarVisible = true
+    private var previewConsumers: Set<AnyHashable> = []
     private var menuPlugInBurstStartedAt: Date?
     private var steadyStartedAt: Date?
     private var boostedHeartbeatCycle: Int?
@@ -35,11 +39,28 @@ final class ChargingEffectClock: ObservableObject {
         self.sleep = sleep
     }
 
+    /// `true` while something on screen draws the live phase. Without a surface
+    /// the 20-Hz tick is pure work: nothing would render it.
+    var hasAnimationSurface: Bool { menuBarVisible || !previewConsumers.isEmpty }
+
+    /// A view that draws the live phase claims the clock while it is on screen.
+    /// Claims are token-based so a repeated appear/disappear cannot leak one.
+    func beginAnimationPreview(_ token: AnyHashable) {
+        guard previewConsumers.insert(token).inserted else { return }
+        reevaluate()
+    }
+
+    func endAnimationPreview(_ token: AnyHashable) {
+        guard previewConsumers.remove(token) != nil else { return }
+        reevaluate()
+    }
+
     func update(
         battery: BatteryStatus,
         enabled: Bool,
         reduceMotion: Bool,
-        displayAsleep: Bool
+        displayAsleep: Bool,
+        menuBarVisible: Bool = true
     ) {
         let priorBattery = previousBattery
         previousBattery = battery
@@ -47,13 +68,9 @@ final class ChargingEffectClock: ObservableObject {
         self.enabled = enabled
         self.reduceMotion = reduceMotion
         self.displayAsleep = displayAsleep
+        self.menuBarVisible = menuBarVisible
 
-        guard ChargingEffectPolicy.shouldAnimate(
-            battery: battery,
-            enabled: enabled,
-            reduceMotion: reduceMotion,
-            displayAsleep: displayAsleep
-        ) else {
+        guard shouldAnimate else {
             stop()
             return
         }
@@ -86,15 +103,7 @@ final class ChargingEffectClock: ObservableObject {
     }
 
     func start() {
-        guard task == nil,
-              ChargingEffectPolicy.shouldAnimate(
-                battery: battery,
-                enabled: enabled,
-                reduceMotion: reduceMotion,
-                displayAsleep: displayAsleep
-              ) else {
-            return
-        }
+        guard task == nil, shouldAnimate else { return }
 
         if steadyStartedAt == nil {
             beginTimeline(for: nil, at: now())
@@ -140,6 +149,26 @@ final class ChargingEffectClock: ObservableObject {
         case nil:
             menuPlugInBurstStartedAt = nil
             steadyStartedAt = date
+        }
+    }
+
+    private var shouldAnimate: Bool {
+        ChargingEffectPolicy.shouldAnimate(
+            battery: battery,
+            enabled: enabled,
+            reduceMotion: reduceMotion,
+            displayAsleep: displayAsleep
+        ) && hasAnimationSurface
+    }
+
+    /// Re-evaluates the tick loop after a claim or the menu bar's visibility
+    /// changed. The battery state is untouched, so resuming never invents a
+    /// plug-in burst: `update` is what decides that, and it compares batteries.
+    private func reevaluate() {
+        if shouldAnimate {
+            start()
+        } else {
+            stop()
         }
     }
 

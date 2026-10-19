@@ -17,6 +17,9 @@ struct StatusIconPreviewCard: View {
     @EnvironmentObject private var chargingEffectClock: ChargingEffectClock
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var previewPlayback = ChargingEffectPreviewPlayback()
+    /// Identifies this card's claim on the shared clock, so a Dock-only menu bar
+    /// still animates the preview while it is visible.
+    @State private var clockConsumerToken = UUID()
 
     var body: some View {
         InputSourceLivePreview(controller: inputSourceController) {
@@ -31,6 +34,9 @@ struct StatusIconPreviewCard: View {
             Text(localization.string(.settingsPreviewHint))
                 .font(.system(size: 11))
                 .foregroundStyle(.tertiary)
+        }
+        .onAppear {
+            chargingEffectClock.beginAnimationPreview(clockConsumerToken)
         }
         .onChange(of: store.showsChargingEffect) { isEnabled in
             if isEnabled {
@@ -48,6 +54,7 @@ struct StatusIconPreviewCard: View {
             }
         }
         .onDisappear {
+            chargingEffectClock.endAnimationPreview(clockConsumerToken)
             previewPlayback.stop()
         }
         .task(id: previewPlayback.startedAt) {

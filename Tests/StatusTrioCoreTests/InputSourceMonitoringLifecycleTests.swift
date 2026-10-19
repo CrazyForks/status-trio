@@ -70,7 +70,7 @@ final class InputSourceMonitoringLifecycleTests: XCTestCase {
                 openSettings: {},
                 quitAction: {},
                 chargingEffectClock: clock,
-                renderMenuBarIcon: { _, _, _, _, _ in nil },
+                renderMenuBarBase: { _, _, _, _ in nil },
                 inputSourceController: controller
             ),
             settingsWindowController: SettingsWindowController(

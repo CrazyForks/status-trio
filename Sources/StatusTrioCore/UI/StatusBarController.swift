@@ -16,13 +16,23 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     static let popoverToggleLockoutInterval: TimeInterval = 0.25
     static let popoverContentReleaseDelay: TimeInterval = 60
 
-    typealias MenuBarRenderer = @MainActor (
+    /// Draws the monochrome template base the menu bar hands to the system.
+    typealias MenuBarBaseRenderer = @MainActor (
+        _ scene: IconSceneState,
+        _ size: Double,
+        _ scale: CGFloat,
+        _ appearance: NSAppearance
+    ) -> NSImage?
+
+    /// Draws the custom-colour overlay. `phase` is `nil` for the resting overlay
+    /// and the clock's phase while the charging effect animates.
+    typealias MenuBarOverlayRenderer = @MainActor (
         _ scene: IconSceneState,
         _ size: Double,
         _ scale: CGFloat,
         _ appearance: NSAppearance,
         _ phase: ChargingEffectPhase?
-    ) -> StatusIconRenderer.MenuBarLayers?
+    ) -> CGImage?
 
     enum ClickKind: Equatable {
         case left
@@ -37,7 +47,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     private let panelViewModel: StatusPanelViewModel
     private let iconPresentation: IconPresentationViewModel
     private let localization: Localization
-    private let renderMenuBarIcon: MenuBarRenderer
+    private let renderMenuBarBase: MenuBarBaseRenderer
+    private let renderMenuBarOverlay: MenuBarOverlayRenderer
     private let accessibilityValueDidChange: @MainActor (String) -> Void
     let chargingEffectClock: ChargingEffectClock
     private var iconPresentationCancellable: AnyCancellable?
@@ -53,10 +64,47 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     private let chargingFrameCache = StatusBarChargingFrameCache()
     private let animationLayerPresenter = StatusBarAnimationLayerPresenter()
     private let renderCoalescer = IconRenderCoalescer()
+    /// The template base currently on the status item, kept so a custom-raster
+    /// fallback can put the re-tintable image back.
+    private var staticBase: NSImage?
+    /// The resting chromatic overlay for the current static key, rendered on
+    /// demand instead of on every clock tick.
+    private var staticOverlay: CGImage?
+    private var staticOverlayIsPending = false
+    private var baseIsCustomRaster = false
+    private(set) var renderCounters = RenderCounters()
     var cachedChargingFrameCount: Int { chargingFrameCache.frameCount }
     var hasLayerBackedAnimation: Bool { animationLayerPresenter.isInstalled }
     var presentedImageForTesting: NSImage? { statusItem.button?.image }
+    var animationLayerContentsUpdateCount: Int { animationLayerPresenter.contentsUpdateCount }
+    var animationLayerGeometryUpdateCount: Int { animationLayerPresenter.geometryUpdateCount }
+    var sublayerCountForTesting: Int { statusItem.button?.layer?.sublayers?.count ?? 0 }
+    var cachedChargingFrameRebuildCount: Int { chargingFrameCache.rebuildCount }
+    var rasterizedChargingFrameCount: Int { chargingFrameCache.rasterizedFrameCount }
+
+    /// What the menu-bar path did, so a test can show that a steady 20-Hz tick
+    /// neither re-rasterizes the static content nor reassigns
+    /// `NSStatusBarButton.image`.
+    struct RenderCounters: Equatable {
+        /// Times the static base and its resting overlay were rebuilt.
+        var staticPresentations = 0
+        /// Times the template base renderer ran.
+        var templateBaseRasters = 0
+        /// Chromatic rasters the static and burst paths requested. The steady
+        /// frames are counted by `StatusBarChargingFrameCache`.
+        var overlayRasters = 0
+        /// Frame or overlay images handed to the animation layer.
+        var framesPresented = 0
+        /// Assignments to `NSStatusBarButton.image`, including fallbacks.
+        var buttonImageAssignments = 0
+        /// Times the non-template fallback raster replaced the template base.
+        var fallbackRasters = 0
+    }
     private var isStatusItemVisible: Bool
+    /// The status item is the charging animation's surface; whoever owns the
+    /// placement decision is told when it changes so the clock can stop.
+    var visibilityDidChange: (@MainActor () -> Void)?
+    var isMenuBarVisible: Bool { isStatusItemVisible }
     private var accessibilityKey: StatusBarAccessibilityKey?
     private var latestIconOutput: IconPresentationOutput
     private var popoverDismissMonitor: Any?
@@ -84,8 +132,16 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         quitAction: @escaping () -> Void,
         chargingEffectClock: ChargingEffectClock = ChargingEffectClock(),
         accessibilityValueDidChange: @escaping @MainActor (String) -> Void = { _ in },
-        renderMenuBarIcon: @escaping MenuBarRenderer = { scene, size, scale, appearance, phase in
-            StatusIconRenderer.menuBarLayers(
+        renderMenuBarBase: @escaping MenuBarBaseRenderer = { scene, size, scale, appearance in
+            StatusIconRenderer.menuBarTemplateBase(
+                scene: scene,
+                size: CGFloat(size),
+                scale: scale,
+                appearance: appearance
+            )
+        },
+        renderMenuBarOverlay: @escaping MenuBarOverlayRenderer = { scene, size, scale, appearance, phase in
+            StatusIconRenderer.menuBarChromaticImage(
                 scene: scene,
                 size: CGFloat(size),
                 scale: scale,
@@ -114,7 +170,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         )
         self.iconPresentation = iconPresentation
         self.localization = localization
-        self.renderMenuBarIcon = renderMenuBarIcon
+        self.renderMenuBarBase = renderMenuBarBase
+        self.renderMenuBarOverlay = renderMenuBarOverlay
         self.accessibilityValueDidChange = accessibilityValueDidChange
         self.chargingEffectClock = chargingEffectClock
         self.openSettings = openSettings
@@ -188,7 +245,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
 
         if isVisible {
             statusItem.isVisible = true
-            renderCache = StatusBarRenderCache()
+            resetStaticPresentation()
             renderLatestScene()
         } else {
             clearAnimationPresentation()
@@ -196,6 +253,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             store.setPopoverVisible(false)
             statusItem.isVisible = false
         }
+        visibilityDidChange?()
     }
 
     func refreshCurrentPresentation() {
@@ -524,70 +582,183 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         popoverContentRetention.markOpened()
     }
 
-    private func render(scene: IconSceneState, iconSize: Double, phase: ChargingEffectPhase?) {
+    /// Everything one menu-bar presentation needs. The static key deliberately
+    /// carries no animation phase, so a 20-Hz tick can never invalidate the
+    /// template base.
+    private struct PresentationContext {
+        let button: NSStatusBarButton
+        let scene: IconSceneState
+        let iconSize: CGFloat
+        let backingScale: CGFloat
+        let appearance: NSAppearance
+        let staticKey: StatusBarRenderKey
+    }
+
+    /// The one presentation entry point, for both a scene change and a clock
+    /// tick. The static half runs only when the phase-free key changed; the
+    /// overlay half runs per call and is a no-op for a repeated frame.
+    private func presentMenuBar(phase: ChargingEffectPhase?) {
         guard isStatusItemVisible, let button = statusItem.button else { return }
+
+        let scene = latestIconOutput.menuBarTestScene ?? latestIconOutput.scene
+        let iconSize = latestIconOutput.menuBarSize
+        guard iconSize.isFinite, iconSize > 0 else { return }
 
         let backingScale =
             button.window?.backingScaleFactor
             ?? NSScreen.main?.backingScaleFactor
             ?? 1
-        let key = StatusBarRenderKey(
+        let appearance = button.effectiveAppearance
+        let staticKey = StatusBarRenderKey(
             scene: scene,
             iconSize: iconSize,
             backingScale: backingScale,
-            appearanceName: button.effectiveAppearance.name.rawValue,
-            phase: phase
+            appearanceName: appearance.name.rawValue,
+            phase: nil
         )
-        guard renderCache.needsRender(key) else { return }
 
-        guard let layers = renderMenuBarIcon(
-            scene,
-            iconSize,
-            backingScale,
-            button.effectiveAppearance,
-            phase
-        ) else { return }
+        if renderCache.needsRender(staticKey) {
+            guard let base = staticBaseImage(
+                scene: scene,
+                iconSize: iconSize,
+                backingScale: backingScale,
+                appearance: appearance
+            ) else {
+                // Keep the icon that is already on screen; the next scene or
+                // tick retries the same key because the cache stays invalid.
+                return
+            }
+            // The button always carries the monochrome template image, so the
+            // system keeps re-tinting it for the Space that is on top — including
+            // while a Space switch is being dragged (#112).
+            button.image = base
+            renderCounters.buttonImageAssignments += 1
+            staticBase = base
+            staticOverlay = nil
+            staticOverlayIsPending = true
+            baseIsCustomRaster = false
+            renderCache.recordSuccessfulRender(staticKey)
+            renderCounters.staticPresentations += 1
+        }
 
-        // The button always carries the monochrome template image, so the system
-        // keeps re-tinting it for the Space that is on top — including while a
-        // Space switch is being dragged (#112).
-        button.image = layers.base
+        // A fallback raster replaced the template base; put the re-tintable image
+        // back as soon as the overlay can be drawn in the layer again.
+        if baseIsCustomRaster, let staticBase {
+            button.image = staticBase
+            renderCounters.buttonImageAssignments += 1
+            baseIsCustomRaster = false
+        }
 
-        guard let overlay = layers.overlay else {
-            clearAnimationPresentation()
-            renderCache.recordSuccessfulRender(key)
+        let context = PresentationContext(
+            button: button,
+            scene: scene,
+            iconSize: CGFloat(iconSize),
+            backingScale: backingScale,
+            appearance: appearance,
+            staticKey: staticKey
+        )
+
+        guard let phase else {
+            presentStaticOverlay(in: context)
+            return
+        }
+        presentAnimationPhase(phase, in: context)
+    }
+
+    /// The template base. `nil` means the whole static presentation is left as
+    /// it is, so a transient rasterization failure cannot blank the icon.
+    private func staticBaseImage(
+        scene: IconSceneState,
+        iconSize: Double,
+        backingScale: CGFloat,
+        appearance: NSAppearance
+    ) -> NSImage? {
+        renderCounters.templateBaseRasters += 1
+        // `nil` keeps the icon that is already on screen: a later state change
+        // retries the same key because the render cache stays invalid.
+        return renderMenuBarBase(scene, iconSize, backingScale, appearance)
+    }
+
+    /// The resting overlay: the scene's status colours at their idle values.
+    /// Rendered on demand so an animating 20-Hz tick never rasterizes it, and
+    /// kept for as long as the static key is on screen.
+    private func presentStaticOverlay(in context: PresentationContext) {
+        if staticOverlayIsPending {
+            staticOverlay = renderMenuBarOverlay(
+                context.scene,
+                Double(context.iconSize),
+                context.backingScale,
+                context.appearance,
+                nil
+            )
+            renderCounters.overlayRasters += 1
+            // A failed raster stays pending so the next presentation retries it
+            // instead of leaving the icon on the custom fallback forever.
+            staticOverlayIsPending = staticOverlay == nil
+        }
+
+        if let staticOverlay {
+            presentOverlayFrame(staticOverlay, in: context)
+            // Steady frames belong to a phase that is no longer playing.
+            chargingFrameCache.reset()
             return
         }
 
-        if let frame = overlayFrame(
-            overlay: overlay,
-            scene: scene,
-            phase: phase,
-            key: key,
-            iconSize: CGFloat(iconSize),
-            backingScale: backingScale,
-            appearance: button.effectiveAppearance
-        ) {
-            presentOverlayFrame(
-                frame,
-                button: button,
-                iconSize: CGFloat(iconSize),
-                backingScale: backingScale
-            )
-            if phase == nil { chargingFrameCache.reset() }
-        } else {
-            // The overlay could not be produced; fall back to one custom raster so
-            // the status colours still appear, even though they cannot re-tint.
-            animationLayerPresenter.clear()
-            button.image = StatusIconRenderer.image(
-                scene: scene,
-                size: CGFloat(iconSize),
-                scale: backingScale,
-                appearance: button.effectiveAppearance,
-                phase: phase
-            )
+        guard !context.scene.chromaticRegions.isEmpty else {
+            // A monochrome scene draws entirely in the template base.
+            clearAnimationPresentation()
+            return
         }
-        renderCache.recordSuccessfulRender(key)
+        installFallbackRaster(phase: nil, in: context)
+    }
+
+    /// A burst draws one overlay per tick; a steady tick reuses the frame set the
+    /// cache built once for this icon state.
+    private func presentAnimationPhase(
+        _ phase: ChargingEffectPhase,
+        in context: PresentationContext
+    ) {
+        guard !context.scene.chromaticRegions.isEmpty else {
+            // Nothing in this scene can animate — the template base is the whole
+            // icon — so there is no frame worth producing.
+            clearAnimationPresentation()
+            return
+        }
+        switch phase.kind {
+        case .steady:
+            let frame = chargingFrameCache.image(
+                for: phase,
+                key: context.staticKey,
+                backingScale: context.backingScale,
+                renderFrame: { framePhase in
+                    renderMenuBarOverlay(
+                        context.scene,
+                        Double(context.iconSize),
+                        context.backingScale,
+                        context.appearance,
+                        framePhase
+                    )
+                }
+            )
+            guard let frame else {
+                installFallbackRaster(phase: phase, in: context)
+                return
+            }
+            presentOverlayFrame(frame, in: context)
+        case .burst:
+            guard let overlay = renderMenuBarOverlay(
+                context.scene,
+                Double(context.iconSize),
+                context.backingScale,
+                context.appearance,
+                phase
+            ) else {
+                installFallbackRaster(phase: phase, in: context)
+                return
+            }
+            renderCounters.overlayRasters += 1
+            presentOverlayFrame(overlay, in: context)
+        }
     }
 
     private func clearAnimationPresentation() {
@@ -595,74 +766,66 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         animationLayerPresenter.clear()
     }
 
-    /// Steady animation frames are pre-rendered once per icon state, so a 20 fps
-    /// tick reuses one bitmap; every other phase renders a single overlay frame.
-    private func overlayFrame(
-        overlay: CGImage,
-        scene: IconSceneState,
-        phase: ChargingEffectPhase?,
-        key: StatusBarRenderKey,
-        iconSize: CGFloat,
-        backingScale: CGFloat,
-        appearance: NSAppearance
-    ) -> CGImage? {
-        guard let phase, phase.kind == .steady else { return overlay }
-        let image = chargingFrameCache.image(
-            for: phase,
-            key: key,
-            backingScale: backingScale,
-            renderFrame: { framePhase in
-                StatusIconRenderer.preRenderedMenuBarImage(
-                    scene: scene,
-                    size: iconSize,
-                    scale: backingScale,
-                    appearance: appearance,
-                    phase: framePhase,
-                    regions: scene.chromaticRegions
-                )
-            }
-        )
-        return image?.cgImage(forProposedRect: nil, context: nil, hints: nil)
+    private func resetStaticPresentation() {
+        renderCache = StatusBarRenderCache()
+        staticBase = nil
+        staticOverlay = nil
+        staticOverlayIsPending = false
+        baseIsCustomRaster = false
     }
 
     /// Draws the chromatic overlay in a layer above the button's template image.
     private func presentOverlayFrame(
         _ image: CGImage,
-        button: NSStatusBarButton,
-        iconSize: CGFloat,
-        backingScale: CGFloat
+        in context: PresentationContext
     ) {
         guard animationLayerPresenter.display(
             image,
-            in: button,
-            contentSize: CGSize(width: iconSize, height: iconSize),
-            backingScale: backingScale
+            in: context.button,
+            contentSize: CGSize(width: context.iconSize, height: context.iconSize),
+            backingScale: context.backingScale
         ) != nil else {
             animationLayerPresenter.clear()
             return
         }
+        renderCounters.framesPresented += 1
+    }
+
+    /// No overlay frame could be produced at all. One custom raster keeps the
+    /// status colours visible even though the system can no longer re-tint it;
+    /// the next successful tick restores the template base.
+    private func installFallbackRaster(
+        phase: ChargingEffectPhase?,
+        in context: PresentationContext
+    ) {
+        animationLayerPresenter.clear()
+        guard let image = StatusIconRenderer.image(
+            scene: context.scene,
+            size: context.iconSize,
+            scale: context.backingScale,
+            appearance: context.appearance,
+            phase: phase
+        ) else {
+            return
+        }
+        context.button.image = image
+        baseIsCustomRaster = true
+        renderCounters.buttonImageAssignments += 1
+        renderCounters.fallbackRasters += 1
     }
 
     /// Clock-driven frames bypass the status/setting coalescer; the menu-bar key
     /// includes every phase so the 20-fps stream cannot be deduplicated as static.
     private func renderAnimationPhase(_ phase: ChargingEffectPhase?) {
         currentChargingEffectPhase = phase
-        render(
-            scene: latestIconOutput.menuBarTestScene ?? latestIconOutput.scene,
-            iconSize: latestIconOutput.menuBarSize,
-            phase: phase
-        )
+        presentMenuBar(phase: phase)
     }
 
     /// The status, the appearance, and the window's effective appearance all feed
     /// one cached render, so the newest state wins over a redraw that is still
     /// waiting out the coalescing interval.
     private func renderLatestScene() {
-        render(
-            scene: latestIconOutput.menuBarTestScene ?? latestIconOutput.scene,
-            iconSize: latestIconOutput.menuBarSize,
-            phase: currentChargingEffectPhase
-        )
+        presentMenuBar(phase: currentChargingEffectPhase)
     }
 
     private func updateAccessibility(snapshot: StatusSnapshot, language: AppLanguage) {

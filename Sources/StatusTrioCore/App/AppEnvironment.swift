@@ -60,6 +60,9 @@ final class AppEnvironment {
         iconPresentation.start()
         startInputSourceMonitoringIfNeeded()
         onboardingWindowController.showIfNeeded()
+        statusBarController.visibilityDidChange = { [weak self] in
+            self?.updateChargingEffectClock()
+        }
         chargingEffectMotionMonitor.onChange = { [weak self] _ in
             self?.updateChargingEffectClock()
         }
@@ -90,6 +93,7 @@ final class AppEnvironment {
     func stop() {
         telemetryReporter.stop()
         chargingEffectClock.stop()
+        statusBarController.visibilityDidChange = nil
         chargingEffectMotionMonitor.onChange = nil
         chargingEffectMotionMonitor.stop()
         chargingEffectCancellables.removeAll()
@@ -139,7 +143,8 @@ final class AppEnvironment {
                 battery: ChargingEffectTestMode.battery(battery, enabled: testMode),
                 enabled: enabled,
                 reduceMotion: chargingEffectMotionMonitor.shouldReduceMotion,
-                displayAsleep: displayAsleep
+                displayAsleep: displayAsleep,
+                menuBarVisible: statusBarController.isMenuBarVisible
             )
         }
         .store(in: &chargingEffectCancellables)
@@ -153,7 +158,8 @@ final class AppEnvironment {
             ),
             enabled: settings.showsChargingEffect,
             reduceMotion: chargingEffectMotionMonitor.shouldReduceMotion,
-            displayAsleep: store.isDisplayAsleep
+            displayAsleep: store.isDisplayAsleep,
+            menuBarVisible: statusBarController.isMenuBarVisible
         )
     }
 
@@ -192,6 +198,11 @@ final class AppEnvironment {
 
     static func live() -> AppEnvironment {
         let settings = SettingsStore()
+        // A measurement launch can force the synthetic charging input so the
+        // animation can be compared on and off on a machine that is not charging.
+        if ChargingEffectTestMode.shouldForceChargingInput() {
+            settings.setChargingEffectTestInputEnabled(true)
+        }
         let store = makeStore(
             batteryMonitor: BatteryMonitor(),
             wifiMonitor: WiFiMonitor(),

@@ -628,40 +628,88 @@ extension StatusIconRenderer {
     ) -> MenuBarLayers? {
         guard size.isFinite, scale.isFinite, size > 0, scale > 0 else { return nil }
 
-        let templateRegions = scene.templateRegions
-        let chromaticRegions = scene.chromaticRegions
-
         let base: NSImage
-        if let image = image(
+        if let templateBase = menuBarTemplateBase(
             scene: scene,
             size: size,
             scale: scale,
-            appearance: appearance,
-            phase: nil,
-            regions: templateRegions
+            appearance: appearance
         ) {
-            image.isTemplate = true
-            base = image
-        } else if chromaticRegions.isEmpty {
-            return nil
-        } else if let placeholder = transparentMenuBarImage(size: size, scale: scale) {
+            base = templateBase
+        } else if !scene.chromaticRegions.isEmpty,
+                  let placeholder = transparentMenuBarImage(size: size, scale: scale) {
+            // The monochrome primitives could not be rasterized but the scene
+            // still carries status colours: keep the item's footprint so the
+            // chromatic overlay is still visible.
             placeholder.isTemplate = true
             base = placeholder
         } else {
             return nil
         }
 
-        guard !chromaticRegions.isEmpty else {
-            return MenuBarLayers(base: base, overlay: nil)
-        }
         return MenuBarLayers(
             base: base,
-            overlay: render(
+            overlay: menuBarChromaticImage(
                 scene: scene,
-                environment: renderEnvironment(size: size, scale: scale, appearance: appearance),
-                phase: phase,
-                regions: chromaticRegions
+                size: size,
+                scale: scale,
+                appearance: appearance,
+                phase: phase
             )
+        )
+    }
+
+    /// The template base alone: every monochrome primitive, marked so the system
+    /// re-tints it for the Space that is on top.
+    ///
+    /// This is the half of `menuBarLayers` that changes only when the icon state
+    /// does, so the animation path can leave it installed across ticks and
+    /// rasterize the overlay on its own. `nil` means the primitives could not be
+    /// produced; callers keep the icon they are already showing and retry on the
+    /// next state change.
+    @MainActor
+    static func menuBarTemplateBase(
+        scene: IconSceneState,
+        size: CGFloat,
+        scale: CGFloat,
+        appearance: NSAppearance?
+    ) -> NSImage? {
+        guard size.isFinite, scale.isFinite, size > 0, scale > 0 else { return nil }
+        guard let image = image(
+            scene: scene,
+            size: size,
+            scale: scale,
+            appearance: appearance,
+            phase: nil,
+            regions: scene.templateRegions
+        ) else {
+            return nil
+        }
+        image.isTemplate = true
+        return image
+    }
+
+    /// The custom-colour half of the same split, or `nil` when the scene draws
+    /// with the label colour alone and there is nothing to overlay.
+    ///
+    /// The animated overlay is built through this entry point so a 20-Hz tick
+    /// never re-rasterizes the monochrome primitives.
+    @MainActor
+    static func menuBarChromaticImage(
+        scene: IconSceneState,
+        size: CGFloat,
+        scale: CGFloat,
+        appearance: NSAppearance?,
+        phase: ChargingEffectPhase? = nil
+    ) -> CGImage? {
+        guard size.isFinite, scale.isFinite, size > 0, scale > 0 else { return nil }
+        let regions = scene.chromaticRegions
+        guard !regions.isEmpty else { return nil }
+        return render(
+            scene: scene,
+            environment: renderEnvironment(size: size, scale: scale, appearance: appearance),
+            phase: phase,
+            regions: regions
         )
     }
 

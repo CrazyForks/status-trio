@@ -16,9 +16,9 @@ struct IconSurfaceIntegrationTests {
             localization: localization,
             openSettings: {},
             quitAction: {},
-            renderMenuBarIcon: { scene, _, _, _, _ in
+            renderMenuBarBase: { scene, _, _, _ in
                 menuBarScenes.append(scene)
-                return StatusIconRenderer.MenuBarLayers(base: NSImage(size: NSSize(width: 32, height: 32)))
+                return NSImage(size: NSSize(width: 32, height: 32))
             }
         )
         defer { menuBar.setVisible(false) }
@@ -49,9 +49,7 @@ struct IconSurfaceIntegrationTests {
             localization: Localization(preferredLanguages: ["en"]),
             openSettings: {},
             quitAction: {},
-            renderMenuBarIcon: { scene, size, _, _, _ in
-                rasterSpy.render(scene, size: size).map { StatusIconRenderer.MenuBarLayers(base: $0) }
-            }
+            renderMenuBarBase: { scene, size, _, _ in rasterSpy.render(scene, size: size) }
         )
         defer { menuBar.setVisible(false) }
         harness.controller.start()
@@ -99,7 +97,7 @@ struct IconSurfaceIntegrationTests {
             localization: Localization(preferredLanguages: ["en"]),
             openSettings: {},
             quitAction: {},
-            renderMenuBarIcon: { scene, size, _, _, _ in rasterSpy.render(scene, size: size).map { StatusIconRenderer.MenuBarLayers(base: $0) } }
+            renderMenuBarBase: { scene, size, _, _ in rasterSpy.render(scene, size: size) }
         )
         defer { menuBar.setVisible(false) }
         harness.controller.start()
@@ -222,9 +220,9 @@ struct IconSurfaceIntegrationTests {
             localization: Localization(preferredLanguages: ["en"]),
             openSettings: {},
             quitAction: {},
-            renderMenuBarIcon: { scene, _, _, _, _ in
+            renderMenuBarBase: { scene, _, _, _ in
                 menuBarScenes.append(scene)
-                return StatusIconRenderer.MenuBarLayers(base: NSImage(size: NSSize(width: 32, height: 32)))
+                return NSImage(size: NSSize(width: 32, height: 32))
             }
         )
         defer { menuBar.setVisible(false) }
@@ -358,17 +356,16 @@ struct IconSurfaceIntegrationTests {
             openSettings: {},
             quitAction: {},
             accessibilityValueDidChange: { spokenValues.append($0) },
-            renderMenuBarIcon: { scene, size, scale, appearance, phase in
+            renderMenuBarBase: { scene, size, scale, appearance in
                 menuBarRenders += 1
                 menuBarScenes.append(scene)
                 menuBarKeys.append(MenuBarRenderSurfaceKey(
                     scene: scene,
                     size: size,
                     scale: scale,
-                    appearanceName: appearance.name.rawValue,
-                    phase: phase
+                    appearanceName: appearance.name.rawValue
                 ))
-                return StatusIconRenderer.MenuBarLayers(base: NSImage(size: NSSize(width: 32, height: 32)))
+                return NSImage(size: NSSize(width: 32, height: 32))
             }
         )
         defer { menuBar.setVisible(false) }
@@ -384,7 +381,6 @@ struct IconSurfaceIntegrationTests {
         let initialScene = harness.iconPresentation.output.scene
         let initialMenuBarKey = try #require(menuBarKeys.last)
         let initialDockKey = try #require(harness.log.dockRenderKeys.last)
-        #expect(initialMenuBarKey.phase == nil)
         let initialSpokenValue = try #require(spokenValues.last)
 
         harness.publishWiFi(WiFiStatus(
@@ -418,7 +414,6 @@ struct IconSurfaceIntegrationTests {
         for key in menuBarKeys.dropFirst(initialMenuBarRenders) {
             #expect(key.scene == precedingKey.scene)
             #expect(key.size == precedingKey.size)
-            #expect(key.phase == precedingKey.phase)
             #expect(key.appearanceName != precedingKey.appearanceName || key.scale != precedingKey.scale)
             precedingKey = key
         }
@@ -437,9 +432,9 @@ struct IconSurfaceIntegrationTests {
             localization: Localization(preferredLanguages: ["en"]),
             openSettings: {},
             quitAction: {},
-            renderMenuBarIcon: { scene, _, _, _, _ in
+            renderMenuBarBase: { scene, _, _, _ in
                 menuBarScenes.append(scene)
-                return StatusIconRenderer.MenuBarLayers(base: NSImage(size: NSSize(width: 32, height: 32)))
+                return NSImage(size: NSSize(width: 32, height: 32))
             }
         )
         defer { menuBar.setVisible(false) }
@@ -487,9 +482,9 @@ struct IconSurfaceIntegrationTests {
             localization: Localization(preferredLanguages: ["en"]),
             openSettings: {},
             quitAction: {},
-            renderMenuBarIcon: { scene, _, _, _, _ in
+            renderMenuBarBase: { scene, _, _, _ in
                 menuBarScenes.append(scene)
-                return StatusIconRenderer.MenuBarLayers(base: NSImage(size: NSSize(width: 32, height: 32)))
+                return NSImage(size: NSSize(width: 32, height: 32))
             }
         )
         defer { menuBar.setVisible(false) }
@@ -577,7 +572,6 @@ private struct MenuBarRenderSurfaceKey: Equatable {
     let size: Double
     let scale: CGFloat
     let appearanceName: String
-    let phase: ChargingEffectPhase?
 }
 
 @MainActor
