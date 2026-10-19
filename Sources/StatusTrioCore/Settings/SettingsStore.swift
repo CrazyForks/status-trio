@@ -24,7 +24,10 @@ final class SettingsStore: ObservableObject {
     static let defaultBatterySymbolScale: Double = 1
     static let showsBatteryPercentageDefaultsKey = "showsBatteryPercentage"
     static let showsChargingIndicatorDefaultsKey = "showsChargingIndicator"
+    /// Legacy single-surface preference retained only for migration.
     static let showsChargingEffectDefaultsKey = "showsChargingEffect"
+    static let showsMenuBarChargingEffectDefaultsKey = "showsMenuBarChargingEffect"
+    static let showsDockChargingEffectDefaultsKey = "showsDockChargingEffect"
     static let showsChargingBoltHeartbeatDefaultsKey = "showsChargingBoltHeartbeat"
     static let showsPercentageWhenConnectedDefaultsKey = "showsPercentageWhenConnected"
     static let usesBatteryStatusColorsDefaultsKey = "usesBatteryStatusColors"
@@ -211,12 +214,37 @@ final class SettingsStore: ObservableObject {
         }
     }
 
-    @Published var showsChargingEffect: Bool {
+    @Published var showsMenuBarChargingEffect: Bool {
         didSet {
-            defaults.set(showsChargingEffect, forKey: Self.showsChargingEffectDefaultsKey)
-            if !showsChargingEffect {
+            defaults.set(
+                showsMenuBarChargingEffect,
+                forKey: Self.showsMenuBarChargingEffectDefaultsKey
+            )
+            if !showsMenuBarChargingEffect && !showsDockChargingEffect {
                 testsChargingEffect = false
             }
+        }
+    }
+
+    @Published var showsDockChargingEffect: Bool {
+        didSet {
+            defaults.set(
+                showsDockChargingEffect,
+                forKey: Self.showsDockChargingEffectDefaultsKey
+            )
+            if !showsMenuBarChargingEffect && !showsDockChargingEffect {
+                testsChargingEffect = false
+            }
+        }
+    }
+
+    /// The shared scene carries the effect when either surface can animate.
+    /// Each renderer removes it independently for a surface that is switched off.
+    var showsChargingEffect: Bool {
+        get { showsMenuBarChargingEffect || showsDockChargingEffect }
+        set {
+            showsMenuBarChargingEffect = newValue
+            showsDockChargingEffect = newValue
         }
     }
 
@@ -232,9 +260,6 @@ final class SettingsStore: ObservableObject {
     @Published private(set) var testsChargingEffect = false
 
     func setChargingEffectTestEnabled(_ enabled: Bool) {
-        if enabled {
-            showsChargingEffect = true
-        }
         testsChargingEffect = enabled
     }
 
@@ -1184,9 +1209,33 @@ final class SettingsStore: ObservableObject {
         self.iconSize = Self.clampedIconSize(storedIconSize ?? Self.defaultIconSize)
         self.showsBatteryPercentage = defaults.object(forKey: Self.showsBatteryPercentageDefaultsKey) as? Bool ?? true
         self.showsChargingIndicator = defaults.object(forKey: Self.showsChargingIndicatorDefaultsKey) as? Bool ?? true
-        self.showsChargingEffect = defaults.object(
+        let legacyChargingEffect = defaults.object(
             forKey: Self.showsChargingEffectDefaultsKey
-        ) as? Bool ?? true
+        ) as? Bool
+        let storedMenuBarChargingEffect = defaults.object(
+            forKey: Self.showsMenuBarChargingEffectDefaultsKey
+        ) as? Bool
+        let storedDockChargingEffect = defaults.object(
+            forKey: Self.showsDockChargingEffectDefaultsKey
+        ) as? Bool
+        let resolvedMenuBarChargingEffect =
+            storedMenuBarChargingEffect ?? legacyChargingEffect ?? true
+        let resolvedDockChargingEffect =
+            storedDockChargingEffect ?? legacyChargingEffect ?? true
+        self.showsMenuBarChargingEffect = resolvedMenuBarChargingEffect
+        self.showsDockChargingEffect = resolvedDockChargingEffect
+        if storedMenuBarChargingEffect == nil {
+            defaults.set(
+                resolvedMenuBarChargingEffect,
+                forKey: Self.showsMenuBarChargingEffectDefaultsKey
+            )
+        }
+        if storedDockChargingEffect == nil {
+            defaults.set(
+                resolvedDockChargingEffect,
+                forKey: Self.showsDockChargingEffectDefaultsKey
+            )
+        }
         self.showsChargingBoltHeartbeat = defaults.object(
             forKey: Self.showsChargingBoltHeartbeatDefaultsKey
         ) as? Bool ?? true

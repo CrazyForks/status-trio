@@ -139,6 +139,10 @@
 "settings.battery.chargingDescription" = "Al activarlo, el porcentaje se convierte en un rayo o un enchufe mientras se carga o está conectado a la corriente.";
 "settings.battery.chargingEffect" = "Efecto de carga";
 "settings.battery.chargingEffectDescription" = "Anima el resaltado solo durante la carga. Se detiene si «Reducir movimiento» está activado.";
+"settings.battery.menuBarChargingEffect" = "Efecto de carga en la barra de menús";
+"settings.battery.menuBarChargingEffectDescription" = "Anima el resaltado de carga solo en la barra de menús. El Dock se controla por separado; ambos se detienen con «Reducir movimiento».";
+"settings.battery.dockChargingEffect" = "Efecto de carga en el Dock";
+"settings.battery.dockChargingEffectDescription" = "Anima el resaltado de carga solo en el icono del Dock. La barra de menús se controla por separado; ambos se detienen con «Reducir movimiento».";
 "settings.battery.chargingBoltHeartbeat" = "Pulso del rayo de carga";
 "settings.battery.chargingBoltHeartbeatDescription" = "Desactívalo para mantener el rayo en su tamaño y color habituales; el efecto del arco de carga continúa.";
 "settings.battery.chargingEffectTest" = "Probar animación de carga";

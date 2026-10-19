@@ -139,6 +139,10 @@
 "settings.battery.chargingDescription" = "Quando ativado, a porcentagem vira um raio ou um plugue durante o carregamento ou com energia conectada.";
 "settings.battery.chargingEffect" = "Efeito de carregamento";
 "settings.battery.chargingEffectDescription" = "Anima o destaque somente durante o carregamento. Para quando Reduzir Movimento está ativado.";
+"settings.battery.menuBarChargingEffect" = "Efeito de carregamento na barra de menus";
+"settings.battery.menuBarChargingEffectDescription" = "Anima o destaque de carregamento somente na barra de menus. O Dock é controlado separadamente; ambos param quando Reduzir Movimento está ativado.";
+"settings.battery.dockChargingEffect" = "Efeito de carregamento no Dock";
+"settings.battery.dockChargingEffectDescription" = "Anima o destaque de carregamento somente no ícone do Dock. A barra de menus é controlada separadamente; ambos param quando Reduzir Movimento está ativado.";
 "settings.battery.chargingBoltHeartbeat" = "Pulso do raio de carregamento";
 "settings.battery.chargingBoltHeartbeatDescription" = "Desative para manter o raio no tamanho e na cor habituais; o efeito do arco de carregamento continua.";
 "settings.battery.chargingEffectTest" = "Testar animação de carregamento";

@@ -54,7 +54,9 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     private var iconPresentationCancellable: AnyCancellable?
     private var accessibilityCancellable: AnyCancellable?
     private var chargingEffectCancellable: AnyCancellable?
+    private var chargingEffectPreferenceCancellable: AnyCancellable?
     private var currentChargingEffectPhase: ChargingEffectPhase?
+    private var isMenuBarChargingEffectEnabled: Bool
     private var screenParametersCancellable: AnyCancellable?
     private var refreshIntervalCancellable: AnyCancellable?
     private let openSettings: () -> Void
@@ -177,6 +179,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         self.openSettings = openSettings
         self.quitAction = quitAction
         self.isStatusItemVisible = isVisible
+        self.isMenuBarChargingEffectEnabled = settings.showsMenuBarChargingEffect
         self.latestIconOutput = iconPresentation.output
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         super.init()
@@ -201,6 +204,14 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             .removeDuplicates()
             .sink { [weak self] phase in
                 self?.renderAnimationPhase(phase)
+            }
+
+        chargingEffectPreferenceCancellable = settings.$showsMenuBarChargingEffect
+            .removeDuplicates()
+            .sink { [weak self] isEnabled in
+                guard let self else { return }
+                isMenuBarChargingEffectEnabled = isEnabled
+                renderLatestScene()
             }
 
         accessibilityCancellable = Publishers.CombineLatest(
@@ -600,9 +611,11 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     private func presentMenuBar(phase: ChargingEffectPhase?) {
         guard isStatusItemVisible, let button = statusItem.button else { return }
 
-        let scene = latestIconOutput.menuBarTestScene ?? latestIconOutput.scene
+        let scene = (latestIconOutput.menuBarTestScene ?? latestIconOutput.scene)
+            .withChargingEffectEnabled(isMenuBarChargingEffectEnabled)
         let iconSize = latestIconOutput.menuBarSize
         guard iconSize.isFinite, iconSize > 0 else { return }
+        let effectivePhase = isMenuBarChargingEffectEnabled ? phase : nil
 
         let backingScale =
             button.window?.backingScaleFactor
@@ -658,11 +671,11 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             staticKey: staticKey
         )
 
-        guard let phase else {
+        guard let effectivePhase else {
             presentStaticOverlay(in: context)
             return
         }
-        presentAnimationPhase(phase, in: context)
+        presentAnimationPhase(effectivePhase, in: context)
     }
 
     /// The template base. `nil` means the whole static presentation is left as

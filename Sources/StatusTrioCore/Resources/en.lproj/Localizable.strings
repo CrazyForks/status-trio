@@ -139,6 +139,10 @@
 "settings.battery.chargingDescription" = "When enabled, the percentage becomes a bolt or plug while charging or connected to power.";
 "settings.battery.chargingEffect" = "Charging effect";
 "settings.battery.chargingEffectDescription" = "Animate the highlight only while charging. Stops when Reduce Motion is on.";
+"settings.battery.menuBarChargingEffect" = "Menu bar charging effect";
+"settings.battery.menuBarChargingEffectDescription" = "Animate the charging highlight only in the menu bar. The Dock is controlled separately; both stop when Reduce Motion is on.";
+"settings.battery.dockChargingEffect" = "Dock charging effect";
+"settings.battery.dockChargingEffectDescription" = "Animate the charging highlight only in the Dock icon. The menu bar is controlled separately; both stop when Reduce Motion is on.";
 "settings.battery.chargingBoltHeartbeat" = "Charging bolt pulse";
 "settings.battery.chargingBoltHeartbeatDescription" = "Turn off to keep the bolt at its usual size and color; the charging arc effect continues.";
 "settings.battery.chargingEffectTest" = "Test charging animation";

@@ -139,6 +139,10 @@
 "settings.battery.chargingDescription" = "开启后，正在充电或已连接电源时，电量数字会替换为闪电或插头图标；关闭则继续显示数字。";
 "settings.battery.chargingEffect" = "充电动效";
 "settings.battery.chargingEffectDescription" = "仅在充电时显示动态高光；开启“减弱动态效果”时停止。";
+"settings.battery.menuBarChargingEffect" = "菜单栏充电动效";
+"settings.battery.menuBarChargingEffectDescription" = "仅在菜单栏图标中播放充电动效。程序坞单独控制；开启“减弱动态效果”时两者都会停止。";
+"settings.battery.dockChargingEffect" = "程序坞充电动效";
+"settings.battery.dockChargingEffectDescription" = "仅在程序坞图标中播放充电动效。菜单栏单独控制；开启“减弱动态效果”时两者都会停止。";
 "settings.battery.chargingBoltHeartbeat" = "闪电心跳";
 "settings.battery.chargingBoltHeartbeatDescription" = "关闭后闪电保持原有大小和颜色；充电圆弧动效仍会继续。";
 "settings.battery.chargingEffectTest" = "测试充电动画";

@@ -460,6 +460,90 @@ struct AppIconControllerTests {
         #expect(harness.log.events.isEmpty)
     }
 
+    /// The Dock animation's claim follows the user's own placement: a window
+    /// that borrows the regular policy is not a Dock placement.
+    @Test func dockAnimationEligibilityFollowsThePlacementNotTheRegularPolicy() throws {
+        let harness = try AppIconControllerHarness(initialPlacement: .menuBar)
+        defer { harness.cleanUp() }
+        harness.controller.start()
+
+        #expect(harness.controller.isDockChargingAnimationEligible == false)
+
+        harness.activationPolicy.enterTemporaryRegularMode()
+
+        #expect(harness.controller.isDockChargingAnimationEligible == false)
+
+        harness.settings.appIconPlacement = .dock
+
+        #expect(harness.controller.isDockChargingAnimationEligible)
+
+        harness.settings.appIconPlacement = .both
+
+        #expect(harness.controller.isDockChargingAnimationEligible)
+
+        harness.settings.appIconPlacement = .menuBar
+
+        #expect(harness.controller.isDockChargingAnimationEligible == false)
+    }
+
+    @Test func dockAnimationEligibilityCallbackFiresOnEverySurfaceChange() throws {
+        let harness = try AppIconControllerHarness(initialPlacement: .dock)
+        defer { harness.cleanUp() }
+        var transitions: [Bool] = []
+        harness.controller.dockChargingAnimationEligibilityDidChange = {
+            transitions.append(harness.controller.isDockChargingAnimationEligible)
+        }
+
+        harness.controller.start()
+        harness.settings.appIconPlacement = .menuBar
+
+        #expect(transitions == [true, false])
+    }
+
+    /// While the Dock presenter owns the animated tile, writing
+    /// `applicationIconImage` would replace it with a static image, so the
+    /// static path has to stay quiet until the animation releases the surface.
+    @Test func animatedDockTileSuppressesStaticImageWrites() async throws {
+        let harness = try AppIconControllerHarness(initialPlacement: .dock)
+        defer { harness.cleanUp() }
+        harness.controller.start()
+        harness.controller.setDockChargingAnimationActive(true)
+        harness.log.reset()
+
+        harness.publishDifferentSnapshot()
+        try await Task.sleep(for: .seconds(2))
+
+        #expect(harness.log.renderCount == 0)
+        #expect(harness.log.events.isEmpty)
+
+        harness.controller.setDockChargingAnimationActive(false)
+
+        #expect(harness.controller.isDockChargingAnimationEligible)
+        #expect(harness.log.events == ["dock:image"])
+    }
+
+    @Test func disablingTheDockEffectRemovesItFromTheDockAnimationScene() throws {
+        let harness = try AppIconControllerHarness(
+            initialPlacement: .both,
+            initialBattery: BatteryStatus(
+                rawPercentage: 62,
+                isPresent: true,
+                isCharging: true,
+                isLowPowerMode: false,
+                isConnectedToPower: true
+            )
+        )
+        defer { harness.cleanUp() }
+        harness.controller.start()
+        #expect(harness.controller.latestAnimationScene.outerRing?.effect != nil)
+
+        harness.settings.showsDockChargingEffect = false
+
+        #expect(harness.controller.latestAnimationScene.outerRing?.effect == nil)
+        #expect(harness.settings.showsMenuBarChargingEffect)
+        #expect(harness.settings.showsChargingEffect)
+    }
+
     /// Waits for the render coalescer's trailing redraw.
     ///
     /// Polling rather than sleeping a fixed interval: every test in the run
@@ -503,6 +587,7 @@ final class AppIconControllerHarness {
         notificationCenter: NotificationCenter = .default,
         initialBattery: BatteryStatus = .placeholder,
         initialShowsChargingEffect: Bool = true,
+        initialShowsDockChargingEffect: Bool? = nil,
         initialWiFi: WiFiStatus = .placeholder,
         initialVolume: VolumeStatus = .placeholder,
         initialReplacesNetworkIcon: Bool = false,
@@ -527,6 +612,9 @@ final class AppIconControllerHarness {
         settings.appIconPlacement = initialPlacement
         if !initialShowsChargingEffect {
             settings.showsChargingEffect = false
+        }
+        if let initialShowsDockChargingEffect {
+            settings.showsDockChargingEffect = initialShowsDockChargingEffect
         }
         settings.replacesNetworkIconWithBluetoothAudio = initialReplacesNetworkIcon
         self.settings = settings

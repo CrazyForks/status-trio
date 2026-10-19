@@ -139,6 +139,10 @@
 "settings.battery.chargingDescription" = "Wenn aktiviert, wird der Prozentsatz beim Laden oder Netzbetrieb durch ein Blitz- oder Steckersymbol ersetzt.";
 "settings.battery.chargingEffect" = "Ladeeffekt";
 "settings.battery.chargingEffectDescription" = "Hebt den Ladestand nur während des Ladevorgangs animiert hervor. Wird bei aktivierter Option „Bewegung reduzieren“ gestoppt.";
+"settings.battery.menuBarChargingEffect" = "Ladeeffekt in der Menüleiste";
+"settings.battery.menuBarChargingEffectDescription" = "Animiert die Ladehervorhebung nur in der Menüleiste. Das Dock wird separat gesteuert; bei „Bewegung reduzieren“ stoppen beide.";
+"settings.battery.dockChargingEffect" = "Ladeeffekt im Dock";
+"settings.battery.dockChargingEffectDescription" = "Animiert die Ladehervorhebung nur im Dock-Symbol. Die Menüleiste wird separat gesteuert; bei „Bewegung reduzieren“ stoppen beide.";
 "settings.battery.chargingBoltHeartbeat" = "Ladeblitz-Puls";
 "settings.battery.chargingBoltHeartbeatDescription" = "Deaktivieren, damit der Blitz seine gewohnte Größe und Farbe behält; der Ladeeffekt läuft weiter.";
 "settings.battery.chargingEffectTest" = "Ladeanimation testen";

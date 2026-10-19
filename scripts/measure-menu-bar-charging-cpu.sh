@@ -54,12 +54,14 @@ fi
 BUNDLE_ID="${BUNDLE_ID:-$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP_BUNDLE/Contents/Info.plist")}"
 
 case "$MODE" in
-    on) SHOWS_CHARGING_EFFECT=true ;;
-    off) SHOWS_CHARGING_EFFECT=false ;;
+    on) SHOWS_MENU_BAR_CHARGING_EFFECT=true ;;
+    off) SHOWS_MENU_BAR_CHARGING_EFFECT=false ;;
 esac
 
 # Seed the preference before launch; the app reads it during startup.
-defaults write "$BUNDLE_ID" showsChargingEffect -bool "$SHOWS_CHARGING_EFFECT"
+defaults write "$BUNDLE_ID" appIconPlacement -string menuBar
+defaults write "$BUNDLE_ID" showsMenuBarChargingEffect -bool "$SHOWS_MENU_BAR_CHARGING_EFFECT"
+defaults write "$BUNDLE_ID" showsDockChargingEffect -bool false
 
 APP_PID=""
 cleanup() {
@@ -71,7 +73,7 @@ cleanup() {
 trap cleanup EXIT
 
 echo "mode=$MODE bundle=$BUNDLE_ID app=$APP_BUNDLE"
-echo "showsChargingEffect=$SHOWS_CHARGING_EFFECT settle=${SETTLE_SECONDS}s samples=${SAMPLE_SECONDS}s"
+echo "showsMenuBarChargingEffect=$SHOWS_MENU_BAR_CHARGING_EFFECT showsDockChargingEffect=false settle=${SETTLE_SECONDS}s samples=${SAMPLE_SECONDS}s"
 
 STATUS_TRIO_FORCE_CHARGING_INPUT=1 "$EXECUTABLE" >"$OUTPUT_PREFIX.app.log" 2>&1 &
 APP_PID=$!

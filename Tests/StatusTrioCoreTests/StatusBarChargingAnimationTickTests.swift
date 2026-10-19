@@ -82,6 +82,22 @@ struct StatusBarChargingAnimationTickTests {
         #expect(fixture.baseRasterCount == 1)
     }
 
+    @Test func disablingTheMenuBarEffectIgnoresClockPhasesWhileTheSharedClockKeepsRunning() async throws {
+        let fixture = try Fixture()
+        defer { fixture.tearDown() }
+        try await fixture.waitForPresentation()
+
+        fixture.settings.showsMenuBarChargingEffect = false
+        fixture.controller.flushPendingPresentationForTesting()
+        let overlayRastersAtRest = fixture.overlayRasterCount
+
+        fixture.startClock()
+        fixture.advanceTicks(12)
+
+        #expect(fixture.burstPhaseCount == 12)
+        #expect(fixture.overlayRasterCount == overlayRastersAtRest)
+    }
+
     @Test func staticKeyChangesRebuildTheBaseAndInvalidateTheFrames() async throws {
         let fixture = try Fixture()
         defer { fixture.tearDown() }

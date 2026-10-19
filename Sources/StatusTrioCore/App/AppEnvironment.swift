@@ -16,6 +16,8 @@ final class AppEnvironment {
     let inputSourceController: InputSourceController
     let chargingEffectClock: ChargingEffectClock
     let chargingEffectMotionMonitor: ChargingEffectMotionMonitor
+    let dockChargingAnimationPresenter: (any DockChargingAnimationPresenting)?
+    let dockVisibilityMonitor: (any DockVisibilityMonitoring)?
     let telemetryReporter: any TelemetryReporting
     let bluetoothAudioIconOverrideSynchronizer = BluetoothAudioIconOverrideSynchronizer()
     private let bluetoothNearbyBatteryOptOutSynchronizer = BluetoothNearbyBatteryOptOutSynchronizer()
@@ -23,6 +25,11 @@ final class AppEnvironment {
 
     private var chargingEffectCancellables = Set<AnyCancellable>()
     private var inputSourceLifecycleCancellables = Set<AnyCancellable>()
+    private var hasSubscribedToChargingEffectInputs = false
+    private var menuBarChargingEffectEnabled: Bool
+    private var dockChargingEffectEnabled: Bool
+    private var dockChargingAnimationShouldRun = false
+    private var isDockVisibilityMonitoring = false
 
     init(
         store: SystemStatusStore,
@@ -38,6 +45,8 @@ final class AppEnvironment {
         inputSourceController: InputSourceController,
         chargingEffectClock: ChargingEffectClock,
         chargingEffectMotionMonitor: ChargingEffectMotionMonitor,
+        dockChargingAnimationPresenter: (any DockChargingAnimationPresenting)? = nil,
+        dockVisibilityMonitor: (any DockVisibilityMonitoring)? = nil,
         telemetryReporter: any TelemetryReporting
     ) {
         self.store = store
@@ -53,7 +62,11 @@ final class AppEnvironment {
         self.inputSourceController = inputSourceController
         self.chargingEffectClock = chargingEffectClock
         self.chargingEffectMotionMonitor = chargingEffectMotionMonitor
+        self.dockChargingAnimationPresenter = dockChargingAnimationPresenter
+        self.dockVisibilityMonitor = dockVisibilityMonitor
         self.telemetryReporter = telemetryReporter
+        self.menuBarChargingEffectEnabled = settings.showsMenuBarChargingEffect
+        self.dockChargingEffectEnabled = settings.showsDockChargingEffect
     }
 
     func start() {
@@ -62,6 +75,19 @@ final class AppEnvironment {
         onboardingWindowController.showIfNeeded()
         statusBarController.visibilityDidChange = { [weak self] in
             self?.updateChargingEffectClock()
+        }
+        appIconController.dockChargingAnimationEligibilityDidChange = { [weak self] in
+            self?.updateChargingEffectClock()
+        }
+        appIconController.dockContentDidChange = { [weak self] in
+            self?.updateDockChargingAnimation()
+        }
+        dockVisibilityMonitor?.onChange = { [weak self] _ in
+            self?.updateDockChargingAnimationOwnership()
+        }
+        appIconController.systemPollDidFire = { [weak self] in
+            guard let self, isDockVisibilityMonitoring else { return }
+            dockVisibilityMonitor?.refresh()
         }
         chargingEffectMotionMonitor.onChange = { [weak self] _ in
             self?.updateChargingEffectClock()
@@ -94,6 +120,15 @@ final class AppEnvironment {
         telemetryReporter.stop()
         chargingEffectClock.stop()
         statusBarController.visibilityDidChange = nil
+        appIconController.dockChargingAnimationEligibilityDidChange = nil
+        appIconController.dockContentDidChange = nil
+        appIconController.systemPollDidFire = nil
+        dockVisibilityMonitor?.onChange = nil
+        if isDockVisibilityMonitoring {
+            dockVisibilityMonitor?.stop()
+            isDockVisibilityMonitoring = false
+        }
+        dockChargingAnimationPresenter?.clear()
         chargingEffectMotionMonitor.onChange = nil
         chargingEffectMotionMonitor.stop()
         chargingEffectCancellables.removeAll()
@@ -130,37 +165,131 @@ final class AppEnvironment {
     }
 
     private func subscribeToChargingEffectInputs() {
-        guard chargingEffectCancellables.isEmpty else { return }
+        guard !hasSubscribedToChargingEffectInputs else { return }
+        hasSubscribedToChargingEffectInputs = true
+        chargingEffectClock.$phase
+            .removeDuplicates()
+            .sink { [weak self] _ in
+                self?.updateDockChargingAnimation()
+            }
+            .store(in: &chargingEffectCancellables)
         Publishers.CombineLatest4(
             store.$snapshot.map(\.battery).removeDuplicates(),
-            settings.$showsChargingEffect.removeDuplicates(),
-            store.$isDisplayAsleep.removeDuplicates(),
-            settings.$testsChargingEffect.removeDuplicates()
+            settings.$showsMenuBarChargingEffect.removeDuplicates(),
+            settings.$showsDockChargingEffect.removeDuplicates(),
+            store.$isDisplayAsleep.removeDuplicates()
         )
-        .sink { [weak self] battery, enabled, displayAsleep, testMode in
-            guard let self else { return }
-            chargingEffectClock.update(
-                battery: ChargingEffectTestMode.battery(battery, enabled: testMode),
-                enabled: enabled,
-                reduceMotion: chargingEffectMotionMonitor.shouldReduceMotion,
-                displayAsleep: displayAsleep,
-                menuBarVisible: statusBarController.isMenuBarVisible
+        .combineLatest(settings.$testsChargingEffect.removeDuplicates())
+        .sink { [weak self] values, testMode in
+            // The Dock claim is part of the clock's surface set, so every input
+            // that can change it goes through the one entry point. Use the
+            // delivered values: `@Published` emits before the store's stored
+            // value changes.
+            self?.updateChargingEffectClock(
+                battery: values.0,
+                menuBarEffect: values.1,
+                dockEffect: values.2,
+                displayAsleep: values.3,
+                testMode: testMode
             )
         }
         .store(in: &chargingEffectCancellables)
     }
 
-    private func updateChargingEffectClock() {
-        chargingEffectClock.update(
-            battery: ChargingEffectTestMode.battery(
-                store.snapshot.battery,
-                enabled: settings.testsChargingEffect
-            ),
-            enabled: settings.showsChargingEffect,
-            reduceMotion: chargingEffectMotionMonitor.shouldReduceMotion,
-            displayAsleep: store.isDisplayAsleep,
-            menuBarVisible: statusBarController.isMenuBarVisible
+    private func updateChargingEffectClock(
+        battery: BatteryStatus? = nil,
+        menuBarEffect: Bool? = nil,
+        dockEffect: Bool? = nil,
+        displayAsleep: Bool? = nil,
+        testMode: Bool? = nil
+    ) {
+        let menuBarEffect = menuBarEffect ?? menuBarChargingEffectEnabled
+        let dockEffect = dockEffect ?? dockChargingEffectEnabled
+        self.menuBarChargingEffectEnabled = menuBarEffect
+        self.dockChargingEffectEnabled = dockEffect
+
+        let battery = ChargingEffectTestMode.battery(
+            battery ?? store.snapshot.battery,
+            enabled: testMode ?? settings.testsChargingEffect
         )
+        let reduceMotion = chargingEffectMotionMonitor.shouldReduceMotion
+        let displayAsleep = displayAsleep ?? store.isDisplayAsleep
+        let shouldAnimate = ChargingEffectPolicy.shouldAnimate(
+            battery: battery,
+            enabled: menuBarEffect || dockEffect,
+            reduceMotion: reduceMotion,
+            displayAsleep: displayAsleep
+        )
+        dockChargingAnimationShouldRun = dockEffect && shouldAnimate
+        updateDockVisibilityMonitoring()
+        updateDockChargingAnimationOwnership()
+        chargingEffectClock.update(
+            battery: battery,
+            enabled: menuBarEffect || dockEffect,
+            reduceMotion: reduceMotion,
+            displayAsleep: displayAsleep,
+            menuBarVisible: statusBarController.isMenuBarVisible && menuBarEffect
+        )
+        updateDockChargingAnimationOwnership()
+    }
+
+    private func updateDockVisibilityMonitoring() {
+        guard let dockVisibilityMonitor else { return }
+        let shouldMonitor =
+            dockChargingAnimationShouldRun && appIconController.isDockChargingAnimationEligible
+        guard shouldMonitor != isDockVisibilityMonitoring else { return }
+        isDockVisibilityMonitoring = shouldMonitor
+        if shouldMonitor {
+            dockVisibilityMonitor.start()
+        } else {
+            dockVisibilityMonitor.stop()
+        }
+    }
+
+    /// The Dock claims the same clock whenever the user's placement really has
+    /// a Dock tile and the Dock effect is enabled. A temporary regular
+    /// activation has no placement, so it never claims the animation.
+    private func updateDockChargingAnimationOwnership() {
+        guard let presenter = dockChargingAnimationPresenter else {
+            chargingEffectClock.setDockAnimationActive(false)
+            return
+        }
+        let isDockEligible =
+            dockChargingEffectEnabled
+            && appIconController.isDockChargingAnimationEligible
+            && (dockVisibilityMonitor?.isDockVisible ?? true)
+
+        chargingEffectClock.setDockAnimationActive(isDockEligible)
+        appIconController.setDockChargingAnimationActive(isDockEligible)
+        guard isDockEligible else {
+            presenter.clear()
+            return
+        }
+        updateDockChargingAnimation()
+    }
+
+    /// Draws the phase the shared clock just published.
+    private func updateDockChargingAnimation() {
+        guard let presenter = dockChargingAnimationPresenter,
+              dockChargingEffectEnabled,
+              appIconController.isDockChargingAnimationEligible,
+              (dockVisibilityMonitor?.isDockVisible ?? true)
+        else { return }
+        guard chargingEffectClock.isRunning, let phase = chargingEffectClock.phase else {
+            appIconController.setDockChargingAnimationActive(false)
+            presenter.clear()
+            return
+        }
+        guard presenter.present(
+            phase: phase,
+            scene: appIconController.latestAnimationScene,
+            backgroundStyle: appIconController.currentDockBackgroundStyle,
+            pixelLength: DockIconRenderer.pixelSize
+        ) else {
+            appIconController.setDockChargingAnimationActive(false)
+            presenter.clear()
+            return
+        }
     }
 
     static func makeStore(
@@ -239,6 +368,11 @@ final class AppEnvironment {
         )
         let chargingEffectClock = ChargingEffectClock()
         let chargingEffectMotionMonitor = ChargingEffectMotionMonitor()
+        let dockChargingAnimationPresenter: any DockChargingAnimationPresenting =
+            DockChargingAnimationRendererMode.usesApplicationIconFrames()
+                ? DockApplicationIconChargingPresenter()
+                : DockChargingAnimationPresenter()
+        let dockVisibilityMonitor = DockVisibilityMonitor()
         let activationPolicy = AppActivationPolicy()
         let onboardingWindowController = OnboardingWindowController(
             settings: settings,
@@ -334,6 +468,8 @@ final class AppEnvironment {
             inputSourceController: inputSourceController,
             chargingEffectClock: chargingEffectClock,
             chargingEffectMotionMonitor: chargingEffectMotionMonitor,
+            dockChargingAnimationPresenter: dockChargingAnimationPresenter,
+            dockVisibilityMonitor: dockVisibilityMonitor,
             telemetryReporter: telemetryReporter
         )
     }

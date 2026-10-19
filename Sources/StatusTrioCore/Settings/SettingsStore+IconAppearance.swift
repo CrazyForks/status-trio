@@ -53,19 +53,24 @@ extension SettingsStore {
             Publishers.CombineLatest4(
                 $showsPercentageWhenConnected,
                 $batterySymbolScale,
-                $showsChargingEffect,
-                $showsChargingBoltHeartbeat
+                $showsChargingBoltHeartbeat,
+                $showsMenuBarChargingEffect
             )
-        ) { values, additionalInputs in
-            BatteryAppearanceInputs(
-                showsPercentage: values.0,
-                showsChargingIndicator: values.1,
-                usesStatusColors: values.2,
-                criticalThreshold: values.3,
+        )
+        .combineLatest($showsDockChargingEffect)
+        .map { values, showsDockChargingEffect -> BatteryAppearanceInputs in
+            let primaryInputs = values.0
+            let additionalInputs = values.1
+            return BatteryAppearanceInputs(
+                showsPercentage: primaryInputs.0,
+                showsChargingIndicator: primaryInputs.1,
+                usesStatusColors: primaryInputs.2,
+                criticalThreshold: primaryInputs.3,
                 showsPercentageWhenConnected: additionalInputs.0,
                 symbolScale: additionalInputs.1,
-                showsChargingEffect: additionalInputs.2,
-                showsChargingBoltHeartbeat: additionalInputs.3,
+                showsChargingEffect:
+                    additionalInputs.3 || showsDockChargingEffect,
+                showsChargingBoltHeartbeat: additionalInputs.2,
                 fullThreshold: Self.defaultBatteryFullThreshold
             )
         }

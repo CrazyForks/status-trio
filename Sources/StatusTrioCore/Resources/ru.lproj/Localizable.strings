@@ -139,6 +139,10 @@
 "settings.battery.chargingDescription" = "Если включено, процент заменяется молнией или вилкой во время зарядки или при питании от сети.";
 "settings.battery.chargingEffect" = "Эффект зарядки";
 "settings.battery.chargingEffectDescription" = "Анимирует подсветку только во время зарядки. Останавливается при включённом параметре «Уменьшение движения».";
+"settings.battery.menuBarChargingEffect" = "Эффект зарядки в строке меню";
+"settings.battery.menuBarChargingEffectDescription" = "Анимирует подсветку зарядки только в строке меню. Dock управляется отдельно; при включённом «Уменьшении движения» останавливаются оба.";
+"settings.battery.dockChargingEffect" = "Эффект зарядки в Dock";
+"settings.battery.dockChargingEffectDescription" = "Анимирует подсветку зарядки только в значке Dock. Строка меню управляется отдельно; при включённом «Уменьшении движения» останавливаются оба.";
 "settings.battery.chargingBoltHeartbeat" = "Пульсация молнии зарядки";
 "settings.battery.chargingBoltHeartbeatDescription" = "Отключите, чтобы молния сохранила обычный размер и цвет; эффект дуги зарядки продолжит работать.";
 "settings.battery.chargingEffectTest" = "Проверить анимацию зарядки";

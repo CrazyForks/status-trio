@@ -1,0 +1,518 @@
+import AppKit
+import Testing
+@testable import StatusTrioCore
+
+/// End-to-end wiring for the Dock charging animation: the user's Dock-only
+/// placement claims the shared clock, the clock's phases reach the Dock
+/// presenter, and going back to a menu-bar placement releases both.
+@MainActor
+struct DockChargingEnvironmentTests {
+    @Test func dockOnlyEffectStillRunsTheSharedClockWithTheMenuBarEffectOff() async throws {
+        let fixture = try DockChargingEnvironmentFixture(placement: .both)
+        defer { fixture.tearDown() }
+        fixture.settings.showsMenuBarChargingEffect = false
+        fixture.settings.showsDockChargingEffect = true
+
+        fixture.environment.start()
+        try await fixture.waitForPresentedPhase()
+
+        #expect(fixture.clock.isRunning)
+        #expect(fixture.clock.isDockAnimationActive)
+        #expect(!fixture.presenter.presentedPhases.isEmpty)
+        #expect(fixture.presenter.presentedScenes.last?.outerRing?.effect != nil)
+    }
+
+    @Test func menuBarOnlyEffectLeavesTheDockStatic() async throws {
+        let fixture = try DockChargingEnvironmentFixture(placement: .both)
+        defer { fixture.tearDown() }
+        fixture.settings.showsMenuBarChargingEffect = true
+        fixture.settings.showsDockChargingEffect = false
+
+        fixture.environment.start()
+        try await Task.sleep(for: .milliseconds(250))
+
+        #expect(fixture.clock.isRunning)
+        #expect(!fixture.clock.isDockAnimationActive)
+        #expect(fixture.presenter.presentedPhases.isEmpty)
+        #expect(fixture.presenter.clearCount > 0)
+    }
+
+    @Test func bothSurfaceEffectsOffStopsTheSharedClockAndLeavesTheDockStatic() async throws {
+        let fixture = try DockChargingEnvironmentFixture(placement: .both)
+        defer { fixture.tearDown() }
+        fixture.settings.showsMenuBarChargingEffect = false
+        fixture.settings.showsDockChargingEffect = false
+
+        fixture.environment.start()
+        try await Task.sleep(for: .milliseconds(250))
+
+        #expect(!fixture.clock.isRunning)
+        #expect(!fixture.clock.isDockAnimationActive)
+        #expect(fixture.presenter.presentedPhases.isEmpty)
+    }
+
+    @Test func dockOnlyPlacementDrivesOneClockIntoTheDockPresenter() async throws {
+        let fixture = try DockChargingEnvironmentFixture()
+        defer { fixture.tearDown() }
+
+        fixture.environment.start()
+        try await fixture.waitForPresentedPhase()
+
+        #expect(fixture.presenter.presentedPhases.isEmpty == false)
+        #expect(fixture.presenter.presentedPhases.allSatisfy { $0.stepsPerCycle == 36 })
+        #expect(fixture.clock.isDockAnimationActive)
+        #expect(fixture.clock.isRunning)
+        #expect(fixture.presenter.isInstalled)
+
+        fixture.settings.appIconPlacement = .menuBar
+        try await fixture.waitForClockToStop()
+
+        #expect(fixture.clock.isRunning == false)
+        #expect(fixture.clock.isDockAnimationActive == false)
+        #expect(fixture.presenter.clearCount > 0)
+    }
+
+    @Test func chargingWhileDockIsOnlyTemporarilyRegularNeverClaimsTheClock() async throws {
+        let fixture = try DockChargingEnvironmentFixture(placement: .menuBar)
+        defer { fixture.tearDown() }
+
+        fixture.environment.start()
+        fixture.activationPolicy.enterTemporaryRegularMode()
+        try await Task.sleep(for: .milliseconds(200))
+
+        #expect(fixture.clock.isDockAnimationActive == false)
+        #expect(fixture.presenter.presentedPhases.isEmpty)
+        #expect(fixture.application.applicationIconImage != nil)
+    }
+
+    @Test func theDevelopmentChargingPreviewDrivesTheDockClockWithoutRealCharging() async throws {
+        let fixture = try DockChargingEnvironmentFixture(
+            placement: .both,
+            batteryIsCharging: false
+        )
+        defer { fixture.tearDown() }
+        fixture.settings.setChargingEffectTestEnabled(true)
+
+        fixture.environment.start()
+        try await fixture.waitForPresentedPhase()
+
+        #expect(fixture.clock.isRunning)
+        #expect(fixture.clock.isDockAnimationActive)
+        #expect(fixture.presenter.presentedPhases.isEmpty == false)
+        try await fixture.waitForSteadyPhase()
+        #expect(fixture.presenter.presentedPhases.contains { $0.kind == .steady && $0.stepsPerCycle == 36 })
+    }
+
+    @Test func togglingTheRealSettingsStoreReachesTheDockClock() async throws {
+        let fixture = try DockChargingEnvironmentFixture(
+            placement: .both,
+            batteryIsCharging: false
+        )
+        defer { fixture.tearDown() }
+
+        fixture.environment.start()
+        #expect(!fixture.clock.isRunning)
+
+        fixture.settings.setChargingEffectTestEnabled(true)
+        try await fixture.waitForPresentedPhase()
+
+        #expect(fixture.clock.isRunning)
+        #expect(fixture.clock.isDockAnimationActive)
+        #expect(fixture.presenter.presentedPhases.isEmpty == false)
+    }
+
+    @Test func theRealStorePublishesTheTestSceneWhenTheTestInputChanges() async throws {
+        let fixture = try DockChargingEnvironmentFixture(
+            placement: .both,
+            batteryIsCharging: false
+        )
+        defer { fixture.tearDown() }
+
+        fixture.environment.start()
+        #expect(fixture.iconPresentation.output.menuBarTestScene == nil)
+
+        fixture.settings.setChargingEffectTestEnabled(true)
+        let deadline = Date().addingTimeInterval(5)
+        while fixture.iconPresentation.output.menuBarTestScene == nil, Date() < deadline {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+
+        #expect(fixture.iconPresentation.output.menuBarTestScene != nil)
+        #expect(fixture.iconPresentation.output.menuBarTestScene?.outerRing?.effect != nil)
+    }
+
+    @Test func hiddenDockSuspendsTheDockOnlyAnimationUntilItReturns() async throws {
+        let dockVisibility = DockVisibilityMonitorSpy(isDockVisible: false)
+        let fixture = try DockChargingEnvironmentFixture(
+            placement: .both,
+            dockVisibilityMonitor: dockVisibility
+        )
+        defer { fixture.tearDown() }
+        fixture.settings.showsMenuBarChargingEffect = false
+        fixture.settings.showsDockChargingEffect = true
+
+        fixture.environment.start()
+        try await Task.sleep(for: .milliseconds(250))
+
+        #expect(!fixture.clock.isRunning)
+        #expect(!fixture.clock.isDockAnimationActive)
+        #expect(fixture.presenter.presentedPhases.isEmpty)
+
+        dockVisibility.setVisible(true)
+        try await fixture.waitForPresentedPhase()
+        #expect(fixture.clock.isRunning)
+        #expect(fixture.clock.isDockAnimationActive)
+
+        dockVisibility.setVisible(false)
+        try await fixture.waitForClockToStop()
+        #expect(!fixture.clock.isRunning)
+        #expect(!fixture.clock.isDockAnimationActive)
+        #expect(fixture.presenter.clearCount > 0)
+    }
+
+    @Test func hiddenDockDoesNotStopTheMenuBarAnimation() async throws {
+        let dockVisibility = DockVisibilityMonitorSpy(isDockVisible: false)
+        let fixture = try DockChargingEnvironmentFixture(
+            placement: .both,
+            dockVisibilityMonitor: dockVisibility
+        )
+        defer { fixture.tearDown() }
+        fixture.settings.showsMenuBarChargingEffect = true
+        fixture.settings.showsDockChargingEffect = true
+
+        fixture.environment.start()
+        try await fixture.waitForClockToRun()
+        try await Task.sleep(for: .milliseconds(250))
+
+        #expect(fixture.clock.isRunning)
+        #expect(!fixture.clock.isDockAnimationActive)
+        #expect(fixture.presenter.presentedPhases.isEmpty)
+    }
+
+    @Test func dockVisibilityPollingStartsOnlyWhileTheDockAnimationIsNeeded() async throws {
+        let dockVisibility = DockVisibilityMonitorSpy()
+        let fixture = try DockChargingEnvironmentFixture(
+            placement: .dock,
+            batteryIsCharging: false,
+            dockVisibilityMonitor: dockVisibility
+        )
+        defer { fixture.tearDown() }
+        fixture.settings.showsMenuBarChargingEffect = false
+        fixture.settings.showsDockChargingEffect = true
+
+        fixture.environment.start()
+        try await Task.sleep(for: .milliseconds(250))
+        #expect(dockVisibility.startCount == 0)
+
+        fixture.settings.setChargingEffectTestEnabled(true)
+        try await fixture.waitForDockVisibilityPolling()
+        #expect(dockVisibility.startCount == 1)
+
+        fixture.settings.setChargingEffectTestEnabled(false)
+        try await fixture.waitForDockVisibilityPollingToStop()
+        #expect(dockVisibility.stopCount == 1)
+    }
+
+    @Test func systemAppearancePollRefreshesDockVisibility() async throws {
+        let dockVisibility = DockVisibilityMonitorSpy()
+        let fixture = try DockChargingEnvironmentFixture(
+            placement: .dock,
+            dockVisibilityMonitor: dockVisibility
+        )
+        defer { fixture.tearDown() }
+        fixture.settings.showsMenuBarChargingEffect = false
+        fixture.settings.showsDockChargingEffect = true
+
+        fixture.environment.start()
+        try await fixture.waitForDockVisibilityPolling()
+        let refreshCount = dockVisibility.refreshCount
+
+        fixture.environment.appIconController.systemPollDidFire?()
+
+        #expect(dockVisibility.refreshCount == refreshCount + 1)
+    }
+}
+
+@MainActor
+private final class DockChargingEnvironmentFixture {
+    let environment: AppEnvironment
+    let presenter = RecordingDockChargingPresenter()
+    let clock = ChargingEffectClock()
+    let iconPresentation: IconPresentationViewModel
+    let settings: SettingsStore
+    let activationPolicy: AppActivationPolicy
+    let application: DockChargingApplicationSpy
+    let dockVisibilityMonitor: DockVisibilityMonitorSpy
+
+    private let suiteName: String
+    private let defaults: UserDefaults
+    private let store: SystemStatusStore
+
+    init(
+        placement: AppIconPlacement = .dock,
+        batteryIsCharging: Bool = true,
+        dockVisibilityMonitor: DockVisibilityMonitorSpy = DockVisibilityMonitorSpy()
+    ) throws {
+        suiteName = "StatusTrioCoreTests.DockChargingEnvironment.\(UUID().uuidString)"
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
+            throw DockChargingEnvironmentError.missingDefaultsSuite
+        }
+        defaults.removeTestSuite(named: suiteName)
+        self.defaults = defaults
+
+        let settings = SettingsStore(defaults: defaults)
+        settings.appIconPlacement = placement
+        settings.showsChargingEffect = true
+        settings.hasCompletedIconGuideOnboarding = true
+        settings.completeTelemetryConsent(sharesAnalytics: false)
+        self.settings = settings
+
+        let localization = Localization(defaults: defaults, preferredLanguages: ["en"])
+        store = SystemStatusStore(
+            batteryMonitor: DockChargingIdleBatteryMonitor(),
+            wifiMonitor: DockChargingIdleWiFiMonitor(),
+            volumeMonitor: DockChargingIdleVolumeMonitor(),
+            refreshInterval: .seconds(60),
+            initialSnapshot: StatusSnapshot(
+                battery: BatteryStatus(
+                    rawPercentage: 62,
+                    isPresent: true,
+                    isCharging: batteryIsCharging,
+                    isLowPowerMode: false,
+                    isConnectedToPower: batteryIsCharging
+                ),
+                wifi: .placeholder,
+                volume: .placeholder
+            )
+        )
+        let iconPresentation = makeTestIconPresentation(store: store, settings: settings)
+        self.iconPresentation = iconPresentation
+        let application = DockChargingApplicationSpy()
+        self.application = application
+        let activationPolicy = AppActivationPolicy(application: application)
+        self.activationPolicy = activationPolicy
+        self.dockVisibilityMonitor = dockVisibilityMonitor
+        let onboarding = OnboardingWindowController(
+            settings: settings,
+            localization: localization,
+            activationPolicy: activationPolicy
+        )
+        let settingsWindow = SettingsWindowController(
+            store: settings,
+            statusStore: store,
+            localization: localization,
+            activationPolicy: activationPolicy,
+            showIconGuide: {},
+            chargingEffectClock: clock
+        )
+        let statusBar = StatusBarController(
+            store: store,
+            settings: settings,
+            iconPresentation: iconPresentation,
+            localization: localization,
+            isVisible: placement.showsMenuBarIcon,
+            openSettings: {},
+            quitAction: {},
+            chargingEffectClock: clock,
+            renderMenuBarBase: { _, _, _, _ in nil },
+            renderMenuBarOverlay: { _, _, _, _, _ in nil }
+        )
+        let appIcon = AppIconController(
+            settings: settings,
+            iconPresentation: iconPresentation,
+            activationPolicy: activationPolicy,
+            application: application,
+            setMenuBarVisible: { _ in },
+            renderDockIcon: { _, _, _ in NSImage(size: NSSize(width: 512, height: 512)) },
+            theme: { .default },
+            isDarkAppearance: { false },
+            notificationCenter: NotificationCenter()
+        )
+        environment = AppEnvironment(
+            store: store,
+            settings: settings,
+            localization: localization,
+            iconPresentation: iconPresentation,
+            statusBarController: statusBar,
+            settingsWindowController: settingsWindow,
+            onboardingWindowController: onboarding,
+            activationPolicy: activationPolicy,
+            appIconController: appIcon,
+            mainMenuController: MainMenuController(
+                activationPolicy: activationPolicy,
+                localization: localization,
+                notificationCenter: NotificationCenter(),
+                openSettings: {}
+            ),
+            inputSourceController: InputSourceController(),
+            chargingEffectClock: clock,
+            chargingEffectMotionMonitor: ChargingEffectMotionMonitor(
+                readReduceMotion: { false },
+                notificationCenter: NotificationCenter()
+            ),
+            dockChargingAnimationPresenter: presenter,
+            dockVisibilityMonitor: dockVisibilityMonitor,
+            telemetryReporter: DockChargingIdleTelemetryReporter()
+        )
+    }
+
+    func waitForPresentedPhase(timeout: TimeInterval = 5) async throws {
+        let deadline = Date().addingTimeInterval(timeout)
+        while presenter.presentedPhases.isEmpty, Date() < deadline {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+    }
+
+    func waitForSteadyPhase(timeout: TimeInterval = 5) async throws {
+        let deadline = Date().addingTimeInterval(timeout)
+        while !presenter.presentedPhases.contains(where: { $0.kind == .steady }), Date() < deadline {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+    }
+
+    func waitForClockToStop(timeout: TimeInterval = 5) async throws {
+        let deadline = Date().addingTimeInterval(timeout)
+        while clock.isRunning, Date() < deadline {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+    }
+
+    func waitForClockToRun(timeout: TimeInterval = 5) async throws {
+        let deadline = Date().addingTimeInterval(timeout)
+        while !clock.isRunning, Date() < deadline {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+    }
+
+    func waitForDockVisibilityPolling(timeout: TimeInterval = 5) async throws {
+        let deadline = Date().addingTimeInterval(timeout)
+        while dockVisibilityMonitor.startCount == 0, Date() < deadline {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+    }
+
+    func waitForDockVisibilityPollingToStop(timeout: TimeInterval = 5) async throws {
+        let deadline = Date().addingTimeInterval(timeout)
+        while dockVisibilityMonitor.stopCount == 0, Date() < deadline {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+    }
+
+    func tearDown() {
+        environment.stop()
+        defaults.removeTestSuite(named: suiteName)
+    }
+}
+
+@MainActor
+private final class DockVisibilityMonitorSpy: DockVisibilityMonitoring {
+    private(set) var isDockVisible: Bool
+    private(set) var startCount = 0
+    private(set) var stopCount = 0
+    private(set) var refreshCount = 0
+    var onChange: ((Bool) -> Void)?
+
+    init(isDockVisible: Bool = true) {
+        self.isDockVisible = isDockVisible
+    }
+
+    func start() {
+        startCount += 1
+        refresh()
+    }
+
+    func stop() {
+        stopCount += 1
+    }
+
+    func refresh() {
+        refreshCount += 1
+    }
+
+    func setVisible(_ isVisible: Bool) {
+        guard isDockVisible != isVisible else { return }
+        isDockVisible = isVisible
+        onChange?(isVisible)
+    }
+}
+
+private enum DockChargingEnvironmentError: Error {
+    case missingDefaultsSuite
+}
+
+@MainActor
+private final class RecordingDockChargingPresenter: DockChargingAnimationPresenting {
+    private(set) var presentedPhases: [ChargingEffectPhase] = []
+    private(set) var presentedScenes: [IconSceneState] = []
+    private(set) var clearCount = 0
+    private(set) var isInstalled = false
+
+    func present(
+        phase: ChargingEffectPhase,
+        scene: IconSceneState,
+        backgroundStyle: DockIconBackgroundStyle,
+        pixelLength: Int
+    ) -> Bool {
+        presentedPhases.append(phase)
+        presentedScenes.append(scene)
+        isInstalled = true
+        return true
+    }
+
+    func clear() {
+        clearCount += 1
+        isInstalled = false
+    }
+}
+
+@MainActor
+private final class DockChargingApplicationSpy: ApplicationActivationPolicyApplying, ApplicationDockIconApplying {
+    private(set) var currentActivationPolicy: NSApplication.ActivationPolicy = .accessory
+    private(set) var applicationIconImage: NSImage?
+
+    func setActivationPolicy(_ activationPolicy: NSApplication.ActivationPolicy) -> Bool {
+        currentActivationPolicy = activationPolicy
+        return true
+    }
+
+    func setApplicationIconImage(_ image: NSImage?) {
+        applicationIconImage = image
+    }
+}
+
+@MainActor
+private final class DockChargingIdleBatteryMonitor: BatteryMonitoring {
+    let updates: AsyncStream<BatteryStatus>
+    init() { (updates, _) = AsyncStream.makeStream() }
+    func start() {}
+    func stop() {}
+    func refresh() {}
+    func recover() {}
+}
+
+@MainActor
+private final class DockChargingIdleWiFiMonitor: WiFiMonitoring {
+    let updates: AsyncStream<WiFiStatus>
+    init() { (updates, _) = AsyncStream.makeStream() }
+    func start() {}
+    func stop() {}
+    func refresh() {}
+    func recover() {}
+    func requestNameAccess() -> WiFiNameAccessRequestResult { .notNeeded }
+}
+
+@MainActor
+private final class DockChargingIdleVolumeMonitor: VolumeMonitoring {
+    let updates: AsyncStream<VolumeStatus>
+    init() { (updates, _) = AsyncStream.makeStream() }
+    func start() {}
+    func stop() {}
+    func refresh() {}
+    func recover() {}
+}
+
+@MainActor
+private final class DockChargingIdleTelemetryReporter: TelemetryReporting {
+    func start() {}
+    func stop() {}
+}

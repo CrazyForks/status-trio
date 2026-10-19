@@ -122,6 +122,10 @@
 "settings.battery.chargingDescription" = "عند التفعيل، تتحول النسبة إلى رمز برق أو قابس أثناء الشحن أو الاتصال بالطاقة.";
 "settings.battery.chargingEffect" = "تأثير الشحن";
 "settings.battery.chargingEffectDescription" = "تحريك الإبراز أثناء الشحن فقط. يتوقف عند تفعيل «تقليل الحركة».";
+"settings.battery.menuBarChargingEffect" = "تأثير الشحن في شريط القوائم";
+"settings.battery.menuBarChargingEffectDescription" = "حرّك إبراز الشحن في شريط القوائم فقط. يُضبط Dock بشكل منفصل، ويتوقف الاثنان عند تفعيل «تقليل الحركة».";
+"settings.battery.dockChargingEffect" = "تأثير الشحن في Dock";
+"settings.battery.dockChargingEffectDescription" = "حرّك إبراز الشحن في رمز Dock فقط. يُضبط شريط القوائم بشكل منفصل، ويتوقف الاثنان عند تفعيل «تقليل الحركة».";
 "settings.battery.chargingBoltHeartbeat" = "نبض صاعقة الشحن";
 "settings.battery.chargingBoltHeartbeatDescription" = "أوقفه لإبقاء الصاعقة بحجمها ولونها المعتادين؛ يستمر تأثير قوس الشحن.";
 "settings.battery.chargingEffectTest" = "اختبار تأثير الشحن";

@@ -4,6 +4,10 @@ import Testing
 
 @MainActor
 struct SystemIconAppearanceMonitorTests {
+    @Test func defaultsToAOneSecondSharedPoll() {
+        #expect(SystemIconAppearanceMonitor.defaultPollingInterval == 1)
+    }
+
     @Test func reportsOnlyRealThemeChanges() {
         let center = NotificationCenter()
         var theme = SystemIconAppearanceTheme.default
@@ -87,4 +91,33 @@ struct SystemIconAppearanceMonitorTests {
         try await Task.sleep(for: .milliseconds(300))
         #expect(reported == [clearTheme])
     }
+
+    @Test func invokesPollHandlerUntilStopped() async throws {
+        let center = NotificationCenter()
+        let counter = PollCounter()
+        let monitor = SystemIconAppearanceMonitor(
+            readTheme: { .default },
+            notificationCenter: center,
+            pollingInterval: 0.05
+        )
+        monitor.onPoll = { counter.count += 1 }
+        monitor.start()
+
+        let deadline = ContinuousClock.now.advanced(by: .seconds(5))
+        while counter.count < 2, ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        #expect(counter.count >= 2)
+
+        monitor.stop()
+        let stoppedCount = counter.count
+        try await Task.sleep(for: .milliseconds(300))
+        #expect(counter.count == stoppedCount)
+    }
+
+}
+
+@MainActor
+private final class PollCounter {
+    var count = 0
 }

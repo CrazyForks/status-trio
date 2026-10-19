@@ -36,9 +36,10 @@ struct StatusIconPreviewCard: View {
                 .foregroundStyle(.tertiary)
         }
         .onAppear {
-            chargingEffectClock.beginAnimationPreview(clockConsumerToken)
+            setClockClaim(enabled: store.showsMenuBarChargingEffect)
         }
-        .onChange(of: store.showsChargingEffect) { isEnabled in
+        .onChange(of: store.showsMenuBarChargingEffect) { isEnabled in
+            setClockClaim(enabled: isEnabled)
             if isEnabled {
                 startPreviewIfAllowed()
             } else {
@@ -102,7 +103,7 @@ struct StatusIconPreviewCard: View {
                 statusStore.snapshot.battery,
                 enabled: store.testsChargingEffect
             ),
-            enabled: store.showsChargingEffect,
+            enabled: store.showsMenuBarChargingEffect,
             reduceMotion: reduceMotion,
             phase: chargingEffectClock.phase
         )
@@ -152,6 +153,7 @@ struct StatusIconPreviewCard: View {
             bluetoothAudioOptions: store.bluetoothAudioIconOptions,
             isDarkBackground: isDarkBackground,
             phase: phase,
+            showsChargingEffect: store.showsMenuBarChargingEffect,
             inputSource: inputSourceController?.selectedDescriptor
         ) {
             appearanceToggle
@@ -164,8 +166,19 @@ struct StatusIconPreviewCard: View {
     }
 
     private func startPreviewIfAllowed() {
-        guard !reduceMotion, !isLiveChargingActive else { return }
+        guard store.showsMenuBarChargingEffect,
+              !reduceMotion,
+              !isLiveChargingActive
+        else { return }
         previewPlayback.start(at: Date())
+    }
+
+    private func setClockClaim(enabled: Bool) {
+        if enabled {
+            chargingEffectClock.beginAnimationPreview(clockConsumerToken)
+        } else {
+            chargingEffectClock.endAnimationPreview(clockConsumerToken)
+        }
     }
 
     private var appearanceToggle: some View {
