@@ -118,9 +118,19 @@ private final class ProcessInvocation: @unchecked Sendable {
                 let duration = timeout.components
                 let timeoutSeconds = Double(duration.seconds) + Double(duration.attoseconds) / 1_000_000_000_000_000_000
                 self.queue.asyncAfter(deadline: .now() + timeoutSeconds) {
-                    guard !self.processEnded else { return }
+                    guard self.continuation != nil else { return }
                     self.failure = self.failure ?? .timedOut
+                    // The helper itself may already be gone while a child it
+                    // spawned still holds the inherited pipes; the stream-ended
+                    // flags then never arrive and the caller would wait forever.
+                    if self.processEnded {
+                        self.finishWithHeldStreams()
+                        return
+                    }
                     self.terminateThenKill()
+                    self.queue.asyncAfter(deadline: .now() + .milliseconds(500)) {
+                        self.finishWithHeldStreams()
+                    }
                 }
             } catch {
                 self.failure = .processFailed
@@ -137,8 +147,12 @@ private final class ProcessInvocation: @unchecked Sendable {
             guard !self.processEnded else { return }
             self.cancelled = true
             self.failure = .cancelled
-            if self.hasStarted { self.terminateThenKill() }
-            else {
+            if self.hasStarted {
+                self.terminateThenKill()
+                self.queue.asyncAfter(deadline: .now() + .milliseconds(500)) {
+                    self.finishWithHeldStreams()
+                }
+            } else {
                 self.processEnded = true
                 self.stdoutEnded = true
                 self.stderrEnded = true
@@ -236,6 +250,19 @@ private final class ProcessInvocation: @unchecked Sendable {
             guard child.isRunning else { return }
             _ = kill(pid, SIGKILL)
         }
+    }
+
+    /// Finishes an invocation whose child is gone but whose pipes are still
+    /// open in a descendant. The deadline (or the caller's cancellation) has
+    /// already passed, so any partial output is dropped rather than leaving the
+    /// continuation suspended for the descendant's lifetime.
+    private func finishWithHeldStreams() {
+        guard continuation != nil else { return }
+        failure = failure ?? .timedOut
+        processEnded = true
+        stdoutEnded = true
+        stderrEnded = true
+        completeIfReady()
     }
 
     private func completeIfReady() {
