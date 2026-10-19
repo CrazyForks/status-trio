@@ -238,6 +238,14 @@ final class SettingsStore: ObservableObject {
         testsChargingEffect = enabled
     }
 
+    /// Development-only: turns on the synthetic charging input without touching
+    /// the animation preference, so a measurement run can compare the animation
+    /// on and off against the same charging state. See
+    /// `ChargingEffectTestMode.forceChargingInputEnvironmentKey`.
+    func setChargingEffectTestInputEnabled(_ enabled: Bool) {
+        testsChargingEffect = enabled
+    }
+
     @Published var showsPercentageWhenConnected: Bool {
         didSet {
             defaults.set(

@@ -47,7 +47,7 @@ final class AppEnvironmentTelemetryLifecycleTests: XCTestCase {
             openSettings: {},
             quitAction: {},
             chargingEffectClock: clock,
-            renderMenuBarIcon: { _, _, _, _, _ in nil }
+            renderMenuBarBase: { _, _, _, _ in nil }
         )
         let appIcon = AppIconController(
             settings: settings,
