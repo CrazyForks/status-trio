@@ -30,6 +30,7 @@ struct MenuBarHelpPolicy: Equatable {
             return [
                 .guideMenuBarHelpOverflowStep,
                 .guideMenuBarHelpMenuBarSettingsStep,
+                .guideMenuBarHelpFindStatusTrioStep,
                 .guideMenuBarHelpMoveStep
             ]
         }
@@ -37,7 +38,7 @@ struct MenuBarHelpPolicy: Equatable {
         if majorVersion >= 26 {
             return [
                 .guideMenuBarHelpMenuBarSettingsStep,
-                .guideMenuBarHelpFindStatusTrioStep,
+                .guideMenuBarHelpSimplifyStep,
                 .guideMenuBarHelpMoveStep
             ]
         }

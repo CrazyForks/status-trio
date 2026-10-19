@@ -103,14 +103,6 @@ struct MenuBarVisibilityHelpView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
-
-            if policy.majorVersion >= 26 {
-                Text(localization.string(.guideMenuBarHelpSimplifyStep))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.leading, 32)
-            }
         }
     }
 

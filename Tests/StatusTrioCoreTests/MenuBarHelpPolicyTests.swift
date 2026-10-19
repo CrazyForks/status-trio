@@ -7,6 +7,14 @@ final class MenuBarHelpPolicyTests: XCTestCase {
 
         XCTAssertEqual(policy.tier, .menuBarSettings)
         XCTAssertEqual(
+            policy.stepKeys,
+            [
+                .guideMenuBarHelpMenuBarSettingsStep,
+                .guideMenuBarHelpSimplifyStep,
+                .guideMenuBarHelpMoveStep
+            ]
+        )
+        XCTAssertEqual(
             policy.systemSettingsURLs,
             [MenuBarHelpPolicy.systemSettingsAppURL]
         )
@@ -21,7 +29,7 @@ final class MenuBarHelpPolicyTests: XCTestCase {
             let policy = MenuBarHelpPolicy(majorVersion: version)
             XCTAssertEqual(policy.tier, .menuBarSettings)
             XCTAssertTrue(policy.showsNativeOverflowEntry)
-            XCTAssertEqual(policy.stepKeys.count, 3)
+            XCTAssertEqual(policy.stepKeys.count, 4)
             XCTAssertEqual(policy.stepKeys.first, .guideMenuBarHelpOverflowStep)
         }
     }
