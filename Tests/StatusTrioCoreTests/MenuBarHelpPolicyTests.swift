@@ -14,13 +14,13 @@ final class MenuBarHelpPolicyTests: XCTestCase {
                 .guideMenuBarHelpMoveStep
             ]
         )
-        XCTAssertEqual(
-            policy.systemSettingsURLs,
-            [MenuBarHelpPolicy.systemSettingsAppURL]
-        )
+        XCTAssertEqual(policy.systemSettingsURLs, [
+            MenuBarHelpPolicy.controlCenterSettingsURL,
+            MenuBarHelpPolicy.systemSettingsAppURL
+        ])
         XCTAssertEqual(
             policy.systemSettingsButtonKey,
-            .guideMenuBarHelpOpenSystemSettings
+            .guideMenuBarHelpOpenMenuBarSettings
         )
     }
 
@@ -41,7 +41,7 @@ final class MenuBarHelpPolicyTests: XCTestCase {
             XCTAssertFalse(policy.showsNativeOverflowEntry)
             XCTAssertEqual(
                 policy.systemSettingsURLs.first?.absoluteString,
-                "x-apple.systempreferences:"
+                "x-apple.systempreferences:com.apple.ControlCenter-Settings.extension"
             )
             XCTAssertEqual(
                 policy.systemSettingsButtonKey,
@@ -84,22 +84,37 @@ final class MenuBarHelpPolicyTests: XCTestCase {
         let policy = MenuBarHelpPolicy(majorVersion: 26)
 
         XCTAssertFalse(policy.showsNativeOverflowEntry)
-        XCTAssertEqual(
-            policy.systemSettingsURLs,
-            [MenuBarHelpPolicy.systemSettingsAppURL]
-        )
+        XCTAssertEqual(policy.systemSettingsURLs, [
+            MenuBarHelpPolicy.controlCenterSettingsURL,
+            MenuBarHelpPolicy.systemSettingsAppURL
+        ])
     }
 
-    func testMacOS27UsesTheVerifiedMenuBarPaneRouteFirst() {
-        let policy = MenuBarHelpPolicy(majorVersion: 27)
+    func testEverySupportedVersionStartsWithTheControlCenterSettingsExtension() {
+        for version in [13, 15, 25, 26, 27, 28] {
+            let policy = MenuBarHelpPolicy(majorVersion: version)
 
+            XCTAssertEqual(
+                policy.systemSettingsURLs.first,
+                MenuBarHelpPolicy.controlCenterSettingsURL,
+                "macOS \(version) must open the pane before falling back"
+            )
+            XCTAssertEqual(
+                policy.systemSettingsURLs.count,
+                2,
+                "macOS \(version) must keep the System Settings app fallback"
+            )
+        }
+
+        let menuBarNamed = MenuBarHelpPolicy(majorVersion: 26)
         XCTAssertEqual(
-            policy.systemSettingsURLs.first?.absoluteString,
-            "x-apple.systempreferences:com.apple.ControlCenter-Settings.extension"
-        )
-        XCTAssertEqual(
-            policy.systemSettingsButtonKey,
+            menuBarNamed.systemSettingsButtonKey,
             .guideMenuBarHelpOpenMenuBarSettings
+        )
+        let controlCenterNamed = MenuBarHelpPolicy(majorVersion: 25)
+        XCTAssertEqual(
+            controlCenterNamed.systemSettingsButtonKey,
+            .guideMenuBarHelpOpenSystemSettings
         )
     }
 

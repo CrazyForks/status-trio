@@ -12,7 +12,7 @@ route without a screen-recording or accessibility grant.
 | A wired row's gear | `x-apple.systempreferences:com.apple.Network-Settings.extension` | Network (`Network.appex`) |
 | Wired row's **Share Internet…** | `x-apple.systempreferences:com.apple.Sharing-Settings.extension` | Sharing (`Sharing.appex`) |
 | Input-source section's **Keyboard Settings…** | `x-apple.systempreferences:com.apple.Keyboard-Settings.extension` | Keyboard (`KeyboardSettings.appex`) |
-| Onboarding menu bar help, macOS 27+ | `x-apple.systempreferences:com.apple.ControlCenter-Settings.extension` | Menu Bar (`ControlCenterSettings.appex`) |
+| Onboarding menu bar help | `x-apple.systempreferences:com.apple.ControlCenter-Settings.extension` | Menu Bar (`ControlCenterSettings.appex`) on macOS 26+, Control Center (`ControlCenterSettings.appex`) on macOS 13 through 25 |
 
 `com.apple.Network-Settings.extension?Wi-Fi` is **not** a Wi-Fi route. It opens the
 Network pane — the list of network services — and its `?Wi-Fi` anchor does not
@@ -59,7 +59,7 @@ Measured on macOS 27.0 (26A428):
 | `com.apple.Network-Settings.extension?Wi-Fi` | `Network.appex` |
 | `com.apple.Sharing-Settings.extension` | `Sharing.appex` |
 | `com.apple.Keyboard-Settings.extension` | `KeyboardSettings.appex` (measured on 27.0.1, 26A434). The Keyboard pane lists the input sources the section manages, so its own extension identifier comes first; `StatusMenuBuilderTests.testSystemSettingsURLFallbackOrder` pins the order and there is no `majorVersion` branch. |
-| `com.apple.ControlCenter-Settings.extension` | `ControlCenterSettings.appex` (measured on 27.0.1, 26A434). macOS 27 names this pane **Menu Bar**; the extension keeps the Control Center bundle identifier. The onboarding help uses it only on 27+, where that destination was measured. Older releases open System Settings itself and keep the written path. |
+| `com.apple.ControlCenter-Settings.extension` | `ControlCenterSettings.appex` (measured on 27.0.1, 26A434). macOS 26 and later name this pane **Menu Bar**; macOS 13 through 25 list the same extension as **Control Center**. The onboarding help uses it on every supported release with `x-apple.systempreferences:` as the fallback, and the button label follows the pane name on that release. The identifier is not version-specific: `ControlCenterSettings.appex` carries `BuildMachineOSBuild 23A344017` (a macOS 14 build machine) and `allowsXAppleSystemPreferencesURLScheme = true`, the same provenance as the Wi-Fi route. It is also the documented Ventura route, and other menu bar apps (SwiftBar, WandelBar, SaneBar) open it on releases before 26. |
 
 `screencapture` fails without a screen-recording grant (`could not create image
 from display`) and `log show` returns nothing in a sandboxed shell, so the process

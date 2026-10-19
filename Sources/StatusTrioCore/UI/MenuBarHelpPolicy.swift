@@ -2,7 +2,8 @@ import Foundation
 
 enum MenuBarHelpSettingsTier: Equatable {
     /// macOS 26 and later name the pane Menu Bar, although it still loads the
-    /// `ControlCenter-Settings` extension.
+    /// `ControlCenter-Settings` extension that macOS 13 through 25 list as
+    /// Control Center.
     case menuBarSettings
     /// macOS 13 through 25 expose the same extension as Control Center.
     case controlCenterSettings
@@ -49,24 +50,22 @@ struct MenuBarHelpPolicy: Equatable {
     }
 
     var systemSettingsButtonKey: LocalizationKey {
-        showsNativeOverflowEntry
+        majorVersion >= 26
             ? .guideMenuBarHelpOpenMenuBarSettings
             : .guideMenuBarHelpOpenSystemSettings
     }
 
     var systemSettingsURLs: [URL] {
-        if showsNativeOverflowEntry {
-            return [
-                URL(string: "x-apple.systempreferences:com.apple.ControlCenter-Settings.extension")!,
-                Self.systemSettingsAppURL
-            ]
-        }
-
-        // The direct pane route is verified on macOS 27 only. Older releases
-        // keep the exact written path and use the System Settings app so the
-        // button never claims a destination that this build cannot verify.
-        return [Self.systemSettingsAppURL]
+        // One extension serves this pane on every supported release: it is
+        // Control Center on macOS 13 through 25 and Menu Bar from 26. The
+        // identifier is not version-specific, so it stays first with no
+        // `majorVersion` branch, matching the other Settings pane routes.
+        [Self.controlCenterSettingsURL, Self.systemSettingsAppURL]
     }
+
+    static let controlCenterSettingsURL = URL(
+        string: "x-apple.systempreferences:com.apple.ControlCenter-Settings.extension"
+    )!
 
     static let systemSettingsAppURL = URL(string: "x-apple.systempreferences:")!
 
