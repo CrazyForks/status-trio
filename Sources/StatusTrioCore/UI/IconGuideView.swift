@@ -446,6 +446,7 @@ struct IconGuideView: View {
             .accessibilityIdentifier("guide.menuBarHelp.open")
             .popover(
                 isPresented: $isMenuBarHelpPresented,
+                attachmentAnchor: .rect(.bounds),
                 arrowEdge: .bottom
             ) {
                 MenuBarVisibilityHelpView(
