@@ -8,6 +8,11 @@ struct MenuBarVisibilityHelpView: View {
     static let contentWidth: CGFloat = 480
     static let contentHeight: CGFloat = 372
 
+    /// Diameter of a numbered step marker.
+    static let stepMarkerSize: CGFloat = 22
+    /// Horizontal gap between a step marker and its text.
+    static let stepMarkerTextSpacing: CGFloat = 10
+
     let policy: MenuBarHelpPolicy
     let onClose: () -> Void
     let openSettings: ([URL]) -> Void
@@ -88,10 +93,15 @@ struct MenuBarVisibilityHelpView: View {
     private var steps: some View {
         VStack(alignment: .leading, spacing: 10) {
             ForEach(Array(policy.stepKeys.enumerated()), id: \.offset) { index, key in
-                HStack(alignment: .top, spacing: 10) {
+                // Center the marker against the whole step, including wrapped
+                // second lines, rather than pinning it to the first line.
+                HStack(alignment: .center, spacing: Self.stepMarkerTextSpacing) {
                     Text("\(index + 1)")
                         .font(.caption.weight(.semibold))
-                        .frame(width: 22, height: 22)
+                        .frame(
+                            width: Self.stepMarkerSize,
+                            height: Self.stepMarkerSize
+                        )
                         .background(
                             Circle().fill(Color.accentColor.opacity(0.16))
                         )
