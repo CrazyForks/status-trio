@@ -22,12 +22,15 @@ struct BluetoothStatusView: View {
     var currentTrustedAppleCandidates: [AppleDeviceCandidate] = []
     var trustedDiscoveryGeneration: UInt64 = 0
     var listOptions: BluetoothDeviceListOptions = .standard
+    var listeningModePresentations: [String: BluetoothListeningModePresentation] = [:]
+    var onSelectListeningMode: (String, BluetoothListeningMode) -> Void = { _, _ in }
     let onRequestAuthorization: () -> Void
     let onOpenBluetoothSettings: () -> Void
     let onOpenBluetoothPermissionSettings: () -> Void
 
     @State private var visibleTrustedAppleIDs = Set<AppleDeviceID>()
     @State private var visibleNearbyBLEIDs = Set<UUID>()
+
 
     private var unhiddenListOptions: BluetoothDeviceListOptions {
         BluetoothDeviceListOptions(
@@ -171,6 +174,8 @@ struct BluetoothStatusView: View {
                     actionStates: controller.deviceActionStates,
                     confirmingAddress: controller.pendingDisconnectConfirmation,
                     options: effectiveListOptions,
+                    listeningModePresentations: listeningModePresentations,
+                    onSelectListeningMode: onSelectListeningMode,
                     onPerformAction: { controller.performDeviceAction(for: $0) },
                     onRequestDisconnect: { controller.requestDisconnectConfirmation(for: $0) },
                     onCancelDisconnect: { controller.cancelDisconnectConfirmation() }

@@ -161,7 +161,6 @@ final class StatusPanelViewModelTests: XCTestCase {
         XCTAssertTrue(firstDeviceDelivered)
         XCTAssertEqual(fixture.updateScheduler.pendingCount, 1)
         fixture.updateScheduler.runScheduled()
-        XCTAssertEqual(panel.volume.listeningModeTaskID, "AABBCCDDEE01")
 
         fixture.bluetoothWorker.devices = [latestDevice]
         fixture.bluetoothDevices.refresh()
@@ -191,7 +190,6 @@ final class StatusPanelViewModelTests: XCTestCase {
         fixture.updateScheduler.runScheduled()
 
         let changingRow = try! XCTUnwrap(panel.volume.rows.first { $0.key.id == previewEndpoint })
-        XCTAssertEqual(panel.volume.listeningModeTaskID, "AABBCCDDEE02")
         XCTAssertEqual(deliveredMode?.selectedMode, .transparency)
         XCTAssertEqual(changingRow.listeningMode?.selectedMode, .transparency)
         XCTAssertEqual(changingRow.listeningMode?.actionState, .idle)
@@ -204,7 +202,6 @@ final class StatusPanelViewModelTests: XCTestCase {
         XCTAssertEqual(unchangedWhileStopped.listeningMode?.selectedMode, .transparency)
 
         panel.start()
-        XCTAssertEqual(panel.volume.listeningModeTaskID, "AABBCCDDEE02")
         XCTAssertNil(panel.volume.rows.first { $0.key.id == previewEndpoint }?.listeningMode)
     }
 

@@ -185,7 +185,7 @@ private final class FakeTransport: HuaweiListeningModeTransporting, @unchecked S
 }
 
 private struct FakeHuaweiEndpointProvider: HuaweiAudioEndpointProviding {
-    let endpointID: AudioDeviceID
+    let endpointID: AudioDeviceID?
     func endpointID(for device: BluetoothDevice) -> AudioDeviceID? { endpointID }
 }
 
@@ -210,7 +210,10 @@ final class HuaweiListeningModeControllerTests: XCTestCase {
         )
     }
 
-    private func makeController(_ transport: FakeTransport) -> BluetoothListeningModeController {
+    private func makeController(
+        _ transport: FakeTransport,
+        endpoint: AudioDeviceID? = 42
+    ) -> BluetoothListeningModeController {
         BluetoothListeningModeController(
             hal: BluetoothListeningModeHAL(
                 backend: CoreAudioBluetoothListeningModeBackend(),
@@ -221,10 +224,33 @@ final class HuaweiListeningModeControllerTests: XCTestCase {
             endpointProvider: EmptyCoreAudioEndpoints(),
             listenerBackend: CoreAudioBluetoothListeningModeListenerBackend(),
             huaweiTransport: transport,
-            huaweiEndpointProvider: FakeHuaweiEndpointProvider(endpointID: endpointID),
+            huaweiEndpointProvider: FakeHuaweiEndpointProvider(endpointID: endpoint),
             failureClearDelay: .milliseconds(20),
             previewSettleDelay: .milliseconds(1)
         )
+    }
+
+    func testHuaweiSwitchesWithoutAnAudioEndpointEvenWhilePreviewIsEnabled() async {
+        for preview in [false, true] {
+            let transport = FakeTransport()
+            let controller = makeController(transport, endpoint: nil)
+            controller.previewMode = preview
+            controller.refresh(devices: [device()])
+            await waitUntil { controller.presentations[self.key] != nil }
+            XCTAssertEqual(controller.control(forBluetoothAddress: address)?.selectedMode, .noiseCancellation)
+
+            controller.setMode(.transparency, forAddress: key)
+            controller.refresh(devices: [device()])
+            await waitUntil { controller.presentations[self.key]?.selectedMode == .transparency }
+            XCTAssertEqual(transport.mode, .awareness)
+            XCTAssertEqual(controller.control(forBluetoothAddress: address)?.selectedMode, .transparency)
+            XCTAssertEqual(transport.setCalls, 1)
+
+            controller.refresh(devices: [])
+            XCTAssertNil(controller.control(forBluetoothAddress: address))
+            XCTAssertTrue(controller.huaweiBluetoothRowPresentations.isEmpty)
+            controller.stop()
+        }
     }
 
     func testRefreshPublishesThreeHuaweiModesAndSelectedState() async {

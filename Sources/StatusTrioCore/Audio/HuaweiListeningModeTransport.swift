@@ -4,28 +4,51 @@ import IOBluetooth
 
 /// IOBluetooth-backed HUAWEI SPP transport.
 ///
-/// IOBluetooth delivers RFCOMM delegate callbacks on the run loop of the thread
-/// that opened the channel. The app's main run loop is busy with UI work and a
-/// blocking open there would stall the popover, so every connection lives on one
-/// dedicated thread whose only job is to run that run loop. Public calls are
-/// serialised onto that thread; one operation is in flight at a time, and a
-/// request waits by pumping the same run loop so the delegate can deliver the
-/// response.
+/// Opens channels and serializes blocking exchanges on a dedicated run-loop
+/// thread, leaving the main run loop free for UI and IOBluetooth callbacks.
+/// Callbacks may arrive on the main thread even when the channel was opened on
+/// the transport thread; the delegate synchronizes its receive state separately.
 ///
-/// `@unchecked Sendable` is safe because the mutable connection state is confined
-/// to that one thread. The lock only guards the run-loop handle and the pending
-/// operation queue, which are the two values the caller thread touches.
+/// `@unchecked Sendable` is safe because connection ownership is confined to the
+/// transport thread. The transport lock guards run-loop and queue state, while
+/// each delegate lock guards its receive buffer, decoded frames, and open status.
 final class HuaweiRFCOMMTransport: HuaweiListeningModeTransporting, @unchecked Sendable {
     private final class Delegate: NSObject, IOBluetoothRFCOMMChannelDelegate {
-        var buffer: [UInt8] = []
-        var frames: [HuaweiSPPFrame] = []
-        var openStatus: IOReturn?
+        // IOBluetooth can deliver data on the main thread even when the channel
+        // was opened by the transport thread. Never expose mutable buffers to
+        // exchange(); reset and dequeue operations must be atomic with callbacks.
+        private let lock = NSLock()
+        private var buffer: [UInt8] = []
+        private var frames: [HuaweiSPPFrame] = []
+        private var status: IOReturn?
+
+        var openStatus: IOReturn? {
+            lock.lock()
+            defer { lock.unlock() }
+            return status
+        }
+
+        func resetReplies() {
+            lock.lock()
+            defer { lock.unlock() }
+            frames.removeAll(keepingCapacity: true)
+            buffer.removeAll(keepingCapacity: true)
+        }
+
+        func takeFrame(command: [UInt8]) -> HuaweiSPPFrame? {
+            lock.lock()
+            defer { lock.unlock() }
+            guard let index = frames.firstIndex(where: { $0.command == command }) else { return nil }
+            return frames.remove(at: index)
+        }
 
         func rfcommChannelOpenComplete(
             _ rfcommChannel: IOBluetoothRFCOMMChannel!,
             status error: IOReturn
         ) {
-            openStatus = error
+            lock.lock()
+            defer { lock.unlock() }
+            status = error
         }
 
         func rfcommChannelData(
@@ -34,6 +57,8 @@ final class HuaweiRFCOMMTransport: HuaweiListeningModeTransporting, @unchecked S
             length dataLength: Int
         ) {
             guard let dataPointer, dataLength > 0 else { return }
+            lock.lock()
+            defer { lock.unlock() }
             buffer.append(contentsOf: UnsafeBufferPointer(
                 start: dataPointer.assumingMemoryBound(to: UInt8.self),
                 count: dataLength
@@ -44,8 +69,6 @@ final class HuaweiRFCOMMTransport: HuaweiListeningModeTransporting, @unchecked S
                     continue
                 }
                 let frameLength = 4 + (Int(buffer[1]) << 8 | Int(buffer[2])) + 1
-                // A corrupt length must not make the reader wait forever for bytes
-                // that will never arrive.
                 guard frameLength <= 4096 else {
                     buffer.removeFirst()
                     continue
@@ -59,7 +82,9 @@ final class HuaweiRFCOMMTransport: HuaweiListeningModeTransporting, @unchecked S
         }
 
         func rfcommChannelClosed(_ rfcommChannel: IOBluetoothRFCOMMChannel!) {
-            openStatus = kIOReturnNotOpen
+            lock.lock()
+            defer { lock.unlock() }
+            status = kIOReturnNotOpen
         }
     }
 
@@ -333,10 +358,7 @@ final class HuaweiRFCOMMTransport: HuaweiListeningModeTransporting, @unchecked S
         timeout: TimeInterval = 3
     ) throws -> HuaweiSPPFrame {
         guard connection.channel.isOpen() else { throw HuaweiListeningModeError.notOpen }
-        connection.delegate.frames.removeAll()
-        // A half-received unsolicited frame must not be concatenated with this
-        // request's reply; dropping it lets the magic-byte resync find the start.
-        connection.delegate.buffer.removeAll()
+        connection.delegate.resetReplies()
 
         let packet = frame.encoded()
         let status = packet.withUnsafeBytes { bytes -> IOReturn in
@@ -352,8 +374,8 @@ final class HuaweiRFCOMMTransport: HuaweiListeningModeTransporting, @unchecked S
 
         let deadline = Date().addingTimeInterval(timeout)
         while Date() < deadline {
-            if let index = connection.delegate.frames.firstIndex(where: { $0.command == command }) {
-                return connection.delegate.frames.remove(at: index)
+            if let response = connection.delegate.takeFrame(command: command) {
+                return response
             }
             RunLoop.current.run(until: Date().addingTimeInterval(0.02))
         }

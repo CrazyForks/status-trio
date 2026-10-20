@@ -326,6 +326,7 @@ final class StatusPanelActions {
         setListeningModeCommand(mode, key)
     }
 
+
     func batteryDetailsAppeared() { activateBatteryDetails(BatteryPowerState(batteryStatus())) }
     func batteryDetailsClosed() { closeBatteryDetails() }
     func wifiDetailsOpened() { activateWiFiDetails(wifiNameAccess()) }

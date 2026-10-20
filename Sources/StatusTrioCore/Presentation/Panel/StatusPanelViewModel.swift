@@ -32,6 +32,7 @@ final class StatusPanelViewModel: ObservableObject {
     @Published private(set) var network: PanelSummaryState
     @Published private(set) var vpn: PanelSummaryState
     @Published private(set) var bluetooth: BluetoothPanelState
+    @Published private(set) var bluetoothListeningModeRows: [String: BluetoothListeningModePresentation] = [:]
     @Published private(set) var volume: VolumePanelState
     @Published private(set) var audioInput: AudioInputPanelState
     @Published private(set) var inputSource: InputSourcePanelState
@@ -228,6 +229,8 @@ final class StatusPanelViewModel: ObservableObject {
             localization: localization
         )
         if bluetooth != state { bluetooth = state }
+        let modeRows = store.bluetoothListeningModes.huaweiBluetoothRowPresentations
+        if bluetoothListeningModeRows != modeRows { bluetoothListeningModeRows = modeRows }
     }
 
     /// The address the network row shows, or `nil` while the setting is off or
@@ -288,7 +291,8 @@ final class StatusPanelViewModel: ObservableObject {
         let synthetic = ListeningModePreview.devices(for: configuration)
             .map { BluetoothBatteryReader.normalizedAddress($0.id) }
             .joined(separator: ",")
-        return connected + preview + (synthetic.isEmpty ? "" : "|\(synthetic)")
+        let outputs = store.liveVolume.outputDevices.map { String($0.id) }.joined(separator: ",")
+        return connected + preview + (synthetic.isEmpty ? "" : "|\(synthetic)") + "|outputs:\(outputs)"
     }
 
     private func mapInput(_ status: AudioInputStatus) -> AudioInputPanelState? {
