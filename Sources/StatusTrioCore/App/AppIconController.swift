@@ -30,7 +30,7 @@ final class AppIconController {
     private let monitor: SystemIconAppearanceMonitor
     private var cancellables: Set<AnyCancellable> = []
     private var renderCache = DockIconRenderCache()
-    private let imageCache = DockIconImageCache()
+    private let imageCache: DockIconImageCache
     private let renderCoalescer: IconRenderCoalescer
     private var hasRenderedDockIcon = false
     private var currentPlacement: AppIconPlacement
@@ -80,7 +80,8 @@ final class AppIconController {
                 .bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
         },
         notificationCenter: NotificationCenter = .default,
-        renderCoalescer: IconRenderCoalescer? = nil
+        renderCoalescer: IconRenderCoalescer? = nil,
+        imageCache: DockIconImageCache? = nil
     ) {
         self.settings = settings
         self.iconPresentation = iconPresentation
@@ -89,6 +90,7 @@ final class AppIconController {
         self.setMenuBarVisible = setMenuBarVisible
         self.renderDockIcon = renderDockIcon
         self.renderCoalescer = renderCoalescer ?? IconRenderCoalescer()
+        self.imageCache = imageCache ?? DockIconImageCache()
         self.theme = theme
         self.isDarkAppearance = isDarkAppearance
         self.monitor = SystemIconAppearanceMonitor(
@@ -138,7 +140,10 @@ final class AppIconController {
     }
 
     func stop() {
-        guard isStarted else { return }
+        guard isStarted else {
+            imageCache.reset()
+            return
+        }
         isStarted = false
         cancellables.removeAll()
         renderCoalescer.cancel()
@@ -180,7 +185,12 @@ final class AppIconController {
         renderLatestDockIcon()
     }
 
+    func releaseCachedImages() {
+        imageCache.reset()
+    }
+
     private func clearDockIcon() {
+        imageCache.reset()
         defer { renderCache.reset() }
         guard hasRenderedDockIcon else { return }
         application.setApplicationIconImage(nil)

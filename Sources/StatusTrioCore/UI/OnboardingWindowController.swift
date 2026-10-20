@@ -50,6 +50,7 @@ final class OnboardingWindowController: NSWindowController, NSWindowDelegate {
 
     func windowWillClose(_ notification: Notification) {
         leaveActivationPolicyIfNeeded()
+        window?.contentViewController = nil
         window = nil
     }
 

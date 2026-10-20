@@ -378,20 +378,38 @@ final class NearbyBatteryScannerSpy: BluetoothLEBatteryScanning {
     var onCandidatesChanged: (([NearbyBLEDeviceCandidate]) -> Void)?
     var onReadFailures: ((Set<UUID>) -> Void)?
     var onIsScanningChanged: ((Bool) -> Void)?
+    var onInitialReadCandidateCompleted: ((UUID, Bool, DeviceOperationToken?) -> Void)?
+    var discoveredCandidates: [NearbyBLEDeviceCandidate] = []
     private(set) var allowedReadDeviceIDs: Set<UUID> = []
     private(set) var initialReadDeviceIDs: Set<UUID> = []
-    var discoveredCandidates: [NearbyBLEDeviceCandidate] = []
+    private var allowedReadTokens: [UUID: DeviceOperationToken] = [:]
+    private var initialReadTokens: [UUID: DeviceOperationToken] = [:]
     private(set) var isRunning = false
     private(set) var isScanning = false
     private(set) var startCount = 0
     private(set) var refreshCount = 0
     private(set) var stopCount = 0
 
-    func setAllowedReadDeviceIDs(_ ids: Set<UUID>) {
+    func setAllowedReadDeviceIDs(_ ids: Set<UUID>) -> [UUID: DeviceOperationToken] {
         allowedReadDeviceIDs = ids
+        allowedReadTokens = currentTokens(for: ids, retaining: allowedReadTokens)
+        return allowedReadTokens
     }
-    func setInitialReadCandidateIDs(_ ids: Set<UUID>) {
+    func setInitialReadCandidateIDs(_ ids: Set<UUID>) -> [UUID: DeviceOperationToken] {
         initialReadDeviceIDs = ids
+        initialReadTokens = currentTokens(for: ids, retaining: initialReadTokens)
+        return initialReadTokens
+    }
+
+    private func currentTokens(
+        for ids: Set<UUID>,
+        retaining tokens: [UUID: DeviceOperationToken]
+    ) -> [UUID: DeviceOperationToken] {
+        var current = tokens.filter { ids.contains($0.key) }
+        for id in ids where current[id] == nil {
+            current[id] = DeviceOperationToken()
+        }
+        return current
     }
 
     func start() {
@@ -407,6 +425,10 @@ final class NearbyBatteryScannerSpy: BluetoothLEBatteryScanning {
         stopCount += 1
         isRunning = false
         isScanning = false
+        allowedReadDeviceIDs = []
+        initialReadDeviceIDs = []
+        allowedReadTokens = [:]
+        initialReadTokens = [:]
     }
 
     func publish(_ devices: [NearbyBluetoothBatteryDevice]) {

@@ -91,7 +91,10 @@ struct InputSourceListView: View {
     @ViewBuilder
     private func rowMarker(_ row: InputSourcePanelState.Row) -> some View {
         if let iconURL = row.iconURL,
-           let image = IconImageDecodeCache.shared.monochromeInputSourceIcon(for: iconURL) {
+           let image = IconImageDecodeCache.shared.monochromeInputSourceIcon(
+               for: iconURL,
+               maximumPixelLength: 128
+           ) {
             Image(nsImage: image)
                 .renderingMode(.template)
                 .resizable()

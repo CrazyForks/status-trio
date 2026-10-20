@@ -205,11 +205,12 @@ final class SystemProfilerBluetoothBatteryWorker: @unchecked Sendable, Bluetooth
                 // the device worker stored in the meantime.
                 data = cached
             } else {
+                let cacheEpoch = self.reportCache.currentEpoch
                 data = self.outputProvider()
                 if let fetched = data {
                     // This read genuinely fetched, so it may seed the cache for
                     // a read that happens moments later.
-                    self.reportCache.store(fetched)
+                    self.reportCache.store(fetched, ifCurrent: cacheEpoch)
                 }
             }
             guard let data else {

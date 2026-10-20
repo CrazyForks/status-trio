@@ -132,6 +132,37 @@ struct DockChargingAnimationClockTests {
 
 @MainActor
 struct DockChargingFrameCacheTests {
+    @Test func successfulDifferentEffectIdentityAllowsAnEarlierFailureToRetry() {
+        let cache = DockChargingFrameCache()
+        let failedKey = makeKey(pulsesAccessory: true)
+        let successfulKey = makeKey(pulsesAccessory: false)
+        var failedAttempts = 0
+
+        #expect(cache.image(for: steadyPhase(0), key: failedKey) { _ in
+            failedAttempts += 1
+            return nil
+        } == nil)
+        #expect(cache.needsFrames(for: steadyPhase(0), key: failedKey) == false)
+
+        #expect(cache.image(for: steadyPhase(0), key: successfulKey) { _ in
+            frameImage()
+        } != nil)
+
+        #expect(cache.needsFrames(for: steadyPhase(0), key: failedKey))
+        #expect(failedAttempts == 1)
+    }
+
+    @Test func retiresAnOversizedOldSetBeforeBuildingTheSecondFrame() {
+        let cache = DockChargingFrameCache()
+        let key = makeKey(pixelLength: 512)
+        _ = cache.image(for: steadyPhase(0), key: key) { _ in bigFrameImage() }
+        _ = cache.image(for: steadyPhase(0, multiplier: 1.35), key: key) { phase in
+            if phase.step == 1 { #expect(cache.residentByteCount == 0) }
+            return bigFrameImage()
+        }
+        #expect(cache.variantCount == 1)
+    }
+
     @Test func buildsThirtySixFramesOnceAndReusesThemAcrossTicks() {
         let cache = DockChargingFrameCache()
         let key = makeKey()
@@ -172,10 +203,10 @@ struct DockChargingFrameCacheTests {
         #expect(cache.variantCount == 2)
 
         // A new scene retires the oldest set instead of growing without bound.
-        let changedKey = makeKey(scalar: 0.8)
+        let changedKey = makeKey(scalar: 0.8, level: 80)
         _ = cache.image(for: steadyPhase(0), key: changedKey, renderFrame: render)
         #expect(renders == 108)
-        #expect(cache.variantCount == 2)
+        #expect(cache.variantCount == 1)
         #expect(cache.residentByteCount > 0)
     }
 
@@ -221,20 +252,47 @@ struct DockChargingFrameCacheTests {
         #expect(cache.residentByteCount == firstSetBytes)
     }
 
-    private func makeKey(scalar: Double = 0.5, pixelLength: Int = 512) -> DockIconRenderKey {
-        DockIconRenderKey(
-            scene: chargingScene(scalar: scalar),
+    private func makeKey(
+        scalar: Double = 0.5,
+        pixelLength: Int = 512,
+        level: Int = 62,
+        pulsesAccessory: Bool? = nil
+    ) -> DockIconRenderKey {
+        let mappedScene = chargingScene(scalar: scalar, level: level)
+        return DockIconRenderKey(
+            scene: sceneWithAccessoryPulse(pulsesAccessory, from: mappedScene),
             backgroundStyle: .dark,
             pixelLength: pixelLength
         )
     }
 
-    private func chargingScene(scalar: Double) -> IconSceneState {
+    private func sceneWithAccessoryPulse(
+        _ pulsesAccessory: Bool?,
+        from scene: IconSceneState
+    ) -> IconSceneState {
+        guard let pulsesAccessory, let ring = scene.outerRing else { return scene }
+        return IconSceneState(
+            outerRing: OuterRingState(
+                segments: ring.segments,
+                gap: ring.gap,
+                accessory: ring.accessory,
+                effect: RingEffectState(
+                    pulsesAccessory: pulsesAccessory,
+                    tintsAccessory: ring.effect?.tintsAccessory ?? true
+                ),
+                strokeScale: ring.strokeScale
+            ),
+            center: scene.center,
+            footer: scene.footer
+        )
+    }
+
+    private func chargingScene(scalar: Double, level: Int = 62) -> IconSceneState {
         IconPresentationMapper.scene(
             inputs: IconPresentationInputs(
                 snapshot: StatusSnapshot(
                     battery: BatteryStatus(
-                        rawPercentage: 62,
+                        rawPercentage: level,
                         isPresent: true,
                         isCharging: true,
                         isLowPowerMode: false,
@@ -289,6 +347,192 @@ struct DockChargingFrameCacheTests {
 
 @MainActor
 struct DockChargingAnimationPresenterTests {
+    @Test func restoreStaticIconKeepsFailedFramesSuppressedAndAlternateCached() {
+        let fixture = DockChargingPresenterFixture()
+        #expect(fixture.presenter.present(
+            phase: steadyPhase(7),
+            scene: fixture.scene,
+            backgroundStyle: .dark,
+            pixelLength: 512
+        ))
+        let rebuilds = fixture.presenter.cachedFrameRebuildCount
+        let renders = fixture.renderControl.effectRenders
+        fixture.renderControl.failsHeartbeatMultiplier = 1.35
+
+        #expect(!fixture.presenter.present(
+            phase: steadyPhase(7, multiplier: 1.35),
+            scene: fixture.scene,
+            backgroundStyle: .dark,
+            pixelLength: 512
+        ))
+        fixture.presenter.restoreStaticIcon()
+
+        #expect(!fixture.presenter.isInstalled)
+        #expect(fixture.contentView == nil)
+        #expect(fixture.presenter.cachedVariantCount == 1)
+        #expect(fixture.presenter.cachedFrameRebuildCount == rebuilds)
+
+        for _ in 0..<3 {
+            #expect(!fixture.presenter.present(
+                phase: steadyPhase(7, multiplier: 1.35),
+                scene: fixture.scene,
+                backgroundStyle: .dark,
+                pixelLength: 512
+            ))
+            fixture.presenter.restoreStaticIcon()
+        }
+
+        #expect(fixture.renderControl.effectRenders == renders + 1)
+        #expect(fixture.presenter.cachedFrameRebuildCount == rebuilds)
+        #expect(fixture.presenter.present(
+            phase: steadyPhase(7),
+            scene: fixture.scene,
+            backgroundStyle: .dark,
+            pixelLength: 512
+        ))
+        #expect(fixture.presenter.isInstalled)
+        #expect(fixture.contentView != nil)
+        #expect(fixture.presenter.cachedFrameRebuildCount == rebuilds)
+    }
+
+    @Test func restoreStaticIconKeepsFailedBaseSuppressedUntilIdentityChanges() {
+        let fixture = DockChargingPresenterFixture()
+        fixture.renderControl.failsBase = true
+
+        #expect(!fixture.presenter.present(
+            phase: steadyPhase(0),
+            scene: fixture.scene,
+            backgroundStyle: .dark,
+            pixelLength: 512
+        ))
+        fixture.presenter.restoreStaticIcon()
+
+        for _ in 0..<3 {
+            #expect(!fixture.presenter.present(
+                phase: steadyPhase(0),
+                scene: fixture.scene,
+                backgroundStyle: .dark,
+                pixelLength: 512
+            ))
+            fixture.presenter.restoreStaticIcon()
+        }
+        #expect(fixture.renderControl.baseRenders == 1)
+
+        #expect(!fixture.presenter.present(
+            phase: steadyPhase(0),
+            scene: fixture.sceneWithScalar(0.9),
+            backgroundStyle: .dark,
+            pixelLength: 512
+        ))
+        #expect(fixture.renderControl.baseRenders == 2)
+    }
+
+    @Test func restoreStaticIconReinstallsAValidOldOverlayAtTheSamePhase() {
+        let fixture = DockChargingPresenterFixture()
+        let phase = steadyPhase(7)
+        #expect(fixture.presenter.present(
+            phase: phase,
+            scene: fixture.scene,
+            backgroundStyle: .dark,
+            pixelLength: 512
+        ))
+        let rebuilds = fixture.presenter.cachedFrameRebuildCount
+        fixture.renderControl.failsHeartbeatMultiplier = 1.35
+
+        #expect(!fixture.presenter.present(
+            phase: steadyPhase(7, multiplier: 1.35),
+            scene: fixture.scene,
+            backgroundStyle: .dark,
+            pixelLength: 512
+        ))
+        fixture.presenter.restoreStaticIcon()
+        #expect(!fixture.presenter.isInstalled)
+
+        #expect(fixture.presenter.present(
+            phase: phase,
+            scene: fixture.scene,
+            backgroundStyle: .dark,
+            pixelLength: 512
+        ))
+        #expect(fixture.presenter.isInstalled)
+        #expect(fixture.contentView != nil)
+        #expect(fixture.presenter.cachedFrameRebuildCount == rebuilds)
+    }
+
+    @Test func successfulDifferentEffectLetsAnEarlierFailedIdentityRetry() {
+        let fixture = DockChargingPresenterFixture()
+        fixture.renderControl.failsPulsingAccessory = true
+        let first = fixture.sceneWithAccessoryPulse(true)
+        let alternate = fixture.sceneWithAccessoryPulse(false)
+        let initialRenders = fixture.renderControl.effectRenders
+
+        #expect(!fixture.presenter.present(
+            phase: steadyPhase(0),
+            scene: first,
+            backgroundStyle: .dark,
+            pixelLength: 512
+        ))
+        fixture.presenter.restoreStaticIcon()
+
+        #expect(!fixture.presenter.present(
+            phase: steadyPhase(0),
+            scene: first,
+            backgroundStyle: .dark,
+            pixelLength: 512
+        ))
+        #expect(fixture.renderControl.effectRenders == initialRenders + 1)
+
+        #expect(fixture.presenter.present(
+            phase: steadyPhase(0),
+            scene: alternate,
+            backgroundStyle: .dark,
+            pixelLength: 512
+        ))
+
+        #expect(!fixture.presenter.present(
+            phase: steadyPhase(0),
+            scene: first,
+            backgroundStyle: .dark,
+            pixelLength: 512
+        ))
+        fixture.presenter.restoreStaticIcon()
+        #expect(fixture.renderControl.effectRenders == initialRenders + 38)
+
+        #expect(!fixture.presenter.present(
+            phase: steadyPhase(0),
+            scene: first,
+            backgroundStyle: .dark,
+            pixelLength: 512
+        ))
+        #expect(fixture.renderControl.effectRenders == initialRenders + 38)
+    }
+
+    @Test func footerChangesRebuildTheBaseButReuseTheEffectFrames() {
+        let fixture = DockChargingPresenterFixture()
+        _ = fixture.presenter.present(phase: steadyPhase(0), scene: fixture.scene,
+            backgroundStyle: .dark, pixelLength: 512)
+        let count = fixture.presenter.rasterizedFrameCount
+        _ = fixture.presenter.present(phase: steadyPhase(1), scene: fixture.sceneWithScalar(0.9),
+            backgroundStyle: .dark, pixelLength: 512)
+        #expect(fixture.presenter.rasterRequestCount == 2)
+        #expect(fixture.presenter.rasterizedFrameCount == count)
+    }
+
+    @Test func heartbeatPreferenceChangeInvalidatesTheEffectAtTheSamePhase() throws {
+        let fixture = DockChargingPresenterFixture()
+        _ = fixture.presenter.present(phase: steadyPhase(0), scene: fixture.scene,
+            backgroundStyle: .dark, pixelLength: 512)
+        let ring = try #require(fixture.scene.outerRing)
+        let changed = IconSceneState(outerRing: OuterRingState(segments: ring.segments,
+            gap: ring.gap, accessory: ring.accessory,
+            effect: RingEffectState(pulsesAccessory: false, tintsAccessory: false),
+            strokeScale: ring.strokeScale), center: fixture.scene.center, footer: fixture.scene.footer)
+        let count = fixture.presenter.rasterizedFrameCount
+        _ = fixture.presenter.present(phase: steadyPhase(0), scene: changed,
+            backgroundStyle: .dark, pixelLength: 512)
+        #expect(fixture.presenter.rasterizedFrameCount == count + 36)
+    }
+
     @Test func installsOneContentViewAndSkipsADuplicateFrame() {
         let fixture = DockChargingPresenterFixture()
         let phase = steadyPhase(3)
@@ -446,11 +690,12 @@ struct DockChargingAnimationPresenterTests {
         )
     }
 
-    private func steadyPhase(_ step: Int) -> ChargingEffectPhase {
+    private func steadyPhase(_ step: Int, multiplier: Double = 1) -> ChargingEffectPhase {
         ChargingEffectPhase(
             step: step,
             stepsPerCycle: 36,
-            kind: .steady
+            kind: .steady,
+            heartbeatMultiplier: multiplier
         )
     }
 }
@@ -460,15 +705,32 @@ private final class DockChargingPresenterFixture {
     let dockTile = FakeDockTile()
     let presenter: DockChargingAnimationPresenter
     let scene: IconSceneState
+    let renderControl: DockChargingRenderControl
 
-    init(failEffects: Bool = false) {
+    init(failEffects: Bool = false, renderControl: DockChargingRenderControl = DockChargingRenderControl()) {
         scene = DockChargingTestScene.make(scalar: 0.5)
+        self.renderControl = renderControl
+        renderControl.failsAllEffects = failEffects
         let dockTile = self.dockTile
         presenter = DockChargingAnimationPresenter(
             dockTile: dockTile,
-            renderBase: { _, _, _ in Self.image() },
-            renderEffect: { _, _, _, _ in
-                failEffects ? nil : Self.image()
+            renderBase: { _, _, _ in
+                renderControl.baseRenders += 1
+                return renderControl.failsBase ? nil : Self.image()
+            },
+            renderEffect: { scene, phase, backgroundStyle, pixelLength in
+                renderControl.effectRenders += 1
+                let effect = DockChargingEffectKey(DockIconRenderKey(
+                    scene: scene,
+                    backgroundStyle: backgroundStyle,
+                    pixelLength: pixelLength
+                )).outerRing?.effect
+                if renderControl.failsAllEffects
+                    || renderControl.failsHeartbeatMultiplier == phase.heartbeatMultiplier
+                    || renderControl.failsPulsingAccessory == effect?.pulsesAccessory {
+                    return nil
+                }
+                return Self.image()
             },
             effectRect: { _, _ in CGRect(x: 100, y: 100, width: 120, height: 120) }
         )
@@ -476,6 +738,24 @@ private final class DockChargingPresenterFixture {
 
     func sceneWithScalar(_ scalar: Double) -> IconSceneState {
         DockChargingTestScene.make(scalar: scalar)
+    }
+
+    func sceneWithAccessoryPulse(_ pulsesAccessory: Bool) -> IconSceneState {
+        guard let ring = scene.outerRing else { return scene }
+        return IconSceneState(
+            outerRing: OuterRingState(
+                segments: ring.segments,
+                gap: ring.gap,
+                accessory: ring.accessory,
+                effect: RingEffectState(
+                    pulsesAccessory: pulsesAccessory,
+                    tintsAccessory: ring.effect?.tintsAccessory ?? true
+                ),
+                strokeScale: ring.strokeScale
+            ),
+            center: scene.center,
+            footer: scene.footer
+        )
     }
 
     var contentView: NSView? { dockTile.contentView }
@@ -492,6 +772,16 @@ private final class DockChargingPresenterFixture {
         )!
         return context.makeImage()!
     }
+}
+
+@MainActor
+private final class DockChargingRenderControl {
+    var failsBase = false
+    var failsAllEffects = false
+    var failsHeartbeatMultiplier: Double?
+    var failsPulsingAccessory: Bool?
+    var baseRenders = 0
+    var effectRenders = 0
 }
 
 @MainActor

@@ -307,6 +307,16 @@ enum DockIconRenderer {
     /// pane and the icon guide use, and the effect slices the Dock animation
     /// caches.
     private static let maximumReusedContexts = 6
+    private static let maximumScratchBytes = 4 * 1024 * 1024
+
+    static var scratchResidentByteCount: Int {
+        reusedContexts.values.reduce(0) { $0 + $1.bytesPerRow * $1.height }
+    }
+
+    static func resetScratchContexts() {
+        reusedContexts.removeAll(keepingCapacity: false)
+        reusedContextOrder.removeAll(keepingCapacity: false)
+    }
 
     private static func scratchContext(width: Int, height: Int) -> CGContext? {
         let key = ScratchKey(width: width, height: height)
@@ -326,10 +336,12 @@ enum DockIconRenderer {
         )
         guard let context else { return nil }
 
+        guard context.bytesPerRow * context.height <= maximumScratchBytes else { return context }
+
         reusedContexts[key] = context
         touchScratchContext(key)
 
-        while reusedContextOrder.count > maximumReusedContexts {
+        while reusedContextOrder.count > maximumReusedContexts || scratchResidentByteCount > maximumScratchBytes {
             let oldest = reusedContextOrder.removeFirst()
             reusedContexts[oldest] = nil
         }

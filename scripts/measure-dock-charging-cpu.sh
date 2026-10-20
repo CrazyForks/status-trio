@@ -13,6 +13,8 @@
 #   SAMPLE_SECONDS   number of 1-second samples (default: 60)
 #   SETTLE_SECONDS   warm-up before sampling (default: 15)
 #   EXTRA_PIDS       extra processes to sample (default: Dock and WindowServer)
+#   MEMORY_OUTPUT    optional JSON path; samples app footprint concurrently
+#                    with CPU and finishes vmmap while the app is still alive
 #   DOCK_RENDERER    `applicationIcon` selects the A/B prototype that swaps
 #                    `applicationIconImage` frames instead of animating the
 #                    tile's content view (development bundles only)
@@ -95,7 +97,14 @@ defaults write "$BUNDLE_ID" showsMenuBarChargingEffect -bool "$SHOWS_MENU_BAR_CH
 defaults write "$BUNDLE_ID" showsDockChargingEffect -bool "$SHOWS_DOCK_CHARGING_EFFECT"
 
 APP_PID=""
+SAMPLE_PIDS=()
 cleanup() {
+    for sample_pid in "${SAMPLE_PIDS[@]:-}"; do
+        [[ -n "$sample_pid" ]] || continue
+        kill -0 "$sample_pid" 2>/dev/null \
+            && kill -TERM "$sample_pid" 2>/dev/null \
+            || true
+    done
     if [[ -n "$APP_PID" ]] && kill -0 "$APP_PID" 2>/dev/null; then
         # Give the app a chance to run `applicationWillTerminate` so a
         # measurement run never leaves a stale single-instance lock behind.
@@ -153,15 +162,42 @@ if [[ "$MODE" == "on" ]] && ! grep -q "ChargingEffectClock.start" "$OUTPUT_PREFI
     exit 1
 fi
 
+# Start footprint sampling only after the clock gate has passed. The exact
+# executable check protects the shared app PID before handing it to libproc.
+if [[ -n "${MEMORY_OUTPUT:-}" ]]; then
+    ACTUAL_EXECUTABLE="$(ps -p "$APP_PID" -o comm= 2>/dev/null || true)"
+    if [[ "$ACTUAL_EXECUTABLE" != "$EXECUTABLE" ]]; then
+        echo "The app PID no longer identifies the expected executable: $ACTUAL_EXECUTABLE" >&2
+        exit 1
+    fi
+    python3 "$ROOT/scripts/measure-memory.py" \
+        --pid "$APP_PID" --seconds "$SAMPLE_SECONDS" --output "$MEMORY_OUTPUT" &
+    SAMPLE_PIDS+=("$!")
+fi
+
 # Sample every process at once: serial `top` runs would drift apart and turn the
 # app, Dock and WindowServer numbers into three different windows in time.
 sample_top "$APP_PID" "$OUTPUT_PREFIX.app.top.txt" &
-SAMPLE_PIDS=($!)
+SAMPLE_PIDS+=("$!")
 for extra_pid in ${EXTRA_PIDS:-}; do
     sample_top "$extra_pid" "$OUTPUT_PREFIX.extra-$extra_pid.top.txt" &
     SAMPLE_PIDS+=($!)
 done
-wait "${SAMPLE_PIDS[@]}"
+
+sample_failure=0
+pending_sample_pids=("${SAMPLE_PIDS[@]}")
+for ((sample_index = 0; sample_index < ${#pending_sample_pids[@]}; sample_index++)); do
+    sample_pid="${pending_sample_pids[$sample_index]}"
+    if ! wait "$sample_pid"; then
+        echo "Sample job failed: PID $sample_pid" >&2
+        sample_failure=1
+    fi
+    SAMPLE_PIDS=("${pending_sample_pids[@]:sample_index+1}")
+done
+SAMPLE_PIDS=()
+if (( sample_failure != 0 )); then
+    exit 1
+fi
 
 python3 - "$PLACEMENT" "$MODE" "$APP_PID" "$OUTPUT_PREFIX" "${EXTRA_PIDS:-}" <<'PY'
 import os

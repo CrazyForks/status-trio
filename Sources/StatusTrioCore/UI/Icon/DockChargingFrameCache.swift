@@ -15,7 +15,7 @@ import CoreGraphics
 final class DockChargingFrameCache {
     struct VariantKey: Equatable {
         /// Phase-free, so a 20-Hz tick can never invalidate a set.
-        let renderKey: DockIconRenderKey
+        let renderKey: DockChargingEffectKey
         let heartbeatMultiplier: Double
     }
 
@@ -42,6 +42,9 @@ final class DockChargingFrameCache {
     /// Cumulative work counters: a steady tick must not move them.
     private(set) var rebuildCount = 0
     private(set) var rasterizedFrameCount = 0
+    /// Cache-owned pixel buffers plus the group currently being constructed.
+    /// Does not include the presenter's current overlay or renderer scratch.
+    private(set) var peakResidentByteCount = 0
 
     func needsFrames(for phase: ChargingEffectPhase, key renderKey: DockIconRenderKey) -> Bool {
         guard isSupported(phase, key: renderKey) else { return false }
@@ -61,11 +64,16 @@ final class DockChargingFrameCache {
         if let index = index(of: nextKey) {
             let variant = variants.remove(at: index)
             variants.insert(variant, at: 0)
+            noteSuccessfulIdentity(nextKey)
             return variant.frames[phase.step]
         }
 
         var frames: [CGImage] = []
         frames.reserveCapacity(Self.steadyFrameCount)
+        // Retire obsolete scenes before building; the presenter keeps the
+        // current frame alive until a replacement or static fallback is ready.
+        variants.removeAll { $0.key.renderKey != nextKey.renderKey }
+        var buildingBytes = 0
         for step in 0..<Self.steadyFrameCount {
             let framePhase = ChargingEffectPhase(
                 step: step,
@@ -77,10 +85,26 @@ final class DockChargingFrameCache {
                 failedKey = nextKey
                 return nil
             }
+            let frameBytes = frame.bytesPerRow * frame.height
+            peakResidentByteCount = max(peakResidentByteCount, residentByteCount + buildingBytes + frameBytes)
+            if step == 0 {
+                // One probe raster gives the actual row stride. Make room for
+                // the remaining 35 BEFORE retaining two complete large groups.
+                let projectedBytes = frameBytes * Self.steadyFrameCount
+                while !variants.isEmpty && (
+                    variants.count >= Self.maximumVariants
+                        || residentByteCount + projectedBytes > Self.maximumResidentBytes
+                ) {
+                    variants.removeLast()
+                }
+            }
             frames.append(frame)
+            buildingBytes += frameBytes
+            peakResidentByteCount = max(peakResidentByteCount, residentByteCount + buildingBytes)
         }
 
         variants.insert(Variant(key: nextKey, frames: frames), at: 0)
+        noteSuccessfulIdentity(nextKey)
         trim()
         rebuildCount += 1
         rasterizedFrameCount += frames.count
@@ -105,6 +129,11 @@ final class DockChargingFrameCache {
         failedKey = nil
     }
 
+    /// Keep the current group so pressure cannot trigger a 20-Hz rebuild loop.
+    func trimForMemoryPressure() {
+        if variants.count > 1 { variants.removeLast(variants.count - 1) }
+    }
+
     private static func byteCount(of frames: [CGImage]) -> Int {
         frames.reduce(0) { $0 + $1.bytesPerRow * $1.height }
     }
@@ -123,11 +152,18 @@ final class DockChargingFrameCache {
         for phase: ChargingEffectPhase,
         key renderKey: DockIconRenderKey
     ) -> VariantKey {
-        VariantKey(renderKey: renderKey, heartbeatMultiplier: phase.heartbeatMultiplier)
+        VariantKey(renderKey: DockChargingEffectKey(renderKey), heartbeatMultiplier: phase.heartbeatMultiplier)
     }
 
     private func index(of key: VariantKey) -> Int? {
         variants.firstIndex { $0.key == key && $0.frames.count == Self.steadyFrameCount }
+    }
+
+    private func noteSuccessfulIdentity(_ successfulKey: VariantKey) {
+        guard let failedKey,
+              failedKey.renderKey != successfulKey.renderKey
+        else { return }
+        self.failedKey = nil
     }
 
     private func isSupported(_ phase: ChargingEffectPhase, key renderKey: DockIconRenderKey) -> Bool {

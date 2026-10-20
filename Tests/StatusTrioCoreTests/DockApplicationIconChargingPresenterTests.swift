@@ -7,6 +7,58 @@ import Testing
 /// are what the CPU comparison reads, so they are pinned here.
 @MainActor
 struct DockApplicationIconChargingPresenterTests {
+    @Test func restoreStaticIconKeepsCachedFramesAndAFailedVariant() {
+        let application = DockIconApplicationSpy()
+        let renderControl = DockApplicationRenderControl()
+        var renderedSteps: [Int] = []
+        let presenter = DockApplicationIconChargingPresenter(
+            application: application,
+            renderTile: { _, phase, _, _ in
+                renderedSteps.append(phase.step)
+                if renderControl.failedMultiplier == phase.heartbeatMultiplier { return nil }
+                return NSImage(size: NSSize(width: 256, height: 256))
+            }
+        )
+
+        #expect(presenter.present(
+            phase: steadyPhase(7),
+            scene: scene,
+            backgroundStyle: .dark,
+            pixelLength: 512
+        ))
+        #expect(renderedSteps == Array(0..<36))
+
+        renderControl.failedMultiplier = 1.35
+        #expect(!presenter.present(
+            phase: steadyPhase(7, multiplier: 1.35),
+            scene: scene,
+            backgroundStyle: .dark,
+            pixelLength: 512
+        ))
+        presenter.restoreStaticIcon()
+
+        #expect(!presenter.isInstalled)
+        #expect(presenter.cachedVariantCount == 1)
+        #expect(!presenter.present(
+            phase: steadyPhase(7, multiplier: 1.35),
+            scene: scene,
+            backgroundStyle: .dark,
+            pixelLength: 512
+        ))
+        #expect(renderedSteps.count == 37)
+        #expect(presenter.cachedVariantCount == 1)
+
+        #expect(presenter.present(
+            phase: steadyPhase(7),
+            scene: scene,
+            backgroundStyle: .dark,
+            pixelLength: 512
+        ))
+        #expect(presenter.isInstalled)
+        #expect(presenter.cachedVariantCount == 1)
+        #expect(renderedSteps.count == 37)
+    }
+
     @Test func cachesOneSteadySetAndSkipsDuplicateFrames() {
         let application = DockIconApplicationSpy()
         var renderedSteps: [Int] = []
@@ -145,6 +197,11 @@ struct DockApplicationIconChargingPresenterTests {
             heartbeatMultiplier: multiplier
         )
     }
+}
+
+@MainActor
+private final class DockApplicationRenderControl {
+    var failedMultiplier: Double?
 }
 
 @MainActor

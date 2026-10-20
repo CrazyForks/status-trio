@@ -213,3 +213,32 @@ plug-in burst; it resumes the steady timeline within roughly one poll interval.
   it has not been UI-automated.
 - No non-publishing `release.yml` preflight, merge, tag, DMG, GitHub Release, or
   appcast publication has been run.
+
+
+## 2026-10-20 memory optimization follow-up
+
+The memory branch preserves 20 Hz and the existing frame geometry. Cropped Dock
+frames now use a ring/effect/background/size identity independent of center and
+footer. A large variant retires the old group after its first stride probe,
+before constructing the remaining 35 frames. Real 512 px renderer tests retain
+19,488,960 bytes and reach a cache/build peak of 20,030,320 bytes, excluding the
+presenter's current image, scratch, and system copies. The original two-full-set
+construction was about 37.17 MiB. Pressure keeps the active group.
+
+The first three Release menuBar/off A/B pairs measured app CPU means of
+0.01/0.03%, 0.01/0.02%, and 0.02/0.00% (main/optimized). These are idle measurements,
+not charging-animation CPU acceptance. Raw files and the retained memory outlier
+are documented in memory-audit-2026-10-20.md.
+
+The Dock/on run did not observe ChargingEffectClock in the existing sampling
+gate. The tool rejected the run; the remaining five attempts are not_run. No
+new live Dock-animation CPU conclusion is available, and earlier evidence above
+remains historical rather than being overwritten. Hardware, visibility, and
+Swift 6.3.3 non-publishing CI checks remain open.
+
+A second three-pair menuBar/off confirmation explicitly suppressed onboarding
+and consent UI on each launch. App CPU averaged 0.02% / 0.01%
+(main/optimized), with no pair above the 0.5 percentage-point threshold. All six
+processes had 82–83 passive window observations and no observed visible window.
+This does not establish live Dock charging performance. Raw confirmation files:
+`/Users/lingsmbp/Documents/aiwork/status-trio-memory-measurements/2026-10-20/task7-confirm-20261020T0444/`.

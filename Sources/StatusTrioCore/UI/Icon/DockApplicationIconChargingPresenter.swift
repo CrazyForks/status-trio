@@ -152,6 +152,16 @@ final class DockApplicationIconChargingPresenter: DockChargingAnimationPresentin
         failedKey = nil
     }
 
+    func restoreStaticIcon() {
+        // AppIconController installs the current static image after this call.
+        // Keep the expensive frame sets and the failed variant's suppression.
+        lastFrameKey = nil
+    }
+
+    func trimForMemoryPressure() {
+        if variants.count > 1 { variants.removeLast(variants.count - 1) }
+    }
+
     private func steadyFrames(
         for variant: VariantKey,
         phase: ChargingEffectPhase,

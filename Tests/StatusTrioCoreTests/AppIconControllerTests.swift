@@ -460,6 +460,168 @@ struct AppIconControllerTests {
         #expect(harness.log.events.isEmpty)
     }
 
+    @Test func leavingDockClearsTheStaticCacheSoShowingAgainRenders() throws {
+        let harness = try AppIconControllerHarness(initialPlacement: .dock)
+        defer { harness.cleanUp() }
+        harness.controller.start()
+        #expect(harness.log.renderCount == 1)
+
+        harness.settings.appIconPlacement = .menuBar
+        harness.settings.appIconPlacement = .dock
+
+        #expect(harness.log.renderCount == 2)
+    }
+
+    @Test func releasingCachedImagesKeepsTheCurrentApplicationImage() throws {
+        let imageCache = DockIconImageCache()
+        let harness = try AppIconControllerHarness(
+            initialPlacement: .dock,
+            imageCache: imageCache
+        )
+        defer { harness.cleanUp() }
+        harness.controller.start()
+        let currentImage = try #require(harness.application.applicationIconImage)
+        #expect(imageCache.entryCount == 1)
+        #expect(harness.log.renderCount == 1)
+        harness.log.reset()
+
+        harness.controller.releaseCachedImages()
+
+        #expect(imageCache.entryCount == 0)
+        #expect(imageCache.residentByteCount == 0)
+        #expect(harness.application.applicationIconImage === currentImage)
+        #expect(harness.log.events.isEmpty)
+        #expect(harness.log.renderCount == 0)
+    }
+
+    @Test func stopReleasesTheStaticCacheEvenWithoutADockIcon() throws {
+        let imageCache = DockIconImageCache()
+        let harness = try AppIconControllerHarness(
+            initialPlacement: .menuBar,
+            imageCache: imageCache
+        )
+        defer { harness.cleanUp() }
+        harness.controller.start()
+        let scene = harness.controller.latestScene.withChargingEffectEnabled(
+            harness.settings.showsDockChargingEffect
+        )
+        let key = DockIconRenderKey(
+            scene: scene,
+            backgroundStyle: harness.controller.currentDockBackgroundStyle,
+            pixelLength: DockIconRenderer.pixelSize
+        )
+        let representation = NSBitmapImageRep(
+            bitmapDataPlanes: nil,
+            pixelsWide: 64,
+            pixelsHigh: 64,
+            bitsPerSample: 8,
+            samplesPerPixel: 4,
+            hasAlpha: true,
+            isPlanar: false,
+            colorSpaceName: .deviceRGB,
+            bytesPerRow: 0,
+            bitsPerPixel: 0
+        )!
+        let image = NSImage(size: NSSize(width: 64, height: 64))
+        image.addRepresentation(representation)
+        imageCache.store(image, for: key)
+        #expect(imageCache.entryCount == 1)
+        #expect(harness.application.applicationIconImage == nil)
+
+        harness.controller.stop()
+
+        #expect(imageCache.entryCount == 0)
+        #expect(imageCache.residentByteCount == 0)
+    }
+
+    @Test func repeatedStartAndStopRendersFreshAfterEachStop() throws {
+        let harness = try AppIconControllerHarness(initialPlacement: .dock)
+        defer { harness.cleanUp() }
+
+        for expectedRenderCount in 1...3 {
+            harness.controller.start()
+            #expect(harness.log.renderCount == expectedRenderCount)
+            harness.controller.stop()
+        }
+    }
+
+    @Test func stopAfterLifetimeAlreadyEndedStillReleasesTheStaticCache() throws {
+        let imageCache = DockIconImageCache()
+        let harness = try AppIconControllerHarness(
+            initialPlacement: .menuBar,
+            imageCache: imageCache
+        )
+        defer { harness.cleanUp() }
+        harness.controller.start()
+        harness.controller.stop()
+        let scene = harness.controller.latestScene.withChargingEffectEnabled(
+            harness.settings.showsDockChargingEffect
+        )
+
+        imageCache.store(
+            makeControllerBitmapImage(width: 64, height: 64),
+            for: DockIconRenderKey(
+                scene: scene,
+                backgroundStyle: harness.controller.currentDockBackgroundStyle,
+                pixelLength: DockIconRenderer.pixelSize
+            )
+        )
+
+        harness.controller.stop()
+
+        #expect(imageCache.entryCount == 0)
+        #expect(imageCache.residentByteCount == 0)
+    }
+
+    @Test func temporaryRegularSurfaceClearsRasterWhenItEnds() throws {
+        let harness = try AppIconControllerHarness(initialPlacement: .menuBar)
+        defer { harness.cleanUp() }
+        harness.controller.start()
+
+        harness.activationPolicy.enterTemporaryRegularMode()
+        #expect(harness.log.renderCount == 1)
+        harness.activationPolicy.leaveTemporaryRegularMode()
+        harness.activationPolicy.enterTemporaryRegularMode()
+
+        #expect(harness.log.renderCount == 2)
+    }
+
+    @Test func repeatedlyEndingTemporaryRegularModeDoesNotRenderWhenAlreadyAccessory() throws {
+        let harness = try AppIconControllerHarness(initialPlacement: .menuBar)
+        defer { harness.cleanUp() }
+        harness.controller.start()
+
+        for _ in 0..<4 {
+            harness.activationPolicy.leaveTemporaryRegularMode()
+        }
+
+        #expect(harness.log.renderCount == 0)
+    }
+
+    @Test func automaticHiddenDockReusesTheStaticRaster() throws {
+        let harness = try AppIconControllerHarness(initialPlacement: .dock)
+        defer { harness.cleanUp() }
+        harness.controller.start()
+        #expect(harness.log.renderCount == 1)
+
+        harness.activationPolicy.leaveTemporaryRegularMode()
+        harness.activationPolicy.enterTemporaryRegularMode()
+
+        #expect(harness.log.renderCount == 1)
+    }
+
+    @Test func temporaryAnimatedSurfaceReusesTheStaticRaster() throws {
+        let harness = try AppIconControllerHarness(initialPlacement: .dock)
+        defer { harness.cleanUp() }
+        harness.controller.start()
+        #expect(harness.log.renderCount == 1)
+
+        harness.controller.setDockChargingAnimationActive(true)
+        harness.controller.setDockChargingAnimationActive(false)
+
+        #expect(harness.log.renderCount == 1)
+    }
+
     /// The Dock animation's claim follows the user's own placement: a window
     /// that borrows the regular policy is not a Dock placement.
     @Test func dockAnimationEligibilityFollowsThePlacementNotTheRegularPolicy() throws {
@@ -561,6 +723,24 @@ struct AppIconControllerTests {
         }
         Issue.record("The coalesced redraw did not run within \(timeout) seconds.")
     }
+
+    private func makeControllerBitmapImage(width: Int, height: Int) -> NSImage {
+        let representation = NSBitmapImageRep(
+            bitmapDataPlanes: nil,
+            pixelsWide: width,
+            pixelsHigh: height,
+            bitsPerSample: 8,
+            samplesPerPixel: 4,
+            hasAlpha: true,
+            isPlanar: false,
+            colorSpaceName: .deviceRGB,
+            bytesPerRow: 0,
+            bitsPerPixel: 0
+        )!
+        let image = NSImage(size: NSSize(width: width, height: height))
+        image.addRepresentation(representation)
+        return image
+    }
 }
 
 @MainActor
@@ -592,7 +772,8 @@ final class AppIconControllerHarness {
         initialVolume: VolumeStatus = .placeholder,
         initialReplacesNetworkIcon: Bool = false,
         snapshotScheduler: any IconPresentationScheduling = TestTaskIconPresentationScheduler(),
-        renderCoalescer: IconRenderCoalescer? = nil
+        renderCoalescer: IconRenderCoalescer? = nil,
+        imageCache: DockIconImageCache? = nil
     ) throws {
         suiteName = "StatusTrioCoreTests.AppIconController.\(UUID().uuidString)"
         guard let defaults = UserDefaults(suiteName: suiteName) else {
@@ -663,12 +844,27 @@ final class AppIconControllerHarness {
                     pixelLength: pixelLength
                 ))
                 guard !log.failDockRenders else { return nil }
-                return NSImage(size: NSSize(width: 512, height: 512))
+                let representation = NSBitmapImageRep(
+                    bitmapDataPlanes: nil,
+                    pixelsWide: 512,
+                    pixelsHigh: 512,
+                    bitsPerSample: 8,
+                    samplesPerPixel: 4,
+                    hasAlpha: true,
+                    isPlanar: false,
+                    colorSpaceName: .deviceRGB,
+                    bytesPerRow: 0,
+                    bitsPerPixel: 0
+                )!
+                let image = NSImage(size: NSSize(width: 512, height: 512))
+                image.addRepresentation(representation)
+                return image
             },
             theme: systemTheme,
             isDarkAppearance: { isDarkAppearance },
             notificationCenter: notificationCenter,
-            renderCoalescer: renderCoalescer
+            renderCoalescer: renderCoalescer,
+            imageCache: imageCache
         )
 
         store.start()
@@ -701,6 +897,7 @@ final class AppIconControllerHarness {
         store.stop()
         defaults.removeTestSuite(named: suiteName)
     }
+
 }
 
 private enum AppIconHarnessError: Error {

@@ -12,6 +12,7 @@ final class AppEnvironmentTelemetryLifecycleTests: XCTestCase {
         let settings = SettingsStore(defaults: defaults)
         settings.hasCompletedIconGuideOnboarding = true
         settings.completeTelemetryConsent(sharesAnalytics: false)
+        settings.appIconPlacement = .dock
         let localization = Localization(defaults: defaults, preferredLanguages: ["en"])
         let battery = LifecycleBatteryMonitor()
         let wifi = LifecycleWiFiMonitor()
@@ -49,18 +50,28 @@ final class AppEnvironmentTelemetryLifecycleTests: XCTestCase {
             chargingEffectClock: clock,
             renderMenuBarBase: { _, _, _, _ in nil }
         )
+        let dockImageCache = DockIconImageCache()
         let appIcon = AppIconController(
             settings: settings,
             iconPresentation: iconPresentation,
             activationPolicy: activationPolicy,
             application: activationApplication,
             setMenuBarVisible: { _ in },
-            renderDockIcon: { _, _, _ in nil },
+            renderDockIcon: { _, _, pixelLength in
+                Self.makeBitmapImage(pixelLength: pixelLength)
+            },
             theme: { .default },
             isDarkAppearance: { false },
-            notificationCenter: NotificationCenter()
+            notificationCenter: NotificationCenter(),
+            imageCache: dockImageCache
         )
         let reporter = LifecycleTelemetryReporter()
+        var pressureSources: [LifecyclePressureSource] = []
+        let memoryPressure = MemoryPressureMonitor { handler in
+            let source = LifecyclePressureSource(handler: handler)
+            pressureSources.append(source)
+            return source
+        }
         let environment = AppEnvironment(
             store: store,
             settings: settings,
@@ -83,7 +94,8 @@ final class AppEnvironmentTelemetryLifecycleTests: XCTestCase {
                 readReduceMotion: { false },
                 notificationCenter: NotificationCenter()
             ),
-            telemetryReporter: reporter
+            telemetryReporter: reporter,
+            memoryPressureMonitor: memoryPressure
         )
         defer { environment.stop() }
 
@@ -93,14 +105,93 @@ final class AppEnvironmentTelemetryLifecycleTests: XCTestCase {
         XCTAssertEqual(battery.startCount, 1)
         XCTAssertEqual(wifi.startCount, 1)
         XCTAssertEqual(volume.startCount, 1)
+        let currentDockImage = try XCTUnwrap(activationApplication.applicationIconImage)
+        let applicationImageAssignments = activationApplication.applicationImageAssignments
+        XCTAssertEqual(dockImageCache.entryCount, 1)
 
+        let bitmap = try XCTUnwrap(NSBitmapImageRep(bitmapDataPlanes: nil,
+            pixelsWide: 8, pixelsHigh: 8, bitsPerSample: 8, samplesPerPixel: 4,
+            hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB,
+            bytesPerRow: 32, bitsPerPixel: 32))
+        let image = NSImage(size: NSSize(width: 8, height: 8))
+        image.addRepresentation(bitmap)
+        let iconURL = URL(fileURLWithPath: "/tmp/environment-memory-pressure-test.png")
+        _ = IconImageDecodeCache.shared.image(for: iconURL) { _ in image }
+        XCTAssertGreaterThan(IconImageDecodeCache.shared.entryCount, 0)
+
+        let previewKey = DockIconRenderKey(
+            scene: iconPresentation.output.scene,
+            backgroundStyle: .dark,
+            pixelLength: 128
+        )
+        _ = DockIconPreviewCache.shared.image(for: previewKey) { image }
+        XCTAssertGreaterThan(DockIconPreviewCache.shared.entryCount, 0)
+
+        _ = DockIconRenderer.tileImage(
+            scene: iconPresentation.output.scene,
+            backgroundStyle: .dark,
+            pixelLength: 128
+        )
+        XCTAssertGreaterThan(DockIconRenderer.scratchResidentByteCount, 0)
+
+        XCTAssertEqual(pressureSources.count, 1)
+        pressureSources[0].fire()
+        XCTAssertEqual(IconImageDecodeCache.shared.entryCount, 0)
+        XCTAssertEqual(dockImageCache.entryCount, 0)
+        XCTAssertEqual(DockIconPreviewCache.shared.entryCount, 0)
+        XCTAssertEqual(DockIconRenderer.scratchResidentByteCount, 0)
+        XCTAssertTrue(activationApplication.applicationIconImage === currentDockImage)
+        XCTAssertEqual(
+            activationApplication.applicationImageAssignments,
+            applicationImageAssignments,
+            "Pressure must preserve the current application image without rerendering"
+        )
+
+        BluetoothProfilerReportCache.shared.store(Data([1, 2, 3]))
+        XCTAssertEqual(BluetoothProfilerReportCache.shared.storedEntryCount, 1)
         environment.stop()
+        XCTAssertEqual(BluetoothProfilerReportCache.shared.storedEntryCount, 0)
 
         XCTAssertEqual(reporter.stopCount, 1)
         XCTAssertEqual(battery.stopCount, 1)
         XCTAssertEqual(wifi.stopCount, 1)
         XCTAssertEqual(volume.stopCount, 1)
+        XCTAssertTrue(pressureSources[0].isCancelled)
+        _ = IconImageDecodeCache.shared.image(for: iconURL) { _ in image }
+        pressureSources[0].fire()
+        XCTAssertGreaterThan(IconImageDecodeCache.shared.entryCount, 0,
+            "A cancelled environment must ignore an already queued pressure event")
+        IconImageDecodeCache.shared.reset()
     }
+
+    private static func makeBitmapImage(pixelLength: Int) -> NSImage? {
+        let bitmap = NSBitmapImageRep(
+            bitmapDataPlanes: nil,
+            pixelsWide: pixelLength,
+            pixelsHigh: pixelLength,
+            bitsPerSample: 8,
+            samplesPerPixel: 4,
+            hasAlpha: true,
+            isPlanar: false,
+            colorSpaceName: .deviceRGB,
+            bytesPerRow: pixelLength * 4,
+            bitsPerPixel: 32
+        )
+        guard let bitmap else { return nil }
+        let image = NSImage(size: NSSize(width: pixelLength, height: pixelLength))
+        image.addRepresentation(bitmap)
+        return image
+    }
+}
+
+@MainActor
+private final class LifecyclePressureSource: MemoryPressureEventSource {
+    private let handler: @MainActor () -> Void
+    private(set) var isCancelled = false
+    init(handler: @escaping @MainActor () -> Void) { self.handler = handler }
+    func resume() {}
+    func cancel() { isCancelled = true }
+    func fire() { handler() }
 }
 
 @MainActor
@@ -114,11 +205,16 @@ private final class LifecycleTelemetryReporter: TelemetryReporting {
 @MainActor
 private final class LifecycleApplicationSpy: ApplicationActivationPolicyApplying, ApplicationDockIconApplying {
     private(set) var currentActivationPolicy: NSApplication.ActivationPolicy = .accessory
+    private(set) var applicationIconImage: NSImage?
+    private(set) var applicationImageAssignments = 0
     func setActivationPolicy(_ activationPolicy: NSApplication.ActivationPolicy) -> Bool {
         currentActivationPolicy = activationPolicy
         return true
     }
-    func setApplicationIconImage(_ image: NSImage?) {}
+    func setApplicationIconImage(_ image: NSImage?) {
+        applicationIconImage = image
+        applicationImageAssignments += 1
+    }
 }
 
 @MainActor

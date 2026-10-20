@@ -20,7 +20,17 @@ protocol DockChargingAnimationPresenting: AnyObject {
         backgroundStyle: DockIconBackgroundStyle,
         pixelLength: Int
     ) -> Bool
+    func restoreStaticIcon()
     func clear()
+    func trimForMemoryPressure()
+}
+
+extension DockChargingAnimationPresenting {
+    func restoreStaticIcon() {
+        clear()
+    }
+
+    func trimForMemoryPressure() {}
 }
 
 /// Owns the Dock tile's animated `contentView` and drives it from the shared
@@ -55,6 +65,7 @@ final class DockChargingAnimationPresenter: DockChargingAnimationPresenting {
 
     struct OverlayFrameKey: Equatable {
         let baseKey: DockIconRenderKey
+        let effectKey: DockChargingEffectKey
         let kind: ChargingEffectPhase.Kind
         let step: Int
         let stepsPerCycle: Int
@@ -74,6 +85,8 @@ final class DockChargingAnimationPresenter: DockChargingAnimationPresenting {
     private var baseImage: CGImage?
     private var baseKey: DockIconRenderKey?
     private var failedBaseKey: DockIconRenderKey?
+    private var baseEffectKey: DockChargingEffectKey?
+    private var failedBaseEffectKey: DockChargingEffectKey?
     private var overlayFrameKey: OverlayFrameKey?
     private var isPresenting = false
     private var installed = false
@@ -168,12 +181,13 @@ final class DockChargingAnimationPresenter: DockChargingAnimationPresenting {
             backgroundStyle: backgroundStyle,
             pixelLength: resolvedLength
         )
-        if failedBaseKey == key { return false }
+        if failedBaseKey == key, failedBaseEffectKey == DockChargingEffectKey(key) { return false }
 
         guard ensureBase(key: key, scene: scene) else { return false }
 
         let frameKey = OverlayFrameKey(
             baseKey: key,
+            effectKey: DockChargingEffectKey(key),
             kind: phase.kind,
             step: phase.step,
             stepsPerCycle: phase.stepsPerCycle,
@@ -219,11 +233,27 @@ final class DockChargingAnimationPresenter: DockChargingAnimationPresenting {
         baseImage = nil
         baseKey = nil
         failedBaseKey = nil
+        baseEffectKey = nil
+        failedBaseEffectKey = nil
         overlayFrameKey = nil
         isPresenting = false
         rootView.baseImage = nil
         rootView.overlayImage = nil
         frameCache.reset()
+        detachPresentedContentView()
+    }
+
+    /// Replaces the animated tile with the static Dock image while retaining
+    /// reusable rasters and failure suppression for the next clock phase.
+    func restoreStaticIcon() {
+        // The overlay image stays attached to rootView, but re-presenting the
+        // same phase must install it again instead of taking the lookup fast path.
+        overlayFrameKey = nil
+        isPresenting = false
+        detachPresentedContentView()
+    }
+
+    private func detachPresentedContentView() {
         if installed {
             dockTile.contentView = nil
             dockTile.display()
@@ -232,24 +262,27 @@ final class DockChargingAnimationPresenter: DockChargingAnimationPresenting {
     }
 
     private func ensureBase(key: DockIconRenderKey, scene: IconSceneState) -> Bool {
-        if baseKey == key, baseImage != nil { return true }
-        if failedBaseKey == key { return false }
+        let effectKey = DockChargingEffectKey(key)
+        if baseKey == key, baseEffectKey == effectKey, baseImage != nil { return true }
+        if failedBaseKey == key, failedBaseEffectKey == effectKey { return false }
 
         rasterRequestCount += 1
         guard let image = renderBase(scene, key.backgroundStyle, key.pixelLength) else {
             failedBaseKey = key
-            // Keep the old base on screen if there is one; the next state
-            // change retries because the failed key is keyed by the new state.
-            return baseKey != nil
+            failedBaseEffectKey = effectKey
+            // Do not composite a new overlay against the old scene's base.
+            // The caller restores the static icon; a new identity retries.
+            return false
         }
 
         baseImage = image
         baseKey = key
+        baseEffectKey = effectKey
         failedBaseKey = nil
+        failedBaseEffectKey = nil
         rootView.baseImage = image
         rootView.overlayImage = nil
         overlayFrameKey = nil
-        frameCache.reset()
 
         // The Dock scales a content view to its own tile, so the rasters are
         // pixel-length based; the view only has to cover the tile's design box.
@@ -260,6 +293,10 @@ final class DockChargingAnimationPresenter: DockChargingAnimationPresenting {
         rootView.frame = CGRect(origin: .zero, size: tileContentSize)
         rootView.autoresizingMask = [.width, .height]
         return true
+    }
+
+    func trimForMemoryPressure() {
+        frameCache.trimForMemoryPressure()
     }
 
     private func installIfNeeded() {

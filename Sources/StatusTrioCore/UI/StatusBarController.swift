@@ -83,6 +83,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     var sublayerCountForTesting: Int { statusItem.button?.layer?.sublayers?.count ?? 0 }
     var cachedChargingFrameRebuildCount: Int { chargingFrameCache.rebuildCount }
     var rasterizedChargingFrameCount: Int { chargingFrameCache.rasterizedFrameCount }
+    var popoverForTesting: NSPopover { popover }
 
     /// What the menu-bar path did, so a test can show that a steady 20-Hz tick
     /// neither re-rasterizes the static content nor reassigns
@@ -585,6 +586,14 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             panelViewModel.stop()
             popoverContentReleaseTask = nil
         }
+    }
+
+    func trimForMemoryPressure() {
+        chargingFrameCache.trimForMemoryPressure()
+        guard !popover.isShown else { return }
+        cancelPopoverContentRelease()
+        popover.contentViewController = nil
+        panelViewModel.stop()
     }
 
     private func cancelPopoverContentRelease() {

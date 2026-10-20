@@ -7,6 +7,55 @@ import Testing
 /// presenter, and going back to a menu-bar placement releases both.
 @MainActor
 struct DockChargingEnvironmentTests {
+    @Test func recoveredPresentationReclaimsDockOwnershipBeforeStaticRendering() async throws {
+        let presenter = RecordingDockChargingPresenter()
+        presenter.failsPulsingAccessory = true
+        let fixture = try DockChargingEnvironmentFixture(presenter: presenter)
+        defer { fixture.tearDown() }
+
+        fixture.environment.start()
+        let deadline = Date().addingTimeInterval(5)
+        while presenter.restoreCount == 0, Date() < deadline {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        #expect(presenter.restoreCount > 0)
+
+        fixture.settings.showsChargingBoltHeartbeat = false
+        while !presenter.isInstalled, Date() < deadline {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        #expect(presenter.isInstalled)
+        #expect(presenter.presentedScenes.last?.outerRing?.effect?.pulsesAccessory == false)
+
+        fixture.environment.appIconController.flushPendingPresentationForTesting()
+        let assignmentsBeforeSceneChange = fixture.application.assignments
+        fixture.settings.showsBatteryPercentageInConnectionSlot = true
+        fixture.environment.appIconController.flushPendingPresentationForTesting()
+        #expect(fixture.application.assignments == assignmentsBeforeSceneChange)
+    }
+
+    @Test func renderFailureRestoresTheStaticDockWithoutExplicitClear() async throws {
+        let presenter = RecordingDockChargingPresenter()
+        presenter.presentSucceeds = false
+        let fixture = try DockChargingEnvironmentFixture(presenter: presenter)
+        defer { fixture.tearDown() }
+
+        fixture.environment.start()
+        let deadline = Date().addingTimeInterval(5)
+        while presenter.restoreCount == 0, Date() < deadline {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+
+        #expect(presenter.restoreCount > 0)
+        let clearsBeforeRepeatedFailure = presenter.clearCount
+        let restoresBeforeRepeatedFailure = presenter.restoreCount
+        while presenter.restoreCount < restoresBeforeRepeatedFailure + 2, Date() < deadline {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        #expect(presenter.restoreCount >= restoresBeforeRepeatedFailure + 2)
+        #expect(presenter.clearCount == clearsBeforeRepeatedFailure)
+    }
+
     @Test func dockOnlyEffectStillRunsTheSharedClockWithTheMenuBarEffectOff() async throws {
         let fixture = try DockChargingEnvironmentFixture(placement: .both)
         defer { fixture.tearDown() }
@@ -236,7 +285,7 @@ struct DockChargingEnvironmentTests {
 @MainActor
 private final class DockChargingEnvironmentFixture {
     let environment: AppEnvironment
-    let presenter = RecordingDockChargingPresenter()
+    let presenter: RecordingDockChargingPresenter
     let clock = ChargingEffectClock()
     let iconPresentation: IconPresentationViewModel
     let settings: SettingsStore
@@ -251,7 +300,8 @@ private final class DockChargingEnvironmentFixture {
     init(
         placement: AppIconPlacement = .dock,
         batteryIsCharging: Bool = true,
-        dockVisibilityMonitor: DockVisibilityMonitorSpy = DockVisibilityMonitorSpy()
+        dockVisibilityMonitor: DockVisibilityMonitorSpy = DockVisibilityMonitorSpy(),
+        presenter: RecordingDockChargingPresenter = RecordingDockChargingPresenter()
     ) throws {
         suiteName = "StatusTrioCoreTests.DockChargingEnvironment.\(UUID().uuidString)"
         guard let defaults = UserDefaults(suiteName: suiteName) else {
@@ -266,6 +316,7 @@ private final class DockChargingEnvironmentFixture {
         settings.hasCompletedIconGuideOnboarding = true
         settings.completeTelemetryConsent(sharesAnalytics: false)
         self.settings = settings
+        self.presenter = presenter
 
         let localization = Localization(defaults: defaults, preferredLanguages: ["en"])
         store = SystemStatusStore(
@@ -445,7 +496,10 @@ private final class RecordingDockChargingPresenter: DockChargingAnimationPresent
     private(set) var presentedPhases: [ChargingEffectPhase] = []
     private(set) var presentedScenes: [IconSceneState] = []
     private(set) var clearCount = 0
+    private(set) var restoreCount = 0
     private(set) var isInstalled = false
+    var presentSucceeds = true
+    var failsPulsingAccessory = false
 
     func present(
         phase: ChargingEffectPhase,
@@ -455,8 +509,19 @@ private final class RecordingDockChargingPresenter: DockChargingAnimationPresent
     ) -> Bool {
         presentedPhases.append(phase)
         presentedScenes.append(scene)
+        guard presentSucceeds,
+              !(failsPulsingAccessory && scene.outerRing?.effect?.pulsesAccessory == true)
+        else {
+            isInstalled = false
+            return false
+        }
         isInstalled = true
         return true
+    }
+
+    func restoreStaticIcon() {
+        restoreCount += 1
+        isInstalled = false
     }
 
     func clear() {
@@ -469,6 +534,7 @@ private final class RecordingDockChargingPresenter: DockChargingAnimationPresent
 private final class DockChargingApplicationSpy: ApplicationActivationPolicyApplying, ApplicationDockIconApplying {
     private(set) var currentActivationPolicy: NSApplication.ActivationPolicy = .accessory
     private(set) var applicationIconImage: NSImage?
+    private(set) var assignments = 0
 
     func setActivationPolicy(_ activationPolicy: NSApplication.ActivationPolicy) -> Bool {
         currentActivationPolicy = activationPolicy
@@ -476,6 +542,7 @@ private final class DockChargingApplicationSpy: ApplicationActivationPolicyApply
     }
 
     func setApplicationIconImage(_ image: NSImage?) {
+        assignments += 1
         applicationIconImage = image
     }
 }

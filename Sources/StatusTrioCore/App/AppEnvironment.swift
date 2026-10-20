@@ -22,6 +22,7 @@ final class AppEnvironment {
     let bluetoothAudioIconOverrideSynchronizer = BluetoothAudioIconOverrideSynchronizer()
     private let bluetoothNearbyBatteryOptOutSynchronizer = BluetoothNearbyBatteryOptOutSynchronizer()
     private let lowPowerModeControlSynchronizer = LowPowerModeControlSynchronizer()
+    private let memoryPressureMonitor: MemoryPressureMonitor
 
     private var chargingEffectCancellables = Set<AnyCancellable>()
     private var inputSourceLifecycleCancellables = Set<AnyCancellable>()
@@ -47,7 +48,8 @@ final class AppEnvironment {
         chargingEffectMotionMonitor: ChargingEffectMotionMonitor,
         dockChargingAnimationPresenter: (any DockChargingAnimationPresenting)? = nil,
         dockVisibilityMonitor: (any DockVisibilityMonitoring)? = nil,
-        telemetryReporter: any TelemetryReporting
+        telemetryReporter: any TelemetryReporting,
+        memoryPressureMonitor: MemoryPressureMonitor? = nil
     ) {
         self.store = store
         self.settings = settings
@@ -65,11 +67,16 @@ final class AppEnvironment {
         self.dockChargingAnimationPresenter = dockChargingAnimationPresenter
         self.dockVisibilityMonitor = dockVisibilityMonitor
         self.telemetryReporter = telemetryReporter
+        self.memoryPressureMonitor = memoryPressureMonitor ?? MemoryPressureMonitor()
         self.menuBarChargingEffectEnabled = settings.showsMenuBarChargingEffect
         self.dockChargingEffectEnabled = settings.showsDockChargingEffect
     }
 
     func start() {
+        memoryPressureMonitor.onPressure = { [weak self] in
+            self?.releaseRebuildableResources()
+        }
+        memoryPressureMonitor.start()
         iconPresentation.start()
         startInputSourceMonitoringIfNeeded()
         onboardingWindowController.showIfNeeded()
@@ -117,6 +124,8 @@ final class AppEnvironment {
     }
 
     func stop() {
+        memoryPressureMonitor.stop()
+        memoryPressureMonitor.onPressure = nil
         telemetryReporter.stop()
         chargingEffectClock.stop()
         statusBarController.visibilityDidChange = nil
@@ -140,7 +149,21 @@ final class AppEnvironment {
         appIconController.stop()
         mainMenuController.stop()
         store.stop()
+        // Both profiler consumers belong to the stopped store. A pressure
+        // warning alone must not invalidate a report another reader is using.
+        BluetoothProfilerReportCache.shared.reset()
         iconPresentation.stop()
+        releaseRebuildableResources()
+    }
+
+    private func releaseRebuildableResources() {
+        appIconController.releaseCachedImages()
+        statusBarController.trimForMemoryPressure()
+        dockChargingAnimationPresenter?.trimForMemoryPressure()
+        DockIconPreviewCache.shared.reset()
+        IconImageDecodeCache.shared.reset()
+        DockIconRenderer.resetScratchContexts()
+        StatusIconRenderer.resetInkOffsetCaches()
     }
 
     /// Input-source observers exist only while a feature that draws them is
@@ -287,9 +310,10 @@ final class AppEnvironment {
             pixelLength: DockIconRenderer.pixelSize
         ) else {
             appIconController.setDockChargingAnimationActive(false)
-            presenter.clear()
+            presenter.restoreStaticIcon()
             return
         }
+        appIconController.setDockChargingAnimationActive(true)
     }
 
     static func makeStore(
