@@ -1118,3 +1118,27 @@ distribution due to environment protection rules.
 
 要在该分支拿到**公证版**，需要把 `distribution` environment 的 deployment branch
 规则放开（或改由受保护分支/标签触发）；管理该设置属于仓库权限变更，未擅自执行。
+
+## 39376165822：内存优化预检中的测试调度依赖
+
+- 运行：[39376165822](https://github.com/lingyired/status-trio/actions/runs/39376165822)，
+  head `04206b5`，`version=1.6.1`、`build=38`、`publish=false`，
+  CI 为 Xcode 26.6 / Swift 6.3.3；失败阶段为 `Run tests`。
+- XCTest 1717 项（7 skipped）通过；Swift Testing 697 项中出现 3 个 issue：
+  `StatusBarControllerVisibilityTests.testSwitchAnimatesTheMenuBarWhileTheRealBatteryIsUnplugged`
+  的两个保留动画断言，以及
+  `ChargingEffectControllerTests.batteryLevelChangesStillUpdateStaticDockArtwork` 的重绘计数断言。
+- 菜单栏根因：测试先关闭合成充电输入，再开启注入的绘图失败开关；
+  超过 50 ms coalescing interval 时，设置发布会立即重绘，已成功回到静态图。
+  原测试却仍假设失败发生在该重绘之前。为测试插入 75 ms quiet interval 后，
+  本地稳定重现相同的两个失败；将失败开关移到设置发布前并显式 drain 后，
+  同样的 quiet interval 下两项 visibility 测试通过。正式测试移除了复现用 sleep。
+- Dock 测试将 AsyncStream → store → 500 ms presentation debounce → 50 ms
+  redraw coalescer 的整条链路当作 5 秒内应自动完成的操作，仅轮询最终 renderCount。
+  失败日志没有分阶段观测，不能确定这次 CI 延迟具体落在哪一级；同一轮中
+  `visibleDockRendersStatusChanges` 通过，未获得产品绘制逻辑回归的证据。修复改为
+  注入既有 ManualIconPresentationScheduler，先验证电量进入 store 与 pending debounce，
+  显式执行 debounce，确认 scene 为 61%，再 flush redraw。保留重绘断言，
+  不延长 timeout、不修改产品节流逻辑。
+- 复验：本地菜单栏定向测试 2 项通过；修复后全量 1717 XCTest（7 skipped）和
+  697 Swift Testing / 103 suites 全部通过。Release 构建与新一轮 CI 结果将在集成记录补齐。

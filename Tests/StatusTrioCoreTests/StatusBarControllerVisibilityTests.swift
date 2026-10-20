@@ -78,8 +78,11 @@ struct StatusBarControllerVisibilityTests {
         #expect(controller.hasLayerBackedAnimation)
         #expect(controller.presentedImageForTesting?.size.width == 32)
 
-        settings.setChargingEffectTestEnabled(false)
+        // Publishing the setting can render synchronously after the coalescing
+        // interval. Arm the failure first so both immediate and queued draws fail.
         rasterFailure.isEnabled = true
+        settings.setChargingEffectTestEnabled(false)
+        controller.flushPendingPresentationForTesting()
         clock.update(battery: battery, enabled: true, reduceMotion: false, displayAsleep: false)
         #expect(!clock.isRunning)
         #expect(controller.cachedChargingFrameCount == 36)
