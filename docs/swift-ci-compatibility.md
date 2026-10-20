@@ -1175,97 +1175,56 @@ distribution due to environment protection rules.
   运行间结果有差异，但仍未获得首次失败的精确阶段根因；
   不把首次失败解释为编译器问题，也不以复验通过抹去首次失败。
 
-## 39427258831：PR #124 华为传输测试模块编译阻塞
+## 39441930496 至 39447874014：异步图标测试与部署契约假通过
 
-- 运行：[39427258831](https://github.com/lingyired/status-trio/actions/runs/39427258831)，
-  head `45270af1`，CI 为 `macos-26` / Xcode 26.6 / Swift 6.3.3；
-  `Validate appcast notes` 已通过，失败阶段是 `Run tests`。
-- 编译停在 `[594/621] WirelessListModelsTests.swift` 后约 90 分钟没有测试执行输出，
-  到 job timeout 后被取消。完整日志中不存在
-  `Compiling StatusTrioCoreTests HuaweiListeningModeTests.swift` 或
-  `Compiling StatusTrioCoreTests HuaweiTransportLifecycleTests.swift` 的完成记录；
-  同阶段仍有 `swift-frontend` / `swift-driver` 进程被终止。因此这不是业务测试运行时挂起，
-  而是测试目标在准备剩余批次的 Swift 6.3.3 编译任务时卡住。后续原生兼容、Release、
-  DMG、签名、公证及发布步骤均未运行。
-- 隔离验证：在一次性诊断分支
-  `codex/pr124-huawei-hang-triage`（head `c8c49315`）只删除 689 行的
-  `HuaweiTransportLifecycleTests.swift`，生产 transport 及其余测试不变。
-  [39441995782](https://github.com/lingyired/status-trio/actions/runs/39441995782)
-  在同一 CI 工具链上约 3 分钟完成测试模块编译（`Build complete!`，128.45 秒），
-  随后约 2 分钟跑完 XCTest（7 skipped）和 697 Swift Testing / 103 suites，
-  说明原 90 分钟阻塞由该文件触发的 Swift 6.3.3 测试模块编译引起。
-  该 run 最终仍被既是主分支问题、也与本 PR 无关的
-  `AppIconControllerTests.visibleDockRendersStatusChanges` coalesced redraw 5 秒超时
-  标为失败，因此不能作为全绿复验。
-- 未在 Swift 6.3.3 本机工具链上继续做单构造二分；因此不把某个
-  `@Sendable`、continuation 或泛型写法单独宣布为已证实的编译器 bug。
-- 修复：把生命周期文件缩减为 5 个定向回归测试，覆盖首次使用前取消不启动线程、
-  运行中关闭在产生副作用前取消、启动中关闭使旧操作失效、队列操作不重入 drain、
-  关闭后复用同一 transport 线程但使用新 session generation。删除大型
-  `Task<T, any Error>` 完成轮询、嵌套 continuation 和条件转换辅助层；
-  模式映射、普通/关闭、噪声取消、透传和控制器回滚仍由
-  `HuaweiListeningModeTests.swift` 覆盖。生产 `HuaweiListeningModeTransport.swift`
-  的噪声控制行为未放宽或移除。
-- 验证：本地 Xcode 27 / Swift 6.4 上
-  `swift test --filter HuaweiTransportLifecycleTests` 通过 5 项；全量
-  `swift test` 通过 1,745 XCTest（7 skipped）和 697 Swift Testing / 103 suites；
-  `swift build -c release` 与 `VERSION=1.6.1 BUILD=38 PUBLISH=false
-  bash scripts/validate-appcast-notes.sh` 均通过。修复提交为 `68282826`，
-  Swift 6.3.3 CI 复验见下文 `39443852308`、`39444905968`。
+同一 SHA 的结果差异把测试稳定性问题与工具链兼容性区分开了：
 
-## 39443852308、39444905968：PR #124 图标异步测试调度
-
-- 运行：[39443852308](https://github.com/lingyired/status-trio/actions/runs/39443852308)
-  与 [39444905968](https://github.com/lingyired/status-trio/actions/runs/39444905968)，
-  head `099baec0`，`version=1.6.1`、`build=38`、`publish=false`、
-  `notarize=false`，CI 为 Xcode 26.6 / Swift 6.3.3。
-  两次的失败阶段都是 `Run tests`，后续兼容性检查和打包步骤未运行。
-- `39443852308` 的 XCTest 1,745 项（7 skipped）通过；Swift Testing 697 项 /
-  103 suites 报告 10 个 issue：`AppIconControllerTests.visibleDockRendersStatusChanges`、
-  `IconSurfaceIntegrationTests` 的 6 个 coalesced-redraw 等待，以及
-  `DockChargingEnvironmentTests` 的 2 个动画状态等待。
-- `39444905968` 再次失败，Swift Testing 报告 13 个 issue。除上述 10 个外，
-  `AppIconControllerTests` 的 `connectionOptionChangeKeepsConfiguredWiFiSymbolScale`、
-  `ringStrokeStyleSurvivesOtherOptionChanges` 也在没有观察到合并重绘后失败；
+- [`39441930496`](https://github.com/lingyired/status-trio/actions/runs/39441930496)
+  成功；
+  [`39441995782`](https://github.com/lingyired/status-trio/actions/runs/39441995782)
+  对同一 head `c8c49315` 失败，失败阶段均为 `Run tests`。
+- 后续
+  [`39443852308`](https://github.com/lingyired/status-trio/actions/runs/39443852308)
+  （head `68282826`）、
+  [`39444905968`](https://github.com/lingyired/status-trio/actions/runs/39444905968)
+  （head `099baec0`）和
+  [`39447874014`](https://github.com/lingyired/status-trio/actions/runs/39447874014)
+  （head `d8a3b97c`）连续失败，Swift Testing 分别在约 6.44、6.85、6.30 秒
+  汇总失败；XCTest 已完成。失败集中在
+  `AppIconControllerTests.visibleDockRendersStatusChanges`、
+  `IconSurfaceIntegrationTests` 的多条 surface 等待、
   `ChargingEffectControllerTests.batteryLevelChangesStillUpdateStaticDockArtwork`
-  没有在 5 秒内观察到 `AsyncStream → store` 更新。
-- 失败日志显示完整测试轮在主 actor 上近乎同时启动（697 项从同一时间点开始，
-  主 actor 队列高度拥塞），而测试分别把真实 500 ms presentation debounce、
-  50 ms render coalescer 和 20 Hz charging clock 当作会在固定 5 秒内自动完成的实现。
-  测试没有记录各阶段状态，不能从日志精确区分延迟发生在 AsyncStream 消费、
-  Combine 发布、debounce 还是 coalescer 尾部任务。PR 未修改这些产品实现；
-  失败集中在既有图标异步测试，不能据此认定华为传输或界面逻辑有回归。
-- 修复仅限测试脚手架，不放宽断言或修改产品节流逻辑：
-  - `AppIconControllerTests.visibleDockRendersStatusChanges` 改用
-    `ManualIconPresentationScheduler`，等待 debounce 排程后显式执行，
-    再调用 `flushPendingPresentationForTesting()`，仍断言恰好一次 Dock 重绘。
-  - `IconSurfaceIntegrationTests` 改用手动 presentation scheduler，分段验证
-    model、菜单栏和 Dock 的同一 scene；保留 raster 失败、恢复、设置 parity 与
-    charging test projection 的全部断言。
-  - `ChargingEffectControllerTests` 先确认电量进入 store 和 debounce 已排程，
-    再检查 61% scene 与一次静态 Dock 更新。
-  - `DockChargingEnvironmentTests` 的开发预览用例注入可控日期和
-    `ManualEventSleeper`，逐帧推进 burst 到 steady，确认 clock 发布
-    `stepsPerCycle=36` 且每次发布的 phase 都到达 Dock presenter。
-- 本地验证（Xcode 27 / Swift 6.4）：
+  和 `DockChargingEnvironmentTests` 的 restore/steady-phase 断言。
+- 根因不是编译器或产品渲染差异。原测试把 500 ms presentation debounce、
+  50 ms render coalescer、20 Hz charging clock 和 AsyncStream 消费绑定成一个
+  5 秒 wall-clock 等待；整套 Swift Testing 在主 actor 上并发启动时，固定窗口内
+  实际到达哪一级并不确定。失败 Run 的日志也显示多个 suite 在同一时刻启动并
+  在一个 5 秒窗口后一起报错。
+- 修复只为测试注入既有的 `ManualIconPresentationScheduler`、`IconRenderCoalescer`、
+  `ManualEventSleeper` 和受控 charging clock，先等待 store/debounce 等确定事件，
+  再显式执行 debounce、coalescer drain 和时钟帧。没有延长 timeout、删除断言、
+  skip 测试或修改产品节流逻辑；超时现在抛出包含 snapshot、store 场景、
+  pending debounce、render count 和最后渲染 scene 的错误。
+- 定向验证：最终清理后
   `swift test --filter 'AppIconControllerTests|IconSurfaceIntegrationTests|ChargingEffectControllerTests|DockChargingEnvironmentTests'`
-  通过 66 项 / 4 suites、0 issue；全量 `swift test` 通过 1,745 XCTest（7 skipped）
-  和 697 Swift Testing / 103 suites；`swift build -c release` 与
-  `VERSION=1.6.1 BUILD=38 PUBLISH=false bash scripts/validate-appcast-notes.sh`
-  也均通过。Swift 6.3.3 非发布预检继续记录在下方。
-- 首次修复后的 Swift 6.3.3 非发布预检
-  [39447874014](https://github.com/lingyired/status-trio/actions/runs/39447874014)
-  （head `d8a3b97c`）仍在 `Run tests` 失败。XCTest 1,745 项（7 skipped）通过；
-  Swift Testing 697 项 / 103 suites 只剩
-  `DockChargingEnvironmentTests.renderFailureRestoresTheStaticDockWithoutExplicitClear`
-  一个 issue：失败前已观察到 2 次 restore，但另一个统一 5 秒期限在主 actor
-  高负载下耗尽时仍未观察到后续两次。
-- 根因仍是测试把真实 20 Hz clock 的推进和固定的 wall-clock 期限绑定在一起。
-  该用例现在注入可控日期与 `ManualEventSleeper`，启动后明确推进两个 50 ms
-  frame，并逐帧断言每次 render failure 恰好追加一次 `restoreStaticIcon()`，
-  同时确认没有显式 `clear()`。产品代码、失败恢复路径与断言强度均未改变。
-  修复后本地全量测试再次通过 1,745 XCTest（7 skipped）和
-  697 Swift Testing / 103 suites，`swift build -c release` 也通过。
+  通过 66 tests / 4 suites；默认调度 10/10 轮、四个 suite 分别单独执行 3/3 轮、
+  `--parallel` 10/10 轮均通过。第一次默认 10 轮在第 8 轮捕获到
+  `mappedSettingsStayInParityAcrossMenuBarAndDock` 的真实竞态：充电场景已到
+  model，但菜单栏与 Dock 的异步交付尚未同时收敛，测试立即断言失败。修复后
+  先等待两个 surface 都交付同一 scene，再保留严格相等断言；随后 10/10 通过。
+  最终 `swift test` 连续 3 轮通过：每轮 XCTest 1719（7 skipped、0 failures）
+  和 Swift Testing 697 tests / 103 suites；`swift build -c release` 通过。
+
+同时修复了 `scripts/test-macos13-deployment-contract.sh` 的已证实假阳性：
+旧脚本在缺少 `rg` 时让 `if rg ...` 进入 false 分支，然后无条件打印
+`macOS 13 deployment contract passed` 并退出 0。用受控 fixture 在
+`PATH` 中没有 `rg`、但存在 `grep` 的环境复现了这一行为
+（旧脚本 `rg: command not found` 后仍退出 0）。新实现优先用 `rg`，不可用时
+自动回退到 `grep -E -R`，并把扫描器的 0（找到禁止常量）、1（未找到）与
+其他退出码严格区分；工具缺失和执行错误都会 fail closed。新增
+`scripts/test-macos13-deployment-contract-regressions.sh` 覆盖正常 13.0、
+禁止 15.0、显式 grep、自动 grep fallback、工具缺失和 scanner exit 2，
+并接入 release workflow 的 native compatibility step。
 
 ## PR #124：华为传输发现、连接所有权与充电图层并发
 

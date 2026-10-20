@@ -55,6 +55,10 @@ struct IconSurfaceIntegrationTests {
         )
         defer { menuBar.setVisible(false) }
         harness.controller.start()
+        menuBar.refreshCurrentPresentation()
+        harness.controller.refreshCurrentPresentation()
+        menuBar.flushPendingPresentationForTesting()
+        harness.controller.flushPendingPresentationForTesting()
         try await waitUntil { rasterSpy.calls > 0 }
         menuBar.flushPendingPresentationForTesting()
         harness.controller.flushPendingPresentationForTesting()
@@ -107,8 +111,8 @@ struct IconSurfaceIntegrationTests {
         )
         defer { menuBar.setVisible(false) }
         harness.controller.start()
-        menuBar.flushPendingPresentationForTesting()
-        harness.controller.flushPendingPresentationForTesting()
+        menuBar.refreshCurrentPresentation()
+        harness.controller.refreshCurrentPresentation()
         #expect(rasterSpy.successfulImage != nil)
         #expect(harness.application.applicationIconImage != nil)
         #expect(rasterSpy.scenes.last == harness.iconPresentation.output.scene)
@@ -305,6 +309,10 @@ struct IconSurfaceIntegrationTests {
         scheduler.runScheduled()
         harness.controller.flushPendingPresentationForTesting()
         #expect(harness.iconPresentation.output.scene.outerRing?.effect?.pulsesAccessory == true)
+        try await waitUntil(failureMessage: "Both surfaces did not deliver the charging scene.") {
+            menuBarScenes.last == harness.iconPresentation.output.scene
+                && harness.log.lastScene == harness.iconPresentation.output.scene
+        }
         #expect(menuBarScenes.last == harness.iconPresentation.output.scene)
         #expect(harness.log.lastScene == harness.iconPresentation.output.scene)
         try await verifySetting(
@@ -375,7 +383,8 @@ struct IconSurfaceIntegrationTests {
         )
         defer { menuBar.setVisible(false) }
         harness.controller.start()
-        try await waitUntil { menuBarRenders > 0 && harness.log.renderCount > 0 }
+        menuBar.refreshCurrentPresentation()
+        harness.controller.refreshCurrentPresentation()
         try await waitUntil {
             menuBarScenes.last == harness.iconPresentation.output.scene
                 && harness.log.lastScene == harness.iconPresentation.output.scene
@@ -448,7 +457,8 @@ struct IconSurfaceIntegrationTests {
         )
         defer { menuBar.setVisible(false) }
         harness.controller.start()
-        harness.controller.flushPendingPresentationForTesting()
+        menuBar.refreshCurrentPresentation()
+        harness.controller.refreshCurrentPresentation()
         #expect(!menuBarScenes.isEmpty)
         #expect(harness.log.renderCount > 0)
         #expect(menuBarScenes.last == harness.iconPresentation.output.scene)
@@ -498,40 +508,41 @@ struct IconSurfaceIntegrationTests {
         )
         defer { menuBar.setVisible(false) }
         harness.controller.start()
-        try await waitUntil {
-            harness.log.renderCount > 0
-                && menuBarScenes.last == harness.iconPresentation.output.scene
-                && harness.iconPresentation.output.scene.outerRing?.effect?.pulsesAccessory == true
-        }
+        menuBar.refreshCurrentPresentation()
+        harness.controller.refreshCurrentPresentation()
+        #expect(menuBarScenes.last == harness.iconPresentation.output.scene)
+        #expect(harness.log.lastScene == harness.iconPresentation.output.scene)
+        #expect(harness.iconPresentation.output.scene.outerRing?.effect?.pulsesAccessory == true)
         let initialDockRenders = harness.log.renderCount
         let initialDockImage = harness.application.applicationIconImage
 
         harness.settings.showsChargingBoltHeartbeat = false
         try await waitUntil {
             harness.iconPresentation.output.scene.outerRing?.effect?.pulsesAccessory == false
-                && menuBarScenes.last == harness.iconPresentation.output.scene
         }
+        menuBar.flushPendingPresentationForTesting()
         harness.controller.flushPendingPresentationForTesting()
-        #expect(menuBarScenes.last?.outerRing?.effect?.pulsesAccessory == false)
+        #expect(menuBarScenes.last == harness.iconPresentation.output.scene)
         #expect(harness.log.renderCount == initialDockRenders)
         #expect(harness.application.applicationIconImage === initialDockImage)
 
         harness.settings.showsChargingEffect = false
         try await waitUntil {
             harness.iconPresentation.output.scene.outerRing?.effect == nil
-                && menuBarScenes.last == harness.iconPresentation.output.scene
         }
+        menuBar.flushPendingPresentationForTesting()
         harness.controller.flushPendingPresentationForTesting()
-        #expect(menuBarScenes.last?.outerRing?.effect == nil)
+        #expect(menuBarScenes.last == harness.iconPresentation.output.scene)
         #expect(harness.log.renderCount == initialDockRenders)
         #expect(harness.application.applicationIconImage === initialDockImage)
 
         harness.settings.ringStrokeStyle = .bold
         try await waitUntil {
             harness.iconPresentation.output.scene.outerRing?.strokeScale == RingStrokeStyle.bold.scale
-                && menuBarScenes.last == harness.iconPresentation.output.scene
         }
+        menuBar.flushPendingPresentationForTesting()
         harness.controller.flushPendingPresentationForTesting()
+        #expect(menuBarScenes.last == harness.iconPresentation.output.scene)
         #expect(harness.log.renderCount > initialDockRenders)
         #expect(harness.log.lastScene?.outerRing?.strokeScale == RingStrokeStyle.bold.scale)
     }
@@ -541,12 +552,17 @@ struct IconSurfaceIntegrationTests {
         failureMessage: String = "The surface update did not arrive.",
         condition: @escaping @MainActor () -> Bool
     ) async throws {
-        let deadline = ContinuousClock.now + timeout
+        let startedAt = ContinuousClock.now
+        let deadline = startedAt + timeout
         while ContinuousClock.now < deadline {
             if condition() { return }
             try await Task.sleep(for: .milliseconds(10))
         }
-        Issue.record("\(failureMessage) Timeout: \(timeout).")
+        throw SurfacePresentationTimeout(
+            message: failureMessage,
+            timeout: timeout,
+            elapsed: startedAt.duration(to: .now)
+        )
     }
 
     private func verifySetting(
@@ -574,6 +590,16 @@ struct IconSurfaceIntegrationTests {
         }
     }
 
+}
+
+private struct SurfacePresentationTimeout: Error, CustomStringConvertible {
+    let message: String
+    let timeout: Duration
+    let elapsed: Duration
+
+    var description: String {
+        "\(message) Timeout: \(timeout). Elapsed: \(elapsed)."
+    }
 }
 
 private struct MenuBarRenderSurfaceKey: Equatable {

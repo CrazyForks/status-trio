@@ -450,12 +450,26 @@ private final class DockChargingEnvironmentFixture {
         while presenter.presentedPhases.isEmpty, Date() < deadline {
             try await Task.sleep(for: .milliseconds(20))
         }
+        guard !presenter.presentedPhases.isEmpty else {
+            throw DockChargingEnvironmentTestFailure.conditionNotMet(
+                "The Dock presenter did not receive a phase.",
+                snapshot: snapshot(),
+                timeout: timeout
+            )
+        }
     }
 
     func waitForClockToStop(timeout: TimeInterval = 5) async throws {
         let deadline = Date().addingTimeInterval(timeout)
         while clock.isRunning, Date() < deadline {
             try await Task.sleep(for: .milliseconds(20))
+        }
+        guard !clock.isRunning else {
+            throw DockChargingEnvironmentTestFailure.conditionNotMet(
+                "The charging clock did not stop.",
+                snapshot: snapshot(),
+                timeout: timeout
+            )
         }
     }
 
@@ -464,12 +478,26 @@ private final class DockChargingEnvironmentFixture {
         while !clock.isRunning, Date() < deadline {
             try await Task.sleep(for: .milliseconds(20))
         }
+        guard clock.isRunning else {
+            throw DockChargingEnvironmentTestFailure.conditionNotMet(
+                "The charging clock did not start.",
+                snapshot: snapshot(),
+                timeout: timeout
+            )
+        }
     }
 
     func waitForDockVisibilityPolling(timeout: TimeInterval = 5) async throws {
         let deadline = Date().addingTimeInterval(timeout)
         while dockVisibilityMonitor.startCount == 0, Date() < deadline {
             try await Task.sleep(for: .milliseconds(20))
+        }
+        guard dockVisibilityMonitor.startCount > 0 else {
+            throw DockChargingEnvironmentTestFailure.conditionNotMet(
+                "Dock visibility polling did not start.",
+                snapshot: snapshot(),
+                timeout: timeout
+            )
         }
     }
 
@@ -478,11 +506,75 @@ private final class DockChargingEnvironmentFixture {
         while dockVisibilityMonitor.stopCount == 0, Date() < deadline {
             try await Task.sleep(for: .milliseconds(20))
         }
+        guard dockVisibilityMonitor.stopCount > 0 else {
+            throw DockChargingEnvironmentTestFailure.conditionNotMet(
+                "Dock visibility polling did not stop.",
+                snapshot: snapshot(),
+                timeout: timeout
+            )
+        }
     }
 
     func tearDown() {
         environment.stop()
         defaults.removeTestSuite(named: suiteName)
+    }
+
+    func snapshot() -> DockChargingEnvironmentSnapshot {
+        DockChargingEnvironmentSnapshot(
+            snapshot: store.snapshot,
+            clockRunning: clock.isRunning,
+            dockAnimationActive: clock.isDockAnimationActive,
+            phase: clock.phase,
+            presenterInstalled: presenter.isInstalled,
+            presentedPhaseCount: presenter.presentedPhases.count,
+            presentedSceneCount: presenter.presentedScenes.count,
+            clearCount: presenter.clearCount,
+            restoreCount: presenter.restoreCount,
+            pollingStarted: dockVisibilityMonitor.startCount > 0,
+            pollingStopped: dockVisibilityMonitor.stopCount > 0
+        )
+    }
+}
+
+private struct DockChargingEnvironmentSnapshot: CustomStringConvertible {
+    let snapshot: StatusSnapshot
+    let clockRunning: Bool
+    let dockAnimationActive: Bool
+    let phase: ChargingEffectPhase?
+    let presenterInstalled: Bool
+    let presentedPhaseCount: Int
+    let presentedSceneCount: Int
+    let clearCount: Int
+    let restoreCount: Int
+    let pollingStarted: Bool
+    let pollingStopped: Bool
+
+    var description: String {
+        """
+        snapshot: \(snapshot)
+        clock running: \(clockRunning)
+        dock animation active: \(dockAnimationActive)
+        phase: \(String(describing: phase))
+        presenter installed: \(presenterInstalled)
+        presented phases: \(presentedPhaseCount)
+        presented scenes: \(presentedSceneCount)
+        clear count: \(clearCount)
+        restore count: \(restoreCount)
+        polling started: \(pollingStarted)
+        polling stopped: \(pollingStopped)
+        """
+    }
+}
+
+private enum DockChargingEnvironmentTestFailure: Error, CustomStringConvertible {
+    case conditionNotMet(String, snapshot: DockChargingEnvironmentSnapshot, timeout: TimeInterval)
+
+    var description: String {
+        switch self {
+        case let .conditionNotMet(message, snapshot, timeout):
+            "\(message) Timeout: \(timeout)s.\n\(snapshot)"
+        }
     }
 }
 
