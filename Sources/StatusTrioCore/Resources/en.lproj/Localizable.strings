@@ -339,6 +339,13 @@
 "wifi.security.enterprise" = "Enterprise";
 "bluetooth.openDetails" = "Open details to view device status";
 "bluetooth.title" = "Bluetooth";
+"bluetooth.power.turnOn" = "Turn Bluetooth on";
+"bluetooth.power.turnOff" = "Turn Bluetooth off";
+"bluetooth.power.unknown" = "Bluetooth status is unavailable.";
+"bluetooth.power.changeFailed" = "Bluetooth did not change state.";
+"bluetooth.power.offConfirmTitle" = "Turn off Bluetooth?";
+"bluetooth.power.offConfirmMessage" = "Connected keyboards, mice, trackpads, or game controllers may disconnect. You can turn Bluetooth back on from this panel or System Settings.";
+"bluetooth.power.offConfirmAction" = "Turn Off";
 "bluetooth.pairedDevices.title" = "Paired";
 "bluetooth.devices.title" = "Devices";
 "bluetooth.nearbyBattery.title" = "Nearby";

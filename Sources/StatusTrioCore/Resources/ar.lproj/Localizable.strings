@@ -339,6 +339,13 @@
 "wifi.security.enterprise" = "المؤسسات";
 "bluetooth.openDetails" = "افتح التفاصيل لعرض حالة الجهاز";
 "bluetooth.title" = "Bluetooth";
+"bluetooth.power.turnOn" = "تشغيل Bluetooth";
+"bluetooth.power.turnOff" = "إيقاف Bluetooth";
+"bluetooth.power.unknown" = "حالة Bluetooth غير متاحة.";
+"bluetooth.power.changeFailed" = "لم تتغير حالة Bluetooth.";
+"bluetooth.power.offConfirmTitle" = "هل تريد إيقاف Bluetooth؟";
+"bluetooth.power.offConfirmMessage" = "قد تنقطع لوحات المفاتيح أو الفئران أو لوحات اللمس أو وحدات التحكم المتصلة. يمكنك تشغيل Bluetooth مرة أخرى من هذه اللوحة أو من إعدادات النظام.";
+"bluetooth.power.offConfirmAction" = "إيقاف";
 "bluetooth.pairedDevices.title" = "مقترنة";
 "bluetooth.devices.title" = "أجهزة Bluetooth";
 "bluetooth.nearbyBattery.title" = "قريبة";

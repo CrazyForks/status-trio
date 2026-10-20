@@ -339,6 +339,13 @@
 "wifi.security.enterprise" = "エンタープライズ";
 "bluetooth.openDetails" = "詳細を開いてデバイスの状態を表示";
 "bluetooth.title" = "Bluetooth";
+"bluetooth.power.turnOn" = "Bluetoothをオンにする";
+"bluetooth.power.turnOff" = "Bluetoothをオフにする";
+"bluetooth.power.unknown" = "Bluetoothの状態を取得できません。";
+"bluetooth.power.changeFailed" = "Bluetoothの状態が変わりませんでした。";
+"bluetooth.power.offConfirmTitle" = "Bluetoothをオフにしますか？";
+"bluetooth.power.offConfirmMessage" = "接続中のキーボード、マウス、トラックパッド、ゲームコントローラが切断される可能性があります。このパネルまたはシステム設定からBluetoothを再度オンにできます。";
+"bluetooth.power.offConfirmAction" = "オフにする";
 "bluetooth.pairedDevices.title" = "ペアリング済み";
 "bluetooth.devices.title" = "Bluetooth デバイス";
 "bluetooth.nearbyBattery.title" = "近くのデバイス";

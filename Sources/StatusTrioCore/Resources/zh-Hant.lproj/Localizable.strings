@@ -339,6 +339,13 @@
 "wifi.security.enterprise" = "企業";
 "bluetooth.openDetails" = "打開詳細資訊以查看裝置狀態";
 "bluetooth.title" = "藍牙";
+"bluetooth.power.turnOn" = "開啟藍牙";
+"bluetooth.power.turnOff" = "關閉藍牙";
+"bluetooth.power.unknown" = "無法讀取藍牙狀態。";
+"bluetooth.power.changeFailed" = "藍牙狀態未發生變化。";
+"bluetooth.power.offConfirmTitle" = "要關閉藍牙嗎？";
+"bluetooth.power.offConfirmMessage" = "已連接的鍵盤、滑鼠、觸控板或遊戲手把可能會中斷連線。你可以從此面板或系統設定重新開啟藍牙。";
+"bluetooth.power.offConfirmAction" = "關閉";
 "bluetooth.pairedDevices.title" = "已配對";
 "bluetooth.devices.title" = "藍牙裝置";
 "bluetooth.nearbyBattery.title" = "附近裝置";

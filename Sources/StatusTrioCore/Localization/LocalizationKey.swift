@@ -400,6 +400,13 @@ enum LocalizationKey: String, CaseIterable, Hashable, Sendable {
 
     case bluetoothOpenDetails = "bluetooth.openDetails"
     case bluetoothTitle = "bluetooth.title"
+    case bluetoothPowerChangeFailed = "bluetooth.power.changeFailed"
+    case bluetoothPowerUnknown = "bluetooth.power.unknown"
+    case bluetoothPowerTurnOn = "bluetooth.power.turnOn"
+    case bluetoothPowerTurnOff = "bluetooth.power.turnOff"
+    case bluetoothPowerOffConfirmTitle = "bluetooth.power.offConfirmTitle"
+    case bluetoothPowerOffConfirmMessage = "bluetooth.power.offConfirmMessage"
+    case bluetoothPowerOffConfirmAction = "bluetooth.power.offConfirmAction"
     case bluetoothPairedDevicesTitle = "bluetooth.pairedDevices.title"
     case bluetoothDevicesTitle = "bluetooth.devices.title"
     case bluetoothNearbyBatteryTitle = "bluetooth.nearbyBattery.title"

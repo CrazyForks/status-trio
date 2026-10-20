@@ -339,6 +339,13 @@
 "wifi.security.enterprise" = "Enterprise";
 "bluetooth.openDetails" = "Details öffnen, um den Gerätestatus anzuzeigen";
 "bluetooth.title" = "Bluetooth";
+"bluetooth.power.turnOn" = "Bluetooth einschalten";
+"bluetooth.power.turnOff" = "Bluetooth ausschalten";
+"bluetooth.power.unknown" = "Bluetooth-Status ist nicht verfügbar.";
+"bluetooth.power.changeFailed" = "Bluetooth hat den Status nicht geändert.";
+"bluetooth.power.offConfirmTitle" = "Bluetooth ausschalten?";
+"bluetooth.power.offConfirmMessage" = "Verbundene Tastaturen, Mäuse, Trackpads oder Gamecontroller werden möglicherweise getrennt. Du kannst Bluetooth in diesem Fenster oder in den Systemeinstellungen wieder einschalten.";
+"bluetooth.power.offConfirmAction" = "Ausschalten";
 "bluetooth.pairedDevices.title" = "Gekoppelt";
 "bluetooth.devices.title" = "Bluetooth-Geräte";
 "bluetooth.nearbyBattery.title" = "In der Nähe";

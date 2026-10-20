@@ -856,10 +856,10 @@ final class SystemStatusStoreTests: XCTestCase {
         store.closePopoverDetails()
         XCTAssertFalse(store.hasOpenPopoverPanel)
 
-        store.setBluetoothEnabled(true)
+        store.setBluetoothDeviceMonitoringEnabled(true)
         XCTAssertFalse(store.hasOpenPopoverPanel)
 
-        store.setBluetoothEnabled(false)
+        store.setBluetoothDeviceMonitoringEnabled(false)
         XCTAssertFalse(store.hasOpenPopoverPanel)
     }
 

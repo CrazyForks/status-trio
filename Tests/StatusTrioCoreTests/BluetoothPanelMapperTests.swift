@@ -217,6 +217,47 @@ final class BluetoothPanelMapperTests: XCTestCase {
         XCTAssertEqual(ordinary.summary.subtitle, localization.string(.bluetoothOff))
     }
 
+    func testPowerControlPresentationHidesUnsupportedAndDisablesWhileChanging() {
+        let localization = makeLocalization()
+
+        let unavailable = BluetoothRadioPowerPresentation.make(
+            power: .unavailable,
+            isChanging: false,
+            failure: nil,
+            localization: localization
+        )
+        XCTAssertFalse(unavailable.showsToggle)
+        XCTAssertEqual(unavailable.subtitle, localization.string(.bluetoothUnavailable))
+
+        let off = BluetoothRadioPowerPresentation.make(
+            power: .off,
+            isChanging: false,
+            failure: nil,
+            localization: localization
+        )
+        XCTAssertTrue(off.showsToggle)
+        XCTAssertFalse(off.isOn)
+        XCTAssertEqual(off.subtitle, localization.string(.bluetoothOff))
+
+        let changing = BluetoothRadioPowerPresentation.make(
+            power: .on,
+            isChanging: true,
+            failure: nil,
+            localization: localization
+        )
+        XCTAssertTrue(changing.showsToggle)
+        XCTAssertEqual(changing.isOn, true)
+        XCTAssertFalse(changing.toggleEnabled)
+
+        let failed = BluetoothRadioPowerPresentation.make(
+            power: .on,
+            isChanging: false,
+            failure: .stateDidNotChange,
+            localization: localization
+        )
+        XCTAssertEqual(failed.subtitle, localization.string(.bluetoothPowerChangeFailed))
+    }
+
     func testPairedRowsKeepConnectedBatteryLayoutSegmentsFailureTintAndTapPolicy() {
         let localization = makeLocalization()
         let keyboard = device(

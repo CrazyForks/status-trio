@@ -339,6 +339,13 @@
 "wifi.security.enterprise" = "Empresarial";
 "bluetooth.openDetails" = "Abre los detalles para ver el estado del dispositivo";
 "bluetooth.title" = "Bluetooth";
+"bluetooth.power.turnOn" = "Activar Bluetooth";
+"bluetooth.power.turnOff" = "Desactivar Bluetooth";
+"bluetooth.power.unknown" = "El estado de Bluetooth no está disponible.";
+"bluetooth.power.changeFailed" = "Bluetooth no cambió de estado.";
+"bluetooth.power.offConfirmTitle" = "¿Desactivar Bluetooth?";
+"bluetooth.power.offConfirmMessage" = "Es posible que se desconecten los teclados, ratones, trackpads o mandos conectados. Puedes volver a activar Bluetooth desde este panel o en Ajustes del Sistema.";
+"bluetooth.power.offConfirmAction" = "Desactivar";
 "bluetooth.pairedDevices.title" = "Emparejados";
 "bluetooth.devices.title" = "Dispositivos Bluetooth";
 "bluetooth.nearbyBattery.title" = "Cercanos";

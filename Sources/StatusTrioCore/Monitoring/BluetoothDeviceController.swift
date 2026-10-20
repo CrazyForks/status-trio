@@ -988,6 +988,8 @@ final class BluetoothDeviceController: ObservableObject {
             updateNearbyBatteryScanner()
         } else {
             invalidateDeviceRead()
+            devices = []
+            clearDeviceActions()
             clearBatteryLevels()
             stopPeriodicRefresh()
             stopNearbyBatteryScanner(clearResults: true)

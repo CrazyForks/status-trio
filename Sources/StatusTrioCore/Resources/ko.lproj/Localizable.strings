@@ -339,6 +339,13 @@
 "wifi.security.enterprise" = "엔터프라이즈";
 "bluetooth.openDetails" = "세부 정보를 열어 기기 상태를 확인하십시오.";
 "bluetooth.title" = "Bluetooth";
+"bluetooth.power.turnOn" = "Bluetooth 켜기";
+"bluetooth.power.turnOff" = "Bluetooth 끄기";
+"bluetooth.power.unknown" = "Bluetooth 상태를 사용할 수 없습니다.";
+"bluetooth.power.changeFailed" = "Bluetooth 상태가 변경되지 않았습니다.";
+"bluetooth.power.offConfirmTitle" = "Bluetooth를 끄시겠습니까?";
+"bluetooth.power.offConfirmMessage" = "연결된 키보드, 마우스, 트랙패드 또는 게임 컨트롤러가 연결 해제될 수 있습니다. 이 패널이나 시스템 설정에서 Bluetooth를 다시 켤 수 있습니다.";
+"bluetooth.power.offConfirmAction" = "끄기";
 "bluetooth.pairedDevices.title" = "페어링된 기기";
 "bluetooth.devices.title" = "Bluetooth 기기";
 "bluetooth.nearbyBattery.title" = "주변 기기";

@@ -339,6 +339,13 @@
 "wifi.security.enterprise" = "企业网络";
 "bluetooth.openDetails" = "打开详情查看设备状态";
 "bluetooth.title" = "蓝牙";
+"bluetooth.power.turnOn" = "打开蓝牙";
+"bluetooth.power.turnOff" = "关闭蓝牙";
+"bluetooth.power.unknown" = "无法读取蓝牙状态。";
+"bluetooth.power.changeFailed" = "蓝牙状态未发生变化。";
+"bluetooth.power.offConfirmTitle" = "要关闭蓝牙吗？";
+"bluetooth.power.offConfirmMessage" = "已连接的键盘、鼠标、触控板或游戏手柄可能会断开。你可以从此面板或系统设置重新打开蓝牙。";
+"bluetooth.power.offConfirmAction" = "关闭";
 "bluetooth.pairedDevices.title" = "已配对";
 "bluetooth.devices.title" = "蓝牙设备";
 "bluetooth.nearbyBattery.title" = "附近设备";

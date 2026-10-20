@@ -339,6 +339,13 @@
 "wifi.security.enterprise" = "Корпоративная";
 "bluetooth.openDetails" = "Откройте сведения, чтобы увидеть состояние устройств";
 "bluetooth.title" = "Bluetooth";
+"bluetooth.power.turnOn" = "Включить Bluetooth";
+"bluetooth.power.turnOff" = "Выключить Bluetooth";
+"bluetooth.power.unknown" = "Состояние Bluetooth недоступно.";
+"bluetooth.power.changeFailed" = "Состояние Bluetooth не изменилось.";
+"bluetooth.power.offConfirmTitle" = "Выключить Bluetooth?";
+"bluetooth.power.offConfirmMessage" = "Подключённые клавиатуры, мыши, трекпады или геймпады могут отключиться. Вы можете снова включить Bluetooth в этой панели или в Системных настройках.";
+"bluetooth.power.offConfirmAction" = "Выключить";
 "bluetooth.pairedDevices.title" = "Сопряжённые";
 "bluetooth.devices.title" = "Устройства Bluetooth";
 "bluetooth.nearbyBattery.title" = "Рядом";

@@ -13,6 +13,7 @@ import SwiftUI
 /// a level read that failed.
 struct BluetoothStatusView: View {
     @ObservedObject var controller: BluetoothDeviceController
+    @ObservedObject var radioPower: BluetoothRadioPowerController
     @ObservedObject var mobileBatteryController: MobileBatteryController
     @EnvironmentObject private var localization: Localization
     let showsBatteryLevels: Bool
@@ -25,9 +26,11 @@ struct BluetoothStatusView: View {
     let onRequestAuthorization: () -> Void
     let onOpenBluetoothSettings: () -> Void
     let onOpenBluetoothPermissionSettings: () -> Void
+    let onSetRadioPower: (Bool) -> Void
 
     @State private var visibleTrustedAppleIDs = Set<AppleDeviceID>()
     @State private var visibleNearbyBLEIDs = Set<UUID>()
+    @State private var confirmingPowerOff = false
 
     private var unhiddenListOptions: BluetoothDeviceListOptions {
         BluetoothDeviceListOptions(
@@ -119,6 +122,8 @@ struct BluetoothStatusView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 10) {
                 titleBlock
+
+                radioPowerToggle
 
                 Button(action: {
                     controller.refreshFromUser()
@@ -230,6 +235,55 @@ struct BluetoothStatusView: View {
                 keepingResults: showsMobileBatteryFeature
             )
             mobileBatteryController.setAuthorizedDeviceIDs([])
+        }
+        .alert(
+            localization.string(.bluetoothPowerOffConfirmTitle),
+            isPresented: $confirmingPowerOff
+        ) {
+            Button(localization.string(.commonCancel), role: .cancel) {}
+            Button(localization.string(.bluetoothPowerOffConfirmAction), role: .destructive) {
+                onSetRadioPower(false)
+            }
+        } message: {
+            Text(localization.string(.bluetoothPowerOffConfirmMessage))
+        }
+    }
+
+    @ViewBuilder
+    private var radioPowerToggle: some View {
+        let presentation = BluetoothRadioPowerPresentation.make(
+            power: radioPower.power,
+            isChanging: radioPower.isChanging,
+            failure: radioPower.failure,
+            localization: localization
+        )
+        if presentation.showsToggle {
+            Button {
+                let enabled = !presentation.isOn
+                if !enabled && BluetoothRadioPowerPolicy.requiresConfirmation(
+                    beforeTurningOff: controller.devices
+                ) {
+                    confirmingPowerOff = true
+                } else {
+                    onSetRadioPower(enabled)
+                }
+            } label: {
+                Image(systemName: presentation.isOn ? "power.circle.fill" : "power.circle")
+                    .frame(width: 24, height: 24)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(presentation.isOn ? Color.accentColor : Color.secondary)
+            .disabled(!presentation.toggleEnabled)
+            .help(
+                localization.string(
+                    presentation.isOn ? .bluetoothPowerTurnOff : .bluetoothPowerTurnOn
+                )
+            )
+            .accessibilityLabel(
+                localization.string(
+                    presentation.isOn ? .bluetoothPowerTurnOff : .bluetoothPowerTurnOn
+                )
+            )
         }
     }
 
@@ -416,6 +470,15 @@ struct BluetoothStatusView: View {
     }
 
     private var summaryText: String {
+        let radioPresentation = BluetoothRadioPowerPresentation.make(
+            power: radioPower.power,
+            isChanging: radioPower.isChanging,
+            failure: radioPower.failure,
+            localization: localization
+        )
+        if let failureText = radioPresentation.subtitle {
+            return failureText
+        }
         switch summaryPresentation {
         case .requestAuthorization:
             return localization.string(.bluetoothAuthorizationNotDetermined)

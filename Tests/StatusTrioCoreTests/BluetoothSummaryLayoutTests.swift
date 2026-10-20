@@ -562,6 +562,9 @@ final class BluetoothSummaryLayoutTests: XCTestCase {
 
         let view = BluetoothStatusView(
             controller: controller,
+            radioPower: BluetoothRadioPowerController(
+                backend: SummaryBluetoothRadioPowerBackend()
+            ),
             mobileBatteryController: MobileBatteryController(),
             showsBatteryLevels: showsBatteryLevels,
             showsAppleDevicesAndBattery: showsAppleDevicesAndBattery,
@@ -569,7 +572,8 @@ final class BluetoothSummaryLayoutTests: XCTestCase {
             listOptions: listOptions,
             onRequestAuthorization: {},
             onOpenBluetoothSettings: {},
-            onOpenBluetoothPermissionSettings: {}
+            onOpenBluetoothPermissionSettings: {},
+            onSetRadioPower: { _ in }
         )
         .padding(14)
         .frame(width: 330)
@@ -738,4 +742,13 @@ private final class SummaryBluetoothStateMonitor: BluetoothStateMonitoring {
     }
 
     func stop() {}
+}
+
+@MainActor
+private final class SummaryBluetoothRadioPowerBackend: BluetoothRadioPowerBacking {
+    var isAvailable: Bool { true }
+
+    func readPower() -> BluetoothRadioPower { .on }
+
+    func setPower(_ enabled: Bool) async -> Bool { true }
 }

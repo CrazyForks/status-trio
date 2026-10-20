@@ -70,6 +70,32 @@ final class PanelActionRoutingTests: XCTestCase {
         XCTAssertEqual(inputMuteToggles, 1)
     }
 
+    func testBluetoothPowerCommandRoutesOnceAndGuardsInputConfirmation() {
+        var powerRequests: [Bool] = []
+        let keyboard = BluetoothDevice(
+            id: "AA",
+            name: "MX Keys",
+            kind: .peripheral(.keyboard),
+            isConnected: true
+        )
+        let headphones = BluetoothDevice(
+            id: "BB",
+            name: "AirPods",
+            kind: .audio,
+            isConnected: true
+        )
+        let actions = StatusPanelActions(
+            bluetoothDevices: { [keyboard, headphones] },
+            setBluetoothPower: { powerRequests.append($0) }
+        )
+
+        XCTAssertTrue(actions.bluetoothPowerNeedsConfirmation(false))
+        XCTAssertFalse(actions.bluetoothPowerNeedsConfirmation(true))
+        actions.setBluetoothPower(false)
+
+        XCTAssertEqual(powerRequests, [false])
+    }
+
     func testBluetoothActionsResolveCurrentAddressesAndRequireExistingListeningControl() {
         var devices = [
             BluetoothDevice(id: "AA:00:00:00:00:01", name: "Keyboard", kind: .peripheral(.keyboard), isConnected: true),
