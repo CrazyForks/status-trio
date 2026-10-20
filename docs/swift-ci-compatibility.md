@@ -1124,7 +1124,7 @@ distribution due to environment protection rules.
 - 运行：[39376165822](https://github.com/lingyired/status-trio/actions/runs/39376165822)，
   head `04206b5`，`version=1.6.1`、`build=38`、`publish=false`，
   CI 为 Xcode 26.6 / Swift 6.3.3；失败阶段为 `Run tests`。
-- XCTest 1717 项（7 skipped）通过；Swift Testing 697 项中出现 3 个 issue：
+- CI XCTest 1727 项（7 skipped）通过；Swift Testing 697 项中出现 3 个 issue：
   `StatusBarControllerVisibilityTests.testSwitchAnimatesTheMenuBarWhileTheRealBatteryIsUnplugged`
   的两个保留动画断言，以及
   `ChargingEffectControllerTests.batteryLevelChangesStillUpdateStaticDockArtwork` 的重绘计数断言。
@@ -1141,4 +1141,9 @@ distribution due to environment protection rules.
   显式执行 debounce，确认 scene 为 61%，再 flush redraw。保留重绘断言，
   不延长 timeout、不修改产品节流逻辑。
 - 复验：本地菜单栏定向测试 2 项通过；修复后全量 1717 XCTest（7 skipped）和
-  697 Swift Testing / 103 suites 全部通过。Release 构建与新一轮 CI 结果将在集成记录补齐。
+  697 Swift Testing / 103 suites 全部通过，Release 构建通过（33.35 秒）。
+- [39377387434](https://github.com/lingyired/status-trio/actions/runs/39377387434)
+  对修复后 head `8728003` 全部通过：CI 1727 XCTest（7 skipped）+
+  697 Swift Testing / 103 suites；native compatibility tests、双架构 Release、
+  两种 helper bundle 校验、DMG 创建及 artifact 上传均通过。仍为
+  `version=1.6.1 build=38 publish=false notarize=false`，未发版。

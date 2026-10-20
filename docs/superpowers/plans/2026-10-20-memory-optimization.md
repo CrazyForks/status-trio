@@ -200,7 +200,7 @@ struct DeviceOperationToken: Equatable, Hashable, Sendable {
 
   确定性预算和像素测试是硬条件；真实内存期望整体下降，但不预先承诺 main 从 155 MiB 降到某值。CPU 的每对差值若持续超过 `max(0.5 个百分点, 基线的 10%)`，停止合并并定位退化，不用 WindowServer 噪声掩盖 app/Dock 的持续回归。该阈值是本次工程验收标准，不是历史实测结论。
 - [ ] 审查独立开关、真正拔插/充满、Reduce Motion、睡眠/唤醒、多显示器、左/右/底部 Dock、自动隐藏和放大。只有实际覆盖的场景写为通过；合成电池、离线图片和 mock 测试分别标记。完成一次独立整分支 code review，修复有证据的问题后补相应验证。
-- [ ] 本计划触及 actor/UI binding/泛型等路径，合并前需要 CI `publish=false` 预检。执行时从已发布版本取得显式递增版本/build；在已有远端操作授权后上传待验分支，派发并 watch：
+- [x] 本计划触及 actor/UI binding/泛型等路径，合并前需要 CI `publish=false` 预检。执行时从已发布版本取得显式递增版本/build；在已有远端操作授权后上传待验分支，派发并 watch：
   ```bash
   : "${PREFLIGHT_REF:?set to the authorized remote branch containing the reviewed changes}"
   : "${NEXT_VERSION:?set an explicit version after checking published releases}"
@@ -224,4 +224,4 @@ struct DeviceOperationToken: Equatable, Hashable, Sendable {
 - 覆盖：静态缓存、解码/mask、充电峰值与 key、引导页、蓝牙 token/报告均有实施任务；辅助缓存与压力处理单独集成。
 - 接口：任务 6 使用任务 1–3 已定义的清理/预算接口；任务 5 同步更新 scanner/controller 的 token 类型和 initial read。
 - 风险：5 项 Review Focus 均有归属测试；不以缩图破坏 Dock、不清 active 帧造成风暴、不重置历史计数让旧授权复活。
-- 状态：代码修改和本地全量验证已完成，checkbox 表示有证据完成的动作。完整场景矩阵与硬件/UI 项保持未勾选；CI 随本次已授权集成执行并单列结果。详见内存审计报告。
+- 状态：代码修改和本地全量验证已完成，checkbox 表示有证据完成的动作。完整场景矩阵与硬件/UI 项保持未勾选；CI `39377387434` 已对 `8728003` 通过，独立审查及后续测试修复补审通过；最终文档补充不改产品和测试源码。详见内存审计报告。

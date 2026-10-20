@@ -3,7 +3,7 @@
 ## 当前实施结论
 
 五类优化和内存压力回收已完成代码修改，位于 `codex/memory-optimization`。
-用户已授权提交、合并和推送，正在进行合并前审查和非发布 CI 预检。
+用户已授权提交、合并和推送；独立审查和非发布 CI 预检已通过，结果见文末集成记录。
 静态历史缓存的实际像素上限从 12 MiB 降到 4 MiB；512 px 充电变体构建峰值
 从约 37.17 MiB 降到 19.10 MiB。它们是像素预算，不是进程 footprint 的承诺。
 
@@ -12,8 +12,8 @@
 收益集中于历史图片、导入大图和充电帧构建期间。首轮一次 35 MiB 异常原因未确定，
 后续五次优化版运行未再复现，原始数据全部保留。
 
-最终本地全量测试和 Release 构建通过。CI Xcode26.6/Swift6.3.3、真实 Dock 动画对照
-及硬件/系统版本验收仍未完成，不能视为已满足合并发布门槛。
+最终本地全量测试、Release 构建及 CI Xcode26.6/Swift6.3.3 预检通过。
+真实 Dock 动画对照及硬件/系统版本验收仍未完成，不能将本次集成视为这些场景的验收。
 
 ## 初次分析结论
 
@@ -232,8 +232,7 @@ main 菜单栏冷启动预热 15 秒后 60 个样本：footprint 中位数 22.92
 
 自动化原生布局、像素和生命周期测试不能替代真实拔插、充满、Reduce Motion、
 睡眠/唤醒、多显示器与各 Dock 方向的硬件验收。CI 的 Xcode 26.6 / Swift 6.3.3
-预检在用户授权提交、合并和推送后执行，运行结果将在集成记录中单列；
-本地工具链通过不等同于 CI 通过，硬件验收边界仍保留。
+预检已通过（运行 `39377387434`，详见集成记录）；硬件验收边界仍保留。
 
 ### 最终本地验证
 
@@ -315,10 +314,26 @@ telemetryConsentVersion=1、sharesAnonymousAnalytics=false；其余取样协议�
 
 ### 尚未完成的验收
 
-- CI `publish=false`：已获远端操作授权，待本次集成预检结果；
-  该流水线也将执行 mobile helper 源码打包。
 - 真实 Dock 可见时的充电 CPU / footprint、真正拔插/充满、Reduce Motion、睡眠/唤醒、
   多显示器、左/右 Dock、放大和 macOS13实际窗口布局。
 - 设置/弹窗20次及引导切换20次的完整应用 footprint 对照、全部12语言真实截图；
   当前已有原生布局、弱引用释放和 open/closed popover 测试，不能替代这些实测。
 - 首轮单次 35 MiB 启动异常的确切原因仍未知，首次升级后的实际启动应保留观察。
+
+### 集成验证记录（2026-10-20）
+
+- 内存实现提交 `04206b5`，测试调度修复提交 `8728003`；两次独立审查均未发现
+  P0/P1/P2 问题。首次 CI `39376165822` 的测试失败、复现和修复见
+  `docs/swift-ci-compatibility.md`，未将该失败当作通过证据。
+- [CI 39377387434](https://github.com/lingyired/status-trio/actions/runs/39377387434)
+  对 head `87280038f94d57255a97d8dac96642265053a71a` 全部通过：
+  macos-26、Xcode 26.6、Swift 6.3.3；1727 XCTest（7 skipped、0 failures），
+  697 Swift Testing / 103 suites，以及 native compatibility tests。
+- 完成 arm64/x86_64 Release、mobile battery helper 源码打包与两种 helper bundle
+  验证、平台 SDK 元数据校验、DMG 创建及 artifact 上传。参数为
+  `version=1.6.1 build=38 publish=false notarize=false`；Ad-hoc 签名，未执行公证、
+  未创建 Release/tag 或发布 appcast。
+- 测试修复后的本地复验为 1717 XCTest（7 skipped）与 697 Swift Testing 全部通过；
+  `swift build -c release` 通过（33.35 秒）。本地与 CI 的 XCTest 发现数量分别记录。
+- 最终证据补充仅修改文档；Sources/Tests/scripts 与 CI 通过的 `8728003` 一致。
+  实机/Dock CPU 对照、硬件矩阵与启动 outlier 的未完成事项保持原样，不用 CI 替代。
