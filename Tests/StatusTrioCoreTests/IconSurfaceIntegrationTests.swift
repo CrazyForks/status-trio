@@ -2,6 +2,7 @@ import AppKit
 import Testing
 @testable import StatusTrioCore
 
+@Suite(.serialized)
 @MainActor
 struct IconSurfaceIntegrationTests {
     @Test func bothSurfacesRenderTheSameDeliveredScene() async throws {

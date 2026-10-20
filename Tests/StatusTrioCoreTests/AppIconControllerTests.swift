@@ -2,6 +2,7 @@ import AppKit
 import Testing
 @testable import StatusTrioCore
 
+@Suite(.serialized)
 @MainActor
 struct AppIconControllerTests {
     @Test func dockOnlyActivatesAndRendersBeforeHidingMenuBar() throws {
