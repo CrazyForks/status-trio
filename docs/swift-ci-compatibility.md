@@ -1173,3 +1173,36 @@ distribution due to environment protection rules.
   未创建 Release 或更新 appcast。
   运行间结果有差异，但仍未获得首次失败的精确阶段根因；
   不把首次失败解释为编译器问题，也不以复验通过抹去首次失败。
+
+## 39427258831：PR #124 华为传输测试模块编译阻塞
+
+- 运行：[39427258831](https://github.com/lingyired/status-trio/actions/runs/39427258831)，
+  head `45270af1`，CI 为 `macos-26` / Xcode 26.6 / Swift 6.3.3；
+  `Validate appcast notes` 已通过，失败阶段是 `Run tests`。
+- 编译停在 `[594/621] WirelessListModelsTests.swift` 后约 90 分钟没有测试执行输出，
+  到 job timeout 后被取消。完整日志中不存在
+  `Compiling StatusTrioCoreTests HuaweiListeningModeTests.swift` 或
+  `Compiling StatusTrioCoreTests HuaweiTransportLifecycleTests.swift` 的完成记录；
+  同阶段仍有 `swift-frontend` / `swift-driver` 进程被终止。因此这不是业务测试运行时挂起，
+  而是测试目标在准备剩余批次的 Swift 6.3.3 编译任务时卡住。后续原生兼容、Release、
+  DMG、签名、公证及发布步骤均未运行。
+- 隔离验证：在一次性诊断分支
+  `codex/pr124-huawei-hang-triage`（head
+  `c8c49315`）只删除 689 行的
+  `HuaweiTransportLifecycleTests.swift`，生产 transport 及其余测试不变；
+  [39441930496](https://github.com/lingyired/status-trio/actions/runs/39441930496)
+  的 `Run tests` 约 4 分钟通过，`Run native compatibility tests` 也已通过。
+  这把阻塞范围从整个 PR 缩小到该测试文件触发的 Swift 6.3.3 测试模块编译问题；
+  未在 Swift 6.3.3 本机工具链上继续做单构造二分，因此不把某个
+  `@Sendable`、continuation 或泛型写法单独宣布为已证实的编译器 bug。
+- 修复：把生命周期文件缩减为 5 个定向回归测试，覆盖首次使用前取消不启动线程、
+  运行中关闭在产生副作用前取消、启动中关闭使旧操作失效、队列操作不重入 drain、
+  关闭后复用同一 transport 线程但使用新 session generation。删除大型
+  `Task<T, any Error>` 完成轮询、嵌套 continuation 和条件转换辅助层；
+  模式映射、普通/关闭、噪声取消、透传和控制器回滚仍由
+  `HuaweiListeningModeTests.swift` 覆盖。生产 `HuaweiListeningModeTransport.swift`
+  的噪声控制行为未放宽或移除。
+- 验证：本地 Xcode 27 / Swift 6.4 上
+  `swift test --filter HuaweiTransportLifecycleTests` 通过 5 项；全量
+  `swift test`、`swift build -c release`、appcast 校验和 Swift 6.3.3 CI 复跑结果
+  记录在 PR #124 的修复提交与最终预检运行中。
