@@ -35,6 +35,12 @@ struct BluetoothRadioPowerPresentation: Equatable, Sendable {
     let isOn: Bool
     let toggleEnabled: Bool
     let subtitle: String?
+    let iconState: BluetoothRadioPowerIconState
+    let accessibilityValue: String
+
+    /// The outline power glyph keeps the same visual weight as the Low Power
+    /// Mode leaf without implying a filled control or a circular button.
+    var symbolName: String { "power" }
 
     @MainActor
     static func make(
@@ -49,14 +55,18 @@ struct BluetoothRadioPowerPresentation: Equatable, Sendable {
                 showsToggle: false,
                 isOn: false,
                 toggleEnabled: false,
-                subtitle: localization.string(.bluetoothUnavailable)
+                subtitle: nil,
+                iconState: .unavailable,
+                accessibilityValue: localization.string(.bluetoothPowerUnknown)
             )
         case .unknown:
             return Self(
                 showsToggle: true,
                 isOn: false,
                 toggleEnabled: !isChanging,
-                subtitle: localization.string(.bluetoothPowerUnknown)
+                subtitle: localization.string(.bluetoothPowerUnknown),
+                iconState: .unknown,
+                accessibilityValue: localization.string(.bluetoothPowerUnknown)
             )
         case .off:
             return Self(
@@ -65,7 +75,9 @@ struct BluetoothRadioPowerPresentation: Equatable, Sendable {
                 toggleEnabled: !isChanging,
                 subtitle: failure != nil
                     ? localization.string(.bluetoothPowerChangeFailed)
-                    : localization.string(.bluetoothOff)
+                    : localization.string(.bluetoothOff),
+                iconState: .off,
+                accessibilityValue: localization.string(.batteryDetailsOff)
             )
         case .on:
             let failed = failure != nil
@@ -75,10 +87,19 @@ struct BluetoothRadioPowerPresentation: Equatable, Sendable {
                 toggleEnabled: !isChanging,
                 subtitle: failed
                     ? localization.string(.bluetoothPowerChangeFailed)
-                    : nil
+                    : nil,
+                iconState: .on,
+                accessibilityValue: localization.string(.batteryDetailsOn)
             )
         }
     }
+}
+
+enum BluetoothRadioPowerIconState: Equatable, Sendable {
+    case on
+    case off
+    case unknown
+    case unavailable
 }
 
 @MainActor

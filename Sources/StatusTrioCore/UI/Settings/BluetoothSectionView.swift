@@ -38,6 +38,16 @@ struct BluetoothSectionView: View {
 
                 SettingsDivider()
 
+                SettingsToggleRow(
+                    symbol: "power.circle",
+                    tint: .blue,
+                    title: localization.string(.settingsBluetoothPowerControl),
+                    subtitle: localization.string(.settingsBluetoothPowerControlDescription),
+                    isOn: $store.showsBluetoothPowerControl
+                )
+
+                SettingsDivider()
+
                 SettingsRow(
                     "wave.3.right.circle.fill",
                     tint: .blue,

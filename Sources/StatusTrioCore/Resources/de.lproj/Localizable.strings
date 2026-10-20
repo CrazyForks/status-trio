@@ -92,6 +92,8 @@
 "settings.bluetooth.listeningModePreviewLanguageDescription" = "Rendernt die Kapselnamen der Vorschauzeilen in einer gewählten Sprache, während der Rest des Panels die Systemsprache behält. Hilfreich, um zu vergleichen, wie ein langes deutsches oder ein von rechts nach links geschriebenes arabisches Modi-Wort umbrochen wird.";
 "settings.bluetooth.showInStatusPanel" = "Bluetooth im Statusbereich anzeigen";
 "settings.bluetooth.showInStatusPanelDescription" = "Steuert das Bluetooth-Element im Statusbereich und bleibt mit den Einstellungen des Statusbereichs synchron.";
+"settings.bluetooth.powerControl" = "Bluetooth-Ein-/Ausschalter anzeigen";
+"settings.bluetooth.powerControlDescription" = "Fügt dem Statusbereich einen Ein-/Ausschalter für Bluetooth hinzu. Es ist keine zusätzliche Berechtigung erforderlich.";
 "settings.bluetooth.symbolScale" = "Bluetooth-Symbolgröße";
 "settings.bluetooth.symbolScaleDescription" = "Passt die Größe des Bluetooth-Gerätesymbols im Statusring von 100 % bis 180 % an.";
 "settings.bluetooth.iconChoice" = "Bluetooth-Audiosymbol";

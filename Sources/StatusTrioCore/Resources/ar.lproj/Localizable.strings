@@ -75,6 +75,8 @@
 "settings.bluetooth.listeningModePreviewLanguageDescription" = "اعرض أسماء الكبسولات في صفوف المعاينة بلغة مختارة مع إبقاء بقية اللوحة بلغة النظام. مفيد لمقارنة كيف تلتف كلمة ألمانية طويلة أو نص عربي من اليمين إلى اليسار.";
 "settings.bluetooth.showInStatusPanel" = "إظهار Bluetooth في لوحة الحالة";
 "settings.bluetooth.showInStatusPanelDescription" = "يتحكم في عنصر Bluetooth بلوحة الحالة ويبقى متزامنًا مع إعدادات لوحة الحالة.";
+"settings.bluetooth.powerControl" = "إظهار زر الطاقة في Bluetooth";
+"settings.bluetooth.powerControlDescription" = "يضيف زر الطاقة إلى لوحة الحالة. لا يتطلب أي إذن إضافي.";
 "settings.bluetooth.symbolScale" = "حجم أيقونة Bluetooth";
 "settings.bluetooth.symbolScaleDescription" = "يضبط مقياس أيقونة جهاز Bluetooth داخل حلقة الحالة من 100% إلى 180%.";
 "settings.bluetooth.iconChoice" = "أيقونة صوت Bluetooth";

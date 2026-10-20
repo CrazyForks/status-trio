@@ -156,6 +156,7 @@ struct StatusPopoverView: View {
                 currentTrustedAppleCandidates: panel.store.trustedAppleDeviceCandidates,
                 trustedDiscoveryGeneration: panel.store.trustedAppleDeviceDiscoveryGeneration,
                 listOptions: panel.settings.bluetoothDeviceListOptions,
+                showsRadioPowerControl: panel.settings.showsBluetoothPowerControl,
                 onRequestAuthorization: requestBluetoothAuthorization,
                 onOpenBluetoothSettings: openBluetoothSettings,
                 onOpenBluetoothPermissionSettings: openBluetoothPermissionSettings,

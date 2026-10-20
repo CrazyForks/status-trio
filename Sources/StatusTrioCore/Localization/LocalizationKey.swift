@@ -164,6 +164,8 @@ enum LocalizationKey: String, CaseIterable, Hashable, Sendable {
     case settingsBluetoothListeningModePreviewLanguageDescription = "settings.bluetooth.listeningModePreviewLanguageDescription"
     case settingsBluetoothShowInStatusPanel = "settings.bluetooth.showInStatusPanel"
     case settingsBluetoothShowInStatusPanelDescription = "settings.bluetooth.showInStatusPanelDescription"
+    case settingsBluetoothPowerControl = "settings.bluetooth.powerControl"
+    case settingsBluetoothPowerControlDescription = "settings.bluetooth.powerControlDescription"
     case settingsBluetoothSymbolScale = "settings.bluetooth.symbolScale"
     case settingsBluetoothSymbolScaleDescription = "settings.bluetooth.symbolScaleDescription"
     case settingsBluetoothIconChoice = "settings.bluetooth.iconChoice"
