@@ -88,6 +88,26 @@ final class HuaweiListeningModeProtocolTests: XCTestCase {
     }
 }
 
+/// The transport's own first-use startup, against the real IOBluetooth stack.
+final class HuaweiRFCOMMTransportStartupTests: XCTestCase {
+    /// Two HUAWEI devices are read at once, and `state` is a nonisolated `async`
+    /// method, so the calls reach the transport's first-use startup on different
+    /// cooperative-pool threads. That startup has to be serialized: a second
+    /// thread would leave the transport with two run loops and two owners of the
+    /// connection map, and the losing thread would run for the process lifetime.
+    func testConcurrentFirstUseStartsExactlyOneTransportThread() async throws {
+        let transport = HuaweiRFCOMMTransport()
+        await withTaskGroup(of: Void.self) { group in
+            for index in 0..<8 {
+                group.addTask {
+                    _ = try? await transport.state(address: "AA:BB:CC:DD:EE:0\(index)")
+                }
+            }
+        }
+        XCTAssertEqual(transport.transportThreadCount, 1)
+    }
+}
+
 final class HuaweiAudioEndpointMatcherTests: XCTestCase {
     private let address = "A8:37:59:F1:77:3D"
 

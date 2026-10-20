@@ -101,11 +101,33 @@ final class HuaweiRFCOMMTransport: HuaweiListeningModeTransporting, @unchecked S
     }
 
     private let lock = NSLock()
+    /// Serializes the first-use startup of the transport thread.
+    ///
+    /// `transportRunLoop` is published by the new thread itself, so two callers
+    /// that both observe `nil` would both create and start a thread. `state` and
+    /// `setMode` are nonisolated `async` methods, so they run on the cooperative
+    /// pool: two HUAWEI devices read at once really do reach `ensureRunLoop`
+    /// concurrently. Two threads would break the "all access to `connections`
+    /// happens on the transport thread" invariant this class documents, and the
+    /// losing thread would run forever.
+    private let startupLock = NSLock()
     private var transportThread: Thread?
     private var transportRunLoop: CFRunLoop?
     private var pending: [@Sendable () -> Void] = []
     private var isProcessing = false
     private var keepAlivePort: Port?
+    private var startedThreadCount = 0
+
+    /// How many transport threads this instance has started.
+    ///
+    /// One instance owns one thread. A second one would mean the first-use
+    /// startup was not serialized, and the connection map would end up with two
+    /// owners — the invariant this class documents.
+    var transportThreadCount: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return startedThreadCount
+    }
 
     /// All access to `connections` happens on the transport thread.
     private var connections: [String: Connection] = [:]
@@ -184,7 +206,16 @@ final class HuaweiRFCOMMTransport: HuaweiListeningModeTransporting, @unchecked S
         }
     }
 
+    /// Returns the transport's run loop, starting the transport thread on first
+    /// use.
+    ///
+    /// The whole body is serialized by `startupLock`: the run loop is published
+    /// by the new thread, so without it two concurrent callers would each start
+    /// a thread and the transport would own two.
     private func ensureRunLoop() -> CFRunLoop {
+        startupLock.lock()
+        defer { startupLock.unlock() }
+
         lock.lock()
         if let runLoop = transportRunLoop {
             lock.unlock()
@@ -213,11 +244,8 @@ final class HuaweiRFCOMMTransport: HuaweiListeningModeTransporting, @unchecked S
         thread.qualityOfService = .userInitiated
 
         lock.lock()
-        if let existing = transportRunLoop {
-            lock.unlock()
-            return existing
-        }
         transportThread = thread
+        startedThreadCount += 1
         lock.unlock()
 
         thread.start()
