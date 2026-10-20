@@ -1266,3 +1266,26 @@ distribution due to environment protection rules.
   同时确认没有显式 `clear()`。产品代码、失败恢复路径与断言强度均未改变。
   修复后本地全量测试再次通过 1,745 XCTest（7 skipped）和
   697 Swift Testing / 103 suites，`swift build -c release` 也通过。
+
+## PR #124：华为传输发现、连接所有权与充电图层并发
+
+- DeepSeek 子任务基于 `group/auto-deepseek-v4-1-flash` 完成了独立功能审查。审查确认
+  HUAWEI 噪声控制已接入实时设备、面板行、写入与 read-back；同时发现首次状态读取失败后
+  不会重试，以及 transport 打开的 Bluetooth 连接在部分失败路径未释放。后续审查还发现
+  明确的非 HUAWEI vendor ID 会被 `FreeBuds` 名称兜底错误识别，以及取消发生在 RFCOMM
+  通道打开后时只关闭连接而未关闭通道。
+- 修复保持原有功能断言：首次无已确认状态时最多使用 150 ms、450 ms 两次有界重试；
+  已有确认模式的后续读取失败继续保留该模式。Transport 只关闭自己成功打开的设备连接，
+  并覆盖连接超时、SDP、RFCOMM、读写、取消、过期连接、`closeAll()` 与会话关闭路径；
+  预存连接保持原所有者。明确 vendor ID 优先于名称兜底。
+- 定向验证通过：华为协议、控制器、首用并发启动和生命周期共 30 项；
+  `Issue30WiFiAlignmentTests`、输出设备听音控制行、面板 task ID 与 Dock 充电恢复
+  定向测试也通过，且 `git diff --check` 通过。
+- 本轮全量 `swift test` 暴露 4 个 issue，集中在既有
+  `StatusBarChargingAnimationTickTests.steadyTicksReuseTheTemplateBaseAndThePreRenderedFrames`：
+  测试快照前观察到基础层被处理两次，从而连带有 4 个计数/对象身份断言失败。6 项充电
+  tick suite 再次运行时有 1 个同类 issue，随后单独复跑通过，说明该测试的初始呈现
+  handoff 仍与实际 `Task.sleep` 调度竞争。重试的 39 个 HUAWEI 定向测试全部通过，
+  证明本次华为代码没有引入这些计数失败。按本条记录的测试调度原则，后续以已有可控
+  presentation 调度器替换固定 sleep，保留“静止呈现只栅格化一次、稳态 tick 不重建基础层”
+  的全部计数与对象身份断言，再运行完整本地测试和非发布 CI 预检。

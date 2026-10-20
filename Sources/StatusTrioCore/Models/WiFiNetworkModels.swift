@@ -493,7 +493,7 @@ struct BluetoothDevice: Identifiable, Equatable, Sendable {
     /// closed — a device that never answers the query shows no control at all.
     var isHuaweiAudio: Bool {
         guard kind.isAudio else { return false }
-        if vendorID == 0x027D { return true }
+        if let vendorID { return vendorID == 0x027D }
         let lowered = name.lowercased()
         return lowered.contains("freebuds")
             || lowered.contains("freelace")

@@ -156,6 +156,7 @@ struct HuaweiSPPFrame: Equatable, Sendable {
 enum HuaweiListeningModeError: Error, Equatable, Sendable {
     case deviceUnavailable
     case connectionFailed(Int32)
+    case sdpFailed(Int32)
     case channelOpenFailed(Int32)
     case notOpen
     case writeFailed(Int32)

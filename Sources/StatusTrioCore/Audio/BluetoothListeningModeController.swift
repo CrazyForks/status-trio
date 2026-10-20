@@ -121,6 +121,7 @@ final class BluetoothListeningModeController: ObservableObject {
     /// are separate seams so the CoreAudio path keeps its existing guarantees.
     private let huaweiTransport: any HuaweiListeningModeTransporting
     private let huaweiEndpointProvider: any HuaweiAudioEndpointProviding
+    private let huaweiFirstReadRetryDelays: [Duration]
     /// Addresses whose controls are backed by the HUAWEI transport. `setMode`
     /// branches on this rather than re-reading the device.
     private var huaweiAddresses: Set<String> = []
@@ -137,6 +138,7 @@ final class BluetoothListeningModeController: ObservableObject {
         listenerBackend: any BluetoothListeningModePropertyListening = CoreAudioBluetoothListeningModeListenerBackend(),
         huaweiTransport: any HuaweiListeningModeTransporting = HuaweiRFCOMMTransport(),
         huaweiEndpointProvider: any HuaweiAudioEndpointProviding = CoreAudioHuaweiAudioEndpointProvider(),
+        huaweiReadRetryDelays: [Duration] = [.milliseconds(150), .milliseconds(450)],
         failureClearDelay: Duration = .seconds(2),
         previewSettleDelay: Duration = .milliseconds(400)
     ) {
@@ -145,6 +147,7 @@ final class BluetoothListeningModeController: ObservableObject {
         self.listenerBackend = listenerBackend
         self.huaweiTransport = huaweiTransport
         self.huaweiEndpointProvider = huaweiEndpointProvider
+        self.huaweiFirstReadRetryDelays = huaweiReadRetryDelays
         self.failureClearDelay = failureClearDelay
         self.previewSettleDelay = previewSettleDelay
     }
@@ -253,25 +256,37 @@ final class BluetoothListeningModeController: ObservableObject {
                         self.huaweiReadTokens[address] = nil
                     }
                 }
-                do {
-                    let state = try await self.huaweiTransport.state(address: address)
-                    guard !Task.isCancelled,
-                          self.huaweiReadTokens[address] == token,
-                          self.huaweiAddresses.contains(address),
-                          self.presentations[address]?.isChanging != true else {
+                let delays = self.presentations[address] == nil
+                    ? self.huaweiFirstReadRetryDelays
+                    : []
+                for attempt in 0...delays.count {
+                    do {
+                        let state = try await self.huaweiTransport.state(address: address)
+                        guard !Task.isCancelled,
+                              self.huaweiReadTokens[address] == token,
+                              self.huaweiAddresses.contains(address),
+                              self.presentations[address]?.isChanging != true else {
+                            return
+                        }
+                        self.presentations[address] = BluetoothListeningModePresentation(
+                            availableModes: HuaweiNoiseState.selectableListeningModes,
+                            selectedMode: state.listeningMode
+                        )
                         return
+                    } catch {
+                        guard attempt < delays.count else { return }
+                        do {
+                            try await Task.sleep(for: delays[attempt])
+                        } catch {
+                            return
+                        }
+                        guard !Task.isCancelled,
+                              self.huaweiReadTokens[address] == token,
+                              self.huaweiAddresses.contains(address),
+                              self.presentations[address]?.isChanging != true else {
+                            return
+                        }
                     }
-                    self.presentations[address] = BluetoothListeningModePresentation(
-                        availableModes: HuaweiNoiseState.selectableListeningModes,
-                        selectedMode: state.listeningMode
-                    )
-                } catch {
-                    // Nothing to clear here. A device that has never answered has
-                    // no entry at all, so its row keeps the plain appearance. A
-                    // device that answered earlier keeps its last confirmed mode:
-                    // one timed-out query — an earbud that is busy or asleep —
-                    // must not make a working control disappear until the panel
-                    // is reopened.
                 }
             }
         }

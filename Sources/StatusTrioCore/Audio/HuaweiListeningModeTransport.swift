@@ -2,6 +2,82 @@ import CoreFoundation
 import Foundation
 import IOBluetooth
 
+protocol HuaweiBluetoothDevice: AnyObject, Sendable {
+    var addressString: String? { get }
+    func isConnected() -> Bool
+    func openConnection() -> IOReturn
+    func closeConnection() -> IOReturn
+    func performSDPQuery() -> IOReturn
+    func serviceRFCOMMChannelID() -> BluetoothRFCOMMChannelID?
+    func openRFCOMMChannel(
+        channelID: BluetoothRFCOMMChannelID,
+        delegate: IOBluetoothRFCOMMChannelDelegate
+    ) -> (status: IOReturn, channel: (any HuaweiRFCOMMChannel)?)
+}
+
+protocol HuaweiRFCOMMChannel: AnyObject, Sendable {
+    func isOpen() -> Bool
+    func writeSync(_ data: UnsafeMutableRawPointer, length: UInt16) -> IOReturn
+    func close()
+}
+
+private final class IOBluetoothHuaweiRFCOMMChannel: HuaweiRFCOMMChannel, @unchecked Sendable {
+    private let channel: IOBluetoothRFCOMMChannel
+
+    init(_ channel: IOBluetoothRFCOMMChannel) {
+        self.channel = channel
+    }
+
+    func isOpen() -> Bool { channel.isOpen() }
+
+    func writeSync(_ data: UnsafeMutableRawPointer, length: UInt16) -> IOReturn {
+        channel.writeSync(data, length: length)
+    }
+
+    func close() { channel.close() }
+}
+
+private final class IOBluetoothHuaweiDevice: HuaweiBluetoothDevice, @unchecked Sendable {
+    private let device: IOBluetoothDevice
+
+    init(_ device: IOBluetoothDevice) {
+        self.device = device
+    }
+
+    var addressString: String? { device.addressString }
+    func isConnected() -> Bool { device.isConnected() }
+    func openConnection() -> IOReturn { device.openConnection() }
+    func closeConnection() -> IOReturn { device.closeConnection() }
+    func performSDPQuery() -> IOReturn { device.performSDPQuery(nil) }
+
+    func serviceRFCOMMChannelID() -> BluetoothRFCOMMChannelID? {
+        for item in device.services ?? [] {
+            guard let record = item as? IOBluetoothSDPServiceRecord,
+                  record.matchesUUID16(0x1101) else {
+                continue
+            }
+            var channel: BluetoothRFCOMMChannelID = 0
+            if record.getRFCOMMChannelID(&channel) == kIOReturnSuccess {
+                return channel
+            }
+        }
+        return nil
+    }
+
+    func openRFCOMMChannel(
+        channelID: BluetoothRFCOMMChannelID,
+        delegate: IOBluetoothRFCOMMChannelDelegate
+    ) -> (status: IOReturn, channel: (any HuaweiRFCOMMChannel)?) {
+        var channel: IOBluetoothRFCOMMChannel?
+        let status = device.openRFCOMMChannelSync(
+            &channel,
+            withChannelID: channelID,
+            delegate: delegate
+        )
+        return (status, channel.map(IOBluetoothHuaweiRFCOMMChannel.init))
+    }
+}
+
 /// IOBluetooth-backed HUAWEI SPP transport.
 ///
 /// Opens channels and serializes blocking exchanges on a dedicated run-loop
@@ -19,6 +95,7 @@ final class HuaweiRFCOMMTransport: HuaweiListeningModeTransporting, @unchecked S
         var didStartTransportThread: (@Sendable () -> Void)?
         var didAcquireRunLoop: (@Sendable () -> Void)?
         var didEnqueue: (@Sendable (OperationRequest) -> Void)?
+        var pairedDevices: @Sendable () -> [any HuaweiBluetoothDevice]
         var runOperation: (
             @Sendable (OperationRequest, OperationContext) throws -> HuaweiNoiseState
         )?
@@ -28,6 +105,10 @@ final class HuaweiRFCOMMTransport: HuaweiListeningModeTransporting, @unchecked S
             didStartTransportThread: (@Sendable () -> Void)? = nil,
             didAcquireRunLoop: (@Sendable () -> Void)? = nil,
             didEnqueue: (@Sendable (OperationRequest) -> Void)? = nil,
+            pairedDevices: @escaping @Sendable () -> [any HuaweiBluetoothDevice] = {
+                (IOBluetoothDevice.pairedDevices() as? [IOBluetoothDevice] ?? [])
+                    .map(IOBluetoothHuaweiDevice.init)
+            },
             runOperation: (
                 @Sendable (OperationRequest, OperationContext) throws -> HuaweiNoiseState
             )? = nil,
@@ -36,6 +117,7 @@ final class HuaweiRFCOMMTransport: HuaweiListeningModeTransporting, @unchecked S
             self.didStartTransportThread = didStartTransportThread
             self.didAcquireRunLoop = didAcquireRunLoop
             self.didEnqueue = didEnqueue
+            self.pairedDevices = pairedDevices
             self.runOperation = runOperation
             self.didCloseSessions = didCloseSessions
         }
@@ -139,21 +221,24 @@ final class HuaweiRFCOMMTransport: HuaweiListeningModeTransporting, @unchecked S
     }
 
     private final class Connection {
-        let device: IOBluetoothDevice
-        let channel: IOBluetoothRFCOMMChannel
+        let device: any HuaweiBluetoothDevice
+        let channel: any HuaweiRFCOMMChannel
         let delegate: Delegate
         let sessionGeneration: UInt64
+        let openedConnection: Bool
 
         init(
-            device: IOBluetoothDevice,
-            channel: IOBluetoothRFCOMMChannel,
+            device: any HuaweiBluetoothDevice,
+            channel: any HuaweiRFCOMMChannel,
             delegate: Delegate,
-            sessionGeneration: UInt64
+            sessionGeneration: UInt64,
+            openedConnection: Bool
         ) {
             self.device = device
             self.channel = channel
             self.delegate = delegate
             self.sessionGeneration = sessionGeneration
+            self.openedConnection = openedConnection
         }
     }
 
@@ -563,23 +648,28 @@ final class HuaweiRFCOMMTransport: HuaweiListeningModeTransporting, @unchecked S
         address: String,
         context: OperationContext
     ) throws -> HuaweiNoiseState {
-        try context.checkpoint()
-        let connection = try connection(for: address, context: context)
-        let response = try exchange(
-            connection,
-            frame: HuaweiSPPFrame(
-                command: HuaweiSPPFrame.readANCCommand,
-                parameters: [1: [], 2: []]
-            ),
-            expecting: HuaweiSPPFrame.readANCCommand,
-            context: context
-        )
-        try context.checkpoint()
-        guard let value = response.parameters[1], value.count >= 2,
-              let state = HuaweiNoiseState(level: value[0], mode: value[1]) else {
-            throw HuaweiListeningModeError.malformedResponse
+        do {
+            try context.checkpoint()
+            let connection = try connection(for: address, context: context)
+            let response = try exchange(
+                connection,
+                frame: HuaweiSPPFrame(
+                    command: HuaweiSPPFrame.readANCCommand,
+                    parameters: [1: [], 2: []]
+                ),
+                expecting: HuaweiSPPFrame.readANCCommand,
+                context: context
+            )
+            try context.checkpoint()
+            guard let value = response.parameters[1], value.count >= 2,
+                  let state = HuaweiNoiseState(level: value[0], mode: value[1]) else {
+                throw HuaweiListeningModeError.malformedResponse
+            }
+            return state
+        } catch {
+            discardConnection(for: address)
+            throw error
         }
-        return state
     }
 
     private func writeMode(
@@ -587,9 +677,9 @@ final class HuaweiRFCOMMTransport: HuaweiListeningModeTransporting, @unchecked S
         address: String,
         context: OperationContext
     ) throws -> HuaweiNoiseState {
-        try context.checkpoint()
-        let connection = try connection(for: address, context: context)
         do {
+            try context.checkpoint()
+            let connection = try connection(for: address, context: context)
             let acknowledgement = try exchange(
                 connection,
                 frame: HuaweiSPPFrame(
@@ -604,11 +694,15 @@ final class HuaweiRFCOMMTransport: HuaweiListeningModeTransporting, @unchecked S
             if let status = acknowledgement.parameters[2]?.first, status != 0 {
                 throw HuaweiListeningModeError.rejected(status)
             }
+            return try readState(address: address, context: context)
         } catch HuaweiListeningModeError.timeout {
             // Some firmware applies the mode without an ACK. The read-back below
             // is the authority; a missing ACK alone is not a failed write.
+            return try readState(address: address, context: context)
+        } catch {
+            discardConnection(for: address)
+            throw error
         }
-        return try readState(address: address, context: context)
     }
 
     private func connection(
@@ -625,96 +719,108 @@ final class HuaweiRFCOMMTransport: HuaweiListeningModeTransporting, @unchecked S
             return connection
         }
         if let stale = connections.removeValue(forKey: key) {
-            stale.channel.close()
+            close(stale)
         }
 
         try context.checkpoint()
-        let devices = IOBluetoothDevice.pairedDevices() as? [IOBluetoothDevice] ?? []
+        let devices = hooks.pairedDevices()
         guard let device = devices.first(where: {
             BluetoothBatteryReader.normalizedAddress($0.addressString ?? "") == key
         }) else {
             throw HuaweiListeningModeError.deviceUnavailable
         }
 
+        var openedConnection = false
         if !device.isConnected() {
             try context.checkpoint()
             let status = device.openConnection()
             guard status == kIOReturnSuccess else {
                 throw HuaweiListeningModeError.connectionFailed(status)
             }
-            guard try waitUntil(timeout: 5, context: context, { device.isConnected() }) else {
-                throw HuaweiListeningModeError.timeout
-            }
-        }
-
-        try context.checkpoint()
-        _ = device.performSDPQuery(nil)
-        // `performSDPQuery` is asynchronous even though it returns a status. The
-        // cached service list can already contain SPP, so waiting for the service
-        // to appear is not enough; give the query a fixed window before opening,
-        // the same sequence that works from PyObjC.
-        try pump(1.0, context: context)
-        _ = try waitUntil(timeout: 1.0, context: context) {
-            self.sppChannel(for: device) != nil
-        }
-        // A resolved SDP record is authoritative. Without one, try the two channel
-        // numbers the FreeBuds family uses (6i uses 1, 4i/5i use 16).
-        let resolvedChannel = sppChannel(for: device)
-        let candidates: [BluetoothRFCOMMChannelID] = resolvedChannel.map { [$0] } ?? [1, 16]
-
-        var opened: (channel: IOBluetoothRFCOMMChannel, delegate: Delegate)?
-        var lastStatus: IOReturn = kIOReturnError
-        for channelID in candidates {
-            try context.checkpoint()
-            let delegate = Delegate()
-            var channel: IOBluetoothRFCOMMChannel?
-            do {
-                let status = device.openRFCOMMChannelSync(
-                    &channel,
-                    withChannelID: BluetoothRFCOMMChannelID(channelID),
-                    delegate: delegate
-                )
-                lastStatus = status
-                guard status == kIOReturnSuccess, let channel else {
-                    channel?.close()
-                    continue
-                }
-                _ = try waitUntil(timeout: 2, context: context) {
-                    delegate.openStatus != nil
-                }
-                if let openStatus = delegate.openStatus, openStatus != kIOReturnSuccess {
-                    lastStatus = openStatus
-                    channel.close()
-                    continue
-                }
-                guard channel.isOpen() else {
-                    lastStatus = kIOReturnNotOpen
-                    channel.close()
-                    continue
-                }
-                opened = (channel, delegate)
-                break
-            } catch {
-                channel?.close()
-                throw error
-            }
-        }
-        guard let opened else {
-            throw HuaweiListeningModeError.channelOpenFailed(lastStatus)
+            openedConnection = true
         }
 
         do {
             try context.checkpoint()
+            if openedConnection {
+                guard try waitUntil(timeout: 5, context: context, { device.isConnected() }) else {
+                    throw HuaweiListeningModeError.timeout
+                }
+            }
+            let sdpStatus = device.performSDPQuery()
+            guard sdpStatus == kIOReturnSuccess else {
+                throw HuaweiListeningModeError.sdpFailed(sdpStatus)
+            }
+            // `performSDPQuery` is asynchronous even though it returns a status. The
+            // cached service list can already contain SPP, so waiting for the service
+            // to appear is not enough; give the query a fixed window before opening,
+            // the same sequence that works from PyObjC.
+            try pump(1.0, context: context)
+            _ = try waitUntil(timeout: 1.0, context: context) {
+                self.sppChannel(for: device) != nil
+            }
+            // A resolved SDP record is authoritative. Without one, try the two channel
+            // numbers the FreeBuds family uses (6i uses 1, 4i/5i use 16).
+            let resolvedChannel = sppChannel(for: device)
+            let candidates: [BluetoothRFCOMMChannelID] = resolvedChannel.map { [$0] } ?? [1, 16]
+
+            var opened: (channel: any HuaweiRFCOMMChannel, delegate: Delegate)?
+            var lastStatus: IOReturn = kIOReturnError
+            for channelID in candidates {
+                try context.checkpoint()
+                let delegate = Delegate()
+                let result = device.openRFCOMMChannel(
+                    channelID: BluetoothRFCOMMChannelID(channelID),
+                    delegate: delegate
+                )
+                lastStatus = result.status
+                guard result.status == kIOReturnSuccess, let channel = result.channel else {
+                    result.channel?.close()
+                    continue
+                }
+                do {
+                    _ = try waitUntil(timeout: 2, context: context) {
+                        delegate.openStatus != nil
+                    }
+                    if let openStatus = delegate.openStatus, openStatus != kIOReturnSuccess {
+                        lastStatus = openStatus
+                        channel.close()
+                        continue
+                    }
+                    guard channel.isOpen() else {
+                        lastStatus = kIOReturnNotOpen
+                        channel.close()
+                        continue
+                    }
+                    opened = (channel, delegate)
+                    break
+                } catch {
+                    channel.close()
+                    throw error
+                }
+            }
+            guard let opened else {
+                throw HuaweiListeningModeError.channelOpenFailed(lastStatus)
+            }
+            do {
+                try context.checkpoint()
+            } catch {
+                opened.channel.close()
+                throw error
+            }
             let connection = Connection(
                 device: device,
                 channel: opened.channel,
                 delegate: opened.delegate,
-                sessionGeneration: context.sessionGeneration
+                sessionGeneration: context.sessionGeneration,
+                openedConnection: openedConnection
             )
             connections[key] = connection
             return connection
         } catch {
-            opened.channel.close()
+            if openedConnection {
+                _ = device.closeConnection()
+            }
             throw error
         }
     }
@@ -756,10 +862,24 @@ final class HuaweiRFCOMMTransport: HuaweiListeningModeTransporting, @unchecked S
 
     private func closeAllOnTransportThread(through generation: UInt64) {
         for connection in connections.values where connection.sessionGeneration <= generation {
-            connection.channel.close()
+            close(connection)
         }
         connections = connections.filter { $0.value.sessionGeneration > generation }
         hooks.didCloseSessions?(generation)
+    }
+
+    private func close(_ connection: Connection) {
+        connection.channel.close()
+        if connection.openedConnection {
+            _ = connection.device.closeConnection()
+        }
+    }
+
+    private func discardConnection(for address: String) {
+        let key = BluetoothBatteryReader.normalizedAddress(address)
+        if let connection = connections.removeValue(forKey: key) {
+            close(connection)
+        }
     }
 
     private func pump(
@@ -787,17 +907,7 @@ final class HuaweiRFCOMMTransport: HuaweiListeningModeTransporting, @unchecked S
         return condition()
     }
 
-    private func sppChannel(for device: IOBluetoothDevice) -> BluetoothRFCOMMChannelID? {
-        for item in device.services ?? [] {
-            guard let record = item as? IOBluetoothSDPServiceRecord,
-                  record.matchesUUID16(0x1101) else {
-                continue
-            }
-            var channel: BluetoothRFCOMMChannelID = 0
-            if record.getRFCOMMChannelID(&channel) == kIOReturnSuccess {
-                return channel
-            }
-        }
-        return nil
+    private func sppChannel(for device: any HuaweiBluetoothDevice) -> BluetoothRFCOMMChannelID? {
+        device.serviceRFCOMMChannelID()
     }
 }

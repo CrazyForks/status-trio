@@ -57,6 +57,10 @@ final class HuaweiListeningModeProtocolTests: XCTestCase {
         XCTAssertTrue(device(name: "FreeLace Pro 2").isHuaweiAudio)
         XCTAssertFalse(device(name: "AirPods Pro").isHuaweiAudio)
         XCTAssertFalse(
+            device(name: "FreeBuds 6i", vendorID: 0x1234).isHuaweiAudio,
+            "An explicit non-HUAWEI vendor ID must override the family-name fallback"
+        )
+        XCTAssertFalse(
             BluetoothDevice(
                 id: "A8:37:59:F1:77:3D",
                 name: "FreeBuds 6i",
@@ -220,26 +224,44 @@ final class HuaweiAudioEndpointMatcherTests: XCTestCase {
 private final class FakeTransport: HuaweiListeningModeTransporting, @unchecked Sendable {
     private struct State {
         var mode: HuaweiNoiseMode = .cancellation
+        var stateCalls = 0
+        var stateCallsStarted = 0
+        var stateCallsFinished = 0
         var setCalls = 0
         var closed = false
+        var failuresBeforeSuccess = 0
         var failure: HuaweiListeningModeError?
     }
 
     private let state = OSAllocatedUnfairLock(initialState: State())
 
     var mode: HuaweiNoiseMode { state.withLock { $0.mode } }
+    var stateCalls: Int { state.withLock { $0.stateCalls } }
+    var stateCallsFinished: Int { state.withLock { $0.stateCallsFinished } }
     var setCalls: Int { state.withLock { $0.setCalls } }
     var closed: Bool { state.withLock { $0.closed } }
+    var failuresBeforeSuccess: Int {
+        get { state.withLock { $0.failuresBeforeSuccess } }
+        set { state.withLock { $0.failuresBeforeSuccess = newValue } }
+    }
     var failure: HuaweiListeningModeError? {
         get { state.withLock { $0.failure } }
         set { state.withLock { $0.failure = newValue } }
     }
 
     func state(address: String) async throws -> HuaweiNoiseState {
-        try state.withLock { state in
-            if let failure = state.failure { throw failure }
-            return HuaweiNoiseState(level: 2, mode: state.mode.rawValue)!
+        let result: Result<HuaweiNoiseState, HuaweiListeningModeError> = state.withLock { state in
+            state.stateCalls += 1
+            state.stateCallsStarted += 1
+            if state.failuresBeforeSuccess > 0 {
+                state.failuresBeforeSuccess -= 1
+                return .failure(.timeout)
+            }
+            if let failure = state.failure { return .failure(failure) }
+            return .success(HuaweiNoiseState(level: 2, mode: state.mode.rawValue)!)
         }
+        state.withLock { $0.stateCallsFinished += 1 }
+        return try result.get()
     }
 
     func setMode(_ mode: HuaweiNoiseMode, address: String) async throws -> HuaweiNoiseState {
@@ -282,7 +304,8 @@ final class HuaweiListeningModeControllerTests: XCTestCase {
 
     private func makeController(
         _ transport: FakeTransport,
-        endpoint: AudioDeviceID? = 42
+        endpoint: AudioDeviceID? = 42,
+        retryDelay: Duration = .milliseconds(1)
     ) -> BluetoothListeningModeController {
         BluetoothListeningModeController(
             hal: BluetoothListeningModeHAL(
@@ -295,6 +318,7 @@ final class HuaweiListeningModeControllerTests: XCTestCase {
             listenerBackend: CoreAudioBluetoothListeningModeListenerBackend(),
             huaweiTransport: transport,
             huaweiEndpointProvider: FakeHuaweiEndpointProvider(endpointID: endpoint),
+            huaweiReadRetryDelays: [retryDelay],
             failureClearDelay: .milliseconds(20),
             previewSettleDelay: .milliseconds(1)
         )
@@ -333,6 +357,66 @@ final class HuaweiListeningModeControllerTests: XCTestCase {
         XCTAssertEqual(control?.presentation.availableModes ?? [], [.noiseCancellation, .transparency, .off])
         XCTAssertEqual(control?.presentation.selectedMode, .noiseCancellation)
         XCTAssertEqual(control?.address, key)
+    }
+
+    func testInitialReadFailureRetriesUntilTheHuaweiControlIsAvailable() async {
+        let transport = FakeTransport()
+        transport.failuresBeforeSuccess = 1
+        let controller = makeController(transport)
+
+        controller.refresh(devices: [device()])
+
+        await waitUntil { controller.control(forEndpoint: self.endpointID) != nil }
+        XCTAssertEqual(transport.stateCalls, 2)
+        XCTAssertEqual(
+            controller.control(forEndpoint: endpointID)?.presentation.selectedMode,
+            .noiseCancellation
+        )
+    }
+
+    func testInitialReadRetryBudgetIsBounded() async {
+        let transport = FakeTransport()
+        transport.failure = .timeout
+        let controller = makeController(transport)
+
+        controller.refresh(devices: [device()])
+
+        await waitUntil { transport.stateCallsFinished == 2 }
+        try? await Task.sleep(for: .milliseconds(20))
+        XCTAssertEqual(transport.stateCalls, 2)
+        XCTAssertNil(controller.control(forEndpoint: endpointID))
+    }
+
+    func testStopCancelsTheInitialReadRetryWindow() async {
+        let transport = FakeTransport()
+        transport.failure = .timeout
+        let controller = makeController(transport, retryDelay: .milliseconds(100))
+
+        controller.refresh(devices: [device()])
+        await waitUntil { transport.stateCallsFinished == 1 }
+        controller.stop()
+        try? await Task.sleep(for: .milliseconds(150))
+
+        XCTAssertEqual(transport.stateCalls, 1)
+        XCTAssertNil(controller.control(forEndpoint: endpointID))
+    }
+
+    func testLaterReadFailurePreservesTheLastConfirmedHuaweiMode() async {
+        let transport = FakeTransport()
+        let controller = makeController(transport)
+        controller.refresh(devices: [device()])
+        await waitUntil { controller.control(forEndpoint: self.endpointID) != nil }
+
+        transport.failure = .timeout
+        controller.refresh(devices: [device()])
+        await waitUntil { transport.stateCallsFinished == 2 }
+        await Task.yield()
+
+        XCTAssertEqual(
+            controller.control(forEndpoint: endpointID)?.presentation.selectedMode,
+            .noiseCancellation
+        )
+        XCTAssertEqual(transport.stateCalls, 2, "a confirmed state does not trigger first-use retries")
     }
 
     func testSetModeWritesAndSettlesOnReadBack() async {
