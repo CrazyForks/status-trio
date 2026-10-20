@@ -281,7 +281,7 @@ final class StatusPanelViewModel: ObservableObject {
             languageCode: settings.bluetoothListeningModePreviewLanguage
         )
         let connected = BluetoothDevicePresentation.grouped(store.bluetoothDevices.devices).connected
-            .filter(\.isAirPods)
+            .filter { $0.isAirPods || $0.isHuaweiAudio }
             .map { BluetoothBatteryReader.normalizedAddress($0.id) }
             .joined(separator: ",")
         let preview = configuration.isEnabled ? "|preview" : ""

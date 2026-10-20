@@ -484,6 +484,21 @@ struct BluetoothDevice: Identifiable, Equatable, Sendable {
         guard kind.isAudio else { return false }
         return airPodsModel != nil || name.lowercased().contains("airpods")
     }
+
+    /// Whether the device speaks HUAWEI's vendor SPP noise-control protocol.
+    ///
+    /// The USB-style vendor pair survives a rename, so it is the primary
+    /// evidence; the name fallback covers a report that omitted the pair. The
+    /// protocol is reverse-engineered and model-dependent, so a wrong guess fails
+    /// closed — the controller hides the control when the first query fails.
+    var isHuaweiAudio: Bool {
+        guard kind.isAudio else { return false }
+        if vendorID == 0x027D { return true }
+        let lowered = name.lowercased()
+        return lowered.contains("freebuds")
+            || lowered.contains("freelace")
+            || lowered.contains("freeclip")
+    }
 }
 
 /// What tapping the Bluetooth row does. The Wi-Fi row has the same shape — its
