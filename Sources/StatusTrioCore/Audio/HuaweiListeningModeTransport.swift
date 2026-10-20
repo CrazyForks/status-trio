@@ -13,6 +13,56 @@ import IOBluetooth
 /// transport thread. The transport lock guards run-loop and queue state, while
 /// each delegate lock guards its receive buffer, decoded frames, and open status.
 final class HuaweiRFCOMMTransport: HuaweiListeningModeTransporting, @unchecked Sendable {
+    /// Injection points for deterministic lifecycle tests. Production uses no
+    /// hooks, so queueing, thread startup, and session cleanup stay in this type.
+    struct Hooks: Sendable {
+        var didStartTransportThread: (@Sendable () -> Void)?
+        var didAcquireRunLoop: (@Sendable () -> Void)?
+        var didEnqueue: (@Sendable (OperationRequest) -> Void)?
+        var runOperation: (
+            @Sendable (OperationRequest, OperationContext) throws -> HuaweiNoiseState
+        )?
+        var didCloseSessions: (@Sendable (UInt64) -> Void)?
+
+        init(
+            didStartTransportThread: (@Sendable () -> Void)? = nil,
+            didAcquireRunLoop: (@Sendable () -> Void)? = nil,
+            didEnqueue: (@Sendable (OperationRequest) -> Void)? = nil,
+            runOperation: (
+                @Sendable (OperationRequest, OperationContext) throws -> HuaweiNoiseState
+            )? = nil,
+            didCloseSessions: (@Sendable (UInt64) -> Void)? = nil
+        ) {
+            self.didStartTransportThread = didStartTransportThread
+            self.didAcquireRunLoop = didAcquireRunLoop
+            self.didEnqueue = didEnqueue
+            self.runOperation = runOperation
+            self.didCloseSessions = didCloseSessions
+        }
+    }
+
+    enum OperationRequest: Equatable, Sendable {
+        case state(address: String)
+        case setMode(mode: HuaweiNoiseMode, address: String)
+    }
+
+    struct OperationContext: Sendable {
+        let sessionGeneration: UInt64
+        private let checkOperation: @Sendable () throws -> Void
+
+        init(
+            sessionGeneration: UInt64,
+            checkOperation: @escaping @Sendable () throws -> Void
+        ) {
+            self.sessionGeneration = sessionGeneration
+            self.checkOperation = checkOperation
+        }
+
+        func checkpoint() throws {
+            try checkOperation()
+        }
+    }
+
     private final class Delegate: NSObject, IOBluetoothRFCOMMChannelDelegate {
         // IOBluetooth can deliver data on the main thread even when the channel
         // was opened by the transport thread. Never expose mutable buffers to
@@ -92,12 +142,126 @@ final class HuaweiRFCOMMTransport: HuaweiListeningModeTransporting, @unchecked S
         let device: IOBluetoothDevice
         let channel: IOBluetoothRFCOMMChannel
         let delegate: Delegate
+        let sessionGeneration: UInt64
 
-        init(device: IOBluetoothDevice, channel: IOBluetoothRFCOMMChannel, delegate: Delegate) {
+        init(
+            device: IOBluetoothDevice,
+            channel: IOBluetoothRFCOMMChannel,
+            delegate: Delegate,
+            sessionGeneration: UInt64
+        ) {
             self.device = device
             self.channel = channel
             self.delegate = delegate
+            self.sessionGeneration = sessionGeneration
         }
+    }
+
+    /// The cancellation/completion state for one queued operation.
+    ///
+    /// A continuation can register after cancellation has already arrived, so
+    /// cancellation is latched separately from the continuation. All terminal
+    /// paths take the continuation exactly once.
+    private final class OperationState: @unchecked Sendable {
+        private enum Phase {
+            case queued
+            case running
+            case completed
+        }
+
+        private let lock = NSLock()
+        private var phase = Phase.queued
+        private var cancellationRequested = false
+        private var continuation: CheckedContinuation<HuaweiNoiseState, any Error>?
+
+        var isCompleted: Bool {
+            lock.withLock { phase == .completed }
+        }
+
+        func install(
+            _ continuation: CheckedContinuation<HuaweiNoiseState, any Error>
+        ) -> Bool {
+            let result: (Bool, Bool) = lock.withLock {
+                guard phase == .queued, !cancellationRequested else {
+                    phase = .completed
+                    return (false, true)
+                }
+                self.continuation = continuation
+                return (true, false)
+            }
+            if result.1 {
+                continuation.resume(throwing: CancellationError())
+            }
+            return result.0
+        }
+
+        func begin() -> Bool {
+            let result: (Bool, CheckedContinuation<HuaweiNoiseState, any Error>?) = lock.withLock {
+                guard phase == .queued else { return (false, nil) }
+                if cancellationRequested {
+                    phase = .completed
+                    let continuation = self.continuation
+                    self.continuation = nil
+                    return (false, continuation)
+                }
+                phase = .running
+                return (true, nil)
+            }
+            result.1?.resume(throwing: CancellationError())
+            return result.0
+        }
+
+        func cancel() {
+            let continuation: CheckedContinuation<HuaweiNoiseState, any Error>? = lock.withLock {
+                guard phase != .completed else { return nil }
+                cancellationRequested = true
+                guard phase == .queued else { return nil }
+                phase = .completed
+                let continuation = self.continuation
+                self.continuation = nil
+                return continuation
+            }
+            continuation?.resume(throwing: CancellationError())
+        }
+
+        func checkpoint() throws {
+            if lock.withLock({ cancellationRequested }) {
+                throw CancellationError()
+            }
+        }
+
+        func resume(returning value: HuaweiNoiseState) {
+            let result: (
+                CheckedContinuation<HuaweiNoiseState, any Error>?,
+                Bool
+            ) = lock.withLock {
+                guard phase == .running else { return (nil, false) }
+                phase = .completed
+                let continuation = self.continuation
+                self.continuation = nil
+                return (continuation, cancellationRequested)
+            }
+            if result.1 {
+                result.0?.resume(throwing: CancellationError())
+            } else {
+                result.0?.resume(returning: value)
+            }
+        }
+
+        func resume(throwing error: any Error) {
+            let continuation: CheckedContinuation<HuaweiNoiseState, any Error>? = lock.withLock {
+                guard phase == .running else { return nil }
+                phase = .completed
+                let continuation = self.continuation
+                self.continuation = nil
+                return continuation
+            }
+            continuation?.resume(throwing: error)
+        }
+    }
+
+    private struct PendingOperation: Sendable {
+        let run: @Sendable () -> Void
     }
 
     private let lock = NSLock()
@@ -113,10 +277,22 @@ final class HuaweiRFCOMMTransport: HuaweiListeningModeTransporting, @unchecked S
     private let startupLock = NSLock()
     private var transportThread: Thread?
     private var transportRunLoop: CFRunLoop?
-    private var pending: [@Sendable () -> Void] = []
-    private var isProcessing = false
+    private var pending: [PendingOperation] = []
+    private var activeOperationCancellations: [UUID: @Sendable () -> Void] = [:]
+    /// One queued run-loop callback owns the entire drain chain.
+    ///
+    /// The active operation may pump its run loop while awaiting a response.
+    /// Enqueue and close paths must not schedule another drain in that window.
+    private var isDrainScheduled = false
     private var keepAlivePort: Port?
     private var startedThreadCount = 0
+    private var currentSessionGeneration: UInt64 = 0
+    private var deferredCloseGeneration: UInt64?
+    private let hooks: Hooks
+
+    init(hooks: Hooks = Hooks()) {
+        self.hooks = hooks
+    }
 
     /// How many transport threads this instance has started.
     ///
@@ -133,50 +309,141 @@ final class HuaweiRFCOMMTransport: HuaweiListeningModeTransporting, @unchecked S
     private var connections: [String: Connection] = [:]
 
     func state(address: String) async throws -> HuaweiNoiseState {
-        try await perform { try self.readState(address: address) }
+        try await perform(.state(address: address))
     }
 
     func setMode(_ mode: HuaweiNoiseMode, address: String) async throws -> HuaweiNoiseState {
-        try await perform { try self.writeMode(mode, address: address) }
+        try await perform(.setMode(mode: mode, address: address))
     }
 
     func closeAll() {
+        var cancellations: [@Sendable () -> Void] = []
+        var runLoop: CFRunLoop?
+        var shouldSchedule = false
         lock.lock()
-        let started = transportRunLoop != nil
+        let closingGeneration = currentSessionGeneration
+        currentSessionGeneration &+= 1
+        cancellations = Array(activeOperationCancellations.values)
+        runLoop = transportRunLoop
+        if runLoop != nil {
+            pending.append(PendingOperation { [weak self] in
+                self?.closeAllOnTransportThread(through: closingGeneration)
+            })
+            if !isDrainScheduled {
+                isDrainScheduled = true
+                shouldSchedule = true
+            }
+        } else {
+            deferredCloseGeneration = max(deferredCloseGeneration ?? 0, closingGeneration)
+        }
         lock.unlock()
-        guard started else { return }
-        enqueue { self.closeAllOnTransportThread() }
+        for cancel in cancellations {
+            cancel()
+        }
+        if shouldSchedule, let runLoop {
+            scheduleDrain(on: runLoop)
+        }
     }
 
     // MARK: - Async → transport thread
 
-    private func perform<T: Sendable>(
-        _ body: @escaping @Sendable () throws -> T
-    ) async throws -> T {
-        try await withCheckedThrowingContinuation { continuation in
-            enqueue {
-                do {
-                    continuation.resume(returning: try body())
-                } catch {
-                    continuation.resume(throwing: error)
-                }
+    private func perform(_ request: OperationRequest) async throws -> HuaweiNoiseState {
+        let operation = OperationState()
+        return try await withTaskCancellationHandler {
+            if Task.isCancelled {
+                operation.cancel()
             }
+            return try await withCheckedThrowingContinuation { continuation in
+                guard operation.install(continuation) else { return }
+                enqueue(request, operation: operation)
+            }
+        } onCancel: {
+            operation.cancel()
         }
     }
 
-    private func enqueue(_ block: @escaping @Sendable () -> Void) {
-        let runLoop = ensureRunLoop()
+    private func enqueue(_ request: OperationRequest, operation: OperationState) {
+        let id = UUID()
+        let generation: UInt64
         lock.lock()
-        pending.append(block)
-        let shouldSchedule = !isProcessing
-        if shouldSchedule { isProcessing = true }
+        generation = currentSessionGeneration
+        activeOperationCancellations[id] = { operation.cancel() }
         lock.unlock()
-        if shouldSchedule {
-            CFRunLoopPerformBlock(runLoop, "kCFRunLoopCommonModes" as CFString) { [weak self] in
-                self?.drain()
-            }
-            CFRunLoopWakeUp(runLoop)
+
+        guard !operation.isCompleted else {
+            removeActiveOperation(id)
+            operation.cancel()
+            return
         }
+
+        let runLoop = ensureRunLoop()
+        hooks.didAcquireRunLoop?()
+        let pendingOperation = PendingOperation { [weak self, weak operation] in
+            guard let self else { return }
+            guard let operation else {
+                self.removeActiveOperation(id)
+                return
+            }
+            guard operation.begin() else {
+                self.removeActiveOperation(id)
+                return
+            }
+            let context = OperationContext(sessionGeneration: generation) {
+                try operation.checkpoint()
+                try self.checkSession(generation)
+            }
+            do {
+                let result = try self.execute(request, context: context)
+                operation.resume(returning: result)
+            } catch {
+                operation.resume(throwing: error)
+            }
+            self.removeActiveOperation(id)
+        }
+
+        var shouldCancel = false
+        var shouldSchedule = false
+        lock.lock()
+        if generation == currentSessionGeneration, !operation.isCompleted {
+            pending.append(pendingOperation)
+            shouldSchedule = !isDrainScheduled
+            if shouldSchedule { isDrainScheduled = true }
+        } else {
+            activeOperationCancellations.removeValue(forKey: id)
+            shouldCancel = true
+        }
+        lock.unlock()
+
+        if shouldCancel {
+            operation.cancel()
+            return
+        }
+        if shouldSchedule {
+            scheduleDrain(on: runLoop)
+        }
+        hooks.didEnqueue?(request)
+    }
+
+    private func removeActiveOperation(_ id: UUID) {
+        lock.withLock {
+            _ = activeOperationCancellations.removeValue(forKey: id)
+        }
+    }
+
+    private func checkSession(_ generation: UInt64) throws {
+        let isCurrent = lock.withLock {
+            generation == currentSessionGeneration
+        }
+        if !isCurrent {
+            throw CancellationError()
+        }
+    }
+
+    private func scheduleDrain(on runLoop: CFRunLoop) {
+        CFRunLoopPerformBlock(runLoop, "kCFRunLoopCommonModes" as CFString) { [weak self] in
+            self?.drain()
+        }
+        CFRunLoopWakeUp(runLoop)
     }
 
     /// Runs one queued operation. A request pumps a nested run loop while it
@@ -185,24 +452,27 @@ final class HuaweiRFCOMMTransport: HuaweiListeningModeTransporting, @unchecked S
     private func drain() {
         lock.lock()
         guard !pending.isEmpty else {
-            isProcessing = false
+            isDrainScheduled = false
             lock.unlock()
             return
         }
-        let block = pending.removeFirst()
+        let pendingOperation = pending.removeFirst()
         lock.unlock()
 
-        block()
+        pendingOperation.run()
 
+        var hasMore = false
+        var runLoop: CFRunLoop?
         lock.lock()
-        let hasMore = !pending.isEmpty
-        if !hasMore { isProcessing = false }
+        hasMore = !pending.isEmpty
+        if !hasMore {
+            isDrainScheduled = false
+        } else {
+            runLoop = transportRunLoop
+        }
         lock.unlock()
-        if hasMore, let runLoop = transportRunLoop {
-            CFRunLoopPerformBlock(runLoop, "kCFRunLoopCommonModes" as CFString) { [weak self] in
-                self?.drain()
-            }
-            CFRunLoopWakeUp(runLoop)
+        if let runLoop {
+            scheduleDrain(on: runLoop)
         }
     }
 
@@ -211,7 +481,8 @@ final class HuaweiRFCOMMTransport: HuaweiListeningModeTransporting, @unchecked S
     ///
     /// The whole body is serialized by `startupLock`: the run loop is published
     /// by the new thread, so without it two concurrent callers would each start
-    /// a thread and the transport would own two.
+    /// a thread and the transport would own two. `closeAll()` never takes this
+    /// lock, so invalidation remains nonblocking while startup is paused.
     private func ensureRunLoop() -> CFRunLoop {
         startupLock.lock()
         defer { startupLock.unlock() }
@@ -227,15 +498,30 @@ final class HuaweiRFCOMMTransport: HuaweiListeningModeTransporting, @unchecked S
         let thread = Thread { [weak self] in
             guard let self else { return }
             let runLoop = CFRunLoopGetCurrent()
-            self.lock.lock()
-            self.transportRunLoop = runLoop
-            self.lock.unlock()
+            let keepAlivePort = Port()
+            RunLoop.current.add(keepAlivePort, forMode: .default)
+            self.lock.withLock {
+                self.keepAlivePort = keepAlivePort
+            }
+            self.hooks.didStartTransportThread?()
+            var shouldScheduleDrain = false
+            self.lock.withLock {
+                self.transportRunLoop = runLoop
+                if let closeGeneration = self.deferredCloseGeneration {
+                    self.deferredCloseGeneration = nil
+                    self.pending.append(PendingOperation {
+                        self.closeAllOnTransportThread(through: closeGeneration)
+                    })
+                }
+                if !self.pending.isEmpty, !self.isDrainScheduled {
+                    self.isDrainScheduled = true
+                    shouldScheduleDrain = true
+                }
+            }
             ready.signal()
-            // A run loop with no sources returns immediately; the keep-alive port
-            // makes the idle wait real and keeps `CFRunLoopPerformBlock` delivery
-            // from turning into a spin.
-            self.keepAlivePort = Port()
-            RunLoop.current.add(self.keepAlivePort!, forMode: .default)
+            if shouldScheduleDrain {
+                self.scheduleDrain(on: CFRunLoopGetCurrent())
+            }
             while true {
                 RunLoop.current.run(mode: .default, before: .distantFuture)
             }
@@ -258,16 +544,37 @@ final class HuaweiRFCOMMTransport: HuaweiListeningModeTransporting, @unchecked S
 
     // MARK: - Transport-thread operations
 
-    private func readState(address: String) throws -> HuaweiNoiseState {
-        let connection = try connection(for: address)
+    private func execute(
+        _ request: OperationRequest,
+        context: OperationContext
+    ) throws -> HuaweiNoiseState {
+        if let runOperation = hooks.runOperation {
+            return try runOperation(request, context)
+        }
+        switch request {
+        case .state(let address):
+            return try readState(address: address, context: context)
+        case .setMode(let mode, let address):
+            return try writeMode(mode, address: address, context: context)
+        }
+    }
+
+    private func readState(
+        address: String,
+        context: OperationContext
+    ) throws -> HuaweiNoiseState {
+        try context.checkpoint()
+        let connection = try connection(for: address, context: context)
         let response = try exchange(
             connection,
             frame: HuaweiSPPFrame(
                 command: HuaweiSPPFrame.readANCCommand,
                 parameters: [1: [], 2: []]
             ),
-            expecting: HuaweiSPPFrame.readANCCommand
+            expecting: HuaweiSPPFrame.readANCCommand,
+            context: context
         )
+        try context.checkpoint()
         guard let value = response.parameters[1], value.count >= 2,
               let state = HuaweiNoiseState(level: value[0], mode: value[1]) else {
             throw HuaweiListeningModeError.malformedResponse
@@ -275,8 +582,13 @@ final class HuaweiRFCOMMTransport: HuaweiListeningModeTransporting, @unchecked S
         return state
     }
 
-    private func writeMode(_ mode: HuaweiNoiseMode, address: String) throws -> HuaweiNoiseState {
-        let connection = try connection(for: address)
+    private func writeMode(
+        _ mode: HuaweiNoiseMode,
+        address: String,
+        context: OperationContext
+    ) throws -> HuaweiNoiseState {
+        try context.checkpoint()
+        let connection = try connection(for: address, context: context)
         do {
             let acknowledgement = try exchange(
                 connection,
@@ -285,8 +597,10 @@ final class HuaweiRFCOMMTransport: HuaweiListeningModeTransporting, @unchecked S
                     parameters: [1: mode.writePayload]
                 ),
                 expecting: HuaweiSPPFrame.writeANCCommand,
+                context: context,
                 timeout: 1.5
             )
+            try context.checkpoint()
             if let status = acknowledgement.parameters[2]?.first, status != 0 {
                 throw HuaweiListeningModeError.rejected(status)
             }
@@ -294,20 +608,27 @@ final class HuaweiRFCOMMTransport: HuaweiListeningModeTransporting, @unchecked S
             // Some firmware applies the mode without an ACK. The read-back below
             // is the authority; a missing ACK alone is not a failed write.
         }
-        return try readState(address: address)
+        return try readState(address: address, context: context)
     }
 
-    private func connection(for address: String) throws -> Connection {
+    private func connection(
+        for address: String,
+        context: OperationContext
+    ) throws -> Connection {
+        try context.checkpoint()
         let key = BluetoothBatteryReader.normalizedAddress(address)
         guard !key.isEmpty else { throw HuaweiListeningModeError.deviceUnavailable }
 
-        if let connection = connections[key], connection.channel.isOpen() {
+        if let connection = connections[key],
+           connection.sessionGeneration == context.sessionGeneration,
+           connection.channel.isOpen() {
             return connection
         }
         if let stale = connections.removeValue(forKey: key) {
             stale.channel.close()
         }
 
+        try context.checkpoint()
         let devices = IOBluetoothDevice.pairedDevices() as? [IOBluetoothDevice] ?? []
         guard let device = devices.first(where: {
             BluetoothBatteryReader.normalizedAddress($0.addressString ?? "") == key
@@ -316,22 +637,26 @@ final class HuaweiRFCOMMTransport: HuaweiListeningModeTransporting, @unchecked S
         }
 
         if !device.isConnected() {
+            try context.checkpoint()
             let status = device.openConnection()
             guard status == kIOReturnSuccess else {
                 throw HuaweiListeningModeError.connectionFailed(status)
             }
-            guard waitUntil(timeout: 5, { device.isConnected() }) else {
+            guard try waitUntil(timeout: 5, context: context, { device.isConnected() }) else {
                 throw HuaweiListeningModeError.timeout
             }
         }
 
+        try context.checkpoint()
         _ = device.performSDPQuery(nil)
         // `performSDPQuery` is asynchronous even though it returns a status. The
         // cached service list can already contain SPP, so waiting for the service
         // to appear is not enough; give the query a fixed window before opening,
         // the same sequence that works from PyObjC.
-        pump(1.0)
-        _ = waitUntil(timeout: 1.0) { self.sppChannel(for: device) != nil }
+        try pump(1.0, context: context)
+        _ = try waitUntil(timeout: 1.0, context: context) {
+            self.sppChannel(for: device) != nil
+        }
         // A resolved SDP record is authoritative. Without one, try the two channel
         // numbers the FreeBuds family uses (6i uses 1, 4i/5i use 16).
         let resolvedChannel = sppChannel(for: device)
@@ -340,51 +665,68 @@ final class HuaweiRFCOMMTransport: HuaweiListeningModeTransporting, @unchecked S
         var opened: (channel: IOBluetoothRFCOMMChannel, delegate: Delegate)?
         var lastStatus: IOReturn = kIOReturnError
         for channelID in candidates {
+            try context.checkpoint()
             let delegate = Delegate()
             var channel: IOBluetoothRFCOMMChannel?
-            let status = device.openRFCOMMChannelSync(
-                &channel,
-                withChannelID: BluetoothRFCOMMChannelID(channelID),
-                delegate: delegate
-            )
-            lastStatus = status
-            guard status == kIOReturnSuccess, let channel else {
+            do {
+                let status = device.openRFCOMMChannelSync(
+                    &channel,
+                    withChannelID: BluetoothRFCOMMChannelID(channelID),
+                    delegate: delegate
+                )
+                lastStatus = status
+                guard status == kIOReturnSuccess, let channel else {
+                    channel?.close()
+                    continue
+                }
+                _ = try waitUntil(timeout: 2, context: context) {
+                    delegate.openStatus != nil
+                }
+                if let openStatus = delegate.openStatus, openStatus != kIOReturnSuccess {
+                    lastStatus = openStatus
+                    channel.close()
+                    continue
+                }
+                guard channel.isOpen() else {
+                    lastStatus = kIOReturnNotOpen
+                    channel.close()
+                    continue
+                }
+                opened = (channel, delegate)
+                break
+            } catch {
                 channel?.close()
-                continue
+                throw error
             }
-            _ = waitUntil(timeout: 2) { delegate.openStatus != nil }
-            if let openStatus = delegate.openStatus, openStatus != kIOReturnSuccess {
-                lastStatus = openStatus
-                channel.close()
-                continue
-            }
-            guard channel.isOpen() else {
-                lastStatus = kIOReturnNotOpen
-                channel.close()
-                continue
-            }
-            opened = (channel, delegate)
-            break
         }
         guard let opened else {
             throw HuaweiListeningModeError.channelOpenFailed(lastStatus)
         }
 
-        let connection = Connection(
-            device: device,
-            channel: opened.channel,
-            delegate: opened.delegate
-        )
-        connections[key] = connection
-        return connection
+        do {
+            try context.checkpoint()
+            let connection = Connection(
+                device: device,
+                channel: opened.channel,
+                delegate: opened.delegate,
+                sessionGeneration: context.sessionGeneration
+            )
+            connections[key] = connection
+            return connection
+        } catch {
+            opened.channel.close()
+            throw error
+        }
     }
 
     private func exchange(
         _ connection: Connection,
         frame: HuaweiSPPFrame,
         expecting command: [UInt8],
+        context: OperationContext,
         timeout: TimeInterval = 3
     ) throws -> HuaweiSPPFrame {
+        try context.checkpoint()
         guard connection.channel.isOpen() else { throw HuaweiListeningModeError.notOpen }
         connection.delegate.resetReplies()
 
@@ -399,9 +741,11 @@ final class HuaweiRFCOMMTransport: HuaweiListeningModeTransporting, @unchecked S
         guard status == kIOReturnSuccess else {
             throw HuaweiListeningModeError.writeFailed(status)
         }
+        try context.checkpoint()
 
         let deadline = Date().addingTimeInterval(timeout)
         while Date() < deadline {
+            try context.checkpoint()
             if let response = connection.delegate.takeFrame(command: command) {
                 return response
             }
@@ -410,23 +754,33 @@ final class HuaweiRFCOMMTransport: HuaweiListeningModeTransporting, @unchecked S
         throw HuaweiListeningModeError.timeout
     }
 
-    private func closeAllOnTransportThread() {
-        for connection in connections.values {
+    private func closeAllOnTransportThread(through generation: UInt64) {
+        for connection in connections.values where connection.sessionGeneration <= generation {
             connection.channel.close()
         }
-        connections.removeAll()
+        connections = connections.filter { $0.value.sessionGeneration > generation }
+        hooks.didCloseSessions?(generation)
     }
 
-    private func pump(_ duration: TimeInterval) {
+    private func pump(
+        _ duration: TimeInterval,
+        context: OperationContext
+    ) throws {
         let deadline = Date().addingTimeInterval(duration)
         while Date() < deadline {
+            try context.checkpoint()
             RunLoop.current.run(until: Date().addingTimeInterval(0.02))
         }
     }
 
-    private func waitUntil(timeout: TimeInterval, _ condition: () -> Bool) -> Bool {
+    private func waitUntil(
+        timeout: TimeInterval,
+        context: OperationContext,
+        _ condition: () -> Bool
+    ) throws -> Bool {
         let deadline = Date().addingTimeInterval(timeout)
         while Date() < deadline {
+            try context.checkpoint()
             if condition() { return true }
             RunLoop.current.run(until: Date().addingTimeInterval(0.02))
         }

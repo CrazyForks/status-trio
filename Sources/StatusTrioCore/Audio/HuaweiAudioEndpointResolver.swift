@@ -15,9 +15,10 @@ enum HuaweiAudioEndpointMatcher {
     /// Resolves a Bluetooth device to one output endpoint.
     ///
     /// Address evidence wins, exactly as it does for AirPods. Name matching is
-    /// only the fallback for an endpoint whose UID does not carry the address,
-    /// and it must be exact after trimming and case-folding; a partial name can
-    /// select a different pair of buds and send the tap to the wrong hardware.
+    /// only the fallback for an endpoint whose UID does not carry recognizable
+    /// address evidence, and it must be exact after trimming and case-folding;
+    /// a partial or conflicting name can select a different pair of buds and
+    /// send the tap to the wrong hardware.
     static func endpointID(
         forAddress address: String,
         deviceName: String,
@@ -28,18 +29,63 @@ enum HuaweiAudioEndpointMatcher {
 
         let addressMatches = endpoints.filter { endpoint in
             guard let uid = endpoint.uid,
-                  let prefix = uid.split(separator: ":", maxSplits: 1).first else {
+                  let endpointAddress = bluetoothAddress(in: uid) else {
                 return false
             }
-            return BluetoothBatteryReader.normalizedAddress(String(prefix)) == target
+            return endpointAddress == target
         }
         if addressMatches.count == 1 { return addressMatches[0].id }
         if addressMatches.count > 1 { return nil }
 
         let wantedName = normalizedName(deviceName)
         guard !wantedName.isEmpty else { return nil }
-        let nameMatches = endpoints.filter { normalizedName($0.name) == wantedName }
+        let nameMatches = endpoints.filter { endpoint in
+            guard normalizedName(endpoint.name) == wantedName else { return false }
+            guard let uid = endpoint.uid else { return true }
+            return bluetoothAddress(in: uid) == nil
+        }
         return nameMatches.count == 1 ? nameMatches[0].id : nil
+    }
+
+    private static func bluetoothAddress(in uid: String) -> String? {
+        if let address = normalizedBluetoothAddress(uid) {
+            return address
+        }
+
+        // CoreAudio names Bluetooth endpoints `<address>:output`. Drop the
+        // endpoint role from the final colon so colon-delimited addresses still
+        // leave exactly six byte groups for strict validation.
+        guard let finalColon = uid.lastIndex(of: ":") else { return nil }
+        return normalizedBluetoothAddress(String(uid[..<finalColon]))
+    }
+
+    private static func normalizedBluetoothAddress(_ candidate: String) -> String? {
+        let bytes = Array(candidate.utf8)
+        guard bytes.count == 17,
+              let delimiter = [UInt8(ascii: ":"), UInt8(ascii: "-")].first(where: {
+                  bytes[2] == $0
+              }),
+              (0..<5).allSatisfy({ bytes[$0 * 3 + 2] == delimiter }) else {
+            return nil
+        }
+
+        var addressBytes: [UInt8] = []
+        addressBytes.reserveCapacity(12)
+        for group in 0..<6 {
+            let start = group * 3
+            guard isASCIIHexDigit(bytes[start]), isASCIIHexDigit(bytes[start + 1]) else {
+                return nil
+            }
+            addressBytes.append(bytes[start])
+            addressBytes.append(bytes[start + 1])
+        }
+        return String(decoding: addressBytes, as: UTF8.self).uppercased()
+    }
+
+    private static func isASCIIHexDigit(_ byte: UInt8) -> Bool {
+        (UInt8(ascii: "0")...UInt8(ascii: "9")).contains(byte)
+            || (UInt8(ascii: "A")...UInt8(ascii: "F")).contains(byte)
+            || (UInt8(ascii: "a")...UInt8(ascii: "f")).contains(byte)
     }
 
     private static func normalizedName(_ name: String?) -> String {

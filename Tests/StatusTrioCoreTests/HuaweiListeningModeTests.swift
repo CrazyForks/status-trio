@@ -142,6 +142,56 @@ final class HuaweiAudioEndpointMatcherTests: XCTestCase {
         )
     }
 
+    func testMatchesColonDelimitedAddressWhenNameDoesNotMatch() {
+        let endpoints = [
+            HuaweiAudioEndpoint(id: 9, uid: "A8:37:59:F1:77:3D:output", name: "renamed")
+        ]
+        XCTAssertEqual(
+            HuaweiAudioEndpointMatcher.endpointID(
+                forAddress: address,
+                deviceName: "HUAWEI FreeBuds 6i",
+                in: endpoints
+            ),
+            9
+        )
+    }
+
+    func testRequiresWellFormedAddressEvidenceInUID() {
+        let endpoints = [
+            HuaweiAudioEndpoint(id: 9, uid: "A83759F1773D:output", name: "renamed")
+        ]
+        XCTAssertNil(
+            HuaweiAudioEndpointMatcher.endpointID(
+                forAddress: address,
+                deviceName: "HUAWEI FreeBuds 6i",
+                in: endpoints
+            )
+        )
+    }
+
+    func testReviewPR124ConflictingAddressCannotMatchByName() {
+        let endpoint = HuaweiAudioEndpoint(id: 9, uid: "11-22-33-44-55-66:output", name: "HUAWEI FreeBuds 6i")
+        XCTAssertNil(HuaweiAudioEndpointMatcher.endpointID(
+            forAddress: address,
+            deviceName: "HUAWEI FreeBuds 6i",
+            in: [endpoint]
+        ), "An endpoint with a different known address must not match by name")
+    }
+
+    func testDuplicateOpaqueNameMatchesFailClosed() {
+        let endpoints = [
+            HuaweiAudioEndpoint(id: 7, uid: "OpaqueInput", name: "HUAWEI FreeBuds 6i"),
+            HuaweiAudioEndpoint(id: 9, uid: "OpaqueOutput", name: "HUAWEI FreeBuds 6i")
+        ]
+        XCTAssertNil(
+            HuaweiAudioEndpointMatcher.endpointID(
+                forAddress: address,
+                deviceName: "HUAWEI FreeBuds 6i",
+                in: endpoints
+            )
+        )
+    }
+
     func testFallsBackToExactNameOnly() {
         let endpoints = [
             HuaweiAudioEndpoint(id: 9, uid: "SomeOtherUID", name: "HUAWEI FreeBuds 6i")

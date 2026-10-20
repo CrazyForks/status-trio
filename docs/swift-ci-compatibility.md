@@ -1147,3 +1147,29 @@ distribution due to environment protection rules.
   697 Swift Testing / 103 suites；native compatibility tests、双架构 Release、
   两种 helper bundle 校验、DMG 创建及 artifact 上传均通过。仍为
   `version=1.6.1 build=38 publish=false notarize=false`，未发版。
+
+## 39422907935：PR #123 定位权限缓存预检
+
+- 运行：[39422907935](https://github.com/lingyired/status-trio/actions/runs/39422907935)，
+  第一次 attempt，head `a1fcd448`，临时分支 `codex/preflight-pr-123`，
+  `version=1.6.0`、`build=38`、`publish=false`、`notarize=false`；
+  失败阶段为 `Run tests`，后续兼容性检查和打包未运行。
+- XCTest 1729 项（7 skipped、0 failures）全部通过，包含新增的 Wi-Fi 授权缓存测试；
+  Swift Testing 697 项 / 103 suites 报告 11 个 issue，集中在
+  `AppIconControllerTests`（4）、`IconSurfaceIntegrationTests`（6）和
+  `DockChargingEnvironmentTests`（1）。前两组主要是 5 秒内未观察到合并重绘，
+  后一组是开发充电预览尚未观察到 steady phase。
+- 根因调查：这些测试依赖主 actor 上的异步状态传播、重绘 coalescer 或真实动画时钟；
+  首次失败日志只有最终等待超时或断言，缺少各阶段观测，尚不能确定阻塞在哪一级，
+  也不能据此归因于本次 Wi-Fi 缓存改动。相关等待逻辑在 PR 中未改动。
+- 修复及验证：未修改产品代码或放宽断言；同一 head 的本地完整测试通过
+  （Xcode 27 / Swift 6.4：1719 XCTest、7 skipped、0 failures；
+  697 Swift Testing / 103 suites），相关三个测试组均通过。
+  第二次 CI attempt 全部通过：1729 XCTest（7 skipped、0 failures）、
+  697 Swift Testing / 103 suites、native compatibility tests、双架构 Release、
+  mobile battery / privileged helper bundle 校验、DMG 创建和 artifact 上传。
+  产物为 `StatusTrio-324`，包含 `StatusTrio-1.6.0.dmg`；日志确认
+  `Built … without publishing.`，使用 Ad-hoc 签名，未进行 Apple 公证，
+  未创建 Release 或更新 appcast。
+  运行间结果有差异，但仍未获得首次失败的精确阶段根因；
+  不把首次失败解释为编译器问题，也不以复验通过抹去首次失败。

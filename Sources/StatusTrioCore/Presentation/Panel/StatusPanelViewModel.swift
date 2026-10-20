@@ -259,7 +259,7 @@ final class StatusPanelViewModel: ObservableObject {
             controllerAvailable: store.isVolumeControllerAvailable,
             deviceList: outputPreferences,
             listeningModes: store.bluetoothListeningModes,
-            listeningModeTaskID: currentListeningModeTaskID,
+            listeningModeTaskID: listeningModeTaskID(outputDevices: status.outputDevices),
             previewDevices: ListeningModePreview.outputRows(for: previewConfiguration, volume: status.scalar),
             previewLanguageCode: previewConfiguration.languageCode,
             previewLocalization: PreviewLocalization.forCode(previewConfiguration.languageCode),
@@ -276,7 +276,7 @@ final class StatusPanelViewModel: ObservableObject {
         )
     }
 
-    private var currentListeningModeTaskID: String {
+    private func listeningModeTaskID(outputDevices: [AudioOutputDevice]) -> String {
         let configuration = ListeningModePreview.Configuration(
             isEnabled: settings.previewsBluetoothListeningMode,
             deviceName: settings.bluetoothListeningModePreviewDeviceName,
@@ -291,7 +291,7 @@ final class StatusPanelViewModel: ObservableObject {
         let synthetic = ListeningModePreview.devices(for: configuration)
             .map { BluetoothBatteryReader.normalizedAddress($0.id) }
             .joined(separator: ",")
-        let outputs = store.liveVolume.outputDevices.map { String($0.id) }.joined(separator: ",")
+        let outputs = outputDevices.map { String($0.id) }.joined(separator: ",")
         return connected + preview + (synthetic.isEmpty ? "" : "|\(synthetic)") + "|outputs:\(outputs)"
     }
 

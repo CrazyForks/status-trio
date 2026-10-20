@@ -246,6 +246,43 @@ final class StatusPanelViewModelTests: XCTestCase {
         XCTAssertEqual(panel.volume.listeningModeTaskID, "BBCCDDEEFF01|outputs:")
     }
 
+    func testReviewPR124OutputListIdentityUsesDeliveredVolume() async {
+        let original = AudioOutputDevice(id: 1, name: "Built-in", uid: "builtin", isCurrent: true)
+        let added = AudioOutputDevice(id: 42, name: "FreeBuds", uid: "buds", isCurrent: false)
+        func deliveredVolume(outputDevices: [AudioOutputDevice]) -> VolumeStatus {
+            VolumeStatus(
+                scalar: 0.4,
+                isMuted: false,
+                deviceName: "Desk speakers",
+                currentDevice: original,
+                outputDevices: outputDevices
+            )
+        }
+        let fixture = PanelStoreFixture(outputDevices: [original])
+        let panel = fixture.makePanel()
+        panel.start()
+        fixture.store.start()
+        defer { panel.stop(); fixture.store.stop() }
+        XCTAssertEqual(panel.volume.listeningModeTaskID, "|outputs:1")
+        fixture.volume.send(deliveredVolume(outputDevices: [original, added]))
+        for _ in 0..<1000 {
+            if fixture.store.liveVolume.outputDevices.count == 2 { break }
+            await Task.yield()
+        }
+        XCTAssertEqual(fixture.store.liveVolume.outputDevices.count, 2)
+        XCTAssertEqual(panel.volume.rows.map { $0.key.id }, [1, 42])
+        XCTAssertEqual(panel.volume.listeningModeTaskID, "|outputs:1,42", "Output-only changes must restart discovery with the delivered output list")
+
+        fixture.volume.send(deliveredVolume(outputDevices: [original]))
+        for _ in 0..<1000 {
+            if fixture.store.liveVolume.outputDevices.count == 1 { break }
+            await Task.yield()
+        }
+        XCTAssertEqual(fixture.store.liveVolume.outputDevices.count, 1)
+        XCTAssertEqual(panel.volume.rows.map { $0.key.id }, [1])
+        XCTAssertEqual(panel.volume.listeningModeTaskID, "|outputs:1", "Output removal must map rows and task identity from the same delivered volume")
+    }
+
     func testLiveInputUpdatesOnlyTheInputRegion() async throws {
         let fixture = PanelStoreFixture()
         fixture.settings.setPopupSection(.audioInput, enabled: true)
