@@ -37,22 +37,36 @@ struct DockChargingEnvironmentTests {
     @Test func renderFailureRestoresTheStaticDockWithoutExplicitClear() async throws {
         let presenter = RecordingDockChargingPresenter()
         presenter.presentSucceeds = false
-        let fixture = try DockChargingEnvironmentFixture(presenter: presenter)
-        defer { fixture.tearDown() }
+        let timing = ManualChargingClockTiming()
+        let sleeper = ManualEventSleeper()
+        let clock = ChargingEffectClock(
+            now: { Date(timeIntervalSinceReferenceDate: timing.date) },
+            sleep: { await sleeper.sleep($0) }
+        )
+        let fixture = try DockChargingEnvironmentFixture(
+            presenter: presenter,
+            clock: clock
+        )
+        defer {
+            fixture.tearDown()
+            sleeper.releaseAll()
+        }
 
         fixture.environment.start()
-        let deadline = Date().addingTimeInterval(5)
-        while presenter.restoreCount == 0, Date() < deadline {
-            try await Task.sleep(for: .milliseconds(20))
-        }
-
+        #expect(fixture.clock.isRunning)
+        let armed = await sleeper.waitForCallCount(1, timeout: .seconds(5))
+        try #require(armed, "The charging clock must schedule its next frame.")
         #expect(presenter.restoreCount > 0)
         let clearsBeforeRepeatedFailure = presenter.clearCount
-        let restoresBeforeRepeatedFailure = presenter.restoreCount
-        while presenter.restoreCount < restoresBeforeRepeatedFailure + 2, Date() < deadline {
-            try await Task.sleep(for: .milliseconds(20))
+
+        for frame in 1...2 {
+            let restoresBeforeFrame = presenter.restoreCount
+            timing.advance(by: 0.05)
+            sleeper.releaseAll()
+            let nextTickArmed = await sleeper.waitForCallCount(frame + 1, timeout: .seconds(5))
+            try #require(nextTickArmed, "The charging clock must schedule frame \(frame + 1).")
+            #expect(presenter.restoreCount == restoresBeforeFrame + 1)
         }
-        #expect(presenter.restoreCount >= restoresBeforeRepeatedFailure + 2)
         #expect(presenter.clearCount == clearsBeforeRepeatedFailure)
     }
 

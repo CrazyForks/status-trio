@@ -1253,3 +1253,16 @@ distribution due to environment protection rules.
   和 697 Swift Testing / 103 suites；`swift build -c release` 与
   `VERSION=1.6.1 BUILD=38 PUBLISH=false bash scripts/validate-appcast-notes.sh`
   也均通过。Swift 6.3.3 非发布预检继续记录在下方。
+- 首次修复后的 Swift 6.3.3 非发布预检
+  [39447874014](https://github.com/lingyired/status-trio/actions/runs/39447874014)
+  （head `d8a3b97c`）仍在 `Run tests` 失败。XCTest 1,745 项（7 skipped）通过；
+  Swift Testing 697 项 / 103 suites 只剩
+  `DockChargingEnvironmentTests.renderFailureRestoresTheStaticDockWithoutExplicitClear`
+  一个 issue：失败前已观察到 2 次 restore，但另一个统一 5 秒期限在主 actor
+  高负载下耗尽时仍未观察到后续两次。
+- 根因仍是测试把真实 20 Hz clock 的推进和固定的 wall-clock 期限绑定在一起。
+  该用例现在注入可控日期与 `ManualEventSleeper`，启动后明确推进两个 50 ms
+  frame，并逐帧断言每次 render failure 恰好追加一次 `restoreStaticIcon()`，
+  同时确认没有显式 `clear()`。产品代码、失败恢复路径与断言强度均未改变。
+  修复后本地全量测试再次通过 1,745 XCTest（7 skipped）和
+  697 Swift Testing / 103 suites，`swift build -c release` 也通过。
