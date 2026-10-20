@@ -86,9 +86,9 @@ final class BluetoothListeningModeController: ObservableObject {
     /// rather than let a late read-back publish onto a control that has gone away.
     private var changeTasks: [String: Task<Void, Never>] = [:]
     private var failureClearTasks: [String: Task<Void, Never>] = [:]
-    /// Per-address generation, so a cancelled or superseded write's completion
-    /// cannot touch the presentation the next refresh published.
-    private var generations: [String: UInt64] = [:]
+    /// One token per active address, so a cancelled or superseded write's
+    /// completion cannot touch the presentation the next refresh published.
+    private var changeTokens: [String: DeviceOperationToken] = [:]
 
     /// The `lstm` property listener seam. The controller subscribes per resolved
     /// endpoint in `refresh` and clears them in `stop`, so an external mode change
@@ -170,11 +170,11 @@ final class BluetoothListeningModeController: ObservableObject {
             nextResolved[address] = endpointID
         }
 
-        // Anything no longer resolved has its tasks cancelled and its generation
+        // Anything no longer resolved has its tasks cancelled and its token
         // bumped, so a late completion cannot resurrect it.
         for address in presentations.keys where next[address] == nil {
             cancelTasks(for: address)
-            bumpGeneration(for: address)
+            retireChangeToken(for: address)
         }
 
         presentations = next
@@ -230,7 +230,7 @@ final class BluetoothListeningModeController: ObservableObject {
 
         for address in presentations.keys where next[address] == nil {
             cancelTasks(for: address)
-            bumpGeneration(for: address)
+            retireChangeToken(for: address)
         }
 
         presentations = next
@@ -272,12 +272,11 @@ final class BluetoothListeningModeController: ObservableObject {
 
         presentation = presentation.changing(to: mode)
         presentations[address] = presentation
-        let generation = bumpGeneration(for: address)
-        changeTasks[address]?.cancel()
+        let token = issueChangeToken(for: address)
 
         changeTasks[address] = Task { [weak self, hal = self.hal] in
             let result = await hal.setMode(mode, for: endpointID)
-            guard let self, !Task.isCancelled, self.generations[address] == generation else { return }
+            guard let self, !Task.isCancelled, self.changeTokens[address] == token else { return }
             self.apply(result, of: mode, to: presentation, at: address, endpointID: endpointID)
         }
     }
@@ -316,15 +315,15 @@ final class BluetoothListeningModeController: ObservableObject {
 
         presentation = presentation.changing(to: mode)
         presentations[address] = presentation
-        let generation = bumpGeneration(for: address)
-        changeTasks[address]?.cancel()
+        let token = issueChangeToken(for: address)
 
         changeTasks[address] = Task { [weak self, delay = self.previewSettleDelay] in
             try? await Task.sleep(for: delay)
-            guard let self, !Task.isCancelled, self.generations[address] == generation else { return }
+            guard let self, !Task.isCancelled, self.changeTokens[address] == token else { return }
             self.previewSelectedModes[address] = mode
             self.presentations[address] = presentation.settled(on: mode)
             self.changeTasks[address] = nil
+            self.retireChangeToken(for: address)
         }
     }
 
@@ -334,7 +333,7 @@ final class BluetoothListeningModeController: ObservableObject {
     func stop() {
         for address in presentations.keys {
             cancelTasks(for: address)
-            bumpGeneration(for: address)
+            retireChangeToken(for: address)
         }
         changeTasks.removeAll()
         failureClearTasks.removeAll()
@@ -432,6 +431,11 @@ final class BluetoothListeningModeController: ObservableObject {
         endpointID: AudioDeviceID
     ) {
         changeTasks[address] = nil
+        defer {
+            if case .confirmed = result {
+                retireChangeToken(for: address)
+            }
+        }
         switch result {
         case .confirmed(let settled):
             presentations[address] = previous.settled(on: settled)
@@ -459,19 +463,19 @@ final class BluetoothListeningModeController: ObservableObject {
             actionState: .failed
         )
         presentations[address] = failed
-        let generation = bumpGeneration(for: address)
+        let token = issueChangeToken(for: address)
 
-        failureClearTasks[address]?.cancel()
         failureClearTasks[address] = Task { [weak self, delay = self.failureClearDelay] in
             try? await Task.sleep(for: delay)
-            guard let self, !Task.isCancelled, self.generations[address] == generation,
+            guard let self, !Task.isCancelled, self.changeTokens[address] == token,
                   case .failed = self.presentations[address]?.actionState else { return }
             self.presentations[address] = self.presentations[address]?.settledAfterFailure() ?? failed
             self.failureClearTasks[address] = nil
+            self.retireChangeToken(for: address)
         }
     }
 
-    // MARK: - Task / generation bookkeeping
+    // MARK: - Task / token bookkeeping
 
     private func cancelTasks(for address: String) {
         changeTasks[address]?.cancel()
@@ -481,9 +485,24 @@ final class BluetoothListeningModeController: ObservableObject {
     }
 
     @discardableResult
-    private func bumpGeneration(for address: String) -> UInt64 {
-        let next = (generations[address] ?? 0) &+ 1
-        generations[address] = next
-        return next
+    private func issueChangeToken(for address: String) -> DeviceOperationToken {
+        let token = DeviceOperationToken()
+        changeTasks[address]?.cancel()
+        failureClearTasks[address]?.cancel()
+        failureClearTasks[address] = nil
+        changeTokens[address] = token
+        return token
+    }
+
+    private func retireChangeToken(for address: String) {
+        changeTokens.removeValue(forKey: address)
+    }
+
+    var activeChangeTokenCount: Int {
+        changeTokens.count
+    }
+
+    func activeChangeTokenSnapshot(forAddress address: String) -> DeviceOperationToken? {
+        changeTokens[BluetoothBatteryReader.normalizedAddress(address)]
     }
 }

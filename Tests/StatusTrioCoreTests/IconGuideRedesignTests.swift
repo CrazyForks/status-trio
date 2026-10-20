@@ -338,58 +338,70 @@ final class IconGuideRedesignTests: XCTestCase {
         let defaults = UserDefaults(suiteName: name)!
         defer { defaults.removeTestSuite(named: name) }
         let settings = SettingsStore(defaults: defaults)
-        let localization = Localization(
-            defaults: defaults,
-            preferredLanguages: ["en"]
-        )
-        var preferredHeights: [CGFloat] = []
-
-        for page in [IconGuidePage.anatomy, .states] {
-            let view = IconGuideOnboardingView(
-                settings: settings,
-                initialPage: page,
-                onCustomize: {},
-                onDone: {}
+        for language in AppLanguage.allCases {
+            let localization = Localization(
+                defaults: defaults,
+                preferredLanguages: [language.rawValue]
             )
-            .environmentObject(localization)
+            var preferredHeights: [CGFloat] = []
 
-            let hostingController = NSHostingController(rootView: view)
-            hostingController.sizingOptions = [.preferredContentSize]
-            hostingController.view.frame = NSRect(
-                x: 0,
-                y: 0,
-                width: IconGuideOnboardingView.contentWidth,
-                height: 560
-            )
-            hostingController.view.layoutSubtreeIfNeeded()
+            for page in [IconGuidePage.anatomy, .states] {
+                let view = IconGuideOnboardingView(
+                    settings: settings,
+                    initialPage: page,
+                    onCustomize: {},
+                    onDone: {}
+                )
+                .environmentObject(localization)
 
-            let preferredSize = hostingController.preferredContentSize
+                let hostingController = NSHostingController(rootView: view)
+                hostingController.sizingOptions = [.preferredContentSize]
+                hostingController.view.frame = NSRect(
+                    x: 0,
+                    y: 0,
+                    width: IconGuideOnboardingView.contentWidth,
+                    height: 560
+                )
+                hostingController.view.layoutSubtreeIfNeeded()
+
+                let preferredSize = hostingController.preferredContentSize
+                XCTAssertEqual(
+                    preferredSize.width,
+                    IconGuideOnboardingView.contentWidth,
+                    accuracy: 0.5,
+                    language.rawValue
+                )
+                XCTAssertGreaterThanOrEqual(
+                    preferredSize.height,
+                    420,
+                    language.rawValue
+                )
+                XCTAssertLessThan(
+                    preferredSize.height,
+                    680,
+                    language.rawValue
+                )
+                preferredHeights.append(preferredSize.height)
+            }
+
             XCTAssertEqual(
-                preferredSize.width,
-                IconGuideOnboardingView.contentWidth,
-                accuracy: 0.5
+                preferredHeights[0],
+                preferredHeights[1],
+                accuracy: 0.5,
+                "Page heights differ in \(language.rawValue)"
             )
-            XCTAssertGreaterThanOrEqual(preferredSize.height, 420)
-            XCTAssertLessThan(preferredSize.height, 680)
-            preferredHeights.append(preferredSize.height)
         }
-
-        XCTAssertEqual(
-            preferredHeights[0],
-            preferredHeights[1],
-            accuracy: 0.5
-        )
     }
 
     func testFooterPrimaryActionStaysFixedAcrossPages() throws {
-        for language in ["en", "zh-Hans", "ar"] {
+        for language in AppLanguage.allCases {
             let name = "IconGuideRedesignTests.\(UUID().uuidString)"
             let defaults = UserDefaults(suiteName: name)!
             defer { defaults.removeTestSuite(named: name) }
             let settings = SettingsStore(defaults: defaults)
             let localization = Localization(
                 defaults: defaults,
-                preferredLanguages: [language]
+                preferredLanguages: [language.rawValue]
             )
             var frames: [CGRect] = []
 
@@ -418,7 +430,11 @@ final class IconGuideRedesignTests: XCTestCase {
                 frames.append(primaryFrame)
             }
 
-            XCTAssertEqual(frames[0], frames[1], "Footer moved in \(language)")
+            XCTAssertEqual(
+                frames[0],
+                frames[1],
+                "Footer moved in \(language.rawValue)"
+            )
         }
     }
 }

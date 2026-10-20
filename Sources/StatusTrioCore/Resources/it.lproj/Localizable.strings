@@ -139,6 +139,10 @@
 "settings.battery.chargingDescription" = "Se attivato, la percentuale diventa un fulmine o una spina durante la carica o con alimentazione collegata.";
 "settings.battery.chargingEffect" = "Effetto di ricarica";
 "settings.battery.chargingEffectDescription" = "Anima l’evidenziazione solo durante la ricarica. Si interrompe quando «Riduci movimento» è attivo.";
+"settings.battery.menuBarChargingEffect" = "Effetto di ricarica nella barra dei menu";
+"settings.battery.menuBarChargingEffectDescription" = "Anima l’evidenziazione di ricarica solo nella barra dei menu. Il Dock è controllato separatamente; entrambi si fermano con «Riduci movimento».";
+"settings.battery.dockChargingEffect" = "Effetto di ricarica nel Dock";
+"settings.battery.dockChargingEffectDescription" = "Anima l’evidenziazione di ricarica solo nell’icona del Dock. La barra dei menu è controllata separatamente; entrambi si fermano con «Riduci movimento».";
 "settings.battery.chargingBoltHeartbeat" = "Pulsazione del fulmine di ricarica";
 "settings.battery.chargingBoltHeartbeatDescription" = "Disattivala per mantenere il fulmine alle dimensioni e al colore abituali; l’effetto dell’arco di ricarica continua.";
 "settings.battery.chargingEffectTest" = "Prova animazione di ricarica";

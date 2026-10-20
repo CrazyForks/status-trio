@@ -25,6 +25,10 @@ final class ChargingEffectClock: ObservableObject {
     /// the clock alive while the item is hidden (Dock-only placement).
     private var menuBarVisible = true
     private var previewConsumers: Set<AnyHashable> = []
+    /// The Dock tile is a second surface. It is claimed only while the user's
+    /// own placement really has a Dock tile on screen, so a window that makes
+    /// the app regular for a moment never starts the animation.
+    private var dockAnimationActive = false
     private var menuPlugInBurstStartedAt: Date?
     private var steadyStartedAt: Date?
     private var boostedHeartbeatCycle: Int?
@@ -41,7 +45,22 @@ final class ChargingEffectClock: ObservableObject {
 
     /// `true` while something on screen draws the live phase. Without a surface
     /// the 20-Hz tick is pure work: nothing would render it.
-    var hasAnimationSurface: Bool { menuBarVisible || !previewConsumers.isEmpty }
+    var hasAnimationSurface: Bool {
+        menuBarVisible || !previewConsumers.isEmpty || dockAnimationActive
+    }
+
+    /// Whether the Dock tile is currently a surface for the live phase.
+    var isDockAnimationActive: Bool { dockAnimationActive }
+
+    /// Claims or releases the Dock tile. Idempotent, so a repeated eligibility
+    /// update cannot leave a second tick loop behind, and the battery state is
+    /// untouched: resuming never replays the plug-in burst for a charge that is
+    /// already in progress.
+    func setDockAnimationActive(_ isActive: Bool) {
+        guard dockAnimationActive != isActive else { return }
+        dockAnimationActive = isActive
+        reevaluate()
+    }
 
     /// A view that draws the live phase claims the clock while it is on screen.
     /// Claims are token-based so a repeated appear/disappear cannot leak one.
@@ -113,10 +132,11 @@ final class ChargingEffectClock: ObservableObject {
         phase = phase(at: phaseDate)
 
         let sleep = self.sleep
+        let tickInterval = Self.tickInterval
         task = Task { @MainActor [weak self] in
             while !Task.isCancelled {
                 do {
-                    try await sleep(Self.tickInterval)
+                    try await sleep(tickInterval)
                 } catch {
                     return
                 }

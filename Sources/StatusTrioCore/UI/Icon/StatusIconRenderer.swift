@@ -18,38 +18,97 @@ private struct SymbolInkKey: Hashable {
 private final class SymbolInkOffsetCache: @unchecked Sendable {
     private let lock = NSLock()
     private var storage: [SymbolInkKey: CGFloat] = [:]
+    private var order: [SymbolInkKey] = []
 
     func offsetX(for key: SymbolInkKey, measure: () -> CGFloat) -> CGFloat {
         lock.lock()
         defer { lock.unlock() }
-        if let cached = storage[key] { return cached }
+        if let cached = storage[key] {
+            order.removeAll { $0 == key }
+            order.append(key)
+            return cached
+        }
         let measured = measure()
         storage[key] = measured
+        order.append(key)
+        if order.count > 256 { storage[order.removeFirst()] = nil }
         return measured
+    }
+
+    func reset() {
+        lock.lock()
+        defer { lock.unlock() }
+        storage.removeAll(keepingCapacity: false)
+        order.removeAll(keepingCapacity: false)
     }
 }
 
 /// The same ink measurement for an input source's own icon file, which is a
 /// bitmap or PDF whose visible ink is not centred in the box `NSImage.size`
-/// reports. Keying by URL matches `IconImageDecodeCache`'s identity-based
-/// invalidation: a replaced icon is a new URL, not a mutated one.
+/// reports. The normalized pixel dimensions are part of the key because the
+/// same file can be decoded at more than one bounded size; ink measured in one
+/// pixel space must never be reused for another.
 private final class ImageInkOffsetCache: @unchecked Sendable {
-    private let lock = NSLock()
-    private var storage: [URL: CGFloat] = [:]
+    private struct Key: Hashable {
+        let url: URL
+        let pixelWidth: Int
+        let pixelHeight: Int
+    }
 
-    func offsetX(for url: URL, measure: () -> CGFloat) -> CGFloat {
+    private struct Entry {
+        weak var image: NSImage?
+        let offsetX: CGFloat
+    }
+
+    private let lock = NSLock()
+    private var storage: [Key: Entry] = [:]
+    private var order: [Key] = []
+    private let maximumEntries = 64
+
+    func reset() {
         lock.lock()
         defer { lock.unlock() }
-        if let cached = storage[url] { return cached }
+        storage.removeAll(keepingCapacity: false)
+        order.removeAll(keepingCapacity: false)
+    }
+
+    func offsetX(
+        for url: URL,
+        image: NSImage,
+        pixelWidth: Int,
+        pixelHeight: Int,
+        measure: () -> CGFloat
+    ) -> CGFloat {
+        let key = Key(url: url, pixelWidth: pixelWidth, pixelHeight: pixelHeight)
+        lock.lock()
+        defer { lock.unlock() }
+        if let cached = storage[key], cached.image === image {
+            touch(key)
+            return cached.offsetX
+        }
         let measured = measure()
-        storage[url] = measured
+        storage[key] = Entry(image: image, offsetX: measured)
+        order.append(key)
+        while order.count > maximumEntries {
+            storage[order.removeFirst()] = nil
+        }
         return measured
+    }
+
+    private func touch(_ key: Key) {
+        order.removeAll { $0 == key }
+        order.append(key)
     }
 }
 
 enum StatusIconRenderer {
     private static let symbolInkOffsetCache = SymbolInkOffsetCache()
     private static let imageInkOffsetCache = ImageInkOffsetCache()
+
+    static func resetInkOffsetCaches() {
+        symbolInkOffsetCache.reset()
+        imageInkOffsetCache.reset()
+    }
 
     static let centerSymbolBasePointSize: CGFloat = 38
     private static let defaultBatteryValueTextScale = 1.8
@@ -547,9 +606,29 @@ enum StatusIconRenderer {
 
     /// Horizontal distance from the image's layout-box centre to the centre of
     /// its visible ink. Rasterising at 8x keeps the measurement well below the
-    /// 0.25-point quantum of the 120-unit icon grid.
-    private static func measureInkCenterOffsetX(of image: NSImage) -> CGFloat {
-        let pixelScale: CGFloat = 8
+    /// 0.25-point quantum of the 120-unit icon grid. Imported files cap their
+    /// measurement context independently because their logical point size can
+    /// be much larger than their bounded decoded bitmap.
+    private static func measureInkCenterOffsetX(
+        of image: NSImage,
+        maximumPixelLength: Int? = nil
+    ) -> CGFloat {
+        let defaultPixelScale: CGFloat = 8
+        let pixelScale: CGFloat
+        if let maximumPixelLength {
+            let largestLogicalDimension = max(image.size.width, image.size.height)
+            guard maximumPixelLength > 0,
+                  largestLogicalDimension.isFinite,
+                  largestLogicalDimension > 0 else {
+                return 0
+            }
+            pixelScale = min(
+                defaultPixelScale,
+                CGFloat(maximumPixelLength) / largestLogicalDimension
+            )
+        } else {
+            pixelScale = defaultPixelScale
+        }
         let width = Int((image.size.width * pixelScale).rounded(.up))
         let height = Int((image.size.height * pixelScale).rounded(.up))
         guard width > 0, height > 0,
@@ -1145,11 +1224,23 @@ extension StatusIconRenderer {
             )
         case let .image(url, fallbackSymbol):
             if let image = IconImageDecodeCache.shared.decodedImage(for: url) {
-                let inkOffsetX = imageInkOffsetCache.offsetX(for: url) {
-                    measureInkCenterOffsetX(of: image)
+                guard let representation = image.representations.first else { return }
+                let inkOffsetX = imageInkOffsetCache.offsetX(
+                    for: url,
+                    image: image,
+                    pixelWidth: representation.pixelsWide,
+                    pixelHeight: representation.pixelsHigh
+                ) {
+                    measureInkCenterOffsetX(
+                        of: image,
+                        maximumPixelLength: 1024
+                    )
                 }
-                drawTintedImage(image, maxDimension: 42 * (pointSize / centerSymbolBasePointSize),
-                                center: center, tint: tint, inkCenterOffsetX: inkOffsetX,
+                drawTintedImage(image,
+                                maxDimension: 42 * (pointSize / centerSymbolBasePointSize),
+                                center: center,
+                                tint: tint,
+                                inkCenterOffsetX: inkOffsetX,
                                 in: context)
             } else {
                 let fallback = availableSymbol(fallbackSymbol)

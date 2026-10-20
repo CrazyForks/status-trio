@@ -2587,9 +2587,15 @@ private final class StoreIntervalScannerSpy: BluetoothLEBatteryScanning {
     private(set) var isScanning = false
     private(set) var backgroundRefreshIntervals: [Duration?] = []
 
-    func setAllowedReadDeviceIDs(_ ids: Set<UUID>) { allowedReadDeviceIDs = ids }
+    func setAllowedReadDeviceIDs(_ ids: Set<UUID>) -> [UUID: DeviceOperationToken] {
+        allowedReadDeviceIDs = ids
+        return [:]
+    }
     func revokeReadDeviceIDs(_ ids: Set<UUID>) { allowedReadDeviceIDs.subtract(ids) }
-    func setInitialReadCandidateIDs(_ ids: Set<UUID>) { _ = ids }
+    func setInitialReadCandidateIDs(_ ids: Set<UUID>) -> [UUID: DeviceOperationToken] {
+        _ = ids
+        return [:]
+    }
     func setBackgroundRefreshInterval(_ interval: Duration?) { backgroundRefreshIntervals.append(interval) }
     func start() { isRunning = true }
     func refresh() {}

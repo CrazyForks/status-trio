@@ -103,6 +103,10 @@ final class StatusBarChargingFrameCache {
         failedKey = nil
     }
 
+    func trimForMemoryPressure() {
+        if variants.count > 1 { variants.removeLast(variants.count - 1) }
+    }
+
     private func variantKey(
         for phase: ChargingEffectPhase,
         key renderKey: StatusBarRenderKey,

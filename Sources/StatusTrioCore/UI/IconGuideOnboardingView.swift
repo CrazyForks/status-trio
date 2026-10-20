@@ -2,6 +2,10 @@ import SwiftUI
 
 struct IconGuideOnboardingView: View {
     static let contentWidth: CGFloat = 640
+    /// Keep the page mount point stable without exceeding the existing
+    /// preferred-window height bound. Native sizing tests cover every
+    /// localization and both pages.
+    static let pageContentHeight: CGFloat = 385
     static let footerHeight: CGFloat = 32
 
     @ObservedObject var settings: SettingsStore
@@ -39,20 +43,21 @@ struct IconGuideOnboardingView: View {
             .padding(.top, 24)
 
             VStack(alignment: .leading, spacing: 16) {
-                ZStack(alignment: .topLeading) {
-                    IconGuideView(
-                        settings: settings,
-                        isMenuBarHelpPresented: $menuBarHelp.isPresented
-                    )
-                        .opacity(page == .anatomy ? 1 : 0)
-                        .allowsHitTesting(page == .anatomy)
-                        .accessibilityHidden(page != .anatomy)
-
-                    IconGuideStateGalleryView(settings: settings)
-                        .opacity(page == .states ? 1 : 0)
-                        .allowsHitTesting(page == .states)
-                        .accessibilityHidden(page != .states)
+                Group {
+                    switch page {
+                    case .anatomy:
+                        IconGuideView(
+                            settings: settings,
+                            isMenuBarHelpPresented: $menuBarHelp.isPresented
+                        )
+                    case .states:
+                        IconGuideStateGalleryView(settings: settings)
+                    }
                 }
+                .frame(
+                    minHeight: Self.pageContentHeight,
+                    alignment: .topLeading
+                )
 
                 if settings.telemetryConsentVersion == 0 {
                     telemetryDisclosure

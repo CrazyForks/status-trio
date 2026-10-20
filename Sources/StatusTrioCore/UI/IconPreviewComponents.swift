@@ -55,6 +55,7 @@ struct MenuBarPreviewBar<TrailingAccessory: View>: View {
     var bluetoothAudioOptions: BluetoothAudioIconOptions = .standard
     var isDarkBackground = true
     var phase: ChargingEffectPhase?
+    var showsChargingEffect = true
     var highlightedPart: IconGuidePart?
     var highlightOpacity: Double = 1
     /// Live input source for previews that mirror the current centre-slot
@@ -76,6 +77,7 @@ struct MenuBarPreviewBar<TrailingAccessory: View>: View {
             ),
             inputSource: inputSource
         )
+        .withChargingEffectEnabled(showsChargingEffect)
     }
 
     init(
@@ -89,6 +91,7 @@ struct MenuBarPreviewBar<TrailingAccessory: View>: View {
         highlightedPart: IconGuidePart? = nil,
         highlightOpacity: Double = 1,
         phase: ChargingEffectPhase? = nil,
+        showsChargingEffect: Bool = true,
         inputSource: InputSourceDescriptor? = nil,
         @ViewBuilder trailingAccessory: @escaping () -> TrailingAccessory
     ) {
@@ -102,6 +105,7 @@ struct MenuBarPreviewBar<TrailingAccessory: View>: View {
         self.highlightedPart = highlightedPart
         self.highlightOpacity = highlightOpacity
         self.phase = phase
+        self.showsChargingEffect = showsChargingEffect
         self.inputSource = inputSource
         self.trailingAccessory = trailingAccessory
     }
@@ -211,6 +215,7 @@ extension MenuBarPreviewBar where TrailingAccessory == EmptyView {
         highlightedPart: IconGuidePart? = nil,
         highlightOpacity: Double = 1,
         phase: ChargingEffectPhase? = nil,
+        showsChargingEffect: Bool = true,
         inputSource: InputSourceDescriptor? = nil
     ) {
         self.init(
@@ -224,6 +229,7 @@ extension MenuBarPreviewBar where TrailingAccessory == EmptyView {
             highlightedPart: highlightedPart,
             highlightOpacity: highlightOpacity,
             phase: phase,
+            showsChargingEffect: showsChargingEffect,
             inputSource: inputSource,
             trailingAccessory: { EmptyView() }
         )
