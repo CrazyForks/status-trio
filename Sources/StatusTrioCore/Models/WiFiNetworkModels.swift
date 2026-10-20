@@ -487,10 +487,10 @@ struct BluetoothDevice: Identifiable, Equatable, Sendable {
 
     /// Whether the device speaks HUAWEI's vendor SPP noise-control protocol.
     ///
-    /// The USB-style vendor pair survives a rename, so it is the primary
-    /// evidence; the name fallback covers a report that omitted the pair. The
+    /// The Bluetooth SIG company ID survives a rename, so it is the primary
+    /// evidence; the name fallback covers a report that omitted the ID. The
     /// protocol is reverse-engineered and model-dependent, so a wrong guess fails
-    /// closed — the controller hides the control when the first query fails.
+    /// closed — a device that never answers the query shows no control at all.
     var isHuaweiAudio: Bool {
         guard kind.isAudio else { return false }
         if vendorID == 0x027D { return true }

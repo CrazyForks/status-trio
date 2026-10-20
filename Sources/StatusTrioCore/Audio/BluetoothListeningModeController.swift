@@ -266,19 +266,16 @@ final class BluetoothListeningModeController: ObservableObject {
                         selectedMode: state.listeningMode
                     )
                 } catch {
-                    guard !Task.isCancelled,
-                          self.generations[address] == generation,
-                          self.huaweiAddresses.contains(address) else {
-                        return
-                    }
-                    // The first failed query hides the control rather than
-                    // leaving a stale mode on screen.
-                    self.presentations[address] = nil
+                    // Nothing to clear here. A device that has never answered has
+                    // no entry at all, so its row keeps the plain appearance. A
+                    // device that answered earlier keeps its last confirmed mode:
+                    // one timed-out query — an earbud that is busy or asleep —
+                    // must not make a working control disappear until the panel
+                    // is reopened.
                 }
             }
         }
     }
-
 
     /// Keeps an existing HUAWEI presentation while AirPods or preview rows are
     /// rebuilt. HUAWEI mode state is keyed by Bluetooth address, independent of
@@ -330,7 +327,11 @@ final class BluetoothListeningModeController: ObservableObject {
         }
 
         preserveHuaweiPresentations(in: &next, endpoints: &nextEndpoints, devices: devices)
-        for address in presentations.keys where next[address] == nil {
+        // HUAWEI addresses are owned by `refreshHuawei` below, exactly as they
+        // are in the live path: a preview refresh must not cancel a vendor write
+        // whose SPP frame has already gone out.
+        for address in presentations.keys where next[address] == nil
+            && !huaweiAddresses.contains(address) {
             cancelTasks(for: address)
             retireChangeToken(for: address)
         }
@@ -340,7 +341,6 @@ final class BluetoothListeningModeController: ObservableObject {
         syncSubscriptions(to: [])
         refreshHuawei(devices: devices)
     }
-
 
     /// Asks a device to switch to `mode`, publishing the in-flight state and
     /// reconciling the result against the read-back. Preview writes stay in memory;
@@ -377,7 +377,6 @@ final class BluetoothListeningModeController: ObservableObject {
             self.apply(result, of: mode, to: presentation, at: address, endpointID: endpointID)
         }
     }
-
 
     /// The HUAWEI branch of `setMode`. It mirrors the CoreAudio state machine:
     /// publish the spinner, write over SPP, and settle on the state read back by

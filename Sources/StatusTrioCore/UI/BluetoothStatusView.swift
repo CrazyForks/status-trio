@@ -31,7 +31,6 @@ struct BluetoothStatusView: View {
     @State private var visibleTrustedAppleIDs = Set<AppleDeviceID>()
     @State private var visibleNearbyBLEIDs = Set<UUID>()
 
-
     private var unhiddenListOptions: BluetoothDeviceListOptions {
         BluetoothDeviceListOptions(
             showsList: listOptions.showsList,
