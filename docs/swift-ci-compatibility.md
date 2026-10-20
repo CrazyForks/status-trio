@@ -1192,7 +1192,7 @@ distribution due to environment protection rules.
   `HuaweiTransportLifecycleTests.swift`，生产 transport 及其余测试不变。
   [39441995782](https://github.com/lingyired/status-trio/actions/runs/39441995782)
   在同一 CI 工具链上约 3 分钟完成测试模块编译（`Build complete!`，128.45 秒），
-  随后约 2 分钟跑完 1,751 XCTest（7 skipped）和 697 Swift Testing / 103 suites，
+  随后约 2 分钟跑完 XCTest（7 skipped）和 697 Swift Testing / 103 suites，
   说明原 90 分钟阻塞由该文件触发的 Swift 6.3.3 测试模块编译引起。
   该 run 最终仍被既是主分支问题、也与本 PR 无关的
   `AppIconControllerTests.visibleDockRendersStatusChanges` coalesced redraw 5 秒超时
@@ -1208,7 +1208,48 @@ distribution due to environment protection rules.
   的噪声控制行为未放宽或移除。
 - 验证：本地 Xcode 27 / Swift 6.4 上
   `swift test --filter HuaweiTransportLifecycleTests` 通过 5 项；全量
-  `swift test` 通过 1,751 XCTest（7 skipped）和 697 Swift Testing / 103 suites；
+  `swift test` 通过 1,745 XCTest（7 skipped）和 697 Swift Testing / 103 suites；
   `swift build -c release` 与 `VERSION=1.6.1 BUILD=38 PUBLISH=false
   bash scripts/validate-appcast-notes.sh` 均通过。修复提交为 `68282826`，
-  Swift 6.3.3 CI 复验占位：run `39443852308`。
+  Swift 6.3.3 CI 复验见下文 `39443852308`、`39444905968`。
+
+## 39443852308、39444905968：PR #124 图标异步测试调度
+
+- 运行：[39443852308](https://github.com/lingyired/status-trio/actions/runs/39443852308)
+  与 [39444905968](https://github.com/lingyired/status-trio/actions/runs/39444905968)，
+  head `099baec0`，`version=1.6.1`、`build=38`、`publish=false`、
+  `notarize=false`，CI 为 Xcode 26.6 / Swift 6.3.3。
+  两次的失败阶段都是 `Run tests`，后续兼容性检查和打包步骤未运行。
+- `39443852308` 的 XCTest 1,745 项（7 skipped）通过；Swift Testing 697 项 /
+  103 suites 报告 10 个 issue：`AppIconControllerTests.visibleDockRendersStatusChanges`、
+  `IconSurfaceIntegrationTests` 的 6 个 coalesced-redraw 等待，以及
+  `DockChargingEnvironmentTests` 的 2 个动画状态等待。
+- `39444905968` 再次失败，Swift Testing 报告 13 个 issue。除上述 10 个外，
+  `AppIconControllerTests` 的 `connectionOptionChangeKeepsConfiguredWiFiSymbolScale`、
+  `ringStrokeStyleSurvivesOtherOptionChanges` 也在没有观察到合并重绘后失败；
+  `ChargingEffectControllerTests.batteryLevelChangesStillUpdateStaticDockArtwork`
+  没有在 5 秒内观察到 `AsyncStream → store` 更新。
+- 失败日志显示完整测试轮在主 actor 上近乎同时启动（697 项从同一时间点开始，
+  主 actor 队列高度拥塞），而测试分别把真实 500 ms presentation debounce、
+  50 ms render coalescer 和 20 Hz charging clock 当作会在固定 5 秒内自动完成的实现。
+  测试没有记录各阶段状态，不能从日志精确区分延迟发生在 AsyncStream 消费、
+  Combine 发布、debounce 还是 coalescer 尾部任务。PR 未修改这些产品实现；
+  失败集中在既有图标异步测试，不能据此认定华为传输或界面逻辑有回归。
+- 修复仅限测试脚手架，不放宽断言或修改产品节流逻辑：
+  - `AppIconControllerTests.visibleDockRendersStatusChanges` 改用
+    `ManualIconPresentationScheduler`，等待 debounce 排程后显式执行，
+    再调用 `flushPendingPresentationForTesting()`，仍断言恰好一次 Dock 重绘。
+  - `IconSurfaceIntegrationTests` 改用手动 presentation scheduler，分段验证
+    model、菜单栏和 Dock 的同一 scene；保留 raster 失败、恢复、设置 parity 与
+    charging test projection 的全部断言。
+  - `ChargingEffectControllerTests` 先确认电量进入 store 和 debounce 已排程，
+    再检查 61% scene 与一次静态 Dock 更新。
+  - `DockChargingEnvironmentTests` 的开发预览用例注入可控日期和
+    `ManualEventSleeper`，逐帧推进 burst 到 steady，确认 clock 发布
+    `stepsPerCycle=36` 且每次发布的 phase 都到达 Dock presenter。
+- 本地验证（Xcode 27 / Swift 6.4）：
+  `swift test --filter 'AppIconControllerTests|IconSurfaceIntegrationTests|ChargingEffectControllerTests|DockChargingEnvironmentTests'`
+  通过 66 项 / 4 suites、0 issue；全量 `swift test` 通过 1,745 XCTest（7 skipped）
+  和 697 Swift Testing / 103 suites；`swift build -c release` 与
+  `VERSION=1.6.1 BUILD=38 PUBLISH=false bash scripts/validate-appcast-notes.sh`
+  也均通过。Swift 6.3.3 非发布预检继续记录在下方。

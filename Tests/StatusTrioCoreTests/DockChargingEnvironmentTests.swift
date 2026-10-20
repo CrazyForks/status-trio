@@ -135,9 +135,16 @@ struct DockChargingEnvironmentTests {
     }
 
     @Test func theDevelopmentChargingPreviewDrivesTheDockClockWithoutRealCharging() async throws {
+        let timing = ManualChargingClockTiming()
+        let sleeper = ManualEventSleeper()
+        let clock = ChargingEffectClock(
+            now: { Date(timeIntervalSinceReferenceDate: timing.date) },
+            sleep: { await sleeper.sleep($0) }
+        )
         let fixture = try DockChargingEnvironmentFixture(
             placement: .both,
-            batteryIsCharging: false
+            batteryIsCharging: false,
+            clock: clock
         )
         defer { fixture.tearDown() }
         fixture.settings.setChargingEffectTestEnabled(true)
@@ -148,8 +155,23 @@ struct DockChargingEnvironmentTests {
         #expect(fixture.clock.isRunning)
         #expect(fixture.clock.isDockAnimationActive)
         #expect(fixture.presenter.presentedPhases.isEmpty == false)
-        try await fixture.waitForSteadyPhase()
-        #expect(fixture.presenter.presentedPhases.contains { $0.kind == .steady && $0.stepsPerCycle == 36 })
+        #expect(fixture.clock.phase?.kind == .burst)
+        let armed = await sleeper.waitForCallCount(1, timeout: .seconds(5))
+        try #require(armed, "The charging clock must schedule its next frame.")
+        let burstFrames = Int((ChargingEffectTimeline.burstDuration * 20).rounded())
+        for frame in 1...burstFrames {
+            timing.advance(by: 0.05)
+            sleeper.releaseAll()
+            let nextTickArmed = await sleeper.waitForCallCount(frame + 1, timeout: .seconds(5))
+            try #require(nextTickArmed, "The charging clock must schedule frame \(frame + 1).")
+        }
+        timing.advance(by: 0.05)
+        sleeper.releaseAll()
+        let nextTickArmed = await sleeper.waitForCallCount(burstFrames + 2, timeout: .seconds(5))
+        try #require(nextTickArmed, "The charging clock must continue into the steady phase.")
+        #expect(fixture.clock.phase?.kind == .steady)
+        #expect(fixture.clock.phase?.stepsPerCycle == 36)
+        #expect(fixture.presenter.presentedPhases.count == burstFrames + 2)
     }
 
     @Test func togglingTheRealSettingsStoreReachesTheDockClock() async throws {
@@ -286,7 +308,7 @@ struct DockChargingEnvironmentTests {
 private final class DockChargingEnvironmentFixture {
     let environment: AppEnvironment
     let presenter: RecordingDockChargingPresenter
-    let clock = ChargingEffectClock()
+    let clock: ChargingEffectClock
     let iconPresentation: IconPresentationViewModel
     let settings: SettingsStore
     let activationPolicy: AppActivationPolicy
@@ -301,7 +323,8 @@ private final class DockChargingEnvironmentFixture {
         placement: AppIconPlacement = .dock,
         batteryIsCharging: Bool = true,
         dockVisibilityMonitor: DockVisibilityMonitorSpy = DockVisibilityMonitorSpy(),
-        presenter: RecordingDockChargingPresenter = RecordingDockChargingPresenter()
+        presenter: RecordingDockChargingPresenter = RecordingDockChargingPresenter(),
+        clock: ChargingEffectClock = ChargingEffectClock()
     ) throws {
         suiteName = "StatusTrioCoreTests.DockChargingEnvironment.\(UUID().uuidString)"
         guard let defaults = UserDefaults(suiteName: suiteName) else {
@@ -317,6 +340,7 @@ private final class DockChargingEnvironmentFixture {
         settings.completeTelemetryConsent(sharesAnalytics: false)
         self.settings = settings
         self.presenter = presenter
+        self.clock = clock
 
         let localization = Localization(defaults: defaults, preferredLanguages: ["en"])
         store = SystemStatusStore(
@@ -414,13 +438,6 @@ private final class DockChargingEnvironmentFixture {
         }
     }
 
-    func waitForSteadyPhase(timeout: TimeInterval = 5) async throws {
-        let deadline = Date().addingTimeInterval(timeout)
-        while !presenter.presentedPhases.contains(where: { $0.kind == .steady }), Date() < deadline {
-            try await Task.sleep(for: .milliseconds(20))
-        }
-    }
-
     func waitForClockToStop(timeout: TimeInterval = 5) async throws {
         let deadline = Date().addingTimeInterval(timeout)
         while clock.isRunning, Date() < deadline {
@@ -489,6 +506,15 @@ private final class DockVisibilityMonitorSpy: DockVisibilityMonitoring {
 
 private enum DockChargingEnvironmentError: Error {
     case missingDefaultsSuite
+}
+
+@MainActor
+private final class ManualChargingClockTiming {
+    var date = Date().timeIntervalSinceReferenceDate
+
+    func advance(by interval: TimeInterval) {
+        date += interval
+    }
 }
 
 @MainActor
