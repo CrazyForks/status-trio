@@ -147,13 +147,19 @@ struct AppIconControllerTests {
     }
 
     @Test func visibleDockRendersStatusChanges() async throws {
-        let harness = try AppIconControllerHarness(initialPlacement: .dock)
+        let scheduler = ManualIconPresentationScheduler()
+        let harness = try AppIconControllerHarness(
+            initialPlacement: .dock,
+            snapshotScheduler: scheduler
+        )
         defer { harness.cleanUp() }
         harness.controller.start()
         harness.log.reset()
 
         harness.publishDifferentSnapshot()
-        try await waitForCoalescedRenders { harness.log.renderCount == 1 }
+        try await waitUntil { scheduler.hasPendingAction }
+        scheduler.runScheduled()
+        harness.controller.flushPendingPresentationForTesting()
 
         #expect(harness.log.renderCount == 1)
     }
@@ -722,6 +728,18 @@ struct AppIconControllerTests {
             try await Task.sleep(for: .milliseconds(5))
         }
         Issue.record("The coalesced redraw did not run within \(timeout) seconds.")
+    }
+
+    private func waitUntil(
+        timeout: TimeInterval = 5,
+        _ condition: () -> Bool
+    ) async throws {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if condition() { return }
+            try await Task.sleep(for: .milliseconds(5))
+        }
+        Issue.record("The expected state did not arrive within \(timeout) seconds.")
     }
 
     private func makeControllerBitmapImage(width: Int, height: Int) -> NSImage {
