@@ -126,9 +126,10 @@ final class BluetoothListeningModeController: ObservableObject {
     private var huaweiAddresses: Set<String> = []
     /// One in-flight state read per device, so repeated panel refreshes do not
     /// stack queries on the same channel. The token identifies the task that owns
-    /// the dictionary slot, so a cancelled read cannot clear a newer one.
+    /// the dictionary slot, so a cancelled read cannot clear a newer one, and it
+    /// invalidates the read it replaced, so a superseded read cannot publish.
     private var huaweiRefreshTasks: [String: Task<Void, Never>] = [:]
-    private var huaweiReadTokens: [String: UUID] = [:]
+    private var huaweiReadTokens: [String: DeviceOperationToken] = [:]
 
     init(
         hal: BluetoothListeningModeHAL = BluetoothListeningModeHAL(),
@@ -225,7 +226,7 @@ final class BluetoothListeningModeController: ObservableObject {
             huaweiRefreshTasks[address] = nil
             huaweiReadTokens[address] = nil
             cancelTasks(for: address)
-            bumpGeneration(for: address)
+            retireChangeToken(for: address)
             presentations[address] = nil
             resolvedEndpoints[address] = nil
         }
@@ -242,8 +243,7 @@ final class BluetoothListeningModeController: ObservableObject {
             if presentations[address]?.isChanging == true { continue }
             if huaweiRefreshTasks[address] != nil { continue }
 
-            let generation = bumpGeneration(for: address)
-            let token = UUID()
+            let token = DeviceOperationToken()
             huaweiReadTokens[address] = token
             huaweiRefreshTasks[address] = Task { [weak self] in
                 guard let self else { return }
@@ -256,7 +256,7 @@ final class BluetoothListeningModeController: ObservableObject {
                 do {
                     let state = try await self.huaweiTransport.state(address: address)
                     guard !Task.isCancelled,
-                          self.generations[address] == generation,
+                          self.huaweiReadTokens[address] == token,
                           self.huaweiAddresses.contains(address),
                           self.presentations[address]?.isChanging != true else {
                         return
@@ -392,21 +392,21 @@ final class BluetoothListeningModeController: ObservableObject {
 
         presentation = presentation.changing(to: mode)
         presentations[address] = presentation
-        let generation = bumpGeneration(for: address)
-        changeTasks[address]?.cancel()
+        let token = issueChangeToken(for: address)
 
         changeTasks[address] = Task { [weak self, transport = self.huaweiTransport] in
             do {
                 let state = try await transport.setMode(noiseMode, address: address)
-                guard let self, !Task.isCancelled, self.generations[address] == generation else { return }
+                guard let self, !Task.isCancelled, self.changeTokens[address] == token else { return }
                 self.changeTasks[address] = nil
                 if state.listeningMode == mode {
+                    self.retireChangeToken(for: address)
                     self.presentations[address] = presentation.settled(on: mode)
                 } else {
                     self.showFailure(state.listeningMode, previous: presentation, at: address)
                 }
             } catch {
-                guard let self, !Task.isCancelled, self.generations[address] == generation else { return }
+                guard let self, !Task.isCancelled, self.changeTokens[address] == token else { return }
                 self.changeTasks[address] = nil
                 self.showFailure(presentation.selectedMode, previous: presentation, at: address)
             }
@@ -499,7 +499,7 @@ final class BluetoothListeningModeController: ObservableObject {
         }
         for address in huaweiAddresses {
             huaweiRefreshTasks[address]?.cancel()
-            bumpGeneration(for: address)
+            huaweiReadTokens[address] = nil
         }
         huaweiRefreshTasks.removeAll()
         huaweiReadTokens.removeAll()
