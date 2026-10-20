@@ -1187,13 +1187,16 @@ distribution due to environment protection rules.
   而是测试目标在准备剩余批次的 Swift 6.3.3 编译任务时卡住。后续原生兼容、Release、
   DMG、签名、公证及发布步骤均未运行。
 - 隔离验证：在一次性诊断分支
-  `codex/pr124-huawei-hang-triage`（head
-  `c8c49315`）只删除 689 行的
-  `HuaweiTransportLifecycleTests.swift`，生产 transport 及其余测试不变；
-  [39441930496](https://github.com/lingyired/status-trio/actions/runs/39441930496)
-  的 `Run tests` 约 4 分钟通过，`Run native compatibility tests` 也已通过。
-  这把阻塞范围从整个 PR 缩小到该测试文件触发的 Swift 6.3.3 测试模块编译问题；
-  未在 Swift 6.3.3 本机工具链上继续做单构造二分，因此不把某个
+  `codex/pr124-huawei-hang-triage`（head `c8c49315`）只删除 689 行的
+  `HuaweiTransportLifecycleTests.swift`，生产 transport 及其余测试不变。
+  [39441995782](https://github.com/lingyired/status-trio/actions/runs/39441995782)
+  在同一 CI 工具链上约 3 分钟完成测试模块编译（`Build complete!`，128.45 秒），
+  随后约 2 分钟跑完 1,751 XCTest（7 skipped）和 697 Swift Testing / 103 suites，
+  说明原 90 分钟阻塞由该文件触发的 Swift 6.3.3 测试模块编译引起。
+  该 run 最终仍被既是主分支问题、也与本 PR 无关的
+  `AppIconControllerTests.visibleDockRendersStatusChanges` coalesced redraw 5 秒超时
+  标为失败，因此不能作为全绿复验。
+- 未在 Swift 6.3.3 本机工具链上继续做单构造二分；因此不把某个
   `@Sendable`、continuation 或泛型写法单独宣布为已证实的编译器 bug。
 - 修复：把生命周期文件缩减为 5 个定向回归测试，覆盖首次使用前取消不启动线程、
   运行中关闭在产生副作用前取消、启动中关闭使旧操作失效、队列操作不重入 drain、
@@ -1204,5 +1207,7 @@ distribution due to environment protection rules.
   的噪声控制行为未放宽或移除。
 - 验证：本地 Xcode 27 / Swift 6.4 上
   `swift test --filter HuaweiTransportLifecycleTests` 通过 5 项；全量
-  `swift test`、`swift build -c release`、appcast 校验和 Swift 6.3.3 CI 复跑结果
-  记录在 PR #124 的修复提交与最终预检运行中。
+  `swift test` 通过 1,751 XCTest（7 skipped）和 697 Swift Testing / 103 suites；
+  `swift build -c release` 与 `VERSION=1.6.1 BUILD=38 PUBLISH=false
+  bash scripts/validate-appcast-notes.sh` 均通过。修复提交为 `68282826`，
+  Swift 6.3.3 CI 复验占位：run `39443852308`。
