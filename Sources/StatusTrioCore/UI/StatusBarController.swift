@@ -124,6 +124,13 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     )
     private var popoverContentReleaseTask: Task<Void, Never>?
     private let inputSourceController: InputSourceController
+    /// How a presentation resolves the appearance it rasterizes in.
+    ///
+    /// Production reads the button's effective appearance. A test pins it: the
+    /// status item's effective appearance only settles once AppKit installs the
+    /// item into the menu bar, so a fixture that counts rasters would otherwise
+    /// see an unrelated second presentation each time that install lands (#133).
+    private let appearanceProvider: (@MainActor () -> NSAppearance)?
 
     init(
         store: SystemStatusStore,
@@ -152,8 +159,10 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
                 phase: phase
             )
         },
-        inputSourceController: InputSourceController? = nil
+        inputSourceController: InputSourceController? = nil,
+        appearanceProvider: (@MainActor () -> NSAppearance)? = nil
     ) {
+        self.appearanceProvider = appearanceProvider
         self.store = store
         self.settings = settings
         let resolvedInputSourceController = inputSourceController ?? InputSourceController()
@@ -630,7 +639,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             button.window?.backingScaleFactor
             ?? NSScreen.main?.backingScaleFactor
             ?? 1
-        let appearance = button.effectiveAppearance
+        let appearance = appearanceProvider?() ?? button.effectiveAppearance
         let staticKey = StatusBarRenderKey(
             scene: scene,
             iconSize: iconSize,
