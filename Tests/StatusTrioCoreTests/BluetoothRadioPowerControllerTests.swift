@@ -7,8 +7,66 @@ final class BluetoothRadioPowerControllerTests: XCTestCase {
         let backend = BluetoothRadioPowerBackendSpy(isAvailable: true, initialState: .on)
         let controller = BluetoothRadioPowerController(backend: backend)
 
+        controller.refresh()
+
         XCTAssertEqual(controller.power, .on)
         XCTAssertEqual(backend.setRequests, [])
+    }
+
+    func testInitializationDefersTheBackendAndPrivatePowerRead() {
+        let backend = BluetoothRadioPowerBackendSpy(isAvailable: true, initialState: .on)
+        var factoryCalls = 0
+        let controller = BluetoothRadioPowerController(backendFactory: {
+            factoryCalls += 1
+            return backend
+        })
+
+        XCTAssertEqual(factoryCalls, 0)
+        XCTAssertEqual(backend.readCount, 0)
+        XCTAssertEqual(controller.power, .unknown)
+
+        controller.refresh()
+
+        XCTAssertEqual(factoryCalls, 1)
+        XCTAssertEqual(backend.readCount, 1)
+        XCTAssertEqual(controller.power, .on)
+    }
+
+    func testPowerControlVisibilityRequiresPermissionAndPanelSection() {
+        for authorization in [
+            BluetoothAuthorizationStatus.notDetermined,
+            .denied,
+            .restricted
+        ] {
+            XCTAssertFalse(BluetoothPowerControlVisibility.canConfigure(
+                authorization: authorization,
+                showsInStatusPanel: true
+            ))
+            XCTAssertFalse(BluetoothPowerControlVisibility.showsPanelControl(
+                authorization: authorization,
+                showsInStatusPanel: true,
+                isEnabled: true
+            ))
+        }
+
+        XCTAssertFalse(BluetoothPowerControlVisibility.canConfigure(
+            authorization: .allowed,
+            showsInStatusPanel: false
+        ))
+        XCTAssertFalse(BluetoothPowerControlVisibility.showsPanelControl(
+            authorization: .allowed,
+            showsInStatusPanel: true,
+            isEnabled: false
+        ))
+        XCTAssertTrue(BluetoothPowerControlVisibility.canConfigure(
+            authorization: .allowed,
+            showsInStatusPanel: true
+        ))
+        XCTAssertTrue(BluetoothPowerControlVisibility.showsPanelControl(
+            authorization: .allowed,
+            showsInStatusPanel: true,
+            isEnabled: true
+        ))
     }
 
     func testUnavailableBackendCannotBeToggled() async {
@@ -197,7 +255,7 @@ private final class BluetoothRadioPowerBackendSpy: BluetoothRadioPowerBacking {
     var holdsWrite = false
     var readPowerHook: ((Int) -> Void)?
     private(set) var setRequests: [Bool] = []
-    private var readCount = 0
+    private(set) var readCount = 0
     private var writeWaiters: [CheckedContinuation<Void, Never>] = []
     private var releaseWaiters: [CheckedContinuation<Void, Never>] = []
     private var writeStarted = false

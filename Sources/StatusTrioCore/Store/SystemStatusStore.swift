@@ -295,7 +295,6 @@ final class SystemStatusStore: ObservableObject {
         wifiMonitor.start()
         connectionMonitor?.start()
         volumeMonitor.start()
-        bluetoothPower.refresh()
 
         if let inputMonitor {
             let inputUpdates = inputMonitor.updates
@@ -420,7 +419,6 @@ final class SystemStatusStore: ObservableObject {
         primaryLink.deactivate()
         localIP.deactivate()
         bluetoothDevices.deactivate()
-        bluetoothPower.refresh()
         bluetoothListeningModes.stop()
     }
 
@@ -512,6 +510,7 @@ final class SystemStatusStore: ObservableObject {
 
     func setBluetoothPower(_ enabled: Bool) async {
         guard !hasStopped else { return }
+        guard bluetoothDevices.authorization == .allowed else { return }
         guard await bluetoothPower.setPower(enabled) else { return }
         isBluetoothMonitoringSuspendedForPower = !enabled
         if enabled {

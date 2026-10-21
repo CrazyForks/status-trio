@@ -61,6 +61,7 @@ struct BluetoothStatusView: View {
     var trustedDiscoveryGeneration: UInt64 = 0
     var listOptions: BluetoothDeviceListOptions = .standard
     var showsRadioPowerControl = true
+    var showsBluetoothInStatusPanel = true
     let onRequestAuthorization: () -> Void
     let onOpenBluetoothSettings: () -> Void
     let onOpenBluetoothPermissionSettings: () -> Void
@@ -123,6 +124,14 @@ struct BluetoothStatusView: View {
         )
     }
 
+    private var resolvesRadioPowerControl: Bool {
+        BluetoothPowerControlVisibility.showsPanelControl(
+            authorization: controller.authorization,
+            showsInStatusPanel: showsBluetoothInStatusPanel,
+            isEnabled: showsRadioPowerControl
+        )
+    }
+
     private var appleProjection: AppleDeviceCatalog.Projection {
         let candidates = showsAppleDevicesAndBattery
             ? AppleDeviceCatalog.candidates(trusted: trustedAppleDeviceMetadata)
@@ -169,7 +178,7 @@ struct BluetoothStatusView: View {
                 )
                 ForEach(
                     BluetoothSummaryActionLayout.trailingActions(
-                        showsPowerControl: showsRadioPowerControl,
+                        showsPowerControl: resolvesRadioPowerControl,
                         showsPowerButton: powerPresentation.showsToggle
                     ),
                     id: \.self
@@ -242,6 +251,10 @@ struct BluetoothStatusView: View {
                 return
             }
             controller.requestBatteryLevels(Self.summaryBatteryLevelsToken)
+        }
+        .task(id: resolvesRadioPowerControl) {
+            guard resolvesRadioPowerControl else { return }
+            radioPower.refresh()
         }
         .task(id: mobileBatteryClaimTaskID) {
             guard showsMobileBatteryFeature else {

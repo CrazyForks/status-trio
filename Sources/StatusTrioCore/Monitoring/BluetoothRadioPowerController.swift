@@ -111,13 +111,14 @@ final class BluetoothRadioPowerController: ObservableObject {
     @Published private(set) var isChanging = false
     @Published private(set) var failure: BluetoothRadioPowerFailure?
 
-    private let backend: any BluetoothRadioPowerBacking
+    private var backend: (any BluetoothRadioPowerBacking)?
+    private let backendFactory: @MainActor () -> any BluetoothRadioPowerBacking
     private let sleep: @Sendable (Duration) async throws -> Void
     private let readBackAttempts: Int
     private let readBackInterval: Duration
 
     init(
-        backend: any BluetoothRadioPowerBacking = IOBluetoothRadioPowerBackend(),
+        backend: any BluetoothRadioPowerBacking,
         readBackAttempts: Int = defaultReadBackAttempts,
         readBackInterval: Duration = defaultReadBackInterval,
         sleep: @escaping @Sendable (Duration) async throws -> Void = {
@@ -125,24 +126,47 @@ final class BluetoothRadioPowerController: ObservableObject {
         }
     ) {
         self.backend = backend
+        backendFactory = { backend }
         self.readBackAttempts = max(1, readBackAttempts)
         self.readBackInterval = readBackInterval
         self.sleep = sleep
-        power = backend.isAvailable ? .unknown : .unavailable
-        refresh()
+        power = .unknown
+    }
+
+    init(
+        backendFactory: @escaping @MainActor () -> any BluetoothRadioPowerBacking = {
+            IOBluetoothRadioPowerBackend()
+        },
+        readBackAttempts: Int = defaultReadBackAttempts,
+        readBackInterval: Duration = defaultReadBackInterval,
+        sleep: @escaping @Sendable (Duration) async throws -> Void = {
+            try await Task.sleep(for: $0)
+        }
+    ) {
+        backend = nil
+        self.backendFactory = backendFactory
+        self.readBackAttempts = max(1, readBackAttempts)
+        self.readBackInterval = readBackInterval
+        self.sleep = sleep
+        power = .unknown
     }
 
     var canSetPower: Bool {
-        backend.isAvailable && !isChanging
+        backend?.isAvailable == true && !isChanging
     }
 
     func refresh() {
-        power = backend.readPower()
+        power = resolvedBackend().readPower()
     }
 
     @discardableResult
     func setPower(_ enabled: Bool) async -> Bool {
-        guard backend.isAvailable, !isChanging else { return false }
+        let backend = resolvedBackend()
+        guard backend.isAvailable else {
+            power = .unavailable
+            return false
+        }
+        guard !isChanging else { return false }
         isChanging = true
         failure = nil
         defer { isChanging = false }
@@ -169,5 +193,14 @@ final class BluetoothRadioPowerController: ObservableObject {
 
         failure = .stateDidNotChange
         return false
+    }
+
+    private func resolvedBackend() -> any BluetoothRadioPowerBacking {
+        if let backend {
+            return backend
+        }
+        let backend = backendFactory()
+        self.backend = backend
+        return backend
     }
 }
