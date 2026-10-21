@@ -92,7 +92,15 @@ final class HuaweiListeningModeProtocolTests: XCTestCase {
     }
 }
 
-/// The transport's own first-use startup, against the real IOBluetooth stack.
+/// The transport's own first-use startup, with the device lookup stubbed out.
+///
+/// Nothing here touches a real `IOBluetoothDevice`. Asking the live stack for
+/// paired devices makes TCC require an `NSBluetoothAlwaysUsageDescription` in
+/// the test bundle, and a bundle without one is SIGABRTed inside the TCC reply
+/// callback (`__TCC_CRASHING_DUE_TO_PRIVACY_VIOLATION__`), which takes the whole
+/// XCTest target down with 0 tests executed (#132). The startup under test runs
+/// before any device lookup, so an empty paired-device list keeps the
+/// concurrency and the assertion intact while staying inside the fixture.
 final class HuaweiRFCOMMTransportStartupTests: XCTestCase {
     /// Two HUAWEI devices are read at once, and `state` is a nonisolated `async`
     /// method, so the calls reach the transport's first-use startup on different
@@ -100,7 +108,7 @@ final class HuaweiRFCOMMTransportStartupTests: XCTestCase {
     /// thread would leave the transport with two run loops and two owners of the
     /// connection map, and the losing thread would run for the process lifetime.
     func testConcurrentFirstUseStartsExactlyOneTransportThread() async throws {
-        let transport = HuaweiRFCOMMTransport()
+        let transport = HuaweiRFCOMMTransport(hooks: .init(pairedDevices: { [] }))
         await withTaskGroup(of: Void.self) { group in
             for index in 0..<8 {
                 group.addTask {
