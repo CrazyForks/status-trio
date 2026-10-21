@@ -39,6 +39,10 @@ final class BoundedProcessInvocation: @unchecked Sendable {
     private static let streamGrace: DispatchTimeInterval = .milliseconds(500)
 
     private let queue = DispatchQueue(label: "StatusTrio.BoundedProcess")
+    /// Pipe reads and the post-exit drain run here, not on `queue`: the drain can
+    /// block on a handle a descendant still holds, and blocking the state machine
+    /// would stop it from ever reaching the deadline that ends the invocation.
+    private let ioQueue = DispatchQueue(label: "StatusTrio.BoundedProcess.IO")
     private let executableURL: URL
     private let arguments: [String]
     private let outputLimit: Int
@@ -50,6 +54,12 @@ final class BoundedProcessInvocation: @unchecked Sendable {
     private var stderrCount = 0
     private var stdoutEnded = false
     private var stderrEnded = false
+    /// Whether the *handle* has been drained, which is not the same thing as the
+    /// stream having signalled EOF: the readability handler fires again after a
+    /// drain with an empty read, and without these it would append nothing but
+    /// still race the drain for the same bytes.
+    private var stdoutIOEnded = false
+    private var stderrIOEnded = false
     private var processEnded = false
     private var hasStarted = false
     private var cancelled = false
@@ -153,14 +163,16 @@ final class BoundedProcessInvocation: @unchecked Sendable {
             self.stderrPipe = stderrPipe
 
             stdoutPipe.fileHandleForReading.readabilityHandler = { [weak invocation = self] handle in
-                let data = handle.availableData
                 guard let invocation else { return }
-                invocation.queue.async { [invocation] in invocation.received(data, stream: .stdout) }
+                invocation.ioQueue.async { [invocation] in
+                    invocation.readAvailableData(handle, stream: .stdout)
+                }
             }
             stderrPipe.fileHandleForReading.readabilityHandler = { [weak invocation = self] handle in
-                let data = handle.availableData
                 guard let invocation else { return }
-                invocation.queue.async { [invocation] in invocation.received(data, stream: .stderr) }
+                invocation.ioQueue.async { [invocation] in
+                    invocation.readAvailableData(handle, stream: .stderr)
+                }
             }
             child.terminationHandler = { [weak invocation = self] terminated in
                 guard let invocation else { return }
@@ -168,6 +180,13 @@ final class BoundedProcessInvocation: @unchecked Sendable {
                     invocation.processEnded = true
                     if terminated.terminationReason != .exit || terminated.terminationStatus != 0 {
                         invocation.failure = invocation.failure ?? .failed
+                    }
+                    // The child can exit between the last write and the read the
+                    // handler had queued; the tail would then never arrive and
+                    // the caller would see a truncated report. Drain what is
+                    // still in the pipe before letting the invocation finish.
+                    invocation.ioQueue.async { [invocation] in
+                        invocation.drainPipesAfterProcessExit()
                     }
                     invocation.completeIfReady()
                 }
@@ -221,6 +240,51 @@ final class BoundedProcessInvocation: @unchecked Sendable {
     }
 
     private enum Stream { case stdout, stderr }
+
+    private func readAvailableData(_ handle: FileHandle, stream: Stream) {
+        switch stream {
+        case .stdout:
+            guard !stdoutIOEnded else { return }
+        case .stderr:
+            guard !stderrIOEnded else { return }
+        }
+        let data = handle.availableData
+        if data.isEmpty {
+            markIOStreamEnded(stream)
+            queue.async { [self] in received(Data(), stream: stream) }
+        } else {
+            queue.async { [self] in received(data, stream: stream) }
+        }
+    }
+
+    private func drainPipesAfterProcessExit() {
+        guard onFinish != nil else { return }
+        stdoutPipe?.fileHandleForReading.readabilityHandler = nil
+        stderrPipe?.fileHandleForReading.readabilityHandler = nil
+        if !stdoutIOEnded, let handle = stdoutPipe?.fileHandleForReading {
+            let data = handle.readDataToEndOfFile()
+            markIOStreamEnded(.stdout)
+            queue.async { [self] in
+                if !data.isEmpty { received(data, stream: .stdout) }
+                received(Data(), stream: .stdout)
+            }
+        }
+        if !stderrIOEnded, let handle = stderrPipe?.fileHandleForReading {
+            let data = handle.readDataToEndOfFile()
+            markIOStreamEnded(.stderr)
+            queue.async { [self] in
+                if !data.isEmpty { received(data, stream: .stderr) }
+                received(Data(), stream: .stderr)
+            }
+        }
+    }
+
+    private func markIOStreamEnded(_ stream: Stream) {
+        switch stream {
+        case .stdout: stdoutIOEnded = true
+        case .stderr: stderrIOEnded = true
+        }
+    }
 
     private func received(_ data: Data, stream: Stream) {
         if data.isEmpty {
