@@ -159,6 +159,7 @@ struct StatusPopoverView: View {
         case .bluetooth:
             BluetoothStatusView(
                 controller: panel.store.bluetoothDevices,
+                radioPower: panel.store.bluetoothPower,
                 mobileBatteryController: panel.store.mobileBattery,
                 showsBatteryLevels: panel.settings.showsBluetoothBatteryLevels,
                 showsAppleDevicesAndBattery: panel.settings.showsAppleDevicesAndBattery,
@@ -167,11 +168,16 @@ struct StatusPopoverView: View {
                 currentTrustedAppleCandidates: panel.store.trustedAppleDeviceCandidates,
                 trustedDiscoveryGeneration: panel.store.trustedAppleDeviceDiscoveryGeneration,
                 listOptions: panel.settings.bluetoothDeviceListOptions,
+                showsRadioPowerControl: panel.settings.showsBluetoothPowerControl,
+                showsBluetoothInStatusPanel: panel.settings.enabledPopupSections.contains(.bluetooth),
                 listeningModePresentations: panel.bluetoothListeningModeRows,
                 onSelectListeningMode: { panel.actions.setListeningMode(address: $0, mode: $1) },
                 onRequestAuthorization: requestBluetoothAuthorization,
                 onOpenBluetoothSettings: openBluetoothSettings,
-                onOpenBluetoothPermissionSettings: openBluetoothPermissionSettings
+                onOpenBluetoothPermissionSettings: openBluetoothPermissionSettings,
+                onSetRadioPower: { enabled in
+                    panel.actions.setBluetoothPower(enabled)
+                }
             )
         case .volume:
             VolumeControlsView(

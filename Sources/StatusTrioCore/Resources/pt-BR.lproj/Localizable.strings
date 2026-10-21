@@ -92,6 +92,8 @@
 "settings.bluetooth.listeningModePreviewLanguageDescription" = "Renderiza os nomes das cápsulas nas linhas de prévia no idioma escolhido, deixando o restante do painel no idioma do sistema. Útil para comparar como um nome longo em alemão ou um texto da direita para a esquerda em árabe quebra a linha.";
 "settings.bluetooth.showInStatusPanel" = "Mostrar Bluetooth no painel de status";
 "settings.bluetooth.showInStatusPanelDescription" = "Controla o item Bluetooth no painel de status e permanece sincronizado com os ajustes do painel de status.";
+"settings.bluetooth.powerControl" = "Mostrar controle de energia do Bluetooth";
+"settings.bluetooth.powerControlDescription" = "Adiciona um botão de energia do Bluetooth ao painel de status. Nenhuma permissão adicional é necessária.";
 "settings.bluetooth.symbolScale" = "Tamanho do ícone Bluetooth";
 "settings.bluetooth.symbolScaleDescription" = "Ajusta a escala do ícone do dispositivo Bluetooth no anel de status de 100% a 180%.";
 "settings.bluetooth.iconChoice" = "Ícone de áudio Bluetooth";
@@ -339,6 +341,13 @@
 "wifi.security.enterprise" = "Empresarial";
 "bluetooth.openDetails" = "Abrir detalhes para ver o status do dispositivo";
 "bluetooth.title" = "Bluetooth";
+"bluetooth.power.turnOn" = "Ativar Bluetooth";
+"bluetooth.power.turnOff" = "Desativar Bluetooth";
+"bluetooth.power.unknown" = "O estado do Bluetooth não está disponível.";
+"bluetooth.power.changeFailed" = "O Bluetooth não mudou de estado.";
+"bluetooth.power.offConfirmTitle" = "Desativar Bluetooth?";
+"bluetooth.power.offConfirmMessage" = "Teclados, mouses, trackpads ou controles conectados podem ser desconectados. Você pode ativar o Bluetooth novamente neste painel ou em Ajustes do Sistema.";
+"bluetooth.power.offConfirmAction" = "Desativar";
 "bluetooth.pairedDevices.title" = "Emparelhados";
 "bluetooth.devices.title" = "Dispositivos Bluetooth";
 "bluetooth.nearbyBattery.title" = "Próximos";

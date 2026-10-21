@@ -92,6 +92,8 @@
 "settings.bluetooth.listeningModePreviewLanguageDescription" = "プレビュー行のモード名だけを選択言語で表示します。パネルの他部分はシステム言語のまま。ドイツ語の長い単語やアラビア語の RTL 表示でカプセルがどう折り返されるかの比較に便利です。";
 "settings.bluetooth.showInStatusPanel" = "ステータスパネルに Bluetooth を表示";
 "settings.bluetooth.showInStatusPanelDescription" = "ステータスパネルの Bluetooth 項目を切り替え、ステータスパネル設定と同期します。";
+"settings.bluetooth.powerControl" = "Bluetooth 電源ボタンを表示";
+"settings.bluetooth.powerControlDescription" = "ステータスパネルに Bluetooth の電源ボタンを表示します。追加の権限は必要ありません。";
 "settings.bluetooth.symbolScale" = "Bluetooth アイコンサイズ";
 "settings.bluetooth.symbolScaleDescription" = "ステータスリング内の Bluetooth 機器アイコンのサイズを 100% 〜 180% で調整します。";
 "settings.bluetooth.iconChoice" = "Bluetoothオーディオアイコン";
@@ -339,6 +341,13 @@
 "wifi.security.enterprise" = "エンタープライズ";
 "bluetooth.openDetails" = "詳細を開いてデバイスの状態を表示";
 "bluetooth.title" = "Bluetooth";
+"bluetooth.power.turnOn" = "Bluetoothをオンにする";
+"bluetooth.power.turnOff" = "Bluetoothをオフにする";
+"bluetooth.power.unknown" = "Bluetoothの状態を取得できません。";
+"bluetooth.power.changeFailed" = "Bluetoothの状態が変わりませんでした。";
+"bluetooth.power.offConfirmTitle" = "Bluetoothをオフにしますか？";
+"bluetooth.power.offConfirmMessage" = "接続中のキーボード、マウス、トラックパッド、ゲームコントローラが切断される可能性があります。このパネルまたはシステム設定からBluetoothを再度オンにできます。";
+"bluetooth.power.offConfirmAction" = "オフにする";
 "bluetooth.pairedDevices.title" = "ペアリング済み";
 "bluetooth.devices.title" = "Bluetooth デバイス";
 "bluetooth.nearbyBattery.title" = "近くのデバイス";

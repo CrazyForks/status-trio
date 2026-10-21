@@ -61,6 +61,7 @@ final class SystemStatusStore: ObservableObject {
     /// only while the popover is open with the Local IP row switched on.
     let localIP: LocalIPController
     let bluetoothDevices: BluetoothDeviceController
+    let bluetoothPower: BluetoothRadioPowerController
     let mobileBattery: MobileBatteryController
     let appleDeviceDiscovery: AppleDeviceDiscoveryController
     /// The AirPods listening-mode surface. A separate owner from `bluetoothDevices`
@@ -133,6 +134,7 @@ final class SystemStatusStore: ObservableObject {
     @Published private(set) var isDisplayAsleep = false
     private var isSettingsVisible = false
     private var isBluetoothEnabled = false
+    private var isBluetoothMonitoringSuspendedForPower = false
     private var isBluetoothActivatedForPopover = false
     /// Whether the wired link panel is the open detail panel. The controller
     /// itself follows the connection; this only records that the panel is on
@@ -169,6 +171,7 @@ final class SystemStatusStore: ObservableObject {
         primaryLink: PrimaryLinkController = PrimaryLinkController(),
         localIP: LocalIPController = LocalIPController(),
         bluetoothDevices: BluetoothDeviceController = BluetoothDeviceController(),
+        bluetoothPower: BluetoothRadioPowerController = BluetoothRadioPowerController(),
         mobileBattery: MobileBatteryController = MobileBatteryController(),
         appleDeviceDiscovery: AppleDeviceDiscoveryController = AppleDeviceDiscoveryController(),
         bluetoothListeningModes: BluetoothListeningModeController = BluetoothListeningModeController(),
@@ -193,6 +196,7 @@ final class SystemStatusStore: ObservableObject {
         self.primaryLink = primaryLink
         self.localIP = localIP
         self.bluetoothDevices = bluetoothDevices
+        self.bluetoothPower = bluetoothPower
         self.mobileBattery = mobileBattery
         self.appleDeviceDiscovery = appleDeviceDiscovery
         self.bluetoothListeningModes = bluetoothListeningModes
@@ -470,7 +474,7 @@ final class SystemStatusStore: ObservableObject {
     }
 
     func requestBluetoothAuthorization() {
-        setBluetoothEnabled(true)
+        setBluetoothDeviceMonitoringEnabled(true)
     }
 
     /// The route where a refused Bluetooth grant is restored. This is not the
@@ -492,14 +496,37 @@ final class SystemStatusStore: ObservableObject {
         }
     }
 
-    func setBluetoothEnabled(_ enabled: Bool) {
+    func setBluetoothDeviceMonitoringEnabled(_ enabled: Bool) {
         guard !hasStopped else { return }
         isBluetoothEnabled = enabled
         isBluetoothActivatedForPopover = false
+        isBluetoothMonitoringSuspendedForPower = false
         if enabled {
             bluetoothDevices.activate()
         } else {
             bluetoothDevices.deactivate()
+        }
+    }
+
+    func setBluetoothPower(_ enabled: Bool) async {
+        guard !hasStopped else { return }
+        guard bluetoothDevices.authorization == .allowed else { return }
+        guard await bluetoothPower.setPower(enabled) else { return }
+        isBluetoothMonitoringSuspendedForPower = !enabled
+        if enabled {
+            if isBluetoothEnabled {
+                bluetoothDevices.activate()
+            }
+            bluetoothDevices.refresh()
+        } else {
+            bluetoothDevices.deactivate()
+        }
+        if isPopoverVisible {
+            if !enabled {
+                isBluetoothActivatedForPopover = false
+            } else {
+                activateBluetoothForPopover()
+            }
         }
     }
 
@@ -518,7 +545,7 @@ final class SystemStatusStore: ObservableObject {
             authorization: bluetoothDevices.authorization
         ) else { return }
         let monitorWasAlreadyActive = bluetoothDevices.isActive
-        if !isBluetoothEnabled {
+        if !isBluetoothEnabled && !isBluetoothMonitoringSuspendedForPower {
             if !monitorWasAlreadyActive {
                 isBluetoothActivatedForPopover = true
                 bluetoothDevices.activate()

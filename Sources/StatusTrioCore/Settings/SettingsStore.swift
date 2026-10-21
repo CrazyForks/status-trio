@@ -51,6 +51,7 @@ final class SettingsStore: ObservableObject {
     static let usesBluetoothAudioVolumeColorDefaultsKey = "usesBluetoothAudioVolumeColor"
     static let prioritizesNetworkErrorsOverBluetoothAudioDefaultsKey = "prioritizesNetworkErrorsOverBluetoothAudio"
     static let showsBluetoothBatteryLevelsDefaultsKey = "showsBluetoothBatteryLevels"
+    static let showsBluetoothPowerControlDefaultsKey = "showsBluetoothPowerControl"
     static let controlsLowPowerModeDefaultsKey = "controlsLowPowerMode"
     static let showsNearbyBluetoothBatteryDevicesDefaultsKey = "showsNearbyBluetoothBatteryDevices"
     static let showsMobileDeviceBatteryLevelsDefaultsKey = "showsMobileDeviceBatteryLevels"
@@ -446,6 +447,18 @@ final class SettingsStore: ObservableObject {
             defaults.set(
                 showsBluetoothBatteryLevels,
                 forKey: Self.showsBluetoothBatteryLevelsDefaultsKey
+            )
+        }
+    }
+
+    /// The Bluetooth radio switch uses private IOBluetooth symbols, but needs
+    /// no helper or additional permission. It is on by default and only hides
+    /// the panel affordance when explicitly turned off.
+    @Published var showsBluetoothPowerControl: Bool {
+        didSet {
+            defaults.set(
+                showsBluetoothPowerControl,
+                forKey: Self.showsBluetoothPowerControlDefaultsKey
             )
         }
     }
@@ -1289,6 +1302,9 @@ final class SettingsStore: ObservableObject {
         ) as? Bool ?? true
         self.showsBluetoothBatteryLevels = defaults.object(
             forKey: Self.showsBluetoothBatteryLevelsDefaultsKey
+        ) as? Bool ?? true
+        self.showsBluetoothPowerControl = defaults.object(
+            forKey: Self.showsBluetoothPowerControlDefaultsKey
         ) as? Bool ?? true
         self.controlsLowPowerMode = defaults.object(
             forKey: Self.controlsLowPowerModeDefaultsKey

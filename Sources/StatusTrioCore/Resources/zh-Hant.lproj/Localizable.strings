@@ -92,6 +92,8 @@
 "settings.bluetooth.listeningModePreviewLanguageDescription" = "僅讓預試列的模式名以指定語言渲染，面板其他部分維持系統語言。方便比較德語長詞或阿拉伯語由右至左時膠囊如何換行。";
 "settings.bluetooth.showInStatusPanel" = "在狀態面板中顯示藍牙";
 "settings.bluetooth.showInStatusPanelDescription" = "控制狀態面板中的藍牙項目，並與狀態面板設定保持同步。";
+"settings.bluetooth.powerControl" = "顯示藍牙電源開關";
+"settings.bluetooth.powerControlDescription" = "在狀態面板的藍牙標題列顯示電源開關，不會額外要求權限。";
 "settings.bluetooth.symbolScale" = "藍牙圖示大小";
 "settings.bluetooth.symbolScaleDescription" = "調整狀態環內藍牙裝置圖示的縮放比例（100% - 180%）。";
 "settings.bluetooth.iconChoice" = "藍牙音訊圖像";
@@ -339,6 +341,13 @@
 "wifi.security.enterprise" = "企業";
 "bluetooth.openDetails" = "打開詳細資訊以查看裝置狀態";
 "bluetooth.title" = "藍牙";
+"bluetooth.power.turnOn" = "開啟藍牙";
+"bluetooth.power.turnOff" = "關閉藍牙";
+"bluetooth.power.unknown" = "無法讀取藍牙狀態。";
+"bluetooth.power.changeFailed" = "藍牙狀態未發生變化。";
+"bluetooth.power.offConfirmTitle" = "要關閉藍牙嗎？";
+"bluetooth.power.offConfirmMessage" = "已連接的鍵盤、滑鼠、觸控板或遊戲手把可能會中斷連線。你可以從此面板或系統設定重新開啟藍牙。";
+"bluetooth.power.offConfirmAction" = "關閉";
 "bluetooth.pairedDevices.title" = "已配對";
 "bluetooth.devices.title" = "藍牙裝置";
 "bluetooth.nearbyBattery.title" = "附近裝置";

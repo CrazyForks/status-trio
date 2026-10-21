@@ -92,6 +92,8 @@
 "settings.bluetooth.listeningModePreviewLanguageDescription" = "只让预览行的模式名用指定语言渲染，面板其他部分保持系统语言。方便比较德语长词或阿拉伯语从右往左时胶囊如何换行。";
 "settings.bluetooth.showInStatusPanel" = "在状态面板中显示蓝牙";
 "settings.bluetooth.showInStatusPanelDescription" = "控制状态面板里的蓝牙项目，并与状态面板设置保持同步。";
+"settings.bluetooth.powerControl" = "显示蓝牙电源开关";
+"settings.bluetooth.powerControlDescription" = "在状态面板的蓝牙标题行显示电源开关，不会额外请求权限。";
 "settings.bluetooth.symbolScale" = "蓝牙图标大小";
 "settings.bluetooth.symbolScaleDescription" = "调节状态环内蓝牙设备图标的缩放比例（100% - 180%）。";
 "settings.bluetooth.iconChoice" = "蓝牙音频图标";
@@ -339,6 +341,13 @@
 "wifi.security.enterprise" = "企业网络";
 "bluetooth.openDetails" = "打开详情查看设备状态";
 "bluetooth.title" = "蓝牙";
+"bluetooth.power.turnOn" = "打开蓝牙";
+"bluetooth.power.turnOff" = "关闭蓝牙";
+"bluetooth.power.unknown" = "无法读取蓝牙状态。";
+"bluetooth.power.changeFailed" = "蓝牙状态未发生变化。";
+"bluetooth.power.offConfirmTitle" = "要关闭蓝牙吗？";
+"bluetooth.power.offConfirmMessage" = "已连接的键盘、鼠标、触控板或游戏手柄可能会断开。你可以从此面板或系统设置重新打开蓝牙。";
+"bluetooth.power.offConfirmAction" = "关闭";
 "bluetooth.pairedDevices.title" = "已配对";
 "bluetooth.devices.title" = "蓝牙设备";
 "bluetooth.nearbyBattery.title" = "附近设备";

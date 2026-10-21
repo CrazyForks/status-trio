@@ -92,6 +92,8 @@
 "settings.bluetooth.listeningModePreviewLanguageDescription" = "Affichez les noms des pastilles des lignes d'aperçu dans la langue choisie, en laissant le reste du panneau dans la langue système. Utile pour comparer le retour à la ligne d'un nom long en allemand ou d'une écriture de droite à gauche en arabe.";
 "settings.bluetooth.showInStatusPanel" = "Afficher le Bluetooth dans le panneau d’état";
 "settings.bluetooth.showInStatusPanelDescription" = "Contrôle l’élément Bluetooth du panneau d’état et reste synchronisé avec les réglages du panneau d’état.";
+"settings.bluetooth.powerControl" = "Afficher le bouton d’alimentation Bluetooth";
+"settings.bluetooth.powerControlDescription" = "Ajoute un bouton d’alimentation Bluetooth au panneau d’état. Aucune autorisation supplémentaire n’est nécessaire.";
 "settings.bluetooth.symbolScale" = "Taille de l’icône Bluetooth";
 "settings.bluetooth.symbolScaleDescription" = "Ajuste l’échelle de l’icône du périphérique Bluetooth dans l’anneau de statut de 100 % à 180 %.";
 "settings.bluetooth.iconChoice" = "Icône audio Bluetooth";
@@ -339,6 +341,13 @@
 "wifi.security.enterprise" = "Entreprise";
 "bluetooth.openDetails" = "Ouvrir les détails pour afficher l’état du périphérique";
 "bluetooth.title" = "Bluetooth";
+"bluetooth.power.turnOn" = "Activer Bluetooth";
+"bluetooth.power.turnOff" = "Désactiver Bluetooth";
+"bluetooth.power.unknown" = "L’état de Bluetooth n’est pas disponible.";
+"bluetooth.power.changeFailed" = "Bluetooth n’a pas changé d’état.";
+"bluetooth.power.offConfirmTitle" = "Désactiver Bluetooth ?";
+"bluetooth.power.offConfirmMessage" = "Les claviers, souris, trackpads ou manettes connectés risquent de se déconnecter. Vous pouvez réactiver Bluetooth depuis ce panneau ou Réglages Système.";
+"bluetooth.power.offConfirmAction" = "Désactiver";
 "bluetooth.pairedDevices.title" = "Appareils jumelés";
 "bluetooth.devices.title" = "Appareils Bluetooth";
 "bluetooth.nearbyBattery.title" = "À proximité";

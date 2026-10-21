@@ -36,6 +36,21 @@ struct BluetoothSectionView: View {
                     isOn: showInStatusPanelBinding
                 )
 
+                if BluetoothPowerControlVisibility.canConfigure(
+                    authorization: bluetoothDevices.authorization,
+                    showsInStatusPanel: store.enabledPopupSections.contains(.bluetooth)
+                ) {
+                    SettingsDivider()
+
+                    SettingsToggleRow(
+                        symbol: "power.circle",
+                        tint: .blue,
+                        title: localization.string(.settingsBluetoothPowerControl),
+                        subtitle: localization.string(.settingsBluetoothPowerControlDescription),
+                        isOn: $store.showsBluetoothPowerControl
+                    )
+                }
+
                 SettingsDivider()
 
                 SettingsRow(
@@ -624,7 +639,7 @@ struct BluetoothSectionView: View {
                 if enabled {
                     NSApp.activate(ignoringOtherApps: true)
                 }
-                statusStore.setBluetoothEnabled(enabled)
+                statusStore.setBluetoothDeviceMonitoringEnabled(enabled)
             }
         )
     }

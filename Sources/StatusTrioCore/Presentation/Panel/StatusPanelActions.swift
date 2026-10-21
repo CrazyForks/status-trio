@@ -18,6 +18,7 @@ final class StatusPanelActions {
     private let refreshBluetoothCommand: () -> Void
     private let requestBluetoothAuthorizationCommand: () -> Void
     private let openBluetoothPermissionSettingsCommand: () -> Void
+    private let setBluetoothPowerCommand: (Bool) -> Void
     private let performBluetoothActionCommand: (BluetoothDevice) -> Void
     private let requestDisconnectCommand: (BluetoothDevice) -> Void
     private let disconnectConfirmationAddress: () -> String?
@@ -70,6 +71,7 @@ final class StatusPanelActions {
         refreshBluetooth: @escaping () -> Void = {},
         requestBluetoothAuthorization: @escaping () -> Void = {},
         openBluetoothPermissionSettings: @escaping () -> Void = {},
+        setBluetoothPower: @escaping (Bool) -> Void = { _ in },
         performBluetoothAction: @escaping (BluetoothDevice) -> Void = { _ in },
         requestDisconnect: @escaping (BluetoothDevice) -> Void = { _ in },
         disconnectConfirmationAddress: @escaping () -> String? = { nil },
@@ -112,6 +114,7 @@ final class StatusPanelActions {
         self.refreshBluetoothCommand = refreshBluetooth
         self.requestBluetoothAuthorizationCommand = requestBluetoothAuthorization
         self.openBluetoothPermissionSettingsCommand = openBluetoothPermissionSettings
+        self.setBluetoothPowerCommand = setBluetoothPower
         self.performBluetoothActionCommand = performBluetoothAction
         self.requestDisconnectCommand = requestDisconnect
         self.disconnectConfirmationAddress = disconnectConfirmationAddress
@@ -166,6 +169,9 @@ final class StatusPanelActions {
             refreshBluetooth: { store.bluetoothDevices.refreshFromUser() },
             requestBluetoothAuthorization: { store.requestBluetoothAuthorization() },
             openBluetoothPermissionSettings: { store.openBluetoothPermissionSettings() },
+            setBluetoothPower: { enabled in
+                Task { await store.setBluetoothPower(enabled) }
+            },
             performBluetoothAction: { store.bluetoothDevices.performDeviceAction(for: $0) },
             requestDisconnect: { store.bluetoothDevices.requestDisconnectConfirmation(for: $0) },
             disconnectConfirmationAddress: { store.bluetoothDevices.pendingDisconnectConfirmation },
@@ -255,6 +261,11 @@ final class StatusPanelActions {
     func refreshBluetooth() { refreshBluetoothCommand() }
     func requestBluetoothAuthorization() { requestBluetoothAuthorizationCommand() }
     func openBluetoothPermissionSettings() { openBluetoothPermissionSettingsCommand() }
+    func setBluetoothPower(_ enabled: Bool) { setBluetoothPowerCommand(enabled) }
+
+    func bluetoothPowerNeedsConfirmation(_ enabled: Bool) -> Bool {
+        !enabled && BluetoothRadioPowerPolicy.requiresConfirmation(beforeTurningOff: bluetoothDevices())
+    }
     func selectInputSource(_ id: String) { selectInputSourceCommand(id) }
 
     func performBluetoothAction(address: String) {
