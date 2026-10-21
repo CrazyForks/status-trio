@@ -239,6 +239,14 @@ private final class Fixture {
         let store = self.store
         let iconPresentation = self.iconPresentation
         let spy = self.spy
+        // AppKit only settles a status item's effective appearance once the item
+        // is installed in the menu bar, and that install lands asynchronously.
+        // Left alone, the resulting KVO callback presents the same scene in the
+        // settled appearance, which rasterizes the template base a second time —
+        // an unrelated presentation that no counter in these tests is about.
+        // Pinning the appearance keeps the static key constant so every count
+        // below still means exactly one presentation (#133).
+        let pinnedAppearance = NSAppearance(named: .aqua) ?? NSAppearance.currentDrawing()
         controller = StatusBarController(
             store: store,
             settings: settings,
@@ -248,7 +256,8 @@ private final class Fixture {
             quitAction: {},
             chargingEffectClock: clock,
             renderMenuBarBase: { _, _, _, _ in spy.renderBase() },
-            renderMenuBarOverlay: { _, _, _, _, phase in spy.renderOverlay(for: phase) }
+            renderMenuBarOverlay: { _, _, _, _, phase in spy.renderOverlay(for: phase) },
+            appearanceProvider: { pinnedAppearance }
         )
         phaseCancellable = clock.$phase.sink { [weak self] phase in
             guard let self, let phase else { return }
