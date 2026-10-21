@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Validates release note coverage and the appcast item those notes generate.
 #
-# Runs on every release dispatch, including publish=false preflights, which is
-# what gives this path CI coverage: the appcast is only written when publishing.
+# Validates the caller-supplied release mode and notes coverage. This script is
+# also reachable from a non-publishing diagnostic dispatch; PR 3 owns moving the
+# release-only gate and notes-consistency decision into the release workflow.
 set -euo pipefail
 
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
