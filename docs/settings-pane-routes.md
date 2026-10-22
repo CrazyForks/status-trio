@@ -10,6 +10,8 @@ route without a screen-recording or accessibility grant.
 | --- | --- | --- |
 | Wi-Fi gear, Wi-Fi row | `x-apple.systempreferences:com.apple.wifi-settings-extension` | Wi-Fi (`Wi-Fi.appex`) |
 | A wired row's gear | `x-apple.systempreferences:com.apple.Network-Settings.extension` | Network (`Network.appex`) |
+| Output volume slider's gear | `x-apple.systempreferences:com.apple.Sound-Settings.extension?output` | Sound, Output tab (`Sound.appex`) |
+| Microphone slider's gear | `x-apple.systempreferences:com.apple.Sound-Settings.extension?input` | Sound, Input tab (`Sound.appex`) |
 | Wired row's **Share Internet…** | `x-apple.systempreferences:com.apple.Sharing-Settings.extension` | Sharing (`Sharing.appex`) |
 | Input-source section's **Keyboard Settings…** | `x-apple.systempreferences:com.apple.Keyboard-Settings.extension` | Keyboard (`KeyboardSettings.appex`) |
 | Onboarding menu bar help | `x-apple.systempreferences:com.apple.ControlCenter-Settings.extension` | Menu Bar (`ControlCenterSettings.appex`) on macOS 26+, Control Center (`ControlCenterSettings.appex`) on macOS 13 through 25 |
@@ -17,6 +19,11 @@ route without a screen-recording or accessibility grant.
 `com.apple.Network-Settings.extension?Wi-Fi` is **not** a Wi-Fi route. It opens the
 Network pane — the list of network services — and its `?Wi-Fi` anchor does not
 select the Wi-Fi section on macOS 15.
+
+The audio gears use separate `output` and `input` anchors, with the matching
+legacy Sound pane route as fallback. `StatusMenuBuilderTests` pins both route
+orders. Selecting the expected tab still needs manual verification; the unit
+tests and a successful URL open do not establish that runtime behavior.
 
 ## Incident: the Wi-Fi route was dropped twice
 

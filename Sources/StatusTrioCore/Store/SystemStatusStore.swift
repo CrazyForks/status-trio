@@ -937,9 +937,9 @@ final class SystemStatusStore: ObservableObject {
         inputMonitor?.select(id)
     }
 
-    func setInputScalar(_ value: Double) {
+    func setInputScalar(_ value: Double, requestID: UUID = UUID()) {
         guard !hasStopped else { return }
-        inputMonitor?.setScalar(value)
+        inputMonitor?.setScalar(value, requestID: requestID)
     }
 
     func toggleInputMute() {
