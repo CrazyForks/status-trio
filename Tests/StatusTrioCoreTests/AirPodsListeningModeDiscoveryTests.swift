@@ -16,18 +16,23 @@ struct AirPodsListeningModeDiscoveryTests {
 
     @Test(.timeLimit(.minutes(1)))
     func endpointBecomingReadyAfterConnectionPublishesControlsWithoutAnotherRefresh() async throws {
-        let sleeper = ManualEventSleeper()
+        let retryGate = DiscoveryRetryGate()
         let provider = DelayedAirPodsEndpointProvider()
-        let controller = makeController(provider: provider, sleeper: sleeper)
+        let controller = BluetoothListeningModeController(
+            hal: BluetoothListeningModeHAL(backend: FakeListeningModeBackend()),
+            endpointProvider: provider,
+            listenerBackend: FakeListeningModeListenerBackend(),
+            airPodsDiscoverySleep: { duration in await retryGate.sleep(duration) }
+        )
         let events = observeDiscoveryUpdates(controller.$presentations)
-        defer { controller.stop(); sleeper.releaseAll(); events.observation.cancel() }
+        defer { controller.stop(); retryGate.releaseAll(); events.observation.cancel() }
 
         controller.refresh(devices: [device])
         #expect(controller.control(forEndpoint: 42) == nil)
-        let waiting = await sleeper.waitForCallCount(1, timeout: .seconds(2))
-        try #require(waiting)
+        let retryDelay = await retryGate.nextCall()
+        try #require(retryDelay == .milliseconds(150))
         provider.isReady = true
-        sleeper.releaseAll()
+        retryGate.releaseAll()
 
         let appeared = await events.stream.first { @Sendable in $0["AABBCCDDEEFF"] != nil }
         try #require(appeared != nil, "A connected AirPods endpoint may become ready after the first discovery")
@@ -167,6 +172,27 @@ struct AirPodsListeningModeDiscoveryTests {
         sleeper.releaseAll()
     }
 
+    @Test func observationPreservesReadyControlsEvenIfTheyAreClearedBeforeConsumption() async {
+        let controller = BluetoothListeningModeController(
+            hal: BluetoothListeningModeHAL(backend: FakeListeningModeBackend()),
+            endpointProvider: DelayedAirPodsEndpointProvider(),
+            listenerBackend: FakeListeningModeListenerBackend()
+        )
+        controller.previewMode = true
+        let events = observeDiscoveryUpdates(controller.$presentations)
+        controller.refresh(devices: [
+            BluetoothDevice(id: "PREVIEW:1", name: "Preview", kind: .audio, isConnected: true)
+        ])
+        controller.stop()
+        events.observation.cancel()
+
+        var readyWasPublished = false
+        for await presentations in events.stream {
+            if !presentations.isEmpty { readyWasPublished = true }
+        }
+        #expect(readyWasPublished, "Clearing controls must not erase a prior readiness event from the observation")
+    }
+
     private func makeController(
         provider: DelayedAirPodsEndpointProvider,
         sleeper: ManualEventSleeper,
@@ -215,12 +241,34 @@ final class DelayedAirPodsEndpointProvider: CoreAudioBluetoothEndpointProviding,
 func observeDiscoveryUpdates<Value: Sendable>(
     _ publisher: Published<Value>.Publisher
 ) -> (stream: AsyncStream<Value>, observation: AnyCancellable) {
-    let pair = AsyncStream<Value>.makeStream(bufferingPolicy: .bufferingNewest(1))
-    let subscription = publisher.sink { pair.continuation.yield($0) }
+    let pair = AsyncStream<Value>.makeStream(bufferingPolicy: .unbounded)
+    let subscription = publisher.dropFirst().sink { pair.continuation.yield($0) }
     return (pair.stream, AnyCancellable {
         subscription.cancel()
         pair.continuation.finish()
     })
+}
+
+@MainActor
+private final class DiscoveryRetryGate {
+    private let pair = AsyncStream<Duration>.makeStream(bufferingPolicy: .unbounded)
+    private var sleepers: [CheckedContinuation<Void, Never>] = []
+
+    func nextCall() async -> Duration? {
+        var iterator = pair.stream.makeAsyncIterator()
+        return await iterator.next()
+    }
+
+    func sleep(_ duration: Duration) async {
+        pair.continuation.yield(duration)
+        await withCheckedContinuation { sleepers.append($0) }
+    }
+
+    func releaseAll() {
+        let pending = sleepers
+        sleepers.removeAll()
+        pending.forEach { $0.resume() }
+    }
 }
 
 @MainActor
