@@ -109,10 +109,10 @@ struct AudioSectionView: View {
                 } else {
                     List {
                         ForEach(orderedDevices) { device in
-                            HStack(spacing: 10) {
+                            HStack(alignment: .center, spacing: 10) {
                                 AudioOutputDeviceIconView(source: AudioPanelMapper.iconSource(for: device))
                                     .foregroundStyle(device.isCurrent ? Color.accentColor : Color.secondary)
-                                    .frame(width: 18)
+                                    .frame(width: 18, height: 18, alignment: .center)
 
                                 Text(device.name ?? localization.string(.volumeOutputUnknownDevice))
                                     .font(.system(size: 13))
@@ -128,10 +128,13 @@ struct AudioSectionView: View {
                                         .background(Capsule().fill(Color.accentColor.opacity(0.12)))
                                 }
 
-                                Image(systemName: "line.3.horizontal")
-                                    .font(.caption)
-                                    .foregroundStyle(.tertiary)
-                                    .accessibilityHidden(true)
+                                PanelActionGlyph(
+                                    systemName: "line.3.horizontal",
+                                    font: .caption,
+                                    size: 18
+                                )
+                                .foregroundStyle(.tertiary)
+                                .accessibilityHidden(true)
                             }
                             .padding(.vertical, 3)
                         }

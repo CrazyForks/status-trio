@@ -12,12 +12,13 @@ struct VolumeControlsView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 10) {
+            HStack(alignment: .center, spacing: 10) {
                 Button(action: { actions.toggleMute() }) {
-                    Image(systemName: state.muteSymbol)
-                        .font(.system(size: 15, weight: .medium))
+                    PanelActionGlyph(
+                        systemName: state.muteSymbol,
+                        font: .system(size: 15, weight: .medium)
+                    )
                         .foregroundStyle(state.muted ? Color.red : Color.secondary)
-                        .frame(width: 24, height: 24)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -40,9 +41,8 @@ struct VolumeControlsView: View {
                     .accessibilityHidden(true)
 
                 Button(action: onOpenSoundSettings) {
-                    Image(systemName: "gearshape")
+                    PanelActionGlyph(systemName: "gearshape")
                         .foregroundStyle(.secondary)
-                        .frame(width: 24, height: 24)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
