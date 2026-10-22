@@ -58,6 +58,13 @@ CI 导出的 `TAG=v1.7.1` 与 fixture 的 `VERSION=1.0` 不匹配，使其在 Sp
 `TAG=v1.0`，并始终在父环境注入不匹配的测试 Tag，避免本机空环境再次掩盖问题。
 后续本地完整验证同时注入 CI 的版本、Tag、candidate 和默认分支环境。
 
+[`39824152450`](https://github.com/lingyired/status-trio/actions/runs/39824152450)
+通过上述检查后，在 clang 版本捕获的旧管道控制实验失败：期望 SIGPIPE 141，
+实际退出 1。本地让 Python 保留被忽略的 SIGPIPE 状态再启动脚本，可确定性复现。
+非交互 Bash 不能用 `trap - PIPE` 重置启动时已被忽略的信号；模拟 clang
+现在使用显式恢复 `SIG_DFL` 的小型 C 生产者。旧管道 141、真实版本探针成功、
+生产者失败码 23 与空错误输出等断言均保留，并验证默认和继承忽略两种信号状态。
+
 这些是测试环境和 fixture 修复，不代表签名、公证、Universal 安装包或真实
 macOS 13 / Dock 交互验证；交付仍须以最终候选的成功 CI 与安装包核验为准。
 
