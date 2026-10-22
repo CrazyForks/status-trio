@@ -1,4 +1,5 @@
 import AppKit
+import Carbon
 import XCTest
 @testable import StatusTrioCore
 
@@ -13,6 +14,12 @@ final class AppEnvironmentTelemetryLifecycleTests: XCTestCase {
         settings.hasCompletedIconGuideOnboarding = true
         settings.completeTelemetryConsent(sharesAnalytics: false)
         settings.appIconPlacement = .dock
+        settings.statusPanelShortcut = try XCTUnwrap(
+            StatusPanelShortcut(
+                keyCode: 49,
+                modifiers: UInt32(cmdKey | optionKey)
+            )
+        )
         let localization = Localization(defaults: defaults, preferredLanguages: ["en"])
         let battery = LifecycleBatteryMonitor()
         let wifi = LifecycleWiFiMonitor()
@@ -31,13 +38,20 @@ final class AppEnvironmentTelemetryLifecycleTests: XCTestCase {
             localization: localization,
             activationPolicy: activationPolicy
         )
+        let shortcutBackend = LifecycleGlobalShortcutBackend()
+        let shortcutController = GlobalShortcutController(
+            settings: settings,
+            backend: shortcutBackend,
+            action: {}
+        )
         let settingsWindow = SettingsWindowController(
             store: settings,
             statusStore: store,
             localization: localization,
             activationPolicy: activationPolicy,
             showIconGuide: {},
-            chargingEffectClock: clock
+            chargingEffectClock: clock,
+            globalShortcutController: shortcutController
         )
         let statusBar = StatusBarController(
             store: store,
@@ -94,6 +108,7 @@ final class AppEnvironmentTelemetryLifecycleTests: XCTestCase {
                 readReduceMotion: { false },
                 notificationCenter: NotificationCenter()
             ),
+            globalShortcutController: shortcutController,
             telemetryReporter: reporter,
             memoryPressureMonitor: memoryPressure
         )
@@ -101,6 +116,7 @@ final class AppEnvironmentTelemetryLifecycleTests: XCTestCase {
 
         environment.start()
 
+        XCTAssertEqual(shortcutBackend.registerCount, 1)
         XCTAssertEqual(reporter.startCount, 1)
         XCTAssertEqual(battery.startCount, 1)
         XCTAssertEqual(wifi.startCount, 1)
@@ -150,6 +166,7 @@ final class AppEnvironmentTelemetryLifecycleTests: XCTestCase {
         BluetoothProfilerReportCache.shared.store(Data([1, 2, 3]))
         XCTAssertEqual(BluetoothProfilerReportCache.shared.storedEntryCount, 1)
         environment.stop()
+        XCTAssertEqual(shortcutBackend.stopCount, 1)
         XCTAssertEqual(BluetoothProfilerReportCache.shared.storedEntryCount, 0)
 
         XCTAssertEqual(reporter.stopCount, 1)
@@ -200,6 +217,26 @@ private final class LifecycleTelemetryReporter: TelemetryReporting {
     private(set) var stopCount = 0
     func start() { startCount += 1 }
     func stop() { stopCount += 1 }
+}
+
+@MainActor
+private final class LifecycleGlobalShortcutBackend: GlobalShortcutRegistering {
+    private(set) var registerCount = 0
+    private(set) var stopCount = 0
+
+    func register(
+        _ shortcut: StatusPanelShortcut,
+        action: @escaping @MainActor () -> Void
+    ) throws -> UUID {
+        registerCount += 1
+        return UUID()
+    }
+
+    func unregister(_ token: UUID) {}
+
+    func stop() {
+        stopCount += 1
+    }
 }
 
 @MainActor

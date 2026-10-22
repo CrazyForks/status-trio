@@ -489,3 +489,18 @@
 "settings.appleBackgroundRefresh.description" = "Aggiorna le batterie dei dispositivi Apple selezionati quando il pannello è chiuso.";
 "settings.appleBackgroundRefresh.interval" = "Intervallo di aggiornamento della batteria in background";
 "settings.appleBackgroundRefresh.intervalValue" = "%d minuto/i";
+
+"settings.shortcut.title" = "Apri il pannello di stato";
+"settings.shortcut.description" = "Usa una scorciatoia globale per aprire lo stesso pannello di stato da qualsiasi app. Alcune scorciatoie possono essere intercettate dal metodo di input o da un’altra app.";
+"settings.shortcut.record" = "Registra";
+"settings.shortcut.change" = "Cambia scorciatoia";
+"settings.shortcut.notSet" = "Non impostata";
+"settings.shortcut.clear" = "Cancella";
+"settings.shortcut.recording" = "Digita la scorciatoia…";
+"settings.shortcut.invalid" = "Usa un tasto con Comando, Controllo o Opzione.";
+"settings.shortcut.inputMethodConflict" = "Questa combinazione può essere intercettata dal metodo di input. Scegline un’altra, ad esempio Opzione con una lettera.";
+"settings.shortcut.unavailable" = "Scorciatoia non disponibile. Un’altra app potrebbe già usarla.";
+"settings.shortcut.registrationFailed" = "Impossibile registrare questa scorciatoia.";
+"settings.shortcut.restorationFailed" = "Impossibile ripristinare la scorciatoia precedente.";
+"settings.shortcut.accessibility.current" = "Scorciatoia globale attuale: %@";
+"settings.shortcut.accessibility.unassigned" = "Nessuna scorciatoia globale assegnata.";

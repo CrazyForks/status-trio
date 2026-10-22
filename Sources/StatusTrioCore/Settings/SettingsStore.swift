@@ -8,6 +8,7 @@ final class SettingsStore: ObservableObject {
     static let hasSeenIconGuideDefaultsKey = "hasSeenIconGuide"
     static let sharesAnonymousAnalyticsDefaultsKey = "sharesAnonymousAnalytics"
     static let telemetryConsentVersionDefaultsKey = "telemetryConsentVersion"
+    static let statusPanelShortcutDefaultsKey = "statusPanelShortcut.v1"
     private static let sparkleHasLaunchedBeforeDefaultsKey = "SUHasLaunchedBefore"
 
     static let iconSizeRange: ClosedRange<Double> = 16...36
@@ -134,6 +135,16 @@ final class SettingsStore: ObservableObject {
 
     @Published private(set) var sharesAnonymousAnalytics: Bool
     @Published private(set) var telemetryConsentVersion: Int
+    @Published var statusPanelShortcut: StatusPanelShortcut? {
+        didSet {
+            guard let statusPanelShortcut,
+                  let data = try? JSONEncoder().encode(statusPanelShortcut) else {
+                defaults.removeObject(forKey: Self.statusPanelShortcutDefaultsKey)
+                return
+            }
+            defaults.set(data, forKey: Self.statusPanelShortcutDefaultsKey)
+        }
+    }
     private let telemetryConsentSubject = PassthroughSubject<TelemetryConsent, Never>()
 
     var canShareAnonymousAnalytics: Bool {
@@ -1138,6 +1149,9 @@ final class SettingsStore: ObservableObject {
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
+        self.statusPanelShortcut = defaults
+            .data(forKey: Self.statusPanelShortcutDefaultsKey)
+            .flatMap { try? JSONDecoder().decode(StatusPanelShortcut.self, from: $0) }
         let appleMigration = AppleDeviceSettingsMigration.migrate(defaults: defaults)
         let hadLegacyInstallMarker =
             defaults.bool(forKey: Self.sparkleHasLaunchedBeforeDefaultsKey)

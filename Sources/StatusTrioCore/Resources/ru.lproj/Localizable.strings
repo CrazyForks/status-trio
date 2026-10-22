@@ -489,3 +489,18 @@
 "settings.appleBackgroundRefresh.description" = "Обновляет заряд выбранных устройств Apple, когда панель закрыта.";
 "settings.appleBackgroundRefresh.interval" = "Интервал фонового обновления заряда";
 "settings.appleBackgroundRefresh.intervalValue" = "%d мин.";
+
+"settings.shortcut.title" = "Открыть панель состояния";
+"settings.shortcut.description" = "Используйте глобальное сочетание клавиш, чтобы открывать эту панель из любого приложения. Некоторые сочетания могут перехватываться методом ввода или другим приложением.";
+"settings.shortcut.record" = "Записать";
+"settings.shortcut.change" = "Изменить сочетание";
+"settings.shortcut.notSet" = "Не задано";
+"settings.shortcut.clear" = "Очистить";
+"settings.shortcut.recording" = "Нажмите сочетание клавиш…";
+"settings.shortcut.invalid" = "Используйте клавишу вместе с Command, Control или Option.";
+"settings.shortcut.inputMethodConflict" = "Метод ввода может перехватить это сочетание. Выберите другое, например Option с буквой.";
+"settings.shortcut.unavailable" = "Сочетание недоступно. Возможно, его уже использует другое приложение.";
+"settings.shortcut.registrationFailed" = "Не удалось зарегистрировать это сочетание.";
+"settings.shortcut.restorationFailed" = "Не удалось восстановить предыдущее сочетание.";
+"settings.shortcut.accessibility.current" = "Текущее глобальное сочетание: %@";
+"settings.shortcut.accessibility.unassigned" = "Глобальное сочетание не назначено.";

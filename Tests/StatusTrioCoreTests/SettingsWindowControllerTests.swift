@@ -1,4 +1,5 @@
 import AppKit
+import Carbon
 import XCTest
 @testable import StatusTrioCore
 
@@ -187,6 +188,41 @@ final class SettingsWindowControllerTests: XCTestCase {
         }
     }
 
+    func testClosingSettingsEndsShortcutRecordingAndRestoresRegistration() throws {
+        let suiteName = "StatusTrioCoreTests.SettingsShortcutClose.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removeTestSuite(named: suiteName) }
+        let settings = SettingsStore(defaults: defaults)
+        settings.statusPanelShortcut = StatusPanelShortcut(
+            keyCode: 0,
+            modifiers: UInt32(cmdKey)
+        )
+        let backend = SettingsShortcutBackend()
+        let shortcutController = GlobalShortcutController(
+            settings: settings,
+            backend: backend,
+            action: {}
+        )
+        shortcutController.start()
+        let controller = SettingsWindowController(
+            store: settings,
+            statusStore: makeStatusStore(),
+            localization: Localization(defaults: defaults, preferredLanguages: ["en"]),
+            activationPolicy: AppActivationPolicy(application: SettingsActivationPolicyApplicationSpy()),
+            showIconGuide: {},
+            globalShortcutController: shortcutController
+        )
+
+        controller.show()
+        shortcutController.beginRecording()
+        XCTAssertTrue(backend.liveShortcutCount == 0)
+
+        try XCTUnwrap(controller.window).close()
+
+        XCTAssertFalse(shortcutController.isRecording)
+        XCTAssertEqual(backend.liveShortcutCount, 1)
+    }
+
     private func withAuthorizationFixture(
         initialAuthorization: BluetoothAuthorizationStatus = .notDetermined,
         _ body: (SettingsWindowController, SystemStatusStore,
@@ -236,6 +272,30 @@ private final class SettingsActivationPolicyApplicationSpy: ApplicationActivatio
         guard currentActivationPolicy != activationPolicy else { return false }
         currentActivationPolicy = activationPolicy
         return true
+    }
+}
+
+@MainActor
+private final class SettingsShortcutBackend: GlobalShortcutRegistering {
+    private var tokens: Set<UUID> = []
+
+    var liveShortcutCount: Int { tokens.count }
+
+    func register(
+        _ shortcut: StatusPanelShortcut,
+        action: @escaping @MainActor () -> Void
+    ) throws -> UUID {
+        let token = UUID()
+        tokens.insert(token)
+        return token
+    }
+
+    func unregister(_ token: UUID) {
+        tokens.remove(token)
+    }
+
+    func stop() {
+        tokens.removeAll()
     }
 }
 

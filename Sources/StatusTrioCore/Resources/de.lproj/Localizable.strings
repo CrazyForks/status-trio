@@ -489,3 +489,18 @@
 "settings.appleBackgroundRefresh.description" = "Aktualisiert die Batteriestände ausgewählter Apple-Geräte bei geschlossenem Statusmenü.";
 "settings.appleBackgroundRefresh.interval" = "Intervall für Batterieaktualisierungen im Hintergrund";
 "settings.appleBackgroundRefresh.intervalValue" = "%d Minute(n)";
+
+"settings.shortcut.title" = "Statusfenster öffnen";
+"settings.shortcut.description" = "Öffnet dasselbe Statusfenster aus jeder App über einen globalen Kurzbefehl. Einige Kurzbefehle können von der Eingabemethode oder einer anderen App abgefangen werden.";
+"settings.shortcut.record" = "Aufnehmen";
+"settings.shortcut.change" = "Kurzbefehl ändern";
+"settings.shortcut.notSet" = "Nicht festgelegt";
+"settings.shortcut.clear" = "Entfernen";
+"settings.shortcut.recording" = "Kurzbefehl eingeben…";
+"settings.shortcut.invalid" = "Verwende eine Taste mit Befehl, Control oder Option.";
+"settings.shortcut.inputMethodConflict" = "Diese Kombination kann von der Eingabemethode abgefangen werden. Wähle eine andere, z. B. Option mit einem Buchstaben.";
+"settings.shortcut.unavailable" = "Der Kurzbefehl ist nicht verfügbar. Möglicherweise wird er bereits von einer anderen App verwendet.";
+"settings.shortcut.registrationFailed" = "Der Kurzbefehl konnte nicht registriert werden.";
+"settings.shortcut.restorationFailed" = "Der vorherige Kurzbefehl konnte nicht wiederhergestellt werden.";
+"settings.shortcut.accessibility.current" = "Aktueller globaler Kurzbefehl: %@";
+"settings.shortcut.accessibility.unassigned" = "Kein globaler Kurzbefehl zugewiesen.";

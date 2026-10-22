@@ -489,3 +489,18 @@
 "settings.appleBackgroundRefresh.description" = "Actualise la batterie des appareils Apple sélectionnés lorsque le panneau est fermé.";
 "settings.appleBackgroundRefresh.interval" = "Intervalle d’actualisation des batteries en arrière-plan";
 "settings.appleBackgroundRefresh.intervalValue" = "%d minute(s)";
+
+"settings.shortcut.title" = "Ouvrir le panneau d’état";
+"settings.shortcut.description" = "Utilisez un raccourci global pour ouvrir le même panneau d’état depuis n’importe quelle app. Certains raccourcis peuvent être interceptés par la méthode de saisie ou une autre app.";
+"settings.shortcut.record" = "Enregistrer";
+"settings.shortcut.change" = "Modifier le raccourci";
+"settings.shortcut.notSet" = "Non défini";
+"settings.shortcut.clear" = "Effacer";
+"settings.shortcut.recording" = "Saisissez le raccourci…";
+"settings.shortcut.invalid" = "Utilisez une touche avec Commande, Contrôle ou Option.";
+"settings.shortcut.inputMethodConflict" = "Cette combinaison peut être interceptée par la méthode de saisie. Choisissez-en une autre, par exemple Option avec une lettre.";
+"settings.shortcut.unavailable" = "Raccourci indisponible. Une autre app l’utilise peut-être déjà.";
+"settings.shortcut.registrationFailed" = "Impossible d’enregistrer ce raccourci.";
+"settings.shortcut.restorationFailed" = "Impossible de restaurer le raccourci précédent.";
+"settings.shortcut.accessibility.current" = "Raccourci global actuel : %@";
+"settings.shortcut.accessibility.unassigned" = "Aucun raccourci global défini.";

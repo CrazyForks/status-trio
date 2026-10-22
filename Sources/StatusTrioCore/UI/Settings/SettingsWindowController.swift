@@ -9,6 +9,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     private let chargingEffectClock: ChargingEffectClock
     private let localization: Localization
     private let inputSourceController: InputSourceController
+    private let globalShortcutController: GlobalShortcutController?
     private let activationPolicy: AppActivationPolicy
     private let showIconGuide: () -> Void
     private var localizationCancellable: AnyCancellable?
@@ -25,13 +26,15 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         activationPolicy: AppActivationPolicy,
         showIconGuide: @escaping () -> Void,
         chargingEffectClock: ChargingEffectClock = ChargingEffectClock(),
-        inputSourceController: InputSourceController? = nil
+        inputSourceController: InputSourceController? = nil,
+        globalShortcutController: GlobalShortcutController? = nil
     ) {
         self.store = store
         self.statusStore = statusStore
         self.chargingEffectClock = chargingEffectClock
         self.localization = localization
         self.inputSourceController = inputSourceController ?? InputSourceController()
+        self.globalShortcutController = globalShortcutController
         self.activationPolicy = activationPolicy
         self.showIconGuide = showIconGuide
         self.lastBluetoothAuthorization = statusStore.bluetoothDevices.authorizationStatus
@@ -78,6 +81,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     }
 
     func windowWillClose(_ notification: Notification) {
+        globalShortcutController?.endRecording()
         statusStore.setSettingsVisible(false)
         leaveActivationPolicyIfNeeded()
         window = nil
@@ -109,6 +113,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
                 statusStore: statusStore,
                 localization: localization,
                 inputSourceController: inputSourceController,
+                globalShortcutController: globalShortcutController,
                 onShowIconGuide: showIconGuide
             )
             .environmentObject(chargingEffectClock)

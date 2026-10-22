@@ -16,6 +16,7 @@ final class AppEnvironment {
     let inputSourceController: InputSourceController
     let chargingEffectClock: ChargingEffectClock
     let chargingEffectMotionMonitor: ChargingEffectMotionMonitor
+    let globalShortcutController: GlobalShortcutController?
     let dockChargingAnimationPresenter: (any DockChargingAnimationPresenting)?
     let dockVisibilityMonitor: (any DockVisibilityMonitoring)?
     let telemetryReporter: any TelemetryReporting
@@ -46,6 +47,7 @@ final class AppEnvironment {
         inputSourceController: InputSourceController,
         chargingEffectClock: ChargingEffectClock,
         chargingEffectMotionMonitor: ChargingEffectMotionMonitor,
+        globalShortcutController: GlobalShortcutController? = nil,
         dockChargingAnimationPresenter: (any DockChargingAnimationPresenting)? = nil,
         dockVisibilityMonitor: (any DockVisibilityMonitoring)? = nil,
         telemetryReporter: any TelemetryReporting,
@@ -64,6 +66,7 @@ final class AppEnvironment {
         self.inputSourceController = inputSourceController
         self.chargingEffectClock = chargingEffectClock
         self.chargingEffectMotionMonitor = chargingEffectMotionMonitor
+        self.globalShortcutController = globalShortcutController
         self.dockChargingAnimationPresenter = dockChargingAnimationPresenter
         self.dockVisibilityMonitor = dockVisibilityMonitor
         self.telemetryReporter = telemetryReporter
@@ -102,6 +105,7 @@ final class AppEnvironment {
         chargingEffectMotionMonitor.start()
         subscribeToChargingEffectInputs()
         mainMenuController.start()
+        globalShortcutController?.start()
         appIconController.start()
         bluetoothAudioIconOverrideSynchronizer.start(
             devices: store.bluetoothDevices,
@@ -127,6 +131,7 @@ final class AppEnvironment {
         memoryPressureMonitor.stop()
         memoryPressureMonitor.onPressure = nil
         telemetryReporter.stop()
+        globalShortcutController?.stop()
         chargingEffectClock.stop()
         statusBarController.visibilityDidChange = nil
         appIconController.dockChargingAnimationEligibilityDidChange = nil
@@ -403,7 +408,26 @@ final class AppEnvironment {
             localization: localization,
             activationPolicy: activationPolicy
         )
-        let settingsWindowController = SettingsWindowController(
+        var settingsWindowController: SettingsWindowController?
+        let controller = StatusBarController(
+            store: store,
+            settings: settings,
+            iconPresentation: iconPresentation,
+            localization: localization,
+            isVisible: settings.appIconPlacement.showsMenuBarIcon,
+            openSettings: { settingsWindowController?.show() },
+            quitAction: { NSApplication.shared.terminate(nil) },
+            chargingEffectClock: chargingEffectClock,
+            inputSourceController: inputSourceController
+        )
+        let globalShortcutController = GlobalShortcutController(
+            settings: settings,
+            backend: CarbonHotKeyBackend(),
+            action: { [weak controller] in
+                controller?.openPopoverFromShortcut()
+            }
+        )
+        let resolvedSettingsWindowController = SettingsWindowController(
             store: settings,
             statusStore: store,
             localization: localization,
@@ -412,22 +436,13 @@ final class AppEnvironment {
                 onboardingWindowController?.show()
             },
             chargingEffectClock: chargingEffectClock,
-            inputSourceController: inputSourceController
+            inputSourceController: inputSourceController,
+            globalShortcutController: globalShortcutController
         )
-        onboardingWindowController.openSettings = { [weak settingsWindowController] in
-            settingsWindowController?.show()
+        settingsWindowController = resolvedSettingsWindowController
+        onboardingWindowController.openSettings = { [weak resolvedSettingsWindowController] in
+            resolvedSettingsWindowController?.show()
         }
-        let controller = StatusBarController(
-            store: store,
-            settings: settings,
-            iconPresentation: iconPresentation,
-            localization: localization,
-            isVisible: settings.appIconPlacement.showsMenuBarIcon,
-            openSettings: { settingsWindowController.show() },
-            quitAction: { NSApplication.shared.terminate(nil) },
-            chargingEffectClock: chargingEffectClock,
-            inputSourceController: inputSourceController
-        )
         let appIconController = AppIconController(
             settings: settings,
             iconPresentation: iconPresentation,
@@ -449,7 +464,7 @@ final class AppEnvironment {
         let mainMenuController = MainMenuController(
             activationPolicy: activationPolicy,
             localization: localization,
-            openSettings: { settingsWindowController.show() }
+            openSettings: { resolvedSettingsWindowController.show() }
         )
         let telemetryConfiguration = TelemetryConfiguration()
         let telemetryTransport = URLSessionTelemetryTransport(configuration: telemetryConfiguration)
@@ -484,7 +499,7 @@ final class AppEnvironment {
             localization: localization,
             iconPresentation: iconPresentation,
             statusBarController: controller,
-            settingsWindowController: settingsWindowController,
+            settingsWindowController: resolvedSettingsWindowController,
             onboardingWindowController: onboardingWindowController,
             activationPolicy: activationPolicy,
             appIconController: appIconController,
@@ -492,6 +507,7 @@ final class AppEnvironment {
             inputSourceController: inputSourceController,
             chargingEffectClock: chargingEffectClock,
             chargingEffectMotionMonitor: chargingEffectMotionMonitor,
+            globalShortcutController: globalShortcutController,
             dockChargingAnimationPresenter: dockChargingAnimationPresenter,
             dockVisibilityMonitor: dockVisibilityMonitor,
             telemetryReporter: telemetryReporter
