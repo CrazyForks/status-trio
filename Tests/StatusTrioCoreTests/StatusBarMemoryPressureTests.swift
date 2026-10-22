@@ -4,6 +4,35 @@ import XCTest
 
 @MainActor
 final class StatusBarMemoryPressureTests: XCTestCase {
+    func testShortcutPresentationTogglesAndCleansItsFallbackAnchor() throws {
+        let harness = try StatusBarPressureHarness(isVisible: false)
+        defer { harness.cleanUp() }
+
+        harness.controller.openPopoverFromShortcut()
+        let popover = harness.controller.popoverForTesting
+        XCTAssertTrue(popover.isShown)
+        XCTAssertNotNil(harness.controller.popoverAnchorWindowForTesting)
+
+        harness.controller.openPopoverFromShortcut()
+        waitUntilClosed(popover)
+        XCTAssertFalse(popover.isShown)
+        XCTAssertNil(
+            harness.controller.popoverAnchorWindowForTesting,
+            "closing the panel must release the shortcut fallback anchor"
+        )
+
+        harness.controller.openPopoverFromShortcut()
+        XCTAssertTrue(popover.isShown)
+        XCTAssertNotNil(harness.controller.popoverAnchorWindowForTesting)
+
+        popover.close()
+        waitUntilClosed(popover)
+        XCTAssertNil(
+            harness.controller.popoverAnchorWindowForTesting,
+            "closing the panel must release the shortcut fallback anchor"
+        )
+    }
+
     func testTrimForMemoryPressureKeepsVisiblePopoverContent() throws {
         let harness = try StatusBarPressureHarness()
         defer { harness.cleanUp() }
@@ -71,6 +100,13 @@ final class StatusBarMemoryPressureTests: XCTestCase {
         XCTAssertTrue(harness.controller.panelForTesting.batteryDetails.rows.isEmpty)
         XCTAssertEqual(ownershipEndCount, 0)
     }
+
+    private func waitUntilClosed(_ popover: NSPopover) {
+        let deadline = Date().addingTimeInterval(2)
+        while popover.isShown, Date() < deadline {
+            RunLoop.current.run(until: Date().addingTimeInterval(0.01))
+        }
+    }
 }
 
 @MainActor
@@ -82,7 +118,7 @@ private final class StatusBarPressureHarness {
     let anchorPoint: NSPoint
     private let suiteName: String
 
-    init() throws {
+    init(isVisible: Bool = true) throws {
         suiteName = "StatusTrioCoreTests.StatusBarMemoryPressure.\(UUID().uuidString)"
         guard let defaults = UserDefaults(suiteName: suiteName) else {
             throw HarnessError.missingDefaults
@@ -100,6 +136,7 @@ private final class StatusBarPressureHarness {
             settings: settings,
             iconPresentation: iconPresentation,
             localization: Localization(defaults: defaults, preferredLanguages: ["en"]),
+            isVisible: isVisible,
             openSettings: {},
             quitAction: {},
             renderMenuBarBase: { _, _, _, _ in nil },

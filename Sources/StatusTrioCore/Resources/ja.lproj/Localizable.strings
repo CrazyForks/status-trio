@@ -489,3 +489,18 @@
 "settings.appleBackgroundRefresh.description" = "ステータスパネルを閉じている間も、選択した Apple デバイスの電池残量を更新します。";
 "settings.appleBackgroundRefresh.interval" = "バックグラウンドでのバッテリー残量更新間隔";
 "settings.appleBackgroundRefresh.intervalValue" = "%d 分";
+
+"settings.shortcut.title" = "ステータスパネルを開く";
+"settings.shortcut.description" = "どのアプリからでも、同じステータスパネルを開くグローバルショートカットを設定します。一部のショートカットは入力方式や他のアプリに横取りされる場合があります。";
+"settings.shortcut.record" = "記録";
+"settings.shortcut.change" = "ショートカットを変更";
+"settings.shortcut.notSet" = "未設定";
+"settings.shortcut.clear" = "消去";
+"settings.shortcut.recording" = "ショートカットを入力…";
+"settings.shortcut.invalid" = "Command、Control、Option のいずれかとキーを組み合わせてください。";
+"settings.shortcut.inputMethodConflict" = "この組み合わせは入力方式に横取りされる可能性があります。Option＋文字など別の組み合わせを選んでください。";
+"settings.shortcut.unavailable" = "このショートカットは使用できません。別のアプリが使用している可能性があります。";
+"settings.shortcut.registrationFailed" = "このショートカットを登録できませんでした。";
+"settings.shortcut.restorationFailed" = "以前のショートカットを復元できませんでした。";
+"settings.shortcut.accessibility.current" = "現在のグローバルショートカット：%@";
+"settings.shortcut.accessibility.unassigned" = "グローバルショートカットは未設定です。";

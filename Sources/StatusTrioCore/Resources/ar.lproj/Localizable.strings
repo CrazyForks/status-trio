@@ -489,3 +489,18 @@
 "settings.appleBackgroundRefresh.description" = "تحديث بطاريات أجهزة Apple المحددة عند إغلاق لوحة الحالة.";
 "settings.appleBackgroundRefresh.interval" = "فترة تحديث شحن البطارية في الخلفية";
 "settings.appleBackgroundRefresh.intervalValue" = "%d دقيقة";
+
+"settings.shortcut.title" = "فتح لوحة الحالة";
+"settings.shortcut.description" = "استخدم اختصارًا عامًا لفتح لوحة الحالة نفسها من أي تطبيق. قد تلتقط بعض الاختصارات طريقة الإدخال أو تطبيق آخر.";
+"settings.shortcut.record" = "تسجيل";
+"settings.shortcut.change" = "تغيير الاختصار";
+"settings.shortcut.notSet" = "غير محدد";
+"settings.shortcut.clear" = "مسح";
+"settings.shortcut.recording" = "اكتب الاختصار…";
+"settings.shortcut.invalid" = "استخدم مفتاحًا مع Command أو Control أو Option.";
+"settings.shortcut.inputMethodConflict" = "قد تلتقط طريقة الإدخال هذا الاختصار. اختر تركيبة أخرى، مثل Option مع حرف.";
+"settings.shortcut.unavailable" = "الاختصار غير متاح. قد يستخدمه تطبيق آخر بالفعل.";
+"settings.shortcut.registrationFailed" = "تعذر تسجيل هذا الاختصار.";
+"settings.shortcut.restorationFailed" = "تعذرت استعادة الاختصار السابق.";
+"settings.shortcut.accessibility.current" = "الاختصار العام الحالي: %@";
+"settings.shortcut.accessibility.unassigned" = "لم يتم تعيين اختصار عام.";

@@ -489,3 +489,18 @@
 "settings.appleBackgroundRefresh.description" = "狀態面板關閉時，繼續更新已選 Apple 裝置的電量。";
 "settings.appleBackgroundRefresh.interval" = "背景更新電量的時間間隔";
 "settings.appleBackgroundRefresh.intervalValue" = "%d 分鐘";
+
+"settings.shortcut.title" = "開啟狀態面板";
+"settings.shortcut.description" = "使用全域快速鍵，從任何應用程式開啟同一個狀態面板。部分快速鍵可能被輸入法或其他 App 占用。";
+"settings.shortcut.record" = "錄製";
+"settings.shortcut.change" = "更改快速鍵";
+"settings.shortcut.notSet" = "未設定";
+"settings.shortcut.clear" = "清除";
+"settings.shortcut.recording" = "請按下快速鍵…";
+"settings.shortcut.invalid" = "請使用 Command、Control 或 Option 加一個按鍵。";
+"settings.shortcut.inputMethodConflict" = "此組合可能被輸入法占用。請改用其他組合，例如 Option 加字母。";
+"settings.shortcut.unavailable" = "此快速鍵無法使用，可能已被其他應用程式占用。";
+"settings.shortcut.registrationFailed" = "無法註冊此快速鍵。";
+"settings.shortcut.restorationFailed" = "無法還原先前的快速鍵。";
+"settings.shortcut.accessibility.current" = "目前全域快速鍵：%@";
+"settings.shortcut.accessibility.unassigned" = "尚未設定全域快速鍵。";

@@ -489,3 +489,18 @@
 "settings.appleBackgroundRefresh.description" = "Actualiza las baterías de los dispositivos Apple seleccionados con el panel cerrado.";
 "settings.appleBackgroundRefresh.interval" = "Intervalo de actualización de batería en segundo plano";
 "settings.appleBackgroundRefresh.intervalValue" = "%d minuto(s)";
+
+"settings.shortcut.title" = "Abrir el panel de estado";
+"settings.shortcut.description" = "Usa un atajo global para abrir el mismo panel de estado desde cualquier app. Algunos atajos pueden ser interceptados por el método de entrada u otra app.";
+"settings.shortcut.record" = "Grabar";
+"settings.shortcut.change" = "Cambiar atajo";
+"settings.shortcut.notSet" = "Sin asignar";
+"settings.shortcut.clear" = "Borrar";
+"settings.shortcut.recording" = "Pulsa el atajo…";
+"settings.shortcut.invalid" = "Usa una tecla con Comando, Control u Opción.";
+"settings.shortcut.inputMethodConflict" = "El método de entrada puede interceptar esta combinación. Elige otra, como Opción con una letra.";
+"settings.shortcut.unavailable" = "El atajo no está disponible. Puede que otra app ya lo use.";
+"settings.shortcut.registrationFailed" = "No se pudo registrar este atajo.";
+"settings.shortcut.restorationFailed" = "No se pudo restaurar el atajo anterior.";
+"settings.shortcut.accessibility.current" = "Atajo global actual: %@";
+"settings.shortcut.accessibility.unassigned" = "No hay ningún atajo global asignado.";

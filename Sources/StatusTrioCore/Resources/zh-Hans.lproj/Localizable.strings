@@ -489,3 +489,18 @@
 "settings.appleBackgroundRefresh.description" = "状态面板关闭时，继续更新已选 Apple 设备的电量。";
 "settings.appleBackgroundRefresh.interval" = "后台更新电量的时间间隔";
 "settings.appleBackgroundRefresh.intervalValue" = "%d 分钟";
+
+"settings.shortcut.title" = "打开状态面板";
+"settings.shortcut.description" = "使用全局快捷键，在任意应用中打开同一个状态面板。部分快捷键可能被输入法或其他 App 占用。";
+"settings.shortcut.record" = "录制";
+"settings.shortcut.change" = "更改快捷键";
+"settings.shortcut.notSet" = "未设置";
+"settings.shortcut.clear" = "清除";
+"settings.shortcut.recording" = "请按下快捷键…";
+"settings.shortcut.invalid" = "请使用 Command、Control 或 Option 加一个按键。";
+"settings.shortcut.inputMethodConflict" = "该组合可能被输入法占用。请换一个组合，例如 Option 加字母。";
+"settings.shortcut.unavailable" = "该快捷键不可用，可能已被其他应用占用。";
+"settings.shortcut.registrationFailed" = "无法注册此快捷键。";
+"settings.shortcut.restorationFailed" = "无法恢复之前的快捷键。";
+"settings.shortcut.accessibility.current" = "当前全局快捷键：%@";
+"settings.shortcut.accessibility.unassigned" = "尚未设置全局快捷键。";

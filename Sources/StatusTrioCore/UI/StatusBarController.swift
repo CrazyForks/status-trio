@@ -91,6 +91,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     var cachedChargingFrameRebuildCount: Int { chargingFrameCache.rebuildCount }
     var rasterizedChargingFrameCount: Int { chargingFrameCache.rasterizedFrameCount }
     var popoverForTesting: NSPopover { popover }
+    var popoverAnchorWindowForTesting: NSWindow? { popoverAnchorWindow }
     var panelForTesting: StatusPanelViewModel { panelViewModel }
     /// Invokes once when the controller clears a present
     /// `contentViewController`. This marks the end of popover content ownership;
@@ -132,12 +133,13 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     private let volumeScrollAdjustment = PopupVolumeScrollAdjustment()
     private var volumeScrollSession = PopupVolumeScrollSession()
     private let popoverScrollTargets = PopoverScrollTargets()
-    private var dockAnchorWindow: NSWindow?
+    private var popoverAnchorWindow: NSWindow?
     private var popoverToggleGate = PopoverToggleGate(
         lockout: StatusBarController.popoverToggleLockoutInterval
     )
     private var popoverContentReleaseTask: Task<Void, Never>?
     private var popoverContentGeneration: UInt64 = 0
+    private var isPopoverClosing = false
     private let inputSourceController: InputSourceController
     /// How a presentation resolves the appearance it rasterizes in.
     ///
@@ -404,7 +406,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         guard popoverToggleGate.shouldAccept(at: Date()) else { return }
         guard let button = statusItem.button else { return }
         if popover.isShown {
-            popover.performClose(nil)
+            closePopover()
         } else {
             presentPopover(
                 relativeTo: button.bounds,
@@ -414,11 +416,26 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         }
     }
 
+    /// Shortcut activation uses the same open/close contract as the status item.
+    func openPopoverFromShortcut() {
+        switch StatusPanelShortcutPresentationPolicy.action(
+            isPopoverShown: popover.isShown,
+            isPopoverClosing: isPopoverClosing
+        ) {
+        case .close:
+            closePopover()
+        case .ignore:
+            break
+        case .open:
+            presentPopoverFromShortcut()
+        }
+    }
+
     /// Shows the same popover for a Dock icon click, above the clicked icon.
     func togglePopover(anchoredAtScreenPoint point: NSPoint) {
         guard popoverToggleGate.shouldAccept(at: Date()) else { return }
         if popover.isShown {
-            popover.performClose(nil)
+            closePopover()
             return
         }
 
@@ -428,6 +445,51 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             of: anchor.view,
             preferredEdge: anchor.preferredEdge
         )
+    }
+
+    private func presentPopoverFromShortcut() {
+        let menuBarAnchor = visibleMenuBarAnchor()
+        let screens = NSScreen.screens.map {
+            StatusPanelShortcutScreen(
+                frame: $0.frame,
+                visibleFrame: $0.visibleFrame
+            )
+        }
+        let anchor = StatusPanelShortcutPresentationPolicy.anchor(
+            menuBarRect: menuBarAnchor?.screenRect,
+            isMenuBarVisible: menuBarAnchor != nil,
+            pointerLocation: NSEvent.mouseLocation,
+            screens: screens
+        )
+
+        if case .menuBar = anchor, let menuBarAnchor {
+            presentPopover(
+                relativeTo: menuBarAnchor.button.bounds,
+                of: menuBarAnchor.button,
+                preferredEdge: .minY
+            )
+            return
+        }
+        guard case let .fallback(origin, preferredEdge) = anchor else { return }
+        let anchorView = popoverAnchorView(at: origin)
+        presentPopover(
+            relativeTo: anchorView.bounds,
+            of: anchorView,
+            preferredEdge: preferredEdge
+        )
+    }
+
+    private func visibleMenuBarAnchor() -> (
+        button: NSStatusBarButton,
+        screenRect: NSRect
+    )? {
+        guard isStatusItemVisible,
+              let button = statusItem.button,
+              let window = button.window else {
+            return nil
+        }
+        let windowRect = button.convert(button.bounds, to: nil)
+        return (button, window.convertToScreen(windowRect))
     }
 
     private func presentPopover(
@@ -459,12 +521,30 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         installVolumeScrollMonitor()
     }
 
+    private func closePopover() {
+        guard !isPopoverClosing else { return }
+        isPopoverClosing = true
+        popover.performClose(nil)
+    }
+
     /// The Dock icon has no public frame, but the click happens on the icon, so
     /// a tiny invisible window at the click point anchors the popover there.
     private func dockAnchor(at point: NSPoint) -> (view: NSView, preferredEdge: NSRectEdge) {
+        let anchor = DockPopoverAnchor.make(
+            clickPoint: point,
+            tileSize: NSApplication.shared.dockTile.size,
+            placement: dockPlacement(at: point)
+        )
+        return (
+            popoverAnchorView(at: anchor.origin),
+            anchor.preferredEdge
+        )
+    }
+
+    private func popoverAnchorView(at origin: NSPoint) -> NSView {
         let window: NSWindow
-        if let dockAnchorWindow {
-            window = dockAnchorWindow
+        if let popoverAnchorWindow {
+            window = popoverAnchorWindow
         } else {
             window = NSWindow(
                 contentRect: NSRect(x: 0, y: 0, width: 1, height: 1),
@@ -472,24 +552,26 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
                 backing: .buffered,
                 defer: false
             )
+            window.isReleasedWhenClosed = false
             window.isOpaque = false
             window.backgroundColor = .clear
             window.hasShadow = false
             window.ignoresMouseEvents = true
             window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle]
             window.contentView = NSView(frame: NSRect(x: 0, y: 0, width: 1, height: 1))
-            dockAnchorWindow = window
+            popoverAnchorWindow = window
         }
 
-        let anchor = DockPopoverAnchor.make(
-            clickPoint: point,
-            tileSize: NSApplication.shared.dockTile.size,
-            placement: dockPlacement(at: point)
-        )
-        window.setFrameOrigin(anchor.origin)
+        window.setFrameOrigin(origin)
         window.orderFront(nil)
-        let view = window.contentView ?? window.contentViewController?.view ?? NSView()
-        return (view, anchor.preferredEdge)
+        return window.contentView ?? window.contentViewController?.view ?? NSView()
+    }
+
+    private func releasePopoverAnchorWindow() {
+        guard let popoverAnchorWindow else { return }
+        popoverAnchorWindow.orderOut(nil)
+        popoverAnchorWindow.close()
+        self.popoverAnchorWindow = nil
     }
 
     private func dockPlacement(at point: NSPoint) -> DockPlacement {
@@ -604,8 +686,14 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     }
 
     func popoverDidClose(_ notification: Notification) {
+        isPopoverClosing = false
         removePopoverDismissMonitor()
         removeVolumeScrollMonitor()
+        releasePopoverAnchorWindow()
+        // Read this before closing the popover: a detail panel keeps its own
+        // SwiftUI state, so reusing the built content would reopen on that
+        // panel. The battery page also clears its collector on disappear, so
+        // the flag has to be sampled while the panel is still open.
         let hadOpenDetails = store.hasOpenPopoverPanel
         store.setPopoverVisible(false)
         store.closePopoverDetails()
@@ -649,6 +737,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     func trimForMemoryPressure() {
         chargingFrameCache.trimForMemoryPressure()
         guard !popover.isShown else { return }
+        releasePopoverAnchorWindow()
         releasePopoverContentIfPresent()
     }
 

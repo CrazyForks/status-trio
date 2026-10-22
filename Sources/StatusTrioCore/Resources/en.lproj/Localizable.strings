@@ -489,3 +489,18 @@
 "settings.appleBackgroundRefresh.description" = "Refresh selected Apple device batteries while the status panel is closed.";
 "settings.appleBackgroundRefresh.interval" = "Background battery refresh interval";
 "settings.appleBackgroundRefresh.intervalValue" = "%d minute(s)";
+
+"settings.shortcut.title" = "Open status panel";
+"settings.shortcut.description" = "Use a global shortcut to open the same status panel from any app. Some shortcuts may be captured by an input method or another app.";
+"settings.shortcut.record" = "Record";
+"settings.shortcut.change" = "Change shortcut";
+"settings.shortcut.notSet" = "Not set";
+"settings.shortcut.clear" = "Clear";
+"settings.shortcut.recording" = "Type shortcut…";
+"settings.shortcut.invalid" = "Use a key with Command, Control, or Option.";
+"settings.shortcut.inputMethodConflict" = "This shortcut can be consumed by the input method. Choose another combination, such as Option with a letter.";
+"settings.shortcut.unavailable" = "Shortcut unavailable. Another app may already use it.";
+"settings.shortcut.registrationFailed" = "Could not register this shortcut.";
+"settings.shortcut.restorationFailed" = "Could not restore the previous shortcut.";
+"settings.shortcut.accessibility.current" = "Current global shortcut: %@";
+"settings.shortcut.accessibility.unassigned" = "No global shortcut assigned.";
