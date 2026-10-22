@@ -35,6 +35,15 @@ struct ChargingEffectRenderingTests {
             "9dcba3184f0953f8c173cc2f846977f01b84510a8505166bd6a8048f44d8fd97", // macOS 26 CI, measured ink centering
             "e08ab4aebc69b650e667fb2aa5a2647f9efade4a7941dbd19061134192280cbc", // macOS 27 local, 6x measured ink centering
         ]
+        if !knownPlatformFingerprints.contains(fingerprint)
+            || ProcessInfo.processInfo.environment["STATUS_TRIO_STATIC_ICON_DIAGNOSTICS"] == "1" {
+            print(
+                "STATIC_ICON_DIAGNOSTIC os=\(ProcessInfo.processInfo.operatingSystemVersionString)"
+                    + " screenScales=\(NSScreen.screens.map(\.backingScaleFactor))"
+                    + " pixels=\(pixels.width)x\(pixels.height) sha256=\(fingerprint)"
+                    + " rgbaBase64=\(Data(pixels.bytes).base64EncodedString())"
+            )
+        }
         #expect(knownPlatformFingerprints.contains(fingerprint))
     }
 

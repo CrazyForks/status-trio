@@ -113,6 +113,7 @@ final class BatteryDetailsLayoutTests: XCTestCase {
         .background(Color(white: 0.96))
         .environmentObject(localization)
         .environment(\.colorScheme, .light)
+        .environment(\.displayScale, 2)
 
         let hosting = NSHostingView(rootView: AnyView(view))
         hosting.appearance = NSAppearance(named: .aqua)
@@ -121,7 +122,9 @@ final class BatteryDetailsLayoutTests: XCTestCase {
         try await Task.sleep(for: .milliseconds(50))
         hosting.frame = NSRect(origin: .zero, size: hosting.fittingSize)
         hosting.layoutSubtreeIfNeeded()
-        return try XCTUnwrap(SummaryActionAlignmentProbe(hosting))
+        // A 1x screen quantizes ink centers to half points, coarser than the
+        // quarter-point assertion. Pin the capture density on headless CI too.
+        return try XCTUnwrap(SummaryActionAlignmentProbe(hosting, pixelScale: 2))
     }
 
     /// Mounts the view, waits for SwiftUI's appearance task to deliver the

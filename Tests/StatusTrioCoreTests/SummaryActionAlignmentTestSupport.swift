@@ -6,10 +6,26 @@ struct SummaryActionAlignmentProbe {
     let bitmap: NSBitmapImageRep
     let scale: CGFloat
 
-    init?(_ hosting: NSView) {
-        guard let bitmap = hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds) else {
-            return nil
+    init?(_ hosting: NSView, pixelScale: CGFloat? = nil) {
+        let image: NSBitmapImageRep?
+        if let pixelScale {
+            image = NSBitmapImageRep(
+                bitmapDataPlanes: nil,
+                pixelsWide: Int((hosting.bounds.width * pixelScale).rounded(.up)),
+                pixelsHigh: Int((hosting.bounds.height * pixelScale).rounded(.up)),
+                bitsPerSample: 8,
+                samplesPerPixel: 4,
+                hasAlpha: true,
+                isPlanar: false,
+                colorSpaceName: .deviceRGB,
+                bytesPerRow: 0,
+                bitsPerPixel: 0
+            )
+            image?.size = hosting.bounds.size
+        } else {
+            image = hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds)
         }
+        guard let bitmap = image else { return nil }
         hosting.cacheDisplay(in: hosting.bounds, to: bitmap)
 
         self.bitmap = bitmap
