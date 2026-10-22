@@ -467,10 +467,10 @@ struct BluetoothSectionView: View {
                             let isHidden = displayRow.sourceIDs.allSatisfy {
                                 store.hiddenBluetoothDeviceAddresses.contains(BluetoothDeviceIdentity.preferenceKey($0))
                             }
-                            HStack(spacing: 10) {
+                            HStack(alignment: .center, spacing: 10) {
                                 Image(systemName: BluetoothDeviceRowIcon.symbolName(for: device))
                                     .foregroundStyle(device.isConnected ? Color.accentColor : Color.secondary)
-                                    .frame(width: 18)
+                                    .frame(width: 18, height: 18, alignment: .center)
 
                                 Text(device.name)
                                     .font(.system(size: 13))
@@ -482,9 +482,11 @@ struct BluetoothSectionView: View {
                                         store.setBluetoothDeviceHidden(sourceID, hidden: !isHidden)
                                     }
                                 } label: {
-                                    Image(systemName: isHidden ? "eye.slash" : "eye")
-                                        .font(.system(size: 13))
-                                        .frame(width: 22, height: 22)
+                                    PanelActionGlyph(
+                                        systemName: isHidden ? "eye.slash" : "eye",
+                                        font: .system(size: 13),
+                                        size: 22
+                                    )
                                 }
                                 .buttonStyle(.plain)
                                 .help(isHidden
@@ -495,11 +497,13 @@ struct BluetoothSectionView: View {
                                       : localization.string(.settingsBluetoothHideDevice))
                                 .frame(width: 26)
 
-                                Image(systemName: "line.3.horizontal")
-                                    .font(.caption)
-                                    .foregroundStyle(.tertiary)
-                                    .accessibilityHidden(true)
-                                    .frame(width: 18)
+                                PanelActionGlyph(
+                                    systemName: "line.3.horizontal",
+                                    font: .caption,
+                                    size: 18
+                                )
+                                .foregroundStyle(.tertiary)
+                                .accessibilityHidden(true)
                             }
                             .frame(height: 30)
                             .opacity(isHidden ? 0.45 : 1)

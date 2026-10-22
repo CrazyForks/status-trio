@@ -128,13 +128,16 @@ struct AudioInputControlsView: View {
     }
 
     private var controls: some View {
-        HStack(spacing: 10) {
+        HStack(alignment: .center, spacing: 10) {
             Button(action: { actions.toggleInputMute() }) {
-                HStack(spacing: 6) {
+                HStack(alignment: .center, spacing: 6) {
                     muteIcon
                         .font(.system(size: 15, weight: .medium))
                         .foregroundStyle(state.muteTint.color())
-                        .frame(width: 24, height: 24)
+                        .frame(
+                            width: PanelSummaryActionMetrics.hitTarget,
+                            height: PanelSummaryActionMetrics.hitTarget
+                        )
                         .accessibilityHidden(true)
 
                     if state.muteState == .partial {
@@ -193,9 +196,8 @@ struct AudioInputControlsView: View {
                 .accessibilityHidden(true)
 
             Button(action: onOpenSoundSettings) {
-                Image(systemName: "gearshape")
+                PanelActionGlyph(systemName: "gearshape")
                     .foregroundStyle(.secondary)
-                    .frame(width: 24, height: 24)
                     .contentShape(Rectangle())
                     .opacity(state.isBusy ? 0 : 1)
             }

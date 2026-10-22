@@ -69,6 +69,44 @@ final class BluetoothSummaryLayoutTests: XCTestCase {
         )
     }
 
+    func testBluetoothActionGlyphsShareTheSummaryVisualCenter() async throws {
+        let (hosting, controller) = try await makeHosting(
+            language: .english,
+            authorization: .allowed,
+            devices: [],
+            batteryLevels: [:],
+            listOptions: BluetoothDeviceListOptions(
+                showsList: false,
+                maxVisibleDevices: 5,
+                order: []
+            )
+        )
+        defer { controller.deactivate() }
+
+        let probe = try XCTUnwrap(SummaryActionAlignmentProbe(hosting))
+        let actions = probe.trailingGlyphRects(count: 3, minimumX: 200)
+        XCTAssertEqual(actions.count, 3, "power, refresh, and Settings glyphs must render")
+        guard actions.count == 3 else { return }
+
+        let contentStart = 14
+            + BluetoothPanelMetrics.iconColumnWidth
+            + BluetoothPanelMetrics.iconTextSpacing
+        let contentCenter = try XCTUnwrap(
+            probe.glyphCenterY(from: contentStart, to: actions[0].minX - 10),
+            "the Bluetooth title and subtitle must render"
+        )
+
+        for (index, name) in ["power", "refresh", "settings"].enumerated() {
+            let center = try XCTUnwrap(probe.glyphCenterY(in: actions[index]))
+            XCTAssertEqual(
+                center,
+                contentCenter,
+                accuracy: 1,
+                "\(name) center \(center) must match the row content center \(contentCenter)"
+            )
+        }
+    }
+
     func testPowerToggleIsHiddenWhenItsSettingIsOff() {
         XCTAssertEqual(
             BluetoothSummaryActionLayout.trailingActions(

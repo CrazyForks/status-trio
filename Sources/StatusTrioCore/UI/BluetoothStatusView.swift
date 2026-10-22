@@ -169,7 +169,7 @@ struct BluetoothStatusView: View {
         )
 
         VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 10) {
+            HStack(alignment: .center, spacing: 10) {
                 titleBlock
 
                 let powerPresentation = BluetoothRadioPowerPresentation.make(
@@ -301,8 +301,7 @@ struct BluetoothStatusView: View {
             refreshDevices: { controller.refreshFromUser() },
             refreshMobileBatteries: { mobileBatteryController.refresh() }
         )) {
-            Image(systemName: "arrow.clockwise")
-                .frame(width: 24, height: 24)
+            PanelActionGlyph(systemName: "arrow.clockwise")
         }
         .buttonStyle(.plain)
         .foregroundStyle(.secondary)
@@ -315,16 +314,14 @@ struct BluetoothStatusView: View {
     }
 
     private var settingsButton: some View {
-        Button(
-            localization.string(.bluetoothActionOpenSettings),
-            systemImage: "gearshape",
-            action: onOpenBluetoothSettings
-        )
+        Button(action: onOpenBluetoothSettings) {
+            PanelActionGlyph(systemName: "gearshape")
+        }
         .labelStyle(.iconOnly)
         .buttonStyle(.plain)
         .foregroundStyle(.secondary)
         .help(localization.string(.bluetoothActionOpenSettings))
-        .frame(width: 24, height: 24)
+        .accessibilityLabel(localization.string(.bluetoothActionOpenSettings))
     }
 
     private func radioPowerToggle(
@@ -340,8 +337,7 @@ struct BluetoothStatusView: View {
                 onSetRadioPower(enabled)
             }
         } label: {
-            Image(systemName: presentation.symbolName)
-                .frame(width: 24, height: 24)
+            PanelActionGlyph(systemName: presentation.symbolName)
         }
         .buttonStyle(.plain)
         .foregroundStyle(powerIconColor(for: presentation.iconState))
