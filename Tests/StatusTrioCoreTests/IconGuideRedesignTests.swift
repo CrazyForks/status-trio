@@ -252,6 +252,34 @@ final class IconGuideRedesignTests: XCTestCase {
         XCTAssertEqual(IconGuidePage.states.next, .states)
     }
 
+    func testAnatomyGuideKeepsItsHighlightStatic() throws {
+        let packageRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let sourceURL = packageRoot.appendingPathComponent(
+            "Sources/StatusTrioCore/UI/IconGuideView.swift"
+        )
+        let source = try String(contentsOf: sourceURL, encoding: .utf8)
+        let guideStart = try XCTUnwrap(source.range(of: "struct IconGuideView: View"))
+        let galleryStart = try XCTUnwrap(
+            source.range(
+                of: "struct IconGuideStateGalleryView: View",
+                range: guideStart.upperBound..<source.endIndex
+            )
+        )
+        let guideSource = source[guideStart.lowerBound..<galleryStart.lowerBound]
+
+        XCTAssertFalse(
+            guideSource.contains(".repeatForever"),
+            "The anatomy guide must not animate its highlight forever."
+        )
+        XCTAssertFalse(
+            guideSource.contains("restartPulse"),
+            "The guide highlight should remain static while the window is visible."
+        )
+    }
+
     func testMenuBarHelpDefaultsToClosedWhenTheGuideIsReopened() {
         let name = "IconGuideRedesignTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: name)!

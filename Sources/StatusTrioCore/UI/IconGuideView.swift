@@ -313,14 +313,12 @@ enum IconGuideState: String, CaseIterable, Identifiable, Sendable {
     }
 }
 
-/// Two live previews that share one selected part and one pulse.
+/// Two live previews that share one selected part and a static highlight.
 struct IconGuideView: View {
     @ObservedObject var settings: SettingsStore
     @Binding var isMenuBarHelpPresented: Bool
     @EnvironmentObject private var localization: Localization
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State var selectedPart: IconGuidePart = .battery
-    @State private var pulse = false
     private let menuBarHelpPolicy = MenuBarHelpPolicy()
 
     var body: some View {
@@ -409,18 +407,10 @@ struct IconGuideView: View {
 
             menuBarHelpEntry
         }
-        .onAppear(perform: { restartPulse() })
-        .onChange(of: selectedPart) { _ in
-            restartPulse()
-        }
-        .onChange(of: reduceMotion) { _ in
-            restartPulse()
-        }
     }
 
     private var highlightOpacity: Double {
-        guard !reduceMotion else { return 0.88 }
-        return pulse ? 0.18 : 0.95
+        0.88
     }
 
     private var menuBarHelpEntry: some View {
@@ -495,17 +485,6 @@ struct IconGuideView: View {
             textScale: configured.textScale,
             ringStrokeScale: configured.ringStrokeScale
         )
-    }
-
-    private func restartPulse() {
-        pulse = false
-        guard !reduceMotion else { return }
-        withAnimation(
-            .easeInOut(duration: 0.72)
-                .repeatForever(autoreverses: true)
-        ) {
-            pulse = true
-        }
     }
 
     static let example = MenuBarStatus(
