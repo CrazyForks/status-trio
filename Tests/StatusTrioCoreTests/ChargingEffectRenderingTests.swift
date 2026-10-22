@@ -43,6 +43,7 @@ struct ChargingEffectRenderingTests {
                     + " pixels=\(pixels.width)x\(pixels.height) sha256=\(fingerprint)"
                     + " rgbaBase64=\(Data(pixels.bytes).base64EncodedString())"
             )
+            printStaticSymbolRasterDiagnostics()
         }
         #expect(knownPlatformFingerprints.contains(fingerprint))
     }
