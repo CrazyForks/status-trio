@@ -53,6 +53,9 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     let chargingEffectClock: ChargingEffectClock
     private var iconPresentationCancellable: AnyCancellable?
     private var accessibilityCancellable: AnyCancellable?
+    /// The single accessibility update waiting on the main actor, so a burst of
+    /// emissions cannot queue one stale update per value.
+    private var accessibilityUpdateTask: Task<Void, Never>?
     private var chargingEffectCancellable: AnyCancellable?
     private var chargingEffectPreferenceCancellable: AnyCancellable?
     private var currentChargingEffectPhase: ChargingEffectPhase?
@@ -69,6 +72,9 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     /// The template base currently on the status item, kept so a custom-raster
     /// fallback can put the re-tintable image back.
     private var staticBase: NSImage?
+    /// The key of a raster drawn while the button had no window yet, so
+    /// a guessed backing scale is rasterized once instead of on every call.
+    private var provisionalStaticKey: StatusBarRenderKey?
     /// The resting chromatic overlay for the current static key, rendered on
     /// demand instead of on every clock tick.
     private var staticOverlay: CGImage?
@@ -228,10 +234,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             store.$snapshot,
             localization.$resolvedLanguage
         )
-        .sink { [weak self] snapshot, language in
-            Task { @MainActor [weak self] in
-                self?.updateAccessibility(snapshot: snapshot, language: language)
-            }
+        .sink { [weak self] _, _ in
+            self?.scheduleAccessibilityUpdate()
         }
 
         refreshIntervalCancellable = settings.$refreshIntervalSeconds
@@ -612,6 +616,34 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         popoverContentRetention.markOpened()
     }
 
+    /// The backing scale a menu-bar raster should be drawn at, plus whether
+    /// that scale is the real one.
+    struct BackingScaleResolution: Equatable {
+        let scale: CGFloat
+        let isFinal: Bool
+    }
+
+    /// Resolves the raster scale from the window the button actually lives in.
+    ///
+    /// `NSStatusBarButton` has no window until AppKit places the item on a menu
+    /// bar, so the first presentation of a freshly shown item can only guess.
+    /// The guess is the main screen's scale, which is wrong on a secondary
+    /// display; `isFinal == false` tells the caller not to cache it, so the next
+    /// presentation re-rasterizes at the window's own scale. No timer and no
+    /// screen observer: correction rides on whichever presentation comes next.
+    static func resolveBackingScale(
+        windowScale: CGFloat?,
+        mainScreenScale: CGFloat?
+    ) -> BackingScaleResolution {
+        if let windowScale, windowScale > 0, windowScale.isFinite {
+            return BackingScaleResolution(scale: windowScale, isFinal: true)
+        }
+        if let mainScreenScale, mainScreenScale > 0, mainScreenScale.isFinite {
+            return BackingScaleResolution(scale: mainScreenScale, isFinal: false)
+        }
+        return BackingScaleResolution(scale: 1, isFinal: false)
+    }
+
     /// Everything one menu-bar presentation needs. The static key deliberately
     /// carries no animation phase, so a 20-Hz tick can never invalidate the
     /// template base.
@@ -636,10 +668,11 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         guard iconSize.isFinite, iconSize > 0 else { return }
         let effectivePhase = isMenuBarChargingEffectEnabled ? phase : nil
 
-        let backingScale =
-            button.window?.backingScaleFactor
-            ?? NSScreen.main?.backingScaleFactor
-            ?? 1
+        let scaleResolution = Self.resolveBackingScale(
+            windowScale: button.window?.backingScaleFactor,
+            mainScreenScale: NSScreen.main?.backingScaleFactor
+        )
+        let backingScale = scaleResolution.scale
         let appearance = appearanceProvider?() ?? button.effectiveAppearance
         let staticKey = StatusBarRenderKey(
             scene: scene,
@@ -649,7 +682,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             phase: nil
         )
 
-        if renderCache.needsRender(staticKey) {
+        if renderCache.needsRender(staticKey), provisionalStaticKey != staticKey {
             guard let base = staticBaseImage(
                 scene: scene,
                 iconSize: iconSize,
@@ -669,7 +702,16 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             staticOverlay = nil
             staticOverlayIsPending = true
             baseIsCustomRaster = false
-            renderCache.recordSuccessfulRender(staticKey)
+            if scaleResolution.isFinal {
+                renderCache.recordSuccessfulRender(staticKey)
+                provisionalStaticKey = nil
+            } else {
+                // Drawn from a main-screen guess. Remember it so this key is not
+                // rasterized twice, but keep it out of the cache: the next
+                // presentation with a real window scale builds a different key
+                // and therefore draws again, at the scale the button really has.
+                provisionalStaticKey = staticKey
+            }
             renderCounters.staticPresentations += 1
         }
 
@@ -801,6 +843,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     private func resetStaticPresentation() {
         renderCache = StatusBarRenderCache()
         staticBase = nil
+        provisionalStaticKey = nil
         staticOverlay = nil
         staticOverlayIsPending = false
         baseIsCustomRaster = false
@@ -858,6 +901,25 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     /// waiting out the coalescing interval.
     private func renderLatestScene() {
         presentMenuBar(phase: currentChargingEffectPhase)
+    }
+
+    /// Applies the newest status to the button's accessibility element.
+    ///
+    /// Both upstreams can emit several values in one turn. One in-flight task
+    /// that reads the state when it runs keeps the element in step with the
+    /// newest truth; queueing a task per emission instead would let each one
+    /// apply the snapshot it captured, and the last to run would be the
+    /// authority regardless of which value was newest.
+    private func scheduleAccessibilityUpdate() {
+        guard accessibilityUpdateTask == nil else { return }
+        accessibilityUpdateTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            accessibilityUpdateTask = nil
+            updateAccessibility(
+                snapshot: store.snapshot,
+                language: localization.resolvedLanguage
+            )
+        }
     }
 
     private func updateAccessibility(snapshot: StatusSnapshot, language: AppLanguage) {
