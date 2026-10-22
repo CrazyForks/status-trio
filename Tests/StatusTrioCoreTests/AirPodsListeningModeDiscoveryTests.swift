@@ -1,3 +1,4 @@
+import Combine
 import CoreAudio
 import Foundation
 import Testing
@@ -13,21 +14,23 @@ struct AirPodsListeningModeDiscoveryTests {
         isConnected: true
     )
 
-    @Test func endpointBecomingReadyAfterConnectionPublishesControlsWithoutAnotherRefresh() async {
+    @Test(.timeLimit(.minutes(1)))
+    func endpointBecomingReadyAfterConnectionPublishesControlsWithoutAnotherRefresh() async throws {
+        let sleeper = ManualEventSleeper()
         let provider = DelayedAirPodsEndpointProvider()
-        let controller = BluetoothListeningModeController(
-            hal: BluetoothListeningModeHAL(backend: FakeListeningModeBackend()),
-            endpointProvider: provider,
-            listenerBackend: FakeListeningModeListenerBackend()
-        )
-        defer { controller.stop() }
+        let controller = makeController(provider: provider, sleeper: sleeper)
+        let events = observeDiscoveryUpdates(controller.$presentations)
+        defer { controller.stop(); sleeper.releaseAll(); events.observation.cancel() }
 
         controller.refresh(devices: [device])
         #expect(controller.control(forEndpoint: 42) == nil)
+        let waiting = await sleeper.waitForCallCount(1, timeout: .seconds(2))
+        try #require(waiting)
         provider.isReady = true
+        sleeper.releaseAll()
 
-        let appeared = await discoveryEventually { controller.control(forEndpoint: 42) != nil }
-        #expect(appeared, "A connected AirPods endpoint may become ready after the first discovery")
+        let appeared = await events.stream.first { @Sendable in $0["AABBCCDDEEFF"] != nil }
+        try #require(appeared != nil, "A connected AirPods endpoint may become ready after the first discovery")
         #expect(controller.control(forEndpoint: 42)?.presentation.selectedMode == .noiseCancellation)
     }
 
@@ -206,6 +209,18 @@ final class DelayedAirPodsEndpointProvider: CoreAudioBluetoothEndpointProviding,
             )
         ]
     }
+}
+
+@MainActor
+func observeDiscoveryUpdates<Value: Sendable>(
+    _ publisher: Published<Value>.Publisher
+) -> (stream: AsyncStream<Value>, observation: AnyCancellable) {
+    let pair = AsyncStream<Value>.makeStream(bufferingPolicy: .bufferingNewest(1))
+    let subscription = publisher.sink { pair.continuation.yield($0) }
+    return (pair.stream, AnyCancellable {
+        subscription.cancel()
+        pair.continuation.finish()
+    })
 }
 
 @MainActor

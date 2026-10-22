@@ -477,7 +477,8 @@ final class StatusPanelViewModelTests: XCTestCase {
 
 @MainActor
 struct AirPodsDiscoveryTriggerTests {
-    @Test func defaultOutputSwitchRestartsDiscoveryEvenWhenOutputIDsDoNotChange() async {
+    @Test(.timeLimit(.minutes(1)))
+    func defaultOutputSwitchRestartsDiscoveryEvenWhenOutputIDsDoNotChange() async throws {
         let speaker = AudioOutputDevice(id: 1, name: "Built-in", uid: "speaker", isCurrent: true)
         let airPods = AudioOutputDevice(id: 42, name: "AirPods Pro 2", uid: "buds", isCurrent: false)
         let fixture = PanelStoreFixture(outputDevices: [speaker, airPods])
@@ -486,6 +487,8 @@ struct AirPodsDiscoveryTriggerTests {
         fixture.store.start()
         defer { panel.stop(); fixture.store.stop() }
         let originalIdentity = panel.volume.listeningModeTaskID
+        let events = observeDiscoveryUpdates(panel.$volume)
+        defer { events.observation.cancel() }
 
         let selectedAirPods = AudioOutputDevice(id: 42, name: "AirPods Pro 2", uid: "buds", isCurrent: true)
         fixture.volume.send(VolumeStatus(
@@ -499,8 +502,10 @@ struct AirPodsDiscoveryTriggerTests {
             ]
         ))
 
-        let delivered = await discoveryEventually { panel.volume.rows.first { $0.key.id == 42 }?.selected == true }
-        #expect(delivered)
+        let delivered = await events.stream.first { @Sendable in
+            $0.rows.first { $0.key.id == 42 }?.selected == true
+        }
+        try #require(delivered != nil)
         #expect(panel.volume.listeningModeTaskID != originalIdentity)
     }
 
@@ -570,7 +575,8 @@ struct AirPodsDiscoveryTriggerTests {
         fixture.store.stop()
     }
 
-    @Test func volumeOnlyChangesDoNotRestartListeningModeDiscovery() async {
+    @Test(.timeLimit(.minutes(1)))
+    func volumeOnlyChangesDoNotRestartListeningModeDiscovery() async throws {
         let speaker = AudioOutputDevice(id: 1, name: "Built-in", uid: "speaker", isCurrent: true)
         let fixture = PanelStoreFixture(outputDevices: [speaker])
         let panel = fixture.makePanel()
@@ -578,13 +584,15 @@ struct AirPodsDiscoveryTriggerTests {
         fixture.store.start()
         defer { panel.stop(); fixture.store.stop() }
         let originalIdentity = panel.volume.listeningModeTaskID
+        let events = observeDiscoveryUpdates(panel.$volume)
+        defer { events.observation.cancel() }
 
         fixture.volume.send(VolumeStatus(
             scalar: 0.7, isMuted: false, deviceName: "Built-in",
             currentDevice: speaker, outputDevices: [speaker]
         ))
-        let delivered = await discoveryEventually { panel.volume.scalar == 0.7 }
-        #expect(delivered)
+        let delivered = await events.stream.first { @Sendable in $0.scalar == 0.7 }
+        try #require(delivered != nil)
         #expect(panel.volume.listeningModeTaskID == originalIdentity)
     }
 }
