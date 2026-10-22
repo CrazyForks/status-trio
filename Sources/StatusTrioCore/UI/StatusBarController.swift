@@ -1,6 +1,7 @@
 import AppKit
 import Combine
 import SwiftUI
+import os
 
 private struct UncheckedSendableNSEvent: @unchecked Sendable {
     let event: NSEvent
@@ -51,6 +52,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     private let renderMenuBarOverlay: MenuBarOverlayRenderer
     private let accessibilityValueDidChange: @MainActor (String) -> Void
     private let popoverContentReleaseSleeper: @Sendable (Duration) async throws -> Void
+    private let activatesApplicationForPopover: @MainActor () -> Void
     let chargingEffectClock: ChargingEffectClock
     private var iconPresentationCancellable: AnyCancellable?
     private var accessibilityCancellable: AnyCancellable?
@@ -140,6 +142,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     private var popoverContentReleaseTask: Task<Void, Never>?
     private var popoverContentGeneration: UInt64 = 0
     private var isPopoverClosing = false
+    private var popoverWindowFocusCancellables: Set<AnyCancellable> = []
+    private var applicationFocusCancellables: Set<AnyCancellable> = []
     private let inputSourceController: InputSourceController
     /// How a presentation resolves the appearance it rasterizes in.
     ///
@@ -162,6 +166,9 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         panelUpdateScheduler: (any PanelPresentationUpdateScheduling)? = nil,
         popoverContentReleaseSleeper: @escaping @Sendable (Duration) async throws -> Void = {
             try await Task.sleep(for: $0)
+        },
+        activatesApplicationForPopover: @escaping @MainActor () -> Void = {
+            NSApp.activate(ignoringOtherApps: true)
         },
         renderMenuBarBase: @escaping MenuBarBaseRenderer = { scene, size, scale, appearance in
             StatusIconRenderer.menuBarTemplateBase(
@@ -214,6 +221,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         self.renderMenuBarOverlay = renderMenuBarOverlay
         self.accessibilityValueDidChange = accessibilityValueDidChange
         self.popoverContentReleaseSleeper = popoverContentReleaseSleeper
+        self.activatesApplicationForPopover = activatesApplicationForPopover
         self.chargingEffectClock = chargingEffectClock
         self.openSettings = openSettings
         self.quitAction = quitAction
@@ -226,6 +234,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         statusItem.isVisible = isVisible
         configureButton()
         configurePopover()
+        observeApplicationFocusChanges()
         observeAppearanceChanges()
         scheduleInitialRender()
 
@@ -443,7 +452,11 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         presentPopover(
             relativeTo: anchor.view.bounds,
             of: anchor.view,
-            preferredEdge: anchor.preferredEdge
+            preferredEdge: anchor.preferredEdge,
+            // A real Dock tile click already activated this app before the
+            // reopen callback. Re-activating can restore the existing Settings
+            // window ahead of the transient popover.
+            activatesApplication: false
         )
     }
 
@@ -495,7 +508,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     private func presentPopover(
         relativeTo rect: NSRect,
         of view: NSView,
-        preferredEdge: NSRectEdge
+        preferredEdge: NSRectEdge,
+        activatesApplication: Bool = true
     ) {
         cancelPopoverContentRelease()
         store.setPopoverVisible(true)
@@ -506,19 +520,92 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         // One bounded refresh per open covers a lost distributed notification
         // without any polling while the popover is closed.
         refreshInputSourceIfNeeded()
-        // Activate first: a transient popover shown while the app is still
-        // inactive can be dismissed again straight away.
-        // Status-item clicks come from the system menu bar process, so the
-        // modern activate() can be ignored by the user-activation policy.
-        NSApp.activate(ignoringOtherApps: true)
+        if activatesApplication {
+            // A transient popover shown while the app is still inactive can be
+            // dismissed again straight away. Status-item clicks come from the
+            // system menu bar process, so the modern activate() can be ignored
+            // by the user-activation policy.
+            activatesApplicationForPopover()
+        }
         popover.show(relativeTo: rect, of: view, preferredEdge: preferredEdge)
         // The popover's backing window only exists once it has been shown, and
         // without a Spaces behavior it stays on this app's desktop Space while
         // another app is full-screen.
-        popover.contentViewController?.view.window?.enableDisplayOnFullScreenSpaces()
-        popover.contentViewController?.view.window?.makeKey()
+        let popoverWindow = popover.contentViewController?.view.window
+        popoverWindow?.enableDisplayOnFullScreenSpaces()
+        installPopoverWindowFocusObservers(popoverWindow)
+        popoverWindow?.makeKey()
+        dockActivationLogger.notice(
+            """
+            Popover presented shown=\(self.popover.isShown) \
+            key=\(popoverWindow?.isKeyWindow ?? false) \
+            applicationActivation=\(activatesApplication ? "forced" : "skipped", privacy: .public) \
+            \(dockActivationFocusSnapshot(window: popoverWindow), privacy: .public)
+            """
+        )
         installPopoverDismissMonitor()
         installVolumeScrollMonitor()
+    }
+
+    private func observeApplicationFocusChanges() {
+        let center = NotificationCenter.default
+        center.publisher(for: NSApplication.didBecomeActiveNotification)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                guard let self else { return }
+                dockActivationLogger.notice(
+                    """
+                    Application became active popoverShown=\(self.popover.isShown) \
+                    \(dockActivationFocusSnapshot(window: self.popover.contentViewController?.view.window), privacy: .public)
+                    """
+                )
+            }
+            .store(in: &applicationFocusCancellables)
+
+        center.publisher(for: NSApplication.didResignActiveNotification)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                guard let self else { return }
+                dockActivationLogger.notice(
+                    """
+                    Application resigned active popoverShown=\(self.popover.isShown) \
+                    \(dockActivationFocusSnapshot(window: self.popover.contentViewController?.view.window), privacy: .public)
+                    """
+                )
+            }
+            .store(in: &applicationFocusCancellables)
+    }
+
+    private func installPopoverWindowFocusObservers(_ window: NSWindow?) {
+        popoverWindowFocusCancellables.removeAll()
+        guard let window else { return }
+        let center = NotificationCenter.default
+
+        center.publisher(for: NSWindow.didBecomeKeyNotification, object: window)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                guard let self else { return }
+                dockActivationLogger.notice(
+                    """
+                    Popover window became key popoverVisible=\(self.store.isPopoverVisible) \
+                    \(dockActivationFocusSnapshot(window: window), privacy: .public)
+                    """
+                )
+            }
+            .store(in: &popoverWindowFocusCancellables)
+
+        center.publisher(for: NSWindow.didResignKeyNotification, object: window)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                guard let self else { return }
+                dockActivationLogger.notice(
+                    """
+                    Popover window resigned key popoverVisible=\(self.store.isPopoverVisible) \
+                    \(dockActivationFocusSnapshot(window: window), privacy: .public)
+                    """
+                )
+            }
+            .store(in: &popoverWindowFocusCancellables)
     }
 
     private func closePopover() {
@@ -686,6 +773,14 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     }
 
     func popoverDidClose(_ notification: Notification) {
+        let popoverWindow = popover.contentViewController?.view.window
+        dockActivationLogger.notice(
+            """
+            Popover closed appActive=\(NSApp.isActive) \
+            \(dockActivationFocusSnapshot(window: popoverWindow), privacy: .public)
+            """
+        )
+        popoverWindowFocusCancellables.removeAll()
         isPopoverClosing = false
         removePopoverDismissMonitor()
         removeVolumeScrollMonitor()

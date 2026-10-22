@@ -1,6 +1,7 @@
 import AppKit
 import Combine
 import SwiftUI
+import os
 
 @MainActor
 final class SettingsWindowController: NSWindowController, NSWindowDelegate {
@@ -80,6 +81,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     }
 
     func show() {
+        dockActivationLogger.notice("Settings.show existing=\(self.window != nil)")
         let window = window ?? makeWindow()
         self.window = window
         statusStore.setSettingsVisible(true)
@@ -108,10 +110,35 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     /// or reopen one the user has closed.
     func resurface() {
         guard let window else { return }
+        // Opening the status panel can publish the first authorization read.
+        // Settings must not steal that user interaction or dismiss its panel.
+        guard !statusStore.isPopoverVisible else {
+            dockActivationLogger.notice("Settings.resurface suppressed while status popover is visible")
+            return
+        }
+        dockActivationLogger.notice("Settings.resurface existing=true")
         window.makeKeyAndOrderFront(nil)
         window.orderFrontRegardless()
         NSApp.activate(ignoringOtherApps: true)
         setPreviewWindowVisible(true)
+    }
+
+    func windowDidBecomeKey(_ notification: Notification) {
+        dockActivationLogger.notice(
+            """
+            Settings became key popoverVisible=\(self.statusStore.isPopoverVisible) \
+            \(dockActivationFocusSnapshot(window: self.window), privacy: .public)
+            """
+        )
+    }
+
+    func windowDidResignKey(_ notification: Notification) {
+        dockActivationLogger.notice(
+            """
+            Settings resigned key popoverVisible=\(self.statusStore.isPopoverVisible) \
+            \(dockActivationFocusSnapshot(window: self.window), privacy: .public)
+            """
+        )
     }
 
     private func makeWindow() -> NSWindow {

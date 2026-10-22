@@ -164,6 +164,27 @@ final class SettingsWindowControllerTests: XCTestCase {
         }
     }
 
+    func testFirstPopoverAuthorizationReadDoesNotResurfaceExistingSettings() throws {
+        try withAuthorizationFixture { controller, statusStore, monitor, application in
+            controller.show()
+            let window = try XCTUnwrap(controller.window)
+            defer {
+                statusStore.setPopoverVisible(false)
+                window.close()
+            }
+            window.orderOut(nil)
+            let policies = application.policies
+
+            monitor.authorization = .allowed
+            statusStore.setPopoverVisible(true)
+
+            XCTAssertTrue(statusStore.isPopoverVisible)
+            XCTAssertTrue(controller.window === window)
+            XCTAssertFalse(window.isVisible, "a popover permission refresh must not front Settings")
+            XCTAssertEqual(application.policies, policies)
+        }
+    }
+
     func testAlreadyKnownAuthorizationDoesNotResurfaceSettingsOnRefresh() throws {
         try withAuthorizationFixture(initialAuthorization: .allowed) {
             controller, statusStore, _, _ in

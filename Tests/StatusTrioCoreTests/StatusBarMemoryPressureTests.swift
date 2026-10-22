@@ -4,6 +4,26 @@ import XCTest
 
 @MainActor
 final class StatusBarMemoryPressureTests: XCTestCase {
+    func testDockPresentationDoesNotForceApplicationActivation() throws {
+        let harness = try StatusBarPressureHarness()
+        defer { harness.cleanUp() }
+
+        harness.controller.togglePopover(anchoredAtScreenPoint: harness.anchorPoint)
+
+        XCTAssertTrue(harness.controller.popoverForTesting.isShown)
+        XCTAssertFalse(harness.didActivateApplication)
+    }
+
+    func testShortcutPresentationStillForcesApplicationActivation() throws {
+        let harness = try StatusBarPressureHarness(isVisible: false)
+        defer { harness.cleanUp() }
+
+        harness.controller.openPopoverFromShortcut()
+
+        XCTAssertTrue(harness.controller.popoverForTesting.isShown)
+        XCTAssertTrue(harness.didActivateApplication)
+    }
+
     func testShortcutPresentationTogglesAndCleansItsFallbackAnchor() throws {
         let harness = try StatusBarPressureHarness(isVisible: false)
         defer { harness.cleanUp() }
@@ -116,6 +136,8 @@ private final class StatusBarPressureHarness {
     let iconPresentation: IconPresentationViewModel
     let controller: StatusBarController
     let anchorPoint: NSPoint
+    private let activationProbe = PressureActivationProbe()
+    var didActivateApplication: Bool { activationProbe.didActivate }
     private let suiteName: String
 
     init(isVisible: Bool = true) throws {
@@ -139,6 +161,9 @@ private final class StatusBarPressureHarness {
             isVisible: isVisible,
             openSettings: {},
             quitAction: {},
+            activatesApplicationForPopover: { [activationProbe] in
+                activationProbe.didActivate = true
+            },
             renderMenuBarBase: { _, _, _, _ in nil },
             renderMenuBarOverlay: { _, _, _, _, _ in nil }
         )
@@ -159,6 +184,11 @@ private final class StatusBarPressureHarness {
 
 enum HarnessError: Error {
     case missingDefaults
+}
+
+@MainActor
+private final class PressureActivationProbe {
+    var didActivate = false
 }
 
 @MainActor
