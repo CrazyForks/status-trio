@@ -416,9 +416,10 @@ final class SystemStatusStoreTests: XCTestCase {
             volumeMonitor: FakeVolumeMonitor(), bluetoothDevices: bluetooth
         )
         store.bindMobileBatterySettings(settings)
-        bluetooth.activate()
-        stateMonitor.emit(authorization: .allowed, state: .poweredOn)
+        store.bindBluetoothSettings(settings)
+        store.start()
         store.setPopoverVisible(true)
+        stateMonitor.emit(authorization: .allowed, state: .poweredOn)
         bluetooth.holdVisibleSurface(BluetoothDeviceController.bluetoothSummarySurfaceToken)
         bluetooth.requestNearbyBLEDiscovery("foreground-summary")
         bluetooth.setVisibleNearbyBLEDevices([bleID], for: "bluetooth.summary.ble")

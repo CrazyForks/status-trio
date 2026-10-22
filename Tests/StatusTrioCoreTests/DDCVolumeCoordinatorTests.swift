@@ -48,7 +48,13 @@ final class DDCVolumeCoordinatorTests: XCTestCase {
         let clock = ManualDDCClock()
         let transport = FakeDDCTransport()
         transport.failReads = 8
-        let coordinator = DDCVolumeCoordinator(transport: transport, sleep: { try await clock.sleep($0) }) { _ in }
+        // Keep the watchdog distinct from every backoff interval: the manual
+        // clock must release the poll, not the initial read's watchdog.
+        let coordinator = DDCVolumeCoordinator(
+            transport: transport,
+            readWatchdog: .seconds(1),
+            sleep: { try await clock.sleep($0) }
+        ) { _ in }
         coordinator.select(outputID: 93, uid: "DISPLAY-A")
         for interval in [Duration.seconds(2), .seconds(4), .seconds(8), .seconds(16), .seconds(32), .seconds(60), .seconds(60)] {
             await waitForClock(clock, interval, "failed-read poll at \(interval)")
@@ -64,7 +70,11 @@ final class DDCVolumeCoordinatorTests: XCTestCase {
         let clock = ManualDDCClock()
         let transport = FakeDDCTransport()
         transport.failReads = 3
-        let coordinator = DDCVolumeCoordinator(transport: transport, sleep: { try await clock.sleep($0) }) { _ in }
+        let coordinator = DDCVolumeCoordinator(
+            transport: transport,
+            readWatchdog: .seconds(1),
+            sleep: { try await clock.sleep($0) }
+        ) { _ in }
         coordinator.select(outputID: 93, uid: "DISPLAY-A")
         for interval in [Duration.seconds(2), .seconds(4)] {
             await waitForClock(clock, interval, "failed poll at \(interval)")

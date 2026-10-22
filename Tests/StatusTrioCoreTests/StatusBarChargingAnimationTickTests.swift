@@ -28,6 +28,9 @@ struct StatusBarChargingAnimationTickTests {
         #expect(overlayRastersAfterPresentation == 1)
         #expect(fixture.controller.renderCounters.buttonImageAssignments == 1)
         #expect(fixture.controller.cachedChargingFrameCount == 0)
+        let staticPresentations = fixture.controller.renderCounters.staticPresentations
+        let templateBaseRasters = fixture.controller.renderCounters.templateBaseRasters
+        let buttonImageAssignments = fixture.controller.renderCounters.buttonImageAssignments
 
         // The plug-in burst draws one overlay per tick, and none of those ticks
         // may touch the static half.
@@ -47,8 +50,9 @@ struct StatusBarChargingAnimationTickTests {
         #expect(fixture.controller.rasterizedChargingFrameCount == 36)
         #expect(fixture.overlayRasterCount == burstOverlayRasters + 36)
         #expect(fixture.baseRasterCount == baseRastersAfterPresentation)
-        #expect(fixture.controller.renderCounters.templateBaseRasters == 1)
-        #expect(fixture.controller.renderCounters.buttonImageAssignments == 1)
+        #expect(fixture.controller.renderCounters.staticPresentations == staticPresentations)
+        #expect(fixture.controller.renderCounters.templateBaseRasters == templateBaseRasters)
+        #expect(fixture.controller.renderCounters.buttonImageAssignments == buttonImageAssignments)
         #expect(fixture.controller.renderCounters.fallbackRasters == 0)
         #expect(
             fixture.controller.renderCounters.framesPresented
@@ -202,6 +206,7 @@ private final class Fixture {
 
     private let time = ManualChargingTime()
     private var phaseCancellable: AnyCancellable?
+    private var didPresentStaticContent: Confirmation?
     private let battery = BatteryStatus(
         rawPercentage: 62,
         isPresent: true,
@@ -259,6 +264,9 @@ private final class Fixture {
             renderMenuBarOverlay: { _, _, _, _, phase in spy.renderOverlay(for: phase) },
             appearanceProvider: { pinnedAppearance }
         )
+        controller.didPresentStaticContent = { [weak self] in
+            self?.didPresentStaticContent?.confirm()
+        }
         phaseCancellable = clock.$phase.sink { [weak self] phase in
             guard let self, let phase else { return }
             switch phase.kind {
@@ -318,22 +326,11 @@ private final class Fixture {
     }
 
     func waitForPresentation() async throws {
-        let deadline = ContinuousClock.now + .seconds(5)
-        while ContinuousClock.now < deadline {
+        await confirmation("initial static content presents") { confirmation in
+            didPresentStaticContent = confirmation
             if controller.presentedImageForTesting != nil {
-                break
+                confirmation.confirm()
             }
-            try await Task.sleep(for: .milliseconds(5))
-        }
-        guard controller.presentedImageForTesting != nil else {
-            Issue.record("The menu bar never presented an icon.")
-            return
-        }
-        // Drain the icon-presentation coalescer so the resting presentation has
-        // settled before a test snapshots the render counters.
-        for _ in 0..<2 {
-            try await Task.sleep(for: .milliseconds(20))
-            controller.flushPendingPresentationForTesting()
         }
     }
 

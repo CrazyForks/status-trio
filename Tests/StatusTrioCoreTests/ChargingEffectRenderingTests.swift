@@ -33,7 +33,7 @@ struct ChargingEffectRenderingTests {
         // defect back in unnoticed.
         let knownPlatformFingerprints = [
             "9dcba3184f0953f8c173cc2f846977f01b84510a8505166bd6a8048f44d8fd97", // macOS 26 CI, measured ink centering
-            "1930db19c8a2f14400b25cf8f9228320b3d2bb9eb3f3360f93cc1e9ae8b1bf52", // macOS 27 local, measured ink centering
+            "e08ab4aebc69b650e667fb2aa5a2647f9efade4a7941dbd19061134192280cbc", // macOS 27 local, 6x measured ink centering
         ]
         #expect(knownPlatformFingerprints.contains(fingerprint))
     }

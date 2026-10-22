@@ -605,7 +605,8 @@ final class BluetoothDeviceController: ObservableObject {
 
     func prepareForPresentation() {
         guard !isActive else { return }
-        switch stateMonitor.authorization {
+        let authorization = stateMonitor.authorization
+        switch authorization {
         case .notDetermined:
             availability = .authorizationNotDetermined
         case .denied:
@@ -615,7 +616,9 @@ final class BluetoothDeviceController: ObservableObject {
         case .allowed:
             availability = .idle
         }
-        authorizationStatus = stateMonitor.authorization
+        if authorizationStatus != authorization {
+            authorizationStatus = authorization
+        }
     }
 
     func activate() {
@@ -645,6 +648,32 @@ final class BluetoothDeviceController: ObservableObject {
         systemObservers.removeAll()
         stateMonitor.stop()
         clearDeviceActions()
+        availability = .idle
+    }
+
+    /// Drops data that can be read again when the final consumer goes away.
+    ///
+    /// This is separate from `deactivate()` because the controller does not own
+    /// the shared profiler cache. A demand coordinator can stop this controller
+    /// without invalidating a report another controller or reader is using.
+    func releaseTransientState() {
+        if isActive {
+            deactivate()
+        }
+        invalidateDeviceRead()
+        stopNearbyBatteryScanner(clearResults: true)
+        clearBatteryLevels()
+        clearDeviceActions()
+        devices = []
+        batteryLevelsReadFailed = false
+        nearbyBLEDiscoveryRequests.removeAll()
+        visibleNearbyBLERequests.removeAll()
+        nearbyBatteryCacheExpirationTask?.cancel()
+        nearbyBatteryCacheExpirationTask = nil
+        nearbyBatteryCacheGeneration &+= 1
+        nearbyRowExpiryTask?.cancel()
+        nearbyRowExpiryTask = nil
+        nearbyRowExpiryGeneration &+= 1
         availability = .idle
     }
 
@@ -976,7 +1005,9 @@ final class BluetoothDeviceController: ObservableObject {
             managerState: managerState
         )
         availability = mappedAvailability
-        authorizationStatus = authorization
+        if authorizationStatus != authorization {
+            authorizationStatus = authorization
+        }
         if mappedAvailability != .available {
             nearbyBLESystemSleeping = true
         } else {

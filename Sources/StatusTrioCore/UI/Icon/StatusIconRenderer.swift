@@ -338,16 +338,20 @@ enum StatusIconRenderer {
 
     /// Glyph height per point of symbol size, measured once. SF Symbols report
     /// sizes rounded to whole points, so this reference size stays large enough
-    /// for the rounding to be negligible.
+    /// for the rounding to be negligible. This calibration asks only for the
+    /// symbol's layout height; measuring ink here would rasterize a 200-point
+    /// glyph at the previous path's 8x sampling and retain millions of bytes
+    /// for an offset this path never reads.
     private static let batteryPlugHeightPerPoint: CGFloat = {
         let referencePointSize: CGFloat = 200
-        guard let height = configuredSymbol(
+        let image = configuredSymbolImage(
             name: StatusIconGeometry.batteryPlugSymbolName,
             pointSize: referencePointSize,
             foreground: .labelColor
-        )?.image.size.height, height.isFinite, height > 0 else {
-            return 1.34
-        }
+        )
+        guard let image else { return 1.34 }
+        let height = image.size.height
+        guard height.isFinite, height > 0 else { return 1.34 }
         return height / referencePointSize
     }()
 
@@ -582,16 +586,12 @@ enum StatusIconRenderer {
         pointSize: CGFloat,
         foreground: NSColor
     ) -> ConfiguredSymbol? {
-        let config = NSImage.SymbolConfiguration(pointSize: pointSize, weight: .semibold)
-            .applying(.init(hierarchicalColor: foreground))
-
-        guard let image = NSImage(
-            systemSymbolName: name,
+        guard let image = configuredSymbolImage(
+            name: name,
             variableValue: variableValue,
-            accessibilityDescription: nil
-        )?.withSymbolConfiguration(config) else {
-            return nil
-        }
+            pointSize: pointSize,
+            foreground: foreground
+        ) else { return nil }
 
         let key = SymbolInkKey(
             name: name,
@@ -604,8 +604,23 @@ enum StatusIconRenderer {
         return ConfiguredSymbol(image: image, inkCenterOffsetX: offset)
     }
 
+    private static func configuredSymbolImage(
+        name: String,
+        variableValue: Double = 1.0,
+        pointSize: CGFloat,
+        foreground: NSColor
+    ) -> NSImage? {
+        let config = NSImage.SymbolConfiguration(pointSize: pointSize, weight: .semibold)
+            .applying(.init(hierarchicalColor: foreground))
+        return NSImage(
+            systemSymbolName: name,
+            variableValue: variableValue,
+            accessibilityDescription: nil
+        )?.withSymbolConfiguration(config)
+    }
+
     /// Horizontal distance from the image's layout-box centre to the centre of
-    /// its visible ink. Rasterising at 8x keeps the measurement well below the
+    /// its visible ink. Rasterising at 6x keeps the measurement below the
     /// 0.25-point quantum of the 120-unit icon grid. Imported files cap their
     /// measurement context independently because their logical point size can
     /// be much larger than their bounded decoded bitmap.
@@ -613,7 +628,7 @@ enum StatusIconRenderer {
         of image: NSImage,
         maximumPixelLength: Int? = nil
     ) -> CGFloat {
-        let defaultPixelScale: CGFloat = 8
+        let defaultPixelScale: CGFloat = 6
         let pixelScale: CGFloat
         if let maximumPixelLength {
             let largestLogicalDimension = max(image.size.width, image.size.height)

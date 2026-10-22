@@ -111,7 +111,7 @@ struct StatusPopoverView: View {
             PopoverFooterView(openSettings: openSettings, quit: quit)
         }
         .task(id: [
-            panel.volume.listeningModeTaskID,
+            panel.listeningModeTaskID,
             String(panel.visiblePopupSections.contains(.bluetooth)),
             String(panel.visiblePopupSections.contains(.volume))
         ]) {
@@ -172,7 +172,7 @@ struct StatusPopoverView: View {
                 listOptions: panel.settings.bluetoothDeviceListOptions,
                 showsRadioPowerControl: panel.settings.showsBluetoothPowerControl,
                 showsBluetoothInStatusPanel: panel.settings.enabledPopupSections.contains(.bluetooth),
-                listeningModePresentations: panel.bluetoothListeningModeRows,
+                listeningModePresentations: panel.store.bluetoothListeningModes.huaweiBluetoothRowPresentations,
                 onSelectListeningMode: { panel.actions.setListeningMode(address: $0, mode: $1) },
                 onRequestAuthorization: requestBluetoothAuthorization,
                 onOpenBluetoothSettings: openBluetoothSettings,
