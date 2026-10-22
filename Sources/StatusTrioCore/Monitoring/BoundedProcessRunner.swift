@@ -27,6 +27,12 @@ enum BoundedProcessOutcome: Equatable, Sendable {
 /// cannot: `run` bridges into a checked continuation, `runSync` waits on a
 /// semaphore for at most the same deadline. Neither leaves a thread behind.
 ///
+/// Each stream is read on its own queue. `availableData` blocks when the pipe is
+/// empty and the write end is still open, so a shared queue deadlocks the moment
+/// a child fills stderr while its stdout has been consumed: the stdout read sits
+/// in `availableData`, the stderr read waits behind it on the same serial queue,
+/// and both sides wait for each other until the deadline.
+///
 /// Ordering that matters: the deadline is armed *after* `run()` succeeds, an
 /// already-exited child with still-open pipes finishes immediately rather than
 /// waiting out the grace period, and every exit path resumes exactly once.
@@ -39,10 +45,11 @@ final class BoundedProcessInvocation: @unchecked Sendable {
     private static let streamGrace: DispatchTimeInterval = .milliseconds(500)
 
     private let queue = DispatchQueue(label: "StatusTrio.BoundedProcess")
-    /// Pipe reads and the post-exit drain run here, not on `queue`: the drain can
-    /// block on a handle a descendant still holds, and blocking the state machine
-    /// would stop it from ever reaching the deadline that ends the invocation.
-    private let ioQueue = DispatchQueue(label: "StatusTrio.BoundedProcess.IO")
+    /// One queue per stream, never one for both. Reads and the post-exit drain
+    /// run here so they cannot block the state machine, and they are kept apart
+    /// per stream so neither stream can block the other.
+    private let stdoutQueue = DispatchQueue(label: "StatusTrio.BoundedProcess.IO.stdout")
+    private let stderrQueue = DispatchQueue(label: "StatusTrio.BoundedProcess.IO.stderr")
     private let executableURL: URL
     private let arguments: [String]
     private let outputLimit: Int
@@ -164,13 +171,13 @@ final class BoundedProcessInvocation: @unchecked Sendable {
 
             stdoutPipe.fileHandleForReading.readabilityHandler = { [weak invocation = self] handle in
                 guard let invocation else { return }
-                invocation.ioQueue.async { [invocation] in
+                invocation.stdoutQueue.async { [invocation] in
                     invocation.readAvailableData(handle, stream: .stdout)
                 }
             }
             stderrPipe.fileHandleForReading.readabilityHandler = { [weak invocation = self] handle in
                 guard let invocation else { return }
-                invocation.ioQueue.async { [invocation] in
+                invocation.stderrQueue.async { [invocation] in
                     invocation.readAvailableData(handle, stream: .stderr)
                 }
             }
@@ -184,9 +191,14 @@ final class BoundedProcessInvocation: @unchecked Sendable {
                     // The child can exit between the last write and the read the
                     // handler had queued; the tail would then never arrive and
                     // the caller would see a truncated report. Drain what is
-                    // still in the pipe before letting the invocation finish.
-                    invocation.ioQueue.async { [invocation] in
-                        invocation.drainPipesAfterProcessExit()
+                    // still in each pipe before letting the invocation finish,
+                    // on that stream's queue: draining them in sequence would
+                    // reintroduce the deadlock the queues exist to prevent.
+                    invocation.stdoutQueue.async { [invocation] in
+                        invocation.drainPipesAfterProcessExit(.stdout)
+                    }
+                    invocation.stderrQueue.async { [invocation] in
+                        invocation.drainPipesAfterProcessExit(.stderr)
                     }
                     invocation.completeIfReady()
                 }
@@ -257,19 +269,22 @@ final class BoundedProcessInvocation: @unchecked Sendable {
         }
     }
 
-    private func drainPipesAfterProcessExit() {
-        guard onFinish != nil else { return }
-        stdoutPipe?.fileHandleForReading.readabilityHandler = nil
-        stderrPipe?.fileHandleForReading.readabilityHandler = nil
-        if !stdoutIOEnded, let handle = stdoutPipe?.fileHandleForReading {
+    /// Reads one stream to EOF after the child is gone. Called once per stream,
+    /// each on that stream's own queue.
+    private func drainPipesAfterProcessExit(_ stream: Stream) {
+        switch stream {
+        case .stdout:
+            stdoutPipe?.fileHandleForReading.readabilityHandler = nil
+            guard hasPendingWork, !stdoutIOEnded, let handle = stdoutPipe?.fileHandleForReading else { return }
             let data = handle.readDataToEndOfFile()
             markIOStreamEnded(.stdout)
             queue.async { [self] in
                 if !data.isEmpty { received(data, stream: .stdout) }
                 received(Data(), stream: .stdout)
             }
-        }
-        if !stderrIOEnded, let handle = stderrPipe?.fileHandleForReading {
+        case .stderr:
+            stderrPipe?.fileHandleForReading.readabilityHandler = nil
+            guard hasPendingWork, !stderrIOEnded, let handle = stderrPipe?.fileHandleForReading else { return }
             let data = handle.readDataToEndOfFile()
             markIOStreamEnded(.stderr)
             queue.async { [self] in
@@ -278,6 +293,8 @@ final class BoundedProcessInvocation: @unchecked Sendable {
             }
         }
     }
+
+    private var hasPendingWork: Bool { onFinish != nil }
 
     private func markIOStreamEnded(_ stream: Stream) {
         switch stream {
