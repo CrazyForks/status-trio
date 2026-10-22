@@ -3,13 +3,33 @@ import CryptoKit
 import Foundation
 
 @MainActor
+func staticSymbolRasterBaselineFingerprint() -> String? {
+    guard let size = staticFingerprintSymbol()?.size else { return nil }
+    switch (ProcessInfo.processInfo.operatingSystemVersion.majorVersion, size.width, size.height) {
+    case (26, _, _):
+        return "9dcba3184f0953f8c173cc2f846977f01b84510a8505166bd6a8048f44d8fd97"
+    case (27, 50, 47):
+        return "e08ab4aebc69b650e667fb2aa5a2647f9efade4a7941dbd19061134192280cbc"
+    case (27, 51, 46):
+        return "377721331486253656c666fdc02ca98650f5d4421d623a54f388fd8389da339e"
+    default:
+        return nil
+    }
+}
+
+@MainActor
+private func staticFingerprintSymbol() -> NSImage? {
+    let config = NSImage.SymbolConfiguration(pointSize: 38, weight: .semibold)
+        .applying(.init(hierarchicalColor: NSColor(cgColor: CGColor(gray: 1, alpha: 1))!))
+    return NSImage(
+        systemSymbolName: "wifi.slash", variableValue: 1, accessibilityDescription: nil
+    )?.withSymbolConfiguration(config)
+}
+
+@MainActor
 func printStaticSymbolRasterDiagnostics() {
     for (label, cacheMode) in [("default", NSImage.CacheMode.default), ("never", .never)] {
-        let config = NSImage.SymbolConfiguration(pointSize: 38, weight: .semibold)
-            .applying(.init(hierarchicalColor: NSColor(cgColor: CGColor(gray: 1, alpha: 1))!))
-        let image = NSImage(
-            systemSymbolName: "wifi.slash", variableValue: 1, accessibilityDescription: nil
-        )!.withSymbolConfiguration(config)!
+        guard let image = staticFingerprintSymbol() else { continue }
         image.cacheMode = cacheMode
         let size = image.size
         let measure = CGContext(

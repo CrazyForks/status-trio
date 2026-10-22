@@ -20,22 +20,14 @@ struct ChargingEffectRenderingTests {
             .map { String(format: "%02x", $0) }
             .joined()
 
-        // CoreGraphics rasterizes a few edge pixels differently across the
-        // supported macOS 26 CI runner and the macOS 27 local toolchain. Keep
-        // both observed static baselines so other pixel changes still fail.
-        //
-        // These baselines were re-recorded for the 2026-10-09 recurrence of
-        // #30, which centred the measured SF Symbol ink instead of its layout
-        // box. `staticSnapshot` reports `.off`, so it draws `wifi.slash`
-        // through the same compensation and its pixels change too — that is
-        // the expected effect of the fix, not a regression. Replace the old
-        // pair rather than appending: keeping pre-fix hashes would let the
-        // defect back in unnoticed.
-        let knownPlatformFingerprints = [
-            "9dcba3184f0953f8c173cc2f846977f01b84510a8505166bd6a8048f44d8fd97", // macOS 26 CI, measured ink centering
-            "e08ab4aebc69b650e667fb2aa5a2647f9efade4a7941dbd19061134192280cbc", // macOS 27 local, 6x measured ink centering
-        ]
-        if !knownPlatformFingerprints.contains(fingerprint)
+        // macOS 27 supplies different wifi.slash metrics on the local Retina
+        // display (50x47) and CI's 1x display (51x46), even without image caching.
+        // Isolated AppKit probes exactly reproduce each environment's symbol
+        // pixels; battery and volume pixels are identical. Select one exact
+        // baseline from those independent system metrics, preserving the #30
+        // measured-ink correction. Unknown environments must fail explicitly.
+        let baseline = staticSymbolRasterBaselineFingerprint()
+        if fingerprint != baseline
             || ProcessInfo.processInfo.environment["STATUS_TRIO_STATIC_ICON_DIAGNOSTICS"] == "1" {
             print(
                 "STATIC_ICON_DIAGNOSTIC os=\(ProcessInfo.processInfo.operatingSystemVersionString)"
@@ -45,7 +37,8 @@ struct ChargingEffectRenderingTests {
             )
             printStaticSymbolRasterDiagnostics()
         }
-        #expect(knownPlatformFingerprints.contains(fingerprint))
+        let expected = try #require(baseline, "Unrecorded system symbol metrics; inspect raster diagnostics")
+        #expect(fingerprint == expected)
     }
 
     @Test func nonChargingBatteryIgnoresSuppliedChargingPhase() throws {
