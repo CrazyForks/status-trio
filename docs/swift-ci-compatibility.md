@@ -51,6 +51,13 @@ Swift 6.1.2 上。
   进程级 `init.defaultBranch=master` 复现同一错误；两个临时仓库现在显式以
   `main` 初始化，并在初始化命令中刻意提供相反默认值，持续覆盖这种宿主差异。
 
+随后 [`39822549809`](https://github.com/lingyired/status-trio/actions/runs/39822549809)
+通过 Swift 测试和 source-cache 检查，在公证模拟夹具中暴露另一种继承环境：
+CI 导出的 `TAG=v1.7.1` 与 fixture 的 `VERSION=1.0` 不匹配，使其在 Sparkle
+密钥断言前退出。本地带相同环境可复现；fixture 的 wrapper 调用现在显式传入
+`TAG=v1.0`，并始终在父环境注入不匹配的测试 Tag，避免本机空环境再次掩盖问题。
+后续本地完整验证同时注入 CI 的版本、Tag、candidate 和默认分支环境。
+
 这些是测试环境和 fixture 修复，不代表签名、公证、Universal 安装包或真实
 macOS 13 / Dock 交互验证；交付仍须以最终候选的成功 CI 与安装包核验为准。
 

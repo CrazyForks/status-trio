@@ -6,6 +6,9 @@ ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 TEST_ROOT="$(mktemp -d)"
 trap 'rm -rf "$TEST_ROOT"' EXIT
 export TEST_ROOT
+# Workflow verification exports its resolved tag. Keep an unrelated parent tag
+# present so each fixture must supply the tag matching its own version.
+export TAG=v999.999.999
 ruby -ryaml -rjson -e '
   workflow = YAML.load_file(ARGV[0])
   input = (workflow["on"] || workflow.fetch(true)).fetch("workflow_dispatch").fetch("inputs").fetch("notarize")
@@ -325,7 +328,7 @@ if grep -q '<--keychain>' "$TRACE"; then
 fi
 
 run_release() {
-    env VERSION=1.0 BUILD=99 PUBLISH=false UNIVERSAL_BUILD=1 OUTPUT_DIR="$TEST_ROOT/output" \
+    env VERSION=1.0 BUILD=99 TAG=v1.0 PUBLISH=false UNIVERSAL_BUILD=1 OUTPUT_DIR="$TEST_ROOT/output" \
         SPARKLE_PRIVATE_KEY='' \
         /bin/bash "$TEST_ROOT/repo/scripts/release.sh"
 }
@@ -374,7 +377,7 @@ ruby -rjson -e '
 grep -q 'Diagnostic package has no Sparkle signature' "$TEST_ROOT/diagnostic-package.log" ||
     { echo 'FAIL: diagnostic package did not explain its missing signature' >&2; exit 1; }
 : > "$TRACE"
-if env VERSION=1.0 BUILD=99 PUBLISH=true NOTARIZE=true UNIVERSAL_BUILD=1 OUTPUT_DIR="$TEST_ROOT/output" \
+if env VERSION=1.0 BUILD=99 TAG=v1.0 PUBLISH=true NOTARIZE=true UNIVERSAL_BUILD=1 OUTPUT_DIR="$TEST_ROOT/output" \
     SPARKLE_PRIVATE_KEY='' \
     CODE_SIGN_IDENTITY='Developer ID Application: Fixture' NOTARY_PROFILE=fixture \
     GH_TOKEN=fixture RELEASE_REPO=test/fixture RELEASE_BRANCH=main \
