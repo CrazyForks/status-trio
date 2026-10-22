@@ -600,7 +600,7 @@ private final class PanelInputMonitor: AudioInputMonitoring {
     func setVisible(_ visible: Bool) {}
     func recover() {}
     func select(_ id: AudioDeviceID) {}
-    func setScalar(_ value: Double) {}
+    func setScalar(_ value: Double, requestID: UUID) {}
     func toggleMute() {}
     func stop() {}
     func send(_ status: AudioInputStatus) { pair.continuation.yield(status) }

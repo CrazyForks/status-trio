@@ -5,6 +5,7 @@ struct VolumeControlsView: View {
     let state: VolumePanelState
     let actions: StatusPanelActions
     let scrollTargets: PopoverScrollTargets
+    let onOpenSoundSettings: () -> Void
 
     @State private var draftVolume = 0.0
     @State private var isAdjusting = false
@@ -32,9 +33,21 @@ struct VolumeControlsView: View {
                     .padding(.horizontal, 2)
                     .background(VolumeControlScrollTarget(targets: scrollTargets))
 
-                Image(systemName: "speaker.wave.3.fill")
+                Text(percentageText)
+                    .font(.caption.monospacedDigit())
                     .foregroundStyle(.secondary)
+                    .frame(minWidth: 34, alignment: .trailing)
                     .accessibilityHidden(true)
+
+                Button(action: onOpenSoundSettings) {
+                    Image(systemName: "gearshape")
+                        .foregroundStyle(.secondary)
+                        .frame(width: 24, height: 24)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help(localization.string(.volumeActionOpenSettings))
+                .accessibilityLabel(localization.string(.volumeActionOpenSettings))
             }
 
             if state.showsDeviceList {
@@ -60,7 +73,7 @@ struct VolumeControlsView: View {
     }
 
     private var percentageText: String {
-        guard draftVolume.isFinite else { return "—" }
+        guard state.scalar != nil, draftVolume.isFinite else { return "—" }
         return min(1, max(0, draftVolume)).formatted(
             .percent.precision(.fractionLength(0)).locale(localization.resolvedLanguage.locale)
         )

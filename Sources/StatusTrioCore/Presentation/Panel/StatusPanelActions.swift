@@ -10,7 +10,7 @@ final class StatusPanelActions {
     private let setVolumeCommand: (Double) -> Void
     private let finishVolumeCommand: () -> Void
     private let toggleMuteCommand: () -> Void
-    private let setInputScalarCommand: (Double) -> Void
+    private let setInputScalarCommand: (Double, UUID) -> Void
     private let toggleInputMuteCommand: () -> Void
     private let outputPreferences: () -> AudioOutputListPreferences
     private let bluetoothDevices: () -> [BluetoothDevice]
@@ -63,7 +63,7 @@ final class StatusPanelActions {
         setVolume: @escaping (Double) -> Void = { _ in },
         finishVolumeAdjustment: @escaping () -> Void = {},
         toggleMute: @escaping () -> Void = {},
-        setInputScalar: @escaping (Double) -> Void = { _ in },
+        setInputScalar: @escaping (Double, UUID) -> Void = { _, _ in },
         toggleInputMute: @escaping () -> Void = {},
         outputPreferences: @escaping () -> AudioOutputListPreferences = { .default },
         bluetoothDevices: @escaping () -> [BluetoothDevice] = { [] },
@@ -156,7 +156,7 @@ final class StatusPanelActions {
             setVolume: { scalar in store.setVolume(scalar) },
             finishVolumeAdjustment: { store.finishVolumeAdjustment() },
             toggleMute: { store.toggleMute() },
-            setInputScalar: { scalar in store.setInputScalar(scalar) },
+            setInputScalar: { scalar, requestID in store.setInputScalar(scalar, requestID: requestID) },
             toggleInputMute: { store.toggleInputMute() },
             outputPreferences: {
                 AudioOutputListPreferences(
@@ -242,9 +242,9 @@ final class StatusPanelActions {
         selectOutputDevice(device)
     }
 
-    func setInputScalar(_ scalar: Double) {
+    func setInputScalar(_ scalar: Double, requestID: UUID = UUID()) {
         guard scalar.isFinite else { return }
-        setInputScalarCommand(min(1, max(0, scalar)))
+        setInputScalarCommand(min(1, max(0, scalar)), requestID)
     }
 
     func toggleInputMute() {

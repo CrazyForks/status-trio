@@ -28,6 +28,7 @@ struct StatusPopoverView: View {
     let openBluetoothPermissionSettings: () -> Void
     let openSettings: () -> Void
     let openSoundSettings: () -> Void
+    let openSoundInputSettings: () -> Void
     let openKeyboardSettings: () -> Void
     let quit: () -> Void
     @State private var currentPanel: PopoverPanel = .summary
@@ -183,13 +184,14 @@ struct StatusPopoverView: View {
             VolumeControlsView(
                 state: panel.volume,
                 actions: panel.actions,
-                scrollTargets: scrollTargets
+                scrollTargets: scrollTargets,
+                onOpenSoundSettings: openSoundSettings
             )
         case .audioInput:
             AudioInputControlsView(
                 state: panel.audioInput,
                 actions: panel.actions,
-                onOpenSoundSettings: openSoundSettings
+                onOpenSoundSettings: openSoundInputSettings
             )
         case .inputSource:
             InputSourceStatusView(
