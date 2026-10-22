@@ -44,6 +44,12 @@ Swift 6.1.2 上。
 - 本地完整测试另暴露了进程 fixture 的冷 Python 启动可能耗尽就绪期限。改为
   `/bin/sh` 先安装忽略 TERM 的 trap、写 PID，再进入工作循环；取消、超时、
   SIGKILL 和耗时断言保持原样，失败时停止读取不存在的 PID 文件。
+- [`39821223609`](https://github.com/lingyired/status-trio/actions/runs/39821223609)
+  已通过完整 Swift 测试，但在 `test-mobile-battery-source-cache.sh` 退出 128：
+  fixture 把提交推到 `main`，裸仓库的默认 HEAD 却依赖宿主 Git 配置。本机
+  默认 `main` 掩盖了问题，默认 `master` 时克隆没有可检出的 HEAD。本地用
+  进程级 `init.defaultBranch=master` 复现同一错误；两个临时仓库现在显式以
+  `main` 初始化，并在初始化命令中刻意提供相反默认值，持续覆盖这种宿主差异。
 
 这些是测试环境和 fixture 修复，不代表签名、公证、Universal 安装包或真实
 macOS 13 / Dock 交互验证；交付仍须以最终候选的成功 CI 与安装包核验为准。

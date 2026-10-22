@@ -10,8 +10,10 @@ SEED="$WORK/seed"
 CACHE="$WORK/sources/fixture"
 MANIFEST="$WORK/dependencies.json"
 
-git init --bare --quiet "$REMOTE"
-git init --quiet "$SEED"
+# Exercise hosts whose default branch is master while keeping the remote HEAD
+# aligned with the main branch pushed below.
+git -c init.defaultBranch=master init --bare --initial-branch=main --quiet "$REMOTE"
+git -c init.defaultBranch=master init --initial-branch=main --quiet "$SEED"
 git -C "$SEED" config user.name "Status Trio Tests"
 git -C "$SEED" config user.email "tests@status-trio.invalid"
 printf 'first\n' > "$SEED/source.txt"
