@@ -1,6 +1,7 @@
 import Combine
 import CoreAudio
 import XCTest
+import Testing
 @testable import StatusTrioCore
 
 @MainActor
@@ -161,7 +162,7 @@ final class StatusPanelViewModelTests: XCTestCase {
         XCTAssertTrue(firstDeviceDelivered)
         XCTAssertEqual(fixture.updateScheduler.pendingCount, 1)
         fixture.updateScheduler.runScheduled()
-        XCTAssertEqual(panel.volume.listeningModeTaskID, "AABBCCDDEE01|outputs:1,\(previewEndpoint)")
+        XCTAssertEqual(panel.volume.listeningModeTaskID, "AABBCCDDEE01|outputs:1,\(previewEndpoint)|current:1|visible:false|open:0")
 
         fixture.bluetoothWorker.devices = [latestDevice]
         fixture.bluetoothDevices.refresh()
@@ -191,7 +192,7 @@ final class StatusPanelViewModelTests: XCTestCase {
         fixture.updateScheduler.runScheduled()
 
         let changingRow = try! XCTUnwrap(panel.volume.rows.first { $0.key.id == previewEndpoint })
-        XCTAssertEqual(panel.volume.listeningModeTaskID, "AABBCCDDEE02|outputs:1,\(previewEndpoint)")
+        XCTAssertEqual(panel.volume.listeningModeTaskID, "AABBCCDDEE02|outputs:1,\(previewEndpoint)|current:1|visible:false|open:0")
         XCTAssertEqual(deliveredMode?.selectedMode, .transparency)
         XCTAssertEqual(changingRow.listeningMode?.selectedMode, .transparency)
         XCTAssertEqual(changingRow.listeningMode?.actionState, .idle)
@@ -204,7 +205,7 @@ final class StatusPanelViewModelTests: XCTestCase {
         XCTAssertEqual(unchangedWhileStopped.listeningMode?.selectedMode, .transparency)
 
         panel.start()
-        XCTAssertEqual(panel.volume.listeningModeTaskID, "AABBCCDDEE02|outputs:1,\(previewEndpoint)")
+        XCTAssertEqual(panel.volume.listeningModeTaskID, "AABBCCDDEE02|outputs:1,\(previewEndpoint)|current:1|visible:false|open:0")
         XCTAssertNil(panel.volume.rows.first { $0.key.id == previewEndpoint }?.listeningMode)
     }
 
@@ -243,7 +244,7 @@ final class StatusPanelViewModelTests: XCTestCase {
         XCTAssertEqual(fixture.updateScheduler.pendingCount, 1)
         fixture.updateScheduler.runScheduled()
 
-        XCTAssertEqual(panel.volume.listeningModeTaskID, "BBCCDDEEFF01|outputs:")
+        XCTAssertEqual(panel.volume.listeningModeTaskID, "BBCCDDEEFF01|outputs:|current:|visible:false|open:0")
     }
 
     func testReviewPR124OutputListIdentityUsesDeliveredVolume() async {
@@ -263,7 +264,7 @@ final class StatusPanelViewModelTests: XCTestCase {
         panel.start()
         fixture.store.start()
         defer { panel.stop(); fixture.store.stop() }
-        XCTAssertEqual(panel.volume.listeningModeTaskID, "|outputs:1")
+        XCTAssertEqual(panel.volume.listeningModeTaskID, "|outputs:1|current:1|visible:false|open:0")
         fixture.volume.send(deliveredVolume(outputDevices: [original, added]))
         for _ in 0..<1000 {
             if fixture.store.liveVolume.outputDevices.count == 2 { break }
@@ -271,7 +272,7 @@ final class StatusPanelViewModelTests: XCTestCase {
         }
         XCTAssertEqual(fixture.store.liveVolume.outputDevices.count, 2)
         XCTAssertEqual(panel.volume.rows.map { $0.key.id }, [1, 42])
-        XCTAssertEqual(panel.volume.listeningModeTaskID, "|outputs:1,42", "Output-only changes must restart discovery with the delivered output list")
+        XCTAssertEqual(panel.volume.listeningModeTaskID, "|outputs:1,42|current:1|visible:false|open:0", "Output-only changes must restart discovery with the delivered output list")
 
         fixture.volume.send(deliveredVolume(outputDevices: [original]))
         for _ in 0..<1000 {
@@ -280,7 +281,7 @@ final class StatusPanelViewModelTests: XCTestCase {
         }
         XCTAssertEqual(fixture.store.liveVolume.outputDevices.count, 1)
         XCTAssertEqual(panel.volume.rows.map { $0.key.id }, [1])
-        XCTAssertEqual(panel.volume.listeningModeTaskID, "|outputs:1", "Output removal must map rows and task identity from the same delivered volume")
+        XCTAssertEqual(panel.volume.listeningModeTaskID, "|outputs:1|current:1|visible:false|open:0", "Output removal must map rows and task identity from the same delivered volume")
     }
 
     func testLiveInputUpdatesOnlyTheInputRegion() async throws {
@@ -471,6 +472,120 @@ final class StatusPanelViewModelTests: XCTestCase {
             await Task.yield()
         }
         return condition()
+    }
+}
+
+@MainActor
+struct AirPodsDiscoveryTriggerTests {
+    @Test func defaultOutputSwitchRestartsDiscoveryEvenWhenOutputIDsDoNotChange() async {
+        let speaker = AudioOutputDevice(id: 1, name: "Built-in", uid: "speaker", isCurrent: true)
+        let airPods = AudioOutputDevice(id: 42, name: "AirPods Pro 2", uid: "buds", isCurrent: false)
+        let fixture = PanelStoreFixture(outputDevices: [speaker, airPods])
+        let panel = fixture.makePanel()
+        panel.start()
+        fixture.store.start()
+        defer { panel.stop(); fixture.store.stop() }
+        let originalIdentity = panel.volume.listeningModeTaskID
+
+        let selectedAirPods = AudioOutputDevice(id: 42, name: "AirPods Pro 2", uid: "buds", isCurrent: true)
+        fixture.volume.send(VolumeStatus(
+            scalar: 0.4,
+            isMuted: false,
+            deviceName: "AirPods Pro 2",
+            currentDevice: selectedAirPods,
+            outputDevices: [
+                AudioOutputDevice(id: 1, name: "Built-in", uid: "speaker", isCurrent: false),
+                selectedAirPods
+            ]
+        ))
+
+        let delivered = await discoveryEventually { panel.volume.rows.first { $0.key.id == 42 }?.selected == true }
+        #expect(delivered)
+        #expect(panel.volume.listeningModeTaskID != originalIdentity)
+    }
+
+    @Test func reopeningCachedPopoverRestartsListeningModeDiscovery() {
+        let fixture = PanelStoreFixture()
+        let panel = fixture.makePanel()
+        panel.start()
+        defer { panel.stop(); fixture.store.stop() }
+        let closedIdentity = panel.volume.listeningModeTaskID
+
+        fixture.store.setPopoverVisible(true)
+        fixture.updateScheduler.runScheduled()
+        let openIdentity = panel.volume.listeningModeTaskID
+        #expect(openIdentity != closedIdentity)
+
+        fixture.store.setPopoverVisible(false)
+        fixture.updateScheduler.runScheduled()
+        #expect(panel.volume.listeningModeTaskID != openIdentity)
+
+        fixture.store.setPopoverVisible(true)
+        fixture.updateScheduler.runScheduled()
+        #expect(panel.volume.listeningModeTaskID != openIdentity)
+    }
+
+    @Test func reopeningBeforeTheVisibilityUpdateIsDeliveredRestartsDiscovery() {
+        let fixture = PanelStoreFixture()
+        let panel = fixture.makePanel()
+        panel.start()
+        defer { panel.stop(); fixture.store.stop() }
+
+        fixture.store.setPopoverVisible(true)
+        fixture.updateScheduler.runScheduled()
+        let openIdentity = panel.volume.listeningModeTaskID
+
+        fixture.store.setPopoverVisible(false)
+        fixture.store.setPopoverVisible(true)
+        fixture.updateScheduler.runScheduled()
+
+        #expect(panel.volume.listeningModeTaskID != openIdentity)
+    }
+
+    @Test func closingCachedPopoverStopsListeningModeControlsWithoutViewDisappearance() {
+        let fixture = PanelStoreFixture()
+        fixture.store.setPopoverVisible(true)
+        fixture.bluetoothListeningModes.previewMode = true
+        fixture.bluetoothListeningModes.refresh(devices: [
+            BluetoothDevice(id: "PREVIEW:1", name: "AirPods Pro 2", kind: .audio, isConnected: true)
+        ])
+        #expect(fixture.bluetoothListeningModes.presentations.isEmpty == false)
+
+        fixture.store.setPopoverVisible(false)
+        #expect(fixture.bluetoothListeningModes.presentations.isEmpty)
+        fixture.store.stop()
+    }
+
+    @Test func staleViewTaskCannotRestartListeningModeDiscoveryAfterPopoverCloses() {
+        let fixture = PanelStoreFixture()
+        fixture.settings.previewsBluetoothListeningMode = true
+        let actions = StatusPanelActions(store: fixture.store, settings: fixture.settings)
+        fixture.store.setPopoverVisible(true)
+        actions.volumeListChanged()
+        #expect(fixture.bluetoothListeningModes.presentations.isEmpty == false)
+
+        fixture.store.setPopoverVisible(false)
+        actions.volumeListChanged()
+        #expect(fixture.bluetoothListeningModes.presentations.isEmpty)
+        fixture.store.stop()
+    }
+
+    @Test func volumeOnlyChangesDoNotRestartListeningModeDiscovery() async {
+        let speaker = AudioOutputDevice(id: 1, name: "Built-in", uid: "speaker", isCurrent: true)
+        let fixture = PanelStoreFixture(outputDevices: [speaker])
+        let panel = fixture.makePanel()
+        panel.start()
+        fixture.store.start()
+        defer { panel.stop(); fixture.store.stop() }
+        let originalIdentity = panel.volume.listeningModeTaskID
+
+        fixture.volume.send(VolumeStatus(
+            scalar: 0.7, isMuted: false, deviceName: "Built-in",
+            currentDevice: speaker, outputDevices: [speaker]
+        ))
+        let delivered = await discoveryEventually { panel.volume.scalar == 0.7 }
+        #expect(delivered)
+        #expect(panel.volume.listeningModeTaskID == originalIdentity)
     }
 }
 

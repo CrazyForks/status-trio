@@ -204,6 +204,7 @@ final class StatusPanelActions {
             holdBluetoothSummary: { store.bluetoothDevices.holdVisibleSurface(BluetoothDeviceController.bluetoothSummarySurfaceToken) },
             releaseBluetoothSummary: { store.bluetoothDevices.releaseVisibleSurface(BluetoothDeviceController.bluetoothSummarySurfaceToken) },
             refreshVolumeListeningModes: {
+                guard store.isPopoverVisible else { return }
                 let config = ListeningModePreview.Configuration(
                     isEnabled: settings.previewsBluetoothListeningMode,
                     deviceName: settings.bluetoothListeningModePreviewDeviceName,
@@ -353,8 +354,8 @@ final class StatusPanelActions {
 
     func volumeListAppeared() { refreshVolumeListeningModes() }
 
-    /// Called by the list task when connected-device membership or preview
-    /// configuration changes; listening-mode discovery has no timer.
+    /// Called by the visible summary task on reopen, output-route changes, or
+    /// device/preview changes. The controller owns finite readiness retries.
     func volumeListChanged() { refreshVolumeListeningModes() }
     func volumeListDisappeared() { stopVolumeListeningModes() }
     func setWiFiPower(_ enabled: Bool) { setWiFiPowerCommand(enabled) }

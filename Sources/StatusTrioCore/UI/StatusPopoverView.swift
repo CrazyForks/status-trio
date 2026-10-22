@@ -115,7 +115,8 @@ struct StatusPopoverView: View {
             String(panel.visiblePopupSections.contains(.bluetooth)),
             String(panel.visiblePopupSections.contains(.volume))
         ]) {
-            if panel.visiblePopupSections.contains(.bluetooth) || panel.visiblePopupSections.contains(.volume) {
+            if panel.store.isPopoverVisible,
+               panel.visiblePopupSections.contains(.bluetooth) || panel.visiblePopupSections.contains(.volume) {
                 panel.actions.volumeListChanged()
             } else {
                 panel.actions.volumeListDisappeared()

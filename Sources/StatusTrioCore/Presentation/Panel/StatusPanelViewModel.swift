@@ -157,6 +157,11 @@ final class StatusPanelViewModel: ObservableObject {
             .sink { [weak self] in self?.publishAudioInput($0) }
             .store(in: &cancellables)
 
+        store.$isPopoverVisible
+            .dropFirst()
+            .sink { [weak self] _ in self?.coalesceControllerUpdate(.volume) }
+            .store(in: &cancellables)
+
         Publishers.CombineLatest(
             inputSourceController.$state,
             inputSourceController.$selectionFailure
@@ -292,7 +297,10 @@ final class StatusPanelViewModel: ObservableObject {
             .map { BluetoothBatteryReader.normalizedAddress($0.id) }
             .joined(separator: ",")
         let outputs = outputDevices.map { String($0.id) }.joined(separator: ",")
-        return connected + preview + (synthetic.isEmpty ? "" : "|\(synthetic)") + "|outputs:\(outputs)"
+        let current = outputDevices.filter { $0.isCurrent }.map { String($0.id) }.joined(separator: ",")
+        return connected + preview + (synthetic.isEmpty ? "" : "|\(synthetic)")
+            + "|outputs:\(outputs)|current:\(current)|visible:\(store.isPopoverVisible)"
+            + "|open:\(store.popoverOpenGeneration)"
     }
 
     private func mapInput(_ status: AudioInputStatus) -> AudioInputPanelState? {

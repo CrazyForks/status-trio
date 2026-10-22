@@ -14,16 +14,16 @@ import Foundation
 ///
 /// It is deliberately a separate object from `BluetoothDeviceController` (the plan's
 /// Option B): the paired-device controller is a large, carefully-synchronised
-/// lifecycle owner, and this subsystem — one discovery on panel open, one write per
-/// tap, a short read-back — is simpler to reason about and to test on its own. The
+/// lifecycle owner, and this subsystem — bounded discovery on panel open, one write
+/// per tap, a short read-back — is simpler to reason about and to test on its own. The
 /// view holds both and drives this one from the same appear/disappear and refresh
 /// hooks the device list already uses.
 ///
 /// The guarantees that matter live here and are covered by tests: discovery runs
-/// only when asked (never on a timer), capabilities are keyed by the normalized
-/// Bluetooth address so a rename or a re-pair cannot strand a stale control, a
-/// write is confirmed by read-back rather than assumed, and a failure rolls the UI
-/// back to what the device actually reports.
+/// only on visible-surface demand with finite readiness retries, capabilities are
+/// keyed by the normalized Bluetooth address so a rename or a re-pair cannot
+/// strand a stale control, a write is confirmed by read-back rather than assumed,
+/// and a failure rolls the UI back to what the device actually reports.
 @MainActor
 final class BluetoothListeningModeController: ObservableObject {
     /// The control state per connected, eligible device, keyed by the same
@@ -32,6 +32,10 @@ final class BluetoothListeningModeController: ObservableObject {
 
     private let hal: BluetoothListeningModeHAL
     private let endpointProvider: any CoreAudioBluetoothEndpointProviding
+    private let airPodsDiscoveryRetryDelays: [Duration]
+    private let airPodsDiscoverySleep: @Sendable (Duration) async throws -> Void
+    private var airPodsDiscoveryTask: Task<Void, Never>?
+    private var airPodsDiscoveryToken: DeviceOperationToken?
     private let failureClearDelay: Duration
     /// How long a preview write shows its spinner before settling. Real writes
     /// settle when the read-back confirms, which is CoreAudio-bound; preview
@@ -139,6 +143,10 @@ final class BluetoothListeningModeController: ObservableObject {
         huaweiTransport: any HuaweiListeningModeTransporting = HuaweiRFCOMMTransport(),
         huaweiEndpointProvider: any HuaweiAudioEndpointProviding = CoreAudioHuaweiAudioEndpointProvider(),
         huaweiReadRetryDelays: [Duration] = [.milliseconds(150), .milliseconds(450)],
+        airPodsDiscoveryRetryDelays: [Duration] = [.milliseconds(150), .milliseconds(450), .seconds(1)],
+        airPodsDiscoverySleep: @escaping @Sendable (Duration) async throws -> Void = {
+            try await Task.sleep(for: $0)
+        },
         failureClearDelay: Duration = .seconds(2),
         previewSettleDelay: Duration = .milliseconds(400)
     ) {
@@ -148,6 +156,8 @@ final class BluetoothListeningModeController: ObservableObject {
         self.huaweiTransport = huaweiTransport
         self.huaweiEndpointProvider = huaweiEndpointProvider
         self.huaweiFirstReadRetryDelays = huaweiReadRetryDelays
+        self.airPodsDiscoveryRetryDelays = airPodsDiscoveryRetryDelays
+        self.airPodsDiscoverySleep = airPodsDiscoverySleep
         self.failureClearDelay = failureClearDelay
         self.previewSettleDelay = previewSettleDelay
     }
@@ -159,10 +169,17 @@ final class BluetoothListeningModeController: ObservableObject {
     /// Preview mode substitutes only the AirPods surface; live HUAWEI discovery
     /// and writes remain active while previews are enabled.
     func refresh(devices: [BluetoothDevice]) {
+        cancelAirPodsDiscovery()
         if previewMode {
             refreshPreview(devices: devices)
             return
         }
+        let needsRetry = refreshAirPods(devices: devices)
+        refreshHuawei(devices: devices)
+        if needsRetry { retryAirPodsDiscovery(devices: devices) }
+    }
+
+    private func refreshAirPods(devices: [BluetoothDevice]) -> Bool {
         let eligible = devices.filter { $0.isConnected && $0.isAirPods }
         let endpoints = eligible.isEmpty ? [] : endpointProvider.discoverEndpoints(using: hal)
 
@@ -209,7 +226,38 @@ final class BluetoothListeningModeController: ObservableObject {
         // never leak back onto the live control surface after the toggle is off.
         previewSelectedModes.removeAll()
         syncSubscriptions(to: airPodsEndpointIDs)
-        refreshHuawei(devices: devices)
+        return eligible.count == 1 && airPodsEndpointIDs.isEmpty
+    }
+
+    /// CoreAudio can publish the Bluetooth connection before its mode properties
+    /// are ready. Retry only this discovery, never HUAWEI reads or device writes.
+    private func retryAirPodsDiscovery(devices: [BluetoothDevice]) {
+        guard !airPodsDiscoveryRetryDelays.isEmpty else { return }
+        let token = DeviceOperationToken()
+        airPodsDiscoveryToken = token
+        let delays = airPodsDiscoveryRetryDelays
+        let sleep = airPodsDiscoverySleep
+        airPodsDiscoveryTask = Task { [weak self] in
+            for delay in delays {
+                do {
+                    try await sleep(delay)
+                } catch {
+                    break
+                }
+                guard !Task.isCancelled, let self,
+                      self.airPodsDiscoveryToken == token, !self.previewMode else { return }
+                if !self.refreshAirPods(devices: devices) { break }
+            }
+            guard let self, self.airPodsDiscoveryToken == token else { return }
+            self.airPodsDiscoveryTask = nil
+            self.airPodsDiscoveryToken = nil
+        }
+    }
+
+    private func cancelAirPodsDiscovery() {
+        airPodsDiscoveryTask?.cancel()
+        airPodsDiscoveryTask = nil
+        airPodsDiscoveryToken = nil
     }
 
     /// Discovers HUAWEI controls by Bluetooth address and reads their current
@@ -508,6 +556,7 @@ final class BluetoothListeningModeController: ObservableObject {
     /// this when the panel disappears, honouring the plan's "no residual timer or
     /// task once the panel closes".
     func stop() {
+        cancelAirPodsDiscovery()
         for address in presentations.keys {
             cancelTasks(for: address)
             retireChangeToken(for: address)

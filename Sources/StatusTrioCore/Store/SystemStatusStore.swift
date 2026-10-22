@@ -127,6 +127,7 @@ final class SystemStatusStore: ObservableObject {
     private var hasStarted = false
     private var hasStopped = false
     @Published private(set) var isPopoverVisible = false
+    private(set) var popoverOpenGeneration: UInt64 = 0
     @Published private(set) var trustedAppleDeviceCandidates: [AppleDeviceCandidate] = []
     @Published private(set) var trustedAppleDeviceDiscoveryGeneration: UInt64 = 0
     /// True while the display is asleep. The fallback poll skips its work then,
@@ -573,6 +574,9 @@ final class SystemStatusStore: ObservableObject {
 
     func setPopoverVisible(_ visible: Bool) {
         guard !hasStopped else { return }
+        // Preserve reopen events even when presentation updates coalesce a close
+        // and an open into a single visible snapshot.
+        if visible && !isPopoverVisible { popoverOpenGeneration &+= 1 }
         isPopoverVisible = visible
         // The system's own state may have changed while the popover was closed
         // (Control Center, the battery menu), so re-read it through the helper
@@ -587,6 +591,7 @@ final class SystemStatusStore: ObservableObject {
         updateLocalIPActivation()
 
         guard visible else {
+            bluetoothListeningModes.stop()
             stopVPNMonitoringForPopover()
             clearWiFiNameResolution()
             bluetoothDevices.releaseVisibleSurface(BluetoothDeviceController.popoverSurfaceToken)
