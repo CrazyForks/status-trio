@@ -20,6 +20,12 @@ Recovery is accepted only when all of these are true:
 - The run has exactly one unexpired `status-trio-release-package` artifact,
   and that artifact is correlated with the same run, branch, and commit.
 
+The validator intentionally requires the source run's recorded `head_sha` to
+equal `candidate_sha`. This is a conservative subset: a source run whose
+candidate was an ancestor of the dispatched branch head is rejected, even if
+that run was a valid normal release. Advancing `main` after the source run does
+not change the source run's recorded head SHA.
+
 Any mismatch stops the recovery before publication. An expired or ambiguous
 artifact must be rejected; recovery does not fall back or reconstruct it. The
 maintainer then decides what to do. If a new build is necessary, use a new
