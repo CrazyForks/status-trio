@@ -133,6 +133,48 @@ final class InputSourceIconRenderingTests: XCTestCase {
         )
     }
 
+    func testPDFIconKeepsItsEvenOddInkVisibleOnMenuBarAndDock() throws {
+        let url = try InputSourceIconFixtures.writeEvenOddPDFIcon()
+        defer { try? FileManager.default.removeItem(at: url) }
+        let scene = centerScene(url: url, scale: SettingsStore.defaultWifiSymbolScale)
+
+        let menuBar = try renderedCenterPixels(for: scene)
+        let menuBarBounds = try XCTUnwrap(menuBar.alphaBounds(
+            inSVGRect: StatusIconGeometry.canvas,
+            size: menuBarSize,
+            scale: menuBarScale
+        ))
+        XCTAssertGreaterThan(
+            menuBarBounds.maxX - menuBarBounds.minX,
+            20,
+            "the PDF glyph must occupy the menu-bar slot instead of shrinking to its 16 pt page"
+        )
+        XCTAssertGreaterThan(
+            menuBarBounds.maxY - menuBarBounds.minY,
+            20,
+            "the PDF glyph must keep its full vertical size in the menu bar"
+        )
+
+        for style in [DockIconBackgroundStyle.dark, .light] {
+            let withIcon = try dockPixels(scene: scene, style: style)
+            let bare = try dockPixels(scene: IconSceneState(), style: style)
+            var minX = withIcon.width
+            var maxX = -1
+            for y in 0..<withIcon.height {
+                for x in 0..<withIcon.width
+                    where withIcon.rgba(x: x, y: y) != bare.rgba(x: x, y: y) {
+                    minX = min(minX, x)
+                    maxX = max(maxX, x)
+                }
+            }
+            XCTAssertGreaterThan(
+                maxX - minX + 1,
+                100,
+                "the PDF glyph must keep its full size in the \(style) Dock tile"
+            )
+        }
+    }
+
     func testSameURLRewriteRemeasuresInkAfterDecodedImageIsEvicted() throws {
         IconImageDecodeCache.shared.reset()
         StatusIconRenderer.resetInkOffsetCaches()

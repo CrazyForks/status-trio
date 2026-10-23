@@ -209,6 +209,30 @@ enum InputSourceIconFixtures {
         return url
     }
 
+    /// A 16 pt PDF with the same vector traits as real input-source icons:
+    /// an ICCBased colour space and an even-odd path that knocks a transparent
+    /// hole out of a filled circle. At 512 px the ring must cover most of the
+    /// bitmap, not just the page's original 16 px square.
+    static func writeEvenOddPDFIcon() throws -> URL {
+        var mediaBox = CGRect(x: 0, y: 0, width: 16, height: 16)
+        let data = NSMutableData()
+        let consumer = try XCTUnwrap(CGDataConsumer(data: data as CFMutableData))
+        let context = try XCTUnwrap(CGContext(consumer: consumer, mediaBox: &mediaBox, nil))
+
+        context.beginPDFPage(nil)
+        context.setFillColor(CGColor(gray: 1, alpha: 1))
+        context.addEllipse(in: CGRect(x: 1, y: 1, width: 14, height: 14))
+        context.addEllipse(in: CGRect(x: 5, y: 5, width: 6, height: 6))
+        context.fillPath(using: .evenOdd)
+        context.endPDFPage()
+        context.closePDF()
+
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("status-trio-even-odd-\(UUID().uuidString).pdf")
+        try (data as Data).write(to: url)
+        return url
+    }
+
     /// A valid portrait PDF after `/Rotate 90`: its 200x100 crop box displays
     /// as 100x200. The left half of the unrotated page becomes the top half.
     static func writeRotatedPDFIcon() throws -> URL {

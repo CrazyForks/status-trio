@@ -121,18 +121,23 @@ enum IconImageRasterizer {
               ) else {
             return nil
         }
-        let outputBounds = CGRect(
+        let logicalBounds = CGRect(
             x: 0,
             y: 0,
-            width: CGFloat(width),
-            height: CGFloat(height)
+            width: displayedPointSize.width,
+            height: displayedPointSize.height
         )
-        context.concatenate(page.getDrawingTransform(
+        let pageTransform = page.getDrawingTransform(
             .cropBox,
-            rect: outputBounds,
+            rect: logicalBounds,
             rotate: 0,
             preserveAspectRatio: true
-        ))
+        )
+        // CGPDFPage can clamp this transform at 1:1 instead of enlarging the
+        // page. Apply the requested pixel scale explicitly so a 16 pt vector
+        // icon still fills its bounded raster.
+        context.scaleBy(x: scale, y: scale)
+        context.concatenate(pageTransform)
         context.drawPDFPage(page)
         guard let cgImage = context.makeImage() else { return nil }
         return makeImage(from: cgImage, pointSize: displayedPointSize)

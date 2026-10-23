@@ -80,6 +80,46 @@ final class IconImageRasterizerTests: XCTestCase {
         XCTAssertGreaterThan(maximumAlpha, 200, "the PDF ink must stay opaque")
     }
 
+    func testPDFUpscalesEvenOddVectorArtToTheRequestedPixelBounds() throws {
+        let url = try InputSourceIconFixtures.writeEvenOddPDFIcon()
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let image = try XCTUnwrap(IconImageRasterizer.image(at: url, maximumPixelLength: 512))
+        let bitmap = try bitmap(of: image)
+        let pixels = try PixelBuffer(image: XCTUnwrap(bitmap.cgImage))
+
+        var visiblePixels = 0
+        var minX = pixels.width
+        var maxX = -1
+        for y in 0..<pixels.height {
+            for x in 0..<pixels.width where pixels.rgba(x: x, y: y).alpha > 10 {
+                visiblePixels += 1
+                minX = min(minX, x)
+                maxX = max(maxX, x)
+            }
+        }
+
+        XCTAssertEqual(bitmap.pixelsWide, 512)
+        XCTAssertEqual(bitmap.pixelsHigh, 512)
+        XCTAssertGreaterThan(
+            visiblePixels,
+            100_000,
+            "the 16 pt page must be scaled across the requested 512 px bounds"
+        )
+        XCTAssertLessThanOrEqual(minX, 64, "the vector ink must reach the left side of the bitmap")
+        XCTAssertGreaterThanOrEqual(maxX, 448, "the vector ink must reach the right side of the bitmap")
+        XCTAssertLessThan(
+            pixels.rgba(x: 256, y: 256).alpha,
+            10,
+            "the even-odd centre must stay transparent"
+        )
+        XCTAssertGreaterThan(
+            pixels.rgba(x: 256, y: 100).alpha,
+            200,
+            "the scaled ring must keep opaque vector ink"
+        )
+    }
+
     func testRotatedPDFUsesDisplayedLogicalSizeAndInkOrientation() throws {
         let url = try InputSourceIconFixtures.writeRotatedPDFIcon()
         defer { try? FileManager.default.removeItem(at: url) }
