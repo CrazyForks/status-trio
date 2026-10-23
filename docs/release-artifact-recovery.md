@@ -67,7 +67,13 @@ The recovery path keeps three jobs:
    original artifact by run ID with `actions: read` and the repository
    `github.token`, revalidates the source run and manifest, then runs
    `publish-release.sh` from the trusted `release-tools` checkout while
-   `GITHUB_SHA` and the source checkout remain frozen at `candidate_sha`.
+   `CANDIDATE_SHA` remains the explicit application identity for the checked
+   out source and publisher.
+
+`GITHUB_SHA` is the actual workflow-dispatch head context and cannot be
+overridden in a step. It is not the recovery candidate. The source checkout,
+recovery validation, and publisher identity use the explicit `CANDIDATE_SHA`
+verified by the `verify` job and retained in the protected publish environment.
 
 The downloaded manifest must match the candidate, version, build, tag,
 Developer ID signing state, and accepted-and-stapled notarization state before

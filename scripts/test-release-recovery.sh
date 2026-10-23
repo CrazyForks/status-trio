@@ -374,6 +374,13 @@ checks = {
 checks.each do |label, needle|
   abort("release workflow is missing #{label}") unless source.include?(needle)
 end
+abort("release workflow must not override reserved GITHUB_SHA") if source.match?(/^\s+GITHUB_SHA:/)
+abort("publish must use CANDIDATE_SHA from verify outputs") unless source.include?(
+  "CANDIDATE_SHA: ${{ needs.verify.outputs.candidate_sha || inputs.candidate_sha }}"
+)
+abort("publish must reassert the explicit candidate checkout") unless source.include?(
+  '[[ "${ACTUAL_SHA}" == "${CANDIDATE_SHA}" ]]'
+)
 
 jobs_section = source[/^jobs:\n(.*)\z/m, 1] || ""
 jobs = jobs_section.scan(/^  ([A-Za-z0-9_-]+):$/).flatten

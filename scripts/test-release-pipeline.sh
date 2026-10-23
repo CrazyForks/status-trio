@@ -379,8 +379,11 @@ XML
     : > "$WORK/github/reads"
 }
 
-run_publish() {
+run_publish_with_env() {
     env -u GITHUB_ACTIONS \
+        -u GITHUB_SHA \
+        -u CANDIDATE_SHA \
+        "$@" \
         MANIFEST_PATH="$PACKAGE/release-manifest.json" \
         PACKAGE_DIR="$PACKAGE" \
         FAKE_PACKAGE_DIR="$PACKAGE" \
@@ -390,6 +393,75 @@ run_publish() {
         PATH="$WORK/bin:$PATH" \
         bash "$ROOT/scripts/publish-release.sh"
 }
+
+run_publish() {
+    run_publish_with_env
+}
+
+run_publish_ci() {
+    local candidate_sha="$1"
+    local workflow_sha="$2"
+    run_publish_with_env \
+        GITHUB_ACTIONS=true \
+        GITHUB_SHA="$workflow_sha" \
+        CANDIDATE_SHA="$candidate_sha"
+}
+
+run_publish_ci_without_candidate() {
+    run_publish_with_env \
+        GITHUB_ACTIONS=true \
+        GITHUB_SHA="$1"
+}
+
+MANIFEST_SHA="$(printf 'a%.0s' {1..40})"
+IGNORED_GITHUB_SHA="$(printf 'b%.0s' {1..40})"
+
+reset_state
+make_manifest "$PACKAGE/release-manifest.json" "$PACKAGE/StatusTrio-1.0.0.dmg" \
+    "$DMG_SHA" "$DMG_LENGTH" "fixture-signature"
+if ! run_publish_ci "$MANIFEST_SHA" "$IGNORED_GITHUB_SHA" >"$WORK/ci-normal.log" 2>&1; then
+    cat "$WORK/ci-normal.log" >&2
+    fail "valid CI candidate with a different GITHUB_SHA did not publish"
+fi
+[[ "$(cat "$WORK/github/release-draft")" == "false" ]] ||
+    fail "valid CI candidate with a different GITHUB_SHA did not publish"
+
+APPCAST_BEFORE="$(sha256 "$WORK/github/appcast")"
+WRITES_BEFORE="$(<"$WORK/github/writes")"
+if ! run_publish_ci "$MANIFEST_SHA" "$IGNORED_GITHUB_SHA" >"$WORK/ci-public-retry.log" 2>&1; then
+    cat "$WORK/ci-public-retry.log" >&2
+    fail "valid CI public retry failed"
+fi
+[[ "$APPCAST_BEFORE" == "$(sha256 "$WORK/github/appcast")" ]] ||
+    fail "valid CI public retry rewrote the appcast"
+[[ "$WRITES_BEFORE" == "$(<"$WORK/github/writes")" ]] ||
+    fail "valid CI public retry mutated release metadata"
+
+reset_state
+make_manifest "$PACKAGE/release-manifest.json" "$PACKAGE/StatusTrio-1.0.0.dmg" \
+    "$DMG_SHA" "$DMG_LENGTH" "fixture-signature"
+expect_failure "CI candidate SHA mismatch" \
+    run_publish_ci "$IGNORED_GITHUB_SHA" "$MANIFEST_SHA"
+assert_contains "$WORK/output.log" \
+    "candidate SHA $IGNORED_GITHUB_SHA differs from manifest source_sha $MANIFEST_SHA"
+[[ ! -s "$WORK/github/writes" ]] || fail "CI candidate SHA mismatch wrote to GitHub"
+
+reset_state
+make_manifest "$PACKAGE/release-manifest.json" "$PACKAGE/StatusTrio-1.0.0.dmg" \
+    "$DMG_SHA" "$DMG_LENGTH" "fixture-signature"
+expect_failure "missing CI candidate SHA" run_publish_ci_without_candidate "$MANIFEST_SHA"
+assert_contains "$WORK/output.log" \
+    "CANDIDATE_SHA must be a lowercase 40-character commit SHA"
+[[ ! -s "$WORK/github/writes" ]] || fail "missing CI candidate SHA wrote to GitHub"
+
+reset_state
+make_manifest "$PACKAGE/release-manifest.json" "$PACKAGE/StatusTrio-1.0.0.dmg" \
+    "$DMG_SHA" "$DMG_LENGTH" "fixture-signature"
+expect_failure "invalid CI candidate SHA" \
+    run_publish_ci "$(printf 'A%.0s' {1..40})" "$MANIFEST_SHA"
+assert_contains "$WORK/output.log" \
+    "CANDIDATE_SHA must be a lowercase 40-character commit SHA"
+[[ ! -s "$WORK/github/writes" ]] || fail "invalid CI candidate SHA wrote to GitHub"
 
 reset_state
 rm "$PACKAGE/release-manifest.json"

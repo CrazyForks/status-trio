@@ -137,8 +137,11 @@ ACTUAL_CHECKSUM_LINE="$(<"$PACKAGE_DIR/$DMG_FILENAME.sha256")"
     die "DMG checksum file does not match the manifest and artifact."
 
 if [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then
-    [[ "${GITHUB_SHA:-}" == "$SOURCE_SHA" ]] ||
-        die "workflow SHA ${GITHUB_SHA:-<unset>} differs from manifest source_sha $SOURCE_SHA."
+    CI_CANDIDATE_SHA="${CANDIDATE_SHA:-}"
+    [[ "$CI_CANDIDATE_SHA" =~ ^[0-9a-f]{40}$ ]] ||
+        die "CANDIDATE_SHA must be a lowercase 40-character commit SHA in CI."
+    [[ "$CI_CANDIDATE_SHA" == "$SOURCE_SHA" ]] ||
+        die "candidate SHA $CI_CANDIDATE_SHA differs from manifest source_sha $SOURCE_SHA."
 fi
 
 if [[ -n "${GH_TOKEN:-}" ]]; then

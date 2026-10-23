@@ -541,7 +541,6 @@ jobs:
         env:
           MANIFEST_PATH: ${{ github.workspace }}/dist/release-package/release-manifest.json
           PACKAGE_DIR: ${{ github.workspace }}/dist/release-package
-          GITHUB_SHA: ${{ inputs.candidate_sha }}
         run: bash scripts/publish-release.sh
 
       - name: Recover publication from the verified source artifact
@@ -550,5 +549,4 @@ jobs:
         env:
           MANIFEST_PATH: ${{ github.workspace }}/dist/release-package/release-manifest.json
           PACKAGE_DIR: ${{ github.workspace }}/dist/release-package
-          GITHUB_SHA: ${{ inputs.candidate_sha }}
         run: bash scripts/publish-release.sh
