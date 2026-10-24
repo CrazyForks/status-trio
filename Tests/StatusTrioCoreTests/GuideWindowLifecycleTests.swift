@@ -30,6 +30,39 @@ final class GuideWindowLifecycleTests: XCTestCase {
         XCTAssertEqual(window.contentView?.autoresizingMask, [.width, .height])
     }
 
+    func testOnboardingContentFitsItsFixedWindow() throws {
+        let fixture = try DefaultsFixture()
+        defer { fixture.tearDown() }
+        let settings = SettingsStore(defaults: fixture.defaults)
+        XCTAssertEqual(settings.telemetryConsentVersion, 0)
+
+        for language in AppLanguage.allCases {
+            let localization = Localization(
+                defaults: fixture.defaults,
+                preferredLanguages: [language.rawValue]
+            )
+            for page in [IconGuidePage.anatomy, .states] {
+                let view = IconGuideOnboardingView(
+                    settings: settings,
+                    initialPage: page,
+                    onCustomize: {},
+                    onDone: {}
+                )
+                .environmentObject(localization)
+                let hostingController = NSHostingController(rootView: view)
+                hostingController.sizingOptions = [.preferredContentSize]
+                hostingController.view.layoutSubtreeIfNeeded()
+
+                let preferredSize = hostingController.preferredContentSize
+                XCTAssertLessThanOrEqual(
+                    preferredSize.height,
+                    OnboardingWindowController.contentSize.height,
+                    "\(language.rawValue) \(page)"
+                )
+            }
+        }
+    }
+
     func testOnboardingCloseReleasesWindowAndHostingContentAfterDrain() throws {
         let fixture = try DefaultsFixture()
         defer { fixture.tearDown() }

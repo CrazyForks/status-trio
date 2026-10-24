@@ -6,7 +6,7 @@ import SwiftUI
 final class OnboardingWindowController: NSWindowController, NSWindowDelegate {
     static let contentSize = NSSize(
         width: IconGuideOnboardingView.contentWidth,
-        height: 560
+        height: 700
     )
 
     private let settings: SettingsStore
