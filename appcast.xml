@@ -6,6 +6,40 @@
     <description>Most recent changes for Status Trio.</description>
     <language>en</language>
     <item>
+      <title xml:lang="en">Version 1.7.4 (Build 42)</title>
+      <title xml:lang="ar">الإصدار 1.7.4 (البناء 42)</title>
+      <title xml:lang="de">Version 1.7.4 (Build 42)</title>
+      <title xml:lang="es">Versión 1.7.4 (Compilación 42)</title>
+      <title xml:lang="fr">Version 1.7.4 (Build 42)</title>
+      <title xml:lang="it">Versione 1.7.4 (Build 42)</title>
+      <title xml:lang="ja">バージョン 1.7.4（ビルド 42）</title>
+      <title xml:lang="ko">버전 1.7.4(빌드 42)</title>
+      <title xml:lang="pt-BR">Versão 1.7.4 (Compilação 42)</title>
+      <title xml:lang="ru">Версия 1.7.4 (сборка 42)</title>
+      <title xml:lang="zh-Hans">版本 1.7.4（构建 42）</title>
+      <title xml:lang="zh-Hant">版本 1.7.4（組建 42）</title>
+      <pubDate>Sat, 24 Oct 2026 16:55:25 +0000</pubDate>
+      <sparkle:version>42</sparkle:version>
+      <sparkle:shortVersionString>1.7.4</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+      <description xml:lang="en"><![CDATA[<h3>Fixes and Stability</h3><ul><li>Fixed the first-run guide window being too small on a fresh install, which could hide the title and bottom actions.</li></ul>]]></description>
+      <description xml:lang="ar"><![CDATA[<div dir="rtl"><h3>الإصلاحات والاستقرار</h3><ul><li>تم إصلاح مشكلة كانت تجعل نافذة دليل البدء صغيرة جدًا بعد تثبيت جديد، مما قد يحجب العنوان والأزرار السفلية.</li></ul></div>]]></description>
+      <description xml:lang="de"><![CDATA[<h3>Fehlerbehebungen und Stabilität</h3><ul><li>Das Fenster der Anleitung beim ersten Start war nach einer Neuinstallation zu klein, sodass Titel und untere Schaltflächen abgeschnitten werden konnten. Dies wurde behoben.</li></ul>]]></description>
+      <description xml:lang="es"><![CDATA[<h3>Correcciones y estabilidad</h3><ul><li>Se ha corregido un problema por el que la ventana de la guía de inicio era demasiado pequeña tras una instalación nueva y podía ocultar el título y los botones inferiores.</li></ul>]]></description>
+      <description xml:lang="fr"><![CDATA[<h3>Corrections et stabilité</h3><ul><li>La fenêtre du guide de démarrage était trop petite après une nouvelle installation, ce qui pouvait masquer le titre et les boutons du bas. Ce problème est corrigé.</li></ul>]]></description>
+      <description xml:lang="it"><![CDATA[<h3>Correzioni e stabilità</h3><ul><li>Corretto un problema per cui la finestra della guida iniziale era troppo piccola dopo una nuova installazione e poteva nascondere il titolo e i pulsanti in basso.</li></ul>]]></description>
+      <description xml:lang="ja"><![CDATA[<h3>修正と安定性</h3><ul><li>新規インストール後の初回起動時に、初回ガイドのウインドウが小さすぎてタイトルと下部のボタンが表示されない問題を修正しました。</li></ul>]]></description>
+      <description xml:lang="ko"><![CDATA[<h3>수정 및 안정성</h3><ul><li>새로 설치한 뒤 처음 실행할 때 초기 가이드 창이 너무 작아 제목과 하단 버튼이 표시되지 않던 문제를 수정했습니다.</li></ul>]]></description>
+      <description xml:lang="pt-BR"><![CDATA[<h3>Correções e estabilidade</h3><ul><li>Corrigido o problema em que a janela do guia de primeiros passos ficava pequena demais após uma instalação nova e podia ocultar o título e os botões inferiores.</li></ul>]]></description>
+      <description xml:lang="ru"><![CDATA[<h3>Исправления и стабильность</h3><ul><li>Исправлена проблема, из-за которой после новой установки окно руководства первого запуска было слишком маленьким и могло скрывать заголовок и нижние кнопки.</li></ul>]]></description>
+      <description xml:lang="zh-Hans"><![CDATA[<h3>修复与稳定性</h3><ul><li>修复全新安装后首次启动时，引导窗口尺寸过小、导致标题和底部按钮显示不完整的问题。</li></ul>]]></description>
+      <description xml:lang="zh-Hant"><![CDATA[<h3>修正與穩定性</h3><ul><li>修正全新安裝後首次啟動時，引導視窗尺寸過小、導致標題和底部按鈕顯示不完整的問題。</li></ul>]]></description>
+      <enclosure url="https://github.com/lingyired/status-trio/releases/download/v1.7.4/StatusTrio-1.7.4.dmg"
+                 type="application/octet-stream"
+                 sparkle:edSignature="7jbcDdwrcbeA/ReM2ttAWOWeJ/Bj+NYvZvVrCLEdVDJo6vx7dxs7WjTcudJqWcyKBPTyKNpQyt0aplnD3Ig/BA=="
+                 length="14596612" />
+    </item>
+    <item>
       <title xml:lang="en">Version 1.7.3 (Build 41)</title>
       <title xml:lang="ar">الإصدار 1.7.3 (البناء 41)</title>
       <title xml:lang="de">Version 1.7.3 (Build 41)</title>
