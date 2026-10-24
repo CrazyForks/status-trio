@@ -6,6 +6,40 @@
     <description>Most recent changes for Status Trio.</description>
     <language>en</language>
     <item>
+      <title xml:lang="en">Version 1.7.3 (Build 41)</title>
+      <title xml:lang="ar">الإصدار 1.7.3 (البناء 41)</title>
+      <title xml:lang="de">Version 1.7.3 (Build 41)</title>
+      <title xml:lang="es">Versión 1.7.3 (Compilación 41)</title>
+      <title xml:lang="fr">Version 1.7.3 (Build 41)</title>
+      <title xml:lang="it">Versione 1.7.3 (Build 41)</title>
+      <title xml:lang="ja">バージョン 1.7.3（ビルド 41）</title>
+      <title xml:lang="ko">버전 1.7.3(빌드 41)</title>
+      <title xml:lang="pt-BR">Versão 1.7.3 (Compilação 41)</title>
+      <title xml:lang="ru">Версия 1.7.3 (сборка 41)</title>
+      <title xml:lang="zh-Hans">版本 1.7.3（构建 41）</title>
+      <title xml:lang="zh-Hant">版本 1.7.3（組建 41）</title>
+      <pubDate>Sat, 24 Oct 2026 15:30:57 +0000</pubDate>
+      <sparkle:version>41</sparkle:version>
+      <sparkle:shortVersionString>1.7.3</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+      <description xml:lang="en"><![CDATA[<h3>Fixes and Stability</h3><ul><li>Improved input-source icon updates when switching input methods, including after the app becomes active or the system or display wakes.</li><li>Fixed a possible crash when opening the first-run guide after a fresh install.</li></ul>]]></description>
+      <description xml:lang="ar"><![CDATA[<div dir="rtl"><h3>الإصلاحات والاستقرار</h3><ul><li>تحسّن تحديث أيقونة مصدر الإدخال عند تبديل طريقة الإدخال، بما في ذلك بعد إعادة تنشيط التطبيق أو استيقاظ النظام أو الشاشة.</li><li>تم إصلاح تعطل محتمل عند فتح دليل البدء بعد تثبيت جديد.</li></ul></div>]]></description>
+      <description xml:lang="de"><![CDATA[<h3>Fehlerbehebungen und Stabilität</h3><ul><li>Die Aktualisierung des Eingabequellen-Symbols beim Wechsel der Eingabemethode wurde verbessert; nach erneuter App-Aktivierung sowie nach dem Aufwachen von System oder Display wird die aktuelle Eingabequelle erneut gelesen.</li><li>Ein möglicher Absturz beim Öffnen der Anleitung für den ersten Start nach einer Neuinstallation wurde behoben.</li></ul>]]></description>
+      <description xml:lang="es"><![CDATA[<h3>Correcciones y estabilidad</h3><ul><li>Se ha mejorado la actualización del icono de fuente de entrada al cambiar de método de entrada, incluso después de reactivar la app o de que el sistema o la pantalla se despierten.</li><li>Se ha corregido un posible cierre inesperado al abrir la guía de inicio tras una instalación nueva.</li></ul>]]></description>
+      <description xml:lang="fr"><![CDATA[<h3>Corrections et stabilité</h3><ul><li>L&#39;icône de source de saisie se met désormais plus fiablement à jour lors du changement de méthode de saisie, y compris après la réactivation de l&#39;app ou le réveil du système ou de l&#39;écran.</li><li>Correction d&#39;un plantage possible à l&#39;ouverture du guide de démarrage après une nouvelle installation.</li></ul>]]></description>
+      <description xml:lang="it"><![CDATA[<h3>Correzioni e stabilità</h3><ul><li>Migliorato l&#39;aggiornamento dell&#39;icona della sorgente di input quando si cambia metodo di input, anche dopo la riattivazione dell&#39;app o il risveglio del sistema o dello schermo.</li><li>Corretto un possibile arresto anomalo all&#39;apertura della guida iniziale dopo una nuova installazione.</li></ul>]]></description>
+      <description xml:lang="ja"><![CDATA[<h3>修正と安定性</h3><ul><li>入力方法の切り替え時に中央の入力ソースアイコンが更新されるよう改善しました。App の再アクティブ化、システムのスリープ解除、ディスプレイのスリープ解除後にも再読み込みします。</li><li>新規インストール後の初回起動時に、初回ガイドがクラッシュする可能性がある問題を修正しました。</li></ul>]]></description>
+      <description xml:lang="ko"><![CDATA[<h3>수정 및 안정성</h3><ul><li>입력 방식을 전환할 때 중앙 입력 소스 아이콘이 더 안정적으로 업데이트되며, 앱이 다시 활성화되거나 시스템 또는 디스플레이가 깨어난 후에도 현재 입력 소스를 다시 읽습니다.</li><li>새로 설치한 뒤 처음 실행할 때 초기 가이드가 충돌할 수 있는 문제를 수정했습니다.</li></ul>]]></description>
+      <description xml:lang="pt-BR"><![CDATA[<h3>Correções e estabilidade</h3><ul><li>A atualização do ícone da fonte de entrada ao trocar de método de entrada ficou mais confiável, inclusive após a reativação do app ou o despertar do sistema ou da tela.</li><li>Corrigido um possível encerramento inesperado ao abrir o guia de primeiros passos após uma instalação nova.</li></ul>]]></description>
+      <description xml:lang="ru"><![CDATA[<h3>Исправления и стабильность</h3><ul><li>Повышена надёжность обновления значка источника ввода при переключении способа ввода, в том числе после повторной активации приложения и пробуждения системы или дисплея.</li><li>Исправлено возможное аварийное завершение при открытии руководства первого запуска после новой установки.</li></ul>]]></description>
+      <description xml:lang="zh-Hans"><![CDATA[<h3>修复与稳定性</h3><ul><li>改善切换输入法时中间连接图标的更新，并在应用重新激活、系统唤醒或显示器唤醒后重新读取当前输入源。</li><li>修复全新安装后首次启动时，首次使用引导窗口可能崩溃的问题。</li></ul>]]></description>
+      <description xml:lang="zh-Hant"><![CDATA[<h3>修正與穩定性</h3><ul><li>改善切換輸入法時中間連線圖示的更新，並在 App 重新啟用、系統喚醒或顯示器喚醒後重新讀取目前輸入來源。</li><li>修正全新安裝後首次啟動時，首次使用引導視窗可能當機的問題。</li></ul>]]></description>
+      <enclosure url="https://github.com/lingyired/status-trio/releases/download/v1.7.3/StatusTrio-1.7.3.dmg"
+                 type="application/octet-stream"
+                 sparkle:edSignature="B6EA0M44r/sI5Qez3Bp3UC0R9RphybhtukHChdIbb1aloX5Fgfykg9D5oj2cmh1idteBcWS2HRIGLY6VyFYLBQ=="
+                 length="14596020" />
+    </item>
+    <item>
       <title xml:lang="en">Version 1.7.2 (Build 40)</title>
       <title xml:lang="ar">الإصدار 1.7.2 (البناء 40)</title>
       <title xml:lang="de">Version 1.7.2 (Build 40)</title>
