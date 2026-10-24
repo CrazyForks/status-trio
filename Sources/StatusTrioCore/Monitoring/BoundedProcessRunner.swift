@@ -365,10 +365,9 @@ final class BoundedProcessInvocation: @unchecked Sendable {
     private func finish(_ outcome: BoundedProcessOutcome) {
         guard let onFinish else { return }
         self.onFinish = nil
-        stdoutPipe?.fileHandleForReading.readabilityHandler = nil
-        stderrPipe?.fileHandleForReading.readabilityHandler = nil
-        try? stdoutPipe?.fileHandleForReading.close()
-        try? stderrPipe?.fileHandleForReading.close()
+        // The stream queues still own reads on these pipes. Do not close or
+        // replace their readers here; each stream clears its own handler under
+        // its queue in drainPipesAfterProcessExit.
         stdoutPipe = nil
         stderrPipe = nil
         process?.terminationHandler = nil

@@ -28,8 +28,9 @@ final class StatusBarMemoryPressureTests: XCTestCase {
         let harness = try StatusBarPressureHarness(isVisible: false)
         defer { harness.cleanUp() }
 
-        harness.controller.openPopoverFromShortcut()
         let popover = harness.controller.popoverForTesting
+        popover.animates = false
+        harness.controller.openPopoverFromShortcut()
         XCTAssertTrue(popover.isShown)
         XCTAssertNotNil(harness.controller.popoverAnchorWindowForTesting)
 
