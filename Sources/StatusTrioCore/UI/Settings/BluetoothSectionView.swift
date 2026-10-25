@@ -158,6 +158,27 @@ struct BluetoothSectionView: View {
                     SettingsDivider()
 
                     SettingsToggleRow(
+                        symbol: "iphone",
+                        tint: .blue,
+                        title: localization.string(.settingsAppleBluetoothRead),
+                        subtitle: localization.string(.settingsAppleBluetoothReadDescription),
+                        isOn: $store.readsAppleDevicesOverBluetooth
+                    )
+
+                    if store.readsAppleDevicesOverBluetooth {
+                        SettingsDivider()
+                        SettingsHintRow(
+                            text: localization.string(.settingsAppleBluetoothReadHelp)
+                        )
+                    }
+
+                    SettingsDivider()
+
+                    SettingsHintRow(text: localization.string(.settingsAppleTrustHelp))
+
+                    SettingsDivider()
+
+                    SettingsToggleRow(
                         symbol: "arrow.clockwise.circle",
                         tint: .green,
                         title: localization.string(.settingsAppleBackgroundRefresh),

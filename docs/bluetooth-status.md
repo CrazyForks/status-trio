@@ -391,8 +391,16 @@ establish ownership, and BLE rows never merge with classic Bluetooth rows by
 name. Settings discovery never reads battery data.
 
 A BLE battery read requires the global Bluetooth battery option, the Apple
-device option, and a row actually intersecting the visible popover viewport.
-Closing, hiding, folding, or scrolling a row out of view revokes its permit.
+device option, the **Read iPhone and iPad battery over Bluetooth** switch, and
+a row actually intersecting the visible popover viewport. Closing, hiding,
+folding, or scrolling a row out of view revokes its permit. The switch is off
+by default because a phone answers only after it asks to pair, and that prompt
+is the phone's own; with it off a phone advertisement is not a candidate at
+all. With it on, a phone is still only read when its name matches one in the
+system's device list (system_profiler SPBluetoothDataType, which the app already
+reads for the paired rows) — a stranger's phone in range broadcasts the same
+payload under a name this Mac has no record of, and is not connected. Consecutive failed sessions back off one minute and then five, and the
+third suspends that UUID for the rest of the app run until the user refreshes.
 Scanner sessions are limited to two concurrent connections, an eight-second
 deadline, and a per-device cooldown. A BLE row without a battery value, including
 after a failed read, has no extra status label. Trusted helper devices continue
