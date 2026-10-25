@@ -33,7 +33,7 @@
 "settings.appIconPlacement.dockExitHint" = "Значок в Dock исчезнет после закрытия настроек";
 "settings.appIcon.dockGroup" = "Значок в Dock";
 "settings.dockIconBackground" = "Фон значка Dock";
-"settings.dockIconBackground.description" = "Применяется к динамическому значку в Dock. «Как в системе» читает «Стиль значков и виджетов» в «Системных настройках › Внешний вид» (macOS 15 или новее).";
+"settings.dockIconBackground.description" = "Применяется к динамическому значку в Dock. «Как в системе» читает «Стиль значков и виджетов» в «Системных настройках › Внешний вид» (macOS 15 или новее). Значок приложения в Finder и Launchpad следует светлому и тёмному оформлению системы начиная с macOS 26; выбор «Тёмный» или «Светлый» влияет только на динамический значок в Dock.";
 "settings.dockIconBackground.system" = "Как в системе";
 "settings.dockIconBackground.dark" = "Тёмный";
 "settings.dockIconBackground.light" = "Светлый";

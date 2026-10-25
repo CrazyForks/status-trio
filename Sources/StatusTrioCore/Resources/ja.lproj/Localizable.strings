@@ -33,7 +33,7 @@
 "settings.appIconPlacement.dockExitHint" = "設定を閉じると Dock アイコンは非表示になります";
 "settings.appIcon.dockGroup" = "Dock アイコン";
 "settings.dockIconBackground" = "Dock アイコンの背景";
-"settings.dockIconBackground.description" = "Dock に表示されるライブアイコンに適用されます。「システム設定を使用」は「システム設定 › 外観 › アイコンとウィジェットのスタイル」を参照します（macOS 15 以降）。";
+"settings.dockIconBackground.description" = "Dock に表示されるライブアイコンに適用されます。「システム設定を使用」は「システム設定 › 外観 › アイコンとウィジェットのスタイル」を参照します（macOS 15 以降）。Finder と Launchpad のアプリアイコンは macOS 26 以降でシステムのライト/ダークの外観に従います。「ダーク」または「ライト」を選んでも影響するのは Dock のライブアイコンだけです。";
 "settings.dockIconBackground.system" = "システム設定を使用";
 "settings.dockIconBackground.dark" = "ダーク";
 "settings.dockIconBackground.light" = "ライト";

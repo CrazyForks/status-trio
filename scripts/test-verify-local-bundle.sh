@@ -57,7 +57,8 @@ SH
     local script
     for script in test.sh test-workflow-policy.sh test-macos13-deployment-contract-regressions.sh \
         test-macos13-deployment-contract.sh test-appcast-minimum-system-version.sh \
-        test-macos13-bundle-contract.sh test-privileged-helper-bundle-contract.sh \
+        test-macos13-bundle-contract.sh test-app-icon-contract.sh \
+        test-privileged-helper-bundle-contract.sh \
         test-mobile-battery-helper.sh test-mobile-battery-rpaths.sh test-otool-dependencies.sh \
         test-macos13-sparkle-contract.sh test-mobile-battery-source-cache.sh \
         test-mobile-battery-clang-version.sh test-release-workflow-policy.sh \

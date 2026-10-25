@@ -33,7 +33,7 @@
 "settings.appIconPlacement.dockExitHint" = "L'icona nel Dock scomparirà dopo aver chiuso le impostazioni";
 "settings.appIcon.dockGroup" = "Icona del Dock";
 "settings.dockIconBackground" = "Sfondo icona Dock";
-"settings.dockIconBackground.description" = "Si applica all’icona dinamica nel Dock. “Segui il sistema” legge “Stile icone e widget” in Impostazioni di Sistema › Aspetto (macOS 15 o successivo).";
+"settings.dockIconBackground.description" = "Si applica all’icona dinamica nel Dock. “Segui il sistema” legge “Stile icone e widget” in Impostazioni di Sistema › Aspetto (macOS 15 o successivo). L’icona dell’app nel Finder e in Launchpad segue l’aspetto chiaro e scuro del sistema a partire da macOS 26; scegliere “Scuro” o “Chiaro” influisce solo sull’icona dinamica nel Dock.";
 "settings.dockIconBackground.system" = "Segui il sistema";
 "settings.dockIconBackground.dark" = "Scuro";
 "settings.dockIconBackground.light" = "Chiaro";

@@ -189,7 +189,7 @@
 "settings.appIconPlacement.dockExitHint" = "سيختفي رمز Dock بعد إغلاق الإعدادات";
 "settings.appIcon.dockGroup" = "أيقونة Dock";
 "settings.dockIconBackground" = "خلفية أيقونة Dock";
-"settings.dockIconBackground.description" = "ينطبق على الأيقونة المباشرة في Dock. يقرأ «اتباع النظام» إعداد «نمط الرموز والودجات» في إعدادات النظام › المظهر (macOS 15 أو أحدث).";
+"settings.dockIconBackground.description" = "ينطبق على الأيقونة المباشرة في Dock. يقرأ «اتباع النظام» إعداد «نمط الرموز والودجات» في إعدادات النظام › المظهر (macOS 15 أو أحدث). تتبع أيقونة التطبيق في Finder وLaunchpad مظهر النظام الفاتح والداكن على macOS 26 أو أحدث؛ واختيار «داكن» أو «فاتح» يؤثر فقط في الأيقونة المباشرة في Dock.";
 "settings.dockIconBackground.system" = "اتباع النظام";
 "settings.dockIconBackground.dark" = "داكن";
 "settings.dockIconBackground.light" = "فاتح";

@@ -100,29 +100,6 @@ swift "${SWIFT_BUILD_ARGS[@]}"
 BIN_PATH="$(swift "${SWIFT_BUILD_ARGS[@]}" --show-bin-path)"
 APP_DIR="$ROOT/dist/StatusTrio.app"
 CONTENTS="$APP_DIR/Contents"
-ICON_SOURCE="$ROOT/Support/AppIcon.png"
-ICONSET_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/StatusTrio.XXXXXX")"
-ICONSET_DIR="$ICONSET_ROOT/AppIcon.iconset"
-
-trap 'rm -rf "$ICONSET_ROOT"' EXIT
-
-sips -s format png -z 1024 1024 "$ICON_SOURCE" --out "$ICONSET_ROOT/AppIcon.png" >/dev/null
-mkdir -p "$ICONSET_DIR"
-
-while read -r pixel filename; do
-    sips -z "$pixel" "$pixel" "$ICONSET_ROOT/AppIcon.png" --out "$ICONSET_DIR/$filename" >/dev/null
-done <<'SIZES'
-16 icon_16x16.png
-32 icon_16x16@2x.png
-32 icon_32x32.png
-64 icon_32x32@2x.png
-128 icon_128x128.png
-256 icon_128x128@2x.png
-256 icon_256x256.png
-512 icon_256x256@2x.png
-512 icon_512x512.png
-1024 icon_512x512@2x.png
-SIZES
 
 rm -rf "$APP_DIR"
 mkdir -p "$CONTENTS/MacOS" "$CONTENTS/Resources" "$CONTENTS/Frameworks"
@@ -263,7 +240,70 @@ for plist in "$CONTENTS/Info.plist" "$CONTENTS/Resources/"*.lproj/InfoPlist.stri
     done
 done
 
-iconutil --convert icns --output "$CONTENTS/Resources/AppIcon.icns" "$ICONSET_DIR"
+# Icon Composer is the source of truth for the bundle icon: actool writes an
+# appearance-aware Assets.car plus the legacy .icns fallback that macOS 13-15
+# still read. The deployment target stays whatever Support/Info.plist declares,
+# so a future minimum raises the fallback set with it instead of being pinned
+# here. Assets.car/AppIcon.icns land in Contents/Resources alongside the other
+# resources; nothing is allowed to silently ship without them.
+ICON_DOCUMENT="$ROOT/Support/AppIcon.icon"
+if [[ ! -d "$ICON_DOCUMENT" ]]; then
+    echo "Error: missing Icon Composer document at $ICON_DOCUMENT." >&2
+    exit 1
+fi
+ICON_DEPLOYMENT_TARGET="$(/usr/libexec/PlistBuddy -c 'Print :LSMinimumSystemVersion' "$ROOT/Support/Info.plist" 2>/dev/null || true)"
+if [[ -z "$ICON_DEPLOYMENT_TARGET" ]]; then
+    echo "Error: Support/Info.plist declares no LSMinimumSystemVersion for the app icon." >&2
+    exit 1
+fi
+ICON_WORK_DIR="$(mktemp -d "${TMPDIR:-/tmp}/StatusTrio.XXXXXX")"
+trap 'rm -rf "$ICON_WORK_DIR"' EXIT
+ICON_PARTIAL_PLIST="$ICON_WORK_DIR/AppIcon.partial.plist"
+
+xcrun actool "$ICON_DOCUMENT" \
+    --compile "$CONTENTS/Resources" \
+    --platform macosx \
+    --minimum-deployment-target "$ICON_DEPLOYMENT_TARGET" \
+    --app-icon AppIcon \
+    --output-partial-info-plist "$ICON_PARTIAL_PLIST" >/dev/null
+
+for icon_artifact in Assets.car AppIcon.icns; do
+    if [[ ! -f "$CONTENTS/Resources/$icon_artifact" ]]; then
+        echo "Error: actool did not produce Contents/Resources/$icon_artifact for $ICON_DOCUMENT." >&2
+        exit 1
+    fi
+done
+
+# actool's legacy .icns only carries the 16 and 128 px representations, but
+# macOS 13-15 draw the bundle icon from it at every Finder and Dock size.
+# Rebuild it from the light artwork the Aqua appearance uses; Assets.car stays
+# the appearance-aware source for macOS 26 and later.
+rm -f "$CONTENTS/Resources/AppIcon.icns"
+bash "$ROOT/scripts/generate-app-icon-icns.sh" \
+    "$ICON_DOCUMENT/Assets/AppIcon-light.png" \
+    "$CONTENTS/Resources/AppIcon.icns"
+if [[ ! -s "$CONTENTS/Resources/AppIcon.icns" ]]; then
+    echo "Error: failed to generate the legacy AppIcon.icns fallback." >&2
+    exit 1
+fi
+
+# The partial Info.plist names the compiled catalog. Merge it instead of
+# assuming the shape, and refuse a document that stopped declaring the icon.
+ICON_NAME="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIconName' "$ICON_PARTIAL_PLIST" 2>/dev/null || true)"
+ICON_FILE="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIconFile' "$ICON_PARTIAL_PLIST" 2>/dev/null || true)"
+if [[ "$ICON_NAME" != "AppIcon" || "$ICON_FILE" != "AppIcon" ]]; then
+    echo "Error: actool partial Info.plist must declare CFBundleIconName=AppIcon and CFBundleIconFile=AppIcon (found '${ICON_NAME:-}' and '${ICON_FILE:-}')." >&2
+    exit 1
+fi
+/usr/libexec/PlistBuddy -c "Set :CFBundleIconName $ICON_NAME" "$CONTENTS/Info.plist"
+/usr/libexec/PlistBuddy -c "Set :CFBundleIconFile $ICON_FILE" "$CONTENTS/Info.plist"
+
+FINAL_ICON_NAME="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIconName' "$CONTENTS/Info.plist")"
+FINAL_ICON_FILE="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIconFile' "$CONTENTS/Info.plist")"
+if [[ "$FINAL_ICON_NAME" != "AppIcon" || "$FINAL_ICON_FILE" != "AppIcon" ]]; then
+    echo "Error: $CONTENTS/Info.plist must declare CFBundleIconName=AppIcon and CFBundleIconFile=AppIcon (found '$FINAL_ICON_NAME' and '$FINAL_ICON_FILE')." >&2
+    exit 1
+fi
 
 chmod +x "$CONTENTS/MacOS/StatusTrio"
 

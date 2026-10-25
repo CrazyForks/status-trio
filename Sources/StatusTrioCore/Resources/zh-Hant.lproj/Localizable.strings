@@ -33,7 +33,7 @@
 "settings.appIconPlacement.dockExitHint" = "關閉設定後，Dock 圖示將自動消失";
 "settings.appIcon.dockGroup" = "Dock 圖示";
 "settings.dockIconBackground" = "Dock 圖示背景";
-"settings.dockIconBackground.description" = "僅影響 Dock 中顯示的即時圖示。「跟隨系統」會讀取「系統設定 › 外觀 › 圖示與小工具樣式」（macOS 15 及以上）。";
+"settings.dockIconBackground.description" = "僅影響 Dock 中顯示的即時圖示。「跟隨系統」會讀取「系統設定 › 外觀 › 圖示與小工具樣式」（macOS 15 及以上）。Finder 與啟動台中的應用程式圖示在 macOS 26 及以上跟隨系統深色與淺色外觀；選擇「深色」或「淺色」只影響 Dock 中的即時圖示。";
 "settings.dockIconBackground.system" = "跟隨系統";
 "settings.dockIconBackground.dark" = "深色";
 "settings.dockIconBackground.light" = "淺色";

@@ -110,6 +110,11 @@ SH
 set -euo pipefail
 printf 'bundle\n' >> "${VERIFY_TRACE:?}"
 SH
+    cat > "$fixture/scripts/test-app-icon-contract.sh" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+printf 'app-icon-contract\n' >> "${VERIFY_TRACE:?}"
+SH
     cat > "$fixture/scripts/test-verify-local-bundle.sh" <<'SH'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -196,6 +201,7 @@ SH
         "$fixture/scripts/verify-platform-version.sh" \
         "$fixture/scripts/verify-mobile-battery-bundle.sh" \
         "$fixture/scripts/verify-privileged-helper-bundle.sh" \
+        "$fixture/scripts/test-app-icon-contract.sh" \
         "$fixture/scripts/test-verify-local-bundle.sh"
 }
 
@@ -298,7 +304,7 @@ bash "$WORK/repo/scripts/verify-local.sh" full >"$WORK/full.log" 2>&1 ||
 for expected in forbidden "swift test" "swift build -c release" deployment deployment-regressions \
     appcast helper-contract mobile-helper mobile-rpaths otool sparkle mobile-source-cache release-policy \
     release-pipeline release-notarization clang self-test \
-    workflow-policy bundle-self-test bundle "build-app release no-open" \
+    workflow-policy bundle-self-test bundle app-icon-contract "build-app release no-open" \
     "BUNDLE_ID=com.lingsmbp.StatusTrio.dev.verify-local" \
     "APP_NAME=Status Trio (Verify Local)" "UNIVERSAL_BUILD=0" \
     "platform dist/StatusTrio.app/Contents/MacOS/StatusTrio 13.0 26" \

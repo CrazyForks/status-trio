@@ -33,7 +33,7 @@
 "settings.appIconPlacement.dockExitHint" = "Das Dock-Symbol verschwindet nach Schließen der Einstellungen";
 "settings.appIcon.dockGroup" = "Dock-Symbol";
 "settings.dockIconBackground" = "Dock-Symbol Hintergrund";
-"settings.dockIconBackground.description" = "Gilt für das Live-Symbol im Dock. „Systemeinstellung folgen“ liest „Symbol- und Widgetstil“ in Systemeinstellungen › Erscheinungsbild (macOS 15 oder neuer).";
+"settings.dockIconBackground.description" = "Gilt für das Live-Symbol im Dock. „Systemeinstellung folgen“ liest „Symbol- und Widgetstil“ in Systemeinstellungen › Erscheinungsbild (macOS 15 oder neuer). Das App-Symbol in Finder und Launchpad folgt ab macOS 26 dem hellen und dunklen Erscheinungsbild des Systems; „Dunkel“ oder „Hell“ wirkt nur auf das Live-Symbol im Dock.";
 "settings.dockIconBackground.system" = "Systemeinstellung folgen";
 "settings.dockIconBackground.dark" = "Dunkel";
 "settings.dockIconBackground.light" = "Hell";
