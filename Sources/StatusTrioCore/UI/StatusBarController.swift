@@ -535,6 +535,12 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         popoverWindow?.enableDisplayOnFullScreenSpaces()
         installPopoverWindowFocusObservers(popoverWindow)
         popoverWindow?.makeKey()
+        // Do not focus the first row on open. With keyboard navigation enabled,
+        // AppKit's initial key view drew a blue focus ring on the battery row
+        // before the user touched the keyboard. Clearing the first responder
+        // keeps Tab working: the window still hands the first Tab to the key
+        // view loop, so the panel stays fully keyboard operable.
+        popoverWindow?.makeFirstResponder(nil)
         dockActivationLogger.notice(
             """
             Popover presented shown=\(self.popover.isShown) \
