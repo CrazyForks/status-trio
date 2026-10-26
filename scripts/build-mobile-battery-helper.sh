@@ -4,6 +4,8 @@ set -euo pipefail
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 MANIFEST="$ROOT/Support/mobile-battery-dependencies.json"
 WORK="$ROOT/.build/mobile-battery"
+source "$ROOT/scripts/build-timing.sh"
+trap 'build_timing_finish "$?"' EXIT
 SDK_PATH="$(xcrun --sdk macosx --show-sdk-path)"
 SDK_VERSION="$(xcrun --sdk macosx --show-sdk-version)"
 MINIMUM_MACOS="13.0"
@@ -20,13 +22,28 @@ else
     ARCHES=("$(uname -m)")
 fi
 
+build_phase mobile-source-checkout
 bash "$ROOT/scripts/prepare-mobile-battery-sources.sh" "$MANIFEST" "$WORK"
 
+strip_development_rpaths() {
+    local binary="$1"
+    local prefix="$2"
+    local rpaths
+    rpaths="$(otool -l "$binary" | python3 "$ROOT/scripts/otool-rpaths.py")"
+    while IFS= read -r rpath; do
+        case "$rpath" in
+            "$prefix"/*) install_name_tool -delete_rpath "$rpath" "$binary" ;;
+        esac
+    done <<< "$rpaths"
+}
+
 for arch in "${ARCHES[@]}"; do
+    build_phase "mobile-dependencies-$arch"
     arch_root="$WORK/$arch"
     build_root="$arch_root/build"
     source_root="$build_root/src"
     prefix="$arch_root/prefix"
+    marker="$arch_root/.dependencies-cache.json"
     curl_pkgconfig="$build_root/apple-curl-pkgconfig"
     if [[ "$arch" == "arm64" ]]; then
         openssl_target="darwin64-arm64-cc"
@@ -44,13 +61,40 @@ for arch in "${ARCHES[@]}"; do
     CLANGXX="$(xcrun --sdk macosx --find clang++)"
     CLANG_VERSION="$("$CLANG" --version)"
     CLANG_VERSION="${CLANG_VERSION%%$'\n'*}"
-    BUILD_KEY="$(printf '%s\n%s\n%s\n%s\n%s\n' "$arch" "$SDK_VERSION" "$MINIMUM_MACOS" "$CLANG_VERSION" "source-pinned-dynamic-v1" "$(shasum -a 256 "$MANIFEST" | awk '{print $1}')" | shasum -a 256 | awk '{print $1}')"
+    BUILD_KEY="$(python3 "$ROOT/scripts/mobile-battery-cache.py" prepare-key --root "$ROOT" --arch "$arch" --minimum-macos "$MINIMUM_MACOS")"
     REBUILD_DEPENDENCIES=1
-    if [[ "${MOBILE_BATTERY_FORCE_SOURCE_BUILD:-0}" != "1" && -f "$arch_root/.dependencies-build-key" && "$(cat "$arch_root/.dependencies-build-key")" == "$BUILD_KEY" && -f "$prefix/lib/libimobiledevice-1.0.dylib" && -f "$prefix/lib/libtatsu.dylib" ]]; then
-        REBUILD_DEPENDENCIES=0
-        echo "Reusing pinned $arch dependency build for SDK $SDK_VERSION."
+    if [[ "${MOBILE_BATTERY_FORCE_SOURCE_BUILD:-0}" == "1" ]]; then
+        echo "MobileBattery cache bypassed for $arch by MOBILE_BATTERY_FORCE_SOURCE_BUILD=1."
+        rm -rf "$build_root" "$prefix" "$marker" "$arch_root/.dependencies-build-key"
+        mkdir -p "$source_root" "$prefix" "$curl_pkgconfig"
+    elif [[ -e "$prefix" || -e "$marker" ]]; then
+        echo "MobileBattery cache candidate (restored/local) found for $arch."
+        cache_log="$WORK/.cache-validation-$arch.log"
+        cache_status=0
+        python3 "$ROOT/scripts/mobile-battery-cache.py" validate \
+            --root "$ROOT" --arch "$arch" \
+            --minimum-macos "$MINIMUM_MACOS" \
+            --expected-key "$BUILD_KEY" >"$cache_log" 2>&1 || cache_status=$?
+        cat "$cache_log"
+        case "$cache_status" in
+            0)
+                REBUILD_DEPENDENCIES=0
+                echo "MobileBattery cache validated for $arch."
+                echo "MobileBattery third-party dependency build skipped for $arch."
+                ;;
+            10|11)
+                echo "MobileBattery cache rejected for $arch (status $cache_status); rebuilding pinned sources."
+                rm -rf "$build_root" "$prefix" "$marker" "$arch_root/.dependencies-build-key"
+                mkdir -p "$source_root" "$prefix" "$curl_pkgconfig"
+                ;;
+            *)
+                echo "Error: MobileBattery cache inspection failed for $arch (status $cache_status); refusing to treat it as a cache miss." >&2
+                exit "$cache_status"
+                ;;
+        esac
     else
-        rm -rf "$arch_root"
+        echo "MobileBattery cache miss for $arch; building pinned sources."
+        rm -rf "$build_root" "$prefix" "$marker" "$arch_root/.dependencies-build-key"
         mkdir -p "$source_root" "$prefix" "$curl_pkgconfig"
     fi
     export CC="$CLANG -arch $arch -isysroot $SDK_PATH"
@@ -100,9 +144,13 @@ EOF
     build_autotools libtatsu
     build_autotools libimobiledevice --without-cython --without-readline --with-openssl
 
-    printf '%s\n' "$BUILD_KEY" > "$arch_root/.dependencies-build-key"
+    python3 "$ROOT/scripts/mobile-battery-cache.py" seal \
+        --root "$ROOT" --arch "$arch" \
+        --minimum-macos "$MINIMUM_MACOS" \
+        --expected-key "$BUILD_KEY"
     fi
 
+    build_phase "mobile-helper-$arch"
     helper="$arch_root/StatusTrioMobileBatteryHelper"
     mkdir -p "$arch_root"
     HELPER_CFLAGS="$(pkg-config --cflags libimobiledevice-1.0 libusbmuxd-2.0 libplist-2.0)"
@@ -117,22 +165,22 @@ EOF
         -Wl,-headerpad_max_install_names \
         -o "$helper"
     chmod 755 "$helper"
+    strip_development_rpaths "$helper" "$prefix"
 
-    strip_development_rpaths() {
-        local binary="$1"
-        while IFS= read -r rpath; do
-            case "$rpath" in
-                "$prefix"/*) install_name_tool -delete_rpath "$rpath" "$binary" ;;
-            esac
-        done < <(otool -l "$binary" | python3 "$ROOT/scripts/otool-rpaths.py")
-    }
-
-    strip_development_rpaths "$helper"
+    # Keep sealed prefixes immutable. Strip each thin staging copy before lipo,
+    # since the architecture-specific rpath is absent from the other slice.
+    package_libraries="$arch_root/package-libraries"
+    rm -rf "$package_libraries"
+    mkdir -p "$package_libraries"
     while IFS= read -r -d '' library; do
-        strip_development_rpaths "$library"
-    done < <(find "$prefix/lib" -maxdepth 1 -type f -name '*.dylib*' -print0)
+        cp -P "$library" "$package_libraries/"
+    done < <(find "$prefix/lib" -maxdepth 1 \( -type f -o -type l \) -name '*.dylib*' ! -name 'libplist++*' -print0)
+    while IFS= read -r -d '' library; do
+        strip_development_rpaths "$library" "$prefix"
+    done < <(find "$package_libraries" -maxdepth 1 -type f -name '*.dylib*' -print0)
 done
 
+build_phase mobile-package
 PACKAGE="$WORK/package"
 rm -rf "$PACKAGE"
 mkdir -p "$PACKAGE/Helpers" "$PACKAGE/Frameworks/MobileBattery" "$PACKAGE/Resources/MobileBatteryLicenses"
@@ -141,24 +189,24 @@ if [[ "${#ARCHES[@]}" -eq 1 ]]; then
     cp "${WORK}/${ARCHES[0]}/StatusTrioMobileBatteryHelper" "$PACKAGE/Helpers/StatusTrioMobileBatteryHelper"
     while IFS= read -r -d '' library; do
         cp -P "$library" "$PACKAGE/Frameworks/MobileBattery/"
-    done < <(find "${WORK}/${ARCHES[0]}/prefix/lib" -maxdepth 1 \( -type f -o -type l \) -name '*.dylib*' ! -name 'libplist++*' -print0)
+    done < <(find "${WORK}/${ARCHES[0]}/package-libraries" -maxdepth 1 \( -type f -o -type l \) -name '*.dylib*' -print0)
 else
     lipo -create "$WORK/arm64/StatusTrioMobileBatteryHelper" "$WORK/x86_64/StatusTrioMobileBatteryHelper" -output "$PACKAGE/Helpers/StatusTrioMobileBatteryHelper"
     while IFS= read -r -d '' library; do
         filename="$(basename "$library")"
         if [[ "$filename" == libplist++* ]]; then continue; fi
-        other="$WORK/x86_64/prefix/lib/$filename"
+        other="$WORK/x86_64/package-libraries/$filename"
         if [[ ! -f "$other" ]]; then
             echo "Error: missing x86_64 library slice for $filename." >&2
             exit 1
         fi
         lipo -create "$library" "$other" -output "$PACKAGE/Frameworks/MobileBattery/$filename"
-    done < <(find "$WORK/arm64/prefix/lib" -maxdepth 1 -type f -name '*.dylib*' -print0)
+    done < <(find "$WORK/arm64/package-libraries" -maxdepth 1 -type f -name '*.dylib*' -print0)
     while IFS= read -r -d '' link; do
         filename="$(basename "$link")"
         if [[ "$filename" == libplist++* ]]; then continue; fi
         cp -P "$link" "$PACKAGE/Frameworks/MobileBattery/$filename"
-    done < <(find "$WORK/arm64/prefix/lib" -maxdepth 1 -type l -name '*.dylib*' -print0)
+    done < <(find "$WORK/arm64/package-libraries" -maxdepth 1 -type l -name '*.dylib*' -print0)
 fi
 
 mkdir -p "$ROOT/Support/MobileBatteryHelper/ThirdPartyNotices"

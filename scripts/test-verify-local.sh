@@ -80,6 +80,10 @@ SH
 set -euo pipefail
 printf 'release-policy\n' >> "${VERIFY_TRACE:?}"
 SH
+    for script in test-mobile-battery-build-cache.sh test-ci-diagnostics.sh \
+        test-ci-workflow.sh test-build-timing.sh; do
+        printf '#!/usr/bin/env bash\nexit 0\n' > "$fixture/scripts/$script"
+    done
     cat > "$fixture/scripts/test-release-pipeline.sh" <<'SH'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -338,5 +342,17 @@ SWIFT_BUILD_STATUS=9 expect_failure "a failing full build" \
     bash "$WORK/repo/scripts/verify-local.sh" full
 grep -Fq "Release build" "$WORK/repo/.build/local-verification/status.txt" ||
     fail "failed full verification did not record the Release build step"
+
+# Bash parses only its first script argument; a later broken script must fail too.
+printf 'if then\n' > "$WORK/repo/scripts/zzzz-invalid-syntax.sh"
+printf '#!/usr/bin/env bash\nexit 0\n' > "$WORK/repo/scripts/zzzzz-valid-syntax.sh"
+: > "$VERIFY_TRACE"
+expect_failure "a syntax error after the first script" \
+    bash "$WORK/repo/scripts/verify-local.sh" quick
+grep -Fq "step=Shell syntax" "$WORK/repo/.build/local-verification/status.txt" ||
+    fail "syntax failure did not record the syntax step"
+if grep -Fq "swift test" "$VERIFY_TRACE"; then
+    fail "Swift tests ran after a shell syntax failure"
+fi
 
 echo "verify-local contract passed"

@@ -2,6 +2,8 @@
 set -euo pipefail
 
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+source "$ROOT/scripts/build-timing.sh"
+trap 'build_timing_finish "$?"' EXIT
 CONFIGURATION="${1:-release}"
 OPEN_APP="${2:-open}"
 BUNDLE_ID="${BUNDLE_ID:-com.lingsmbp.StatusTrio}"
@@ -96,8 +98,10 @@ if [[ "$UNIVERSAL_BUILD" == "1" ]]; then
     SWIFT_BUILD_ARGS+=(--arch arm64 --arch x86_64)
 fi
 
+build_phase swift-release-build
 swift "${SWIFT_BUILD_ARGS[@]}"
 BIN_PATH="$(swift "${SWIFT_BUILD_ARGS[@]}" --show-bin-path)"
+build_phase bundle-assembly
 APP_DIR="$ROOT/dist/StatusTrio.app"
 CONTENTS="$APP_DIR/Contents"
 
@@ -123,7 +127,9 @@ ditto "$SPARKLE_FRAMEWORK_SOURCE" "$CONTENTS/Frameworks/Sparkle.framework"
 
 # The mobile-device helper is built from exact upstream commits. Its runtime
 # dependency graph is packaged into the app so users do not need Homebrew.
+build_phase mobile-battery-total
 bash "$ROOT/scripts/build-mobile-battery-helper.sh"
+build_phase bundle-assembly-and-icon-assets
 MOBILE_BATTERY_PACKAGE="$ROOT/.build/mobile-battery/package"
 mkdir -p "$CONTENTS/Helpers" "$CONTENTS/Frameworks/MobileBattery" "$CONTENTS/Resources/MobileBatteryLicenses"
 ditto "$MOBILE_BATTERY_PACKAGE/Helpers/StatusTrioMobileBatteryHelper" "$CONTENTS/Helpers/StatusTrioMobileBatteryHelper"
@@ -257,7 +263,7 @@ if [[ -z "$ICON_DEPLOYMENT_TARGET" ]]; then
     exit 1
 fi
 ICON_WORK_DIR="$(mktemp -d "${TMPDIR:-/tmp}/StatusTrio.XXXXXX")"
-trap 'rm -rf "$ICON_WORK_DIR"' EXIT
+trap 'build_timing_finish "$?"; rm -rf "$ICON_WORK_DIR"' EXIT
 ICON_PARTIAL_PLIST="$ICON_WORK_DIR/AppIcon.partial.plist"
 
 xcrun actool "$ICON_DOCUMENT" \
@@ -358,6 +364,7 @@ if [[ "$PRIVILEGED_HELPER" == "1" && "$SIGNING_IDENTITY" == "-" ]]; then
     echo "Warning: the privileged helper is bundled but Ad-hoc signed; Low Power Mode control will not work until it is signed with a Developer ID identity." >&2
 fi
 
+build_phase app-codesign
 codesign "${SIGNING_ARGS[@]}" "$CONTENTS/Frameworks/Sparkle.framework"
 while IFS= read -r -d '' mobile_library; do
     codesign "${SIGNING_ARGS[@]}" "$mobile_library"
@@ -368,6 +375,7 @@ if [[ "$PRIVILEGED_HELPER" == "1" ]]; then
 fi
 codesign "${SIGNING_ARGS[@]}" "$APP_DIR"
 codesign --verify --deep --strict --verbose=2 "$APP_DIR"
+build_phase signed-bundle-contracts
 bash "$ROOT/scripts/verify-mobile-battery-bundle.sh" "$APP_DIR"
 bash "$ROOT/scripts/verify-privileged-helper-bundle.sh" "$APP_DIR"
 

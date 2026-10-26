@@ -88,7 +88,7 @@ make_fixture "$invalid"
 ruby -e '
   path = ARGV[0]
   source = File.read(path)
-  source.sub!("          bash scripts/test.sh\n", "          swift test\n") or
+  source.sub!(%q{run: bash "$CI_TOOLS_ROOT/scripts/ci-run-stage.sh" tests bash scripts/test.sh}, "run: swift test") or
     abort "test wrapper command missing"
   File.write(path, source)
 ' "$invalid/.github/workflows/release.yml"
@@ -177,5 +177,64 @@ ruby -e '
   File.write(path, source)
 ' "$invalid/.github/workflows/release.yml"
 expect_failure "verify job without declared outputs" run_policy "$invalid"
+
+invalid="$WORK/invalid-test-failure-suppression"
+make_fixture "$invalid"
+ruby -e '
+  path = ARGV[0]
+  source = File.read(path)
+  source.sub!("      - name: Run tests\n", "      - name: Run tests\n        continue-on-error: true\n") or abort "tests missing"
+  File.write(path, source)
+' "$invalid/.github/workflows/release.yml"
+expect_failure "suppressed Swift test failure" run_policy "$invalid"
+
+invalid="$WORK/invalid-summary-on-success-only"
+make_fixture "$invalid"
+ruby -e '
+  path = ARGV[0]
+  source = File.read(path)
+  source.sub!("      - name: Summarize verify diagnostics\n        if: always()", "      - name: Summarize verify diagnostics\n        if: success()") or abort "summary missing"
+  File.write(path, source)
+' "$invalid/.github/workflows/release.yml"
+expect_failure "diagnostics lost after failure" run_policy "$invalid"
+
+invalid="$WORK/invalid-late-preflight"
+make_fixture "$invalid"
+ruby -e '
+  path = ARGV[0]
+  source = File.read(path)
+  preflight = source.slice!(/      - name: Run static release preflight\n.*?(?=      - name: Run tests\n)/m) or abort "preflight missing"
+  source.sub!(/(?=      - name: Run native and release-contract tests\n)/, preflight)
+  File.write(path, source)
+' "$invalid/.github/workflows/release.yml"
+expect_failure "static preflight after expensive tests" run_policy "$invalid"
+
+invalid="$WORK/invalid-broad-native-cache"
+make_fixture "$invalid"
+ruby -e '
+  path = ARGV[0]; source = File.read(path)
+  source.sub!(".build/mobile-battery/arm64/prefix", ".build/mobile-battery") or abort "cache path missing"
+  File.write(path, source)
+' "$invalid/.github/workflows/release.yml"
+expect_failure "cache including helper/package/source outputs" run_policy "$invalid"
+
+invalid="$WORK/invalid-native-cache-fallback"
+make_fixture "$invalid"
+ruby -e '
+  path = ARGV[0]; source = File.read(path)
+  source.sub!("          key: ${{ steps.native-cache-keys.outputs.key_arm64 }}",
+    "          restore-keys: status-trio-mobile-battery-\n          key: ${{ steps.native-cache-keys.outputs.key_arm64 }}") or abort "cache key missing"
+  File.write(path, source)
+' "$invalid/.github/workflows/release.yml"
+expect_failure "broad native restore-key fallback" run_policy "$invalid"
+
+invalid="$WORK/invalid-untrusted-native-cache"
+make_fixture "$invalid"
+ruby -e '
+  path = ARGV[0]; source = File.read(path)
+  source.sub!("        if: github.ref == '"'"'refs/heads/main'"'"'\n", "") or abort "cache trust guard missing"
+  File.write(path, source)
+' "$invalid/.github/workflows/release.yml"
+expect_failure "cache restore without trusted-main guard" run_policy "$invalid"
 
 echo "release workflow policy regressions passed"

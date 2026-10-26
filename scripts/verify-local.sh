@@ -81,7 +81,8 @@ run_step "macOS SDK version" xcrun --sdk macosx --show-sdk-version
 
 shopt -s nullglob
 SYNTAX_FILES=("scripts/"*.sh)
-run_step "Shell syntax" bash -n "${SYNTAX_FILES[@]}"
+run_step "Shell syntax" bash -e -c 'for script; do bash -n "$script"; done' \
+    bash "${SYNTAX_FILES[@]}"
 
 if [[ "$MODE" == "quick" ]]; then
     echo "quick filter: $FILTER"
@@ -127,6 +128,10 @@ else
         "scripts/test-otool-dependencies.sh"
         "scripts/test-macos13-sparkle-contract.sh"
         "scripts/test-mobile-battery-source-cache.sh"
+        "scripts/test-mobile-battery-build-cache.sh"
+        "scripts/test-ci-diagnostics.sh"
+        "scripts/test-ci-workflow.sh"
+        "scripts/test-build-timing.sh"
         "scripts/test-release-workflow-policy.sh"
         "scripts/test-release-pipeline.sh"
         "scripts/test-release-notarization.sh"
