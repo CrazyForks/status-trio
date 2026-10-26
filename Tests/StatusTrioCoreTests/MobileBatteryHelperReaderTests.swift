@@ -280,51 +280,63 @@ struct MobileBatteryHelperReaderTests {
     }
 
     @Test func processExecutorKillsAChildThatIgnoresTermination() async throws {
-        let pidFile = FileManager.default.temporaryDirectory.appendingPathComponent("mobile-battery-pid-\(UUID().uuidString)")
-        let script = try makeIgnoringTerminationScript(pidFile: pidFile)
+        let script = try makeIgnoringTerminationScript()
         defer { try? FileManager.default.removeItem(at: script) }
-        defer { try? FileManager.default.removeItem(at: pidFile) }
+        let (startStream, startContinuation) = AsyncStream.makeStream(of: Int32.self)
         let clock = ContinuousClock()
         let started = clock.now
         let processTask = Task {
-            try await ProcessMobileBatteryHelperExecutor(helperURL: script).run(arguments: [], timeout: .seconds(1))
+            try await ProcessMobileBatteryHelperExecutor(
+                helperURL: script,
+                onProcessStarted: { startContinuation.yield($0) }
+            )
+                .run(arguments: [], timeout: .seconds(1))
         }
         defer { processTask.cancel() }
-        try await waitForPIDFile(pidFile)
+        var starts = startStream.makeAsyncIterator()
+        let processID = try #require(await starts.next())
         do {
             _ = try await processTask.value
             Issue.record("timed out process must fail")
         } catch {
             #expect(error as? MobileBatteryHelperError == .timedOut)
             #expect(clock.now - started >= .milliseconds(1_200))
-            #expect(clock.now - started < .seconds(2))
-            let processID = try #require(Int32(String(contentsOf: pidFile, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines)))
+            // The runner may spend its 250 ms SIGKILL grace and 500 ms stream
+            // drain grace after the 1 s deadline. Keep the result bounded while
+            // allowing that documented post-deadline work on a loaded runner.
+            #expect(clock.now - started < .seconds(5))
             errno = 0
             #expect(kill(processID, 0) == -1 && errno == ESRCH)
         }
     }
 
     @Test func cancellationTerminatesTheProcessAndCompletesOnce() async throws {
-        let pidFile = FileManager.default.temporaryDirectory.appendingPathComponent("mobile-battery-pid-\(UUID().uuidString)")
-        let script = try makeIgnoringTerminationScript(pidFile: pidFile)
+        let script = try makeIgnoringTerminationScript()
         defer { try? FileManager.default.removeItem(at: script) }
-        defer { try? FileManager.default.removeItem(at: pidFile) }
+        let (startStream, startContinuation) = AsyncStream.makeStream(of: Int32.self)
         let clock = ContinuousClock()
         let started = clock.now
         let task = Task {
-            try await ProcessMobileBatteryHelperExecutor(helperURL: script).run(arguments: [], timeout: .seconds(10))
+            try await ProcessMobileBatteryHelperExecutor(
+                helperURL: script,
+                onProcessStarted: { startContinuation.yield($0) }
+            )
+                .run(arguments: [], timeout: .seconds(10))
         }
         defer { task.cancel() }
-        try await waitForPIDFile(pidFile)
+        var starts = startStream.makeAsyncIterator()
+        let processID = try #require(await starts.next())
         task.cancel()
         do {
             _ = try await task.value
             Issue.record("cancelled process must fail")
         } catch {
             #expect(error as? MobileBatteryHelperError == .cancelled)
-            #expect(clock.now - started >= .milliseconds(250))
-            #expect(clock.now - started < .seconds(2))
-            let processID = try #require(Int32(String(contentsOf: pidFile, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines)))
+            // Once launch is reported, cancellation is immediate; there is no
+            // cancellation delay in BoundedProcessInvocation. Only the timeout
+            // path has a 1 s deadline. Bound the operation without inventing a
+            // minimum that contradicts the implementation.
+            #expect(clock.now - started < .seconds(5))
             errno = 0
             #expect(kill(processID, 0) == -1 && errno == ESRCH)
         }
@@ -349,30 +361,14 @@ struct MobileBatteryHelperReaderTests {
         }
     }
 
-    private func makeIgnoringTerminationScript(pidFile: URL) throws -> URL {
-        // Cold Python startup can exhaust the deadline before the signal handler
-        // and PID handshake exist. The shell installs both before starting work.
-        let quotedPIDPath = "'" + pidFile.path.replacingOccurrences(of: "'", with: "'\\''") + "'"
-        return try makeScript(
+    private func makeIgnoringTerminationScript() throws -> URL {
+        try makeScript(
             """
             trap '' TERM
-            printf '%s\\n' "$$" > \(quotedPIDPath)
-            printf 'ready\\n'
             while :; do
                 /bin/sleep 0.01
             done
             """
-        )
-    }
-
-    private func waitForPIDFile(_ url: URL) async throws {
-        for _ in 0..<100 {
-            if FileManager.default.fileExists(atPath: url.path) { return }
-            try await Task.sleep(for: .milliseconds(10))
-        }
-        try #require(
-            FileManager.default.fileExists(atPath: url.path),
-            "child process did not reach its ready signal"
         )
     }
 

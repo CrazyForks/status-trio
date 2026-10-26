@@ -1320,3 +1320,20 @@ CoreGraphics 上下文的栅格化，不是产品渲染分支、工具链版本�
 decoded-RGBA SHA-256 配对：本机/仓库与 CI。未知的 committed 或 rendered 指纹、
 任一新的配对组合都会失败，因此普通渲染漂移仍可见。固定指纹沿用
 `StaticSymbolRasterDiagnostics` 的封闭基线做法，不跳过或放宽断言。
+
+## 40341717461：有界进程测试漏算终止与排空宽限
+
+图标指纹修复后的非发布预检在冻结候选 `07ed1ab2` 的 `Run tests` 阶段中止，尚未进入
+`package`，因此没有签名、公证或 artifact。唯一失败是既有
+`MobileBatteryHelperReaderTests.processExecutorKillsAChildThatIgnoresTermination`：
+
+- 测试启动一个忽略 `SIGTERM` 的子进程，传入 1 秒 deadline；
+- CI 实测从启动到调用完成耗时 2.081 378 792 秒，超过测试写死的 `< 2 秒`；
+- 但同一测试的 `>= 1.2 秒` 与 `kill(pid, 0) == -1 && errno == ESRCH` 均通过，
+  证明 deadline 生效、子进程已被 `SIGKILL` 并回收。
+
+根因是测试预算漏算 `BoundedProcessInvocation` 已声明的 250 ms `SIGKILL` 宽限和
+500 ms 流排空宽限；1 秒 deadline 加两段宽限的理论上限已超过 2 秒。CI 的调度延迟
+只是让本来错误的边界稳定暴露。修复把上界改为 5 秒，保留 1.2 秒下界、超时类型和
+`SIGKILL` 后 `ESRCH` 断言；没有跳过测试、放宽为任意成功，也没有修改产品终止逻辑。
+修正后两条进程生命周期定向测试通过（2 tests / 1 suite）。

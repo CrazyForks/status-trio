@@ -53,6 +53,7 @@ final class BoundedProcessInvocation: @unchecked Sendable {
     private let executableURL: URL
     private let arguments: [String]
     private let outputLimit: Int
+    private let onProcessStarted: (@Sendable (Int32) -> Void)?
 
     private var process: Process?
     private var stdoutPipe: Pipe?
@@ -73,10 +74,16 @@ final class BoundedProcessInvocation: @unchecked Sendable {
     private var failure: BoundedProcessOutcome?
     private var onFinish: (@Sendable (BoundedProcessOutcome) -> Void)?
 
-    init(executableURL: URL, arguments: [String], outputLimit: Int = BoundedProcessInvocation.defaultOutputLimit) {
+    init(
+        executableURL: URL,
+        arguments: [String],
+        outputLimit: Int = BoundedProcessInvocation.defaultOutputLimit,
+        onProcessStarted: (@Sendable (Int32) -> Void)? = nil
+    ) {
         self.executableURL = executableURL
         self.arguments = arguments
         self.outputLimit = outputLimit
+        self.onProcessStarted = onProcessStarted
     }
 
     // MARK: - Entry points
@@ -86,12 +93,14 @@ final class BoundedProcessInvocation: @unchecked Sendable {
         executableURL: URL,
         arguments: [String],
         timeout: Duration,
-        outputLimit: Int = BoundedProcessInvocation.defaultOutputLimit
+        outputLimit: Int = BoundedProcessInvocation.defaultOutputLimit,
+        onProcessStarted: (@Sendable (Int32) -> Void)? = nil
     ) async -> BoundedProcessOutcome {
         let invocation = BoundedProcessInvocation(
             executableURL: executableURL,
             arguments: arguments,
-            outputLimit: outputLimit
+            outputLimit: outputLimit,
+            onProcessStarted: onProcessStarted
         )
         return await withTaskCancellationHandler {
             await withCheckedContinuation { continuation in
@@ -207,6 +216,7 @@ final class BoundedProcessInvocation: @unchecked Sendable {
             do {
                 try child.run()
                 self.hasStarted = true
+                self.onProcessStarted?(child.processIdentifier)
                 self.queue.asyncAfter(deadline: .now() + Self.seconds(timeout)) {
                     guard self.onFinish != nil else { return }
                     self.failure = self.failure ?? .timedOut
