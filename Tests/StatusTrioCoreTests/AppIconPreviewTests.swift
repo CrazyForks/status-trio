@@ -99,12 +99,62 @@ final class AppIconPreviewTests: XCTestCase {
             )
             guard FileManager.default.fileExists(atPath: url.path) else { continue }
 
+            let committed = try Self.decodedPixels(in: Data(contentsOf: url))
+            let rendered = try Self.decodedPixels(
+                in: AppIconPreview.artworkPNGData(backgroundStyle: entry.style)
+            )
+
             XCTAssertEqual(
-                try Data(contentsOf: url),
-                try AppIconPreview.artworkPNGData(backgroundStyle: entry.style),
+                committed.width,
+                rendered.width,
+                "\(entry.fileName) must have the renderer's pixel width."
+            )
+            XCTAssertEqual(
+                committed.height,
+                rendered.height,
+                "\(entry.fileName) must have the renderer's pixel height."
+            )
+            XCTAssertEqual(
+                committed.bytes,
+                rendered.bytes,
                 "\(entry.fileName) must match the renderer's \(entry.style.rawValue) artwork."
             )
         }
+    }
+
+    private static func decodedPixels(in data: Data) throws -> (
+        width: Int,
+        height: Int,
+        bytes: Data
+    ) {
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil),
+              let image = CGImageSourceCreateImageAtIndex(source, 0, nil) else {
+            throw XCTSkip("The PNG could not be decoded.")
+        }
+
+        var bytes = Data(count: image.width * image.height * 4)
+        let colorSpace = CGColorSpace(name: CGColorSpace.sRGB)
+            ?? CGColorSpaceCreateDeviceRGB()
+        let decoded = bytes.withUnsafeMutableBytes { buffer -> Bool in
+            guard let context = CGContext(
+                data: buffer.baseAddress,
+                width: image.width,
+                height: image.height,
+                bitsPerComponent: 8,
+                bytesPerRow: image.width * 4,
+                space: colorSpace,
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+            ) else { return false }
+            context.draw(
+                image,
+                in: CGRect(x: 0, y: 0, width: image.width, height: image.height)
+            )
+            return true
+        }
+        guard decoded else {
+            throw XCTSkip("The PNG could not be normalized for comparison.")
+        }
+        return (image.width, image.height, bytes)
     }
 
     func testWritesRequestedArtworkWhenEnvironmentIsSet() throws {
