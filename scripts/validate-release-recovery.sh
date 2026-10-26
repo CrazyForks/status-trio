@@ -127,8 +127,9 @@ fail!("source run branch is not main.") unless value(run, "head_branch", "source
 fail!("source run head SHA is not the frozen candidate.") unless
   value(run, "head_sha", "source run") == candidate_sha
 fail!("source run is not completed.") unless value(run, "status", "source run") == "completed"
-fail!("source run did not conclude with the expected publish failure.") unless
-  value(run, "conclusion", "source run") == "failure"
+run_conclusion = value(run, "conclusion", "source run")
+fail!("source run did not succeed or fail during publication.") unless
+  %w[success failure].include?(run_conclusion)
 
 run_attempt = value(run, "run_attempt", "source run")
 fail!("source run attempt is invalid.") unless run_attempt.is_a?(Integer) && run_attempt.positive?
@@ -162,8 +163,17 @@ fail!("verify job did not succeed.") unless
   value(jobs_by_name.fetch("verify").first, "conclusion", "verify job") == "success"
 fail!("package job did not succeed.") unless
   value(jobs_by_name.fetch("package").first, "conclusion", "package job") == "success"
-fail!("publish job did not fail.") unless
-  value(jobs_by_name.fetch("publish").first, "conclusion", "publish job") == "failure"
+publish_conclusion = value(
+  jobs_by_name.fetch("publish").first,
+  "conclusion",
+  "publish job"
+)
+if run_conclusion == "failure"
+  fail!("publish job did not fail.") unless publish_conclusion == "failure"
+else
+  fail!("source run succeeded without skipping publication.") unless
+    publish_conclusion == "skipped"
+end
 
 artifacts = value(artifacts_payload, "artifacts", "source artifacts")
 fail!("source artifacts response is not a complete page.") unless
@@ -233,6 +243,7 @@ File.write(
   metadata_path,
   [
     "source_run_id=#{source_run_id}",
+    "source_mode=#{run_conclusion == "success" ? "package_only" : "failed_publish"}",
     "artifact_id=#{artifact_id}",
     "artifact_digest=#{digest}",
     "artifact_size=#{value(artifact, "size_in_bytes", "artifact")}",
@@ -241,8 +252,13 @@ File.write(
 )
 RUBY
 
-printf 'Validated source run %s and artifact from %s.\n' \
-    "$SOURCE_RUN_ID" "$CANDIDATE_SHA"
+if grep -Fqx 'source_mode=failed_publish' "$METADATA_PATH"; then
+    source_label="failed-publish source run"
+else
+    source_label="package-only source run"
+fi
+printf 'Validated %s %s and artifact from %s.\n' \
+    "$source_label" "$SOURCE_RUN_ID" "$CANDIDATE_SHA"
 while IFS='=' read -r key value; do
     printf '  %s: %s\n' "$key" "$value"
     if [[ -n "${GITHUB_OUTPUT:-}" ]]; then

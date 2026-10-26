@@ -206,7 +206,7 @@ run_validator "$OUTPUT" || {
     cat "$OUTPUT" >&2
     fail "valid source run was rejected"
 }
-assert_contains "$OUTPUT" "Validated source run $SOURCE_RUN_ID"
+assert_contains "$OUTPUT" "Validated failed-publish source run $SOURCE_RUN_ID"
 assert_contains "$GITHUB_OUTPUT_FILE" "source_run_id=$SOURCE_RUN_ID"
 assert_contains "$GITHUB_OUTPUT_FILE" "artifact_id=$ARTIFACT_ID"
 assert_contains "$GITHUB_OUTPUT_FILE" "artifact_digest=$ARTIFACT_DIGEST"
@@ -253,8 +253,29 @@ expect_validator_failure "incomplete source run" "source run is not completed"
 
 reset_state
 mutate_json "$STATE/run.json" 'data["conclusion"] = "success"'
-expect_validator_failure "successful source run" \
-    "did not conclude with the expected publish failure"
+expect_validator_failure "successful source run with failed publish" \
+    "source run succeeded without skipping publication"
+
+reset_state
+mutate_json "$STATE/run.json" 'data["conclusion"] = "success"'
+mutate_json "$STATE/jobs.json" 'data["jobs"].find { |job| job["name"] == "publish" }["conclusion"] = "skipped"'
+run_validator "$OUTPUT" || {
+    cat "$OUTPUT" >&2
+    fail "valid package-only source run was rejected"
+}
+assert_contains "$OUTPUT" "Validated package-only source run $SOURCE_RUN_ID"
+
+reset_state
+mutate_json "$STATE/run.json" 'data["conclusion"] = "failure"'
+mutate_json "$STATE/jobs.json" 'data["jobs"].find { |job| job["name"] == "publish" }["conclusion"] = "skipped"'
+expect_validator_failure "failed source run with skipped publish" \
+    "publish job did not fail"
+
+reset_state
+mutate_json "$STATE/run.json" 'data["conclusion"] = "success"'
+mutate_json "$STATE/jobs.json" 'data["jobs"].find { |job| job["name"] == "publish" }["conclusion"] = "cancelled"'
+expect_validator_failure "successful source run with cancelled publish" \
+    "source run succeeded without skipping publication"
 
 reset_state
 mutate_json "$STATE/jobs.json" 'data["jobs"].find { |job| job["name"] == "package" }["conclusion"] = "failure"'
