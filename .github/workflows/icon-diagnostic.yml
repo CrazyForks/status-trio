@@ -9,4 +9,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Run icon test
-        run: swift test --filter AppIconPreviewTests/testCommittedIconComposerArtworkMatchesTheRenderer
+        env:
+          STATUS_TRIO_APP_ICON_ARTWORK_DIR: ${{ runner.temp }}/icon-artwork
+        run: swift test --filter AppIconPreviewTests || true
+      - name: Upload icon renders
+        uses: actions/upload-artifact@v4
+        with:
+          name: icon-renders
+          path: |
+            Support/AppIcon.icon/Assets/*.png
+            ${{ runner.temp }}/icon-artwork/*.png
