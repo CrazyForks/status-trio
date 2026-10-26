@@ -157,20 +157,9 @@ struct BluetoothSectionView: View {
                 if store.showsAppleDevicesAndBattery {
                     SettingsDivider()
 
-                    SettingsToggleRow(
-                        symbol: "iphone",
-                        tint: .blue,
-                        title: localization.string(.settingsAppleBluetoothRead),
-                        subtitle: localization.string(.settingsAppleBluetoothReadDescription),
-                        isOn: $store.readsAppleDevicesOverBluetooth
+                    SettingsHintRow(
+                        text: localization.string(.settingsAppleBluetoothReadHelp)
                     )
-
-                    if store.readsAppleDevicesOverBluetooth {
-                        SettingsDivider()
-                        SettingsHintRow(
-                            text: localization.string(.settingsAppleBluetoothReadHelp)
-                        )
-                    }
 
                     SettingsDivider()
 

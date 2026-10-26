@@ -1039,8 +1039,8 @@ final class SystemStatusStore: ObservableObject {
         settings.$showsAppleDevicesAndBattery
             .combineLatest(settings.$nearbyBLESelections, settings.$hiddenBluetoothDeviceAddresses,
                            settings.$showsBluetoothBatteryLevels)
-            .combineLatest(settings.$showsBluetoothDeviceList, settings.$readsAppleDevicesOverBluetooth)
-            .sink { [weak self] values, listVisible, appleBluetoothReads in
+            .combineLatest(settings.$showsBluetoothDeviceList)
+            .sink { [weak self] values, listVisible in
                 let (enabled, selections, hidden, batteryEnabled) = values
                 let expandedHidden = BluetoothDeviceListPresentation.expandedAliasIDs(
                     forHiddenIDs: hidden,
@@ -1051,8 +1051,7 @@ final class SystemStatusStore: ObservableObject {
                     hiddenIDs: Set(expandedHidden.compactMap { BluetoothDeviceIdentity.bleUUID(from: $0) }),
                     batteryLevelsEnabled: batteryEnabled,
                     listVisible: listVisible,
-                    persistedSelections: selections,
-                    appleMobileReadsEnabled: appleBluetoothReads
+                    persistedSelections: selections
                 )
             }.store(in: &nearbyBLESettingsCancellables)
         bluetoothDevices.$nearbyBatteryDevices

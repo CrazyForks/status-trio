@@ -101,6 +101,42 @@ final class SystemStatusStoreTests: XCTestCase {
         await reader.finishAll()
     }
 
+    func testAppleMasterControlsBluetoothReadsRegardlessOfLegacyReadPreference() {
+        for legacyReadPreference in [false, true] {
+            let suite = makeSuite()
+            defer { suite.defaults.removeTestSuite(named: suite.name) }
+            suite.defaults.set(legacyReadPreference, forKey: "readsAppleDevicesOverBluetooth")
+            let settings = SettingsStore(defaults: suite.defaults)
+            settings.showsAppleDevicesAndBattery = false
+            let scanner = NearbyBatteryScannerSpy()
+            let bluetooth = BluetoothDeviceController(
+                stateMonitor: DeniedBluetoothStateMonitor(),
+                nearbyBatteryScanner: scanner
+            )
+            let store = SystemStatusStore(
+                batteryMonitor: FakeBatteryMonitor(),
+                wifiMonitor: FakeWiFiMonitor(),
+                volumeMonitor: FakeVolumeMonitor(),
+                bluetoothDevices: bluetooth
+            )
+            store.bindMobileBatterySettings(settings)
+            XCTAssertFalse(scanner.appleMobileReadsEnabled)
+
+            settings.showsAppleDevicesAndBattery = true
+            XCTAssertTrue(scanner.appleMobileReadsEnabled)
+            XCTAssertFalse(scanner.isRunning, "a settings change alone cannot start a scan")
+            XCTAssertTrue(scanner.allowedReadDeviceIDs.isEmpty)
+            XCTAssertTrue(scanner.initialReadDeviceIDs.isEmpty)
+
+            settings.showsAppleDevicesAndBattery = false
+            XCTAssertFalse(scanner.appleMobileReadsEnabled)
+
+            settings.showsAppleDevicesAndBattery = true
+            XCTAssertTrue(scanner.appleMobileReadsEnabled)
+            store.stop()
+        }
+    }
+
     func testSettingsMasterToggleDoesNotStartAppleDiscoveryOrBatteryReads() async {
         let reader = ControlledMobileBatteryReader()
         let discovery = AppleDeviceDiscoveryController(reader: reader)

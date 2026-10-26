@@ -143,10 +143,10 @@ struct BluetoothLEBatteryAdvertisementTests {
         #expect(BluetoothLEBatteryAdvertisement.isAppleMobileDevice(manufacturerData: slice))
     }
 
-    /// The switch that gates reading a phone over the air gates the Continuity
+    /// The Apple-device feature gates the Continuity
     /// route with it. A device that advertises the Battery Service is still a
     /// candidate — it answers without asking the user anything.
-    @Test func appleMobileRouteIsGatedByTheUserSwitch() {
+    @Test func appleMobileRouteRequiresTheAppleDeviceFeature() {
         let phone = appleManufacturerData(messageType: 0x10)
         #expect(!BluetoothLEBatteryAdvertisement.isCandidate(
             serviceUUIDs: nil,
@@ -195,7 +195,7 @@ struct BluetoothLEBatteryAdvertisementTests {
         ) == false)
     }
 
-    /// With no system record to match, no phone is read — the switch alone is
+    /// With no system record to match, no phone is read — the master alone is
     /// not enough. A keyboard that advertises the Battery Service still is.
     @Test func emptySystemListReadsNoPhonesButKeepsTheServiceRoute() {
         #expect(!BluetoothLEBatteryAdvertisement.isCandidate(

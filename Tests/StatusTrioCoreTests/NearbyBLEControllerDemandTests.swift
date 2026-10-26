@@ -4,7 +4,7 @@ import XCTest
 
 @MainActor
 final class NearbyBLEControllerDemandTests: XCTestCase {
-    func testAppleMobileBluetoothReadSwitchReachesTheScanner() {
+    func testAppleMasterToggleControlsMobileBluetoothReads() {
         let (controller, scanner, monitor) = makeController()
         controller.activate()
         monitor.emit(.poweredOn)
@@ -13,19 +13,19 @@ final class NearbyBLEControllerDemandTests: XCTestCase {
 
         XCTAssertEqual(
             scanner.appleMobileReadsEnabledValues.last,
-            false,
-            "an Apple phone is not read until the separate switch is turned on"
+            true,
+            "enabling Apple devices permits the known-device mobile route"
         )
 
         controller.configureNearbyBLEDevices(
-            enabled: true, knownIDs: [id], hiddenIDs: [], appleMobileReadsEnabled: true
-        )
-        XCTAssertEqual(scanner.appleMobileReadsEnabledValues.last, true)
-
-        controller.configureNearbyBLEDevices(
-            enabled: true, knownIDs: [id], hiddenIDs: [], appleMobileReadsEnabled: false
+            enabled: false, knownIDs: [id], hiddenIDs: []
         )
         XCTAssertEqual(scanner.appleMobileReadsEnabledValues.last, false)
+
+        controller.configureNearbyBLEDevices(
+            enabled: true, knownIDs: [id], hiddenIDs: []
+        )
+        XCTAssertEqual(scanner.appleMobileReadsEnabledValues.last, true)
         controller.deactivate()
     }
 

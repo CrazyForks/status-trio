@@ -521,8 +521,8 @@ final class CoreBluetoothLEBatteryScanner: NSObject,
         guard appleMobileReadsEnabled != enabled else { return }
         appleMobileReadsEnabled = enabled
         guard !enabled else { return }
-        // The switch is gone, so the sessions it justified go with it: an open
-        // GATT link is what the phone turns into a pairing prompt.
+        // Disabling Apple devices revokes their sessions immediately; a GATT
+        // connection can make the phone request pairing.
         revokeReadDeviceIDs(
             Set(candidateCache.candidates.filter { $0.vendor == .apple }.map(\.id))
         )

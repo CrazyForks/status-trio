@@ -110,21 +110,18 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(store.appleBatteryRefreshIntervalMinutes, 1)
     }
 
-    /// Reading a phone over Bluetooth is a separate opt-in from showing Apple
-    /// devices: the read is what makes the phone ask to pair, so it must not
-    /// come along with the battery setting.
-    func testAppleBluetoothReadDefaultsOffAndPersists() {
+    func testAppleDeviceMasterDefaultsOffAndPersists() {
         let suite = makeSuite()
         defer { clear(suite) }
 
         let first = SettingsStore(defaults: suite.defaults)
-        XCTAssertFalse(first.readsAppleDevicesOverBluetooth)
+        XCTAssertFalse(first.showsAppleDevicesAndBattery)
 
-        first.readsAppleDevicesOverBluetooth = true
-        XCTAssertTrue(SettingsStore(defaults: suite.defaults).readsAppleDevicesOverBluetooth)
+        first.showsAppleDevicesAndBattery = true
+        XCTAssertTrue(SettingsStore(defaults: suite.defaults).showsAppleDevicesAndBattery)
 
-        first.readsAppleDevicesOverBluetooth = false
-        XCTAssertFalse(SettingsStore(defaults: suite.defaults).readsAppleDevicesOverBluetooth)
+        first.showsAppleDevicesAndBattery = false
+        XCTAssertFalse(SettingsStore(defaults: suite.defaults).showsAppleDevicesAndBattery)
     }
 
     func testAppleBackgroundRefreshIntervalClampsAndPersistsWhenToggleTurnsOff() {

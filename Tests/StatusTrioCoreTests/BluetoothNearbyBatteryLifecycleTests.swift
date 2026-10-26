@@ -460,6 +460,11 @@ final class NearbyBatteryScannerSpy: BluetoothLEBatteryScanning {
     private(set) var stopCount = 0
     private(set) var resumeSuspendedReadsCount = 0
     private(set) var knownAppleDeviceNames: Set<String> = []
+    private(set) var appleMobileReadsEnabled = false
+
+    func setAppleMobileBatteryReadsEnabled(_ enabled: Bool) {
+        appleMobileReadsEnabled = enabled
+    }
 
     func resumeSuspendedReads() {
         resumeSuspendedReadsCount += 1

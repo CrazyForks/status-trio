@@ -423,7 +423,6 @@ final class BluetoothDeviceController: ObservableObject {
     private var nearbyPersistedSelections: [NearbyBLEDeviceSelection] = []
     private var nearbyBLEDiscoveryRequests: Set<String> = []
     private var nearbyBLEListVisible = true
-    private var nearbyBLEAppleMobileReadsEnabled = false
 
     /// The names the system lists for this Mac, as the paired-device report
     /// reports them. A phone is only read over BLE when its name matches one of
@@ -816,21 +815,18 @@ final class BluetoothDeviceController: ObservableObject {
         hiddenIDs: Set<UUID>,
         batteryLevelsEnabled: Bool = true,
         listVisible: Bool = true,
-        persistedSelections: [NearbyBLEDeviceSelection] = [],
-        appleMobileReadsEnabled: Bool = false
+        persistedSelections: [NearbyBLEDeviceSelection] = []
     ) {
         let oldHiddenIDs = nearbyBLEHiddenIDs
         guard nearbyBLEEnabled != enabled
             || nearbyBLEHiddenIDs != hiddenIDs || nearbyBatteryLevelsEnabled != batteryLevelsEnabled
-            || nearbyBLEListVisible != listVisible || nearbyPersistedSelections != persistedSelections
-            || nearbyBLEAppleMobileReadsEnabled != appleMobileReadsEnabled else { return }
+            || nearbyBLEListVisible != listVisible || nearbyPersistedSelections != persistedSelections else { return }
         nearbyBatteryLevelsEnabled = batteryLevelsEnabled
         nearbyBLEEnabled = enabled
         nearbyBLEHiddenIDs = hiddenIDs
         nearbyBLEListVisible = listVisible
         nearbyPersistedSelections = persistedSelections
-        nearbyBLEAppleMobileReadsEnabled = appleMobileReadsEnabled
-        nearbyBatteryScanner?.setAppleMobileBatteryReadsEnabled(appleMobileReadsEnabled)
+        nearbyBatteryScanner?.setAppleMobileBatteryReadsEnabled(enabled)
         updateKnownNearbyAppleNames()
         let newlyHidden = hiddenIDs.subtracting(oldHiddenIDs)
         if !newlyHidden.isEmpty { nearbyBatteryScanner?.revokeReadDeviceIDs(newlyHidden) }

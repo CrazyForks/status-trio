@@ -16,18 +16,20 @@ to populate named rows, but never reads a battery there.
 
 ### Reading a phone over the air (#152)
 
-An iPhone or an iPad allows a Battery Service read only after it asks to pair,
-and that prompt belongs to the phone. The app cannot answer it, remember the
-answer, or ask macOS to ignore it. Reading a phone over Bluetooth is therefore
-its own setting, **Read iPhone and iPad battery over Bluetooth**, off by
-default and separate from **Show Apple devices and battery**; the trusted
-USB/Wi-Fi companion route behind the same rows does not use Bluetooth and is
-unaffected. While the switch is off, a phone advertisement is not a candidate
-and no GATT session is opened, so no prompt can appear. A device that
-advertises the standard Battery Service is still read: a keyboard or a mouse
-answers without asking anything.
+**Show Apple devices and battery** controls both the trusted USB/Wi-Fi
+companion route and the nearby Apple BLE route. There is no separate iPhone
+or iPad Bluetooth-read switch. The temporary `readsAppleDevicesOverBluetooth`
+preference is no longer read, so a stored value cannot override the master
+setting. Turning the master off revokes BLE reads and stops Apple discovery;
+turning it on still requires the existing battery, visibility, authorization,
+and foreground/background demand gates.
 
-Even with the switch on, the Continuity route requires the device's name to match
+An iPhone or iPad may request pairing when the app opens a Bluetooth connection
+to read its battery. That prompt belongs to the phone: the app cannot answer it,
+remember the answer, or ask macOS to ignore it. The trusted USB/Wi-Fi companion
+route does not use this Bluetooth connection.
+
+The Continuity route requires the device's name to match
 one the system lists for this Mac — the names `system_profiler
 SPBluetoothDataType` reports, which the app already reads for the paired-device
 rows. Every iPhone in range broadcasts the same payload, and the prompt the phone
@@ -36,10 +38,13 @@ match connected a stranger's phone and asked the user to approve a pairing they
 could not identify (issue #152). Matching the system's own list keeps the route
 on devices this Mac already has a record for, and needs no typing from the user.
 The comparison folds case and surrounding whitespace; a name with no record
-never matches. Listing a discovered name in the picker is passive and does not
-require that record.
+never matches. This is the system's known-device list, including disconnected
+records, not a list limited to currently connected devices. A matching name is
+not proof of ownership and cannot guarantee that the phone will not request
+pairing. Listing a discovered name in the picker is passive and does not require
+that record.
 
-With the switch on, a session that ends without a reading is not retried on a
+With the master on, a session that ends without a reading is not retried on a
 fixed one-minute cadence. The first consecutive failure waits one minute, the
 second waits five, and the third suspends that UUID for the rest of the app
 session, so a declined pairing cannot keep prompting. The panel's refresh button re-arms suspended devices; an ordinary
