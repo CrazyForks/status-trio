@@ -114,10 +114,22 @@ final class AppIconPreviewTests: XCTestCase {
                 rendered.height,
                 "\(entry.fileName) must have the renderer's pixel height."
             )
+            let committedBytes = [UInt8](committed.bytes)
+            let renderedBytes = [UInt8](rendered.bytes)
+            let differing = zip(committedBytes, renderedBytes).filter { $0 != $1 }
+            if !differing.isEmpty {
+                let delta = zip(committedBytes, renderedBytes).map { abs(Int($0) - Int($1)) }
+                print(
+                    "ICON_DIAG \(entry.fileName) differing=\(differing.count) "
+                        + "maxDelta=\(delta.max() ?? 0) first=\(differing.prefix(8))"
+                )
+            }
             XCTAssertEqual(
                 committed.bytes,
                 rendered.bytes,
-                "\(entry.fileName) must match the renderer's \(entry.style.rawValue) artwork."
+                "\(entry.fileName) must match the renderer's \(entry.style.rawValue) artwork. "
+                    + "differing=\(differing.count) "
+                    + "maxDelta=\(zip(committedBytes, renderedBytes).map { abs(Int($0) - Int($1)) }.max() ?? 0)"
             )
         }
     }
