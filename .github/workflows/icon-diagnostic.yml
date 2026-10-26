@@ -1,0 +1,12 @@
+name: icon diagnostic
+on: workflow_dispatch
+permissions:
+  contents: read
+jobs:
+  icon:
+    runs-on: xcode-27
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run icon test
+        run: swift test --filter AppIconPreviewTests/testCommittedIconComposerArtworkMatchesTheRenderer
