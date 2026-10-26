@@ -1292,3 +1292,31 @@ distribution due to environment protection rules.
   证明本次华为代码没有引入这些计数失败。按本条记录的测试调度原则，后续以已有可控
   presentation 调度器替换固定 sleep，保留“静止呈现只栅格化一次、稳态 tick 不重建基础层”
   的全部计数与对象身份断言，再运行完整本地测试和非发布 CI 预检。
+
+## 40333652240 至 40339829287：CI 图标渲染的 Wi-Fi 抗锯齿差异
+
+1.7.5 的发布预检在 `AppIconPreviewTests.testCommittedIconComposerArtworkMatchesTheRenderer`
+首次暴露 CI 与本机不同的图标输出。以下 Run 使用同一套工具链声明
+（macOS 27 / Xcode 27 / Swift 6.4 / SDK 27 / `xcode-27-arm64`）：
+
+- [`40333652240`](https://github.com/lingyired/status-trio/actions/runs/40333652240)
+  比较 PNG 文件字节，失败；
+- [`40335449161`](https://github.com/lingyired/status-trio/actions/runs/40335449161)
+  改为比较解码后的 RGBA，仍失败；
+- [`40339420559`](https://github.com/lingyired/status-trio/actions/runs/40339420559)
+  输出差异统计：light 有 12 501 个通道不同、最大通道差 226；dark 有 12 081 个
+  通道不同、最大通道差 234；
+- [`40339829287`](https://github.com/lingyired/status-trio/actions/runs/40339829287)
+  仅用于抓取 CI 的 light/dark 原图，临时工作流以 `|| true` 上传 artifact；该 Run
+  的成功不表示测试通过。
+
+差异边界为 `(394, 435)–(665, 636)`，只覆盖 Wi-Fi 图形的抗锯齿边缘；圆环、闪电、
+三个音量点、背景和中心颜色一致。解码统计为：light 有 4 307 个像素不同，其中
+3 175 个通道差大于 8/255；dark 有 4 029 个像素不同，其中 3 171 个通道差大于
+8/255。本机渲染与仓库中的 PNG 完全一致。该差异来自 headless CI 与本机 Retina
+CoreGraphics 上下文的栅格化，不是产品渲染分支、工具链版本或文件解码不同。
+
+修复没有引入像素容差。测试保留 1024×1024 尺寸检查，并为每种外观批准两组完整的
+decoded-RGBA SHA-256 配对：本机/仓库与 CI。未知的 committed 或 rendered 指纹、
+任一新的配对组合都会失败，因此普通渲染漂移仍可见。固定指纹沿用
+`StaticSymbolRasterDiagnostics` 的封闭基线做法，不跳过或放宽断言。
