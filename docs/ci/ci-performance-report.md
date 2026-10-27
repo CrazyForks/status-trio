@@ -1,7 +1,7 @@
 # Release CI performance report
 
-Status: remote baseline audited and cold/warm package diagnostics completed
-2026-10-27 (Asia/Shanghai).
+Status: remote baseline, cold/warm package diagnostics, and two same-SHA
+parallel verification diagnostics completed 2026-10-27 (Asia/Shanghai).
 
 This report uses existing GitHub Actions evidence. It makes no promise of a
 12-14 minute release and does not claim a speedup from any unmeasured change.
@@ -39,8 +39,16 @@ For the latest full/recovery runs:
 - **Gap** is wall minus completed-job active time. It includes approval,
   queueing, runner allocation, artifact handoff, and other idle periods. The
   report does not call the entire gap "approval" unless logs identify a
-  boundary.
+  boundary. This subtraction applies to the serial runs only.
 - **Stage duration** is the corresponding job's start/end timestamps.
+
+For the parallel profile, the verification critical path runs from the first
+verification job's start to the last verification job's completion. The
+verification-to-package gap is package start minus the later verification
+completion; it includes approval and runner scheduling. Active job durations
+are also summed as a runner-time observation, but overlapping job time must
+not be subtracted from wall time to estimate idle time. These durations are
+not GitHub billing measurements.
 
 For MobileBattery, the phase boundaries are log timestamps:
 
@@ -386,8 +394,10 @@ at `894a7787b4b9a0fb6add2224cccd85235ff54923`. It passed both cached native
 restores, rebuilt both Helpers, and uploaded a valid Universal Ad-hoc package.
 Package took 214s and the MobileBattery interval stayed at 45s. Verify took
 403s: 13s static preflight, 240s Swift tests, and 134s native/release
-contracts. The 240s test stage included a 97s compile and 134s XCTest body.
-Total wall was 737s, including the 146s protected-Environment approval gap.
+contracts. The 240s test stage included a reported 73.64s Swift build and a
+134.368s Core XCTest body. Total wall was 737s, including a 116s interval
+between verification completion and package start. The job timestamps were
+02:04:27Z and 02:06:23Z; the earlier 146s figure was a reporting error.
 
 The subsequent profile moves the native/release contracts into a separate
 `native` job on the same `xcode-27` runner. Both jobs check out and reassert
@@ -397,16 +407,113 @@ remain separate artifacts, so a native failure cannot be hidden by a passing
 Swift suite. The full local profile passed after the workflow, policy and
 documents changed.
 
-This is an implementation profile, not a measured remote saving yet. The next
-two `publish=false` diagnostics must establish the actual parallel wall time
-and any runner-capacity effect. Do not subtract the old 134s native stage from
-the old wall time as though jobs were free to run concurrently.
+PR #159 merged the profile as
+`08644c04ce2f23a69a64582f5f1563b7cc2bb525`. Two diagnostics used that same
+frozen SHA, `version=1.7.6`, `build=44`, `publish=false`, `notarize=false`,
+and no recovery source. Both used Xcode 27 / Swift 6.4 / SDK 27, passed all
+three active jobs, and skipped Publish.
+
+| Scope | Serial baseline `40435617420` | [Parallel 1 `40447422731`](https://github.com/lingyired/status-trio/actions/runs/40447422731) | [Parallel 2 `40448654960`](https://github.com/lingyired/status-trio/actions/runs/40448654960) |
+| --- | ---: | ---: | ---: |
+| Total wall | 737s / 12m17s | 591s / 9m51s | 667s / 11m07s |
+| Verification critical path | 403s | 285s | 368s |
+| Swift/static Verify job | 403s, includes native | 285s | 368s |
+| Separate Native job | none | 224s | 163s |
+| Package job | 214s | 274s | 236s |
+| Verification-to-package gap | 116s | 28s | 59s |
+| Sum of active job durations | 617s | 783s | 767s |
+| Swift test stage | 239.748s | 257.901s | 329.586s |
+| Native contract stage | 133.901s | 202.087s | 140.987s |
+| Reported Swift test build | 73.64s | 74.85s | 116.68s |
+| Core XCTest body | 134.368s | 150.383s | 165.240s |
+| Swift Universal Release build | 120s | 152s | 128s |
+| MobileBattery total | 45s | 57s | 48s |
+| Native cache restore interval | 1s | 5s | 4s |
+
+Verify and Native started at the same second in both parallel runs. Package
+started after both succeeded. The 19 unconditional native/offline contracts
+remain in Native; the two additional trusted recovery regressions remain
+conditional in Verify. Neither normal diagnostic exercised online recovery.
+Each full Swift run reported 1,928 Core XCTest and 15 Helper XCTest, with
+eight existing skips and zero failures, plus 763 passing Swift Testing tests.
+
+Compared with the serial baseline, the observed verification critical path
+fell by 118s (29.28%) and 35s (8.68%). Wall time fell by 146s (19.81%) and
+70s (9.50%). The verification-to-package gap also fell by 88s and 57s,
+while Package increased by 60s and 22s. Thus the entire wall reduction must
+not be attributed to parallel verification. Even with the same candidate,
+the two parallel runs differed by 76s wall and 83s in Verify. Runner load
+was not measured, and no causal explanation for the stage variation is
+established.
+
+The sum of active job durations increased by 166s (26.90%) and 150s
+(24.31%). This profile trades a shorter observed verification critical path
+for another concurrent runner and more observed runner time. These values
+are not billed minutes or proof of a cost reduction. The evidence supports
+the structural overlap and the observed elapsed-time ranges; it does not
+guarantee a fixed formal-release duration or runner-capacity availability.
+
+Both packages restored and validated the same two exact native cache entries,
+skipped third-party dependency compilation, rebuilt both Helpers, and skipped
+cache saves. Artifact ZIP digests matched GitHub metadata. Their DMGs matched
+their respective frozen-SHA manifests and adjacent checksum files:
+
+| Run | Package artifact | Artifact ZIP SHA-256 | DMG SHA-256 |
+| --- | --- | --- | --- |
+| `40447422731` | `12708584167` | `d9c71869ea2b0401d9f6940406e7f5a48b5b964fe929df3d95573bdbc9604b63` | `e7f7bd161b4b3a8b3c510ab863c419384da8126ef65cee2c4c389cc3661332a3` |
+| `40448654960` | `12709324023` | `c126161c714c8d01c64d5e3644737fd2dbd515371155dcc98c0326ee50462675` | `d614903bab7f5091ca47ab85f824cf7260db70943b66352aec4c14a981e35db4` |
+
+The independent builds are not expected to share a DMG digest. Read-only
+inspection checked each package's version/build, ten Universal binaries,
+minimum macOS 13 / SDK 27 metadata, Sparkle metadata, and deep strict Ad-hoc
+signatures. It did not launch either app or register a Helper.
+
+Raw evidence and the reproducible comparison script are retained in
+`.build/ci-optimization-evidence/parallel-native-remote-2026-10-27/`,
+including `comparison.json`, `compare.py`, per-run diagnostics, package
+manifests, and read-only DMG inspection logs. Cache keys are omitted from
+the report.
+
+## Recovery compatibility and policy follow-up
+
+Independent review after the two normal diagnostics found a recovery
+compatibility defect: `validate-release-recovery.sh` still required exactly
+three source jobs, and its workflow regression retained the old
+`package.needs: verify` expectation. Thus normal four-job package runs
+could pass while a later recovery would reject their artifacts. This was
+found by inspection and reproduced with offline fixtures, not by attempting
+a public release.
+
+The validator now matches source-job metadata to the frozen candidate's
+workflow. It accepts the exact historical three-job shape or current
+four-job shape with their corresponding Package dependencies; the current
+shape also requires Native success. A missing Native job cannot downgrade
+a four-job workflow to legacy acceptance. New offline cases cover both
+valid shapes, package-only and failed-publication sources, missing/failed/
+skipped Native, extra jobs, metadata/workflow shape mismatches, and missing
+Native dependency.
+
+Policy regressions additionally pin all 19 unconditional native commands and
+both conditional trusted recovery regressions, require the normal success
+gates, reject conditional Swift/preflight tests, replacement shells, write
+permissions or Environment access in verification jobs, and preserve the
+release runner and diagnostic ordering. Native summaries now identify Native,
+its actual job status, and the `native-diagnostics` artifact. The new missing-
+contract, conditional-preflight, and Native-label regressions were observed
+failing before their fixes. Full local verification passed in 332.198s,
+including the complete Swift suite, Release/local app build, and native/
+offline contracts; the recovery regression also passed separately.
+
+Recovery still requires `publish=true` and `notarize=true`; those guards were
+not changed to allow a diagnostic recovery. Online recovery/publication,
+Developer ID, notarization, Helper/XPC runtime, and macOS 13 runtime remain
+`NOT RUN`. The two timing runs above predate this compatibility follow-up
+and must not be presented as recovery acceptance.
 
 ## Follow-up measurement plan
 
-1. Run the parallel profile twice with `candidate_sha` frozen to the profile
-   commit, `publish=false`, and no notarization; compare wall, per-job duration,
-   and cache state.
+1. Completed: run the parallel profile twice on one frozen candidate with
+   `publish=false` and no notarization; the comparison is recorded above.
 2. Repeat the package-only cold/warm pair on a later formal candidate so the
    hosted cache hit rate and any mismatch-driven rebuild can be observed.
 3. Compare arm64 and x86_64 phase rows separately. Treat the x86-to-package
@@ -418,7 +525,7 @@ the old wall time as though jobs were free to run concurrently.
    manual evidence exists. The Ad-hoc package contract and signature checks
    above passed but do not substitute for those gates.
 
-This report records the remote baseline, local native measurements, and two
+This report records the remote baseline, local native measurements, and
 authorized `publish=false` diagnostics; it is not release authorization. The
 diagnostics did not create a release or tag, update the appcast, or mutate
 protected-environment settings.

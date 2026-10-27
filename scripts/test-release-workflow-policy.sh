@@ -29,6 +29,8 @@ make_fixture() {
     mkdir -p "$fixture/.github/workflows" "$fixture/scripts"
     cp "$ROOT/.github/workflows/release.yml" "$fixture/.github/workflows/release.yml"
     cp "$ROOT/scripts/publish-release.sh" "$fixture/scripts/publish-release.sh"
+    cp "$ROOT/scripts/package-release.sh" "$fixture/scripts/package-release.sh"
+    cp "$ROOT/scripts/release.sh" "$fixture/scripts/release.sh"
 }
 
 [[ -f "$ROOT/scripts/check-release-workflow-policy.sh" ]] ||
@@ -37,6 +39,74 @@ make_fixture() {
 valid="$WORK/valid"
 make_fixture "$valid"
 run_policy "$valid" || fail "valid release workflow fixture failed"
+
+for mutation in missing-native-contract conditional-native-contract verify-environment \
+    native-environment package-status-bypass publish-status-bypass \
+    missing-recovery-regressions native-summary-status conditional-preflight \
+    conditional-swift-tests native-shell workflow-shell job-shell verify-write-token \
+    native-write-token early-native-summary wrong-native-runner; do
+    invalid="$WORK/invalid-$mutation"
+    make_fixture "$invalid"
+    ruby -e '
+      path, mutation = ARGV
+      source = File.read(path)
+      changed = case mutation
+      when "missing-native-contract"
+        source.sub!("          bash scripts/test-macos13-bundle-contract.sh\n", "")
+      when "conditional-native-contract"
+        source.sub!("      - name: Run native and release-contract tests\n",
+          "      - name: Run native and release-contract tests\n        if: ${{ false }}\n")
+      when "verify-environment", "native-environment"
+        job = mutation.split("-").first
+        source.sub!("  #{job}:\n", "  #{job}:\n    environment: distribution\n")
+      when "package-status-bypass"
+        source.sub!(%q{    if: ${{ inputs.package_run_id == '"'"''"'"' }}},
+          %q{    if: ${{ always() && inputs.package_run_id == '"'"''"'"' }}})
+      when "publish-status-bypass"
+        source.sub!(/(  publish:\n    if:).*/, %q{\1 ${{ always() && inputs.publish }}})
+      when "missing-recovery-regressions"
+        source.sub!("          bash release-tools/scripts/test-release-recovery.sh\n", "")
+      when "native-summary-status"
+        source.sub!(/(      - name: Summarize native diagnostics\n        if: always\(\)\n)(?:        env:\n(?:          [^\n]*\n)+)?/,
+          "\\1        env:\n          JOB_STATUS: unknown\n")
+      when "conditional-preflight", "conditional-swift-tests"
+        name = mutation == "conditional-preflight" ? "Run static release preflight" : "Run tests"
+        source.sub!("      - name: #{name}\n", "      - name: #{name}\n        if: ${{ false }}\n")
+      when "native-shell"
+        source.sub!("      - name: Run native and release-contract tests\n",
+          "      - name: Run native and release-contract tests\n        shell: bash -n {0}\n")
+      when "workflow-shell"
+        source.sub!("jobs:\n", "defaults:\n  run:\n    shell: bash -n {0}\n\njobs:\n")
+      when "job-shell"
+        source.sub!("  native:\n", "  native:\n    defaults:\n      run:\n        shell: bash -n {0}\n")
+      when "verify-write-token", "native-write-token"
+        job = mutation.split("-").first
+        source.sub!("  #{job}:\n", "  #{job}:\n    permissions:\n      contents: write\n")
+      when "early-native-summary"
+        summary = source[/^      - name: Summarize native diagnostics\n.*?(?=^      - name:|\z)/m] or
+          abort "native summary missing"
+        source.sub!(summary, "")
+        source.sub!("      - name: Run native and release-contract tests\n",
+          summary + "      - name: Run native and release-contract tests\n")
+      when "wrong-native-runner"
+        source.sub!("  native:\n    runs-on: xcode-27\n",
+          "  native:\n    runs-on: [self-hosted, macOS]\n    # runs-on: xcode-27\n")
+      end
+      abort "fixture mutation did not apply: #{mutation}" unless changed
+      File.write(path, source)
+    ' "$invalid/.github/workflows/release.yml" "$mutation"
+    expect_failure "$mutation" run_policy "$invalid"
+done
+
+invalid="$WORK/invalid-missing-package-script"
+make_fixture "$invalid"
+rm "$invalid/scripts/package-release.sh"
+expect_failure "missing guarded package script" run_policy "$invalid"
+
+invalid="$WORK/invalid-package-source-bypass"
+make_fixture "$invalid"
+printf '\nSKIP_SOURCE_SHA_CHECK=1\n' >> "$invalid/scripts/package-release.sh"
+expect_failure "package source SHA bypass" run_policy "$invalid"
 
 invalid="$WORK/invalid-job-runner-context"
 make_fixture "$invalid"

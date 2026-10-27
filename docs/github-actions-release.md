@@ -145,6 +145,16 @@ GitHub cache 的同 key 内容不可覆盖。若精确命中的条目损坏，�
 
 ## 发布恢复
 
+`package_run_id` 仍要求显式 `publish=true`、`notarize=true` 和版本、
+构建号、Tag。非发布诊断不会进入线上恢复发布路径；恢复校验的正反例通过
+离线 fixture 验证，不应为测试关闭这些入口保护。
+
+源 workflow 可以是历史的 `verify/package/publish` 三 Job 结构，或当前的
+`verify/native/package/publish` 四 Job 结构。源 run 的 Job 集合和依赖必须与
+冻结候选中的 workflow 相符；四 Job 结构还必须有成功的 `native`，缺失、
+失败或跳过都不能退回按旧结构接受。Artifact、manifest、SHA 和 digest 的
+原有绑定继续执行。
+
 所有重试必须复用同一次 `package` 产生的 artifact：
 
 - Draft 已存在但上传失败：重新上传 DMG、`.sha256` 和
