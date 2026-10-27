@@ -175,6 +175,16 @@ fi
 # leave a required command present but ineffective.
 ruby -ryaml - "$WORKFLOW" <<'RUBY'
 workflow = YAML.load_file(ARGV.fetch(0))
+workflow.fetch("jobs").each do |name, job|
+  job.fetch("env", {}).each do |variable, value|
+    value.to_s.scan(/\$\{\{(.*?)\}\}/m).each do |expression|
+      # Runner context is available in steps, but GitHub rejects it in job env.
+      code = expression.first.gsub(/'(?:[^']|'')*'/, "")
+      abort "release policy: runner context is unavailable in jobs.#{name}.env.#{variable}" if
+        code.match?(/\brunner\s*(?:\.|\[)/)
+    end
+  end
+end
 verify = workflow.fetch("jobs").fetch("verify").fetch("steps")
 candidate_step = verify.find { |s| s["name"] == "Validate frozen candidate and resolve release" }
 abort "release policy: frozen candidate validation must enforce main dispatch" unless
