@@ -1,7 +1,7 @@
 # Release CI performance report
 
-Status: remote baseline audited 2026-10-26; local implementation measurements
-completed overnight on 2026-10-27 (Asia/Shanghai).
+Status: remote baseline audited and cold/warm package diagnostics completed
+2026-10-27 (Asia/Shanghai).
 
 This report uses existing GitHub Actions evidence. It makes no promise of a
 12-14 minute release and does not claim a speedup from any unmeasured change.
@@ -14,7 +14,8 @@ This report uses existing GitHub Actions evidence. It makes no promise of a
   and 36s publish. Package was skipped, so this is not a full-release time.
 - Cold remote package spent roughly 5-6 minutes rebuilding pinned MobileBattery
   dependencies for both architectures in the measured 1.7.3-1.7.5 runs.
-- Hot remote / cache-hit behavior: measured 2026-10-27 in run `40428015193`.
+- Hot remote / cache-hit behavior: measured 2026-10-27 in
+  [run `40428015193`](https://github.com/lingyired/status-trio/actions/runs/40428015193).
 - A full remote release with the new cache and stage instrumentation:
   package-only cold/warm measured; publication not run.
 
@@ -317,16 +318,16 @@ Both successful diagnostics were dispatched from `main` with the same frozen
 SHA `c4fd84196ced2a0c340eabda32fef2b40bec32f0`, version `1.7.6`, build `44`,
 `publish=false`, `notarize=false`, and no recovery package. Their source tree
 was identical to locally verified commit `aa9ec53d`. Both passed Verify on
-`xcode-27` / Xcode 27.0 / SWIFT 6.4 / SDK 27.0, and both published nothing.
+`xcode-27` / Xcode 27.0 / Swift 6.4 / SDK 27.0, and both published nothing.
 Cheap static preflight, complete Swift tests and native/release regressions
 remained in Verify in both runs.
 
-| Stage / job | Cold `40426198186` | Warm `40428015193` | Change |
+| Stage / job | [Cold `40426198186`](https://github.com/lingyired/status-trio/actions/runs/40426198186) | [Warm `40428015193`](https://github.com/lingyired/status-trio/actions/runs/40428015193) | Change |
 | --- | ---: | ---: | ---: |
 | Verify job | 372s | 612s | +240s |
 | Package job | 484s | 254s | **-230s** |
 | Total wall | 901s | 906s | +5s |
-| Swift tests, package | 122s | 148s | +26s |
+| Swift Universal Release build | 122s | 148s | +26s |
 | MobileBattery source checkout | 27s | 26s | -1s |
 | arm64 dependencies | 142s | 12s | -130s |
 | x86_64 dependencies | 135s | 2s | -133s |
@@ -334,7 +335,6 @@ remained in Verify in both runs.
 | App build/sign/verify | 440s | 203s | -237s |
 | Native cache restore interval | 0s | 4s | +4s |
 | Native cache save interval | 2s | 0s, skipped | -2s |
-| Post-cache package work | 484s | 254s | **-230s** |
 
 The warm cache had two exact hits. Each architecture logged cache restored,
 complete prefix validation, and native dependency build skipped. Both Helpers
@@ -346,13 +346,13 @@ download details hidden inside `actions/cache`; it is not a pure network
 measurement.
 
 The Package saving is 230s (47.52%) and the MobileBattery interval saving is
-262s (85.34%) on this pair. Total wall changed +5s (-0.55%) because Verify was
-240s slower. The warm Verify compile took 188.18s versus 68.43s cold, and its
-XCTest body took 172.059s versus 147.741s. Runner load or another external
-cause was not measured, so this is not attributed to the cache. The result
-does not support a total release speedup claim. It supports a material
-package-stage improvement when the exact cache hits, without claiming a
-guaranteed or end-to-end 12-14 minute release.
+262s (85.34%) on this pair. Total wall increased by 5s (+0.55%, no overall
+speedup) because Verify was 240s slower. The warm Verify compile took 188.18s
+versus 68.43s cold, and its XCTest body took 172.059s versus 147.741s. Runner
+load or another external cause was not measured, so the variation is not
+attributed to the cache. The result supports a material package-stage
+improvement when the exact cache hits, without claiming a guaranteed or
+end-to-end 12-14 minute release.
 
 Both DMGs passed local download-only verification after the runs: GitHub
 artifact digests matched, manifests identified the frozen SHA, and DMG
@@ -360,16 +360,18 @@ sha256 matched the manifest and adjacent checksum. The cold DMG digest was
 `97599b8295e1779eeabce155f9d762ea1c62b7e776d31afd7eec9c6c528aa258`;
 the warm digest was
 `a4af4aad9e9d03afa789966f6dd6ca03e74d5331e486976527198d538581e693`.
-The differing DMG hashes are expected for non-reproducible timestamps/signing
-metadata and are not a failed digest check.
+The two DMGs came from independent builds, so their byte-level difference is
+not a failed digest check. Each archive matched its own manifest and adjacent
+checksum; the reason for the byte difference was not diagnosed.
 
-Read-only mounts verified each DMG's version/build, all ten application,
-Helper, seven MobileBattery and Sparkle binaries as `arm64 + x86_64`,
-minimum macOS 13.0 / SDK 27 metadata, and deep strict Ad-hoc signatures. No
-app launch, XPC/helper registration, notarization or macOS 13 runtime was
-exercised. After the runs, public releases and tags still had 18 entries each,
-`main/appcast.xml` retained the same Git blob, and the `distribution`
-Environment protection rules were unchanged.
+Read-only mounts verified each DMG's version/build, ten app, Helper, and
+native binaries as `arm64 + x86_64` with minimum macOS 13.0 / SDK 27 metadata,
+and deep strict Ad-hoc signatures. Sparkle's Ventura-compatible minimum was
+checked separately as metadata, not as part of the ten-binary contract. No
+app launch, XPC/helper registration, Developer ID signing, notarization or
+macOS 13 runtime was exercised. After the runs, public releases and tags still
+had 18 entries each, `main/appcast.xml` retained the same Git blob, and the
+`distribution` Environment protection rules were unchanged.
 
 Raw remote evidence: `.build/ci-optimization-evidence/remote-2026-10-27/`.
 It includes run/job JSON, logs, timing TSVs, artifact digests, manifests,
@@ -384,9 +386,12 @@ files are not committed release artifacts.
    marker as approximate until a per-architecture completion marker exists.
 3. Re-run the package from the exact same candidate and toolchain; do not
    compare different SDKs or runner images as a cache result.
-4. Keep `NOT RUN` for signing, notarization, and public publication until the
-   corresponding protected and manual evidence exists.
+4. Keep Developer ID signing, notarization, runtime Helper/XPC behavior, and
+   public publication as `NOT RUN` until the corresponding protected and
+   manual evidence exists. The Ad-hoc package contract and signature checks
+   above passed but do not substitute for those gates.
 
-This report records the remote baseline and local native measurements; it is
-not release authorization. No release, tag, appcast change, or workflow
-dispatch was performed by this task.
+This report records the remote baseline, local native measurements, and two
+authorized `publish=false` diagnostics; it is not release authorization. The
+diagnostics did not create a release or tag, update the appcast, or mutate
+protected-environment settings.

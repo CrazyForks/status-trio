@@ -158,3 +158,31 @@ Delivery uses a committed branch and review PR. No merge, workflow dispatch,
 production secret change, tag, release, DMG or appcast update is included.
 Remote cold/warm cache net savings, hosted-runner behavior, Developer ID,
 notarization, real UI/hardware and macOS 13 runtime remain `NOT RUN`.
+
+## Remote acceptance addendum (2026-10-27)
+
+The preceding local-acceptance section records the initial delivery snapshot;
+the remote diagnostics below were completed afterward. Both diagnostics used
+the same frozen `main` source SHA
+`c4fd84196ced2a0c340eabda32fef2b40bec32f0`, version `1.7.6`, build `44`,
+`publish=false`, and `notarize=false`. They ran with Xcode 27 / Swift 6.4 /
+SDK 27. The first diagnostic exposed a job-scope `runner.temp` expression;
+PR #157 fixed it before the measured runs.
+
+| Run | Result | Verify | Package | Wall | Cache |
+| --- | --- | ---: | ---: | ---: | --- |
+| [Cold `40426198186`](https://github.com/lingyired/status-trio/actions/runs/40426198186) | PASS | 372s | 484s | 901s | two misses, saved |
+| [Warm `40428015193`](https://github.com/lingyired/status-trio/actions/runs/40428015193) | PASS | 612s | 254s | 906s | two exact hits |
+
+Package fell by 230s (47.52%); the MobileBattery interval fell from 307s to
+45s. Total wall rose by 5s (+0.55%), so these diagnostics do not prove an
+end-to-end release speedup. Complete XCTest and Swift Testing suites passed in
+both runs. Both downloaded DMGs matched their artifact/manifest digests and
+passed read-only Universal, platform/SDK, and deep strict Ad-hoc signature
+checks. Developer ID signing, notarization, Helper/XPC runtime behavior,
+hardware/UI testing, and macOS 13 runtime acceptance remain `NOT RUN`.
+
+No release, tag, appcast update, production secret change, or protected
+Environment change was made. The two cache entries occupied 14,459,151 bytes
+and were reused without changing IDs or keys. Raw evidence is retained under
+`.build/ci-optimization-evidence/remote-2026-10-27/`; it is not committed.
