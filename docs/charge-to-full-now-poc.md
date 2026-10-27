@@ -160,7 +160,7 @@ pins, build scripts, tests, or assertions were changed. The complete profile
 was then run again with these pinned source inputs available and passed
 (exit 0) on October 28, 2026.
 
-After the research commit was created, `origin/main` advanced to
+During the research, `origin/main` advanced to
 `27ef4ca27217f09cdd3ee9efa4f5e1ad59209f89` with an unrelated DDC test and
 compatibility-document change. The branch was rebased onto that commit, the
 14 affected DDC tests passed, and `bash scripts/verify-local.sh full` passed
