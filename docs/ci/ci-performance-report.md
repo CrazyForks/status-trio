@@ -743,7 +743,73 @@ signature checks, and public-state snapshots are retained under
 The Apple Developer ID, notarization, runtime UI/Helper behavior, and
 publication gates remain `NOT RUN`.
 
+## DDC stabilization warm diagnostic (2026-10-28)
+
+After the test observation fix merged in PR #167, frozen
+`27ef4ca27217f09cdd3ee9efa4f5e1ad59209f89` completed
+[`40538437122`](https://github.com/lingyired/status-trio/actions/runs/40538437122)
+with the same 1.7.6/build 44, `publish=false`, `notarize=false` inputs:
+
+| Scope | Observation |
+| --- | ---: |
+| Total wall | 475s / 7m55s |
+| Verify | 267s |
+| Native, in parallel | 165s |
+| Package | 174s |
+| Swift test stage | 223.557s |
+| Debug test compilation | 80.46s |
+| Core XCTest body, 1,928 tests / eight skips / zero failures | 108.132s |
+| Swift Testing, 763 tests / zero failures | 6.033s |
+| DDC topology case | 0.001s |
+| Universal Swift Release phase | 102s |
+| MobileBattery total | 15s |
+
+Both exact native caches restored and validated; both dependency builds were
+skipped and no source-checkout phase ran. Four downloaded artifact ZIPs were
+independently hashed and matched their GitHub digests. The DMG SHA-256
+`765c3af866bdebcff1674a251196eb1d88d30eb65f0c5fef41058c01f2ea1812`
+matched the manifest. Read-only inspection passed ten arm64+x86_64 binaries,
+macOS 13/SDK 27 platform metadata, Sparkle metadata, and deep strict Ad-hoc
+signature checks. Release, tag, appcast and protected Environment snapshots
+were identical before and after this run.
+
+This run predates the guard declaration-index change. The 475s result is a
+warm diagnostic observation, not a guaranteed formal release duration or a
+controlled attribution of all wall-time differences to code. Runner variation
+also affects compilation. Raw data and contracts are under
+`.build/ci-optimization-evidence/ddc-stability-2026-10-27/baseline/`.
+Developer ID, notarization, runtime/hardware acceptance, and publication were
+not exercised.
+
 ## Remaining optimization decisions
+
+### Guard declaration lookup (2026-10-28)
+
+The guard deliberately runs before tests, in preflight, and inside the test
+suite. Those enforcement points remain. Its declaration lookup previously
+rescanned all Swift source files for each candidate name. It now builds
+zero-argument and any-argument name indexes once per `report()` call and uses
+exact whole-name membership. Indexes reset for each root; forwarded closures,
+allowlists, overload behavior, diagnostics, and exit codes are preserved.
+
+Five alternating local original/optimized scans on Bash 3.2 measured median
+6.34s versus 2.45s (61.36% lower command wall time). All pairs returned zero,
+had empty stderr, and had identical stdout. The real 289-line `--list`,
+self-test, empty root, and synthetic prefix/EOF corpus matched the original
+stdout, stderr, and status. Same-shell reset fixtures fail when index reset is
+removed, and also fail when an otherwise identical report is forced to return
+an error. The focused two `ForbiddenPatternGuardTests` passed.
+
+Evidence is under `.build/task5-guard-evidence-20261028-001356/`. This local
+measurement is not an end-to-end CI saving; remote measurements follow
+separately.
+
+`bash scripts/verify-local.sh full` passed on base
+`27ef4ca27217f09cdd3ee9efa4f5e1ad59209f89` with the final guard patch:
+1,928 Core XCTest tests (eight existing skips), 15 Helper XCTest tests,
+763 Swift Testing tests, Release/local-bundle builds, platform/Helper/native
+contracts, and offline cache/release regressions. The log is
+`.build/ci-optimization-evidence/ddc-stability-2026-10-27/verify-local-guard-full.log`.
 
 The warm run spent 208s in the Universal Swift Release build phase. Debug
 test outputs and Universal Release outputs remain different required work;
