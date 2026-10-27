@@ -35,10 +35,11 @@ require_text "$WORKFLOW" 'refs/heads/main'
 require_text "$WORKFLOW" "ref: \${{ inputs.candidate_sha }}"
 require_text "$WORKFLOW" "group: status-trio-release-publish"
 require_text "$WORKFLOW" "  verify:"
+require_text "$WORKFLOW" "  native:"
 require_text "$WORKFLOW" "  package:"
 require_text "$WORKFLOW" "  publish:"
-require_text "$WORKFLOW" "needs: verify"
-require_text "$WORKFLOW" "needs: [verify, package]"
+require_text "$WORKFLOW" "needs: [verify, native]"
+require_text "$WORKFLOW" "needs: [verify, native, package]"
 require_text "$WORKFLOW" "name: status-trio-release-package"
 require_text "$WORKFLOW" "bash scripts/package-release.sh"
 require_text "$WORKFLOW" "bash scripts/publish-release.sh"
@@ -56,8 +57,8 @@ require_text "$WORKFLOW" "needs.verify.outputs.tag"
 require_text "$WORKFLOW" "xcode-27"
 require_text "$WORKFLOW" "/Applications/Xcode_27.app/Contents/Developer"
 require_text "$WORKFLOW" "xcrun --sdk macosx --show-sdk-version"
-if [[ "$(grep -c 'runs-on: xcode-27' "$WORKFLOW")" -ne 3 ]]; then
-    fail "verify, package, and publish must all run on xcode-27"
+if [[ "$(grep -c 'runs-on: xcode-27' "$WORKFLOW")" -ne 4 ]]; then
+    fail "verify, native, package, and publish must all run on xcode-27"
 fi
 if grep -Eq '^    runs-on: (macos-|ubuntu-|windows-)' "$WORKFLOW"; then
     fail "release jobs must not fall back to a generic runner"
@@ -112,10 +113,12 @@ job_block() {
 }
 
 VERIFY_BLOCK="$(job_block verify)"
+NATIVE_BLOCK="$(job_block native)"
 PACKAGE_BLOCK="$(job_block package)"
 PUBLISH_BLOCK="$(job_block publish)"
 
 [[ -n "$VERIFY_BLOCK" ]] || fail "verify job is missing"
+[[ -n "$NATIVE_BLOCK" ]] || fail "native job is missing"
 [[ -n "$PACKAGE_BLOCK" ]] || fail "package job is missing"
 [[ -n "$PUBLISH_BLOCK" ]] || fail "publish job is missing"
 if printf '%s\n' "$VERIFY_BLOCK" | grep -Eq '^[[:space:]]+swift test([[:space:]]|$)'; then
@@ -127,15 +130,15 @@ for required_check in \
     "scripts/test-verify-local.sh" \
     "scripts/test-verify-local-bundle.sh" \
     "scripts/test-workflow-policy.sh"; do
-    printf '%s\n' "$VERIFY_BLOCK" | grep -Fq "bash $required_check" ||
-        fail "verify job must run $required_check"
+    printf '%s\n' "$NATIVE_BLOCK" | grep -Fq "bash $required_check" ||
+        fail "native job must run $required_check"
 done
 printf '%s\n' "$PACKAGE_BLOCK" | grep -Fq '      name: distribution' ||
     fail "package job must use the protected distribution environment"
 printf '%s\n' "$PUBLISH_BLOCK" | grep -Fq '      name: distribution' ||
     fail "publish job must use the protected distribution environment"
-printf '%s\n' "$VERIFY_BLOCK" | grep -Fq 'bash scripts/test-release-notarization.sh' ||
-    fail "verify job must run the offline release notarization regressions"
+printf '%s\n' "$NATIVE_BLOCK" | grep -Fq 'bash scripts/test-release-notarization.sh' ||
+    fail "native job must run the offline release notarization regressions"
 
 printf '%s\n' "$VERIFY_BLOCK" | grep -Fxq '    outputs:' ||
     fail "verify job must declare workflow outputs"
@@ -154,6 +157,9 @@ printf '%s\n' "$VERIFY_BLOCK" | grep -A6 '^    outputs:$' |
 
 if printf '%s\n' "$VERIFY_BLOCK" | grep -Fq 'secrets.'; then
     fail "verify job must not receive secrets"
+fi
+if printf '%s\n' "$NATIVE_BLOCK" | grep -Fq 'secrets.'; then
+    fail "native job must not receive secrets"
 fi
 if sed -n '/^permissions:$/,/^[^ ]/p' "$WORKFLOW" | grep -Fq 'contents: write'; then
     fail "workflow-level permissions must be read-only"
@@ -192,19 +198,36 @@ abort "release policy: frozen candidate validation must enforce main dispatch" u
 names = verify.map { |step| step["name"] }
 preflight = names.index("Run static release preflight")
 tests = names.index("Run tests")
-native = names.index("Run native and release-contract tests")
-abort "release policy: static preflight must precede tests and native contracts" unless
-  preflight && tests && native && preflight < tests && tests < native
+abort "release policy: static preflight must precede tests" unless preflight && tests && preflight < tests
+abort "release policy: native contracts must run in the parallel native job" if
+  names.include?("Run native and release-contract tests")
 abort "release policy: test execution must preserve diagnostics and original exit code" unless
   verify[tests].fetch("run").strip == %q{bash "$CI_TOOLS_ROOT/scripts/ci-run-stage.sh" tests bash scripts/test.sh}
 ["Summarize verify diagnostics", "Upload verify diagnostics"].each do |name|
   step = verify.find { |item| item["name"] == name }
   abort "release policy: #{name} must run after failure" unless step && step["if"] == "always()"
 end
-["verify", "package"].each do |job|
+["verify", "native", "package"].each do |job|
   abort "release policy: #{job} may not suppress failures" if
     workflow.fetch("jobs").fetch(job).fetch("steps").any? { |step| step["continue-on-error"] }
 end
+native_job = workflow.fetch("jobs").fetch("native")
+native_steps = native_job.fetch("steps")
+native = native_steps.find { |step| step["name"] == "Run native and release-contract tests" }
+abort "release policy: native contracts must use the diagnostic stage wrapper" unless
+  native && native.fetch("run").include?(%q{ci-run-stage.sh" native})
+["Summarize native diagnostics", "Upload native diagnostics"].each do |name|
+  step = native_steps.find { |item| item["name"] == name }
+  abort "release policy: #{name} must run after failure" unless step && step["if"] == "always()"
+end
+package_job = workflow.fetch("jobs").fetch("package")
+abort "release policy: package must wait for verify and native" unless
+  Array(package_job.fetch("needs")).sort == %w[native verify]
+publish_job = workflow.fetch("jobs").fetch("publish")
+abort "release policy: publish must wait for verify, native, and package" unless
+  Array(publish_job.fetch("needs")).sort == %w[native package verify]
+abort "release policy: recovery publication must require native success" unless
+  publish_job.fetch("if").include?("needs.native.result == 'success'")
 package = workflow.fetch("jobs").fetch("package").fetch("steps")
 build_index = package.index { |s| s["name"] == "Build, sign, notarize, and package once" }
 validation = package.index { |s| s["name"] == "Validate native dependency caches before saving" }

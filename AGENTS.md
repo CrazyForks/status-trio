@@ -166,13 +166,15 @@ See `.agents/rules/rendering.md` and
 - The only release entry point is a maintainer-dispatched manual
   `release.yml` run. A `v*` tag push must never publish automatically.
 - Dispatch from `main` with a frozen lowercase 40-character `candidate_sha`.
-  The verify job runs the full suite and native contracts on that exact commit;
-  package builds one Universal artifact; publish downloads that artifact
-  without rebuilding, repackaging, signing, or notarizing.
-- The verify job must not receive signing or notarization secrets. `package`
-  and `publish` use the protected `distribution` Environment, and publication
-  is allowed only when the candidate SHA, manifest SHA, Release Tag, appcast,
-  DMG digest, and public URLs all agree.
+  The `verify` and `native` jobs run the full suite and native contracts on
+  that exact commit; `package` waits for both and builds one Universal
+  artifact; `publish` downloads that artifact without rebuilding, repackaging,
+  signing, or notarizing.
+- The `verify` and parallel `native` jobs must not receive signing or
+  notarization secrets. `package` and `publish` wait for both, use the protected
+  `distribution` Environment, and publication is allowed only when the
+  candidate SHA, manifest SHA, Release Tag, appcast, DMG digest, and public
+  URLs all agree.
 - A failed Appcast or upload may be retried only with the same verified artifact.
   A retry must not create a second Release or rewrite a public appcast item.
 - Never publish a different SHA, rebuild during publish, or let a tag point at
