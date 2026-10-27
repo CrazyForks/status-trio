@@ -706,6 +706,43 @@ fixtures, and offline release simulations. The complete log is
 headless/older-macOS rendering, GUI/hardware behavior, Universal packaging,
 Developer ID, notarization, and publication remain `NOT RUN` for this change.
 
+## Layout optimization remote diagnostic
+
+The first authorized diagnostic on frozen
+`aa15b78c28561901fa8f4848f56405fea4c7d258`
+([`40525552482`](https://github.com/lingyired/status-trio/actions/runs/40525552482))
+used `version=1.7.6`, `build=44`, `publish=false`, and `notarize=false`.
+It completed successfully in 867s, including a 538s package job. Both native
+locks were cold because the prior reviewed-license identity change requires
+one rebuild. The package job therefore spent 338s in MobileBattery and 136s
+in the Universal Swift Release phase. This is not a warm end-to-end baseline.
+
+The slowest layout case fell from 29.596s in the earlier warm run to 0.936s.
+The complete verification still ran 1,928 Core XCTest tests (eight existing
+skips), 15 Helper XCTest tests, and 763 Swift Testing tests with zero failures.
+The downloaded DMG matched its manifest SHA-256, had ten binaries in both
+architectures, version 1.7.6/build 44, minimum macOS 13/SDK 27 metadata,
+Sparkle metadata, and valid deep strict Ad-hoc signatures. Releases remained
+at 18, tags at 18, and the appcast and protected Environment were unchanged.
+The run created two new exact native-cache entries.
+
+A second run with the same frozen SHA
+([`40530484687`](https://github.com/lingyired/status-trio/actions/runs/40530484687))
+stopped in verification before package. Its layout case again passed, but
+four assertions in the unrelated
+`DDCVolumePresentationTests.testTopologyChangeClearsConfirmedDDCVolumeAndSelectedRowImmediately`
+observed the prior `0.75` value after `topologyChanged()`. This matches the
+recorded intermittent DDC ordering failure in `docs/swift-ci-compatibility.md`;
+it is not evidence that the layout change caused the failure. Do not retry
+that run until the separate DDC ordering root cause is fixed. The second run
+therefore provides no warm package comparison and no end-to-end timing claim.
+
+Raw run metadata, logs, timing tables, downloaded artifact, manifest,
+signature checks, and public-state snapshots are retained under
+`.build/ci-optimization-evidence/layout-performance-remote-2026-10-27/`.
+The Apple Developer ID, notarization, runtime UI/Helper behavior, and
+publication gates remain `NOT RUN`.
+
 ## Remaining optimization decisions
 
 The warm run spent 208s in the Universal Swift Release build phase. Debug
