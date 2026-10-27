@@ -116,22 +116,25 @@ Release Notes。Swift 测试仍只通过 `scripts/test.sh` 执行一次，并同
 `package` 只在可信 `main` 手动流程中恢复/保存 `actions/cache@v4` 的两份
 独立依赖缓存。每份只含一个架构的 `prefix` 与 `.dependencies-cache.json`；
 不缓存 Helper、app、DMG、签名凭据或整个 `.build`。key 包含 schema、
-OS/架构、Xcode/Swift/Clang/SDK、构建工具版本、最低系统版本、依赖清单、构建
-脚本与配置。安装的 `.pc` / `.la` 和 dylib 引用绝对路径，因此 key 也绑定
+OS/架构、Xcode/Swift/Clang/SDK、构建工具版本、最低系统版本、依赖清单、已审核
+许可证文件集及内容摘要、构建脚本与配置。安装的 `.pc` / `.la` 和 dylib 引用
+绝对路径，因此 key 也绑定
 canonical prefix 路径；不同 checkout 路径会安全 miss，不尝试未经验证的迁移。
 没有宽泛的 `restore-keys`。
 
 恢复成功后，构建脚本仍验证完整文件 inventory/SHA-256、Header、metadata、
 symlink、Mach-O 架构、deployment target 和动态依赖。缓存 key 和 marker 已绑定
-依赖清单、构建脚本及 canonical prefix；只有真正重建时才 checkout pinned
+依赖清单、许可证摘要、构建脚本及 canonical prefix；只有真正重建时才 checkout pinned
 sources 并再次验证 source pins。日志区分 `restored`、`validated` 和
 `build skipped`。缺失/损坏的缓存会从 pinned sources 重建，检查工具失败则直接
 失败。
 
 已审核的第三方 license 文本提交在
 `Support/MobileBatteryHelper/ThirdPartyNotices/`。精确缓存命中且不重建依赖时，
-构建不 checkout 完整源码树，直接使用这些文本；发生冷构建时会逐文件比较上游
-license 与已审核副本，不一致即失败。Helper 每次重新编译，最终 Universal
+构建不 checkout 完整源码树，直接使用这些文本；修改许可证内容或文件集会使缓存
+失效。发生冷构建时，在封存缓存前逐文件比较上游 license 与已审核副本，比较会
+归一化换行与行尾空白，内容不一致即失败。失败的许可证验证不得留下可复用的新
+marker。Helper 每次重新编译，最终 Universal
 bundle、签名、公证及产物身份契约仍全部执行。
 
 GitHub cache 的同 key 内容不可覆盖。若精确命中的条目损坏，当前运行会安全重建；
