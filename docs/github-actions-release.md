@@ -121,11 +121,18 @@ OS/架构、Xcode/Swift/Clang/SDK、构建工具版本、最低系统版本、�
 canonical prefix 路径；不同 checkout 路径会安全 miss，不尝试未经验证的迁移。
 没有宽泛的 `restore-keys`。
 
-恢复成功后，构建脚本仍验证源码 pins、完整文件 inventory/SHA-256、Header、
-metadata、symlink、Mach-O 架构、deployment target 和动态依赖。日志区分
-`restored`、`validated` 和 `build skipped`。缺失/损坏的缓存会从 pinned sources
-重建，检查工具失败则直接失败。Helper 每次重新编译，最终 Universal bundle、
-签名、公证及产物身份契约仍全部执行。
+恢复成功后，构建脚本仍验证完整文件 inventory/SHA-256、Header、metadata、
+symlink、Mach-O 架构、deployment target 和动态依赖。缓存 key 和 marker 已绑定
+依赖清单、构建脚本及 canonical prefix；只有真正重建时才 checkout pinned
+sources 并再次验证 source pins。日志区分 `restored`、`validated` 和
+`build skipped`。缺失/损坏的缓存会从 pinned sources 重建，检查工具失败则直接
+失败。
+
+已审核的第三方 license 文本提交在
+`Support/MobileBatteryHelper/ThirdPartyNotices/`。精确缓存命中且不重建依赖时，
+构建不 checkout 完整源码树，直接使用这些文本；发生冷构建时会逐文件比较上游
+license 与已审核副本，不一致即失败。Helper 每次重新编译，最终 Universal
+bundle、签名、公证及产物身份契约仍全部执行。
 
 GitHub cache 的同 key 内容不可覆盖。若精确命中的条目损坏，当前运行会安全重建；
 维护者应删除该条目或递增 `scripts/mobile-battery-cache.py` 的 schema，使后续

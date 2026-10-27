@@ -204,6 +204,29 @@ initial source checkout took 96.582s; it is excluded from both cold/warm
 dependency comparisons, and source repositories are not persisted by the new
 Actions prefix cache.
 
+## Warm source-checkout removal
+
+The final same-SHA remote run still spent 27s checking out all pinned
+MobileBattery source trees before discovering that both dependency prefixes
+were exact cache hits. Those trees were not needed to compile the Helpers or
+assemble the package; they were only needed for a dependency rebuild or to
+regenerate license files that are already reviewed and committed under
+`Support/MobileBatteryHelper/ThirdPartyNotices/`.
+
+The build now prepares sources only when at least one architecture actually
+misses or rejects its dependency cache. Cache-hit runs use the tracked
+license texts. On a cold rebuild, the script still verifies every source pin
+and compares each upstream license byte-for-byte with the reviewed copy;
+drift fails closed instead of rewriting tracked files. Cache validation no
+longer requires a source checkout because the exact key and marker bind the
+dependency manifest, build scripts, canonical prefix and full installed
+inventory.
+
+The synthetic cache contract covers three new boundaries: a warm build does
+not invoke source preparation, a warm Universal build succeeds after the
+source trees are removed, and differing reviewed license text fails a cold
+build. This is a local contract result, not yet a remote timing claim.
+
 Both warm cache candidates validated and skipped third-party compilation.
 Helpers were rebuilt, and complete prefix inventories were byte-identical
 before/after the warm run. Uncompressed prefix disk usage was 21,152 KiB

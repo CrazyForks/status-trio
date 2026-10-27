@@ -11,6 +11,8 @@ SDK_VERSION="$(xcrun --sdk macosx --show-sdk-version)"
 MINIMUM_MACOS="13.0"
 UNIVERSAL_BUILD="${UNIVERSAL_BUILD:-0}"
 BUILD_JOBS="${BUILD_JOBS:-$(sysctl -n hw.ncpu)}"
+SOURCES_PREPARED=0
+NOTICE_ROOT="$ROOT/Support/MobileBatteryHelper/ThirdPartyNotices"
 
 if (( ${SDK_VERSION%%.*} < 26 )); then
     echo "Error: mobile battery helper requires macOS SDK 26 or newer; found ${SDK_VERSION}." >&2
@@ -22,8 +24,15 @@ else
     ARCHES=("$(uname -m)")
 fi
 
-build_phase mobile-source-checkout
-bash "$ROOT/scripts/prepare-mobile-battery-sources.sh" "$MANIFEST" "$WORK"
+prepare_sources_if_needed() {
+    if [[ "$SOURCES_PREPARED" == "1" ]]; then
+        return
+    fi
+    build_phase mobile-source-checkout
+    bash "$ROOT/scripts/prepare-mobile-battery-sources.sh" "$MANIFEST" "$WORK"
+    build_timing_finish 0
+    SOURCES_PREPARED=1
+}
 
 strip_development_rpaths() {
     local binary="$1"
@@ -106,6 +115,8 @@ for arch in "${ARCHES[@]}"; do
     export PKG_CONFIG_LIBDIR="$prefix/lib/pkgconfig:$prefix/lib64/pkgconfig:$curl_pkgconfig"
 
     if [[ "$REBUILD_DEPENDENCIES" == "1" ]]; then
+    prepare_sources_if_needed
+    build_phase "mobile-dependencies-$arch"
     while IFS=$'\t' read -r name repository commit version; do
         mkdir -p "$source_root/$name"
         git -C "$WORK/sources/$name" archive "$commit" | tar -x -C "$source_root/$name"
@@ -209,24 +220,48 @@ else
     done < <(find "$WORK/arm64/package-libraries" -maxdepth 1 -type l -name '*.dylib*' -print0)
 fi
 
-mkdir -p "$ROOT/Support/MobileBatteryHelper/ThirdPartyNotices"
-python3 - "$WORK/sources" "$ROOT/Support/MobileBatteryHelper/ThirdPartyNotices" <<'PY'
+[[ -f "$NOTICE_ROOT/NOTICE.md" ]] || {
+    echo "Error: missing reviewed MobileBattery notice: $NOTICE_ROOT/NOTICE.md" >&2
+    exit 1
+}
+python3 - "$WORK/sources" "$NOTICE_ROOT" "$SOURCES_PREPARED" <<'PY'
 from pathlib import Path
 import sys
-source_root, notices_root = map(Path, sys.argv[1:])
+
+source_root, notices_root = Path(sys.argv[1]), Path(sys.argv[2])
+sources_prepared = sys.argv[3] == "1"
+
+def normalized(path: Path) -> str:
+    text = path.read_text()
+    return "\n".join(line.rstrip() for line in text.splitlines()).rstrip() + "\n"
+
 for name in ("openssl", "libplist", "libimobiledevice-glue", "libusbmuxd", "libtatsu", "libimobiledevice"):
     source = source_root / name
     destination = notices_root / name
-    destination.mkdir(parents=True, exist_ok=True)
     candidates = ("LICENSE", "LICENSE.txt", "COPYING", "COPYING.LESSER")
-    for filename in candidates:
-        path = source / filename
-        if path.is_file():
-            text = path.read_text()
-            normalized = "\n".join(line.rstrip() for line in text.splitlines()).rstrip() + "\n"
-            (destination / filename).write_text(normalized)
+    reviewed = [destination / filename for filename in candidates if (destination / filename).is_file()]
+    if not reviewed:
+        raise SystemExit(f"missing reviewed license files for {name}: {destination}")
+    if not sources_prepared:
+        continue
+    source_files = [source / filename for filename in candidates if (source / filename).is_file()]
+    if not source_files:
+        raise SystemExit(f"missing upstream license files for {name}: {source}")
+    source_names = [path.name for path in source_files]
+    reviewed_names = [path.name for path in reviewed]
+    if source_names != reviewed_names:
+        raise SystemExit(
+            f"reviewed license set differs from {name} source pins: "
+            f"{reviewed_names} != {source_names}"
+        )
+    for source_file, reviewed_file in zip(source_files, reviewed):
+        if normalized(source_file) != normalized(reviewed_file):
+            raise SystemExit(
+                f"reviewed license text differs from {name} source pin: "
+                f"{reviewed_file.relative_to(notices_root)}"
+            )
 PY
 
-cp -R "$ROOT/Support/MobileBatteryHelper/ThirdPartyNotices/." "$PACKAGE/Resources/MobileBatteryLicenses/"
+cp -R "$NOTICE_ROOT/." "$PACKAGE/Resources/MobileBatteryLicenses/"
 cp "$MANIFEST" "$PACKAGE/Resources/MobileBatteryLicenses/dependencies.json"
 echo "Built source-pinned mobile battery helper package at $PACKAGE"
