@@ -61,6 +61,8 @@ SH
         test-privileged-helper-bundle-contract.sh \
         test-mobile-battery-helper.sh test-mobile-battery-rpaths.sh test-otool-dependencies.sh \
         test-macos13-sparkle-contract.sh test-mobile-battery-source-cache.sh \
+        test-mobile-battery-build-cache.sh test-ci-diagnostics.sh \
+        test-ci-workflow.sh test-build-timing.sh \
         test-mobile-battery-clang-version.sh test-release-workflow-policy.sh \
         test-release-pipeline.sh test-release-notarization.sh \
         test-verify-local.sh test-verify-local-bundle.sh; do

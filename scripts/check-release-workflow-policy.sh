@@ -171,4 +171,59 @@ if printf '%s\n' "$PUBLISH_BLOCK" | grep -Eq 'gh release (create|upload|edit)|up
     fail "publish job must delegate publication to scripts/publish-release.sh"
 fi
 
+# Inspect actual steps as well as text so reordering or a conditional cannot
+# leave a required command present but ineffective.
+ruby -ryaml - "$WORKFLOW" <<'RUBY'
+workflow = YAML.load_file(ARGV.fetch(0))
+verify = workflow.fetch("jobs").fetch("verify").fetch("steps")
+candidate_step = verify.find { |s| s["name"] == "Validate frozen candidate and resolve release" }
+abort "release policy: frozen candidate validation must enforce main dispatch" unless
+  candidate_step && candidate_step.fetch("run").include?(%q{if [[ "${GITHUB_REF}" != "refs/heads/main" ]]; then})
+names = verify.map { |step| step["name"] }
+preflight = names.index("Run static release preflight")
+tests = names.index("Run tests")
+native = names.index("Run native and release-contract tests")
+abort "release policy: static preflight must precede tests and native contracts" unless
+  preflight && tests && native && preflight < tests && tests < native
+abort "release policy: test execution must preserve diagnostics and original exit code" unless
+  verify[tests].fetch("run").strip == %q{bash "$CI_TOOLS_ROOT/scripts/ci-run-stage.sh" tests bash scripts/test.sh}
+["Summarize verify diagnostics", "Upload verify diagnostics"].each do |name|
+  step = verify.find { |item| item["name"] == name }
+  abort "release policy: #{name} must run after failure" unless step && step["if"] == "always()"
+end
+["verify", "package"].each do |job|
+  abort "release policy: #{job} may not suppress failures" if
+    workflow.fetch("jobs").fetch(job).fetch("steps").any? { |step| step["continue-on-error"] }
+end
+package = workflow.fetch("jobs").fetch("package").fetch("steps")
+build_index = package.index { |s| s["name"] == "Build, sign, notarize, and package once" }
+validation = package.index { |s| s["name"] == "Validate native dependency caches before saving" }
+abort "release policy: native cache save must follow successful package validation" unless
+  build_index && validation && build_index < validation && !package[validation].key?("if")
+%w[arm64 x86_64].each do |arch|
+  %w[restore save].each do |operation|
+    step = package.find { |s| s["uses"] == "actions/cache/#{operation}@v4" &&
+      s.fetch("with", {})["key"] == "${{ steps.native-cache-keys.outputs.key_#{arch} }}" }
+    abort "release policy: missing exact #{arch} cache #{operation}" unless step
+    settings = step.fetch("with")
+    expected = [".build/mobile-battery/#{arch}/prefix", ".build/mobile-battery/#{arch}/.dependencies-cache.json"]
+    abort "release policy: cache may contain only one native prefix and its inventory" unless
+      settings.fetch("path").lines.map(&:strip).reject(&:empty?) == expected
+    abort "release policy: native release caches may not use fallback keys" if settings.key?("restore-keys")
+    condition = "github.ref == 'refs/heads/main'"
+    condition += " && steps.native-cache-#{arch}.outputs.cache-hit != 'true'" if operation == "save"
+    abort "release policy: native cache writes/restores must be trusted main only" unless step["if"] == condition
+    abort "release policy: native cache save precedes validation" if
+      operation == "save" && package.index(step) <= validation
+    abort "release policy: native cache restore must precede package build" if
+      operation == "restore" && package.index(step) >= build_index
+  end
+end
+abort "release policy: unexpected cache action in release jobs" unless
+  package.count { |s| s.fetch("uses", "").start_with?("actions/cache") } == 4 &&
+  workflow.fetch("jobs").reject { |name, _| name == "package" }.values.all? { |j|
+    j.fetch("steps").none? { |s| s.fetch("uses", "").start_with?("actions/cache") }
+  }
+RUBY
+
 echo "release workflow policy check passed"

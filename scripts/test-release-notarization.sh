@@ -69,6 +69,7 @@ mkdir -p "$TEST_ROOT/repo/scripts" "$TEST_ROOT/bin"
 # Keep the wrapper real; copy its delegated scripts so absolute tool names can
 # be redirected inside the disposable fixture only.
 cp "$ROOT/scripts/release.sh" "$TEST_ROOT/repo/scripts/release.sh"
+cp "$ROOT/scripts/build-timing.sh" "$TEST_ROOT/repo/scripts/build-timing.sh"
 for script in package-release.sh publish-release.sh prepare-release-body.sh validate-appcast-notes.sh update-appcast.rb; do
     sed -e 's@/usr/bin/codesign@codesign@g' -e 's@/usr/bin/xcrun@xcrun@g' \
         "$ROOT/scripts/$script" > "$TEST_ROOT/repo/scripts/$script"

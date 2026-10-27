@@ -96,6 +96,49 @@ dispatch 会运行 `scripts/validate-appcast-notes.sh`，打印语言覆盖表�
 
 正式发布统一使用手动 workflow。workflow 必须将 checkout、构建 artifact、manifest 和 Release Tag 绑定到同一个冻结 SHA；Tag 已存在但 SHA 不同必须失败。
 
+## CI 预检、诊断与原生依赖缓存
+
+`verify` 在 Swift 测试之前逐文件检查 shell 语法、禁止模式、工作流策略和
+Release Notes。Swift 测试仍只通过 `scripts/test.sh` 执行一次；Native 和离线
+发布回归保留。失败时 Job Summary 记录阶段、观测到的失败类别、首个断言或
+编译位置、原始退出码和耗时。未知原因标为 `unknown`，不会把慢 runner 推断为
+根因。原始 verify 日志存入 `verify-diagnostics` artifact；只有资源加载类
+失败才附加 Bundle 路径诊断。
+
+恢复旧 package 时，新诊断脚本来自已有的 `release-tools` 可信 checkout，
+测试仍在原始 candidate checkout 执行。原产物、SHA、digest 和发布恢复校验
+保持原有边界，不重建 package。
+
+`package` 只在可信 `main` 手动流程中恢复/保存 `actions/cache@v4` 的两份
+独立依赖缓存。每份只含一个架构的 `prefix` 与 `.dependencies-cache.json`；
+不缓存 Helper、app、DMG、签名凭据或整个 `.build`。key 包含 schema、
+OS/架构、Xcode/Swift/Clang/SDK、构建工具版本、最低系统版本、依赖清单、构建
+脚本与配置。安装的 `.pc` / `.la` 和 dylib 引用绝对路径，因此 key 也绑定
+canonical prefix 路径；不同 checkout 路径会安全 miss，不尝试未经验证的迁移。
+没有宽泛的 `restore-keys`。
+
+恢复成功后，构建脚本仍验证源码 pins、完整文件 inventory/SHA-256、Header、
+metadata、symlink、Mach-O 架构、deployment target 和动态依赖。日志区分
+`restored`、`validated` 和 `build skipped`。缺失/损坏的缓存会从 pinned sources
+重建，检查工具失败则直接失败。Helper 每次重新编译，最终 Universal bundle、
+签名、公证及产物身份契约仍全部执行。
+
+GitHub cache 的同 key 内容不可覆盖。若精确命中的条目损坏，当前运行会安全重建；
+维护者应删除该条目或递增 `scripts/mobile-battery-cache.py` 的 schema，使后续
+运行保存新条目。缓存保存发生在正式 package artifact 上传之后，恢复发布仍可
+使用已经上传的原产物。
+
+`package-build-timings` artifact 和 package Job Summary 记录 TSV 阶段耗时。
+父阶段含子阶段，不能把全部行相加；公证包含 Apple/network 等待。cache restore
+与 save 的区间包含 Action 调度开销，压缩大小和传输信息见对应 Action 日志，
+解压后的 prefix 大小由 `du -sk` 记录。Artifact upload 的步骤耗时见 Actions
+元数据。净收益需同 candidate/工具链的一次冷、一次热远程运行才能计算；
+本次本地验证不替代该测量，也未启用 SwiftPM 编译产物缓存。
+
+基线、故障分类和实际验证记录见
+[CI stability baseline](ci/ci-stability-baseline.md)、
+[CI performance report](ci/ci-performance-report.md)。
+
 ## 发布恢复
 
 所有重试必须复用同一次 `package` 产生的 artifact：

@@ -389,7 +389,7 @@ checks = {
   "source run download" => "run-id: ${{ needs.verify.outputs.recovery_source_run_id || github.run_id }}",
   "actions read" => "actions: read",
   "trusted recovery test" => "bash release-tools/scripts/test-release-recovery.sh",
-  "trusted policy test" => "bash release-tools/scripts/test-release-workflow-policy.sh",
+  "trusted policy test" => 'bash "$CI_TOOLS_ROOT/scripts/test-release-workflow-policy.sh"',
   "trusted pipeline test" => "bash release-tools/scripts/test-release-pipeline.sh"
 }
 checks.each do |label, needle|
