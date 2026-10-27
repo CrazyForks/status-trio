@@ -413,7 +413,7 @@
 "battery.details.unavailable" = "取得できません";
 "battery.details.collecting" = "計測中…";
 "battery.details.loading" = "更新中…";
-"battery.details.explanation" = "外部電源接続時はシステム全体の消費電力、バッテリー使用時は正味の放電電力を表示します。いずれも推定値です。アダプタの定格出力は実際の消費電力ではありません。電源切り替え後、バッテリーの値の更新に最大1分かかる場合があります。";
+"battery.details.explanation" = "電力は独立したセンサーの推定値で、遅延や差異があります。定格電力は実際の入力ではありません。バッテリー使用時は正味の放電電力です。機種によってはバッテリーの更新が約1分遅れます。";
 /* Compact popover controls. */
 "menu.more" = "その他の操作";
 
@@ -506,3 +506,14 @@
 "settings.shortcut.restorationFailed" = "以前のショートカットを復元できませんでした。";
 "settings.shortcut.accessibility.current" = "現在のグローバルショートカット：%@";
 "settings.shortcut.accessibility.unassigned" = "グローバルショートカットは未設定です。";
+
+// Battery panel power flow and application energy
+"settings.battery.powerFlow" = "バッテリーパネルの電力フロー";
+"settings.battery.powerFlow.description" = "バッテリーパネルを開いている間だけ更新します。センサーの更新に遅延があり、3つの値の合計は一致しない場合があります。";
+"battery.power.input" = "充電器入力";
+"battery.power.charging" = "バッテリーへ";
+"battery.power.system" = "システム電力";
+"battery.energy.apps" = "電力消費の多いアプリ";
+"battery.energy.empty" = "今回の測定では目立ったアプリ動作はありません。";
+"battery.energy.cpuExplanation" = "現在のユーザーが読み取れる CPU エネルギーで並べ替えます。GPU とシステムプロセスは含まれない場合があります。";
+"battery.energy.activityExplanation" = "エネルギー情報を取得できないため CPU 動作量で推定します。GPU とシステムプロセスは含まれない場合があります。";

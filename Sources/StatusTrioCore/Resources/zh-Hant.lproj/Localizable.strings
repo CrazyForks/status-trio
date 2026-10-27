@@ -413,7 +413,7 @@
 "battery.details.unavailable" = "暫時無法取得";
 "battery.details.collecting" = "採集中…";
 "battery.details.loading" = "更新中…";
-"battery.details.explanation" = "接電時顯示整部 Mac 的功耗，使用電池時顯示電池淨放電功率，皆為估算值。電源轉接器額定功率並非實際功耗。切換電源後，電池讀數可能延遲一分鐘更新。";
+"battery.details.explanation" = "功率為估算值，各感測器讀值可能延遲或存在差異，三項功率不一定完全相加。額定功率並非實際輸入。拔電後顯示電池放電功率；部分機型的電池資料可能延遲約一分鐘。";
 /* Compact popover controls. */
 "menu.more" = "更多操作";
 
@@ -506,3 +506,14 @@
 "settings.shortcut.restorationFailed" = "無法還原先前的快速鍵。";
 "settings.shortcut.accessibility.current" = "目前全域快速鍵：%@";
 "settings.shortcut.accessibility.unassigned" = "尚未設定全域快速鍵。";
+
+// Battery panel power flow and application energy
+"settings.battery.powerFlow" = "電池面板功率流向";
+"settings.battery.powerFlow.description" = "僅在電池面板開啟時更新。感測器讀值可能延遲，三項功率不一定完全相加。";
+"battery.power.input" = "充電器輸入";
+"battery.power.charging" = "充入電池";
+"battery.power.system" = "系統供電";
+"battery.energy.apps" = "高耗能應用程式";
+"battery.energy.empty" = "本次取樣未發現明顯活躍的應用程式。";
+"battery.energy.cpuExplanation" = "依目前使用者可讀取的 CPU 耗能排序，可能不包含 GPU 和系統程序。";
+"battery.energy.activityExplanation" = "此機型無法讀取應用程式耗能，依 CPU 活躍程度估算排序，可能不包含 GPU 和系統程序。";

@@ -192,7 +192,11 @@ final class StatusPanelActions {
                 return store.bluetoothDevices.devices + ListeningModePreview.devices(for: config)
             },
             batteryStatus: { store.popupSnapshot.battery },
-            activateBatteryDetails: { store.batteryDetails.activate(state: $0) },
+            activateBatteryDetails: {
+                store.batteryDetails.configure(options: settings.batteryPowerDisplayOptions,
+                    showsHighEnergyApps: settings.showsHighEnergyApps)
+                store.batteryDetails.activate(state: $0)
+            },
             closeBatteryDetails: { store.batteryDetails.deactivate() },
             wifiNameAccess: { store.popupSnapshot.wifi.nameAccess },
             activateWiFiDetails: { store.wifiNetworks.activate(nameAccess: $0) },

@@ -413,7 +413,7 @@
 "battery.details.unavailable" = "غير متاح";
 "battery.details.collecting" = "جارٍ القياس…";
 "battery.details.loading" = "جارٍ التحديث…";
-"battery.details.explanation" = "عند توصيل الطاقة الخارجية، تُعرض قدرة استهلاك النظام الكلية؛ وعند استخدام البطارية، تُعرض قدرة تفريغها الصافية. كلاهما تقديري. قدرة المحوّل الاسمية ليست الاستهلاك الفعلي. قد يتأخر تحديث قراءات البطارية حتى دقيقة بعد تبديل مصدر الطاقة.";
+"battery.details.explanation" = "قراءات الطاقة تقديرات من مستشعرات مستقلة وقد تتأخر أو تختلف. القدرة الاسمية ليست الدخل الفعلي. عند استخدام البطارية يظهر صافي التفريغ. قد يتأخر تحديث البطارية نحو دقيقة في بعض الطرازات.";
 /* Compact popover controls. */
 "menu.more" = "إجراءات أخرى";
 
@@ -506,3 +506,14 @@
 "settings.shortcut.restorationFailed" = "تعذرت استعادة الاختصار السابق.";
 "settings.shortcut.accessibility.current" = "الاختصار العام الحالي: %@";
 "settings.shortcut.accessibility.unassigned" = "لم يتم تعيين اختصار عام.";
+
+// Battery panel power flow and application energy
+"settings.battery.powerFlow" = "تدفق الطاقة في لوحة البطارية";
+"settings.battery.powerFlow.description" = "يتم التحديث فقط عند فتح لوحة البطارية. قد تتأخر المستشعرات وقد لا تتطابق القراءات الثلاث تمامًا.";
+"battery.power.input" = "دخل الشاحن";
+"battery.power.charging" = "إلى البطارية";
+"battery.power.system" = "طاقة النظام";
+"battery.energy.apps" = "تطبيقات عالية الاستهلاك";
+"battery.energy.empty" = "لا يوجد نشاط ملحوظ للتطبيقات في هذه العينة.";
+"battery.energy.cpuExplanation" = "مرتبة حسب طاقة المعالج للتطبيقات المتاحة لحسابك. قد لا تشمل معالج الرسومات وعمليات النظام.";
+"battery.energy.activityExplanation" = "عدادات الطاقة غير متاحة؛ تقدير حسب نشاط المعالج. قد لا يشمل معالج الرسومات وعمليات النظام.";

@@ -413,7 +413,7 @@
 "battery.details.unavailable" = "Indisponible";
 "battery.details.collecting" = "Mesure en cours…";
 "battery.details.loading" = "Mise à jour…";
-"battery.details.explanation" = "Sur secteur, la puissance indique la consommation totale du système ; sur batterie, sa décharge nette. Ce sont des estimations. La puissance nominale de l’adaptateur n’est pas la consommation réelle. Après un changement de source, les données de batterie peuvent avoir une minute de retard.";
+"battery.details.explanation" = "Les puissances sont des estimations de capteurs indépendants et peuvent être retardées ou différer. La puissance nominale n’est pas l’entrée réelle. Sur batterie, la décharge nette est affichée. Certains modèles ont environ une minute de retard.";
 /* Compact popover controls. */
 "menu.more" = "Autres actions";
 
@@ -506,3 +506,14 @@
 "settings.shortcut.restorationFailed" = "Impossible de restaurer le raccourci précédent.";
 "settings.shortcut.accessibility.current" = "Raccourci global actuel : %@";
 "settings.shortcut.accessibility.unassigned" = "Aucun raccourci global défini.";
+
+// Battery panel power flow and application energy
+"settings.battery.powerFlow" = "Flux de puissance du panneau Batterie";
+"settings.battery.powerFlow.description" = "Actualisation uniquement lorsque le panneau Batterie est ouvert. Les capteurs peuvent être retardés et les trois valeurs peuvent différer.";
+"battery.power.input" = "Entrée chargeur";
+"battery.power.charging" = "Vers la batterie";
+"battery.power.system" = "Système";
+"battery.energy.apps" = "Apps énergivores";
+"battery.energy.empty" = "Aucune activité notable dans cet échantillon.";
+"battery.energy.cpuExplanation" = "Classement selon l’énergie CPU des apps accessibles à votre compte. GPU et processus système peuvent manquer.";
+"battery.energy.activityExplanation" = "Compteurs d’énergie indisponibles : estimation par activité CPU. GPU et processus système peuvent manquer.";

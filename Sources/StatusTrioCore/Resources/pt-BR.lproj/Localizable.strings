@@ -413,7 +413,7 @@
 "battery.details.unavailable" = "Indisponível";
 "battery.details.collecting" = "Medindo…";
 "battery.details.loading" = "Atualizando…";
-"battery.details.explanation" = "Na alimentação externa, é exibido o consumo total do sistema; na bateria, sua descarga líquida. Ambos são estimativas. A potência nominal do adaptador não é o consumo real. Após mudar a fonte, os dados da bateria podem levar até um minuto para atualizar.";
+"battery.details.explanation" = "As potências são estimativas de sensores independentes e podem atrasar ou divergir. A potência nominal não é a entrada real. Na bateria, mostra a descarga líquida. Alguns modelos podem atualizar a bateria com cerca de um minuto de atraso.";
 /* Compact popover controls. */
 "menu.more" = "Mais ações";
 
@@ -506,3 +506,14 @@
 "settings.shortcut.restorationFailed" = "Não foi possível restaurar o atalho anterior.";
 "settings.shortcut.accessibility.current" = "Atalho global atual: %@";
 "settings.shortcut.accessibility.unassigned" = "Nenhum atalho global definido.";
+
+// Battery panel power flow and application energy
+"settings.battery.powerFlow" = "Fluxo de potência no painel Bateria";
+"settings.battery.powerFlow.description" = "Atualiza apenas com o painel Bateria aberto. Os sensores podem ter atraso e as três leituras podem não somar exatamente.";
+"battery.power.input" = "Entrada carregador";
+"battery.power.charging" = "Para a bateria";
+"battery.power.system" = "Sistema";
+"battery.energy.apps" = "Apps de alto consumo";
+"battery.energy.empty" = "Nenhuma atividade significativa nesta amostra.";
+"battery.energy.cpuExplanation" = "Ordenados pela energia de CPU dos apps acessíveis à sua conta. GPU e processos do sistema podem estar ausentes.";
+"battery.energy.activityExplanation" = "Contadores de energia indisponíveis: estimativa pela atividade de CPU. GPU e processos do sistema podem estar ausentes.";

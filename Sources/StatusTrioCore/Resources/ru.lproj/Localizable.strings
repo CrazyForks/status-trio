@@ -413,7 +413,7 @@
 "battery.details.unavailable" = "Недоступно";
 "battery.details.collecting" = "Измерение…";
 "battery.details.loading" = "Обновление…";
-"battery.details.explanation" = "При питании от сети показано общее потребление системы, от батареи — её чистая мощность разряда. Оба значения оценочные. Номинальная мощность адаптера не равна реальному потреблению. После смены источника данные батареи могут обновляться с задержкой до минуты.";
+"battery.details.explanation" = "Мощность оценивается независимыми датчиками; показания могут запаздывать или различаться. Номинал адаптера не равен фактическому входу. При работе от батареи показан чистый разряд. На некоторых моделях задержка обновления батареи — около минуты.";
 /* Compact popover controls. */
 "menu.more" = "Другие действия";
 
@@ -506,3 +506,14 @@
 "settings.shortcut.restorationFailed" = "Не удалось восстановить предыдущее сочетание.";
 "settings.shortcut.accessibility.current" = "Текущее глобальное сочетание: %@";
 "settings.shortcut.accessibility.unassigned" = "Глобальное сочетание не назначено.";
+
+// Battery panel power flow and application energy
+"settings.battery.powerFlow" = "Потоки мощности в панели батареи";
+"settings.battery.powerFlow.description" = "Обновляется только при открытой панели батареи. Данные датчиков могут запаздывать, поэтому сумма трёх показаний может различаться.";
+"battery.power.input" = "От зарядки";
+"battery.power.charging" = "В батарею";
+"battery.power.system" = "Система";
+"battery.energy.apps" = "Энергоёмкие приложения";
+"battery.energy.empty" = "В этом замере нет заметной активности приложений.";
+"battery.energy.cpuExplanation" = "По энергии CPU приложений, доступных текущему пользователю. GPU и системные процессы могут не учитываться.";
+"battery.energy.activityExplanation" = "Счётчики энергии недоступны: оценка по активности CPU. GPU и системные процессы могут не учитываться.";

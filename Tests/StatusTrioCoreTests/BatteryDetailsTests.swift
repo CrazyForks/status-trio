@@ -45,9 +45,9 @@ final class BatteryDetailsTests: XCTestCase {
         values["IsCharging"] = true
         values["Amperage"] = 1000
         let charging = parse(values, state: state(connected: true, charging: true))
-        XCTAssertNil(charging.power)
+        XCTAssertEqual(charging.power?.watts, 12.279)
         XCTAssertEqual(charging.adapterWatts, 90)
-        XCTAssertEqual(charging.powerAvailability, .collecting)
+        XCTAssertEqual(charging.powerAvailability, .available)
         values["IsCharging"] = false
         XCTAssertNil(parse(values, state: state(connected: true)).power, "Positive current without charging is inconsistent")
         values["Amperage"] = -1000
@@ -244,12 +244,14 @@ final class BatteryDetailsControllerTests: XCTestCase {
             let controller = BatteryDetailsController { _, _ in
                 BatteryDetails(cycleCount: 43, power: BatteryPowerSample(
                     volts: 12, amps: -1, updatedAt: Date().addingTimeInterval(offset)
-                ), systemPower: SystemPowerSample(watts: 17.25, readAt: Date().addingTimeInterval(offset)))
+                ), systemPower: SystemPowerSample(watts: 17.25, readAt: Date().addingTimeInterval(offset)),
+                   inputPower: SystemPowerSample(watts: 67, readAt: Date().addingTimeInterval(offset)))
             }
             controller.activate(state: state)
             await waitUntil { controller.details != nil }
             XCTAssertNil(controller.details?.power)
             XCTAssertNil(controller.details?.systemPower)
+            XCTAssertNil(controller.details?.inputPower)
             XCTAssertEqual(controller.details?.cycleCount, 43)
             controller.deactivate()
         }
@@ -278,7 +280,8 @@ final class BatteryDetailsControllerTests: XCTestCase {
         let sampled = Date()
         let controller = BatteryDetailsController { _, _ in
             _ = reader.read()
-            return BatteryDetails(systemPower: SystemPowerSample(watts: 17.25, readAt: sampled))
+            return BatteryDetails(systemPower: SystemPowerSample(watts: 17.25, readAt: sampled),
+                inputPower: SystemPowerSample(watts: 67, readAt: sampled))
         }
         controller.activate(state: state)
         reader.gate.signal()
@@ -287,6 +290,7 @@ final class BatteryDetailsControllerTests: XCTestCase {
         await waitUntil { reader.count == 2 }
         controller.refresh(now: sampled.addingTimeInterval(91))
         XCTAssertNil(controller.details?.systemPower)
+        XCTAssertNil(controller.details?.inputPower)
         controller.deactivate()
         reader.gate.signal()
     }

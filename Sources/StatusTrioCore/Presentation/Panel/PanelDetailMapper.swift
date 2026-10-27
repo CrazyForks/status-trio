@@ -5,7 +5,9 @@ enum PanelDetailMapper {
     static func battery(
         status battery: BatteryStatus,
         details: BatteryDetails?,
-        localization: Localization
+        localization: Localization,
+        powerOptions: BatteryPowerDisplayOptions = .default,
+        energyApps: ApplicationEnergyRanking? = nil
     ) -> PanelDetailState {
         var rows: [PanelDetailRow] = []
         if let details {
@@ -13,15 +15,15 @@ enum PanelDetailMapper {
             let watts = reading.watts.map {
                 $0.formatted(.number.precision(.fractionLength(1)).locale(localization.resolvedLanguage.locale)) + " W"
             } ?? localization.string(reading.unavailableTitle)
-            rows.append(row(reading.title, value: watts, localization: localization))
-            if let timestamp = reading.timestamp {
+            if powerOptions.showsSystem { rows.append(row(reading.title, value: watts, localization: localization)) }
+            if powerOptions.showsSystem, let timestamp = reading.timestamp {
                 rows.append(row(
                     reading.timestampTitle,
                     value: timestamp.formatted(.dateTime.hour().minute().second().locale(localization.resolvedLanguage.locale)),
                     localization: localization
                 ))
             }
-            if let charging = reading.chargingWatts {
+            if powerOptions.showsCharging, let charging = reading.chargingWatts {
                 rows.append(row(
                     .batteryDetailsCharging,
                     value: charging.formatted(.number.precision(.fractionLength(1)).locale(localization.resolvedLanguage.locale)) + " W",
@@ -57,7 +59,28 @@ enum PanelDetailMapper {
             isLoading: details == nil,
             errorText: nil,
             explanation: localization.string(.batteryDetailsExplanation),
-            lifecycleIdentity: "\(battery.isPresent)-\(battery.isConnectedToPower)-\(battery.isCharging)"
+            lifecycleIdentity: "\(battery.isPresent)-\(battery.isConnectedToPower)-\(battery.isCharging)",
+            powerFlow: details.flatMap {
+                battery.isConnectedToPower && powerOptions.showsAnyPower
+                    ? powerFlow(status: battery, details: $0, options: powerOptions, localization: localization) : nil
+            },
+            energyApps: energyApps
+        )
+    }
+
+    private static func powerFlow(status: BatteryStatus, details: BatteryDetails,
+                                  options: BatteryPowerDisplayOptions, localization: Localization) -> BatteryPowerFlowState {
+        func metric(_ label: LocalizationKey, _ watts: Double?) -> BatteryPowerFlowState.Metric {
+            let value = watts.map {
+                $0.formatted(.number.precision(.fractionLength(2)).locale(localization.resolvedLanguage.locale)) + " W"
+            } ?? localization.string(.batteryDetailsUnavailable)
+            return BatteryPowerFlowState.Metric(label: localization.string(label), value: value, watts: watts)
+        }
+        let charging = status.isCharging ? details.power.flatMap { $0.watts > 0 ? $0.watts : nil } : 0
+        return BatteryPowerFlowState(
+            input: options.showsInput ? metric(.batteryPowerInput, details.inputPower?.watts) : nil,
+            battery: options.showsCharging ? metric(.batteryPowerCharging, charging) : nil,
+            system: options.showsSystem ? metric(.batteryPowerSystem, details.systemPower?.watts) : nil
         )
     }
 
