@@ -13,8 +13,11 @@ This is not evidence that a permission-free implementation is impossible.
 Research started October 27, 2026; regression verification continued October 28,
 2026, Asia/Shanghai.
 
-- Baseline: `origin/main`, `a9ee5cab352b6464d3a6b5a2a4cb51a5bd6c99b9`.
-- Branch: `codex/charge-to-full-now`.
+- Initial baseline: `origin/main`, `a9ee5cab352b6464d3a6b5a2a4cb51a5bd6c99b9`.
+- Final integrated baseline: `origin/main`,
+  `27ef4ca27217f09cdd3ee9efa4f5e1ad59209f89`.
+- Branch: `codex/charge-to-full-now`, research commit
+  `29577226dad404e2a8a4eddfa402807d2e9a5647`.
 - Isolated worktree: `/Users/lingsmbp/.codex/worktrees/charge-to-full-now/status-trio`.
 - Host: Apple Silicon, macOS 27.0.1 (26A434), Xcode 27.0 (27A266a).
 - Zero charging requests, new permissions, authorization requests, Helper
@@ -131,6 +134,7 @@ limitations correctly continue to say the app has no charge-to-full action.
 | Live arm64 class/selector/ABI and state reads | PASS for this OS build only |
 | Existing focused battery/panel tests | PASS: 5 XCTest tests and 8 Swift Testing tests |
 | Complete repository local profile | PASS: `bash scripts/verify-local.sh full`, exit 0; see provenance below |
+| Updated-main DDC regression | PASS: 14 tests, 0 failures after rebasing onto `27ef4ca2` |
 | Independent four-file safety review | PASS: no remaining Critical or Important findings |
 | Native system menu comparison | NOT RUN: UI inspection timed out |
 | 80% override authorization and actual continued charging | BLOCKED: no confirmed safe eligibility |
@@ -156,6 +160,13 @@ pins, build scripts, tests, or assertions were changed. The complete profile
 was then run again with these pinned source inputs available and passed
 (exit 0) on October 28, 2026.
 
+After the research commit was created, `origin/main` advanced to
+`27ef4ca27217f09cdd3ee9efa4f5e1ad59209f89` with an unrelated DDC test and
+compatibility-document change. The branch was rebased onto that commit, the
+14 affected DDC tests passed, and `bash scripts/verify-local.sh full` passed
+again with exit 0 at research commit
+`29577226dad404e2a8a4eddfa402807d2e9a5647`.
+
 The successful final run reported 15 Helper XCTest tests, 1,928 app XCTest
 tests (8 existing skips), and 763 Swift Testing tests in 112 suites, with zero
 failures. Release compilation, the local non-Universal Ad-hoc app bundle,
@@ -171,7 +182,9 @@ ID signing, notarization, or publication.
 The initial failure log is retained at
 `.build/charge-to-full-now-poc/full-verification-initial-failure.log`;
 the subsequent run is at
-`.build/charge-to-full-now-poc/full-verification-console.log`.
+`.build/charge-to-full-now-poc/full-verification-console.log` (first complete,
+pre-rebase run) and `.build/charge-to-full-now-poc/full-verification-final.log`
+(final post-rebase run).
 The repository's canonical current report is
 `.build/local-verification/log.txt`. Its `status.txt` records a failing step
 when applicable; it is empty on this successful run. The saved initial status
