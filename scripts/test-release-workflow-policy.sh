@@ -114,7 +114,41 @@ ruby -e '
     abort "workflow policy regression command missing"
   File.write(path, source)
 ' "$invalid/.github/workflows/release.yml"
-expect_failure "verify job without workflow policy regression" run_policy "$invalid"
+expect_failure "native verification without workflow policy regression" run_policy "$invalid"
+
+invalid="$WORK/invalid-package-skips-native"
+make_fixture "$invalid"
+ruby -e '
+  path = ARGV[0]
+  source = File.read(path)
+  source.sub!("    needs: [verify, native]\n", "    needs: verify\n") or
+    abort "parallel package dependency missing"
+  File.write(path, source)
+' "$invalid/.github/workflows/release.yml"
+expect_failure "package without native verification dependency" run_policy "$invalid"
+
+invalid="$WORK/invalid-publish-skips-native"
+make_fixture "$invalid"
+ruby -e '
+  path = ARGV[0]
+  source = File.read(path)
+  source.sub!("    needs: [verify, native, package]\n", "    needs: [verify, package]\n") or
+    abort "parallel publish dependency missing"
+  File.write(path, source)
+' "$invalid/.github/workflows/release.yml"
+expect_failure "publish without native verification dependency" run_policy "$invalid"
+
+invalid="$WORK/invalid-native-secret"
+make_fixture "$invalid"
+ruby -e '
+  path = ARGV[0]
+  source = File.read(path)
+  needle = "  native:\n"
+  source.sub!(needle, needle + "    env:\n      LEAKED_SECRET: ${{ secrets.SPARKLE_PRIVATE_KEY }}\n") or
+    abort "native job missing"
+  File.write(path, source)
+' "$invalid/.github/workflows/release.yml"
+expect_failure "secret in native verification job" run_policy "$invalid"
 
 invalid="$WORK/invalid-publish-build"
 make_fixture "$invalid"
@@ -171,7 +205,7 @@ make_fixture "$invalid"
 ruby -e '
   path = ARGV[0]
   source = File.read(path)
-  source.sub!("  package:\n    needs: verify\n    runs-on: xcode-27\n", "  package:\n    needs: verify\n    runs-on: xcode-27\n") or
+  source.sub!("  package:\n    needs: [verify, native]\n    runs-on: xcode-27\n", "  package:\n    needs: [verify, native]\n    runs-on: xcode-27\n") or
     abort "package job missing"
   source.sub!("      name: distribution\n", "      name: ci\n") or
     abort "package environment missing"

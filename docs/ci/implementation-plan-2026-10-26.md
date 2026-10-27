@@ -186,3 +186,22 @@ No release, tag, appcast update, production secret change, or protected
 Environment change was made. The two cache entries occupied 14,459,151 bytes
 and were reused without changing IDs or keys. Raw evidence is retained under
 `.build/ci-optimization-evidence/remote-2026-10-27/`; it is not committed.
+
+## Latest-main rerun and parallel verification addendum (2026-10-27)
+
+[Run `40435617420`](https://github.com/lingyired/status-trio/actions/runs/40435617420)
+repeated the cache path on current `main`
+`894a7787b4b9a0fb6add2224cccd85235ff54923` with `publish=false`. Both
+architectures hit the existing exact cache entries, skipped third-party
+dependency builds, and rebuilt both Helpers. Package took 214s; Verify took
+403s; total wall was 737s. The downloaded Universal Ad-hoc package passed
+manifest, digest, architecture, platform/SDK and strict signature checks.
+
+The next implementation profile runs Swift tests and native/offline release
+contracts in parallel `verify` and `native` jobs on `xcode-27`. `package`
+requires both to pass, and `publish` requires `verify`, `native`, and
+`package`. The jobs have no signing/notarization secrets or `distribution`
+Environment access. Full local verification passed. Remote wall-time benefit
+and runner-capacity behavior remain unmeasured until the two follow-up
+`publish=false` runs complete; no release, tag, appcast or Environment policy
+changed.

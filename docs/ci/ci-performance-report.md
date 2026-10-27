@@ -378,15 +378,42 @@ It includes run/job JSON, logs, timing TSVs, artifact digests, manifests,
 mounted-DMG checks and before/after public-state audits. These local evidence
 files are not committed release artifacts.
 
+## Parallel verify/native profile
+
+The latest `main` rerun before the profile change was
+[`40435617420`](https://github.com/lingyired/status-trio/actions/runs/40435617420)
+at `894a7787b4b9a0fb6add2224cccd85235ff54923`. It passed both cached native
+restores, rebuilt both Helpers, and uploaded a valid Universal Ad-hoc package.
+Package took 214s and the MobileBattery interval stayed at 45s. Verify took
+403s: 13s static preflight, 240s Swift tests, and 134s native/release
+contracts. The 240s test stage included a 97s compile and 134s XCTest body.
+Total wall was 737s, including the 146s protected-Environment approval gap.
+
+The subsequent profile moves the native/release contracts into a separate
+`native` job on the same `xcode-27` runner. Both jobs check out and reassert
+the frozen candidate independently. `package` and `publish` require both jobs
+to pass; neither new job receives secrets or Environment access. Diagnostics
+remain separate artifacts, so a native failure cannot be hidden by a passing
+Swift suite. The full local profile passed after the workflow, policy and
+documents changed.
+
+This is an implementation profile, not a measured remote saving yet. The next
+two `publish=false` diagnostics must establish the actual parallel wall time
+and any runner-capacity effect. Do not subtract the old 134s native stage from
+the old wall time as though jobs were free to run concurrently.
+
 ## Follow-up measurement plan
 
-1. Repeat the package-only cold/warm pair on a later formal candidate so the
+1. Run the parallel profile twice with `candidate_sha` frozen to the profile
+   commit, `publish=false`, and no notarization; compare wall, per-job duration,
+   and cache state.
+2. Repeat the package-only cold/warm pair on a later formal candidate so the
    hosted cache hit rate and any mismatch-driven rebuild can be observed.
-2. Compare arm64 and x86_64 phase rows separately. Treat the x86-to-package
+3. Compare arm64 and x86_64 phase rows separately. Treat the x86-to-package
    marker as approximate until a per-architecture completion marker exists.
-3. Re-run the package from the exact same candidate and toolchain; do not
+4. Re-run the package from the exact same candidate and toolchain; do not
    compare different SDKs or runner images as a cache result.
-4. Keep Developer ID signing, notarization, runtime Helper/XPC behavior, and
+5. Keep Developer ID signing, notarization, runtime Helper/XPC behavior, and
    public publication as `NOT RUN` until the corresponding protected and
    manual evidence exists. The Ad-hoc package contract and signature checks
    above passed but do not substitute for those gates.

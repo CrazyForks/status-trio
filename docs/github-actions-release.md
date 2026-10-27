@@ -3,9 +3,11 @@
 `.github/workflows/release.yml` 只有 `workflow_dispatch` 入口，不再由
 `v*` Tag push、PR 或 `main` push 自动触发。正式发布分三步：
 
-1. `verify`：检出冻结的 `candidate_sha`，运行完整 Swift 测试、Native
-   契约测试和离线发布回归；此 Job 不接收签名或公证 secrets。
-2. `package`：在 `xcode-27` 上对同一 SHA 做一次 Universal 构建，完成
+1. `verify` 与 `native`：分别检出冻结的 `candidate_sha`，并行运行完整
+   Swift 测试，以及 Native 契约测试和离线发布回归；两者都不接收签名或
+   公证 secrets。
+2. `package`：等待上述两个 Job 均成功后，在 `xcode-27` 上对同一 SHA
+   做一次 Universal 构建，完成
    Helper/MobileBattery 验证、签名、可选公证、DMG、Sparkle EdDSA 签名和
    manifest。
 3. `publish`：只下载上一步的 Actions artifact，校验 SHA-256、manifest、
@@ -99,10 +101,12 @@ dispatch 会运行 `scripts/validate-appcast-notes.sh`，打印语言覆盖表�
 ## CI 预检、诊断与原生依赖缓存
 
 `verify` 在 Swift 测试之前逐文件检查 shell 语法、禁止模式、工作流策略和
-Release Notes。Swift 测试仍只通过 `scripts/test.sh` 执行一次；Native 和离线
-发布回归保留。失败时 Job Summary 记录阶段、观测到的失败类别、首个断言或
-编译位置、原始退出码和耗时。未知原因标为 `unknown`，不会把慢 runner 推断为
-根因。原始 verify 日志存入 `verify-diagnostics` artifact；只有资源加载类
+Release Notes。Swift 测试仍只通过 `scripts/test.sh` 执行一次，并同时启动
+独立的 `native` Job 运行 Native 和离线发布回归；`package` 必须等待两者都
+成功。该拆分不缩短单项检查，只移除两个互不依赖阶段的串行等待。失败时各自
+的 Job Summary 记录阶段、观测到的失败类别、首个断言或编译位置、原始退出码
+和耗时。未知原因标为 `unknown`，不会把慢 runner 推断为根因。原始日志分别
+存入 `verify-diagnostics` 和 `native-diagnostics` artifact；只有资源加载类
 失败才附加 Bundle 路径诊断。
 
 恢复旧 package 时，新诊断脚本来自已有的 `release-tools` 可信 checkout，
