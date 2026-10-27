@@ -509,11 +509,12 @@
 
 // Battery panel power flow and application energy
 "settings.battery.powerFlow" = "배터리 패널 전력 흐름";
-"settings.battery.powerFlow.description" = "배터리 패널이 열려 있을 때만 갱신합니다. 센서 갱신이 지연되어 세 값의 합이 일치하지 않을 수 있습니다.";
+"settings.battery.powerFlow.description" = "전력 값은 배터리 패널이 열려 있을 때만 갱신합니다. 센서 갱신이 지연되어 세 값의 합이 일치하지 않을 수 있습니다.";
 "battery.power.input" = "충전기 입력";
 "battery.power.charging" = "배터리 충전";
 "battery.power.system" = "시스템 전력";
 "battery.energy.apps" = "에너지 사용이 많은 앱";
 "battery.energy.empty" = "이번 측정에서 두드러진 앱 활동이 없습니다.";
 "battery.energy.cpuExplanation" = "현재 사용자가 읽을 수 있는 CPU 에너지순입니다. GPU 및 시스템 프로세스는 누락될 수 있습니다.";
-"battery.energy.activityExplanation" = "에너지 정보를 읽을 수 없어 CPU 활동으로 추정합니다. GPU 및 시스템 프로세스는 누락될 수 있습니다.";
+"battery.energy.activityExplanation" = "에너지 데이터가 부족하여 CPU 활동으로 추정합니다. GPU 및 시스템 프로세스는 누락될 수 있습니다.";
+"battery.energy.monitoringDescription" = "활성화하면 최근 결과를 백그라운드에서 유지하여 패널에 바로 표시합니다. CPU 에너지 또는 활동순입니다.";

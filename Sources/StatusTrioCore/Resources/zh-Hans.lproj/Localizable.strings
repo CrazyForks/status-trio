@@ -509,11 +509,12 @@
 
 // Battery panel power flow and application energy
 "settings.battery.powerFlow" = "电池面板功率流向";
-"settings.battery.powerFlow.description" = "仅在电池面板打开时更新。传感器读数可能延迟，三项功率不一定完全相加。";
+"settings.battery.powerFlow.description" = "功率读数仅在电池面板打开时更新。传感器读数可能延迟，三项功率不一定完全相加。";
 "battery.power.input" = "充电器输入";
 "battery.power.charging" = "充入电池";
 "battery.power.system" = "系统供电";
 "battery.energy.apps" = "高能耗应用";
 "battery.energy.empty" = "本次采样未发现明显活跃的应用。";
 "battery.energy.cpuExplanation" = "按当前用户可读取的 CPU 能耗排序，可能不包含 GPU 和系统进程。";
-"battery.energy.activityExplanation" = "此机型无法读取应用能耗，按 CPU 活跃度估算排序，可能不包含 GPU 和系统进程。";
+"battery.energy.activityExplanation" = "可读能耗数据不足，按 CPU 活跃度估算排序，可能不包含 GPU 和系统进程。";
+"battery.energy.monitoringDescription" = "开启后在后台维护近期结果，打开面板时直接显示；按 CPU 能耗或活跃度排序。";

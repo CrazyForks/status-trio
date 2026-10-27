@@ -37,7 +37,7 @@ struct BatterySectionView: View {
             SettingsDivider()
             SettingsToggleRow(symbol: "app", tint: .purple,
                 title: localization.string(.batteryHighEnergyApps),
-                subtitle: localization.string(.batteryEnergyCPUExplanation),
+                subtitle: localization.string(.batteryEnergyMonitoringDescription),
                 isOn: $store.showsHighEnergyApps)
             Text(localization.string(.settingsBatteryPowerFlowDescription))
                 .font(.caption)

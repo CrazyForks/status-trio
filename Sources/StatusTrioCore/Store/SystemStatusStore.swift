@@ -117,6 +117,10 @@ final class SystemStatusStore: ObservableObject {
     private var inputUpdateTask: Task<Void, Never>?
     private var inputSettingsCancellable: AnyCancellable?
     private var localIPSettingsCancellable: AnyCancellable?
+    private var applicationEnergySettingsCancellable: AnyCancellable?
+    private var isApplicationEnergyEnabled = false
+    private var isApplicationEnergySystemAsleep = false
+    private var isApplicationEnergyDisplayAsleep = false
     private var mobileBatterySettingsCancellable: AnyCancellable?
     private var lowPowerModeSettingsCancellable: AnyCancellable?
     private var lowPowerModeSnapshotCancellable: AnyCancellable?
@@ -273,6 +277,7 @@ final class SystemStatusStore: ObservableObject {
     func start() {
         guard !hasStarted, !hasStopped else { return }
         hasStarted = true
+        updateApplicationEnergyDemand()
         wifiMonitor.setDetailsVisible(false)
         volumeMonitor.setDetailsVisible(false)
 
@@ -291,6 +296,10 @@ final class SystemStatusStore: ObservableObject {
                 // over-polling is the safe direction, permanent staleness is
                 // not.
                 self.isDisplayAsleep = false
+                // Unlike the icon fallback poll, an energy scan must stay
+                // paused through a dark wake while the display is still off.
+                self.isApplicationEnergySystemAsleep = false
+                self.updateApplicationEnergyDemand()
                 self.bluetoothDevices.setSystemSleeping(false)
                 self.volumeMonitor.setDisplayAsleep(false)
                 self.displayAsleepSkipCount = 0
@@ -306,6 +315,8 @@ final class SystemStatusStore: ObservableObject {
             queue: .main
         ) { [weak self] _ in
             Task { @MainActor [weak self] in
+                self?.isApplicationEnergySystemAsleep = true
+                self?.updateApplicationEnergyDemand()
                 self?.bluetoothDevices.setSystemSleeping(true)
                 self?.reconcileBluetoothDemand()
             }
@@ -318,6 +329,8 @@ final class SystemStatusStore: ObservableObject {
         ) { [weak self] _ in
             Task { @MainActor [weak self] in
                 self?.isDisplayAsleep = true
+                self?.isApplicationEnergyDisplayAsleep = true
+                self?.updateApplicationEnergyDemand()
                 self?.volumeMonitor.setDisplayAsleep(true)
             }
         }
@@ -330,6 +343,11 @@ final class SystemStatusStore: ObservableObject {
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 self.isDisplayAsleep = false
+                self.isApplicationEnergyDisplayAsleep = false
+                // A display wake also proves that the system is awake, even
+                // when its separate system-wake notification was missed.
+                self.isApplicationEnergySystemAsleep = false
+                self.updateApplicationEnergyDemand()
                 self.volumeMonitor.setDisplayAsleep(false)
                 self.displayAsleepSkipCount = 0
                 self.reconcileBluetoothDemand()
@@ -413,6 +431,9 @@ final class SystemStatusStore: ObservableObject {
         isInputEnabled = false
         inputSettingsCancellable?.cancel()
         inputSettingsCancellable = nil
+        applicationEnergySettingsCancellable?.cancel()
+        applicationEnergySettingsCancellable = nil
+        batteryDetails.energyApps.stop()
         mobileBatterySettingsCancellable?.cancel()
         mobileBatterySettingsCancellable = nil
         lowPowerModeSettingsCancellable?.cancel()
@@ -838,7 +859,14 @@ final class SystemStatusStore: ObservableObject {
         // The system's own state may have changed while the popover was closed
         // (Control Center, the battery menu), so re-read it through the helper
         // before the battery row shows a stale Low Power Mode value.
-        if visible { lowPowerMode.refresh() }
+        if visible {
+            // A visible user surface repairs a missed display-wake signal
+            // without resuming background work during network-only wakes.
+            isApplicationEnergySystemAsleep = false
+            isApplicationEnergyDisplayAsleep = false
+            updateApplicationEnergyDemand()
+            lowPowerMode.refresh()
+        }
         mobileBattery.setSurfaceVisible(visible)
         updateAppleRefreshDemand()
         inputMonitor?.setVisible(visible)
@@ -1031,6 +1059,22 @@ final class SystemStatusStore: ObservableObject {
                 self.isLocalIPEnabled = enabled
                 self.updateLocalIPActivation()
             }
+    }
+
+    func bindApplicationEnergySettings(_ settings: SettingsStore) {
+        guard !hasStopped else { return }
+        applicationEnergySettingsCancellable = settings.$showsHighEnergyApps
+            .removeDuplicates()
+            .sink { [weak self] enabled in
+                guard let self else { return }
+                self.isApplicationEnergyEnabled = enabled
+                self.updateApplicationEnergyDemand()
+            }
+    }
+
+    private func updateApplicationEnergyDemand() {
+        batteryDetails.energyApps.setSuspended(isApplicationEnergySystemAsleep || isApplicationEnergyDisplayAsleep)
+        batteryDetails.energyApps.setBackgroundMonitoringEnabled(hasStarted && !hasStopped && isApplicationEnergyEnabled)
     }
 
     func bindMobileBatterySettings(_ settings: SettingsStore) {

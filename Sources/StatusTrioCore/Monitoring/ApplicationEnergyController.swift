@@ -10,6 +10,9 @@ final class ApplicationEnergyController: ObservableObject {
     private let applications: @MainActor () -> [EnergyApplication]
     private static let queue = DispatchQueue(label: "com.lingsmbp.StatusTrio.application-energy", qos: .utility)
     private var previous: ApplicationEnergySnapshot?
+    private var monitorsInBackground = false
+    private var isSuspended = false
+    private var isSampling = false
     private var active = false
     private var generation = 0
     private var inFlight = false
@@ -33,37 +36,89 @@ final class ApplicationEnergyController: ObservableObject {
     func activate() {
         guard !active else { return }
         active = true
-        generation += 1
-        previous = nil
-        ranking = ApplicationEnergyRanking()
-        refresh()
-        refreshTask = Task { @MainActor [weak self] in
-            while !Task.isCancelled {
-                do { try await Task.sleep(for: .seconds(5), tolerance: .milliseconds(500)) }
-                catch { return }
-                guard !Task.isCancelled else { return }
-                self?.refresh()
-            }
-        }
+        reconcileSampling(refreshImmediately: true)
     }
 
     func deactivate() {
         guard active else { return }
         active = false
+        reconcileSampling()
+    }
+
+    /// Owned by the running app and the persisted opt-in, independently of the
+    /// detail page. Opening a page consumes the already-warm recent ranking.
+    func setBackgroundMonitoringEnabled(_ enabled: Bool) {
+        guard monitorsInBackground != enabled else { return }
+        monitorsInBackground = enabled
+        if !enabled {
+            active = false
+            stopSampling(clearCache: true)
+        } else {
+            reconcileSampling(refreshImmediately: true)
+        }
+    }
+
+    func setSuspended(_ suspended: Bool) {
+        guard isSuspended != suspended else { return }
+        isSuspended = suspended
+        if suspended { stopSampling(clearCache: true) } else { reconcileSampling(refreshImmediately: true) }
+    }
+
+    func stop() {
+        monitorsInBackground = false
+        active = false
+        stopSampling(clearCache: true)
+    }
+
+    private func reconcileSampling(refreshImmediately: Bool = false) {
+        guard !isSuspended, active || monitorsInBackground else {
+            stopSampling(clearCache: false)
+            return
+        }
+        let starting = !isSampling
+        if starting {
+            generation += 1
+            isSampling = true
+        }
+        if starting || refreshImmediately { refresh() }
+        refreshTask?.cancel()
+        let interval: Duration = active ? .seconds(5) : .seconds(10)
+        // A cold start needs two counters. Warm once after 1 second; subsequent
+        // work is low-frequency and never tied to opening the menu.
+        let firstDelay: Duration = ranking.phase == .sampling ? .seconds(1) : interval
+        refreshTask = Task { @MainActor [weak self] in
+            var delay = firstDelay
+            while !Task.isCancelled {
+                do { try await Task.sleep(for: delay, tolerance: .milliseconds(250)) }
+                catch { return }
+                guard !Task.isCancelled else { return }
+                self?.refresh()
+                delay = interval
+            }
+        }
+    }
+
+    private func stopSampling(clearCache: Bool) {
+        isSampling = false
         generation += 1
         refreshTask?.cancel()
         refreshTask = nil
-        previous = nil
         needsRefresh = false
-        ranking = ApplicationEnergyRanking()
+        if clearCache {
+            previous = nil
+            ranking = ApplicationEnergyRanking()
+        }
     }
 
     func refresh(now: TimeInterval = ProcessInfo.processInfo.systemUptime) {
-        guard active else { return }
+        guard isSampling else { return }
         if let previous, now - previous.readAt > 15 {
             self.previous = nil
             ranking = ApplicationEnergyRanking()
         }
+        // Visibility changes must not replace a valid ranking with a zero-length
+        // interval or schedule redundant IPC immediately after a background read.
+        if let previous, (0..<0.5).contains(now - previous.readAt) { return }
         guard !inFlight else { needsRefresh = true; return }
         inFlight = true
         needsRefresh = false
@@ -76,7 +131,7 @@ final class ApplicationEnergyController: ObservableObject {
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 self.inFlight = false
-                if self.active && self.generation == generation {
+                if self.isSampling && self.generation == generation {
                     // A blocked read must not publish a stale ranking.
                     if (0...15).contains(ProcessInfo.processInfo.systemUptime - snapshot.readAt) {
                         self.ranking = ApplicationEnergyRanking.rank(previous: self.previous, current: snapshot)

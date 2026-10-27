@@ -509,11 +509,12 @@
 
 // Battery panel power flow and application energy
 "settings.battery.powerFlow" = "Flujo de energía en el panel Batería";
-"settings.battery.powerFlow.description" = "Se actualiza solo con el panel Batería abierto. Los sensores pueden tener retraso y las tres lecturas pueden no sumar exactamente.";
+"settings.battery.powerFlow.description" = "Las potencias se actualizan solo con el panel Batería abierto. Los sensores pueden tener retraso y las tres lecturas pueden no sumar exactamente.";
 "battery.power.input" = "Entrada cargador";
 "battery.power.charging" = "A la batería";
 "battery.power.system" = "Sistema";
 "battery.energy.apps" = "Apps de alto consumo";
 "battery.energy.empty" = "Sin actividad destacada en esta muestra.";
 "battery.energy.cpuExplanation" = "Ordenadas por energía de CPU de las apps accesibles para tu cuenta. Pueden faltar GPU y procesos del sistema.";
-"battery.energy.activityExplanation" = "Sin contadores de energía: estimación por actividad de CPU. Pueden faltar GPU y procesos del sistema.";
+"battery.energy.activityExplanation" = "Datos de energía insuficientes: estimación por actividad de CPU. Pueden faltar GPU y procesos del sistema.";
+"battery.energy.monitoringDescription" = "Al activarlo, mantiene resultados recientes en segundo plano para mostrarlos al instante. Ordenados por energía o actividad de CPU.";

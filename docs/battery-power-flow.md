@@ -23,13 +23,15 @@
 
 ## 高能耗应用的口径
 
-开启且电池面板打开时，每 5 秒读取当前用户有权限访问的进程累计计数；首个样本只建立基线。使用 `proc_pid_rusage` 的 CPU 能耗计数增量排序。旧内核不支持该计数，或可比较进程的能耗覆盖不完整时，整体切换为 CPU 活跃度估算，并明确显示说明；不将两种量纲混排。
+开启该选项后，由运行中的应用持有采样：面板关闭时每 10 秒读取、详情页打开时每 5 秒读取当前用户有权限访问的进程累计计数。名单在进入详情页之前已准备，打开时同步呈现最近结果，再异步更新；关闭面板不清空近期结果。刚启动、刚开启功能或刚唤醒时，首个样本建立基线，约 1 秒后完成首次区间采样。超过 15 秒的旧样本不会继续当作近期数据展示。
 
-同一应用包内的辅助进程归到外层应用，PID 复用、计数回退、过长采样间隔不会产生虚假峰值。列表不包含无法读取的进程，也不代表完整 GPU、ANE、系统进程或所有外置辅助进程的能耗。关闭选项或面板即清空基线、取消周期工作并丢弃迟到结果；阻塞读取时旧名单也会过期。
+使用 `proc_pid_rusage` 的 CPU 能耗计数增量排序。旧内核不支持该计数，或可比较进程的能耗覆盖不完整时，整体切换为 CPU 活跃度估算，并明确显示说明；不将两种量纲混排。这不是系统原生“使用大量能耗”名单的副本。Apple 的公开说明包含 CPU、磁盘 I/O、网络等多个因素，但未给出可直接复刻当前版本的完整公式或阈值。
+
+同一应用包内的辅助进程归到外层应用，PID 复用、计数回退、过长采样间隔不会产生虚假峰值。列表不包含无法读取的进程，也不代表完整 GPU、ANE、系统进程或所有外置辅助进程的能耗。关闭选项、系统或屏幕休眠、应用退出时会清空基线、取消周期工作并丢弃迟到结果；唤醒时重新建立样本。阻塞读取时旧名单也会过期。仅功率读数继续由打开的详情页持有，应用名单的后台采样不读取 SMC 或电池功率传感器。
 
 不启动 `powermetrics`，不申请 root、不扩展 Helper，不读取应用内容、命令行或文档。
 
-数据口径依据：[Apple XNU Recount](https://github.com/apple-oss-distributions/xnu/blob/main/doc/observability/recount.md) 将该计数定义为 CPU 纳焦能量；[Apple 的适配器详情 API](https://developer.apple.com/documentation/iokit/1523866-iopscopyexternalpoweradapterdeta) 提供适配器属性。SMC 键用途另对照 [Stats 的电池读取实现](https://github.com/exelban/stats/blob/master/Modules/Battery/readers.swift)。
+数据口径依据：[Apple XNU Recount](https://github.com/apple-oss-distributions/xnu/blob/main/doc/observability/recount.md) 将该计数定义为 CPU 纳焦能量；[Apple 的适配器详情 API](https://developer.apple.com/documentation/iokit/1523866-iopscopyexternalpoweradapterdeta) 提供适配器属性；[Apple 的电池菜单说明](https://developer.apple.com/library/archive/documentation/Performance/Conceptual/power_efficiency_guidelines_osx/MonitoringBatteryUsage.html) 描述原生名单考虑的多种因素。SMC 键用途另对照 [Stats 的电池读取实现](https://github.com/exelban/stats/blob/master/Modules/Battery/readers.swift)。
 
 ## 验证边界
 

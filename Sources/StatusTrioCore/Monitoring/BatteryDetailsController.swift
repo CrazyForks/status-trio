@@ -7,7 +7,7 @@ import Foundation
 final class BatteryDetailsController: ObservableObject {
     typealias Reader = @Sendable (BatteryPowerState, Date?) -> BatteryDetails
     @Published private(set) var details: BatteryDetails?
-    let energyApps = ApplicationEnergyController()
+    let energyApps: ApplicationEnergyController
     /// True while the collector owns periodic work. The popover uses this to
     /// treat an open battery page like its Wi-Fi and Bluetooth counterparts.
     var isActive: Bool { active }
@@ -23,8 +23,9 @@ final class BatteryDetailsController: ObservableObject {
     private var needsRefresh = false
     private var refreshTask: Task<Void, Never>?
 
-    init(reader: Reader? = nil) {
+    init(reader: Reader? = nil, energyApps: ApplicationEnergyController? = nil) {
         self.reader = reader
+        self.energyApps = energyApps ?? ApplicationEnergyController()
     }
 
     deinit { refreshTask?.cancel() }

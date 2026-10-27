@@ -130,6 +130,7 @@ final class AppEnvironment {
         )
         store.bindInputSettings(settings)
         store.bindLocalIPSettings(settings)
+        store.bindApplicationEnergySettings(settings)
         store.bindMobileBatterySettings(settings)
         store.bindLowPowerModeSettings(settings)
         store.bindBluetoothSettings(settings)

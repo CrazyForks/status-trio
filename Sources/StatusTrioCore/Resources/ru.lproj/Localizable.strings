@@ -509,11 +509,12 @@
 
 // Battery panel power flow and application energy
 "settings.battery.powerFlow" = "Потоки мощности в панели батареи";
-"settings.battery.powerFlow.description" = "Обновляется только при открытой панели батареи. Данные датчиков могут запаздывать, поэтому сумма трёх показаний может различаться.";
+"settings.battery.powerFlow.description" = "Мощность обновляется только при открытой панели батареи. Данные датчиков могут запаздывать, поэтому сумма трёх показаний может различаться.";
 "battery.power.input" = "От зарядки";
 "battery.power.charging" = "В батарею";
 "battery.power.system" = "Система";
 "battery.energy.apps" = "Энергоёмкие приложения";
 "battery.energy.empty" = "В этом замере нет заметной активности приложений.";
 "battery.energy.cpuExplanation" = "По энергии CPU приложений, доступных текущему пользователю. GPU и системные процессы могут не учитываться.";
-"battery.energy.activityExplanation" = "Счётчики энергии недоступны: оценка по активности CPU. GPU и системные процессы могут не учитываться.";
+"battery.energy.activityExplanation" = "Недостаточно данных об энергии: оценка по активности CPU. GPU и системные процессы могут не учитываться.";
+"battery.energy.monitoringDescription" = "При включении обновляет недавние результаты в фоне для мгновенного показа. Сортировка по энергии или активности CPU.";
