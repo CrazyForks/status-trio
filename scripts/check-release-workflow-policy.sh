@@ -20,8 +20,13 @@ require_text() {
 forbid_text() {
     local path="$1"
     local text="$2"
+    local rc
+    [[ -f "$path" && -r "$path" ]] || fail "$path is missing or unreadable"
     if grep -Fq -- "$text" "$path"; then
         fail "$path must not contain: $text"
+    else
+        rc=$?
+        [[ "$rc" == 1 ]] || fail "could not inspect $path"
     fi
 }
 
@@ -181,7 +186,13 @@ fi
 # leave a required command present but ineffective.
 ruby -ryaml - "$WORKFLOW" <<'RUBY'
 workflow = YAML.load_file(ARGV.fetch(0))
+abort "release policy: workflow may not replace the executing Bash shell" unless
+  workflow.fetch("defaults", {}).fetch("run", {}).fetch("shell", "bash") == "bash"
 workflow.fetch("jobs").each do |name, job|
+  abort "release policy: #{name} must use the release runner" unless job["runs-on"] == "xcode-27"
+  abort "release policy: #{name} may not replace the executing Bash shell" unless
+    job.fetch("defaults", {}).fetch("run", {}).fetch("shell", "bash") == "bash" &&
+    job.fetch("steps").all? { |step| step.fetch("shell", "bash") == "bash" }
   job.fetch("env", {}).each do |variable, value|
     value.to_s.scan(/\$\{\{(.*?)\}\}/m).each do |expression|
       # Runner context is available in steps, but GitHub rejects it in job env.
@@ -199,6 +210,8 @@ names = verify.map { |step| step["name"] }
 preflight = names.index("Run static release preflight")
 tests = names.index("Run tests")
 abort "release policy: static preflight must precede tests" unless preflight && tests && preflight < tests
+abort "release policy: preflight and the full Swift suite must run unconditionally" if
+  verify[preflight].key?("if") || verify[tests].key?("if")
 abort "release policy: native contracts must run in the parallel native job" if
   names.include?("Run native and release-contract tests")
 abort "release policy: test execution must preserve diagnostics and original exit code" unless
@@ -206,28 +219,81 @@ abort "release policy: test execution must preserve diagnostics and original exi
 ["Summarize verify diagnostics", "Upload verify diagnostics"].each do |name|
   step = verify.find { |item| item["name"] == name }
   abort "release policy: #{name} must run after failure" unless step && step["if"] == "always()"
+  abort "release policy: #{name} must follow Swift tests" unless verify.index(step) > tests
 end
 ["verify", "native", "package"].each do |job|
+  config = workflow.fetch("jobs").fetch(job)
   abort "release policy: #{job} may not suppress failures" if
-    workflow.fetch("jobs").fetch(job).fetch("steps").any? { |step| step["continue-on-error"] }
+    config["continue-on-error"] || config.fetch("steps").any? { |step| step["continue-on-error"] }
+end
+%w[verify native].each do |job|
+  config = workflow.fetch("jobs").fetch(job)
+  abort "release policy: #{job} must not access an environment or skip verification" if
+    config.key?("environment") || config.key?("if")
+  permissions = config["permissions"]
+  abort "release policy: #{job} token permissions must remain read-only" unless
+    permissions.nil? || (permissions.is_a?(Hash) &&
+      permissions.keys.all? { |scope| %w[actions contents].include?(scope) } &&
+      permissions.values.all? { |access| %w[read none].include?(access) })
 end
 native_job = workflow.fetch("jobs").fetch("native")
 native_steps = native_job.fetch("steps")
 native = native_steps.find { |step| step["name"] == "Run native and release-contract tests" }
 abort "release policy: native contracts must use the diagnostic stage wrapper" unless
-  native && native.fetch("run").include?(%q{ci-run-stage.sh" native})
+  native && !native.key?("if")
+native_lines = native.fetch("run").lines.map(&:strip)
+expected_native = <<~COMMANDS.lines.map(&:strip)
+  bash scripts/test-macos13-deployment-contract-regressions.sh
+  bash scripts/test-macos13-deployment-contract.sh
+  bash scripts/test-appcast-minimum-system-version.sh
+  bash scripts/test-macos13-bundle-contract.sh
+  bash scripts/test-privileged-helper-bundle-contract.sh
+  bash scripts/test-mobile-battery-helper.sh
+  bash scripts/test-mobile-battery-rpaths.sh
+  bash scripts/test-otool-dependencies.sh
+  bash scripts/test-macos13-sparkle-contract.sh
+  bash scripts/test-mobile-battery-source-cache.sh
+  bash "$CI_TOOLS_ROOT/scripts/test-mobile-battery-build-cache.sh"
+  bash "$CI_TOOLS_ROOT/scripts/test-ci-diagnostics.sh"
+  bash "$CI_TOOLS_ROOT/scripts/test-build-timing.sh"
+  bash scripts/test-release-pipeline.sh
+  bash scripts/test-release-notarization.sh
+  bash scripts/test-mobile-battery-clang-version.sh
+  bash scripts/test-verify-local.sh
+  bash scripts/test-verify-local-bundle.sh
+  bash scripts/test-workflow-policy.sh
+COMMANDS
+abort "release policy: native must run all 19 contracts unconditionally with strict diagnostics" unless
+  native_lines.first == %q{bash "$CI_TOOLS_ROOT/scripts/ci-run-stage.sh" native bash -euo pipefail <<'NATIVE'} &&
+  native_lines.last == "NATIVE" && native_lines[1...-1] == expected_native
+recovery = verify.find { |step| step["name"] == "Run trusted release recovery regressions" }
+abort "release policy: recovery must run both trusted regressions" unless
+  recovery && recovery["if"] == "${{ inputs.package_run_id != '' }}" &&
+  recovery.fetch("run").lines.map(&:strip) == [
+    "set -euo pipefail",
+    "bash release-tools/scripts/test-release-recovery.sh",
+    "bash release-tools/scripts/test-release-pipeline.sh"
+  ]
 ["Summarize native diagnostics", "Upload native diagnostics"].each do |name|
   step = native_steps.find { |item| item["name"] == name }
   abort "release policy: #{name} must run after failure" unless step && step["if"] == "always()"
+  abort "release policy: #{name} must follow native contracts" unless
+    native_steps.index(step) > native_steps.index(native)
 end
+native_summary = native_steps.find { |step| step["name"] == "Summarize native diagnostics" }
+abort "release policy: native summary must identify the job and its status" unless
+  native_summary.fetch("env", {})["JOB_STATUS"] == "${{ job.status }}" &&
+  native_summary.fetch("env", {})["CI_DIAGNOSTIC_JOB"] == "native"
 package_job = workflow.fetch("jobs").fetch("package")
 abort "release policy: package must wait for verify and native" unless
   Array(package_job.fetch("needs")).sort == %w[native verify]
+abort "release policy: package must preserve the default success dependency gate" unless
+  package_job["if"] == "${{ inputs.package_run_id == '' }}"
 publish_job = workflow.fetch("jobs").fetch("publish")
 abort "release policy: publish must wait for verify, native, and package" unless
   Array(publish_job.fetch("needs")).sort == %w[native package verify]
-abort "release policy: recovery publication must require native success" unless
-  publish_job.fetch("if").include?("needs.native.result == 'success'")
+abort "release policy: publish must require successful verification and a successful or recovered package" unless
+  publish_job["if"] == "${{ !cancelled() && inputs.publish && needs.verify.result == 'success' && needs.native.result == 'success' && (inputs.package_run_id != '' || needs.package.result == 'success') }}"
 package = workflow.fetch("jobs").fetch("package").fetch("steps")
 build_index = package.index { |s| s["name"] == "Build, sign, notarize, and package once" }
 validation = package.index { |s| s["name"] == "Validate native dependency caches before saving" }

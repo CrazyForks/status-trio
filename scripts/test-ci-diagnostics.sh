@@ -75,6 +75,10 @@ GITHUB_SERVER_URL=https://github.com GITHUB_REPOSITORY=fixture/repo GITHUB_RUN_I
 grep -q 'unit-test' "$GITHUB_STEP_SUMMARY"
 grep -q 'unknown' "$GITHUB_STEP_SUMMARY"
 if grep -q '<script>' "$GITHUB_STEP_SUMMARY"; then exit 1; fi
+GITHUB_STEP_SUMMARY="$WORK/native-summary.md" CI_DIAGNOSTIC_JOB=native JOB_STATUS=failure \
+    python3 "$ROOT/scripts/ci-diagnostics.py" summary "$CI_LOG_DIR"
+grep -q '### Native diagnostics (failure)' "$WORK/native-summary.md"
+grep -q 'Raw native logs are retained in the native-diagnostics artifact' "$WORK/native-summary.md"
 mkdir "$WORK/empty"
 GITHUB_STEP_SUMMARY="$WORK/early.md" JOB_STATUS=failure \
     python3 "$ROOT/scripts/ci-diagnostics.py" summary "$WORK/empty"

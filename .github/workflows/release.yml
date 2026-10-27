@@ -304,6 +304,9 @@ jobs:
 
       - name: Summarize native diagnostics
         if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+          CI_DIAGNOSTIC_JOB: native
         run: |
           if [[ -f "$CI_TOOLS_ROOT/scripts/ci-diagnostics.py" ]]; then
             python3 "$CI_TOOLS_ROOT/scripts/ci-diagnostics.py" summary "$CI_LOG_DIR"
