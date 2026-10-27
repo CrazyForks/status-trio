@@ -14,9 +14,9 @@ This report uses existing GitHub Actions evidence. It makes no promise of a
   and 36s publish. Package was skipped, so this is not a full-release time.
 - Cold remote package spent roughly 5-6 minutes rebuilding pinned MobileBattery
   dependencies for both architectures in the measured 1.7.3-1.7.5 runs.
-- Hot remote / cache-hit behavior: **NOT RUN**.
+- Hot remote / cache-hit behavior: measured 2026-10-27 in run `40428015193`.
 - A full remote release with the new cache and stage instrumentation:
-  **NOT MEASURED**.
+  package-only cold/warm measured; publication not run.
 
 ## Measurement methodology
 
@@ -304,18 +304,87 @@ Raw evidence and the reproducible experiment driver are retained in
 `.build/ci-optimization-evidence/measure-swiftpm-downloads.py` and
 `swiftpm-download-benchmark/{results.json,metadata.json,cold.log,download-cache.log}`.
 
+## Remote cold/warm package measurement
+
+After PR #156 was merged, GitHub rejected the first dispatch because a
+job-level environment variable used `runner.temp`. That expression is not
+available at job scope. A policy regression and the official `actionlint`
+v1.7.12 both reproduced the error. PR #157 moved the timing file under the
+workspace and added a fail-closed context check. The rejected dispatch and two
+zero-job push validation records were not counted as cold builds.
+
+Both successful diagnostics were dispatched from `main` with the same frozen
+SHA `c4fd84196ced2a0c340eabda32fef2b40bec32f0`, version `1.7.6`, build `44`,
+`publish=false`, `notarize=false`, and no recovery package. Their source tree
+was identical to locally verified commit `aa9ec53d`. Both passed Verify on
+`xcode-27` / Xcode 27.0 / SWIFT 6.4 / SDK 27.0, and both published nothing.
+Cheap static preflight, complete Swift tests and native/release regressions
+remained in Verify in both runs.
+
+| Stage / job | Cold `40426198186` | Warm `40428015193` | Change |
+| --- | ---: | ---: | ---: |
+| Verify job | 372s | 612s | +240s |
+| Package job | 484s | 254s | **-230s** |
+| Total wall | 901s | 906s | +5s |
+| Swift tests, package | 122s | 148s | +26s |
+| MobileBattery source checkout | 27s | 26s | -1s |
+| arm64 dependencies | 142s | 12s | -130s |
+| x86_64 dependencies | 135s | 2s | -133s |
+| MobileBattery total | 307s | 45s | **-262s** |
+| App build/sign/verify | 440s | 203s | -237s |
+| Native cache restore interval | 0s | 4s | +4s |
+| Native cache save interval | 2s | 0s, skipped | -2s |
+| Post-cache package work | 484s | 254s | **-230s** |
+
+The warm cache had two exact hits. Each architecture logged cache restored,
+complete prefix validation, and native dependency build skipped. Both Helpers
+were rebuilt, final Universal/MobileBattery/signature contracts passed, and
+the cache save steps were skipped. The two cache entries remained the same
+IDs and keys, together occupying 14,459,151 bytes; their access timestamps
+advanced on the warm Runner. The cache transfer interval excludes Actions
+download details hidden inside `actions/cache`; it is not a pure network
+measurement.
+
+The Package saving is 230s (47.52%) and the MobileBattery interval saving is
+262s (85.34%) on this pair. Total wall changed +5s (-0.55%) because Verify was
+240s slower. The warm Verify compile took 188.18s versus 68.43s cold, and its
+XCTest body took 172.059s versus 147.741s. Runner load or another external
+cause was not measured, so this is not attributed to the cache. The result
+does not support a total release speedup claim. It supports a material
+package-stage improvement when the exact cache hits, without claiming a
+guaranteed or end-to-end 12-14 minute release.
+
+Both DMGs passed local download-only verification after the runs: GitHub
+artifact digests matched, manifests identified the frozen SHA, and DMG
+sha256 matched the manifest and adjacent checksum. The cold DMG digest was
+`97599b8295e1779eeabce155f9d762ea1c62b7e776d31afd7eec9c6c528aa258`;
+the warm digest was
+`a4af4aad9e9d03afa789966f6dd6ca03e74d5331e486976527198d538581e693`.
+The differing DMG hashes are expected for non-reproducible timestamps/signing
+metadata and are not a failed digest check.
+
+Read-only mounts verified each DMG's version/build, all ten application,
+Helper, seven MobileBattery and Sparkle binaries as `arm64 + x86_64`,
+minimum macOS 13.0 / SDK 27 metadata, and deep strict Ad-hoc signatures. No
+app launch, XPC/helper registration, notarization or macOS 13 runtime was
+exercised. After the runs, public releases and tags still had 18 entries each,
+`main/appcast.xml` retained the same Git blob, and the `distribution`
+Environment protection rules were unchanged.
+
+Raw remote evidence: `.build/ci-optimization-evidence/remote-2026-10-27/`.
+It includes run/job JSON, logs, timing TSVs, artifact digests, manifests,
+mounted-DMG checks and before/after public-state audits. These local evidence
+files are not committed release artifacts.
+
 ## Follow-up measurement plan
 
-1. After review and merge, run one full remote `verify/package` from `main`
-   with `publish=false` only after explicit maintainer approval, and record
-   the artifact hash and same-SHA provenance.
-2. Run a second identical candidate to attempt a cache hit; record cache key,
-   hit/miss, download/extract time, and MobileBattery interval.
-3. Compare arm64 and x86_64 phase rows separately. Treat the x86-to-package
+1. Repeat the package-only cold/warm pair on a later formal candidate so the
+   hosted cache hit rate and any mismatch-driven rebuild can be observed.
+2. Compare arm64 and x86_64 phase rows separately. Treat the x86-to-package
    marker as approximate until a per-architecture completion marker exists.
-4. Re-run the package from the exact same candidate and toolchain; do not
+3. Re-run the package from the exact same candidate and toolchain; do not
    compare different SDKs or runner images as a cache result.
-5. Keep `NOT RUN` for signing, notarization, and public publication until the
+4. Keep `NOT RUN` for signing, notarization, and public publication until the
    corresponding protected and manual evidence exists.
 
 This report records the remote baseline and local native measurements; it is
