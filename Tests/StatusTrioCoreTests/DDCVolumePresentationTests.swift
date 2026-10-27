@@ -209,15 +209,23 @@ final class DDCVolumePresentationTests: XCTestCase {
         observer.cancel()
     }
 
+    func testProductionDDCReadWatchdogDefaultIsTwoSeconds() {
+        XCTAssertEqual(VolumeMonitor.defaultDDCReadWatchdog, .seconds(2))
+    }
+
     func testWatchdogAndLateReadCannotReplacePendingDDCTarget() async {
         let row = AudioOutputDevice(id: 42, name: "XV272U", uid: "DISPLAY-A", isCurrent: true)
         let reader = FixedAudioStatusReader(reading: VolumeReading(
             scalar: nil, isMuted: false, deviceName: "XV272U", currentDevice: row,
             canSetVolume: false, canMute: false
         ), devices: [row])
-        let transport = SlowFirstReadPresentationDDCTransport()
+        let transport = GatedFirstReadPresentationDDCTransport()
+        let watchdogGate = WatchdogSleepGate()
+        let watchdogObservation = WatchdogTimeoutObservation()
         let monitor = VolumeMonitor(statusReader: reader, eventMonitor: PresentationVolumeEvents(),
-                                   ddcTransport: transport)
+                                   ddcTransport: transport, ddcReadWatchdog: .milliseconds(20),
+                                   ddcWatchdogSleep: { try await watchdogGate.sleep($0) },
+                                   onDDCWatchdogTimeout: { watchdogObservation.receive($0, $1) })
         let history = PendingDDCCommandHistory()
         let observer = Task { @MainActor in
             for await status in monitor.updates {
@@ -227,10 +235,30 @@ final class DDCVolumePresentationTests: XCTestCase {
 
         monitor.start()
         monitor.setVolume(0.4)
-        await fulfillment(of: [history.optimisticTarget, history.confirmedReadback], timeout: 4)
+        await fulfillment(of: [
+            history.optimisticTarget,
+            transport.firstReadStarted,
+            watchdogGate.sleepStarted
+        ], timeout: 1)
+        defer {
+            transport.releaseFirstRead()
+            watchdogGate.release()
+        }
+
+        watchdogGate.release()
+        await fulfillment(of: [watchdogObservation.completed], timeout: 1)
+        XCTAssertEqual(history.updatesDuringPending.map(\.scalar), [])
+        XCTAssertEqual(transport.releaseSignalCount, 0, "The physical read must remain gated through the timeout")
+
+        transport.releaseFirstRead()
+        await fulfillment(of: [history.confirmedReadback], timeout: 1)
 
         XCTAssertEqual(history.updatesDuringPending.map(\.scalar), [])
         XCTAssertTrue(history.confirmedReadbackStatus?.canSetVolume == true)
+        XCTAssertEqual(transport.gatedReadCount, 1)
+        XCTAssertEqual(transport.releaseSignalCount, 1, "The first-read gate must be released exactly once")
+        XCTAssertEqual(watchdogGate.releaseSignalCount, 1, "The watchdog gate must be released exactly once")
+        XCTAssertEqual(watchdogObservation.count, 1)
         monitor.stop()
         observer.cancel()
     }
@@ -565,28 +593,141 @@ private final class PendingDDCCommandHistory {
     }
 }
 
+@MainActor
+private final class WatchdogSleepGate {
+    let sleepStarted = XCTestExpectation(description: "DDC watchdog sleep starts")
+    private var continuation: CheckedContinuation<Void, any Error>?
+    private var releaseRequested = false
+    private var didGateFirstSleep = false
+    private var releaseSignals = 0
+
+    var releaseSignalCount: Int { releaseSignals }
+
+    func sleep(_ duration: Duration) async throws {
+        guard duration == .milliseconds(20) else {
+            XCTFail("Unexpected watchdog duration: \(duration)")
+            return
+        }
+
+        if didGateFirstSleep {
+            try await waitForCancellation()
+            return
+        }
+
+        didGateFirstSleep = true
+        sleepStarted.fulfill()
+        try await withTaskCancellationHandler(
+            operation: { try await self.waitForRelease() },
+            onCancel: {
+                Task { @MainActor [weak self] in self?.cancel() }
+            }
+        )
+    }
+
+    func release() {
+        guard releaseSignals == 0 else { return }
+        releaseSignals = 1
+        if let continuation {
+            self.continuation = nil
+            continuation.resume()
+        } else {
+            releaseRequested = true
+        }
+    }
+
+    private func waitForCancellation() async throws {
+        try await withTaskCancellationHandler(
+            operation: { try await self.suspendUntilCancelled() },
+            onCancel: {
+                Task { @MainActor [weak self] in self?.cancel() }
+            }
+        )
+    }
+
+    private func waitForRelease() async throws {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, any Error>) in
+            if Task.isCancelled {
+                continuation.resume(throwing: CancellationError())
+            } else if releaseRequested {
+                releaseRequested = false
+                continuation.resume()
+            } else {
+                self.continuation = continuation
+            }
+        }
+    }
+
+    private func suspendUntilCancelled() async throws {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, any Error>) in
+            if Task.isCancelled {
+                continuation.resume(throwing: CancellationError())
+            } else {
+                self.continuation = continuation
+            }
+        }
+    }
+
+    private func cancel() {
+        guard let continuation else { return }
+        self.continuation = nil
+        continuation.resume(throwing: CancellationError())
+    }
+}
+
+@MainActor
+private final class WatchdogTimeoutObservation {
+    let completed = XCTestExpectation(description: "DDC watchdog timeout emit completes")
+    private(set) var count = 0
+
+    func receive(_ generation: UInt64, _ commandID: UInt64?) {
+        _ = generation
+        _ = commandID
+        count += 1
+        if count == 1 { completed.fulfill() }
+    }
+}
+
 private final class FailingWritePresentationDDCTransport: DDCVolumeTransport {
     func resolve(uid: String) -> DDCDisplayTarget? { DDCDisplayTarget(uid: uid, service: nil) }
     func read(_ target: DDCDisplayTarget) -> DDCVolumeReadResult { .reply(DDCVolumeReply(current: 75, maximum: 100)) }
     func write(_ target: DDCDisplayTarget, value: UInt16) -> Bool { false }
 }
 
-private final class SlowFirstReadPresentationDDCTransport: DDCVolumeTransport, @unchecked Sendable {
+private final class GatedFirstReadPresentationDDCTransport: DDCVolumeTransport, @unchecked Sendable {
     private let lock = NSLock()
+    private let firstReadGate = DispatchSemaphore(value: 0)
     private var readCount = 0
+    private var gatedReads = 0
+    private var releaseSignals = 0
     private var currentValue: UInt16 = 75
+    let firstReadStarted = XCTestExpectation(description: "first DDC read starts")
+
+    var gatedReadCount: Int { lock.withLock { gatedReads } }
+    var releaseSignalCount: Int { lock.withLock { releaseSignals } }
 
     func resolve(uid: String) -> DDCDisplayTarget? { DDCDisplayTarget(uid: uid, service: nil) }
 
-    func read(_ target: DDCDisplayTarget) -> DDCVolumeReadResult {
-        lock.lock()
-        readCount += 1
-        let isFirstRead = readCount == 1
-        let initialValue = currentValue
-        lock.unlock()
+    func releaseFirstRead() {
+        let shouldSignal = lock.withLock { () -> Bool in
+            guard releaseSignals == 0 else { return false }
+            releaseSignals = 1
+            return true
+        }
+        if shouldSignal { firstReadGate.signal() }
+    }
 
-        if isFirstRead { Thread.sleep(forTimeInterval: 2.2) }
-        return .reply(DDCVolumeReply(current: isFirstRead ? initialValue : currentValueSnapshot(), maximum: 100))
+    func read(_ target: DDCDisplayTarget) -> DDCVolumeReadResult {
+        let isFirstRead = lock.withLock { () -> Bool in
+            readCount += 1
+            guard readCount == 1 else { return false }
+            gatedReads += 1
+            return true
+        }
+        if isFirstRead {
+            firstReadStarted.fulfill()
+            firstReadGate.wait()
+        }
+        return .reply(DDCVolumeReply(current: currentValueSnapshot(), maximum: 100))
     }
 
     func write(_ target: DDCDisplayTarget, value: UInt16) -> Bool {
