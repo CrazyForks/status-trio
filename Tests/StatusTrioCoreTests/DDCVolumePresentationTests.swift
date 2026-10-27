@@ -241,27 +241,47 @@ final class DDCVolumePresentationTests: XCTestCase {
             scalar: nil, isMuted: false, deviceName: "XV272U", currentDevice: row,
             canSetVolume: false, canMute: false
         ), devices: [row])
+        let transport = TopologyGatedPresentationDDCTransport()
         let monitor = VolumeMonitor(statusReader: reader, eventMonitor: PresentationVolumeEvents(),
-                                   ddcTransport: PresentationDDCTransport())
+                                   ddcTransport: transport)
+        let observation = TopologyPresentationObservation()
+        let observer = Task { @MainActor in
+            for await status in monitor.updates {
+                observation.receive(status)
+            }
+        }
         monitor.start()
-        var iterator = monitor.updates.makeAsyncIterator()
-        _ = await iterator.next()
-        let confirmed = await iterator.next()
-        XCTAssertEqual(confirmed?.scalar, 0.75)
+        await fulfillment(of: [observation.confirmed], timeout: 1)
+        XCTAssertEqual(observation.confirmedStatus?.scalar, 0.75)
 
+        // The instant initial read can otherwise race the topology invalidation
+        // into `bufferingNewest(1)`. Hold the later read so this test observes
+        // the invalidation before a legitimate fresh confirmation.
+        transport.blockNextRead()
+        defer { transport.releaseBlockedRead() }
         monitor.setVolume(0.4)
-        let pending = await iterator.next()
-        XCTAssertEqual(pending?.scalar, 0.4)
-        XCTAssertTrue(pending?.canSetVolume == true)
+        await fulfillment(of: [observation.pending], timeout: 1)
+        XCTAssertEqual(observation.pendingStatus?.scalar, 0.4)
+        XCTAssertTrue(observation.pendingStatus?.canSetVolume == true)
 
         monitor.topologyChanged()
-        let invalidated = await iterator.next()
+        await fulfillment(of: [transport.blockedReadStarted], timeout: 1)
+        await fulfillment(of: [observation.invalidated], timeout: 1)
+        let invalidated = observation.invalidatedStatus
 
+        XCTAssertEqual(observation.invalidationCount, 1)
         XCTAssertNil(invalidated?.scalar)
         XCTAssertNil(invalidated?.currentDevice?.volume)
         XCTAssertFalse(invalidated?.canSetVolume == true)
         XCTAssertNil(invalidated?.outputDevices.first(where: { $0.isCurrent })?.volume)
+
+        transport.releaseBlockedRead()
+        await fulfillment(of: [transport.blockedReadFinished], timeout: 1)
+        await fulfillment(of: [observation.confirmedAgain], timeout: 1)
+        XCTAssertEqual(observation.confirmedAgainStatus?.scalar, 0.75)
+        XCTAssertTrue(observation.confirmedAgainStatus?.canSetVolume == true)
         monitor.stop()
+        observer.cancel()
     }
 
     func testMuteCapabilityRemainsAvailableWithoutVolumeCapability() async {
@@ -407,6 +427,46 @@ private final class PresentationDDCTransport: DDCVolumeTransport {
     func write(_ target: DDCDisplayTarget, value: UInt16) -> Bool { true }
 }
 
+private final class TopologyGatedPresentationDDCTransport: DDCVolumeTransport, @unchecked Sendable {
+    private let lock = NSLock()
+    private let blockedRead = DispatchSemaphore(value: 0)
+    private var gateNextRead = false
+    private var didRelease = false
+    let blockedReadStarted = XCTestExpectation(description: "topology DDC read starts")
+    let blockedReadFinished = XCTestExpectation(description: "topology DDC read finishes")
+
+    func blockNextRead() {
+        lock.withLock { gateNextRead = true }
+    }
+
+    func releaseBlockedRead() {
+        let shouldSignal = lock.withLock { () -> Bool in
+            guard !didRelease else { return false }
+            didRelease = true
+            return true
+        }
+        if shouldSignal { blockedRead.signal() }
+    }
+
+    func resolve(uid: String) -> DDCDisplayTarget? { DDCDisplayTarget(uid: uid, service: nil) }
+
+    func read(_ target: DDCDisplayTarget) -> DDCVolumeReadResult {
+        let shouldBlock = lock.withLock { () -> Bool in
+            guard gateNextRead else { return false }
+            gateNextRead = false
+            return true
+        }
+        if shouldBlock {
+            blockedReadStarted.fulfill()
+            blockedRead.wait()
+            blockedReadFinished.fulfill()
+        }
+        return .reply(DDCVolumeReply(current: 75, maximum: 100))
+    }
+
+    func write(_ target: DDCDisplayTarget, value: UInt16) -> Bool { true }
+}
+
 @MainActor
 private final class PendingDDCVolumeObservation {
     let initialConfirmation = XCTestExpectation(description: "initial DDC volume is confirmed")
@@ -436,6 +496,44 @@ private final class PendingDDCVolumeObservation {
         if didSleep, status.scalar == nil {
             statusOnSleep = status
             sleepClearsControl.fulfill()
+        }
+    }
+}
+
+@MainActor
+private final class TopologyPresentationObservation {
+    let confirmed = XCTestExpectation(description: "initial DDC volume is confirmed")
+    let pending = XCTestExpectation(description: "optimistic DDC target is published")
+    let invalidated = XCTestExpectation(description: "topology invalidation is published")
+    let confirmedAgain = XCTestExpectation(description: "fresh DDC volume is confirmed")
+    private var didConfirm = false
+    private var didPend = false
+    private var didInvalidate = false
+    private(set) var confirmedStatus: VolumeStatus?
+    private(set) var pendingStatus: VolumeStatus?
+    private(set) var invalidatedStatus: VolumeStatus?
+    private(set) var confirmedAgainStatus: VolumeStatus?
+    private(set) var invalidationCount = 0
+
+    func receive(_ status: VolumeStatus) {
+        if status.scalar == 0.75, !didConfirm {
+            didConfirm = true
+            confirmedStatus = status
+            confirmed.fulfill()
+        } else if status.scalar == 0.4, !didPend {
+            didPend = true
+            pendingStatus = status
+            pending.fulfill()
+        } else if didConfirm, status.scalar == nil {
+            invalidationCount += 1
+            if !didInvalidate {
+                didInvalidate = true
+                invalidatedStatus = status
+                invalidated.fulfill()
+            }
+        } else if didInvalidate, status.scalar == 0.75, confirmedAgainStatus == nil {
+            confirmedAgainStatus = status
+            confirmedAgain.fulfill()
         }
     }
 }
