@@ -266,7 +266,7 @@ jobs:
       NOTARIZE: ${{ inputs.notarize }}
       RESOLVED_RELEASE_REPO: ${{ vars.RELEASE_REPO || 'lingyired/status-trio' }}
       RESOLVED_RELEASE_BRANCH: ${{ vars.RELEASE_BRANCH || 'main' }}
-      BUILD_TIMING_FILE: ${{ runner.temp }}/status-trio-build-timings.tsv
+      BUILD_TIMING_FILE: ${{ github.workspace }}/.build/ci-logs/package-build-timings.tsv
 
     steps:
       - name: Check out the frozen candidate
@@ -429,6 +429,7 @@ jobs:
         id: native-cache-keys
         run: |
           set -euo pipefail
+          mkdir -p "$(dirname "$BUILD_TIMING_FILE")"
           python3 scripts/mobile-battery-cache.py prepare-key \
             --root "$GITHUB_WORKSPACE" --arch arm64 --minimum-macos 13.0 \
             --github-output "$GITHUB_OUTPUT" --output-name key_arm64
@@ -542,7 +543,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: package-build-timings
-          path: ${{ runner.temp }}/status-trio-build-timings.tsv
+          path: ${{ env.BUILD_TIMING_FILE }}
           if-no-files-found: ignore
           retention-days: 14
 

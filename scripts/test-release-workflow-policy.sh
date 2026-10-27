@@ -38,6 +38,17 @@ valid="$WORK/valid"
 make_fixture "$valid"
 run_policy "$valid" || fail "valid release workflow fixture failed"
 
+invalid="$WORK/invalid-job-runner-context"
+make_fixture "$invalid"
+ruby -e '
+  path = ARGV[0]
+  source = File.read(path)
+  source.sub!(/^      BUILD_TIMING_FILE:.*$/, "      BUILD_TIMING_FILE: ${{ runner.temp }}/status-trio-build-timings.tsv") or
+    abort "package timing environment missing"
+  File.write(path, source)
+' "$invalid/.github/workflows/release.yml"
+expect_failure "runner context in job-level environment" run_policy "$invalid"
+
 invalid="$WORK/invalid-push-trigger"
 make_fixture "$invalid"
 ruby -e '

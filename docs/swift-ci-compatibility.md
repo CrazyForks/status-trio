@@ -16,6 +16,21 @@ Swift 6.1.2 上。
 `isolated deinit`、`weak let`、`Bundle.module` 资源布局、IRGen 崩溃这些具体
 症状属于旧编译器，而由它们归纳出的规则至今有效。
 
+## CI 计时路径的表达式上下文（2026-10-27）
+
+PR #156 合并后，首次非发布诊断在派发时被 GitHub 拒绝，尚未创建 run：
+`release.yml:269` 的 job 级 `BUILD_TIMING_FILE` 使用了
+`${{ runner.temp }}`，但该层只允许 `github`、`inputs`、`matrix`、`needs`、
+`secrets`、`strategy` 和 `vars`。普通 YAML 解析与原有结构策略未覆盖表达式
+上下文，因此本地完整验证未发现该问题。官方 `actionlint` v1.7.12 独立复现了
+同一错误。
+
+计时文件改为 `${{ github.workspace }}/.build/ci-logs/package-build-timings.tsv`，
+在 cache-key 步骤中先创建父目录，上传步骤引用同一个环境变量。工作流策略增加
+job 级 `runner` 上下文拒绝检查；负例在修复前确定性失败。远端验证结果随冷／热
+诊断记录到 `docs/ci/ci-performance-report.md`，不把派发拒绝计为测试失败或冷缓存
+构建。
+
 ## 1.7.1 非发布预检：系统符号与测试采样（2026-10-23）
 
 预检 [`39809532587`](https://github.com/lingyired/status-trio/actions/runs/39809532587)
