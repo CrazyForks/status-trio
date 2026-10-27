@@ -1,7 +1,8 @@
 # Release CI performance report
 
-Status: remote baseline, parallel verification diagnostics, and the same-SHA
-warm-source-checkout cold/warm pair completed 2026-10-27 (Asia/Shanghai).
+Status: native-cache and layout optimizations merged; the DDC observation fix
+and guard declaration-index optimization passed full local verification and
+non-publishing remote diagnostics on 2026-10-28 (Asia/Shanghai).
 
 This report uses existing GitHub Actions evidence. It makes no promise of a
 12-14 minute release and does not claim a speedup from any unmeasured change.
@@ -780,6 +781,53 @@ also affects compilation. Raw data and contracts are under
 `.build/ci-optimization-evidence/ddc-stability-2026-10-27/baseline/`.
 Developer ID, notarization, runtime/hardware acceptance, and publication were
 not exercised.
+
+## Final frozen-candidate diagnostics
+
+PR #168 merged the guard optimization. Frozen source
+`40d6ca4c981c5bef687b6156c854a3a6a2bdbafa` completed two independent runs,
+[`40542058689`](https://github.com/lingyired/status-trio/actions/runs/40542058689)
+and [`40544097423`](https://github.com/lingyired/status-trio/actions/runs/40544097423),
+with `publish=false`, `notarize=false`, version 1.7.6/build 44:
+
+| Scope | Guard-before | Final run 1 | Final run 2 |
+| --- | ---: | ---: | ---: |
+| Run | 40538437122 | 40542058689 | 40544097423 |
+| Wall | 475s / 7m55s | 705s / 11m45s | 539s / 8m59s |
+| Verify | 267s | 341s | 264s |
+| Native, parallel | 165s | 148s | 137s |
+| Package | 174s | 295s | 205s |
+| Verify-to-package gap | 28s | 64s | 63s |
+| Preflight | 25.623s | 22.230s | 14.673s |
+| Swift test stage | 223.557s | 297.067s | 231.472s |
+| Debug test build | 80.46s | 121.72s | 84.33s |
+| Core XCTest body | 108.132s | 127.210s | 115.084s |
+| Guard scan case | 7.775s | 4.516s | 4.079s |
+| Guard self-test case | 2.617s | 4.902s | 8.764s |
+| Universal Swift Release phase | 102s | 190s | 120s |
+| MobileBattery total | 15s | 35s | 18s |
+
+The final repeat range is **8m59s-11m45s**. The guard scan case is consistently
+faster, and the final preflight reached 14.673s, but this is not an isolated
+end-to-end attribution: compilation, test execution, the synthetic self-test,
+and the verification-to-package gap all vary materially between runners.
+Do not use the fastest observation as a guaranteed release duration. All three
+runs restored and validated two exact native caches with zero source clones.
+Each passed the same required 1,928 Core XCTest cases (eight existing skips),
+15 Helper XCTest cases, and 763 Swift Testing cases. The topology case took
+0.001s, 0.002s, and 0.003s.
+
+Every artifact ZIP in both final runs was independently hashed and matched its
+GitHub digest. DMG SHA-256 values
+`e093988e6db390590d1bf0dc6a09bcee4cd975d88d55de4f86830417afdb7fbe`
+and `67ee0c5f565536f829e94c6b55b65e552871cdede1c8508a3a8bf76bd89bbbfe`
+matched their frozen manifests. Both packages passed read-only inspection of
+ten arm64+x86_64 binaries, minimum OS/SDK, Sparkle metadata, and deep strict
+Ad-hoc signatures. Public Release/tag/appcast and protected Environment
+snapshots remained unchanged. Evidence is under
+`.build/ci-optimization-evidence/ddc-stability-2026-10-27/{baseline,warm,warm2}/`.
+This is diagnostic packaging; Developer ID, notarization, runtime/hardware
+acceptance and publication remain unexercised.
 
 ## Remaining optimization decisions
 

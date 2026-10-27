@@ -174,7 +174,19 @@ Independent review found no actionable issues. On 2026-10-28 (Asia/Shanghai),
 763 Swift Testing tests, Release compilation, the local non-Universal
 bundle, native/cache contracts, and offline release simulations. The log is
 `.build/ci-optimization-evidence/ddc-stability-2026-10-27/verify-local-ddc-full.log`.
-Hardware, GUI acceptance, and the post-fix remote run require separate evidence.
+Post-fix diagnostic
+[`40538437122`](https://github.com/lingyired/status-trio/actions/runs/40538437122)
+and final frozen-source diagnostic
+[`40542058689`](https://github.com/lingyired/status-trio/actions/runs/40542058689)
+plus its same-SHA repeat
+[`40544097423`](https://github.com/lingyired/status-trio/actions/runs/40544097423)
+all passed the full test and native/package chain; the topology case took
+0.001s, 0.002s and 0.003s respectively. All used `publish=false`,
+`notarize=false`.
+The downloaded artifacts passed digest, architecture, platform and Ad-hoc
+signature checks. Timings and repeat-run evidence are in
+[the CI report](ci/ci-performance-report.md). Hardware and GUI acceptance
+remain unexercised.
 
 | Run | 失败阶段 | 根因 | 修复方式 |
 | --- | --- | --- | --- |
