@@ -119,7 +119,6 @@ final class BatteryDetailsLayoutTests: XCTestCase {
         hosting.appearance = NSAppearance(named: .aqua)
         hosting.frame = NSRect(origin: .zero, size: hosting.fittingSize)
         hosting.layoutSubtreeIfNeeded()
-        try await Task.sleep(for: .milliseconds(50))
         hosting.frame = NSRect(origin: .zero, size: hosting.fittingSize)
         hosting.layoutSubtreeIfNeeded()
         // A 1x screen quantizes ink centers to half points, coarser than the
@@ -127,16 +126,14 @@ final class BatteryDetailsLayoutTests: XCTestCase {
         return try XCTUnwrap(SummaryActionAlignmentProbe(hosting, pixelScale: 2))
     }
 
-    /// Mounts the view, waits for SwiftUI's appearance task to deliver the
-    /// fixture, then records the settled fitting size and an optional snapshot.
+    /// Lays out the mapped fixture synchronously, then records its fitting size
+    /// and an optional snapshot. The injected appearance callback is a no-op.
     @discardableResult
     private func capture<V: View>(_ view: V, named name: String) async throws -> NSSize {
         let hosting = NSHostingView(rootView: view)
         hosting.appearance = NSAppearance(named: .aqua)
         hosting.frame = NSRect(origin: .zero, size: hosting.fittingSize)
         hosting.layoutSubtreeIfNeeded()
-        // Allow SwiftUI's appearance task and the serial reader to publish the fixture.
-        try await Task.sleep(for: .milliseconds(50))
         let size = hosting.fittingSize
         hosting.frame = NSRect(origin: .zero, size: size)
         hosting.layoutSubtreeIfNeeded()
@@ -159,13 +156,14 @@ final class BatteryDetailsLayoutTests: XCTestCase {
         defer { defaults.removeTestSuite(named: suite) }
         let localization = Localization(defaults: defaults, preferredLanguages: ["en"])
         localization.setPreference(.language(language))
+        let observedAt = Date(timeIntervalSince1970: 1_700_000_000)
         let fixture = BatteryDetails(
             adapterWatts: connected ? 90 : nil,
             remainingMinutes: available ? 121 : nil,
             cycleCount: 43,
-            power: available ? BatteryPowerSample(volts: 12.279, amps: connected ? (charging ? 1.528 : 0) : -1.528, updatedAt: Date()) : nil,
+            power: available ? BatteryPowerSample(volts: 12.279, amps: connected ? (charging ? 1.528 : 0) : -1.528, updatedAt: observedAt) : nil,
             powerAvailability: collecting ? .collecting : .unavailable,
-            systemPower: connected && systemAvailable ? SystemPowerSample(watts: 17.25, readAt: Date()) : nil)
+            systemPower: connected && systemAvailable ? SystemPowerSample(watts: 17.25, readAt: observedAt) : nil)
         let battery = BatteryStatus(rawPercentage: 80, isPresent: true, isCharging: false,
                                     isLowPowerMode: false, isConnectedToPower: connected)
         let panelState = PanelDetailMapper.battery(
@@ -185,7 +183,6 @@ final class BatteryDetailsLayoutTests: XCTestCase {
             .background(Color(white: 0.96))
             .environmentObject(localization)
             .environment(\.colorScheme, .light)
-        // Allow SwiftUI's appearance task and the serial reader to publish the fixture.
         let state = connected
             ? (systemAvailable ? (charging ? "system-charging" : "system") : "system-unavailable")
             : (available ? "power" : (collecting ? "collecting" : "unavailable"))
