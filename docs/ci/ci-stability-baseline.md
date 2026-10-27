@@ -163,3 +163,28 @@ Hypothesis, not measured here:
 - Approval and queue gaps can dominate wall time even when compute is stable.
   The `40112321642` 623-second gap is the strongest observed example, but the
   logs do not decompose it into approval versus scheduling.
+
+## Follow-up: DDC observation boundary (2026-10-28)
+
+The later diagnostic
+[`40530484687`](https://github.com/lingyired/status-trio/actions/runs/40530484687)
+found four assertions in one topology presentation case, matching the older
+`37416172832` symptom. A controlled probe reproduced the cause: the fake
+transport's valid fresh-generation result replaced the synchronous
+invalidation before the newest-only stream consumer resumed. This was a
+test-observation defect; no production generation guard was removed or changed.
+
+PR #167 gates the new read until the test observes the nil scalar, nil device
+and selected-row values, and disabled volume control, then requires fresh
+confirmation after release. Removing immediate invalidation makes it fail.
+Twenty focused repetitions and full local verification passed. The post-fix
+remote `40538437122` passed, and final frozen
+`40d6ca4c981c5bef687b6156c854a3a6a2bdbafa` passed `40542058689` and its
+same-SHA repetition `40544097423` after PR #168's guard scan optimization.
+Test counts remain 1,928 Core XCTest (eight existing skips), 15 Helper XCTest
+and 763 Swift Testing, with zero failures.
+
+These runs are non-publishing Ad-hoc diagnostics. Current timings, repeat-run
+results, artifact checks, and the remaining measured optimization boundary are
+recorded in [the performance report](ci-performance-report.md). The historical
+30-run baseline above remains unchanged.
