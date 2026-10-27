@@ -1,8 +1,9 @@
 # Release CI performance report
 
-Status: native-cache and layout optimizations merged; the DDC observation fix
-and guard declaration-index optimization passed full local verification and
-non-publishing remote diagnostics on 2026-10-28 (Asia/Shanghai).
+Status: native-cache and layout optimizations merged; the DDC observation fix,
+guard declaration-index optimization, and deterministic test-wait removals
+passed full local verification and non-publishing remote diagnostics on
+2026-10-28 (Asia/Shanghai).
 
 This report uses existing GitHub Actions evidence. It makes no promise of a
 12-14 minute release and does not claim a speedup from any unmeasured change.
@@ -828,6 +829,66 @@ snapshots remained unchanged. Evidence is under
 `.build/ci-optimization-evidence/ddc-stability-2026-10-27/{baseline,warm,warm2}/`.
 This is diagnostic packaging; Developer ID, notarization, runtime/hardware
 acceptance and publication remain unexercised.
+
+## Deterministic Bluetooth test waits (2026-10-28)
+
+PR #170 merged as `667464e9ebdd54801f69b88fb3145e20c8b8f234`.
+The change adds timing injection to the existing HUAWEI RFCOMM `Hooks` and
+uses zero waits only in synchronous fake-device ownership tests. Production
+defaults remain exactly 5s connection-ready, 1s SDP settling, 1s SDP service
+wait, and 2s channel open. The never-connect branch still performs the single
+timeout condition check and retains all open, close, SDP, and ownership
+assertions.
+
+The rollback tests now subscribe before starting the write and record the
+`.failed` then `.idle` presentations. Both CoreAudio rollback cases and the
+HUAWEI rollback case use a 1 ms test-only failure linger; the production
+default remains 2s. No assertion was skipped, relaxed, or replaced with a
+retry.
+
+Frozen `667464e9` completed the non-publishing diagnostic
+[`40550251784`](https://github.com/lingyired/status-trio/actions/runs/40550251784)
+with version 1.7.6/build 44, `publish=false`, and `notarize=false`:
+
+| Scope | Final guard run 2 | Test-wait run |
+| --- | ---: | ---: |
+| Run | 40544097423 | 40550251784 |
+| Wall | 539s / 8m59s | 527s / 8m47s |
+| Verify | 264s | 222s |
+| Native, parallel | 137s | 155s |
+| Package | 205s | 280s |
+| Verify-to-package gap | 63s | 20s |
+| Swift test stage | 231.472s | 184.944s |
+| Core XCTest body, eight existing skips | 115.084s | 81.705s |
+| Swift Testing | 763 tests | 763 tests |
+| Universal Swift Release phase | 120s | 186s |
+| MobileBattery total | 18s | 31s |
+
+The nine audited fixed-wait cases (seven HUAWEI transport ownership cases and
+two CoreAudio rollback cases) fell from **22.021s to 0.025s**, a measured
+**21.996s reduction in test-case time** on the remote runner. The HUAWEI
+rollback case changed from 0.053s to 0.059s while gaining explicit event
+assertions, so it is not counted as a saving.
+
+The verify job, test stage, and wall time were also lower, while the native and
+package jobs were slower. The total run difference is therefore a run-to-run
+observation, not a controlled end-to-end attribution: only the fixed cases
+have a same-test before/after boundary. The required counts passed with
+1,929 Core XCTest cases (eight existing skips), 15 Helper XCTest cases, and
+763 Swift Testing cases in 112 suites, all with zero failures. The extra Core
+case is the new production-default assertion.
+
+All four downloaded artifact ZIPs matched their GitHub digests. DMG SHA-256
+`d4b1beed32253095148242b8c6942bd9e046bebc0822407cbe6ba0c23ebd5164`
+matched the frozen manifest at 15,281,833 bytes. Read-only inspection passed
+ten arm64+x86_64 binaries, minimum macOS 13/SDK 27 metadata, Sparkle metadata,
+and deep strict Ad-hoc signatures. Release and tag counts remained 18, and
+the appcast blobs and protected `distribution` Environment were unchanged.
+
+Evidence is under
+`.build/ci-optimization-evidence/task7-2026-10-28/`. Developer ID,
+notarization, app launch, real Bluetooth hardware, helper registration, and
+publication remain `NOT RUN`.
 
 ## Remaining optimization decisions
 
