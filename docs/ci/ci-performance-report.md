@@ -1,9 +1,10 @@
 # Release CI performance report
 
-Status: native-cache and layout optimizations merged; the DDC observation fix,
-guard declaration-index optimization, and deterministic test-wait removals
-passed full local verification and non-publishing remote diagnostics on
-2026-10-28 (Asia/Shanghai).
+Status: native-cache, layout, guard, DDC, and deterministic test-wait
+optimizations are merged. The verified tree subsequently merged as
+`4d034760986ee273d43c3e3904294ae3a8b10271` passed a non-publishing remote
+diagnostic on 2026-10-28 (Asia/Shanghai). A final read-only audit found no
+remaining safe material candidate in the measured evidence.
 
 This report uses existing GitHub Actions evidence. It makes no promise of a
 12-14 minute release and does not claim a speedup from any unmeasured change.
@@ -890,6 +891,79 @@ Evidence is under
 notarization, app launch, real Bluetooth hardware, helper registration, and
 publication remain `NOT RUN`.
 
+## Final deterministic DDC and PrimaryLink diagnostic (2026-10-28)
+
+PR #173 merged the DDC watchdog test change as
+`e9fc67ec611267de1cd2ad9a9d8d4a0399b491ed`. The test now has a watchdog-only
+async sleep gate and observes the coordinator's timeout emission before
+releasing the gated physical read. Production retains its two-second watchdog
+and the generic debounce/poll sleep is unchanged. The target fell from
+2.210s locally to 0.155s in focused runs and measured 0.202s on the final
+remote runner.
+
+PR #174 merged the PrimaryLink completion gate as
+`4d034760986ee273d43c3e3904294ae3a8b10271`. The injected dispatcher preserves
+the production main-actor `Task` hop, while tests execute queued completions
+explicitly. The late-read case fell from the 3.922s audit measurement to
+0.000s remotely. Both the inactive-session guard and the stale-request guard
+have independent mutation evidence, and a reactivation regression covers a
+completion queued by the prior session.
+
+Frozen `4d034760` completed non-publishing diagnostic
+[`40566245708`](https://github.com/lingyired/status-trio/actions/runs/40566245708)
+with version 1.7.6/build 44, `publish=false`, and `notarize=false`:
+
+| Scope | Run 40550251784 at `667464e9` | Run 40566245708 at `4d034760` |
+| --- | ---: | ---: |
+| Wall | 527s / 8m47s | 442s / 7m22s |
+| Verify | 222s | 197s |
+| Native, parallel | 155s | 144s |
+| Package | 280s | 223s |
+| Verify-to-package gap | 20s | 16s |
+| Static preflight | 20s | 14s |
+| Swift test stage | 184.944s | 167.249s |
+| Debug test build | 73.78s | 75.00s |
+| Core XCTest body | 81.705s | 65.095s |
+| Swift Testing | 5.760s | 4.145s |
+| Build/sign/package step | 243s | 183s |
+| Universal Swift Release phase | 186s | 128s |
+| MobileBattery total | 31s | 30s |
+
+The **85s wall difference is an observation, not an isolated attribution**.
+The DDC and PrimaryLink changes directly remove fixed test-case waits, and the
+test stage was 17.695s shorter. The package's Universal Release phase was also
+58s shorter in this run, but Debug and Release compilation are independent
+and runner variation remains material. Do not promise the observed 7m22s as a
+fixed release duration.
+
+The final remote run passed 1,932 Core XCTest cases (eight existing skips),
+15 Helper XCTest cases, and 763 Swift Testing cases in 112 suites, with zero
+failures. All four downloaded artifact ZIPs matched their GitHub digests. DMG
+SHA-256
+`b590625956b7d28c80ec529cda089ee6795669a61f746525a11dfa773d8ff428`
+matched the frozen manifest. Read-only inspection passed ten arm64+x86_64
+binaries, version 1.7.6/build 44, macOS 13/SDK 27 platform metadata, Sparkle
+metadata, and deep strict Ad-hoc signatures. Release and tag counts remained
+18, and the appcast blobs and protected `distribution` Environment were
+unchanged.
+
+The five post-PR-170 candidate measurements total **17.858s** of
+candidate-specific pre-change fixed test-case time:
+
+```text
+5.751 + 3.922 + 3.900 + 2.206 + 2.079 = 17.858 seconds
+```
+
+The earlier HUAWEI fake-device batch separately has a **21.996s controlled
+test-case-time reduction** (22.021s to 0.025s). The 17.858s pre-change budget
+and the 21.996s reduction are different metric categories and are not summed.
+Neither is an end-to-end wall-time saving.
+
+Evidence is under
+`.build/ci-optimization-evidence/final-primary-link-remote-2026-10-28/`.
+Developer ID, notarization, app launch, real display/Bluetooth hardware,
+helper registration, and publication remain `NOT RUN`.
+
 ## Remaining optimization decisions
 
 ### Guard declaration lookup (2026-10-28)
@@ -933,6 +1007,29 @@ been verified. No checks were removed for that unmeasured saving. Further
 native-job splitting has no per-contract benchmark or runner-capacity
 evidence yet.
 
+### Final safe-boundary audit (2026-10-28)
+
+The final read-only audit at `4d034760` returned **NO SAFE MATERIAL CANDIDATE**.
+Remaining visible costs are not removable without weakening the contract:
+
+- the cfprefsd deletion case waits 1.5s for real asynchronous write-back and
+  has no completion event;
+- the Bluetooth handoff lifecycle suite uses 150ms SwiftUI settling windows
+  and has no verified equivalent completion boundary;
+- the forbidden-pattern scan and its synthetic self-test are enforcement work;
+- AppKit lifecycle cycles, rendering matrices, localization coverage, and
+  real subprocess tests exist to exercise those behaviors;
+- AirPods and charging Swift Testing cases already use continuation-controlled
+  `ManualEventSleeper`; their reported completion boundary comes from the
+  parallel runner;
+- Debug XCTest and Universal Release compilation serve different contracts,
+  and no safe compilation-cache design has measured hosted-runner proof;
+- cache-key resolution, pre-save validation, tool provisioning, and frozen-SHA
+  reassertion protect correctness or provenance for single-digit seconds.
+
+The final audit is retained at
+`.superpowers/sdd/ci-overnight-continuation-plan/task-15-final-audit.md`.
+
 ## Follow-up measurement plan
 
 1. Completed: run the parallel profile twice on one frozen candidate with
@@ -947,6 +1044,8 @@ evidence yet.
    public publication as `NOT RUN` until the corresponding protected and
    manual evidence exists. The Ad-hoc package contract and signature checks
    above passed but do not substitute for those gates.
+6. Completed: the final post-merge audit found no deterministic, material,
+   safely implementable optimization in the current evidence.
 
 This report records the remote baseline, local native measurements, and
 authorized `publish=false` diagnostics; it is not release authorization. The

@@ -199,3 +199,39 @@ defaults. Nine fixed-wait cases fell from 22.021s to 0.025s; the run wall was
 527s with `publish=false` and `notarize=false`. The package remained Ad-hoc,
 Universal, and un-notarized. Current timing interpretation and artifact
 checks are in [the performance report](ci-performance-report.md).
+
+## Follow-up: final deterministic DDC and PrimaryLink waits (2026-10-28)
+
+PR #173 merged as `e9fc67ec611267de1cd2ad9a9d8d4a0399b491ed`. It replaces the
+DDC presentation test's real 2.2s transport sleep with a watchdog-only
+controlled sleep and proves the timeout emission completes before the physical
+read is released. Production keeps the two-second watchdog.
+
+PR #174 merged as `4d034760986ee273d43c3e3904294ae3a8b10271`. It injects the
+existing PrimaryLink main-actor completion hop so the late-read test executes
+the queued callback explicitly instead of polling a negative condition.
+Independent mutations prove both the inactive-session and stale-request guards.
+A reactivation regression covers a completion queued by the prior session.
+
+Frozen `4d034760` completed non-publishing diagnostic
+[`40566245708`](https://github.com/lingyired/status-trio/actions/runs/40566245708)
+with `publish=false`, `notarize=false`, and version 1.7.6/build 44:
+
+- wall 442s / 7m22s;
+- verify 197s, native 144s in parallel, package 223s;
+- 1,932 Core XCTest cases with eight existing skips, 15 Helper XCTest cases,
+  and 763 Swift Testing cases in 112 suites, all with zero failures;
+- all four artifact ZIP digests matched, DMG SHA-256
+  `b590625956b7d28c80ec529cda089ee6795669a61f746525a11dfa773d8ff428`
+  matched the manifest, and ten binaries passed arm64+x86_64, macOS 13/SDK 27,
+  Sparkle, and deep strict Ad-hoc checks;
+- Release/tag counts, appcast blobs, and the protected `distribution`
+  Environment were unchanged.
+
+The five post-PR-170 fixed candidates total 17.858s of pre-change test-case
+time; the earlier HUAWEI batch separately has a 21.996s controlled test-case
+reduction. They are different metric categories, are not summed, and neither
+is an end-to-end wall saving. A final read-only audit at `4d034760` found no
+remaining safe material candidate. Current phase details and the explicit
+NO-GO boundaries are in
+[the performance report](ci-performance-report.md).
