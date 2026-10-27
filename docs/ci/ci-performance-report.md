@@ -641,6 +641,71 @@ the later notice-binding code. Its regression evidence is local. The cache
 identity change intentionally causes one cold rebuild per architecture on a
 subsequent remote run; no additional performance gain is claimed for it.
 
+## Layout capture fixed-delay removal
+
+The warm Swift XCTest body remained 149.490s after the native-cache work.
+Investigation of the slowest case,
+`BluetoothDeviceRowLayoutTests.testSupportedDeviceKindsDoNotReserveEmptySubtitleSpace`,
+found 204 rows behind a fixed 50ms `Task.sleep` before capture. The test's rows
+consume immutable fixtures and have no appearance task that publishes a later
+state. The same fixed delay was also present in `BatteryDetailsLayoutTests`,
+whose injected `onAppear` callback is a no-op.
+
+Before removing the delays, both suites were captured twice with the existing
+bitmap and geometry assertions. Synchronous two-pass
+`fittingSize`/`layoutSubtreeIfNeeded` produced identical sizes, control rects,
+and spinner counts for all 252 row captures, plus identical PNG bytes for all
+250 static rows (the two animated spinner images were excluded from the byte
+comparison). The battery snapshots exposed
+a separate nondeterministic fixture input: two `Date()` values changed the
+rendered timestamp between runs. Replacing those inputs with one fixed
+`observedAt` date made all 46 battery PNG bytes identical in a separate
+before/after pair. The date is presentation data only; no freshness policy or
+assertion was removed.
+
+| Local scope | Before | After | Observed saving |
+| --- | ---: | ---: | ---: |
+| `BluetoothDeviceRowLayoutTests` XCTest body | 16.943s | 1.684s | 15.259s / 90.1% |
+| `testSupportedDeviceKinds...` | 13.658s | 1.198s | 12.460s / 91.2% |
+| `BatteryDetailsLayoutTests` XCTest body | 3.599s | 2.022s | 1.577s / 43.8% |
+| Combined 17 focused tests | 20.542s | 3.706s | 16.836s / 82.0% |
+
+The before battery value has the fixed-date fixture but the original delay;
+the row before value predates the fixed-date change, which does not affect that
+suite. The combined before value sums two separate suite invocations; the
+after suites ran together. These observations are local to macOS 27.0.1,
+Xcode 27.0, Swift 6.4, arm64, Mac15,9, 16 logical CPUs. The command wall times
+below include the unchanged forbidden-pattern guard and SwiftPM startup,
+and do not measure cold compilation.
+
+The 17 focused tests then passed 20 consecutive runs: 20/20 exit zero, focused
+XCTest body 1.601-1.751s (median 1.650s), and 8.963-9.990s including the test
+command. A temporary production mutation that restored an unwanted subtitle
+failed the optimized empty-subtitle test with 78 assertion failures; the
+mutation was reverted before the fixed commit.
+
+This change is local test evidence only. It has not yet been measured on
+`xcode-27` GitHub Actions, so no remote wall-clock saving is claimed; the
+16.8s observation is strictly local. The warm remote XCTest body was 149.490s;
+this test was 29.596s there, so the remote reduction may differ with runner and
+display settings. A subsequent diagnostic should retain the full 1,928-test
+count and compare the same frozen candidate.
+
+Implementation commit: `1fb89ddcbbfacd72d8307cd02b41e35973a4cae4`, based on
+`2a5576468dddf804f7b246f911a21f21ac23dac2`. All comparison PNGs, geometry
+records, mutation logs, and 20 repetition logs are retained under
+`.build/ci-optimization-evidence/layout-performance-2026-10-27/`.
+The temporary capture/profiling code and production mutation are not included
+in the implementation. Independent review found no actionable issues.
+`bash scripts/verify-local.sh full` passed on that implementation commit:
+1,928 Core XCTest tests (eight existing skips), 15 Helper XCTest tests, and
+763 Swift Testing tests, all with zero failures, plus the Release build,
+non-Universal local bundle, native contracts, cache corruption/invalidation
+fixtures, and offline release simulations. The complete log is
+`verify-local-full.log` in the evidence directory above. Live GitHub CI,
+headless/older-macOS rendering, GUI/hardware behavior, Universal packaging,
+Developer ID, notarization, and publication remain `NOT RUN` for this change.
+
 ## Remaining optimization decisions
 
 The warm run spent 208s in the Universal Swift Release build phase. Debug
