@@ -188,3 +188,14 @@ These runs are non-publishing Ad-hoc diagnostics. Current timings, repeat-run
 results, artifact checks, and the remaining measured optimization boundary are
 recorded in [the performance report](ci-performance-report.md). The historical
 30-run baseline above remains unchanged.
+
+## Follow-up: deterministic Bluetooth waits (2026-10-28)
+
+PR #170 merged as `667464e9ebdd54801f69b88fb3145e20c8b8f234`. Frozen
+run `40550251784` passed 1,929 Core XCTest cases (eight existing skips),
+15 Helper XCTest cases, and 763 Swift Testing cases with zero failures. The
+new extra Core case asserts the unchanged 5s/1s/1s/2s HUAWEI production timing
+defaults. Nine fixed-wait cases fell from 22.021s to 0.025s; the run wall was
+527s with `publish=false` and `notarize=false`. The package remained Ad-hoc,
+Universal, and un-notarized. Current timing interpretation and artifact
+checks are in [the performance report](ci-performance-report.md).
