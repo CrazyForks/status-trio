@@ -34,6 +34,47 @@ prepare_sources_if_needed() {
     SOURCES_PREPARED=1
 }
 
+verify_reviewed_notices() {
+    local sources_prepared="$1"
+    python3 - "$WORK/sources" "$NOTICE_ROOT" "$sources_prepared" <<'PY'
+from pathlib import Path
+import sys
+
+source_root, notices_root = Path(sys.argv[1]), Path(sys.argv[2])
+sources_prepared = sys.argv[3] == "1"
+
+def normalized(path: Path) -> str:
+    text = path.read_text()
+    return "\n".join(line.rstrip() for line in text.splitlines()).rstrip() + "\n"
+
+for name in ("openssl", "libplist", "libimobiledevice-glue", "libusbmuxd", "libtatsu", "libimobiledevice"):
+    source = source_root / name
+    destination = notices_root / name
+    candidates = ("LICENSE", "LICENSE.txt", "COPYING", "COPYING.LESSER")
+    reviewed = [destination / filename for filename in candidates if (destination / filename).is_file()]
+    if not reviewed:
+        raise SystemExit(f"missing reviewed license files for {name}: {destination}")
+    if not sources_prepared:
+        continue
+    source_files = [source / filename for filename in candidates if (source / filename).is_file()]
+    if not source_files:
+        raise SystemExit(f"missing upstream license files for {name}: {source}")
+    source_names = [path.name for path in source_files]
+    reviewed_names = [path.name for path in reviewed]
+    if source_names != reviewed_names:
+        raise SystemExit(
+            f"reviewed license set differs from {name} source pins: "
+            f"{reviewed_names} != {source_names}"
+        )
+    for source_file, reviewed_file in zip(source_files, reviewed):
+        if normalized(source_file) != normalized(reviewed_file):
+            raise SystemExit(
+                f"reviewed license text differs from {name} source pin: "
+                f"{reviewed_file.relative_to(notices_root)}"
+            )
+PY
+}
+
 strip_development_rpaths() {
     local binary="$1"
     local prefix="$2"
@@ -116,6 +157,7 @@ for arch in "${ARCHES[@]}"; do
 
     if [[ "$REBUILD_DEPENDENCIES" == "1" ]]; then
     prepare_sources_if_needed
+    verify_reviewed_notices 1
     build_phase "mobile-dependencies-$arch"
     while IFS=$'\t' read -r name repository commit version; do
         mkdir -p "$source_root/$name"
@@ -224,43 +266,7 @@ fi
     echo "Error: missing reviewed MobileBattery notice: $NOTICE_ROOT/NOTICE.md" >&2
     exit 1
 }
-python3 - "$WORK/sources" "$NOTICE_ROOT" "$SOURCES_PREPARED" <<'PY'
-from pathlib import Path
-import sys
-
-source_root, notices_root = Path(sys.argv[1]), Path(sys.argv[2])
-sources_prepared = sys.argv[3] == "1"
-
-def normalized(path: Path) -> str:
-    text = path.read_text()
-    return "\n".join(line.rstrip() for line in text.splitlines()).rstrip() + "\n"
-
-for name in ("openssl", "libplist", "libimobiledevice-glue", "libusbmuxd", "libtatsu", "libimobiledevice"):
-    source = source_root / name
-    destination = notices_root / name
-    candidates = ("LICENSE", "LICENSE.txt", "COPYING", "COPYING.LESSER")
-    reviewed = [destination / filename for filename in candidates if (destination / filename).is_file()]
-    if not reviewed:
-        raise SystemExit(f"missing reviewed license files for {name}: {destination}")
-    if not sources_prepared:
-        continue
-    source_files = [source / filename for filename in candidates if (source / filename).is_file()]
-    if not source_files:
-        raise SystemExit(f"missing upstream license files for {name}: {source}")
-    source_names = [path.name for path in source_files]
-    reviewed_names = [path.name for path in reviewed]
-    if source_names != reviewed_names:
-        raise SystemExit(
-            f"reviewed license set differs from {name} source pins: "
-            f"{reviewed_names} != {source_names}"
-        )
-    for source_file, reviewed_file in zip(source_files, reviewed):
-        if normalized(source_file) != normalized(reviewed_file):
-            raise SystemExit(
-                f"reviewed license text differs from {name} source pin: "
-                f"{reviewed_file.relative_to(notices_root)}"
-            )
-PY
+verify_reviewed_notices 0
 
 cp -R "$NOTICE_ROOT/." "$PACKAGE/Resources/MobileBatteryLicenses/"
 cp "$MANIFEST" "$PACKAGE/Resources/MobileBatteryLicenses/dependencies.json"

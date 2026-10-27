@@ -1,7 +1,7 @@
 # Release CI performance report
 
-Status: remote baseline, cold/warm package diagnostics, and two same-SHA
-parallel verification diagnostics completed 2026-10-27 (Asia/Shanghai).
+Status: remote baseline, parallel verification diagnostics, and the same-SHA
+warm-source-checkout cold/warm pair completed 2026-10-27 (Asia/Shanghai).
 
 This report uses existing GitHub Actions evidence. It makes no promise of a
 12-14 minute release and does not claim a speedup from any unmeasured change.
@@ -216,7 +216,8 @@ regenerate license files that are already reviewed and committed under
 The build now prepares sources only when at least one architecture actually
 misses or rejects its dependency cache. Cache-hit runs use the tracked
 license texts. On a cold rebuild, the script still verifies every source pin
-and compares each upstream license byte-for-byte with the reviewed copy;
+and compares each upstream license with the reviewed copy after normalizing
+line endings and trailing whitespace;
 drift fails closed instead of rewriting tracked files. Cache validation no
 longer requires a source checkout because the exact key and marker bind the
 dependency manifest, build scripts, canonical prefix and full installed
@@ -533,16 +534,138 @@ Developer ID, notarization, Helper/XPC runtime, and macOS 13 runtime remain
 `NOT RUN`. The two timing runs above predate this compatibility follow-up
 and must not be presented as recovery acceptance.
 
+## Remote warm-source-checkout measurement
+
+PR #162 merged as `518f4e961ceaa26f76fb9f9b120dd6eb4a67d3d2`.
+Both diagnostics below used that exact frozen candidate, `version=1.7.6`,
+`build=44`, `publish=false`, `notarize=false`, and no recovery source.
+The workflow, candidate, toolchain, and inputs were unchanged between runs:
+`xcode-27`, Xcode 27.0, Swift 6.4, and SDK 27.0. Changed build scripts made
+the first run miss the old keys; the second restored the two newly sealed
+prefixes.
+
+| Scope | [Cold `40486083712`](https://github.com/lingyired/status-trio/actions/runs/40486083712) | [Warm `40488843296`](https://github.com/lingyired/status-trio/actions/runs/40488843296) |
+| --- | ---: | ---: |
+| Total wall | 1,191s / 19m51s | 705s / 11m45s |
+| Verification critical path | 405s | 297s |
+| Swift/static Verify job | 405s | 297s |
+| Separate Native job | 200s | 134s |
+| Package job | 750s / 12m30s | 324s / 5m24s |
+| Verification-to-package gap | 31s | 79s |
+| Sum of active job durations | 1,355s | 755s |
+| Swift test stage | 357.227s | 263.756s |
+| Reported Swift test build | 141.25s | 80.91s |
+| Core XCTest body | 178.443s | 149.490s |
+| Swift Universal Release build phase | 223s | 208s |
+| MobileBattery source checkout | 34s, six clones | not run, zero clones |
+| arm64 dependency phases | 228s | 21s |
+| x86_64 dependency phases | 189s | 6s |
+| MobileBattery total | 456s | 34s |
+| Native cache restore interval | 0s, two misses | 4s, two exact hits |
+| Native cache save interval | 2s | 0s, skipped |
+
+The cold TSV emits a dependency row before source preparation and another
+after it. The per-architecture values above sum repeated rows with the same
+label, including key/inspection work. Source checkout is timed separately
+and no longer absorbs compilation. Parent phases still include child phases;
+the complete table must not be summed as independent work.
+
+The observed Package saving is **426s (56.80%)** and the MobileBattery saving
+is **422s (92.54%)**. Wall fell by **486s (40.81%)**. The 108s shorter
+verification critical path and 48s longer verification-to-package gap also
+contributed to wall time; the full 486s must not be attributed to caching.
+Both Swift test builds and XCTest execution varied on an unchanged candidate.
+Runner load was not measured, so the variation has no established cause.
+These are two observations, not a guaranteed release duration or billing
+measurement. This cold native build was also slower than earlier cold runs;
+it is retained rather than replaced with a more favorable sample.
+
+The warm package logged validation and skipped third-party compilation for
+both architectures. It rebuilt both Helpers, emitted no
+`mobile-source-checkout` row, performed no source clone, and skipped both
+cache saves. The two new cache entries remained the same IDs, keys, sizes,
+and creation timestamps through the warm run, totaling 14,460,360 compressed
+bytes. The previous two entries were preserved.
+
+The preceding warm run
+[`40451490957`](https://github.com/lingyired/status-trio/actions/runs/40451490957)
+still recorded 27s of source checkout, a 55s MobileBattery interval, a 281s
+Package job, and 733s wall. The new warm run eliminated source checkout and
+reduced the native interval to 34s, but Package was 43s slower and wall was
+28s shorter. Different candidates and runner variation prevent treating
+that comparison as an isolated 27s end-to-end speedup.
+
+Both complete Swift runs reported 1,928 Core XCTest and 15 Helper XCTest,
+with eight existing skips and zero failures, plus 763 passing Swift Testing
+tests. Native and offline release contracts passed in both runs. Downloaded
+artifact ZIPs matched GitHub digests, and each DMG matched its own frozen-SHA
+manifest and adjacent checksum:
+
+| Run | Package artifact | Artifact ZIP SHA-256 | DMG SHA-256 |
+| --- | --- | --- | --- |
+| `40486083712` | `12726116510` | `03b92c3de936047720dff57f2ea642685c624e5ade2336803abb5cb09a585865` | `4ac1be9ada0de30170a7079b9041dc34f1e7c044829d6bc0db9b4798b1a5e8db` |
+| `40488843296` | `12728321361` | `2a994df647484c2ff3e4790d9844fd9d0847a92ccf712584b404a553eb892556` | `501d4e642098444a31adac23a40a4f1e075793a63f40a21e9f710d483ba9812c` |
+
+Read-only DMG inspection verified version/build, ten binaries with both
+architectures, minimum macOS 13 / SDK 27 metadata, Sparkle metadata, and deep
+strict Ad-hoc signatures. The workflow retained its Helper `--list` smoke
+check. GUI/hardware behavior, privileged Helper/XPC registration, macOS 13
+runtime, Developer ID, notarization, and online recovery were not exercised.
+Publish was skipped twice. All 18 releases and their asset digests, 18 tags,
+the appcast blob, protected Environment settings, and the original worktree
+status were unchanged.
+
+Raw run/job metadata, logs, diagnostics, timing TSVs, verified packages,
+read-only inspection logs, comparison and public-state audits are retained
+under `.build/ci-optimization-evidence/warm-source-skip-remote-2026-10-27/`.
+
+## Reviewed-license cache follow-up
+
+Independent review found that a notice-only change did not alter the cache
+identity. A warm cache could therefore package changed reviewed text without
+the cold source comparison. It also exposed an ordering defect: the cold
+build sealed its marker before comparing licenses, so repeating an input
+that failed license verification could reuse that premature marker.
+
+The follow-up binds all reviewed-notice relative paths and file digests to
+the cache identity and rejects missing, unreadable, symlink, or unsupported
+notice paths. It reuses the existing source comparison before dependency
+compilation and cache sealing. Unchanged notices still allow a warm build
+without sources. Regressions first reproduced warm acceptance, silently
+skipped unreadable directories, and acceptance on a repeated failed build;
+the corrected cache fixture passes all three boundaries and the existing
+cold/warm, corruption, inventory, and Universal contracts.
+
+The remote pair above predates this follow-up and verifies `518f4e96`, not
+the later notice-binding code. Its regression evidence is local. The cache
+identity change intentionally causes one cold rebuild per architecture on a
+subsequent remote run; no additional performance gain is claimed for it.
+
+## Remaining optimization decisions
+
+The warm run spent 208s in the Universal Swift Release build phase. Debug
+test outputs and Universal Release outputs remain different required work;
+no compatible compilation-cache experiment has established safe reuse.
+The earlier SwiftPM download-only experiment remains local evidence.
+
+The warm job spent 9s resolving exact cache keys, 11s installing/checking
+build tools, and 5s validating prefixes before the skipped cache saves.
+Avoiding redundant pre-save inspection is a possible seconds-scale
+experiment, but its net benefit and replacement integrity boundary have not
+been verified. No checks were removed for that unmeasured saving. Further
+native-job splitting has no per-contract benchmark or runner-capacity
+evidence yet.
+
 ## Follow-up measurement plan
 
 1. Completed: run the parallel profile twice on one frozen candidate with
    `publish=false` and no notarization; the comparison is recorded above.
-2. Repeat the package-only cold/warm pair on a later formal candidate so the
-   hosted cache hit rate and any mismatch-driven rebuild can be observed.
-3. Compare arm64 and x86_64 phase rows separately. Treat the x86-to-package
-   marker as approximate until a per-architecture completion marker exists.
-4. Re-run the package from the exact same candidate and toolchain; do not
-   compare different SDKs or runner images as a cache result.
+2. Completed: measure source-checkout removal with a same-SHA cold/warm pair;
+   retain both the dependency phases and the separate source phase.
+3. On a later formal candidate, observe cache invalidation and hit behavior,
+   including the reviewed-license binding, signing, and notarization costs.
+4. Keep comparisons on the exact same candidate and toolchain; do not compare
+   different SDKs or runner images as an isolated cache result.
 5. Keep Developer ID signing, notarization, runtime Helper/XPC behavior, and
    public publication as `NOT RUN` until the corresponding protected and
    manual evidence exists. The Ad-hoc package contract and signature checks

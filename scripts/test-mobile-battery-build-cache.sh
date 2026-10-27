@@ -1062,7 +1062,73 @@ for arch in arm64 x86_64; do
         --minimum-macos 13.0 --expected-key "$arch_key"
 done
 
+UNIVERSAL_CACHE_SNAPSHOT="$TEST_ROOT/universal-cache-before-notice-drift"
+for arch in arm64 x86_64; do
+    arch_root="$PROJECT/.build/mobile-battery/$arch"
+    mkdir -p "$UNIVERSAL_CACHE_SNAPSHOT/$arch"
+    cp -RP "$arch_root/prefix" "$UNIVERSAL_CACHE_SNAPSHOT/$arch/prefix"
+    cp "$arch_root/.dependencies-cache.json" \
+        "$UNIVERSAL_CACHE_SNAPSHOT/$arch/.dependencies-cache.json"
+done
+
+restore_universal_cache_snapshot() {
+    for arch in arm64 x86_64; do
+        arch_root="$PROJECT/.build/mobile-battery/$arch"
+        rm -rf "$arch_root"
+        mkdir -p "$arch_root"
+        cp -RP "$UNIVERSAL_CACHE_SNAPSHOT/$arch/prefix" "$arch_root/prefix"
+        cp "$UNIVERSAL_CACHE_SNAPSHOT/$arch/.dependencies-cache.json" \
+            "$arch_root/.dependencies-cache.json"
+    done
+}
+
 NOTICE_COPY="$PROJECT/Support/MobileBatteryHelper/ThirdPartyNotices/libplist/LICENSE"
+NOTICE_KEY_BEFORE="$(prepare_key "$PROJECT" "$HOST_ARCH")"
+cp "$NOTICE_COPY" "$TEST_ROOT/libplist-notice.saved"
+printf '\nfixture drift\n' >> "$NOTICE_COPY"
+NOTICE_KEY_AFTER="$(prepare_key "$PROJECT" "$HOST_ARCH")"
+status=0
+tool_env "$HOST_ARCH" \
+    UNIVERSAL_BUILD=1 \
+    BUILD_JOBS=1 \
+    bash "$PROJECT/scripts/build-mobile-battery-helper.sh" \
+    > "$TEST_ROOT/notice-warm-drift.log" 2>&1 || status=$?
+[[ "$status" != "0" ]] ||
+    fail "changed reviewed notice was accepted by an existing warm cache"
+[[ "$NOTICE_KEY_AFTER" != "$NOTICE_KEY_BEFORE" ]] ||
+    fail "reviewed notice contents did not invalidate the cache key"
+grep -Fq 'reviewed license text differs' "$TEST_ROOT/notice-warm-drift.log" ||
+    fail "warm notice drift did not report its source-pin mismatch"
+
+status=0
+tool_env "$HOST_ARCH" \
+    UNIVERSAL_BUILD=1 \
+    BUILD_JOBS=1 \
+    bash "$PROJECT/scripts/build-mobile-battery-helper.sh" \
+    > "$TEST_ROOT/notice-warm-drift-repeat.log" 2>&1 || status=$?
+[[ "$status" != "0" ]] ||
+    fail "a repeated build accepted a marker sealed before notice verification"
+grep -Fq 'reviewed license text differs' "$TEST_ROOT/notice-warm-drift-repeat.log" ||
+    fail "repeated notice drift did not report its source-pin mismatch"
+for arch in arm64 x86_64; do
+    marker="$PROJECT/.build/mobile-battery/$arch/.dependencies-cache.json"
+    [[ ! -e "$marker" ]] && continue
+    drift_key="$(prepare_key "$PROJECT" "$arch")"
+    marker_key="$(python3 - "$marker" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1]) as handle:
+    print(json.load(handle).get("cacheKey", ""))
+PY
+)"
+    [[ "$marker_key" != "$drift_key" ]] ||
+        fail "failed notice verification left a reusable $arch cache marker"
+done
+
+cp "$TEST_ROOT/libplist-notice.saved" "$NOTICE_COPY"
+restore_universal_cache_snapshot
+
 cp "$NOTICE_COPY" "$TEST_ROOT/libplist-notice.saved"
 printf '\nfixture drift\n' >> "$NOTICE_COPY"
 rm -rf "$PROJECT/.build/mobile-battery/$HOST_ARCH"
@@ -1077,6 +1143,7 @@ tool_env "$HOST_ARCH" \
 grep -Fq 'reviewed license text differs' "$TEST_ROOT/notice-drift.log" ||
     fail "license drift did not report its source-pin mismatch"
 cp "$TEST_ROOT/libplist-notice.saved" "$NOTICE_COPY"
+restore_universal_cache_snapshot
 
 rm -rf "$PROJECT/.build/mobile-battery/sources"
 PREPARE_COUNT_BEFORE_WITHOUT_SOURCES="$(wc -l < "$FIXTURE_PREPARE_LOG" | tr -d ' ')"
@@ -1101,6 +1168,58 @@ for arch in arm64 x86_64; do
         fail "universal helper timing was not recorded for $arch"
 done
 
+NOTICE_ROOT="$PROJECT/Support/MobileBatteryHelper/ThirdPartyNotices"
+NOTICE_EXTRA="$NOTICE_ROOT/cache-key-extra.txt"
+printf 'fixture extra reviewed notice\n' > "$NOTICE_EXTRA"
+NOTICE_FILE_SET_KEY="$(prepare_key "$PROJECT" "$HOST_ARCH")"
+rm "$NOTICE_EXTRA"
+expect_key_change "reviewed notice file set" "$NOTICE_FILE_SET_KEY"
+
+mv "$NOTICE_ROOT" "$TEST_ROOT/notices.saved"
+if prepare_key "$PROJECT" "$HOST_ARCH" > "$TEST_ROOT/notices-missing.log" 2>&1; then
+    fail "missing reviewed notice root was accepted"
+else
+    status=$?
+    [[ "$status" == "2" ]] ||
+        fail "missing reviewed notice root exited $status instead of 2"
+fi
+grep -Fqi 'reviewed notice' "$TEST_ROOT/notices-missing.log" ||
+    fail "missing reviewed notice root failure was not explained"
+mv "$TEST_ROOT/notices.saved" "$NOTICE_ROOT"
+
+ln -s libplist/LICENSE "$NOTICE_ROOT/cache-key-link"
+if prepare_key "$PROJECT" "$HOST_ARCH" > "$TEST_ROOT/notices-symlink.log" 2>&1; then
+    fail "symlink in reviewed notice root was accepted"
+else
+    status=$?
+    [[ "$status" == "2" ]] ||
+        fail "symlink in reviewed notice root exited $status instead of 2"
+fi
+grep -Fqi 'symlink' "$TEST_ROOT/notices-symlink.log" ||
+    fail "symlink in reviewed notice root failure was not explained"
+rm "$NOTICE_ROOT/cache-key-link"
+
+NOTICE_UNREADABLE="$NOTICE_ROOT/cache-key-unreadable"
+mkdir "$NOTICE_UNREADABLE"
+printf 'fixture unreadable reviewed notice\n' > "$NOTICE_UNREADABLE/LICENSE"
+chmod 000 "$NOTICE_UNREADABLE"
+if prepare_key "$PROJECT" "$HOST_ARCH" \
+    > "$TEST_ROOT/notices-unreadable.log" 2>&1; then
+    chmod 700 "$NOTICE_UNREADABLE"
+    rm "$NOTICE_UNREADABLE/LICENSE"
+    rmdir "$NOTICE_UNREADABLE"
+    fail "unreadable reviewed notice directory was silently skipped"
+else
+    status=$?
+    chmod 700 "$NOTICE_UNREADABLE"
+    rm "$NOTICE_UNREADABLE/LICENSE"
+    rmdir "$NOTICE_UNREADABLE"
+    [[ "$status" == "2" ]] ||
+        fail "unreadable reviewed notice directory exited $status instead of 2"
+fi
+grep -Fqi 'unable to inspect reviewed notices' "$TEST_ROOT/notices-unreadable.log" ||
+    fail "unreadable reviewed notice directory failure was not explained"
+
 for failure in strip lipo; do
     case "$failure" in
         strip) injection="FIXTURE_install_name_tool_STATUS=75"; expected=75 ;;
@@ -1121,4 +1240,4 @@ for failure in strip lipo; do
     done
 done
 
-echo "mobile battery build cache: key, inventory, corruption and cold/warm fixtures passed"
+echo "mobile battery build cache: key, reviewed notices, inventory, corruption and cold/warm fixtures passed"
