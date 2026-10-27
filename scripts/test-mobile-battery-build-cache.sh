@@ -360,6 +360,14 @@ OBJC
         > "$project/Support/MobileBatteryHelper/NativeBatteryClient.m"
     printf '#import <Foundation/Foundation.h>\n' \
         > "$project/Support/MobileBatteryHelper/NativeBatteryClient.h"
+    printf '# Fixture notices\n' \
+        > "$project/Support/MobileBatteryHelper/ThirdPartyNotices/NOTICE.md"
+    for name in \
+        openssl libplist libimobiledevice-glue libusbmuxd libtatsu libimobiledevice; do
+        mkdir -p "$project/Support/MobileBatteryHelper/ThirdPartyNotices/$name"
+        printf 'fixture source license\n' \
+            > "$project/Support/MobileBatteryHelper/ThirdPartyNotices/$name/LICENSE"
+    done
 
     [[ -n "$seed_commit" ]] || return 0
     python3 - "$project/Support/mobile-battery-dependencies.json" \
@@ -939,8 +947,8 @@ grep -Fqi 'third-party dependency build skipped' "$TEST_ROOT/warm-build.log" ||
     fail "warm build invoked a synthetic dependency installer"
 [[ "$(wc -l < "$TEST_ROOT/clang.log" | tr -d ' ')" -gt "$COLD_CLANG_LINES" ]] ||
     fail "warm build did not rebuild the final helper"
-[[ "$(wc -l < "$FIXTURE_PREPARE_LOG" | tr -d ' ')" == "2" ]] ||
-    fail "warm build did not verify pinned sources exactly once"
+[[ "$(wc -l < "$FIXTURE_PREPARE_LOG" | tr -d ' ')" == "1" ]] ||
+    fail "warm build checked out pinned sources despite a validated cache"
 
 grep -Fq $'mobile-dependencies-'"$HOST_ARCH"$'\t' "$TEST_ROOT/timing.tsv" ||
     fail "dependency phase timing was not recorded"
@@ -1043,8 +1051,8 @@ tool_env "$HOST_ARCH" \
     fail "universal warm build invoked a synthetic dependency installer"
 [[ "$(wc -l < "$TEST_ROOT/clang.log" | tr -d ' ')" -eq "$((COLD_UNIVERSAL_CLANG_LINES + 2))" ]] ||
     fail "universal warm build did not rebuild both final helpers"
-[[ "$(wc -l < "$FIXTURE_PREPARE_LOG" | tr -d ' ')" == "2" ]] ||
-    fail "universal builds did not verify pinned sources exactly once each"
+[[ "$(wc -l < "$FIXTURE_PREPARE_LOG" | tr -d ' ')" == "1" ]] ||
+    fail "universal warm build checked out pinned sources despite validated caches"
 assert_universal_slices "$PACKAGE_HELPER"
 assert_no_development_rpaths "$PACKAGE_HELPER"
 for arch in arm64 x86_64; do
@@ -1053,6 +1061,39 @@ for arch in arm64 x86_64; do
         validate --root "$PROJECT" --arch "$arch" \
         --minimum-macos 13.0 --expected-key "$arch_key"
 done
+
+NOTICE_COPY="$PROJECT/Support/MobileBatteryHelper/ThirdPartyNotices/libplist/LICENSE"
+cp "$NOTICE_COPY" "$TEST_ROOT/libplist-notice.saved"
+printf '\nfixture drift\n' >> "$NOTICE_COPY"
+rm -rf "$PROJECT/.build/mobile-battery/$HOST_ARCH"
+status=0
+tool_env "$HOST_ARCH" \
+    UNIVERSAL_BUILD=0 \
+    BUILD_JOBS=1 \
+    bash "$PROJECT/scripts/build-mobile-battery-helper.sh" \
+    > "$TEST_ROOT/notice-drift.log" 2>&1 || status=$?
+[[ "$status" != "0" ]] ||
+    fail "a cold rebuild accepted reviewed license text that differed from its source pin"
+grep -Fq 'reviewed license text differs' "$TEST_ROOT/notice-drift.log" ||
+    fail "license drift did not report its source-pin mismatch"
+cp "$TEST_ROOT/libplist-notice.saved" "$NOTICE_COPY"
+
+rm -rf "$PROJECT/.build/mobile-battery/sources"
+PREPARE_COUNT_BEFORE_WITHOUT_SOURCES="$(wc -l < "$FIXTURE_PREPARE_LOG" | tr -d ' ')"
+status=0
+tool_env "$HOST_ARCH" \
+    UNIVERSAL_BUILD=1 \
+    BUILD_JOBS=1 \
+    BUILD_TIMING_FILE="$TEST_ROOT/timing.tsv" \
+    bash "$PROJECT/scripts/build-mobile-battery-helper.sh" \
+    > "$TEST_ROOT/universal-no-sources-warm-build.log" 2>&1 || status=$?
+if (( status != 0 )); then
+    cat "$TEST_ROOT/universal-no-sources-warm-build.log" >&2
+    fail "validated caches still required the pinned source checkout"
+fi
+[[ "$(wc -l < "$FIXTURE_PREPARE_LOG" | tr -d ' ')" == "$PREPARE_COUNT_BEFORE_WITHOUT_SOURCES" ]] ||
+    fail "warm build without sources called source preparation"
+
 for arch in arm64 x86_64; do
     grep -Fq $'mobile-dependencies-'"$arch"$'\t' "$TEST_ROOT/timing.tsv" ||
         fail "universal dependency timing was not recorded for $arch"

@@ -852,7 +852,6 @@ def validate(
     if data["inventorySha256"] != actual_digest:
         raise CacheInvalid("cache marker inventory digest does not match")
 
-    verify_source_pins(root)
     libraries = verify_required_files(prefix)
     validate_inventory(prefix, stored_inventory, sdk_identity()["path"], marker)
     for library in libraries:
