@@ -18,12 +18,18 @@ Swift 6.1.2 上。
 
 ## CI 计时路径的表达式上下文（2026-10-27）
 
-PR #156 合并后，首次非发布诊断在派发时被 GitHub 拒绝，尚未创建 run：
+PR #156 合并后，首次非发布诊断在派发时被 GitHub 拒绝，未启动诊断 job：
 `release.yml:269` 的 job 级 `BUILD_TIMING_FILE` 使用了
 `${{ runner.temp }}`，但该层只允许 `github`、`inputs`、`matrix`、`needs`、
 `secrets`、`strategy` 和 `vars`。普通 YAML 解析与原有结构策略未覆盖表达式
 上下文，因此本地完整验证未发现该问题。官方 `actionlint` v1.7.12 独立复现了
 同一错误。
+
+GitHub 另外为分支 push 和合并 push 记录了
+[`40416143054`](https://github.com/lingyired/status-trio/actions/runs/40416143054)
+和 [`40424624520`](https://github.com/lingyired/status-trio/actions/runs/40424624520)
+两条配置校验失败，均为 `event=push`、0 个 job。它们与拒绝的手动派发属于同一
+工作流解析问题，不是已经运行的 Swift 测试或冷缓存构建。
 
 计时文件改为 `${{ github.workspace }}/.build/ci-logs/package-build-timings.tsv`，
 在 cache-key 步骤中先创建父目录，上传步骤引用同一个环境变量。工作流策略增加
