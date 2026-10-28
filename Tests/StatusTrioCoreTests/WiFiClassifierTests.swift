@@ -1938,7 +1938,13 @@ final class WiFiClassifierTests: XCTestCase {
         XCTAssertEqual(reader.includeSSIDRequests.count, 1)
 
         reader.complete(makeReading(rssi: -40))
-        XCTAssertEqual(reader.includeSSIDRequests.count, 2)
+        let followUpStarted = await waitUntil {
+            reader.includeSSIDRequests.count == 2
+        }
+        XCTAssertTrue(
+            followUpStarted,
+            "the debounced follow-up read must start after the invalidated read completes"
+        )
         reader.complete(makeReading(rssi: -65))
         XCTAssertEqual(reader.includeSSIDRequests.count, 2)
         monitor.stop()
