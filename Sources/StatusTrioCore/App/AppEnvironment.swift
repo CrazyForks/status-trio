@@ -211,6 +211,7 @@ final class AppEnvironment {
         dockChargingAnimationPresenter?.trimForMemoryPressure()
         previewResourceLifecycle.releaseIfIdle()
         IconImageDecodeCache.shared.reset()
+        ApplicationEnergyIconCache.shared.reset()
         DockIconRenderer.resetScratchContexts()
         StatusIconRenderer.resetInkOffsetCaches()
     }

@@ -1064,10 +1064,14 @@ final class SystemStatusStore: ObservableObject {
     func bindApplicationEnergySettings(_ settings: SettingsStore) {
         guard !hasStopped else { return }
         applicationEnergySettingsCancellable = settings.$showsHighEnergyApps
-            .removeDuplicates()
-            .sink { [weak self] enabled in
+            .combineLatest(settings.$highEnergyAppsRefreshIntervalSeconds)
+            .removeDuplicates { $0 == $1 }
+            .sink { [weak self] enabled, intervalSeconds in
                 guard let self else { return }
                 self.isApplicationEnergyEnabled = enabled
+                self.batteryDetails.energyApps.setBackgroundInterval(
+                    .seconds(Int(intervalSeconds.rounded()))
+                )
                 self.updateApplicationEnergyDemand()
             }
     }

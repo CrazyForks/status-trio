@@ -22,6 +22,7 @@ struct ApplicationEnergyRanking: Equatable, Sendable {
     enum Basis: Sendable { case cpuEnergy, cpuActivity }
     enum Phase: Sendable { case sampling, ready, unavailable }
     var apps: [EnergyApplication] = []
+    var values: [EnergyApplication: Double] = [:]
     var basis: Basis = .cpuEnergy
     var phase: Phase = .sampling
 
@@ -49,9 +50,16 @@ struct ApplicationEnergyRanking: Equatable, Sendable {
         }
         let usesEnergy = hasEnergy && completeEnergyCoverage
         let values = usesEnergy ? energy : cpu
-        let apps = values.filter { $0.value >= 0.01 }.sorted {
+        let ranked = values.filter { $0.value >= 0.01 }.sorted {
             $0.value == $1.value ? $0.key.id < $1.key.id : $0.value > $1.value
-        }.prefix(5).map(\.key)
-        return Self(apps: apps, basis: usesEnergy ? .cpuEnergy : .cpuActivity, phase: .ready)
+        }.prefix(5)
+        let apps = ranked.map { $0.key }
+        let rankedValues = Dictionary(uniqueKeysWithValues: ranked.map { ($0.key, $0.value) })
+        return Self(
+            apps: apps,
+            values: rankedValues,
+            basis: usesEnergy ? .cpuEnergy : .cpuActivity,
+            phase: .ready
+        )
     }
 }

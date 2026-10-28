@@ -11,7 +11,7 @@ final class ApplicationEnergyTests: XCTestCase {
             cpuNanoseconds: cpu, energyNanojoules: energy)
     }
 
-    func testRankingUsesIntervalEnergyAndAggregatesApplicationHelpers() {
+    func testRankingUsesIntervalEnergyAndAggregatesApplicationHelpers() throws {
         let before = ApplicationEnergySnapshot(readAt: 100, processes: [
             sample(1, browser, cpu: 0, energy: 10_000_000_000),
             sample(2, browser, cpu: 0, energy: 10_000_000_000),
@@ -23,14 +23,17 @@ final class ApplicationEnergyTests: XCTestCase {
         let result = ApplicationEnergyRanking.rank(previous: before, current: after)
         XCTAssertEqual(result.apps.map(\.name), ["Browser", "Editor"])
         XCTAssertEqual(result.basis, .cpuEnergy)
+        XCTAssertEqual(try XCTUnwrap(result.values[browser]), 0.4, accuracy: 0.000_001)
+        XCTAssertEqual(try XCTUnwrap(result.values[editor]), 0.3, accuracy: 0.000_001)
     }
 
-    func testUnavailableEnergyUsesExplicitCPUActivityBasis() {
+    func testUnavailableEnergyUsesExplicitCPUActivityBasis() throws {
         let before = ApplicationEnergySnapshot(readAt: 100, processes: [sample(1, browser, cpu: 0, energy: nil)])
         let after = ApplicationEnergySnapshot(readAt: 105, processes: [sample(1, browser, cpu: 500_000_000, energy: nil)])
         let result = ApplicationEnergyRanking.rank(previous: before, current: after)
         XCTAssertEqual(result.apps.map(\.name), ["Browser"])
         XCTAssertEqual(result.basis, .cpuActivity)
+        XCTAssertEqual(try XCTUnwrap(result.values[browser]), 0.1, accuracy: 0.000_001)
     }
 
     func testPartialEnergyCoverageFallsBackToAComparableActivityRanking() {

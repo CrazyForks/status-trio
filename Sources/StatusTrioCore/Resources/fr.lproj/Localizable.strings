@@ -510,11 +510,13 @@
 // Battery panel power flow and application energy
 "settings.battery.powerFlow" = "Flux de puissance du panneau Batterie";
 "settings.battery.powerFlow.description" = "Les puissances sont actualisées uniquement lorsque le panneau Batterie est ouvert. Les capteurs peuvent être retardés et les trois valeurs peuvent différer.";
+"settings.battery.energyRefreshInterval" = "Intervalle d’échantillonnage en arrière-plan";
+"settings.battery.energyRefreshInterval.description" = "Utilisé lorsque le panneau est fermé. La page de détails de la batterie continue de s’actualiser toutes les 5 secondes.";
 "battery.power.input" = "Entrée chargeur";
 "battery.power.charging" = "Vers la batterie";
 "battery.power.system" = "Système";
-"battery.energy.apps" = "Apps énergivores";
+"battery.energy.apps" = "Impact énergétique CPU";
 "battery.energy.empty" = "Aucune activité notable dans cet échantillon.";
-"battery.energy.cpuExplanation" = "Classement selon l’énergie CPU des apps accessibles à votre compte. GPU et processus système peuvent manquer.";
+"battery.energy.cpuExplanation" = "Classement selon les compteurs d’énergie CPU des apps accessibles à votre compte ; il ne s’agit pas de l’impact énergétique composite de Moniteur d’activité. GPU et processus système peuvent manquer.";
 "battery.energy.activityExplanation" = "Données énergétiques insuffisantes : estimation par activité CPU. GPU et processus système peuvent manquer.";
-"battery.energy.monitoringDescription" = "Une fois activé, actualise les résultats récents en arrière-plan pour un affichage immédiat. Classement par énergie ou activité CPU.";
+"battery.energy.monitoringDescription" = "Une fois activé, l’activité des apps est échantillonnée en arrière-plan même lorsque le panneau est fermé. L’échantillonnage s’arrête à la désactivation, pendant la veille du système ou de l’écran et à la fermeture de Status Trio.";

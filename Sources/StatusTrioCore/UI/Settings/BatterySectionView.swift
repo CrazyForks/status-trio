@@ -39,6 +39,46 @@ struct BatterySectionView: View {
                 title: localization.string(.batteryHighEnergyApps),
                 subtitle: localization.string(.batteryEnergyMonitoringDescription),
                 isOn: $store.showsHighEnergyApps)
+            if store.showsHighEnergyApps {
+                SettingsDivider()
+                SettingsRow(
+                    "timer",
+                    tint: .purple,
+                    title: localization.string(.settingsBatteryEnergyRefreshInterval),
+                    subtitle: localization.string(.settingsBatteryEnergyRefreshIntervalDescription)
+                ) {
+                    HStack(spacing: 8) {
+                        Slider(
+                            value: Binding(
+                                get: { store.highEnergyAppsRefreshIntervalSeconds },
+                                set: { store.highEnergyAppsRefreshIntervalSeconds = ($0 / 5).rounded() * 5 }
+                            ),
+                            in: SettingsStore.highEnergyAppsRefreshIntervalRange
+                        )
+                        .frame(width: 130)
+                        .controlSize(.small)
+                        .accessibilityLabel(
+                            localization.string(.settingsBatteryEnergyRefreshInterval)
+                        )
+                        .accessibilityValue(
+                            localization.format(
+                                .settingsRefreshIntervalValue,
+                                Int(store.highEnergyAppsRefreshIntervalSeconds)
+                            )
+                        )
+
+                        Text(
+                            localization.format(
+                                .settingsRefreshIntervalValue,
+                                Int(store.highEnergyAppsRefreshIntervalSeconds)
+                            )
+                        )
+                        .font(.system(size: 12, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 50, alignment: .trailing)
+                    }
+                }
+            }
             Text(localization.string(.settingsBatteryPowerFlowDescription))
                 .font(.caption)
                 .foregroundStyle(.secondary)

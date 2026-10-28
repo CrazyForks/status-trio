@@ -11,6 +11,7 @@ final class ApplicationEnergyController: ObservableObject {
     private static let queue = DispatchQueue(label: "com.lingsmbp.StatusTrio.application-energy", qos: .utility)
     private var previous: ApplicationEnergySnapshot?
     private var monitorsInBackground = false
+    private(set) var backgroundInterval: Duration
     private var isSuspended = false
     private var isSampling = false
     private var active = false
@@ -26,9 +27,11 @@ final class ApplicationEnergyController: ObservableObject {
                        let url = app.bundleURL, let name = app.localizedName else { return nil }
                  return EnergyApplication(id: url.path, name: name)
              }
-         }) {
+         },
+         backgroundInterval: Duration = .seconds(10)) {
         self.reader = reader
         self.applications = applications
+        self.backgroundInterval = backgroundInterval
     }
 
     deinit { refreshTask?.cancel() }
@@ -58,6 +61,14 @@ final class ApplicationEnergyController: ObservableObject {
         }
     }
 
+    func setBackgroundInterval(_ interval: Duration) {
+        guard backgroundInterval != interval else { return }
+        backgroundInterval = interval
+        // The detail page owns a fixed live cadence. Background changes only
+        // need to reschedule when that page is not currently visible.
+        if !active { reconcileSampling() }
+    }
+
     func setSuspended(_ suspended: Bool) {
         guard isSuspended != suspended else { return }
         isSuspended = suspended
@@ -82,7 +93,7 @@ final class ApplicationEnergyController: ObservableObject {
         }
         if starting || refreshImmediately { refresh() }
         refreshTask?.cancel()
-        let interval: Duration = active ? .seconds(5) : .seconds(10)
+        let interval: Duration = active ? .seconds(5) : backgroundInterval
         // A cold start needs two counters. Warm once after 1 second; subsequent
         // work is low-frequency and never tied to opening the menu.
         let firstDelay: Duration = ranking.phase == .sampling ? .seconds(1) : interval

@@ -510,11 +510,13 @@
 // Battery panel power flow and application energy
 "settings.battery.powerFlow" = "Power flow in battery panel";
 "settings.battery.powerFlow.description" = "Power readings update only while the battery panel is open. Sensor updates may lag and the three readings may not add up exactly.";
+"settings.battery.energyRefreshInterval" = "Background sampling interval";
+"settings.battery.energyRefreshInterval.description" = "Used while the panel is closed. The battery detail page still refreshes every 5 seconds.";
 "battery.power.input" = "Charger input";
 "battery.power.charging" = "To battery";
 "battery.power.system" = "System power";
-"battery.energy.apps" = "High energy apps";
+"battery.energy.apps" = "CPU Energy Impact";
 "battery.energy.empty" = "No significant app activity in this sample.";
-"battery.energy.cpuExplanation" = "Ranked by CPU energy for readable apps in your account. GPU and system processes may be missing.";
+"battery.energy.cpuExplanation" = "Ranked by CPU energy counters for readable apps in your account; this is not Activity Monitor's composite Energy Impact. GPU and system processes may be missing.";
 "battery.energy.activityExplanation" = "Insufficient energy data; ranked by CPU activity as an estimate. GPU and system processes may be missing.";
-"battery.energy.monitoringDescription" = "When enabled, keeps recent results in the background for immediate display. Ranked by CPU energy or activity.";
+"battery.energy.monitoringDescription" = "When enabled, samples app activity in the background even while the panel is closed. Sampling pauses during sleep, when disabled, or when Status Trio quits.";

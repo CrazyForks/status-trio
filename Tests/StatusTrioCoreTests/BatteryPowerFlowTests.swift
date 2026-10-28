@@ -35,6 +35,20 @@ final class BatteryPowerFlowTests: XCTestCase {
         XCTAssertTrue(restored.showsHighEnergyApps)
     }
 
+    func testHighEnergyAppsSettingsExplainBackgroundSamplingAndExposeItsInterval() throws {
+        let sourceURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("Sources/StatusTrioCore/UI/Settings/BatterySectionView.swift")
+        let source = try String(contentsOf: sourceURL, encoding: .utf8)
+
+        XCTAssertTrue(source.contains("if store.showsHighEnergyApps"))
+        XCTAssertTrue(source.contains("title: localization.string(.settingsBatteryEnergyRefreshInterval)"))
+        XCTAssertTrue(source.contains(".settingsBatteryEnergyRefreshIntervalDescription"))
+        XCTAssertTrue(source.contains("in: SettingsStore.highEnergyAppsRefreshIntervalRange"))
+    }
+
     func testActualInputNeverUsesAdapterRatingAndRejectsStaleOrDisconnectedTelemetry() {
         let now = Date(timeIntervalSince1970: 1_790_000_000)
         let connected = BatteryPowerState(BatteryStatus(rawPercentage: 80, isPresent: true,

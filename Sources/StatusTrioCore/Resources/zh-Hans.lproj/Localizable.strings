@@ -510,11 +510,13 @@
 // Battery panel power flow and application energy
 "settings.battery.powerFlow" = "电池面板功率流向";
 "settings.battery.powerFlow.description" = "功率读数仅在电池面板打开时更新。传感器读数可能延迟，三项功率不一定完全相加。";
+"settings.battery.energyRefreshInterval" = "后台采样间隔";
+"settings.battery.energyRefreshInterval.description" = "面板关闭时按此间隔采样；打开电池详情后仍每 5 秒刷新。";
 "battery.power.input" = "充电器输入";
 "battery.power.charging" = "充入电池";
 "battery.power.system" = "系统供电";
-"battery.energy.apps" = "高能耗应用";
+"battery.energy.apps" = "CPU 能耗影响";
 "battery.energy.empty" = "本次采样未发现明显活跃的应用。";
-"battery.energy.cpuExplanation" = "按当前用户可读取的 CPU 能耗排序，可能不包含 GPU 和系统进程。";
+"battery.energy.cpuExplanation" = "按当前用户可读取的 CPU 能耗计数排序；不等同于活动监视器的综合能耗影响。可能不包含 GPU 和系统进程。";
 "battery.energy.activityExplanation" = "可读能耗数据不足，按 CPU 活跃度估算排序，可能不包含 GPU 和系统进程。";
-"battery.energy.monitoringDescription" = "开启后在后台维护近期结果，打开面板时直接显示；按 CPU 能耗或活跃度排序。";
+"battery.energy.monitoringDescription" = "开启后即使面板关闭也会在后台采样应用活动；关闭开关、系统或屏幕休眠或退出应用时停止。";

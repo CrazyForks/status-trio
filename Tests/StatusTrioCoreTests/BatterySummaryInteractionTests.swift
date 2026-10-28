@@ -28,30 +28,22 @@ final class BatterySummaryInteractionTests: XCTestCase {
         window.contentView = hosting
         window.makeKeyAndOrderFront(nil)
         defer { window.orderOut(nil); window.contentView = nil }
-        let deadline = Date().addingTimeInterval(1)
-        while targets(in: hosting).count < 2, Date() < deadline {
-            RunLoop.current.run(until: Date().addingTimeInterval(0.01))
-            hosting.layoutSubtreeIfNeeded()
-        }
+        hosting.layoutSubtreeIfNeeded()
+        window.displayIfNeeded()
         // Targets derive from the 330pt panel, 14pt padding,
         // 24pt trailing actions and 10pt gaps, independent of SF Symbol ink.
-        for (name, x) in [("title", 88.0), ("blank", 215.0), ("chevron", 270.0)] {
+        // Mouse actions do not require keyboard focus or focusable AppKit proxies.
+        for (index, target) in [("title", 88.0), ("blank", 215.0), ("chevron", 270.0)].enumerated() {
+            let (name, x) = target
             let point = NSPoint(x: x, y: 35)
-            _ = try XCTUnwrap(targets(in: hosting).first { $0.frame.contains(point) },
-                "\(name) must belong to an actionable battery-details target")
             try click(at: hosting.convert(point, to: nil), in: window)
+            XCTAssertEqual(detailOpens, index + 1, "\(name) must open details exactly once")
+            XCTAssertEqual(settingsOpens, 0, "\(name) must not open settings")
         }
-        XCTAssertEqual(detailOpens, 3)
-        XCTAssertEqual(settingsOpens, 0)
         let gearPoint = NSPoint(x: 304, y: 35)
-        _ = try XCTUnwrap(targets(in: hosting).first { $0.frame.contains(gearPoint) })
         try click(at: hosting.convert(gearPoint, to: nil), in: window)
         XCTAssertEqual(settingsOpens, 1)
         XCTAssertEqual(detailOpens, 3)
-    }
-
-    private func targets(in hosting: NSView) -> [NSView] {
-        hosting.subviews.filter { !$0.isHidden && $0.acceptsFirstResponder }
     }
 
     private func click(at point: NSPoint, in window: NSWindow) throws {

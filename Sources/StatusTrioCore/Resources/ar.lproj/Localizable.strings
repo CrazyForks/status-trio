@@ -510,11 +510,13 @@
 // Battery panel power flow and application energy
 "settings.battery.powerFlow" = "تدفق الطاقة في لوحة البطارية";
 "settings.battery.powerFlow.description" = "تُحدّث قراءات الطاقة فقط عند فتح لوحة البطارية. قد تتأخر المستشعرات وقد لا تتطابق القراءات الثلاث تمامًا.";
+"settings.battery.energyRefreshInterval" = "الفاصل الزمني لأخذ العينات في الخلفية";
+"settings.battery.energyRefreshInterval.description" = "يُستخدم عندما تكون اللوحة مغلقة. تستمر صفحة تفاصيل البطارية في التحديث كل 5 ثوانٍ.";
 "battery.power.input" = "دخل الشاحن";
 "battery.power.charging" = "إلى البطارية";
 "battery.power.system" = "طاقة النظام";
-"battery.energy.apps" = "تطبيقات عالية الاستهلاك";
+"battery.energy.apps" = "تأثير استهلاك طاقة المعالج";
 "battery.energy.empty" = "لا يوجد نشاط ملحوظ للتطبيقات في هذه العينة.";
-"battery.energy.cpuExplanation" = "مرتبة حسب طاقة المعالج للتطبيقات المتاحة لحسابك. قد لا تشمل معالج الرسومات وعمليات النظام.";
+"battery.energy.cpuExplanation" = "مرتبة حسب عدادات طاقة المعالج للتطبيقات المتاحة لحسابك؛ هذا ليس تأثير الطاقة المركب في مراقب النشاط. قد لا تشمل معالج الرسومات وعمليات النظام.";
 "battery.energy.activityExplanation" = "بيانات الطاقة غير كافية؛ تقدير حسب نشاط المعالج. قد لا يشمل معالج الرسومات وعمليات النظام.";
-"battery.energy.monitoringDescription" = "عند التفعيل، يحتفظ بنتائج حديثة في الخلفية لعرضها فورًا. مرتبة حسب طاقة المعالج أو نشاطه.";
+"battery.energy.monitoringDescription" = "عند التفعيل، يتم قياس نشاط التطبيقات في الخلفية حتى عندما تكون اللوحة مغلقة. يتوقف القياس عند التعطيل أو أثناء سكون النظام أو الشاشة أو عند إنهاء Status Trio.";

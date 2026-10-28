@@ -83,6 +83,7 @@ final class ApplicationEnergyControllerTests: XCTestCase {
         defer { defaults.removeTestSuite(named: suite) }
         let settings = SettingsStore(defaults: defaults)
         settings.showsHighEnergyApps = true
+        settings.highEnergyAppsRefreshIntervalSeconds = 30
         let reader = ImmediateEnergyReader()
         let controller = ApplicationEnergyController(reader: { reader.read($0) },
             applications: { [EnergyApplication(id: "/App.app", name: "App")] })
@@ -94,6 +95,9 @@ final class ApplicationEnergyControllerTests: XCTestCase {
         store.bindApplicationEnergySettings(settings)
         XCTAssertEqual(reader.count, 0, "Binding before app start does not begin background work")
         store.start()
+        XCTAssertEqual(controller.backgroundInterval, .seconds(30))
+        settings.highEnergyAppsRefreshIntervalSeconds = 45
+        XCTAssertEqual(controller.backgroundInterval, .seconds(45))
         await waitUntil { controller.ranking.phase == .ready }
         for (sleep, wake) in [(NSWorkspace.willSleepNotification, NSWorkspace.didWakeNotification),
                               (NSWorkspace.screensDidSleepNotification, NSWorkspace.screensDidWakeNotification)] {
@@ -136,6 +140,26 @@ final class ApplicationEnergyControllerTests: XCTestCase {
         settings.showsHighEnergyApps = true
         XCTAssertEqual(reader.count, stopped)
         XCTAssertTrue(controller.ranking.apps.isEmpty)
+    }
+
+    func testChangingBackgroundIntervalReschedulesWithoutUsingTheOldCadence() async {
+        let reader = ImmediateEnergyReader()
+        let controller = ApplicationEnergyController(reader: { reader.read($0) },
+            applications: { [EnergyApplication(id: "/App.app", name: "App")] },
+            backgroundInterval: .milliseconds(20))
+        controller.setBackgroundMonitoringEnabled(true)
+        await waitUntil { controller.ranking.phase == .ready }
+        // refresh() rejects intervals shorter than 0.5 seconds, so cross that
+        // guard before asserting that the test cadence keeps producing samples.
+        try? await Task.sleep(for: .milliseconds(650))
+        XCTAssertGreaterThan(reader.count, 2, "The short test cadence should keep sampling")
+
+        controller.setBackgroundInterval(.seconds(60))
+        try? await Task.sleep(for: .milliseconds(30))
+        let settled = reader.count
+        try? await Task.sleep(for: .milliseconds(150))
+        XCTAssertEqual(reader.count, settled, "Changing to 60 seconds must cancel the old cadence")
+        controller.stop()
     }
 
     func testRecentRankingIsAvailableImmediatelyWhenThePanelReopens() async {

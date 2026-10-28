@@ -15,8 +15,9 @@ enum PanelDetailMapper {
             let watts = reading.watts.map {
                 $0.formatted(.number.precision(.fractionLength(1)).locale(localization.resolvedLanguage.locale)) + " W"
             } ?? localization.string(reading.unavailableTitle)
-            if powerOptions.showsSystem { rows.append(row(reading.title, value: watts, localization: localization)) }
-            if powerOptions.showsSystem, let timestamp = reading.timestamp {
+            let showsPowerReading = !battery.isConnectedToPower || powerOptions.showsSystem
+            if showsPowerReading { rows.append(row(reading.title, value: watts, localization: localization)) }
+            if showsPowerReading, let timestamp = reading.timestamp {
                 rows.append(row(
                     reading.timestampTitle,
                     value: timestamp.formatted(.dateTime.hour().minute().second().locale(localization.resolvedLanguage.locale)),
