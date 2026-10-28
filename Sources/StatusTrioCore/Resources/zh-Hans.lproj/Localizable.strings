@@ -413,7 +413,7 @@
 "battery.details.unavailable" = "暂不可用";
 "battery.details.collecting" = "采集中…";
 "battery.details.loading" = "更新中…";
-"battery.details.explanation" = "接电时显示整机功耗，离电时显示电池净放电功率，均为估算值。适配器额定功率并非实际功耗。切换电源后，电池读数可能延迟一分钟更新。";
+"battery.details.explanation" = "功率为估算值，各传感器读数可能延迟或存在差异，三项功率不一定完全相加。额定功率并非实际输入。拔电后显示电池放电功率；部分机型的电池数据可能延迟约一分钟。";
 /* Compact popover controls. */
 "menu.more" = "更多操作";
 
@@ -506,3 +506,17 @@
 "settings.shortcut.restorationFailed" = "无法恢复之前的快捷键。";
 "settings.shortcut.accessibility.current" = "当前全局快捷键：%@";
 "settings.shortcut.accessibility.unassigned" = "尚未设置全局快捷键。";
+
+// Battery panel power flow and application energy
+"settings.battery.powerFlow" = "电池面板功率流向";
+"settings.battery.powerFlow.description" = "功率读数仅在电池面板打开时更新。传感器读数可能延迟，三项功率不一定完全相加。";
+"settings.battery.energyRefreshInterval" = "后台采样间隔";
+"settings.battery.energyRefreshInterval.description" = "面板关闭时按此间隔采样；打开电池详情后仍每 5 秒刷新。";
+"battery.power.input" = "充电器输入";
+"battery.power.charging" = "充入电池";
+"battery.power.system" = "系统供电";
+"battery.energy.apps" = "CPU 能耗影响";
+"battery.energy.empty" = "本次采样未发现明显活跃的应用。";
+"battery.energy.cpuExplanation" = "按当前用户可读取的 CPU 能耗计数排序；不等同于活动监视器的综合能耗影响。可能不包含 GPU 和系统进程。";
+"battery.energy.activityExplanation" = "可读能耗数据不足，按 CPU 活跃度估算排序，可能不包含 GPU 和系统进程。";
+"battery.energy.monitoringDescription" = "开启后即使面板关闭也会在后台采样应用活动；关闭开关、系统或屏幕休眠或退出应用时停止。";

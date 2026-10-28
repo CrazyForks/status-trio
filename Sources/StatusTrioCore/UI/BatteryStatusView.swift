@@ -53,12 +53,17 @@ struct BatteryStatusView: View {
             // lines up with the same affordance in the rows below; the leaf would
             // otherwise push it one slot to the left.
             if hasDetails {
-                PanelActionGlyph(
-                    systemName: "chevron.right",
-                    font: .caption.weight(.semibold)
-                )
-                    .foregroundStyle(.tertiary)
-                    .accessibilityHidden(true)
+                Button(action: onOpenBatteryDetails) {
+                    PanelActionGlyph(
+                        systemName: "chevron.right",
+                        font: .caption.weight(.semibold)
+                    )
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.tertiary)
+                .accessibilityLabel(localization.string(.batteryDetailsTitle))
+                .help(localization.string(.batteryDetailsTitle))
             }
 
             if state.showsSettings {

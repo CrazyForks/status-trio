@@ -30,7 +30,12 @@ struct BatteryDetailsView: View {
         self.showsLowPowerControl = showsLowPowerControl
     }
 
-    private var detailRows: [PanelDetailRow] { state.rows }
+    private var detailRows: [PanelDetailRow] {
+        guard state.powerFlow != nil else { return state.rows }
+        let diagramKeys: Set<String> = [LocalizationKey.batteryDetailsSystemPower.rawValue,
+            LocalizationKey.batteryDetailsCharging.rawValue]
+        return state.rows.filter { !diagramKeys.contains($0.id) }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -41,6 +46,9 @@ struct BatteryDetailsView: View {
             )
 
             VStack(alignment: .leading, spacing: 6) {
+                if let powerFlow = state.powerFlow {
+                    BatteryPowerFlowView(state: powerFlow)
+                }
                 if state.isLoading {
                     Text(localization.string(.batteryDetailsLoading))
                         .foregroundStyle(.secondary)
@@ -56,6 +64,11 @@ struct BatteryDetailsView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .font(.caption)
             .monospacedDigit()
+
+            if let ranking = state.energyApps {
+                Divider()
+                HighEnergyAppsView(ranking: ranking)
+            }
 
             if showsLowPowerControl, let lowPowerMode {
                 Divider()

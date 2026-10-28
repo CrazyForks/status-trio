@@ -413,7 +413,7 @@
 "battery.details.unavailable" = "Nicht verfügbar";
 "battery.details.collecting" = "Wird gemessen…";
 "battery.details.loading" = "Wird aktualisiert…";
-"battery.details.explanation" = "Am Netz wird der gesamte Systemverbrauch angezeigt, im Batteriebetrieb die Nettoentladung. Beides sind Schätzwerte. Die Netzteil-Nennleistung ist nicht der tatsächliche Verbrauch. Nach einem Wechsel der Stromquelle können Batteriewerte bis zu eine Minute verzögert sein.";
+"battery.details.explanation" = "Leistungswerte sind Schätzungen unabhängiger Sensoren und können verzögert sein oder abweichen. Die Nennleistung ist nicht die tatsächliche Eingangsleistung. Im Batteriebetrieb wird die Nettoentladung angezeigt. Manche Modelle aktualisieren etwa eine Minute später.";
 /* Compact popover controls. */
 "menu.more" = "Weitere Aktionen";
 
@@ -506,3 +506,17 @@
 "settings.shortcut.restorationFailed" = "Der vorherige Kurzbefehl konnte nicht wiederhergestellt werden.";
 "settings.shortcut.accessibility.current" = "Aktueller globaler Kurzbefehl: %@";
 "settings.shortcut.accessibility.unassigned" = "Kein globaler Kurzbefehl zugewiesen.";
+
+// Battery panel power flow and application energy
+"settings.battery.powerFlow" = "Leistungsfluss im Batteriepanel";
+"settings.battery.powerFlow.description" = "Leistungswerte werden nur bei geöffnetem Batteriepanel aktualisiert. Sensoren können verzögert sein; die drei Werte müssen sich nicht genau addieren.";
+"settings.battery.energyRefreshInterval" = "Intervall für Hintergrundmessung";
+"settings.battery.energyRefreshInterval.description" = "Wird bei geschlossenem Panel verwendet. Die Batteriedetailseite wird weiterhin alle 5 Sekunden aktualisiert.";
+"battery.power.input" = "Ladeeingang";
+"battery.power.charging" = "Zur Batterie";
+"battery.power.system" = "Systemleistung";
+"battery.energy.apps" = "CPU-Energieauswirkung";
+"battery.energy.empty" = "Keine auffällige App-Aktivität in dieser Messung.";
+"battery.energy.cpuExplanation" = "Nach CPU-Energiezählern der für dein Konto lesbaren Apps sortiert; nicht die zusammengesetzte Energieauswirkung der Aktivitätsanzeige. GPU und Systemprozesse können fehlen.";
+"battery.energy.activityExplanation" = "Unzureichende Energiedaten: Schätzung anhand der CPU-Aktivität. GPU und Systemprozesse können fehlen.";
+"battery.energy.monitoringDescription" = "Wenn aktiviert, werden App-Aktivitäten auch bei geschlossenem Panel im Hintergrund erfasst. Die Erfassung pausiert beim Deaktivieren, bei System- oder Bildschirmruhezustand und beim Beenden von Status Trio.";

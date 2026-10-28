@@ -73,6 +73,27 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(second.refreshIntervalSeconds, 30, accuracy: 0.001)
     }
 
+    func testHighEnergyAppsRefreshIntervalDefaultsClampsRoundsAndPersists() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+
+        let first = SettingsStore(defaults: suite.defaults)
+        XCTAssertEqual(SettingsStore.highEnergyAppsRefreshIntervalRange, 10...60)
+        XCTAssertEqual(first.highEnergyAppsRefreshIntervalSeconds, 10, accuracy: 0.001)
+
+        first.highEnergyAppsRefreshIntervalSeconds = 7
+        XCTAssertEqual(first.highEnergyAppsRefreshIntervalSeconds, 10, accuracy: 0.001)
+
+        first.highEnergyAppsRefreshIntervalSeconds = 307
+        XCTAssertEqual(first.highEnergyAppsRefreshIntervalSeconds, 60, accuracy: 0.001)
+
+        first.highEnergyAppsRefreshIntervalSeconds = 33
+        XCTAssertEqual(first.highEnergyAppsRefreshIntervalSeconds, 35, accuracy: 0.001)
+
+        let second = SettingsStore(defaults: suite.defaults)
+        XCTAssertEqual(second.highEnergyAppsRefreshIntervalSeconds, 35, accuracy: 0.001)
+    }
+
     func testBatteryDisplayDefaults() {
         let store = SettingsStore(defaults: makeSuite().defaults)
 

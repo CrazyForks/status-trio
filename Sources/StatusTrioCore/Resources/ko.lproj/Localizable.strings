@@ -413,7 +413,7 @@
 "battery.details.unavailable" = "사용할 수 없음";
 "battery.details.collecting" = "측정 중…";
 "battery.details.loading" = "업데이트 중…";
-"battery.details.explanation" = "외부 전원 연결 시 시스템 전체 소비 전력을, 배터리 사용 시 배터리 순방전 전력을 표시합니다. 모두 추정값입니다. 어댑터 정격 출력은 실제 소비 전력이 아닙니다. 전원 전환 후 배터리 값 갱신에 최대 1분이 걸릴 수 있습니다.";
+"battery.details.explanation" = "전력은 독립 센서의 추정값으로 지연되거나 다를 수 있습니다. 정격 전력은 실제 입력이 아닙니다. 배터리 사용 시 순 방전 전력을 표시합니다. 일부 기종은 배터리 갱신이 약 1분 지연될 수 있습니다.";
 /* Compact popover controls. */
 "menu.more" = "추가 작업";
 
@@ -506,3 +506,17 @@
 "settings.shortcut.restorationFailed" = "이전 단축키를 복원하지 못했습니다.";
 "settings.shortcut.accessibility.current" = "현재 전역 단축키: %@";
 "settings.shortcut.accessibility.unassigned" = "지정된 전역 단축키가 없습니다.";
+
+// Battery panel power flow and application energy
+"settings.battery.powerFlow" = "배터리 패널 전력 흐름";
+"settings.battery.powerFlow.description" = "전력 값은 배터리 패널이 열려 있을 때만 갱신합니다. 센서 갱신이 지연되어 세 값의 합이 일치하지 않을 수 있습니다.";
+"settings.battery.energyRefreshInterval" = "백그라운드 샘플링 간격";
+"settings.battery.energyRefreshInterval.description" = "패널이 닫혀 있을 때 사용됩니다. 배터리 세부사항 페이지는 계속 5초마다 새로 고칩니다.";
+"battery.power.input" = "충전기 입력";
+"battery.power.charging" = "배터리 충전";
+"battery.power.system" = "시스템 전력";
+"battery.energy.apps" = "CPU 에너지 영향";
+"battery.energy.empty" = "이번 측정에서 두드러진 앱 활동이 없습니다.";
+"battery.energy.cpuExplanation" = "현재 사용자가 읽을 수 있는 CPU 에너지 카운터순입니다. 활성 상태 보기의 종합 에너지 영향과는 다릅니다. GPU 및 시스템 프로세스는 누락될 수 있습니다.";
+"battery.energy.activityExplanation" = "에너지 데이터가 부족하여 CPU 활동으로 추정합니다. GPU 및 시스템 프로세스는 누락될 수 있습니다.";
+"battery.energy.monitoringDescription" = "활성화하면 패널이 닫혀 있어도 백그라운드에서 앱 활동을 샘플링합니다. 비활성화하거나 시스템 또는 화면이 잠들 때, Status Trio를 종료할 때 중지합니다.";

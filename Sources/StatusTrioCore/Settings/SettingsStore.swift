@@ -24,6 +24,13 @@ final class SettingsStore: ObservableObject {
     static let batterySymbolScaleRange: ClosedRange<Double> = 0.9...1.1
     static let defaultBatterySymbolScale: Double = 1
     static let showsBatteryPercentageDefaultsKey = "showsBatteryPercentage"
+    static let showsChargerInputPowerDefaultsKey = "showsChargerInputPower"
+    static let showsBatteryChargingPowerDefaultsKey = "showsBatteryChargingPower"
+    static let showsSystemPowerDefaultsKey = "showsSystemPower"
+    static let showsHighEnergyAppsDefaultsKey = "showsHighEnergyApps"
+    static let highEnergyAppsRefreshIntervalDefaultsKey = "highEnergyAppsRefreshIntervalSeconds"
+    static let highEnergyAppsRefreshIntervalRange: ClosedRange<Double> = 10...60
+    static let defaultHighEnergyAppsRefreshIntervalSeconds: Double = 10
     static let showsChargingIndicatorDefaultsKey = "showsChargingIndicator"
     /// Legacy single-surface preference retained only for migration.
     static let showsChargingEffectDefaultsKey = "showsChargingEffect"
@@ -234,6 +241,34 @@ final class SettingsStore: ObservableObject {
         didSet {
             defaults.set(showsBatteryPercentage, forKey: Self.showsBatteryPercentageDefaultsKey)
         }
+    }
+
+    @Published var showsChargerInputPower: Bool {
+        didSet { defaults.set(showsChargerInputPower, forKey: Self.showsChargerInputPowerDefaultsKey) }
+    }
+    @Published var showsBatteryChargingPower: Bool {
+        didSet { defaults.set(showsBatteryChargingPower, forKey: Self.showsBatteryChargingPowerDefaultsKey) }
+    }
+    @Published var showsSystemPower: Bool {
+        didSet { defaults.set(showsSystemPower, forKey: Self.showsSystemPowerDefaultsKey) }
+    }
+    @Published var showsHighEnergyApps: Bool {
+        didSet { defaults.set(showsHighEnergyApps, forKey: Self.showsHighEnergyAppsDefaultsKey) }
+    }
+    @Published var highEnergyAppsRefreshIntervalSeconds: Double {
+        didSet {
+            let clamped = Self.clampedHighEnergyAppsRefreshInterval(highEnergyAppsRefreshIntervalSeconds)
+            guard clamped == highEnergyAppsRefreshIntervalSeconds else {
+                highEnergyAppsRefreshIntervalSeconds = clamped
+                return
+            }
+            defaults.set(clamped, forKey: Self.highEnergyAppsRefreshIntervalDefaultsKey)
+        }
+    }
+
+    var batteryPowerDisplayOptions: BatteryPowerDisplayOptions {
+        BatteryPowerDisplayOptions(showsInput: showsChargerInputPower,
+            showsCharging: showsBatteryChargingPower, showsSystem: showsSystemPower)
     }
 
     @Published var showsChargingIndicator: Bool {
@@ -1251,6 +1286,14 @@ final class SettingsStore: ObservableObject {
             ?? .system
         self.iconSize = Self.clampedIconSize(storedIconSize ?? Self.defaultIconSize)
         self.showsBatteryPercentage = defaults.object(forKey: Self.showsBatteryPercentageDefaultsKey) as? Bool ?? true
+        self.showsChargerInputPower = defaults.object(forKey: Self.showsChargerInputPowerDefaultsKey) as? Bool ?? false
+        self.showsBatteryChargingPower = defaults.object(forKey: Self.showsBatteryChargingPowerDefaultsKey) as? Bool ?? true
+        self.showsSystemPower = defaults.object(forKey: Self.showsSystemPowerDefaultsKey) as? Bool ?? true
+        self.showsHighEnergyApps = defaults.object(forKey: Self.showsHighEnergyAppsDefaultsKey) as? Bool ?? false
+        self.highEnergyAppsRefreshIntervalSeconds = Self.clampedHighEnergyAppsRefreshInterval(
+            defaults.object(forKey: Self.highEnergyAppsRefreshIntervalDefaultsKey) as? Double
+                ?? Self.defaultHighEnergyAppsRefreshIntervalSeconds
+        )
         self.showsChargingIndicator = defaults.object(forKey: Self.showsChargingIndicatorDefaultsKey) as? Bool ?? true
         let legacyChargingEffect = defaults.object(
             forKey: Self.showsChargingEffectDefaultsKey
@@ -1522,6 +1565,15 @@ final class SettingsStore: ObservableObject {
     static func clampedRefreshInterval(_ value: Double) -> Double {
         guard value.isFinite else { return defaultRefreshIntervalSeconds }
         let clamped = min(refreshIntervalRange.upperBound, max(refreshIntervalRange.lowerBound, value))
+        return (clamped / 5).rounded() * 5
+    }
+
+    static func clampedHighEnergyAppsRefreshInterval(_ value: Double) -> Double {
+        guard value.isFinite else { return defaultHighEnergyAppsRefreshIntervalSeconds }
+        let clamped = min(
+            highEnergyAppsRefreshIntervalRange.upperBound,
+            max(highEnergyAppsRefreshIntervalRange.lowerBound, value)
+        )
         return (clamped / 5).rounded() * 5
     }
 

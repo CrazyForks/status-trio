@@ -15,7 +15,9 @@ ruby -ryaml -rjson -e '
   abort "notarize must be boolean, default false" unless input["type"] == "boolean" && input["default"] == false
   job = workflow.fetch("jobs").fetch("package")
   abort "NOTARIZE must be wired from dispatch" unless job.fetch("env").fetch("NOTARIZE").include?("inputs.notarize")
-  abort "package must use the protected distribution environment" unless job.fetch("environment").fetch("name") == "distribution"
+  expected_environment = "\${{ (inputs.publish || github.triggering_actor != \x27lingyired\x27) && \x27distribution\x27 || \x27distribution-owner-signing\x27 }}"
+  abort "package must keep formal and non-owner builds reviewed while allowing owner diagnostics" unless
+    job.fetch("environment").fetch("name") == expected_environment
   steps = job.fetch("steps")
   ["Validate publishing secrets and notarization mode", "Configure Developer ID signing", "Configure Apple notarization"].each do |name|
     step = steps.find { |candidate| candidate["name"] == name }

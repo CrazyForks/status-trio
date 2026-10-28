@@ -413,7 +413,7 @@
 "battery.details.unavailable" = "No disponible";
 "battery.details.collecting" = "Midiendo…";
 "battery.details.loading" = "Actualizando…";
-"battery.details.explanation" = "Con alimentación externa se muestra el consumo total del sistema; con batería, su descarga neta. Ambos son estimaciones. La potencia nominal del adaptador no es el consumo real. Al cambiar de fuente, los datos de batería pueden tardar hasta un minuto en actualizarse.";
+"battery.details.explanation" = "Las potencias son estimaciones de sensores independientes y pueden retrasarse o diferir. La potencia nominal no es la entrada real. Con batería se muestra la descarga neta. Algunos modelos pueden actualizar la batería con un minuto de retraso.";
 /* Compact popover controls. */
 "menu.more" = "Más acciones";
 
@@ -506,3 +506,17 @@
 "settings.shortcut.restorationFailed" = "No se pudo restaurar el atajo anterior.";
 "settings.shortcut.accessibility.current" = "Atajo global actual: %@";
 "settings.shortcut.accessibility.unassigned" = "No hay ningún atajo global asignado.";
+
+// Battery panel power flow and application energy
+"settings.battery.powerFlow" = "Flujo de energía en el panel Batería";
+"settings.battery.powerFlow.description" = "Las potencias se actualizan solo con el panel Batería abierto. Los sensores pueden tener retraso y las tres lecturas pueden no sumar exactamente.";
+"settings.battery.energyRefreshInterval" = "Intervalo de muestreo en segundo plano";
+"settings.battery.energyRefreshInterval.description" = "Se usa con el panel cerrado. La página de detalles de la batería sigue actualizándose cada 5 segundos.";
+"battery.power.input" = "Entrada cargador";
+"battery.power.charging" = "A la batería";
+"battery.power.system" = "Sistema";
+"battery.energy.apps" = "Impacto energético de CPU";
+"battery.energy.empty" = "Sin actividad destacada en esta muestra.";
+"battery.energy.cpuExplanation" = "Ordenadas por contadores de energía de CPU de las apps accesibles para tu cuenta; no es el impacto energético compuesto de Monitor de Actividad. Pueden faltar GPU y procesos del sistema.";
+"battery.energy.activityExplanation" = "Datos de energía insuficientes: estimación por actividad de CPU. Pueden faltar GPU y procesos del sistema.";
+"battery.energy.monitoringDescription" = "Al activarlo, se muestrea la actividad de las apps en segundo plano aunque el panel esté cerrado. El muestreo se pausa al desactivarlo, durante la suspensión del sistema o la pantalla y al salir de Status Trio.";

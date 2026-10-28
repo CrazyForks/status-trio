@@ -124,7 +124,9 @@ final class StatusPanelViewModel: ObservableObject {
         batteryDetails = PanelDetailMapper.battery(
             status: store.popupSnapshot.battery,
             details: store.batteryDetails.details,
-            localization: localization
+            localization: localization,
+            powerOptions: settings.batteryPowerDisplayOptions,
+            energyApps: settings.showsHighEnergyApps ? store.batteryDetails.energyApps.ranking : nil
         )
         wifiDetails = PanelDetailMapper.wifi(
             status: store.popupSnapshot.wifi,
@@ -344,6 +346,13 @@ final class StatusPanelViewModel: ObservableObject {
             }
             .store(in: &cancellables)
         store.batteryDetails.$details
+            .dropFirst()
+            .sink { [weak self] _ in
+                guard let self, store.batteryDetails.isActive else { return }
+                coalesceControllerUpdate(.batteryDetails)
+            }
+            .store(in: &cancellables)
+        store.batteryDetails.energyApps.$ranking
             .dropFirst()
             .sink { [weak self] _ in
                 guard let self, store.batteryDetails.isActive else { return }
@@ -570,10 +579,14 @@ final class StatusPanelViewModel: ObservableObject {
 
     private func refreshBatteryDetails(status deliveredStatus: BatteryStatus? = nil) {
         guard store.batteryDetails.isActive else { return }
+        store.batteryDetails.configure(options: settings.batteryPowerDisplayOptions,
+            showsHighEnergyApps: settings.showsHighEnergyApps)
         let state = PanelDetailMapper.battery(
             status: deliveredStatus ?? store.popupSnapshot.battery,
             details: store.batteryDetails.details,
-            localization: localization
+            localization: localization,
+            powerOptions: settings.batteryPowerDisplayOptions,
+            energyApps: settings.showsHighEnergyApps ? store.batteryDetails.energyApps.ranking : nil
         )
         if batteryDetails != state { batteryDetails = state }
     }

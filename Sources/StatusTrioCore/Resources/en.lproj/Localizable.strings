@@ -413,7 +413,7 @@
 "battery.details.unavailable" = "Unavailable";
 "battery.details.collecting" = "Sampling…";
 "battery.details.loading" = "Updating…";
-"battery.details.explanation" = "On external power, watts show total system consumption; on battery, they show net battery discharge. Both are estimates. Adapter rating is not actual draw. Battery readings may lag power changes by up to a minute.";
+"battery.details.explanation" = "Power readings are estimates from independent sensors and may lag or differ. Adapter rating is not actual input. On battery, power shows net battery discharge. Some models may update battery samples about a minute late.";
 /* Compact popover controls. */
 "menu.more" = "More actions";
 
@@ -506,3 +506,17 @@
 "settings.shortcut.restorationFailed" = "Could not restore the previous shortcut.";
 "settings.shortcut.accessibility.current" = "Current global shortcut: %@";
 "settings.shortcut.accessibility.unassigned" = "No global shortcut assigned.";
+
+// Battery panel power flow and application energy
+"settings.battery.powerFlow" = "Power flow in battery panel";
+"settings.battery.powerFlow.description" = "Power readings update only while the battery panel is open. Sensor updates may lag and the three readings may not add up exactly.";
+"settings.battery.energyRefreshInterval" = "Background sampling interval";
+"settings.battery.energyRefreshInterval.description" = "Used while the panel is closed. The battery detail page still refreshes every 5 seconds.";
+"battery.power.input" = "Charger input";
+"battery.power.charging" = "To battery";
+"battery.power.system" = "System power";
+"battery.energy.apps" = "CPU Energy Impact";
+"battery.energy.empty" = "No significant app activity in this sample.";
+"battery.energy.cpuExplanation" = "Ranked by CPU energy counters for readable apps in your account; this is not Activity Monitor's composite Energy Impact. GPU and system processes may be missing.";
+"battery.energy.activityExplanation" = "Insufficient energy data; ranked by CPU activity as an estimate. GPU and system processes may be missing.";
+"battery.energy.monitoringDescription" = "When enabled, samples app activity in the background even while the panel is closed. Sampling pauses during sleep, when disabled, or when Status Trio quits.";

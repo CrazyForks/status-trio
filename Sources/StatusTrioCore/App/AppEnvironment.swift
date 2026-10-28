@@ -130,6 +130,7 @@ final class AppEnvironment {
         )
         store.bindInputSettings(settings)
         store.bindLocalIPSettings(settings)
+        store.bindApplicationEnergySettings(settings)
         store.bindMobileBatterySettings(settings)
         store.bindLowPowerModeSettings(settings)
         store.bindBluetoothSettings(settings)
@@ -210,6 +211,7 @@ final class AppEnvironment {
         dockChargingAnimationPresenter?.trimForMemoryPressure()
         previewResourceLifecycle.releaseIfIdle()
         IconImageDecodeCache.shared.reset()
+        ApplicationEnergyIconCache.shared.reset()
         DockIconRenderer.resetScratchContexts()
         StatusIconRenderer.resetInkOffsetCaches()
     }

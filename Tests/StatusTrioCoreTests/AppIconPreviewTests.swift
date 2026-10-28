@@ -41,6 +41,10 @@ final class AppIconPreviewTests: XCTestCase {
             ArtworkFingerprint(
                 committed: "c91b26a7bd887a9313098ee4169febadbc6ecd45dbfd5ebb9ddbe4ffcfb4c6fb",
                 rendered: "aec15b74471aa1bd59fa9053faef592f9c8deb26b21fa8e7fd4e997e17dfaeb5"
+            ),
+            ArtworkFingerprint(
+                committed: "c91b26a7bd887a9313098ee4169febadbc6ecd45dbfd5ebb9ddbe4ffcfb4c6fb",
+                rendered: "590dbe82b49b528babf32e6402bac761d467609791302fd829a4d241de8a882b"
             )
         ],
         "AppIcon-dark.png": [
@@ -51,6 +55,10 @@ final class AppIconPreviewTests: XCTestCase {
             ArtworkFingerprint(
                 committed: "ce2cbff551f44d8059f9d3e3ea9ad9a88ee00aff45ecfcddb1a2089c79e0eb07",
                 rendered: "1f9e102f18271a0f97ed72c5b1cb4fbae084e3592a0ee74c723199eeea42e1bf"
+            ),
+            ArtworkFingerprint(
+                committed: "ce2cbff551f44d8059f9d3e3ea9ad9a88ee00aff45ecfcddb1a2089c79e0eb07",
+                rendered: "50e3bbd73db17312745e8ff2beabf98f143cec152bd6dc3d574f5061c65eb6ea"
             )
         ]
     ]

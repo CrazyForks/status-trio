@@ -64,6 +64,16 @@ final class BatteryDetailsLayoutTests: XCTestCase {
         }
     }
 
+    func testFullPowerFlowAndApplicationListFitLightAndDarkPanels() async throws {
+        for language in [AppLanguage.english, .simplifiedChinese, .german, .arabic] {
+            for dark in [false, true] {
+                let size = try await render(language: language, available: true, connected: true,
+                    charging: true, allPower: true, dark: dark, energyApps: true)
+                XCTAssertLessThan(size.height, 650, "\(language.rawValue) dark=\(dark)")
+            }
+        }
+    }
+
     private func renderSummary(language: AppLanguage, isPresent: Bool) async throws -> NSSize {
         let suite = "StatusTrioCoreTests.BatterySummary.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
@@ -150,7 +160,8 @@ final class BatteryDetailsLayoutTests: XCTestCase {
 
     private func render(language: AppLanguage, available: Bool,
                         collecting: Bool = false, connected: Bool = false,
-                        systemAvailable: Bool = true, charging: Bool = false) async throws -> NSSize {
+                        systemAvailable: Bool = true, charging: Bool = false,
+                        allPower: Bool = false, dark: Bool = false, energyApps: Bool = false) async throws -> NSSize {
         let suite = "StatusTrioCoreTests.BatteryDetails.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
         defer { defaults.removeTestSuite(named: suite) }
@@ -161,15 +172,24 @@ final class BatteryDetailsLayoutTests: XCTestCase {
             adapterWatts: connected ? 90 : nil,
             remainingMinutes: available ? 121 : nil,
             cycleCount: 43,
-            power: available ? BatteryPowerSample(volts: 12.279, amps: connected ? (charging ? 1.528 : 0) : -1.528, updatedAt: observedAt) : nil,
+            power: available ? BatteryPowerSample(volts: allPower ? 12.5 : 12.279,
+                amps: allPower ? 3.2968 : (connected ? (charging ? 1.528 : 0) : -1.528), updatedAt: observedAt) : nil,
             powerAvailability: collecting ? .collecting : .unavailable,
-            systemPower: connected && systemAvailable ? SystemPowerSample(watts: 17.25, readAt: observedAt) : nil)
-        let battery = BatteryStatus(rawPercentage: 80, isPresent: true, isCharging: false,
+            systemPower: connected && systemAvailable ? SystemPowerSample(watts: 25.59, readAt: observedAt) : nil,
+            inputPower: connected ? SystemPowerSample(watts: 67, readAt: observedAt) : nil)
+        let battery = BatteryStatus(rawPercentage: 80, isPresent: true, isCharging: charging,
                                     isLowPowerMode: false, isConnectedToPower: connected)
         let panelState = PanelDetailMapper.battery(
             status: battery,
             details: fixture,
-            localization: localization
+            localization: localization,
+            powerOptions: BatteryPowerDisplayOptions(showsInput: allPower),
+            energyApps: energyApps ? ApplicationEnergyRanking(apps: [
+                EnergyApplication(id: "browser", name: "Browser"),
+                EnergyApplication(id: "editor", name: "Code Editor"),
+                EnergyApplication(id: "video", name: "Video Player"),
+                EnergyApplication(id: "chat", name: "Chat"),
+                EnergyApplication(id: "music", name: "Music")], phase: .ready) : nil
         )
         let view = BatteryDetailsView(
             state: panelState,
@@ -180,13 +200,13 @@ final class BatteryDetailsLayoutTests: XCTestCase {
         )
             .padding(14)
             .frame(width: 330)
-            .background(Color(white: 0.96))
+            .background(Color(white: dark ? 0.12 : 0.96))
             .environmentObject(localization)
-            .environment(\.colorScheme, .light)
+            .environment(\.colorScheme, dark ? .dark : .light)
         let state = connected
             ? (systemAvailable ? (charging ? "system-charging" : "system") : "system-unavailable")
             : (available ? "power" : (collecting ? "collecting" : "unavailable"))
-        let size = try await capture(view, named: "battery-\(language.rawValue)-page-\(state)")
+        let size = try await capture(view, named: "battery-\(language.rawValue)-page-\(state)-\(allPower ? "flow" : "default")-\(dark ? "dark" : "light")")
         XCTAssertEqual(size.width, 330, accuracy: 0.5)
         return size
     }

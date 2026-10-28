@@ -74,19 +74,58 @@ Developer ID 凭据存在时，`publish=true` 必须成功完成公证；若 Dev
 `APPSTORE_CONNECT_API_KEY_ID`、`APPSTORE_CONNECT_API_ISSUER_ID` 和
 `APPSTORE_CONNECT_API_PRIVATE_KEY`。
 
-`package` 和 `publish` 都使用受保护的 `distribution` Environment；Environment
-应只允许 `main` 并配置 reviewer。`verify` 在无签名 secrets 的独立 Job 中运行。
-Environment 审批不能替代 SHA 冻结和 artifact 校验。
+### 审批边界与 Environment
 
-将签名和公证凭据配置为 `distribution` Environment secrets（通过标准输入传入，不要把值写进命令或仓库）：
+`package` 根据发布模式和当前触发者选择 Environment：
+
+- `publish=true`：始终使用有 reviewer 的 `distribution`。
+- `publish=false` 且触发者是仓库所有者 `lingyired`：使用无 reviewer 的
+  `distribution-owner-signing`。
+- `publish=false` 但触发者是其他人，或由其他人重新运行：使用有 reviewer 的
+  `distribution`。
+
+选择条件使用 `github.triggering_actor`，不是最初的 `github.actor`，因此他人
+不能通过重新运行所有者的 workflow 绕过审批。`publish` Job 始终使用
+`distribution`。`verify` 和 `native` 不访问 Environment，也不接收签名或公证
+secrets。Environment 审批不能替代 SHA 冻结和 artifact 校验。
+
+两个 signing Environment 都只允许 `main`。`distribution` 必须保留 reviewer；
+`distribution-owner-signing` 不配置 reviewer，但必须保持同一 `main` 分支限制。
+创建 owner Environment 的命令：
 
 ```bash
-base64 -i DeveloperIDApplication.p12 | gh secret set DEVELOPER_ID_CERTIFICATE_P12 --env distribution --repo lingyired/status-trio
-gh secret set DEVELOPER_ID_CERTIFICATE_PASSWORD --env distribution --repo lingyired/status-trio
-gh secret set APPSTORE_CONNECT_API_KEY_ID --env distribution --repo lingyired/status-trio
-gh secret set APPSTORE_CONNECT_API_ISSUER_ID --env distribution --repo lingyired/status-trio
-gh secret set APPSTORE_CONNECT_API_PRIVATE_KEY --env distribution --repo lingyired/status-trio < AuthKey_XXXXXXXXXX.p8
+gh api --method PUT \
+  repos/lingyired/status-trio/environments/distribution-owner-signing \
+  --input - <<'JSON'
+{"deployment_branch_policy":{"custom_branch_policies":true,"protected_branches":false}}
+JSON
+
+gh api --method POST \
+  repos/lingyired/status-trio/environments/distribution-owner-signing/deployment-branch-policies \
+  --input - <<'JSON'
+{"name":"main","type":"branch"}
+JSON
 ```
+
+五个签名和公证 secrets 必须同时存在于 `distribution` 和
+`distribution-owner-signing`。GitHub 不支持 Environment secret 继承，也不能
+通过 API 读取旧值；轮换时必须同时更新两个 Environment。以下命令通过标准输入
+设置，不要把值写进命令或仓库：
+
+```bash
+for environment in distribution distribution-owner-signing; do
+  base64 -i DeveloperIDApplication.p12 |
+    gh secret set DEVELOPER_ID_CERTIFICATE_P12 --env "$environment" --repo lingyired/status-trio
+  gh secret set DEVELOPER_ID_CERTIFICATE_PASSWORD --env "$environment" --repo lingyired/status-trio
+  gh secret set APPSTORE_CONNECT_API_KEY_ID --env "$environment" --repo lingyired/status-trio
+  gh secret set APPSTORE_CONNECT_API_ISSUER_ID --env "$environment" --repo lingyired/status-trio
+  gh secret set APPSTORE_CONNECT_API_PRIVATE_KEY --env "$environment" --repo lingyired/status-trio < AuthKey_XXXXXXXXXX.p8
+done
+```
+
+无 reviewer 的 Environment 只适用于所有者信任自己触发的 `main` workflow。
+如果以后授予其他人写权限，必须同时要求 `.github/workflows/` 的改动经过所有者
+审查；否则有写权限的人可以修改 actor 条件并选择 owner Environment。
 
 在最后一条命令中，`AuthKey_XXXXXXXXXX.p8` 是本机私钥文件路径，不是 secret 值。不要读取或打印私钥来验证配置。GitHub Environment 审批控制 job 何时获得 Environment secrets，不会让它们在 runner 中保持加密：获批后，工作流及同一 job 中执行的 action/code 可以使用它们，日志脱敏也不能防止所有泄漏。只允许可信的 `main` 工作流使用该 Environment，并审查会改动这些工作流的变更。
 
@@ -306,7 +345,11 @@ gh secret set RELEASE_TOKEN
 xattr -dr com.apple.quarantine "/Applications/Status Trio.app"
 ```
 
-配置 Developer ID 后无需这一步。签名和公证 secrets 必须放在有 reviewer 保护的 `distribution` Environment 中，不要配置到 repository secrets。`distribution` 的审批人、绕过和 `main` 分支限制见上文。Environment secrets 名称为：
+配置 Developer ID 后无需这一步。签名和公证 secrets 只能放在
+`distribution` 和 `distribution-owner-signing` 两个 Environment 中，不要配置
+到 repository secrets。`distribution` 保留 reviewer；
+`distribution-owner-signing` 仅允许所有者诊断时无 reviewer 使用。两者的
+`main` 分支限制和安全前提见上文。Environment secrets 名称为：
 
 | Secret | 内容 |
 | --- | --- |
@@ -318,15 +361,9 @@ xattr -dr com.apple.quarantine "/Applications/Status Trio.app"
 
 生成证书 secret 的准确命令：
 
-```bash
-base64 -i DeveloperIDApplication.p12 | gh secret set DEVELOPER_ID_CERTIFICATE_P12 --env distribution --repo lingyired/status-trio
-gh secret set DEVELOPER_ID_CERTIFICATE_PASSWORD --env distribution --repo lingyired/status-trio
-gh secret set APPSTORE_CONNECT_API_KEY_ID --env distribution --repo lingyired/status-trio
-gh secret set APPSTORE_CONNECT_API_ISSUER_ID --env distribution --repo lingyired/status-trio
-gh secret set APPSTORE_CONNECT_API_PRIVATE_KEY --env distribution --repo lingyired/status-trio < AuthKey_XXXXXXXXXX.p8
-```
-
-这些 Apple credentials 属于 `distribution` Environment，不属于 repository secrets。不要在本地通过读取 keychain、打印 secret 或检查私钥内容来确认它们。
+使用上文“审批边界与 Environment”中的循环命令，将五个值分别写入两个
+Environment。这些 Apple credentials 不属于 repository secrets。不要在本地
+通过读取 keychain、打印 secret 或检查私钥内容来确认它们。
 
 `SPARKLE_PRIVATE_KEY` 只传入 `package` Job 的 `Build, sign, notarize, and package once` 步骤；`publish` Job 不接收它。`publish=true` 没有该 secret 会失败，`publish=false` 且未提供时只生成带诊断标记、不可发布的 package。Environment 对 Apple secrets 的隔离不改变 repository secret 的作用域，审查仓库 workflow 变更及其权限仍然必要。
 
