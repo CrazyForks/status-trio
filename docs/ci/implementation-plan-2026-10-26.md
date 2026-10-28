@@ -186,3 +186,59 @@ No release, tag, appcast update, production secret change, or protected
 Environment change was made. The two cache entries occupied 14,459,151 bytes
 and were reused without changing IDs or keys. Raw evidence is retained under
 `.build/ci-optimization-evidence/remote-2026-10-27/`; it is not committed.
+
+## Latest-main rerun and parallel verification addendum (2026-10-27)
+
+[Run `40435617420`](https://github.com/lingyired/status-trio/actions/runs/40435617420)
+repeated the cache path on current `main`
+`894a7787b4b9a0fb6add2224cccd85235ff54923` with `publish=false`. Both
+architectures hit the existing exact cache entries, skipped third-party
+dependency builds, and rebuilt both Helpers. Package took 214s; Verify took
+403s; total wall was 737s. The downloaded Universal Ad-hoc package passed
+manifest, digest, architecture, platform/SDK and strict signature checks.
+
+The implementation profile runs Swift tests and native/offline release
+contracts in parallel `verify` and `native` jobs on `xcode-27`. `package`
+requires both to pass, and `publish` requires `verify`, `native`, and
+`package`. The jobs have no signing/notarization secrets or `distribution`
+Environment access. Full local verification passed before PR #159 merged as
+`08644c04ce2f23a69a64582f5f1563b7cc2bb525`.
+
+Two diagnostics on that same SHA, version `1.7.6`, build `44`,
+`publish=false`, and `notarize=false` passed:
+
+| Run | Verify | Native | Package | Wall |
+| --- | ---: | ---: | ---: | ---: |
+| [40447422731](https://github.com/lingyired/status-trio/actions/runs/40447422731) | 285s | 224s | 274s | 591s |
+| [40448654960](https://github.com/lingyired/status-trio/actions/runs/40448654960) | 368s | 163s | 236s | 667s |
+
+Both verification jobs started together; Package waited for both, and Publish
+was skipped. The observed verification critical path fell by 35-118s versus
+the 403s serial baseline. The active-job duration sum rose by 150-166s, and
+approval/scheduling gaps differed, so the full wall difference is not a pure
+parallelism or cost saving. The serial verification-to-package gap is 116s,
+corrected from an earlier 146s reporting error.
+
+Both architectures reused the same validated exact caches. Full Swift suites
+passed with zero failures. Both downloaded DMGs passed artifact/manifest
+digests, read-only Universal/platform/SDK/Sparkle metadata, and deep strict
+Ad-hoc signature checks. Measurements, artifact hashes and the runner-time
+tradeoff are in `ci-performance-report.md`; raw evidence is in
+`.build/ci-optimization-evidence/parallel-native-remote-2026-10-27/`.
+
+Independent post-run review found that recovery still assumed three source
+jobs, so normal package success did not cover the new four-job recovery
+shape. Recovery acceptance now matches source metadata to its frozen workflow,
+supports the exact historical three-job and current four-job shapes, and
+requires successful Native verification in the latter. The 19 unconditional
+native contracts and two conditional trusted recovery regressions retain
+their separate execution scopes. Online recovery remains outside these
+non-publishing diagnostics.
+
+The follow-up also pins every contract and the success/permission/runner
+boundaries in workflow policy, and fixes Native summary identity/status.
+RED/GREEN fixtures reproduced the missing-contract, conditional-preflight,
+and summary-label gaps. Independent policy re-review resolved the reported
+findings. Full local verification passed in 332.198s; the recovery regression
+passed separately. The final runner-fixture refinement and documentation
+receive focused verification before commit.

@@ -166,20 +166,26 @@ See `.agents/rules/rendering.md` and
 - The only release entry point is a maintainer-dispatched manual
   `release.yml` run. A `v*` tag push must never publish automatically.
 - Dispatch from `main` with a frozen lowercase 40-character `candidate_sha`.
-  The verify job runs the full suite and native contracts on that exact commit;
-  package builds one Universal artifact; publish downloads that artifact
-  without rebuilding, repackaging, signing, or notarizing.
-- The verify job must not receive signing or notarization secrets. `package`
-  and `publish` use the protected `distribution` Environment, and publication
-  is allowed only when the candidate SHA, manifest SHA, Release Tag, appcast,
-  DMG digest, and public URLs all agree.
+  The `verify` and `native` jobs run the full suite and native contracts on
+  that exact commit; `package` waits for both and builds one Universal
+  artifact; `publish` downloads that artifact without rebuilding, repackaging,
+  signing, or notarizing.
+- The `verify` and parallel `native` jobs must not receive signing or
+  notarization secrets. `package` and `publish` wait for both. Formal
+  publication always uses the reviewed `distribution` Environment;
+  owner-triggered diagnostics may use `distribution-owner-signing`, while all
+  other triggering actors and reruns use `distribution`. Publication is allowed
+  only when the candidate SHA, manifest SHA, Release Tag, appcast, DMG digest,
+  and public URLs all agree.
 - A failed Appcast or upload may be retried only with the same verified artifact.
   A retry must not create a second Release or rewrite a public appcast item.
 - Never publish a different SHA, rebuild during publish, or let a tag point at
   a commit that differs from the package manifest.
 - Never create a real Release, tag, DMG, or online appcast change while
   validating workflow logic. Use offline fixtures and fake external tools.
-- Keep the `distribution` Environment and manual approval boundary. Do not
+- Keep the `distribution` Environment and its manual approval boundary. The
+  owner-only signing Environment may skip review only for `publish=false`
+  diagnostics and only while workflow changes remain owner-controlled. Do not
   read, print, or commit signing keys, API keys, or notarization credentials.
 - Version and build numbers are explicit and must increase over the published
   build number.

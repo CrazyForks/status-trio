@@ -823,6 +823,8 @@ private final class MainActorBox<Value>: @unchecked Sendable {
 
 @MainActor
 final class VolumeMonitor: VolumeMonitoring, VolumeControlling {
+    static let defaultDDCReadWatchdog: Duration = .seconds(2)
+
     private enum Lifecycle {
         case idle
         case running
@@ -839,9 +841,18 @@ final class VolumeMonitor: VolumeMonitoring, VolumeControlling {
     private let outputController: (any AudioOutputControlling)?
     private let ddcTransport: any DDCVolumeTransport
     private let suppliedDDCCoordinator: DDCVolumeCoordinator?
-    private lazy var ddcCoordinator = suppliedDDCCoordinator ?? DDCVolumeCoordinator(transport: ddcTransport) { [weak self] update in
-        self?.receiveDDCUpdate(update)
-    }
+    private let ddcReadWatchdog: Duration
+    private let ddcWatchdogSleep: DDCVolumeCoordinator.WatchdogSleep
+    private let onDDCWatchdogTimeout: DDCVolumeCoordinator.WatchdogTimeoutHandler
+    private lazy var ddcCoordinator = suppliedDDCCoordinator
+        ?? DDCVolumeCoordinator(
+            transport: ddcTransport,
+            readWatchdog: ddcReadWatchdog,
+            watchdogSleep: ddcWatchdogSleep,
+            onWatchdogTimeout: onDDCWatchdogTimeout
+        ) { [weak self] update in
+            self?.receiveDDCUpdate(update)
+        }
     private let refreshDebounceInterval: Duration
     private let refreshDebounceSleep: @Sendable (Duration) async throws -> Void
     private var scheduledRefreshTask: Task<Void, Never>?
@@ -876,6 +887,11 @@ final class VolumeMonitor: VolumeMonitoring, VolumeControlling {
         outputController: (any AudioOutputControlling)? = nil,
         ddcTransport: any DDCVolumeTransport = DDCDisplayTransport(),
         ddcCoordinator: DDCVolumeCoordinator? = nil,
+        ddcReadWatchdog: Duration = VolumeMonitor.defaultDDCReadWatchdog,
+        ddcWatchdogSleep: @escaping DDCVolumeCoordinator.WatchdogSleep = {
+            try await Task.sleep(for: $0)
+        },
+        onDDCWatchdogTimeout: @escaping DDCVolumeCoordinator.WatchdogTimeoutHandler = { _, _ in },
         refreshDebounceInterval: Duration = .milliseconds(150),
         refreshDebounceSleep: @escaping @Sendable (Duration) async throws -> Void = {
             try await Task.sleep(for: $0)
@@ -891,6 +907,9 @@ final class VolumeMonitor: VolumeMonitoring, VolumeControlling {
         self.outputController = outputController
         self.ddcTransport = ddcTransport
         suppliedDDCCoordinator = ddcCoordinator
+        self.ddcReadWatchdog = ddcReadWatchdog
+        self.ddcWatchdogSleep = ddcWatchdogSleep
+        self.onDDCWatchdogTimeout = onDDCWatchdogTimeout
         self.refreshDebounceInterval = refreshDebounceInterval
         self.refreshDebounceSleep = refreshDebounceSleep
         readWatchdog = ReadWatchdog(

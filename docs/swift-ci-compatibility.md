@@ -138,6 +138,56 @@ CI 工具链（`macos-26` / Xcode 26.6 / Swift 6.3.3）上全绿，耗时 15m27s
 
 ## 失败记录
 
+### DDC topology observation follow-up (2026-10-27)
+
+Diagnostic [`40530484687`](https://github.com/lingyired/status-trio/actions/runs/40530484687)
+at frozen `aa15b78c28561901fa8f4848f56405fea4c7d258` repeated the four
+`DDCVolumePresentationTests.testTopologyChangeClearsConfirmedDDCVolumeAndSelectedRowImmediately`
+failures first recorded in `37416172832`: after topology invalidation, the
+test's next stream element contained `0.75` and writable state.
+
+The observation boundary matters: `VolumeMonitor.topologyChanged()` publishes
+the cleared state synchronously, then starts a new-generation read.
+`MonitorStream` deliberately retains only the newest element. An instant fake
+transport can therefore publish a legitimate fresh `0.75` before the consumer
+resumes. The four failures alone do not establish stale-generation acceptance;
+the coordinator and monitor already reject mismatched generations.
+
+The test now holds the next transport read behind an explicit gate, observes
+the cleared scalar, current device, selected row and disabled control, then
+releases that read and requires fresh writable confirmation. Expectation
+events replace the next-element ordering assumption; the one-slot production
+stream, production timing, and generation checks are unchanged. A temporary
+mutation removing immediate invalidation fails the updated test. The focused
+test passed 20 consecutive runs through `bash scripts/test.sh`; the DDC
+presentation, coordinator, and stream focused suites also passed.
+
+The temporary `testProbeTopologyFreshUpdateOverwritesUnconsumedInvalidation`
+deterministically reproduced the overwrite before it was removed. Focused
+evidence is retained in `.build/task1-ddc-repetitions-20261027-234906/`
+and `.build/task1-ddc-evidence-20261027-235313/`.
+
+Independent review found no actionable issues. On 2026-10-28 (Asia/Shanghai),
+`bash scripts/verify-local.sh full` passed on base
+`a9ee5cab352b6464d3a6b5a2a4cb51a5bd6c99b9` with this test patch:
+1,928 Core XCTest tests (eight existing skips), 15 Helper XCTest tests,
+763 Swift Testing tests, Release compilation, the local non-Universal
+bundle, native/cache contracts, and offline release simulations. The log is
+`.build/ci-optimization-evidence/ddc-stability-2026-10-27/verify-local-ddc-full.log`.
+Post-fix diagnostic
+[`40538437122`](https://github.com/lingyired/status-trio/actions/runs/40538437122)
+and final frozen-source diagnostic
+[`40542058689`](https://github.com/lingyired/status-trio/actions/runs/40542058689)
+plus its same-SHA repeat
+[`40544097423`](https://github.com/lingyired/status-trio/actions/runs/40544097423)
+all passed the full test and native/package chain; the topology case took
+0.001s, 0.002s and 0.003s respectively. All used `publish=false`,
+`notarize=false`.
+The downloaded artifacts passed digest, architecture, platform and Ad-hoc
+signature checks. Timings and repeat-run evidence are in
+[the CI report](ci/ci-performance-report.md). Hardware and GUI acceptance
+remain unexercised.
+
 | Run | 失败阶段 | 根因 | 修复方式 |
 | --- | --- | --- | --- |
 | [`37816211317`](https://github.com/lingyired/status-trio/actions/runs/37816211317)（head `5c4e6fc`，`1.5.1` / build 23，`publish=false`） | `Run tests` | `ForbiddenPatternGuardTests.testSourcesContainNoActorIsolatedMethodReferences` 把 `Sources/StatusTrioCore/Monitoring/VolumeMonitor.swift:390` 的 `using: read` 转发闭包参数误报为方法引用；该源文件未在失败提交中改动。`is_forwarded_closure` 使用 `sed | grep -qE`，命中后 `grep -q` 提前退出，在 `set -o pipefail` 下可能让仍在输出大文件的 `sed` 收到 SIGPIPE（141），使真实声明查找返回假阴性。| 将 `grep -qE` 改成会完整消费输入的 `grep -E … >/dev/null`，保留 `pipefail` 和原匹配语义；`--self-test` 新增超过 2 MB 的早期匹配 forwarded-closure fixture，验证其仍为 `external`。本地红测在修复前稳定误报；修复后 `bash scripts/check-forbidden-patterns.sh --self-test`、正常扫描及 `swift test --filter ForbiddenPatternGuardTests` 均通过（2 tests、0 failures）。后续非发布预检 [`37819064891`](https://github.com/lingyired/status-trio/actions/runs/37819064891)（head `7bc0aa9`、`version=1.5.1`、`build=23`、`publish=false`、`notarize=false`）全绿：测试、原生兼容性检查、Universal release 构建、Ad-hoc 签名、DMG 打包与 artifact 上传全部通过。未创建 GitHub Release，也未更新 appcast。 |

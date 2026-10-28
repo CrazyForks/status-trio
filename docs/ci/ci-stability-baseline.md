@@ -163,3 +163,75 @@ Hypothesis, not measured here:
 - Approval and queue gaps can dominate wall time even when compute is stable.
   The `40112321642` 623-second gap is the strongest observed example, but the
   logs do not decompose it into approval versus scheduling.
+
+## Follow-up: DDC observation boundary (2026-10-28)
+
+The later diagnostic
+[`40530484687`](https://github.com/lingyired/status-trio/actions/runs/40530484687)
+found four assertions in one topology presentation case, matching the older
+`37416172832` symptom. A controlled probe reproduced the cause: the fake
+transport's valid fresh-generation result replaced the synchronous
+invalidation before the newest-only stream consumer resumed. This was a
+test-observation defect; no production generation guard was removed or changed.
+
+PR #167 gates the new read until the test observes the nil scalar, nil device
+and selected-row values, and disabled volume control, then requires fresh
+confirmation after release. Removing immediate invalidation makes it fail.
+Twenty focused repetitions and full local verification passed. The post-fix
+remote `40538437122` passed, and final frozen
+`40d6ca4c981c5bef687b6156c854a3a6a2bdbafa` passed `40542058689` and its
+same-SHA repetition `40544097423` after PR #168's guard scan optimization.
+Test counts remain 1,928 Core XCTest (eight existing skips), 15 Helper XCTest
+and 763 Swift Testing, with zero failures.
+
+These runs are non-publishing Ad-hoc diagnostics. Current timings, repeat-run
+results, artifact checks, and the remaining measured optimization boundary are
+recorded in [the performance report](ci-performance-report.md). The historical
+30-run baseline above remains unchanged.
+
+## Follow-up: deterministic Bluetooth waits (2026-10-28)
+
+PR #170 merged as `667464e9ebdd54801f69b88fb3145e20c8b8f234`. Frozen
+run `40550251784` passed 1,929 Core XCTest cases (eight existing skips),
+15 Helper XCTest cases, and 763 Swift Testing cases with zero failures. The
+new extra Core case asserts the unchanged 5s/1s/1s/2s HUAWEI production timing
+defaults. Nine fixed-wait cases fell from 22.021s to 0.025s; the run wall was
+527s with `publish=false` and `notarize=false`. The package remained Ad-hoc,
+Universal, and un-notarized. Current timing interpretation and artifact
+checks are in [the performance report](ci-performance-report.md).
+
+## Follow-up: final deterministic DDC and PrimaryLink waits (2026-10-28)
+
+PR #173 merged as `e9fc67ec611267de1cd2ad9a9d8d4a0399b491ed`. It replaces the
+DDC presentation test's real 2.2s transport sleep with a watchdog-only
+controlled sleep and proves the timeout emission completes before the physical
+read is released. Production keeps the two-second watchdog.
+
+PR #174 merged as `4d034760986ee273d43c3e3904294ae3a8b10271`. It injects the
+existing PrimaryLink main-actor completion hop so the late-read test executes
+the queued callback explicitly instead of polling a negative condition.
+Independent mutations prove both the inactive-session and stale-request guards.
+A reactivation regression covers a completion queued by the prior session.
+
+Frozen `4d034760` completed non-publishing diagnostic
+[`40566245708`](https://github.com/lingyired/status-trio/actions/runs/40566245708)
+with `publish=false`, `notarize=false`, and version 1.7.6/build 44:
+
+- wall 442s / 7m22s;
+- verify 197s, native 144s in parallel, package 223s;
+- 1,932 Core XCTest cases with eight existing skips, 15 Helper XCTest cases,
+  and 763 Swift Testing cases in 112 suites, all with zero failures;
+- all four artifact ZIP digests matched, DMG SHA-256
+  `b590625956b7d28c80ec529cda089ee6795669a61f746525a11dfa773d8ff428`
+  matched the manifest, and ten binaries passed arm64+x86_64, macOS 13/SDK 27,
+  Sparkle, and deep strict Ad-hoc checks;
+- Release/tag counts, appcast blobs, and the protected `distribution`
+  Environment were unchanged.
+
+The five post-PR-170 fixed candidates total 17.858s of pre-change test-case
+time; the earlier HUAWEI batch separately has a 21.996s controlled test-case
+reduction. They are different metric categories, are not summed, and neither
+is an end-to-end wall saving. A final read-only audit at `4d034760` found no
+remaining safe material candidate. Current phase details and the explicit
+NO-GO boundaries are in
+[the performance report](ci-performance-report.md).

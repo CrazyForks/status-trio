@@ -1,7 +1,10 @@
 # Release CI performance report
 
-Status: remote baseline audited and cold/warm package diagnostics completed
-2026-10-27 (Asia/Shanghai).
+Status: native-cache, layout, guard, DDC, and deterministic test-wait
+optimizations are merged. The verified tree subsequently merged as
+`4d034760986ee273d43c3e3904294ae3a8b10271` passed a non-publishing remote
+diagnostic on 2026-10-28 (Asia/Shanghai). A final read-only audit found no
+remaining safe material candidate in the measured evidence.
 
 This report uses existing GitHub Actions evidence. It makes no promise of a
 12-14 minute release and does not claim a speedup from any unmeasured change.
@@ -39,8 +42,16 @@ For the latest full/recovery runs:
 - **Gap** is wall minus completed-job active time. It includes approval,
   queueing, runner allocation, artifact handoff, and other idle periods. The
   report does not call the entire gap "approval" unless logs identify a
-  boundary.
+  boundary. This subtraction applies to the serial runs only.
 - **Stage duration** is the corresponding job's start/end timestamps.
+
+For the parallel profile, the verification critical path runs from the first
+verification job's start to the last verification job's completion. The
+verification-to-package gap is package start minus the later verification
+completion; it includes approval and runner scheduling. Active job durations
+are also summed as a runner-time observation, but overlapping job time must
+not be subtracted from wall time to estimate idle time. These durations are
+not GitHub billing measurements.
 
 For MobileBattery, the phase boundaries are log timestamps:
 
@@ -195,6 +206,30 @@ net saving or an end-to-end release improvement. The separately observed
 initial source checkout took 96.582s; it is excluded from both cold/warm
 dependency comparisons, and source repositories are not persisted by the new
 Actions prefix cache.
+
+## Warm source-checkout removal
+
+The final same-SHA remote run still spent 27s checking out all pinned
+MobileBattery source trees before discovering that both dependency prefixes
+were exact cache hits. Those trees were not needed to compile the Helpers or
+assemble the package; they were only needed for a dependency rebuild or to
+regenerate license files that are already reviewed and committed under
+`Support/MobileBatteryHelper/ThirdPartyNotices/`.
+
+The build now prepares sources only when at least one architecture actually
+misses or rejects its dependency cache. Cache-hit runs use the tracked
+license texts. On a cold rebuild, the script still verifies every source pin
+and compares each upstream license with the reviewed copy after normalizing
+line endings and trailing whitespace;
+drift fails closed instead of rewriting tracked files. Cache validation no
+longer requires a source checkout because the exact key and marker bind the
+dependency manifest, build scripts, canonical prefix and full installed
+inventory.
+
+The synthetic cache contract covers three new boundaries: a warm build does
+not invoke source preparation, a warm Universal build succeeds after the
+source trees are removed, and differing reviewed license text fails a cold
+build. This is a local contract result, not yet a remote timing claim.
 
 Both warm cache candidates validated and skipped third-party compilation.
 Helpers were rebuilt, and complete prefix inventories were byte-identical
@@ -378,20 +413,641 @@ It includes run/job JSON, logs, timing TSVs, artifact digests, manifests,
 mounted-DMG checks and before/after public-state audits. These local evidence
 files are not committed release artifacts.
 
+## Parallel verify/native profile
+
+The latest `main` rerun before the profile change was
+[`40435617420`](https://github.com/lingyired/status-trio/actions/runs/40435617420)
+at `894a7787b4b9a0fb6add2224cccd85235ff54923`. It passed both cached native
+restores, rebuilt both Helpers, and uploaded a valid Universal Ad-hoc package.
+Package took 214s and the MobileBattery interval stayed at 45s. Verify took
+403s: 13s static preflight, 240s Swift tests, and 134s native/release
+contracts. The 240s test stage included a reported 73.64s Swift build and a
+134.368s Core XCTest body. Total wall was 737s, including a 116s interval
+between verification completion and package start. The job timestamps were
+02:04:27Z and 02:06:23Z; the earlier 146s figure was a reporting error.
+
+The subsequent profile moves the native/release contracts into a separate
+`native` job on the same `xcode-27` runner. Both jobs check out and reassert
+the frozen candidate independently. `package` and `publish` require both jobs
+to pass; neither new job receives secrets or Environment access. Diagnostics
+remain separate artifacts, so a native failure cannot be hidden by a passing
+Swift suite. The full local profile passed after the workflow, policy and
+documents changed.
+
+PR #159 merged the profile as
+`08644c04ce2f23a69a64582f5f1563b7cc2bb525`. Two diagnostics used that same
+frozen SHA, `version=1.7.6`, `build=44`, `publish=false`, `notarize=false`,
+and no recovery source. Both used Xcode 27 / Swift 6.4 / SDK 27, passed all
+three active jobs, and skipped Publish.
+
+| Scope | Serial baseline `40435617420` | [Parallel 1 `40447422731`](https://github.com/lingyired/status-trio/actions/runs/40447422731) | [Parallel 2 `40448654960`](https://github.com/lingyired/status-trio/actions/runs/40448654960) |
+| --- | ---: | ---: | ---: |
+| Total wall | 737s / 12m17s | 591s / 9m51s | 667s / 11m07s |
+| Verification critical path | 403s | 285s | 368s |
+| Swift/static Verify job | 403s, includes native | 285s | 368s |
+| Separate Native job | none | 224s | 163s |
+| Package job | 214s | 274s | 236s |
+| Verification-to-package gap | 116s | 28s | 59s |
+| Sum of active job durations | 617s | 783s | 767s |
+| Swift test stage | 239.748s | 257.901s | 329.586s |
+| Native contract stage | 133.901s | 202.087s | 140.987s |
+| Reported Swift test build | 73.64s | 74.85s | 116.68s |
+| Core XCTest body | 134.368s | 150.383s | 165.240s |
+| Swift Universal Release build | 120s | 152s | 128s |
+| MobileBattery total | 45s | 57s | 48s |
+| Native cache restore interval | 1s | 5s | 4s |
+
+Verify and Native started at the same second in both parallel runs. Package
+started after both succeeded. The 19 unconditional native/offline contracts
+remain in Native; the two additional trusted recovery regressions remain
+conditional in Verify. Neither normal diagnostic exercised online recovery.
+Each full Swift run reported 1,928 Core XCTest and 15 Helper XCTest, with
+eight existing skips and zero failures, plus 763 passing Swift Testing tests.
+
+Compared with the serial baseline, the observed verification critical path
+fell by 118s (29.28%) and 35s (8.68%). Wall time fell by 146s (19.81%) and
+70s (9.50%). The verification-to-package gap also fell by 88s and 57s,
+while Package increased by 60s and 22s. Thus the entire wall reduction must
+not be attributed to parallel verification. Even with the same candidate,
+the two parallel runs differed by 76s wall and 83s in Verify. Runner load
+was not measured, and no causal explanation for the stage variation is
+established.
+
+The sum of active job durations increased by 166s (26.90%) and 150s
+(24.31%). This profile trades a shorter observed verification critical path
+for another concurrent runner and more observed runner time. These values
+are not billed minutes or proof of a cost reduction. The evidence supports
+the structural overlap and the observed elapsed-time ranges; it does not
+guarantee a fixed formal-release duration or runner-capacity availability.
+
+Both packages restored and validated the same two exact native cache entries,
+skipped third-party dependency compilation, rebuilt both Helpers, and skipped
+cache saves. Artifact ZIP digests matched GitHub metadata. Their DMGs matched
+their respective frozen-SHA manifests and adjacent checksum files:
+
+| Run | Package artifact | Artifact ZIP SHA-256 | DMG SHA-256 |
+| --- | --- | --- | --- |
+| `40447422731` | `12708584167` | `d9c71869ea2b0401d9f6940406e7f5a48b5b964fe929df3d95573bdbc9604b63` | `e7f7bd161b4b3a8b3c510ab863c419384da8126ef65cee2c4c389cc3661332a3` |
+| `40448654960` | `12709324023` | `c126161c714c8d01c64d5e3644737fd2dbd515371155dcc98c0326ee50462675` | `d614903bab7f5091ca47ab85f824cf7260db70943b66352aec4c14a981e35db4` |
+
+The independent builds are not expected to share a DMG digest. Read-only
+inspection checked each package's version/build, ten Universal binaries,
+minimum macOS 13 / SDK 27 metadata, Sparkle metadata, and deep strict Ad-hoc
+signatures. It did not launch either app or register a Helper.
+
+Raw evidence and the reproducible comparison script are retained in
+`.build/ci-optimization-evidence/parallel-native-remote-2026-10-27/`,
+including `comparison.json`, `compare.py`, per-run diagnostics, package
+manifests, and read-only DMG inspection logs. Cache keys are omitted from
+the report.
+
+## Recovery compatibility and policy follow-up
+
+Independent review after the two normal diagnostics found a recovery
+compatibility defect: `validate-release-recovery.sh` still required exactly
+three source jobs, and its workflow regression retained the old
+`package.needs: verify` expectation. Thus normal four-job package runs
+could pass while a later recovery would reject their artifacts. This was
+found by inspection and reproduced with offline fixtures, not by attempting
+a public release.
+
+The validator now matches source-job metadata to the frozen candidate's
+workflow. It accepts the exact historical three-job shape or current
+four-job shape with their corresponding Package dependencies; the current
+shape also requires Native success. A missing Native job cannot downgrade
+a four-job workflow to legacy acceptance. New offline cases cover both
+valid shapes, package-only and failed-publication sources, missing/failed/
+skipped Native, extra jobs, metadata/workflow shape mismatches, and missing
+Native dependency.
+
+Policy regressions additionally pin all 19 unconditional native commands and
+both conditional trusted recovery regressions, require the normal success
+gates, reject conditional Swift/preflight tests, replacement shells, write
+permissions or Environment access in verification jobs, and preserve the
+release runner and diagnostic ordering. Native summaries now identify Native,
+its actual job status, and the `native-diagnostics` artifact. The new missing-
+contract, conditional-preflight, and Native-label regressions were observed
+failing before their fixes. Full local verification passed in 332.198s,
+including the complete Swift suite, Release/local app build, and native/
+offline contracts; the recovery regression also passed separately.
+
+Recovery still requires `publish=true` and `notarize=true`; those guards were
+not changed to allow a diagnostic recovery. Online recovery/publication,
+Developer ID, notarization, Helper/XPC runtime, and macOS 13 runtime remain
+`NOT RUN`. The two timing runs above predate this compatibility follow-up
+and must not be presented as recovery acceptance.
+
+## Remote warm-source-checkout measurement
+
+PR #162 merged as `518f4e961ceaa26f76fb9f9b120dd6eb4a67d3d2`.
+Both diagnostics below used that exact frozen candidate, `version=1.7.6`,
+`build=44`, `publish=false`, `notarize=false`, and no recovery source.
+The workflow, candidate, toolchain, and inputs were unchanged between runs:
+`xcode-27`, Xcode 27.0, Swift 6.4, and SDK 27.0. Changed build scripts made
+the first run miss the old keys; the second restored the two newly sealed
+prefixes.
+
+| Scope | [Cold `40486083712`](https://github.com/lingyired/status-trio/actions/runs/40486083712) | [Warm `40488843296`](https://github.com/lingyired/status-trio/actions/runs/40488843296) |
+| --- | ---: | ---: |
+| Total wall | 1,191s / 19m51s | 705s / 11m45s |
+| Verification critical path | 405s | 297s |
+| Swift/static Verify job | 405s | 297s |
+| Separate Native job | 200s | 134s |
+| Package job | 750s / 12m30s | 324s / 5m24s |
+| Verification-to-package gap | 31s | 79s |
+| Sum of active job durations | 1,355s | 755s |
+| Swift test stage | 357.227s | 263.756s |
+| Reported Swift test build | 141.25s | 80.91s |
+| Core XCTest body | 178.443s | 149.490s |
+| Swift Universal Release build phase | 223s | 208s |
+| MobileBattery source checkout | 34s, six clones | not run, zero clones |
+| arm64 dependency phases | 228s | 21s |
+| x86_64 dependency phases | 189s | 6s |
+| MobileBattery total | 456s | 34s |
+| Native cache restore interval | 0s, two misses | 4s, two exact hits |
+| Native cache save interval | 2s | 0s, skipped |
+
+The cold TSV emits a dependency row before source preparation and another
+after it. The per-architecture values above sum repeated rows with the same
+label, including key/inspection work. Source checkout is timed separately
+and no longer absorbs compilation. Parent phases still include child phases;
+the complete table must not be summed as independent work.
+
+The observed Package saving is **426s (56.80%)** and the MobileBattery saving
+is **422s (92.54%)**. Wall fell by **486s (40.81%)**. The 108s shorter
+verification critical path and 48s longer verification-to-package gap also
+contributed to wall time; the full 486s must not be attributed to caching.
+Both Swift test builds and XCTest execution varied on an unchanged candidate.
+Runner load was not measured, so the variation has no established cause.
+These are two observations, not a guaranteed release duration or billing
+measurement. This cold native build was also slower than earlier cold runs;
+it is retained rather than replaced with a more favorable sample.
+
+The warm package logged validation and skipped third-party compilation for
+both architectures. It rebuilt both Helpers, emitted no
+`mobile-source-checkout` row, performed no source clone, and skipped both
+cache saves. The two new cache entries remained the same IDs, keys, sizes,
+and creation timestamps through the warm run, totaling 14,460,360 compressed
+bytes. The previous two entries were preserved.
+
+The preceding warm run
+[`40451490957`](https://github.com/lingyired/status-trio/actions/runs/40451490957)
+still recorded 27s of source checkout, a 55s MobileBattery interval, a 281s
+Package job, and 733s wall. The new warm run eliminated source checkout and
+reduced the native interval to 34s, but Package was 43s slower and wall was
+28s shorter. Different candidates and runner variation prevent treating
+that comparison as an isolated 27s end-to-end speedup.
+
+Both complete Swift runs reported 1,928 Core XCTest and 15 Helper XCTest,
+with eight existing skips and zero failures, plus 763 passing Swift Testing
+tests. Native and offline release contracts passed in both runs. Downloaded
+artifact ZIPs matched GitHub digests, and each DMG matched its own frozen-SHA
+manifest and adjacent checksum:
+
+| Run | Package artifact | Artifact ZIP SHA-256 | DMG SHA-256 |
+| --- | --- | --- | --- |
+| `40486083712` | `12726116510` | `03b92c3de936047720dff57f2ea642685c624e5ade2336803abb5cb09a585865` | `4ac1be9ada0de30170a7079b9041dc34f1e7c044829d6bc0db9b4798b1a5e8db` |
+| `40488843296` | `12728321361` | `2a994df647484c2ff3e4790d9844fd9d0847a92ccf712584b404a553eb892556` | `501d4e642098444a31adac23a40a4f1e075793a63f40a21e9f710d483ba9812c` |
+
+Read-only DMG inspection verified version/build, ten binaries with both
+architectures, minimum macOS 13 / SDK 27 metadata, Sparkle metadata, and deep
+strict Ad-hoc signatures. The workflow retained its Helper `--list` smoke
+check. GUI/hardware behavior, privileged Helper/XPC registration, macOS 13
+runtime, Developer ID, notarization, and online recovery were not exercised.
+Publish was skipped twice. All 18 releases and their asset digests, 18 tags,
+the appcast blob, protected Environment settings, and the original worktree
+status were unchanged.
+
+Raw run/job metadata, logs, diagnostics, timing TSVs, verified packages,
+read-only inspection logs, comparison and public-state audits are retained
+under `.build/ci-optimization-evidence/warm-source-skip-remote-2026-10-27/`.
+
+## Reviewed-license cache follow-up
+
+Independent review found that a notice-only change did not alter the cache
+identity. A warm cache could therefore package changed reviewed text without
+the cold source comparison. It also exposed an ordering defect: the cold
+build sealed its marker before comparing licenses, so repeating an input
+that failed license verification could reuse that premature marker.
+
+The follow-up binds all reviewed-notice relative paths and file digests to
+the cache identity and rejects missing, unreadable, symlink, or unsupported
+notice paths. It reuses the existing source comparison before dependency
+compilation and cache sealing. Unchanged notices still allow a warm build
+without sources. Regressions first reproduced warm acceptance, silently
+skipped unreadable directories, and acceptance on a repeated failed build;
+the corrected cache fixture passes all three boundaries and the existing
+cold/warm, corruption, inventory, and Universal contracts.
+
+The remote pair above predates this follow-up and verifies `518f4e96`, not
+the later notice-binding code. Its regression evidence is local. The cache
+identity change intentionally causes one cold rebuild per architecture on a
+subsequent remote run; no additional performance gain is claimed for it.
+
+## Layout capture fixed-delay removal
+
+The warm Swift XCTest body remained 149.490s after the native-cache work.
+Investigation of the slowest case,
+`BluetoothDeviceRowLayoutTests.testSupportedDeviceKindsDoNotReserveEmptySubtitleSpace`,
+found 204 rows behind a fixed 50ms `Task.sleep` before capture. The test's rows
+consume immutable fixtures and have no appearance task that publishes a later
+state. The same fixed delay was also present in `BatteryDetailsLayoutTests`,
+whose injected `onAppear` callback is a no-op.
+
+Before removing the delays, both suites were captured twice with the existing
+bitmap and geometry assertions. Synchronous two-pass
+`fittingSize`/`layoutSubtreeIfNeeded` produced identical sizes, control rects,
+and spinner counts for all 252 row captures, plus identical PNG bytes for all
+250 static rows (the two animated spinner images were excluded from the byte
+comparison). The battery snapshots exposed
+a separate nondeterministic fixture input: two `Date()` values changed the
+rendered timestamp between runs. Replacing those inputs with one fixed
+`observedAt` date made all 46 battery PNG bytes identical in a separate
+before/after pair. The date is presentation data only; no freshness policy or
+assertion was removed.
+
+| Local scope | Before | After | Observed saving |
+| --- | ---: | ---: | ---: |
+| `BluetoothDeviceRowLayoutTests` XCTest body | 16.943s | 1.684s | 15.259s / 90.1% |
+| `testSupportedDeviceKinds...` | 13.658s | 1.198s | 12.460s / 91.2% |
+| `BatteryDetailsLayoutTests` XCTest body | 3.599s | 2.022s | 1.577s / 43.8% |
+| Combined 17 focused tests | 20.542s | 3.706s | 16.836s / 82.0% |
+
+The before battery value has the fixed-date fixture but the original delay;
+the row before value predates the fixed-date change, which does not affect that
+suite. The combined before value sums two separate suite invocations; the
+after suites ran together. These observations are local to macOS 27.0.1,
+Xcode 27.0, Swift 6.4, arm64, Mac15,9, 16 logical CPUs. The command wall times
+below include the unchanged forbidden-pattern guard and SwiftPM startup,
+and do not measure cold compilation.
+
+The 17 focused tests then passed 20 consecutive runs: 20/20 exit zero, focused
+XCTest body 1.601-1.751s (median 1.650s), and 8.963-9.990s including the test
+command. A temporary production mutation that restored an unwanted subtitle
+failed the optimized empty-subtitle test with 78 assertion failures; the
+mutation was reverted before the fixed commit.
+
+This change is local test evidence only. It has not yet been measured on
+`xcode-27` GitHub Actions, so no remote wall-clock saving is claimed; the
+16.8s observation is strictly local. The warm remote XCTest body was 149.490s;
+this test was 29.596s there, so the remote reduction may differ with runner and
+display settings. A subsequent diagnostic should retain the full 1,928-test
+count and compare the same frozen candidate.
+
+Implementation commit: `1fb89ddcbbfacd72d8307cd02b41e35973a4cae4`, based on
+`2a5576468dddf804f7b246f911a21f21ac23dac2`. All comparison PNGs, geometry
+records, mutation logs, and 20 repetition logs are retained under
+`.build/ci-optimization-evidence/layout-performance-2026-10-27/`.
+The temporary capture/profiling code and production mutation are not included
+in the implementation. Independent review found no actionable issues.
+`bash scripts/verify-local.sh full` passed on that implementation commit:
+1,928 Core XCTest tests (eight existing skips), 15 Helper XCTest tests, and
+763 Swift Testing tests, all with zero failures, plus the Release build,
+non-Universal local bundle, native contracts, cache corruption/invalidation
+fixtures, and offline release simulations. The complete log is
+`verify-local-full.log` in the evidence directory above. Live GitHub CI,
+headless/older-macOS rendering, GUI/hardware behavior, Universal packaging,
+Developer ID, notarization, and publication remain `NOT RUN` for this change.
+
+## Layout optimization remote diagnostic
+
+The first authorized diagnostic on frozen
+`aa15b78c28561901fa8f4848f56405fea4c7d258`
+([`40525552482`](https://github.com/lingyired/status-trio/actions/runs/40525552482))
+used `version=1.7.6`, `build=44`, `publish=false`, and `notarize=false`.
+It completed successfully in 867s, including a 538s package job. Both native
+locks were cold because the prior reviewed-license identity change requires
+one rebuild. The package job therefore spent 338s in MobileBattery and 136s
+in the Universal Swift Release phase. This is not a warm end-to-end baseline.
+
+The slowest layout case fell from 29.596s in the earlier warm run to 0.936s.
+The complete verification still ran 1,928 Core XCTest tests (eight existing
+skips), 15 Helper XCTest tests, and 763 Swift Testing tests with zero failures.
+The downloaded DMG matched its manifest SHA-256, had ten binaries in both
+architectures, version 1.7.6/build 44, minimum macOS 13/SDK 27 metadata,
+Sparkle metadata, and valid deep strict Ad-hoc signatures. Releases remained
+at 18, tags at 18, and the appcast and protected Environment were unchanged.
+The run created two new exact native-cache entries.
+
+A second run with the same frozen SHA
+([`40530484687`](https://github.com/lingyired/status-trio/actions/runs/40530484687))
+stopped in verification before package. Its layout case again passed, but
+four assertions in the unrelated
+`DDCVolumePresentationTests.testTopologyChangeClearsConfirmedDDCVolumeAndSelectedRowImmediately`
+observed the prior `0.75` value after `topologyChanged()`. This matches the
+recorded intermittent DDC ordering failure in `docs/swift-ci-compatibility.md`;
+it is not evidence that the layout change caused the failure. Do not retry
+that run until the separate DDC ordering root cause is fixed. The second run
+therefore provides no warm package comparison and no end-to-end timing claim.
+
+Raw run metadata, logs, timing tables, downloaded artifact, manifest,
+signature checks, and public-state snapshots are retained under
+`.build/ci-optimization-evidence/layout-performance-remote-2026-10-27/`.
+The Apple Developer ID, notarization, runtime UI/Helper behavior, and
+publication gates remain `NOT RUN`.
+
+## DDC stabilization warm diagnostic (2026-10-28)
+
+After the test observation fix merged in PR #167, frozen
+`27ef4ca27217f09cdd3ee9efa4f5e1ad59209f89` completed
+[`40538437122`](https://github.com/lingyired/status-trio/actions/runs/40538437122)
+with the same 1.7.6/build 44, `publish=false`, `notarize=false` inputs:
+
+| Scope | Observation |
+| --- | ---: |
+| Total wall | 475s / 7m55s |
+| Verify | 267s |
+| Native, in parallel | 165s |
+| Package | 174s |
+| Swift test stage | 223.557s |
+| Debug test compilation | 80.46s |
+| Core XCTest body, 1,928 tests / eight skips / zero failures | 108.132s |
+| Swift Testing, 763 tests / zero failures | 6.033s |
+| DDC topology case | 0.001s |
+| Universal Swift Release phase | 102s |
+| MobileBattery total | 15s |
+
+Both exact native caches restored and validated; both dependency builds were
+skipped and no source-checkout phase ran. Four downloaded artifact ZIPs were
+independently hashed and matched their GitHub digests. The DMG SHA-256
+`765c3af866bdebcff1674a251196eb1d88d30eb65f0c5fef41058c01f2ea1812`
+matched the manifest. Read-only inspection passed ten arm64+x86_64 binaries,
+macOS 13/SDK 27 platform metadata, Sparkle metadata, and deep strict Ad-hoc
+signature checks. Release, tag, appcast and protected Environment snapshots
+were identical before and after this run.
+
+This run predates the guard declaration-index change. The 475s result is a
+warm diagnostic observation, not a guaranteed formal release duration or a
+controlled attribution of all wall-time differences to code. Runner variation
+also affects compilation. Raw data and contracts are under
+`.build/ci-optimization-evidence/ddc-stability-2026-10-27/baseline/`.
+Developer ID, notarization, runtime/hardware acceptance, and publication were
+not exercised.
+
+## Final frozen-candidate diagnostics
+
+PR #168 merged the guard optimization. Frozen source
+`40d6ca4c981c5bef687b6156c854a3a6a2bdbafa` completed two independent runs,
+[`40542058689`](https://github.com/lingyired/status-trio/actions/runs/40542058689)
+and [`40544097423`](https://github.com/lingyired/status-trio/actions/runs/40544097423),
+with `publish=false`, `notarize=false`, version 1.7.6/build 44:
+
+| Scope | Guard-before | Final run 1 | Final run 2 |
+| --- | ---: | ---: | ---: |
+| Run | 40538437122 | 40542058689 | 40544097423 |
+| Wall | 475s / 7m55s | 705s / 11m45s | 539s / 8m59s |
+| Verify | 267s | 341s | 264s |
+| Native, parallel | 165s | 148s | 137s |
+| Package | 174s | 295s | 205s |
+| Verify-to-package gap | 28s | 64s | 63s |
+| Preflight | 25.623s | 22.230s | 14.673s |
+| Swift test stage | 223.557s | 297.067s | 231.472s |
+| Debug test build | 80.46s | 121.72s | 84.33s |
+| Core XCTest body | 108.132s | 127.210s | 115.084s |
+| Guard scan case | 7.775s | 4.516s | 4.079s |
+| Guard self-test case | 2.617s | 4.902s | 8.764s |
+| Universal Swift Release phase | 102s | 190s | 120s |
+| MobileBattery total | 15s | 35s | 18s |
+
+The final repeat range is **8m59s-11m45s**. The guard scan case is consistently
+faster, and the final preflight reached 14.673s, but this is not an isolated
+end-to-end attribution: compilation, test execution, the synthetic self-test,
+and the verification-to-package gap all vary materially between runners.
+Do not use the fastest observation as a guaranteed release duration. All three
+runs restored and validated two exact native caches with zero source clones.
+Each passed the same required 1,928 Core XCTest cases (eight existing skips),
+15 Helper XCTest cases, and 763 Swift Testing cases. The topology case took
+0.001s, 0.002s, and 0.003s.
+
+Every artifact ZIP in both final runs was independently hashed and matched its
+GitHub digest. DMG SHA-256 values
+`e093988e6db390590d1bf0dc6a09bcee4cd975d88d55de4f86830417afdb7fbe`
+and `67ee0c5f565536f829e94c6b55b65e552871cdede1c8508a3a8bf76bd89bbbfe`
+matched their frozen manifests. Both packages passed read-only inspection of
+ten arm64+x86_64 binaries, minimum OS/SDK, Sparkle metadata, and deep strict
+Ad-hoc signatures. Public Release/tag/appcast and protected Environment
+snapshots remained unchanged. Evidence is under
+`.build/ci-optimization-evidence/ddc-stability-2026-10-27/{baseline,warm,warm2}/`.
+This is diagnostic packaging; Developer ID, notarization, runtime/hardware
+acceptance and publication remain unexercised.
+
+## Deterministic Bluetooth test waits (2026-10-28)
+
+PR #170 merged as `667464e9ebdd54801f69b88fb3145e20c8b8f234`.
+The change adds timing injection to the existing HUAWEI RFCOMM `Hooks` and
+uses zero waits only in synchronous fake-device ownership tests. Production
+defaults remain exactly 5s connection-ready, 1s SDP settling, 1s SDP service
+wait, and 2s channel open. The never-connect branch still performs the single
+timeout condition check and retains all open, close, SDP, and ownership
+assertions.
+
+The rollback tests now subscribe before starting the write and record the
+`.failed` then `.idle` presentations. Both CoreAudio rollback cases and the
+HUAWEI rollback case use a 1 ms test-only failure linger; the production
+default remains 2s. No assertion was skipped, relaxed, or replaced with a
+retry.
+
+Frozen `667464e9` completed the non-publishing diagnostic
+[`40550251784`](https://github.com/lingyired/status-trio/actions/runs/40550251784)
+with version 1.7.6/build 44, `publish=false`, and `notarize=false`:
+
+| Scope | Final guard run 2 | Test-wait run |
+| --- | ---: | ---: |
+| Run | 40544097423 | 40550251784 |
+| Wall | 539s / 8m59s | 527s / 8m47s |
+| Verify | 264s | 222s |
+| Native, parallel | 137s | 155s |
+| Package | 205s | 280s |
+| Verify-to-package gap | 63s | 20s |
+| Swift test stage | 231.472s | 184.944s |
+| Core XCTest body, eight existing skips | 115.084s | 81.705s |
+| Swift Testing | 763 tests | 763 tests |
+| Universal Swift Release phase | 120s | 186s |
+| MobileBattery total | 18s | 31s |
+
+The nine audited fixed-wait cases (seven HUAWEI transport ownership cases and
+two CoreAudio rollback cases) fell from **22.021s to 0.025s**, a measured
+**21.996s reduction in test-case time** on the remote runner. The HUAWEI
+rollback case changed from 0.053s to 0.059s while gaining explicit event
+assertions, so it is not counted as a saving.
+
+The verify job, test stage, and wall time were also lower, while the native and
+package jobs were slower. The total run difference is therefore a run-to-run
+observation, not a controlled end-to-end attribution: only the fixed cases
+have a same-test before/after boundary. The required counts passed with
+1,929 Core XCTest cases (eight existing skips), 15 Helper XCTest cases, and
+763 Swift Testing cases in 112 suites, all with zero failures. The extra Core
+case is the new production-default assertion.
+
+All four downloaded artifact ZIPs matched their GitHub digests. DMG SHA-256
+`d4b1beed32253095148242b8c6942bd9e046bebc0822407cbe6ba0c23ebd5164`
+matched the frozen manifest at 15,281,833 bytes. Read-only inspection passed
+ten arm64+x86_64 binaries, minimum macOS 13/SDK 27 metadata, Sparkle metadata,
+and deep strict Ad-hoc signatures. Release and tag counts remained 18, and
+the appcast blobs and protected `distribution` Environment were unchanged.
+
+Evidence is under
+`.build/ci-optimization-evidence/task7-2026-10-28/`. Developer ID,
+notarization, app launch, real Bluetooth hardware, helper registration, and
+publication remain `NOT RUN`.
+
+## Final deterministic DDC and PrimaryLink diagnostic (2026-10-28)
+
+PR #173 merged the DDC watchdog test change as
+`e9fc67ec611267de1cd2ad9a9d8d4a0399b491ed`. The test now has a watchdog-only
+async sleep gate and observes the coordinator's timeout emission before
+releasing the gated physical read. Production retains its two-second watchdog
+and the generic debounce/poll sleep is unchanged. The target fell from
+2.210s locally to 0.155s in focused runs and measured 0.202s on the final
+remote runner.
+
+PR #174 merged the PrimaryLink completion gate as
+`4d034760986ee273d43c3e3904294ae3a8b10271`. The injected dispatcher preserves
+the production main-actor `Task` hop, while tests execute queued completions
+explicitly. The late-read case fell from the 3.922s audit measurement to
+0.000s remotely. Both the inactive-session guard and the stale-request guard
+have independent mutation evidence, and a reactivation regression covers a
+completion queued by the prior session.
+
+Frozen `4d034760` completed non-publishing diagnostic
+[`40566245708`](https://github.com/lingyired/status-trio/actions/runs/40566245708)
+with version 1.7.6/build 44, `publish=false`, and `notarize=false`:
+
+| Scope | Run 40550251784 at `667464e9` | Run 40566245708 at `4d034760` |
+| --- | ---: | ---: |
+| Wall | 527s / 8m47s | 442s / 7m22s |
+| Verify | 222s | 197s |
+| Native, parallel | 155s | 144s |
+| Package | 280s | 223s |
+| Verify-to-package gap | 20s | 16s |
+| Static preflight | 20s | 14s |
+| Swift test stage | 184.944s | 167.249s |
+| Debug test build | 73.78s | 75.00s |
+| Core XCTest body | 81.705s | 65.095s |
+| Swift Testing | 5.760s | 4.145s |
+| Build/sign/package step | 243s | 183s |
+| Universal Swift Release phase | 186s | 128s |
+| MobileBattery total | 31s | 30s |
+
+The **85s wall difference is an observation, not an isolated attribution**.
+The DDC and PrimaryLink changes directly remove fixed test-case waits, and the
+test stage was 17.695s shorter. The package's Universal Release phase was also
+58s shorter in this run, but Debug and Release compilation are independent
+and runner variation remains material. Do not promise the observed 7m22s as a
+fixed release duration.
+
+The final remote run passed 1,932 Core XCTest cases (eight existing skips),
+15 Helper XCTest cases, and 763 Swift Testing cases in 112 suites, with zero
+failures. All four downloaded artifact ZIPs matched their GitHub digests. DMG
+SHA-256
+`b590625956b7d28c80ec529cda089ee6795669a61f746525a11dfa773d8ff428`
+matched the frozen manifest. Read-only inspection passed ten arm64+x86_64
+binaries, version 1.7.6/build 44, macOS 13/SDK 27 platform metadata, Sparkle
+metadata, and deep strict Ad-hoc signatures. Release and tag counts remained
+18, and the appcast blobs and protected `distribution` Environment were
+unchanged.
+
+The five post-PR-170 candidate measurements total **17.858s** of
+candidate-specific pre-change fixed test-case time:
+
+```text
+5.751 + 3.922 + 3.900 + 2.206 + 2.079 = 17.858 seconds
+```
+
+The earlier HUAWEI fake-device batch separately has a **21.996s controlled
+test-case-time reduction** (22.021s to 0.025s). The 17.858s pre-change budget
+and the 21.996s reduction are different metric categories and are not summed.
+Neither is an end-to-end wall-time saving.
+
+Evidence is under
+`.build/ci-optimization-evidence/final-primary-link-remote-2026-10-28/`.
+Developer ID, notarization, app launch, real display/Bluetooth hardware,
+helper registration, and publication remain `NOT RUN`.
+
+## Remaining optimization decisions
+
+### Guard declaration lookup (2026-10-28)
+
+The guard deliberately runs before tests, in preflight, and inside the test
+suite. Those enforcement points remain. Its declaration lookup previously
+rescanned all Swift source files for each candidate name. It now builds
+zero-argument and any-argument name indexes once per `report()` call and uses
+exact whole-name membership. Indexes reset for each root; forwarded closures,
+allowlists, overload behavior, diagnostics, and exit codes are preserved.
+
+Five alternating local original/optimized scans on Bash 3.2 measured median
+6.34s versus 2.45s (61.36% lower command wall time). All pairs returned zero,
+had empty stderr, and had identical stdout. The real 289-line `--list`,
+self-test, empty root, and synthetic prefix/EOF corpus matched the original
+stdout, stderr, and status. Same-shell reset fixtures fail when index reset is
+removed, and also fail when an otherwise identical report is forced to return
+an error. The focused two `ForbiddenPatternGuardTests` passed.
+
+Evidence is under `.build/task5-guard-evidence-20261028-001356/`. This local
+measurement is not an end-to-end CI saving; remote measurements follow
+separately.
+
+`bash scripts/verify-local.sh full` passed on base
+`27ef4ca27217f09cdd3ee9efa4f5e1ad59209f89` with the final guard patch:
+1,928 Core XCTest tests (eight existing skips), 15 Helper XCTest tests,
+763 Swift Testing tests, Release/local-bundle builds, platform/Helper/native
+contracts, and offline cache/release regressions. The log is
+`.build/ci-optimization-evidence/ddc-stability-2026-10-27/verify-local-guard-full.log`.
+
+The warm run spent 208s in the Universal Swift Release build phase. Debug
+test outputs and Universal Release outputs remain different required work;
+no compatible compilation-cache experiment has established safe reuse.
+The earlier SwiftPM download-only experiment remains local evidence.
+
+The warm job spent 9s resolving exact cache keys, 11s installing/checking
+build tools, and 5s validating prefixes before the skipped cache saves.
+Avoiding redundant pre-save inspection is a possible seconds-scale
+experiment, but its net benefit and replacement integrity boundary have not
+been verified. No checks were removed for that unmeasured saving. Further
+native-job splitting has no per-contract benchmark or runner-capacity
+evidence yet.
+
+### Final safe-boundary audit (2026-10-28)
+
+The final read-only audit at `4d034760` returned **NO SAFE MATERIAL CANDIDATE**.
+Remaining visible costs are not removable without weakening the contract:
+
+- the cfprefsd deletion case waits 1.5s for real asynchronous write-back and
+  has no completion event;
+- the Bluetooth handoff lifecycle suite uses 150ms SwiftUI settling windows
+  and has no verified equivalent completion boundary;
+- the forbidden-pattern scan and its synthetic self-test are enforcement work;
+- AppKit lifecycle cycles, rendering matrices, localization coverage, and
+  real subprocess tests exist to exercise those behaviors;
+- AirPods and charging Swift Testing cases already use continuation-controlled
+  `ManualEventSleeper`; their reported completion boundary comes from the
+  parallel runner;
+- Debug XCTest and Universal Release compilation serve different contracts,
+  and no safe compilation-cache design has measured hosted-runner proof;
+- cache-key resolution, pre-save validation, tool provisioning, and frozen-SHA
+  reassertion protect correctness or provenance for single-digit seconds.
+
+The final audit is retained at
+`.superpowers/sdd/ci-overnight-continuation-plan/task-15-final-audit.md`.
+
 ## Follow-up measurement plan
 
-1. Repeat the package-only cold/warm pair on a later formal candidate so the
-   hosted cache hit rate and any mismatch-driven rebuild can be observed.
-2. Compare arm64 and x86_64 phase rows separately. Treat the x86-to-package
-   marker as approximate until a per-architecture completion marker exists.
-3. Re-run the package from the exact same candidate and toolchain; do not
-   compare different SDKs or runner images as a cache result.
-4. Keep Developer ID signing, notarization, runtime Helper/XPC behavior, and
+1. Completed: run the parallel profile twice on one frozen candidate with
+   `publish=false` and no notarization; the comparison is recorded above.
+2. Completed: measure source-checkout removal with a same-SHA cold/warm pair;
+   retain both the dependency phases and the separate source phase.
+3. On a later formal candidate, observe cache invalidation and hit behavior,
+   including the reviewed-license binding, signing, and notarization costs.
+4. Keep comparisons on the exact same candidate and toolchain; do not compare
+   different SDKs or runner images as an isolated cache result.
+5. Keep Developer ID signing, notarization, runtime Helper/XPC behavior, and
    public publication as `NOT RUN` until the corresponding protected and
    manual evidence exists. The Ad-hoc package contract and signature checks
    above passed but do not substitute for those gates.
+6. Completed: the final post-merge audit found no deterministic, material,
+   safely implementable optimization in the current evidence.
 
-This report records the remote baseline, local native measurements, and two
+This report records the remote baseline, local native measurements, and
 authorized `publish=false` diagnostics; it is not release authorization. The
 diagnostics did not create a release or tag, update the appcast, or mutate
 protected-environment settings.

@@ -198,30 +198,6 @@ jobs:
       - name: Run tests
         run: bash "$CI_TOOLS_ROOT/scripts/ci-run-stage.sh" tests bash scripts/test.sh
 
-      - name: Run native and release-contract tests
-        run: |
-          bash "$CI_TOOLS_ROOT/scripts/ci-run-stage.sh" native bash -euo pipefail <<'NATIVE'
-          bash scripts/test-macos13-deployment-contract-regressions.sh
-          bash scripts/test-macos13-deployment-contract.sh
-          bash scripts/test-appcast-minimum-system-version.sh
-          bash scripts/test-macos13-bundle-contract.sh
-          bash scripts/test-privileged-helper-bundle-contract.sh
-          bash scripts/test-mobile-battery-helper.sh
-          bash scripts/test-mobile-battery-rpaths.sh
-          bash scripts/test-otool-dependencies.sh
-          bash scripts/test-macos13-sparkle-contract.sh
-          bash scripts/test-mobile-battery-source-cache.sh
-          bash "$CI_TOOLS_ROOT/scripts/test-mobile-battery-build-cache.sh"
-          bash "$CI_TOOLS_ROOT/scripts/test-ci-diagnostics.sh"
-          bash "$CI_TOOLS_ROOT/scripts/test-build-timing.sh"
-          bash scripts/test-release-pipeline.sh
-          bash scripts/test-release-notarization.sh
-          bash scripts/test-mobile-battery-clang-version.sh
-          bash scripts/test-verify-local.sh
-          bash scripts/test-verify-local-bundle.sh
-          bash scripts/test-workflow-policy.sh
-          NATIVE
-
       - name: Run trusted release recovery regressions
         if: ${{ inputs.package_run_id != '' }}
         run: |
@@ -249,13 +225,111 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+  native:
+    runs-on: xcode-27
+    timeout-minutes: 30
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_27.app/Contents/Developer
+      CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+      PACKAGE_RUN_ID: ${{ inputs.package_run_id }}
+      WORKFLOW_SHA: ${{ github.workflow_sha }}
+      CI_TOOLS_ROOT: ${{ inputs.package_run_id != '' && format('{0}/release-tools', github.workspace) || github.workspace }}
+      CI_LOG_DIR: ${{ github.workspace }}/.build/ci-logs
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.candidate_sha }}
+
+      - name: Reassert frozen candidate
+        run: |
+          set -euo pipefail
+          ACTUAL_SHA="$(git rev-parse HEAD)"
+          [[ "${ACTUAL_SHA}" == "${CANDIDATE_SHA}" ]] || {
+            echo "::error::Native checkout ${ACTUAL_SHA} differs from ${CANDIDATE_SHA}."
+            exit 1
+          }
+          git fetch --quiet origin main
+          if ! git merge-base --is-ancestor "${CANDIDATE_SHA}" origin/main; then
+            echo "::error::Native candidate ${CANDIDATE_SHA} is not part of origin/main."
+            exit 1
+          fi
+          swift --version
+          xcodebuild -version
+          printf 'macOS SDK: %s\n' "$(xcrun --sdk macosx --show-sdk-version)"
+
+      - name: Check out trusted release recovery tooling
+        if: ${{ inputs.package_run_id != '' }}
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          ref: ${{ github.workflow_sha }}
+          path: release-tools
+
+      - name: Verify trusted release recovery tooling
+        if: ${{ inputs.package_run_id != '' }}
+        run: |
+          set -euo pipefail
+          ACTUAL_SHA="$(git -C release-tools rev-parse HEAD)"
+          [[ "${ACTUAL_SHA}" == "${WORKFLOW_SHA}" ]] || {
+            echo "::error::Trusted native tooling ${ACTUAL_SHA} differs from ${WORKFLOW_SHA}."
+            exit 1
+          }
+
+      - name: Run native and release-contract tests
+        run: |
+          bash "$CI_TOOLS_ROOT/scripts/ci-run-stage.sh" native bash -euo pipefail <<'NATIVE'
+          bash scripts/test-macos13-deployment-contract-regressions.sh
+          bash scripts/test-macos13-deployment-contract.sh
+          bash scripts/test-appcast-minimum-system-version.sh
+          bash scripts/test-macos13-bundle-contract.sh
+          bash scripts/test-privileged-helper-bundle-contract.sh
+          bash scripts/test-mobile-battery-helper.sh
+          bash scripts/test-mobile-battery-rpaths.sh
+          bash scripts/test-otool-dependencies.sh
+          bash scripts/test-macos13-sparkle-contract.sh
+          bash scripts/test-mobile-battery-source-cache.sh
+          bash "$CI_TOOLS_ROOT/scripts/test-mobile-battery-build-cache.sh"
+          bash "$CI_TOOLS_ROOT/scripts/test-ci-diagnostics.sh"
+          bash "$CI_TOOLS_ROOT/scripts/test-build-timing.sh"
+          bash scripts/test-release-pipeline.sh
+          bash scripts/test-release-notarization.sh
+          bash scripts/test-mobile-battery-clang-version.sh
+          bash scripts/test-verify-local.sh
+          bash scripts/test-verify-local-bundle.sh
+          bash scripts/test-workflow-policy.sh
+          NATIVE
+
+      - name: Summarize native diagnostics
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+          CI_DIAGNOSTIC_JOB: native
+        run: |
+          if [[ -f "$CI_TOOLS_ROOT/scripts/ci-diagnostics.py" ]]; then
+            python3 "$CI_TOOLS_ROOT/scripts/ci-diagnostics.py" summary "$CI_LOG_DIR"
+          else
+            echo 'Native verification stopped before diagnostic tooling was available. See the first failed step.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload native diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-diagnostics
+          path: .build/ci-logs/
+          if-no-files-found: ignore
+          retention-days: 14
+
   package:
-    needs: verify
+    needs: [verify, native]
     runs-on: xcode-27
     if: ${{ inputs.package_run_id == '' }}
     timeout-minutes: 75
     environment:
-      name: distribution
+      name: ${{ (inputs.publish || github.triggering_actor != 'lingyired') && 'distribution' || 'distribution-owner-signing' }}
     env:
       DEVELOPER_DIR: /Applications/Xcode_27.app/Contents/Developer
       CANDIDATE_SHA: ${{ needs.verify.outputs.candidate_sha || inputs.candidate_sha }}
@@ -583,8 +657,8 @@ jobs:
           exit "${CLEANUP_STATUS}"
 
   publish:
-    if: ${{ !cancelled() && inputs.publish && needs.verify.result == 'success' && (inputs.package_run_id != '' || needs.package.result == 'success') }}
-    needs: [verify, package]
+    if: ${{ !cancelled() && inputs.publish && needs.verify.result == 'success' && needs.native.result == 'success' && (inputs.package_run_id != '' || needs.package.result == 'success') }}
+    needs: [verify, native, package]
     runs-on: xcode-27
     timeout-minutes: 30
     environment:

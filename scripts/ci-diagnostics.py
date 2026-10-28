@@ -99,7 +99,8 @@ def summary(directory):
             warnings.append(f"Unreadable diagnostic record: {cell(path.name)}; see the original step log.")
     records.sort(key=lambda d: d["recorded_at"])
     job_status = os.environ.get("JOB_STATUS", "unknown")
-    lines = [f"### Verify diagnostics ({cell(job_status)})", "",
+    job_name = "native" if os.environ.get("CI_DIAGNOSTIC_JOB") == "native" else "verify"
+    lines = [f"### {job_name.capitalize()} diagnostics ({cell(job_status)})", "",
              "| Stage | Classification | Exit | Seconds | First failure |",
              "| --- | --- | ---: | ---: | --- |"]
     for d in records:
@@ -113,7 +114,7 @@ def summary(directory):
     elif job_status == "failure" and all(d["exit_code"] == 0 for d in records):
         lines += ["", "Recorded stages passed; an unrecorded workflow step failed. See the failed step log."]
     lines += ["", "Classification describes the observed failure, not its root cause. "
-              "Raw verify logs are retained in the verify-diagnostics artifact."]
+              f"Raw {job_name} logs are retained in the {job_name}-diagnostics artifact."]
     base = os.environ.get("GITHUB_SERVER_URL", "")
     repo = os.environ.get("GITHUB_REPOSITORY", "")
     run = os.environ.get("GITHUB_RUN_ID", "")

@@ -37,6 +37,7 @@ BUILD_SCRIPTS = (
     "scripts/otool-dependencies.py",
     "scripts/otool-rpaths.py",
 )
+REVIEWED_NOTICE_ROOT = "Support/MobileBatteryHelper/ThirdPartyNotices"
 
 TOOL_FORMULAE = ("autoconf", "automake", "libtool", "pkg-config")
 TOOL_COMMANDS = ("autoconf", "automake", "glibtool", "pkg-config", "make", "m4", "perl")
@@ -149,6 +150,43 @@ def sha256_text(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
+def reviewed_notices(root: Path) -> dict[str, str]:
+    notices = root / REVIEWED_NOTICE_ROOT
+    if notices.is_symlink() or not notices.is_dir():
+        raise CacheError(f"reviewed notice root is missing or invalid: {notices}")
+
+    def fail_walk(error: OSError) -> None:
+        raise error
+
+    files: dict[str, str] = {}
+    try:
+        for directory, dirnames, filenames in os.walk(notices, onerror=fail_walk):
+            directory_path = Path(directory)
+            for name in sorted(dirnames):
+                path = directory_path / name
+                relative = path.relative_to(root).as_posix()
+                if path.is_symlink():
+                    raise CacheError(
+                        f"reviewed notice path must not be a symlink: {relative}"
+                    )
+            for name in sorted(filenames):
+                path = directory_path / name
+                relative = path.relative_to(root).as_posix()
+                if path.is_symlink():
+                    raise CacheError(
+                        f"reviewed notice path must not be a symlink: {relative}"
+                    )
+                if not path.is_file():
+                    raise CacheError(f"unsupported reviewed notice path: {relative}")
+                files[relative] = sha256_file(path)
+    except OSError as error:
+        raise CacheError(f"unable to inspect reviewed notices: {notices}: {error}") from error
+
+    if not files:
+        raise CacheError(f"reviewed notice root is empty: {notices}")
+    return files
+
+
 def canonical_root(root: Path) -> Path:
     return root.resolve()
 
@@ -246,6 +284,7 @@ def cache_identity(root: Path, arch: str, minimum_macos: str) -> dict[str, objec
         "minimumMacOS": minimum_macos,
         "manifestSha256": sha256_file(manifest),
         "scripts": scripts,
+        "reviewedNotices": reviewed_notices(root),
         "configuration": {
             "optimization": "-O2",
             "openssl": "shared-no-tests",
@@ -852,7 +891,6 @@ def validate(
     if data["inventorySha256"] != actual_digest:
         raise CacheInvalid("cache marker inventory digest does not match")
 
-    verify_source_pins(root)
     libraries = verify_required_files(prefix)
     validate_inventory(prefix, stored_inventory, sdk_identity()["path"], marker)
     for library in libraries:
