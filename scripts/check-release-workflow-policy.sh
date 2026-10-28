@@ -5,6 +5,7 @@ set -euo pipefail
 ROOT="${STATUS_TRIO_RELEASE_POLICY_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"
 WORKFLOW="$ROOT/.github/workflows/release.yml"
 PUBLISH_SCRIPT="$ROOT/scripts/publish-release.sh"
+PACKAGE_ENVIRONMENT="\${{ (inputs.publish || github.triggering_actor != 'lingyired') && 'distribution' || 'distribution-owner-signing' }}"
 
 fail() {
     echo "release workflow policy check failed: $*" >&2
@@ -45,6 +46,7 @@ require_text "$WORKFLOW" "  package:"
 require_text "$WORKFLOW" "  publish:"
 require_text "$WORKFLOW" "needs: [verify, native]"
 require_text "$WORKFLOW" "needs: [verify, native, package]"
+require_text "$WORKFLOW" "$PACKAGE_ENVIRONMENT"
 require_text "$WORKFLOW" "name: status-trio-release-package"
 require_text "$WORKFLOW" "bash scripts/package-release.sh"
 require_text "$WORKFLOW" "bash scripts/publish-release.sh"
@@ -138,8 +140,8 @@ for required_check in \
     printf '%s\n' "$NATIVE_BLOCK" | grep -Fq "bash $required_check" ||
         fail "native job must run $required_check"
 done
-printf '%s\n' "$PACKAGE_BLOCK" | grep -Fq '      name: distribution' ||
-    fail "package job must use the protected distribution environment"
+printf '%s\n' "$PACKAGE_BLOCK" | grep -Fq "      name: $PACKAGE_ENVIRONMENT" ||
+    fail "package job must use the reviewed distribution environment for publication and the owner-only signing environment for diagnostics"
 printf '%s\n' "$PUBLISH_BLOCK" | grep -Fq '      name: distribution' ||
     fail "publish job must use the protected distribution environment"
 printf '%s\n' "$NATIVE_BLOCK" | grep -Fq 'bash scripts/test-release-notarization.sh' ||

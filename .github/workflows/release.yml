@@ -329,7 +329,7 @@ jobs:
     if: ${{ inputs.package_run_id == '' }}
     timeout-minutes: 75
     environment:
-      name: distribution
+      name: ${{ (inputs.publish || github.triggering_actor != 'lingyired') && 'distribution' || 'distribution-owner-signing' }}
     env:
       DEVELOPER_DIR: /Applications/Xcode_27.app/Contents/Developer
       CANDIDATE_SHA: ${{ needs.verify.outputs.candidate_sha || inputs.candidate_sha }}

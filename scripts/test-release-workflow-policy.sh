@@ -41,7 +41,8 @@ make_fixture "$valid"
 run_policy "$valid" || fail "valid release workflow fixture failed"
 
 for mutation in missing-native-contract conditional-native-contract verify-environment \
-    native-environment package-status-bypass publish-status-bypass \
+    native-environment package-status-bypass package-formal-review-bypass \
+    package-rerun-actor-bypass publish-environment publish-status-bypass \
     missing-recovery-regressions native-summary-status conditional-preflight \
     conditional-swift-tests native-shell workflow-shell job-shell verify-write-token \
     native-write-token early-native-summary wrong-native-runner; do
@@ -62,6 +63,15 @@ for mutation in missing-native-contract conditional-native-contract verify-envir
       when "package-status-bypass"
         source.sub!(%q{    if: ${{ inputs.package_run_id == '"'"''"'"' }}},
           %q{    if: ${{ always() && inputs.package_run_id == '"'"''"'"' }}})
+      when "package-formal-review-bypass"
+        source.sub!("inputs.publish || github.triggering_actor", "false || github.triggering_actor") or
+          abort "package environment publication guard missing"
+      when "package-rerun-actor-bypass"
+        source.sub!("github.triggering_actor", "github.actor") or
+          abort "package environment triggering actor missing"
+      when "publish-environment"
+        source.sub!(/(  publish:\n(?:.*\n)*?      name: )distribution/, %q{\1ci}) or
+          abort "publish environment missing"
       when "publish-status-bypass"
         source.sub!(/(  publish:\n    if:).*/, %q{\1 ${{ always() && inputs.publish }}})
       when "missing-recovery-regressions"
@@ -277,11 +287,11 @@ ruby -e '
   source = File.read(path)
   source.sub!("  package:\n    needs: [verify, native]\n    runs-on: xcode-27\n", "  package:\n    needs: [verify, native]\n    runs-on: xcode-27\n") or
     abort "package job missing"
-  source.sub!("      name: distribution\n", "      name: ci\n") or
+  source.sub!(/^      name: .*distribution-owner-signing.*$/, "      name: ci") or
     abort "package environment missing"
   File.write(path, source)
 ' "$invalid/.github/workflows/release.yml"
-expect_failure "package without distribution environment" run_policy "$invalid"
+expect_failure "package without reviewed and owner environment split" run_policy "$invalid"
 
 invalid="$WORK/invalid-verify-outputs"
 make_fixture "$invalid"

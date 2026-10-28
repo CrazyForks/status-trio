@@ -11,13 +11,17 @@ asking a maintainer to run the formal release workflow.
   jobs, builds one Universal artifact after both pass, then publishes that
   exact downloaded artifact. It never points a Tag at a moving branch and
   never rebuilds during publish.
-- The package and publish jobs use the protected `distribution` Environment.
-  The verify and native jobs receive no signing or notarization secrets.
+- Formal publication always uses the reviewed `distribution` Environment.
+  Owner-triggered diagnostic packages may use
+  `distribution-owner-signing`; other triggering actors and reruns use
+  `distribution`. The publish job always uses `distribution`. The verify and
+  native jobs receive no signing or notarization secrets.
 - Tag SHA, manifest SHA, DMG digest, asset sizes, appcast metadata, and public
   download checks are fail-closed. Re-running a draft may re-upload the same
   artifacts; re-running a public release may only verify it.
 - A non-publishing diagnostic run is an explicit exception, not a routine PR
-  gate. It needs maintainer approval and must not touch a release or appcast.
+  gate. An owner-triggered diagnostic may bypass Environment review; any other
+  triggering actor needs review. It must not touch a release or appcast.
 
 See `docs/github-actions-release.md`, `docs/privileged-helper.md`, and
 `docs/verification/`.
