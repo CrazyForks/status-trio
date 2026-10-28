@@ -103,6 +103,11 @@ half-unit shift. Keep `ChargingEffectRenderingTests` fingerprints honest.
 - Preserve permission boundaries and low-power idle behavior. Do not add
   polling, animation, logging, caches, or background work without an owner and
   a stop path.
+- Development bundles must display their `STDevelopmentCodename` beside the
+  status-panel Settings control and in the Settings About identity area.
+  Release bundles must not show a development codename. Build manual
+  development bundles through `scripts/build-worktree.sh` so the codename is
+  populated; never infer it from a checkout or process at runtime.
 - Never weaken, skip, or silently retry a test to make a local or release run
   green. A failing test is a finding until its root cause is addressed.
 

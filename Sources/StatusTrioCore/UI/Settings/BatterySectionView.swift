@@ -5,6 +5,7 @@ struct BatterySectionView: View {
     @ObservedObject var store: SettingsStore
     @ObservedObject var statusStore: SystemStatusStore
     @Binding var previewIsDark: Bool
+    var chargeToFullNow: ChargeToFullNowController? = nil
     @EnvironmentObject private var localization: Localization
     @ObservedObject private var helper: PrivilegedHelperManager = .shared
 
@@ -94,6 +95,20 @@ struct BatterySectionView: View {
             // toggle it cannot honour.
             if helper.isAvailable {
                 lowPowerModeGroup
+
+                SettingsDivider()
+            }
+
+            if let chargeToFullNow, chargeToFullNow.isSettingAvailable {
+                SettingsToggleRow(
+                    symbol: "bolt.badge.clock.fill",
+                    tint: .green,
+                    title: localization.string(.settingsBatteryShowChargeToFullNow),
+                    subtitle: localization.string(
+                        .settingsBatteryShowChargeToFullNowDescription
+                    ),
+                    isOn: $store.showsChargeToFullNowButton
+                )
 
                 SettingsDivider()
             }

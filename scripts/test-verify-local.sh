@@ -84,6 +84,11 @@ SH
         test-ci-workflow.sh test-build-timing.sh; do
         printf '#!/usr/bin/env bash\nexit 0\n' > "$fixture/scripts/$script"
     done
+    cat > "$fixture/scripts/test-powerui-charge-restore.sh" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+printf 'powerui-restore\n' >> "${VERIFY_TRACE:?}"
+SH
     cat > "$fixture/scripts/test-release-pipeline.sh" <<'SH'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -305,7 +310,7 @@ grep -Fq "mode: docs" "$WORK/docs.log" ||
 : > "$VERIFY_TRACE"
 bash "$WORK/repo/scripts/verify-local.sh" full >"$WORK/full.log" 2>&1 ||
     fail "full verification failed"
-for expected in forbidden "swift test" "swift build -c release" deployment deployment-regressions \
+for expected in forbidden "swift test" "swift build -c release" powerui-restore deployment deployment-regressions \
     appcast helper-contract mobile-helper mobile-rpaths otool sparkle mobile-source-cache release-policy \
     release-pipeline release-notarization clang self-test \
     workflow-policy bundle-self-test bundle app-icon-contract "build-app release no-open" \

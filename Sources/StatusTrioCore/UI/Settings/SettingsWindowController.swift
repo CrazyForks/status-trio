@@ -11,6 +11,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     private let localization: Localization
     private let inputSourceController: InputSourceController
     private let globalShortcutController: GlobalShortcutController?
+    private let chargeToFullNow: ChargeToFullNowController?
     private let activationPolicy: AppActivationPolicy
     private let showIconGuide: () -> Void
     private var localizationCancellable: AnyCancellable?
@@ -30,7 +31,8 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         showIconGuide: @escaping () -> Void,
         chargingEffectClock: ChargingEffectClock = ChargingEffectClock(),
         inputSourceController: InputSourceController? = nil,
-        globalShortcutController: GlobalShortcutController? = nil
+        globalShortcutController: GlobalShortcutController? = nil,
+        chargeToFullNow: ChargeToFullNowController? = nil
     ) {
         self.store = store
         self.statusStore = statusStore
@@ -38,6 +40,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         self.localization = localization
         self.inputSourceController = inputSourceController ?? InputSourceController()
         self.globalShortcutController = globalShortcutController
+        self.chargeToFullNow = chargeToFullNow
         self.activationPolicy = activationPolicy
         self.showIconGuide = showIconGuide
         self.lastBluetoothAuthorization = statusStore.bluetoothDevices.authorizationStatus
@@ -157,6 +160,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
                 localization: localization,
                 inputSourceController: inputSourceController,
                 globalShortcutController: globalShortcutController,
+                chargeToFullNow: chargeToFullNow,
                 onShowIconGuide: showIconGuide
             )
             .environmentObject(chargingEffectClock)

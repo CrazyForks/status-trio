@@ -11,6 +11,7 @@ struct SettingsView: View {
     /// guides that do not carry the app's controller.
     var inputSourceController: InputSourceController? = nil
     var globalShortcutController: GlobalShortcutController? = nil
+    var chargeToFullNow: ChargeToFullNowController? = nil
     let onShowIconGuide: () -> Void
 
     @State private var selectedSection: Section = .appIcon
@@ -107,13 +108,20 @@ struct SettingsView: View {
                                 .lineLimit(1)
 
                             if section == .about {
-                                Text("v\(AppMetadata.versionDisplayString)")
+                                Text(
+                                    DevelopmentBuildPresentation.aboutSidebarDetail(
+                                        version: AppMetadata.versionDisplayString,
+                                        codename: AppMetadata.developmentCodename
+                                    )
+                                )
                                     .font(.system(size: 9, weight: .regular, design: .rounded))
                                     .foregroundStyle(
                                         selectedSection == section
                                             ? Color.white.opacity(0.72)
                                             : Color.secondary
                                     )
+                                    .lineLimit(2)
+                                    .truncationMode(.tail)
                                     .fixedSize(horizontal: false, vertical: true)
                             }
                         }
@@ -152,7 +160,8 @@ struct SettingsView: View {
             BatterySectionView(
                 store: store,
                 statusStore: statusStore,
-                previewIsDark: $previewIsDark
+                previewIsDark: $previewIsDark,
+                chargeToFullNow: chargeToFullNow
             )
         case .network:
             NetworkSectionView(

@@ -117,6 +117,7 @@ else
     run_step "Privileged helper bundle" bash scripts/verify-privileged-helper-bundle.sh dist/StatusTrio.app
 
     NATIVE_CHECKS=(
+        "scripts/test-powerui-charge-restore.sh"
         "scripts/test-macos13-deployment-contract-regressions.sh"
         "scripts/test-macos13-deployment-contract.sh"
         "scripts/test-appcast-minimum-system-version.sh"

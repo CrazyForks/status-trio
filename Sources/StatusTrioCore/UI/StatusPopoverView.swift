@@ -138,7 +138,11 @@ struct StatusPopoverView: View {
                 onOpenBatterySettings: openBatterySettings,
                 lowPowerMode: panel.store.lowPowerMode,
                 showsLowPowerToggle: panel.settings.controlsLowPowerMode
-                    && helper.isReady
+                    && helper.isReady,
+                chargeToFullNow: panel.chargeToFullNowPresentation,
+                onChargeToFullNow: {
+                    panel.actions.requestChargeToFullNow()
+                }
             )
         case .network:
             NetworkStatusView(

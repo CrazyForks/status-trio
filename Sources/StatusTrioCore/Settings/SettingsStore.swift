@@ -31,6 +31,7 @@ final class SettingsStore: ObservableObject {
     static let highEnergyAppsRefreshIntervalDefaultsKey = "highEnergyAppsRefreshIntervalSeconds"
     static let highEnergyAppsRefreshIntervalRange: ClosedRange<Double> = 10...60
     static let defaultHighEnergyAppsRefreshIntervalSeconds: Double = 10
+    static let showsChargeToFullNowButtonDefaultsKey = "showsChargeToFullNowButton"
     static let showsChargingIndicatorDefaultsKey = "showsChargingIndicator"
     /// Legacy single-surface preference retained only for migration.
     static let showsChargingEffectDefaultsKey = "showsChargingEffect"
@@ -269,6 +270,15 @@ final class SettingsStore: ObservableObject {
     var batteryPowerDisplayOptions: BatteryPowerDisplayOptions {
         BatteryPowerDisplayOptions(showsInput: showsChargerInputPower,
             showsCharging: showsBatteryChargingPower, showsSystem: showsSystemPower)
+    }
+
+    @Published var showsChargeToFullNowButton: Bool {
+        didSet {
+            defaults.set(
+                showsChargeToFullNowButton,
+                forKey: Self.showsChargeToFullNowButtonDefaultsKey
+            )
+        }
     }
 
     @Published var showsChargingIndicator: Bool {
@@ -1294,6 +1304,9 @@ final class SettingsStore: ObservableObject {
             defaults.object(forKey: Self.highEnergyAppsRefreshIntervalDefaultsKey) as? Double
                 ?? Self.defaultHighEnergyAppsRefreshIntervalSeconds
         )
+        self.showsChargeToFullNowButton = defaults.object(
+            forKey: Self.showsChargeToFullNowButtonDefaultsKey
+        ) as? Bool ?? false
         self.showsChargingIndicator = defaults.object(forKey: Self.showsChargingIndicatorDefaultsKey) as? Bool ?? true
         let legacyChargingEffect = defaults.object(
             forKey: Self.showsChargingEffectDefaultsKey

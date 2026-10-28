@@ -188,6 +188,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             )
         },
         inputSourceController: InputSourceController? = nil,
+        chargeToFullNow: ChargeToFullNowController? = nil,
         appearanceProvider: (@MainActor () -> NSAppearance)? = nil
     ) {
         self.appearanceProvider = appearanceProvider
@@ -198,7 +199,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         let panelActions = StatusPanelActions(
             store: store,
             settings: settings,
-            inputSourceController: resolvedInputSourceController
+            inputSourceController: resolvedInputSourceController,
+            chargeToFullNow: chargeToFullNow
         )
         self.panelActions = panelActions
         let resolvedPanelUpdateScheduler: any PanelPresentationUpdateScheduling
@@ -213,7 +215,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             localization: localization,
             actions: panelActions,
             updateScheduler: resolvedPanelUpdateScheduler,
-            inputSourceController: resolvedInputSourceController
+            inputSourceController: resolvedInputSourceController,
+            chargeToFullNow: chargeToFullNow
         )
         self.iconPresentation = iconPresentation
         self.localization = localization

@@ -55,12 +55,14 @@ final class StatusPanelViewModel: ObservableObject {
     @Published private(set) var batteryDetails: PanelDetailState
     @Published private(set) var wifiDetails: WiFiPanelState
     @Published private(set) var wiredDetails: PanelDetailState
+    @Published private(set) var chargeToFullNowPresentation: ChargeToFullNowPresentation = .hidden
     @Published private(set) var visiblePopupSections: [PopupSection]
 
     let store: SystemStatusStore
     let settings: SettingsStore
     private let localization: Localization
     private let inputSourceController: InputSourceController
+    private let chargeToFullNow: ChargeToFullNowController?
     private let updateScheduler: any PanelPresentationUpdateScheduling
     let actions: StatusPanelActions
     private var cancellables: Set<AnyCancellable> = []
@@ -82,13 +84,15 @@ final class StatusPanelViewModel: ObservableObject {
         localization: Localization,
         actions: StatusPanelActions,
         updateScheduler: any PanelPresentationUpdateScheduling = YieldingPanelPresentationUpdateScheduler(),
-        inputSourceController: InputSourceController? = nil
+        inputSourceController: InputSourceController? = nil,
+        chargeToFullNow: ChargeToFullNowController? = nil
     ) {
         let resolvedInputSourceController = inputSourceController ?? InputSourceController()
         self.store = store
         self.settings = settings
         self.localization = localization
         self.inputSourceController = resolvedInputSourceController
+        self.chargeToFullNow = chargeToFullNow
         self.updateScheduler = updateScheduler
         self.actions = actions
         visiblePopupSections = settings.visiblePopupSections
@@ -146,6 +150,7 @@ final class StatusPanelViewModel: ObservableObject {
         let sections = settings.visiblePopupSections
         if visiblePopupSections != sections { visiblePopupSections = sections }
         subscribeToPopupPresentationSources()
+        subscribeToChargeToFullNow()
         reconcileSourceSubscriptions()
         refreshAll()
 
@@ -184,6 +189,8 @@ final class StatusPanelViewModel: ObservableObject {
         pendingRefreshRegions = []
         sourceDemandCancellables.removeAll()
         subscribedSourceDemand = nil
+        chargeToFullNow?.clearDemand()
+        chargeToFullNowPresentation = .hidden
         cancellables.removeAll()
     }
 
@@ -387,6 +394,65 @@ final class StatusPanelViewModel: ObservableObject {
                 coalesceControllerUpdate(.localIP)
             }
             .store(in: &cancellables)
+    }
+
+    private func subscribeToChargeToFullNow() {
+        guard let chargeToFullNow else {
+            chargeToFullNowPresentation = .hidden
+            return
+        }
+
+        chargeToFullNow.$presentation
+            .removeDuplicates()
+            .sink { [weak self] presentation in
+                self?.chargeToFullNowPresentation = presentation
+            }
+            .store(in: &cancellables)
+
+        Publishers.CombineLatest4(
+            settings.$showsChargeToFullNowButton.removeDuplicates(),
+            Publishers.CombineLatest(
+                settings.$enabledPopupSections,
+                settings.$popupSectionOrder
+            )
+                .map { enabled, order in
+                    enabled.contains(.battery) && order.contains(.battery)
+                }
+                .removeDuplicates(),
+            store.$isPopoverVisible.removeDuplicates(),
+            store.$popupSnapshot
+                .map(\.battery)
+                .removeDuplicates()
+        )
+        .sink { [weak self] settingEnabled, batterySectionVisible, popoverVisible, battery in
+            self?.updateChargeToFullNowDemand(
+                settingEnabled: settingEnabled,
+                batterySectionVisible: batterySectionVisible,
+                popoverVisible: popoverVisible,
+                battery: battery
+            )
+        }
+        .store(in: &cancellables)
+    }
+
+    private func updateChargeToFullNowDemand(
+        settingEnabled: Bool,
+        batterySectionVisible: Bool,
+        popoverVisible: Bool,
+        battery: BatteryStatus
+    ) {
+        guard isStarted, let chargeToFullNow else {
+            chargeToFullNowPresentation = .hidden
+            return
+        }
+        chargeToFullNow.update(
+            ChargeToFullNowDemand(
+                settingEnabled: settingEnabled,
+                popoverVisible: popoverVisible,
+                batterySectionVisible: batterySectionVisible,
+                battery: battery
+            )
+        )
     }
 
     private func reconcileSourceSubscriptions(

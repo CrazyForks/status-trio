@@ -442,6 +442,12 @@ final class AppEnvironment {
         )
         let chargingEffectClock = ChargingEffectClock()
         let chargingEffectMotionMonitor = ChargingEffectMotionMonitor()
+        let chargeToFullNow = ChargeToFullNowController(
+            backend: PowerUIChargeController(),
+            sessionStore: UserDefaultsChargeToFullNowSessionStore(
+                defaults: .standard
+            )
+        )
         let dockChargingAnimationPresenter: any DockChargingAnimationPresenting =
             DockChargingAnimationRendererMode.usesApplicationIconFrames()
                 ? DockApplicationIconChargingPresenter()
@@ -463,7 +469,8 @@ final class AppEnvironment {
             openSettings: { settingsWindowController?.show() },
             quitAction: { NSApplication.shared.terminate(nil) },
             chargingEffectClock: chargingEffectClock,
-            inputSourceController: inputSourceController
+            inputSourceController: inputSourceController,
+            chargeToFullNow: chargeToFullNow
         )
         let globalShortcutController = GlobalShortcutController(
             settings: settings,
@@ -482,7 +489,8 @@ final class AppEnvironment {
             },
             chargingEffectClock: chargingEffectClock,
             inputSourceController: inputSourceController,
-            globalShortcutController: globalShortcutController
+            globalShortcutController: globalShortcutController,
+            chargeToFullNow: chargeToFullNow
         )
         settingsWindowController = resolvedSettingsWindowController
         onboardingWindowController.openSettings = { [weak resolvedSettingsWindowController] in
