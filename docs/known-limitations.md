@@ -64,9 +64,10 @@ The current public GitHub and Homebrew release, **1.7.5**, leaves charge-limit
 overrides to macOS. When charging is paused, it reports the actual state and the
 battery row's gear button opens System Settings.
 
-The source on `main` adds an optional **Charge to Full Now** button, off by
-default, for supported Apple silicon Macs running macOS 26.4 or later. It uses
-the same private PowerUI request observed behind the native action. There is no
+The source on `main` adds a **Charge to Full Now** button for supported Apple
+silicon Macs running macOS 26.4 or later. It is enabled by default only when the
+capability is available and can be turned off in Battery settings. It uses the
+same private PowerUI request observed behind the native action. There is no
 public API or cross-version guarantee for this operation. Unsupported systems
 do not offer the action.
 

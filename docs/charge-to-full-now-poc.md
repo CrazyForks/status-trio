@@ -295,8 +295,8 @@ The product implementation follows this audit:
   observed override or a changed valid limit ends that ambiguity immediately.
   Cancel during that ambiguity retains the session and asks the user to retry.
   A read error retains a cancel/retry action instead of hiding it.
-- `SettingsStore.showsChargeToFullNowButton` is default-off and persisted.
-- `BatterySectionView` shows the opt-in only when capability is available.
+- `SettingsStore.showsChargeToFullNowButton` is default-on and persisted.
+- `BatterySectionView` shows the setting only when capability is available.
 - `StatusPanelViewModel` supplies demand only while the popover and battery
   section are both visible; closing the popover clears that demand.
 - `BatteryStatusView` draws the action below the home battery summary, never in
@@ -395,7 +395,7 @@ is `.build/charge-to-full-now-poc/full-verification-initial-status.txt`.
 
 The user accepted the measured native behavior and authorized the explicit
 override/cancel implementation. Status Trio therefore adds the controller,
-default-off setting, home-panel action, session persistence, state/error
+default-on setting, home-panel action, session persistence, state/error
 presentation, tests, and 12 translations.
 
 The product still does not request permissions, use administrator authorization,
@@ -433,8 +433,8 @@ Use the development bundle from `bash scripts/build-worktree.sh release no-open`
 and keep System Settings open beside it. Repeat for each supported native
 limit (`80`, `85`, `90`, `95`); record the exact OS build and Mac model.
 
-1. Set the native limit and enable the existing Status Trio opt-in. Record the
-   baseline before clicking its home-panel Charge to Full Now button.
+1. Set the native limit and confirm the Status Trio setting is enabled. Record
+   the baseline before clicking its home-panel Charge to Full Now button.
 2. Click Charge to Full Now manually. Reopen the panel if needed; record
    whether the stored MCL limit still equals the baseline or becomes `100`.
 3. Click Cancel Charge to Full manually. If confirmation is shown, verify the

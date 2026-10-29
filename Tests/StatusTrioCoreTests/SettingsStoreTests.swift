@@ -124,18 +124,18 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(second.batterySymbolScale, 0.95, accuracy: 0.001)
     }
 
-    func testChargeToFullNowDefaultsOffAndPersists() {
+    func testChargeToFullNowDefaultsOnAndPersists() {
         let suite = makeSuite()
         defer { clear(suite) }
 
         let first = SettingsStore(defaults: suite.defaults)
-        XCTAssertFalse(first.showsChargeToFullNowButton)
-
-        first.showsChargeToFullNowButton = true
-        XCTAssertTrue(SettingsStore(defaults: suite.defaults).showsChargeToFullNowButton)
+        XCTAssertTrue(first.showsChargeToFullNowButton)
 
         first.showsChargeToFullNowButton = false
         XCTAssertFalse(SettingsStore(defaults: suite.defaults).showsChargeToFullNowButton)
+
+        first.showsChargeToFullNowButton = true
+        XCTAssertTrue(SettingsStore(defaults: suite.defaults).showsChargeToFullNowButton)
     }
 
     func testAppleBackgroundRefreshDefaultsOffAndIntervalDefaultsToOneMinute() {
