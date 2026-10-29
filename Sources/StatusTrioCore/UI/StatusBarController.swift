@@ -717,9 +717,11 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     }
 
     private func shouldConsumeVolumeScrollWheel(_ event: NSEvent) -> Bool {
+        let volumeState = panelViewModel.volume
         guard event.window === popover.contentViewController?.view.window,
               settings.popupScrollAdjustsVolume,
               store.isVolumeControlAvailable,
+              volumeState.canAdjust,
               !isPointerOverScrollView(event),
               isPointerInsideVolumeScrollArea(event) else {
             return false
@@ -728,7 +730,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
 
         guard let currentScalar = volumeScrollSession.scalar(
             at: event.timestamp,
-            fallback: store.popupSnapshot.volume.scalar
+            identity: volumeState.interactionIdentity,
+            fallback: volumeState.scalar
         ) else {
             return false
         }
@@ -745,7 +748,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             to: currentScalar
         )
         if volumeScrollSession.shouldUnmute(
-            isMuted: store.popupSnapshot.volume.isMuted,
+            in: volumeState,
             isIncreasing: delta > 0
         ) {
             store.toggleMute()

@@ -75,6 +75,11 @@ final class SystemStatusStore: ObservableObject {
     @Published private(set) var isNetworkConstrained = false
     @Published private(set) var liveVolume: VolumeStatus
     @Published private(set) var liveInput = AudioInputStatus.empty
+    @Published private(set) var betterDisplayState = BetterDisplayCatalogUpdate(
+        devices: [], availability: .idle
+    )
+    var betterDisplayDevices: [BetterDisplayDevice] { betterDisplayState.devices }
+    var betterDisplayAvailability: BetterDisplayAvailability { betterDisplayState.availability }
     let batteryDetails: BatteryDetailsController
     let wifiNetworks: WiFiNetworkController
     /// The wired link's address configuration. Read while the popover is open on
@@ -116,6 +121,8 @@ final class SystemStatusStore: ObservableObject {
     private var isVPNActiveForPopover = false
     private var inputUpdateTask: Task<Void, Never>?
     private var inputSettingsCancellable: AnyCancellable?
+    private var externalVolumeSettingsCancellable: AnyCancellable?
+    private weak var boundExternalVolumeSettings: SettingsStore?
     private var localIPSettingsCancellable: AnyCancellable?
     private var applicationEnergySettingsCancellable: AnyCancellable?
     private var isApplicationEnergyEnabled = false
@@ -380,6 +387,7 @@ final class SystemStatusStore: ObservableObject {
         let wifiUpdates = wifiMonitor.updates
         let connectionUpdates = connectionMonitor?.updates
         let volumeUpdates = volumeMonitor.updates
+        let betterDisplayCatalogUpdates = volumeMonitor.betterDisplayCatalogUpdates
         var tasks = [
             Task { [weak self] in
                 for await value in batteryUpdates {
@@ -397,6 +405,12 @@ final class SystemStatusStore: ObservableObject {
                 for await value in volumeUpdates {
                     guard let self else { return }
                     self.applyVolume(value)
+                }
+            },
+            Task { [weak self] in
+                for await value in betterDisplayCatalogUpdates {
+                    guard let self else { return }
+                    self.applyBetterDisplayCatalog(value)
                 }
             }
         ]
@@ -431,6 +445,8 @@ final class SystemStatusStore: ObservableObject {
         isInputEnabled = false
         inputSettingsCancellable?.cancel()
         inputSettingsCancellable = nil
+        externalVolumeSettingsCancellable?.cancel()
+        externalVolumeSettingsCancellable = nil
         applicationEnergySettingsCancellable?.cancel()
         applicationEnergySettingsCancellable = nil
         batteryDetails.energyApps.stop()
@@ -843,6 +859,31 @@ final class SystemStatusStore: ObservableObject {
 
     func refreshForPopoverOpening() {
         setPopoverVisible(true)
+    }
+
+    func bindExternalVolumeSettings(_ settings: SettingsStore) {
+        guard !hasStopped else { return }
+        boundExternalVolumeSettings = settings
+        volumeMonitor.setExternalVolumeConfigurations(
+            settings.externalVolumeConfigurations
+        )
+        externalVolumeSettingsCancellable = settings.$externalVolumeConfigurations
+            .removeDuplicates()
+            .sink { [weak self] configurations in
+                self?.volumeMonitor.setExternalVolumeConfigurations(configurations)
+            }
+    }
+
+    func refreshBetterDisplayDevices() {
+        guard !hasStopped else { return }
+        betterDisplayState = BetterDisplayCatalogUpdate(
+            devices: betterDisplayState.devices,
+            availability: .discovering,
+            isCatalogLoaded: false,
+            outputUID: betterDisplayState.outputUID,
+            displayUUID: betterDisplayState.displayUUID
+        )
+        volumeMonitor.refreshBetterDisplayDevices()
     }
 
     func setRefreshInterval(_ interval: Duration) {
@@ -1355,7 +1396,32 @@ final class SystemStatusStore: ObservableObject {
             liveVolume = value
         }
         publish(snapshot.replacingVolume(value))
+        associateCurrentBetterDisplayOutputIfNeeded()
         reconcileBluetoothDemand()
+    }
+
+    private func applyBetterDisplayCatalog(_ value: BetterDisplayCatalogUpdate) {
+        guard betterDisplayState != value else { return }
+        betterDisplayState = value
+        associateCurrentBetterDisplayOutputIfNeeded()
+    }
+
+    private func associateCurrentBetterDisplayOutputIfNeeded() {
+        guard !hasStopped, liveVolume.controlSource != .native,
+              let settings = boundExternalVolumeSettings,
+              let uid = liveVolume.currentDevice?.uid,
+              betterDisplayState.outputUID == uid,
+              betterDisplayState.isCatalogLoaded,
+              let uuid = betterDisplayState.automaticDisplayUUID,
+              betterDisplayState.devices.contains(where: { $0.uuid == uuid })
+        else { return }
+        let configuration = settings.externalVolumeConfiguration(for: uid)
+        guard configuration.backend == .betterDisplay,
+              configuration.betterDisplayUUID == nil
+        else { return }
+        settings.setExternalVolumeConfiguration(
+            .init(backend: .betterDisplay, betterDisplayUUID: uuid), for: uid
+        )
     }
 
     private func publish(_ next: StatusSnapshot) {
@@ -1433,7 +1499,11 @@ private extension VolumeStatus {
             deviceName: deviceName,
             currentDevice: currentDevice,
             outputDevices: outputDevices,
-            canSetVolume: canSetVolume, canMute: canMute
+            canSetVolume: canSetVolume, canMute: canMute,
+            muteState: muteState,
+            externalVolumeTransitionGeneration:
+                externalVolumeTransitionGeneration,
+            controlSource: controlSource
         )
     }
 
@@ -1444,7 +1514,11 @@ private extension VolumeStatus {
             deviceName: deviceName,
             currentDevice: currentDevice,
             outputDevices: outputDevices,
-            canSetVolume: canSetVolume, canMute: canMute
+            canSetVolume: canSetVolume, canMute: canMute,
+            muteState: isMuted ? .muted : .unmuted,
+            externalVolumeTransitionGeneration:
+                externalVolumeTransitionGeneration,
+            controlSource: controlSource
         )
     }
 }

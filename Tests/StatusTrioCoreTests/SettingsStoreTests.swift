@@ -1461,6 +1461,109 @@ final class SettingsStoreTests: XCTestCase {
         )
     }
 
+    func testExternalVolumeConfigurationDefaultsToDirectDDC() {
+        let store = SettingsStore(defaults: makeSuite().defaults)
+
+        XCTAssertEqual(
+            store.externalVolumeConfiguration(for: "audio-benq"),
+            .default
+        )
+        XCTAssertEqual(
+            store.externalVolumeConfiguration(for: "audio-benq").backend,
+            .directDDC
+        )
+    }
+
+    func testExternalVolumeConfigurationRoundTripsPerOutputUID() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+        let first = SettingsStore(defaults: suite.defaults)
+        first.setExternalVolumeConfiguration(
+            ExternalVolumeConfiguration(
+                backend: .betterDisplay,
+                betterDisplayUUID: "display-a"
+            ),
+            for: "audio-benq"
+        )
+        first.setExternalVolumeConfiguration(
+            ExternalVolumeConfiguration(
+                backend: .betterDisplay,
+                betterDisplayUUID: "display-b"
+            ),
+            for: "audio-lg"
+        )
+
+        let reopened = SettingsStore(defaults: suite.defaults)
+        XCTAssertEqual(
+            reopened.externalVolumeConfiguration(for: "audio-benq"),
+            ExternalVolumeConfiguration(
+                backend: .betterDisplay,
+                betterDisplayUUID: "display-a"
+            )
+        )
+        XCTAssertEqual(
+            reopened.externalVolumeConfiguration(for: "audio-lg"),
+            ExternalVolumeConfiguration(
+                backend: .betterDisplay,
+                betterDisplayUUID: "display-b"
+            )
+        )
+        XCTAssertEqual(
+            reopened.externalVolumeConfiguration(for: "audio-other"),
+            .default
+        )
+    }
+
+    func testUnboundBetterDisplayConfigurationPersistsUntilAssociationIsChosen() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+        let first = SettingsStore(defaults: suite.defaults)
+        first.setExternalVolumeConfiguration(
+            ExternalVolumeConfiguration(
+                backend: .betterDisplay,
+                betterDisplayUUID: " display-a "
+            ),
+            for: "audio-benq"
+        )
+        first.setExternalVolumeConfiguration(
+            ExternalVolumeConfiguration(
+                backend: .betterDisplay,
+                betterDisplayUUID: "  "
+            ),
+            for: "audio-benq"
+        )
+
+        let reopened = SettingsStore(defaults: suite.defaults)
+        XCTAssertEqual(
+            reopened.externalVolumeConfiguration(for: "audio-benq"),
+            ExternalVolumeConfiguration(
+                backend: .betterDisplay,
+                betterDisplayUUID: nil
+            )
+        )
+
+        reopened.setExternalVolumeConfiguration(.default, for: "audio-benq")
+        XCTAssertEqual(
+            SettingsStore(defaults: suite.defaults)
+                .externalVolumeConfiguration(for: "audio-benq"),
+            .default
+        )
+    }
+
+    func testCorruptExternalVolumeConfigurationFallsBackSafely() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+        suite.defaults.set(
+            Data("not-json".utf8),
+            forKey: SettingsStore.externalVolumeConfigurationsDefaultsKey
+        )
+
+        let store = SettingsStore(defaults: suite.defaults)
+
+        XCTAssertEqual(store.externalVolumeConfiguration(for: "audio-benq"), .default)
+        XCTAssertTrue(store.externalVolumeConfigurations.isEmpty)
+    }
+
     private func makeSuite() -> (defaults: UserDefaults, name: String) {
         let name = "StatusTrioCoreTests.SettingsStore.\(UUID().uuidString)"
         guard let defaults = UserDefaults(suiteName: name) else {

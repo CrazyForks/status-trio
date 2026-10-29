@@ -1923,28 +1923,38 @@ final class WiFiClassifierTests: XCTestCase {
         let reader = DeferredWiFiStatusReader()
         let eventMonitor = FakeWiFiEventMonitor()
         let sleeper = ManualEventSleeper()
+        let recoverySleeper = ManualEventSleeper()
         let monitor = makeMonitor(
             statusReader: reader,
             eventMonitor: eventMonitor,
-            refreshDebounceSleep: { duration in await sleeper.sleep(duration) }
+            refreshDebounceSleep: { duration in await sleeper.sleep(duration) },
+            invalidationRecoveryBackoff: [.seconds(5)],
+            invalidationRecoverySleep: { duration in
+                await recoverySleeper.sleep(duration)
+            }
         )
         monitor.start()
         eventMonitor.deliver(.connectionInvalidated)
         await sleeper.waitForCallCount(1)
+        await recoverySleeper.waitForCallCount(1)
         sleeper.releaseAll()
         await sleeper.waitForCompletionCount(1)
         // Drain the scheduled main-actor refresh while the system read stays blocked.
         for _ in 0..<20 { await Task.yield() }
         XCTAssertEqual(reader.includeSSIDRequests.count, 1)
 
-        reader.complete(makeReading(rssi: -40))
-        let followUpStarted = await waitUntil {
-            reader.includeSSIDRequests.count == 2
+        let followUpStarted = expectation(description: "debounced follow-up read starts")
+        reader.onRead = {
+            if reader.includeSSIDRequests.count == 2 {
+                followUpStarted.fulfill()
+            }
         }
-        XCTAssertTrue(
-            followUpStarted,
-            "the debounced follow-up read must start after the invalidated read completes"
+        reader.complete(makeReading(rssi: -40))
+        await fulfillment(
+            of: [followUpStarted],
+            timeout: 1
         )
+        reader.onRead = nil
         reader.complete(makeReading(rssi: -65))
         XCTAssertEqual(reader.includeSSIDRequests.count, 2)
         monitor.stop()
@@ -2243,7 +2253,16 @@ private final class DeferredWiFiStatusReader: WiFiStatusReadingProviding {
     }
 
     func complete(_ reading: WiFiSystemReading?) {
-        completions.removeFirst()(WiFiStatusReading(interface: reading, sharingActive: false))
+        guard !completions.isEmpty else {
+            XCTFail(
+                "complete() called with no read in flight; includeSSID requests: "
+                    + "\(includeSSIDRequests)"
+            )
+            return
+        }
+        completions.removeFirst()(
+            WiFiStatusReading(interface: reading, sharingActive: false)
+        )
     }
 
     /// Completes the newest outstanding read, leaving older ones pending. Used

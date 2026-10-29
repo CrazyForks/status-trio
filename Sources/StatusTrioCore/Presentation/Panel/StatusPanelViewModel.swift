@@ -113,6 +113,10 @@ final class StatusPanelViewModel: ObservableObject {
         volume = AudioPanelMapper.volume(
             store.liveVolume,
             controllerAvailable: store.isVolumeControllerAvailable,
+            externalVolumeConfiguration: Self.externalVolumeConfiguration(
+                for: store.liveVolume,
+                settings: settings
+            ),
             deviceList: AudioOutputListPreferences(
                 order: settings.outputDeviceOrder,
                 visibleLimit: settings.visibleOutputDeviceLimit
@@ -288,6 +292,10 @@ final class StatusPanelViewModel: ObservableObject {
         return AudioPanelMapper.volume(
             status,
             controllerAvailable: store.isVolumeControllerAvailable,
+            externalVolumeConfiguration: Self.externalVolumeConfiguration(
+                for: status,
+                settings: settings
+            ),
             deviceList: outputPreferences,
             listeningModes: store.bluetoothListeningModes,
             listeningModeTaskID: makeListeningModeTaskID(outputDevices: status.outputDevices),
@@ -296,6 +304,21 @@ final class StatusPanelViewModel: ObservableObject {
             previewLocalization: PreviewLocalization.forCode(previewConfiguration.languageCode),
             localization: localization
         )
+    }
+
+    private static func externalVolumeConfiguration(
+        for status: VolumeStatus,
+        settings: SettingsStore
+    ) -> ExternalVolumeConfiguration {
+        let currentDevice = status.currentDevice
+            ?? status.outputDevices.first(where: \.isCurrent)
+        guard let uid = currentDevice?.uid?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+            !uid.isEmpty
+        else {
+            return .default
+        }
+        return settings.externalVolumeConfiguration(for: uid)
     }
 
     private var currentPreviewConfiguration: ListeningModePreview.Configuration {
@@ -806,7 +829,10 @@ private extension VolumePanelState {
             summary: summary,
             scalar: scalar,
             percentageText: percentageText,
+            outputIdentity: outputIdentity,
+            interactionIdentity: interactionIdentity,
             muted: muted,
+            muteState: muteState,
             canAdjust: canAdjust,
             canMute: canMute,
             muteSymbol: muteSymbol,
@@ -828,7 +854,10 @@ private extension VolumePanelState {
             summary: summary.releasingPresentation(),
             scalar: scalar,
             percentageText: percentageText,
+            outputIdentity: outputIdentity,
+            interactionIdentity: interactionIdentity,
             muted: muted,
+            muteState: muteState,
             canAdjust: false,
             canMute: false,
             muteSymbol: muteSymbol,

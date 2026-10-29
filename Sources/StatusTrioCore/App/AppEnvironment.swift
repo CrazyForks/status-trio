@@ -134,6 +134,7 @@ final class AppEnvironment {
         store.bindMobileBatterySettings(settings)
         store.bindLowPowerModeSettings(settings)
         store.bindBluetoothSettings(settings)
+        store.bindExternalVolumeSettings(settings)
         store.start()
         telemetryReporter.start()
     }

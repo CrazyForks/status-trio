@@ -119,6 +119,7 @@ final class SettingsStore: ObservableObject {
     static let bluetoothDeviceLimitRange: ClosedRange<Int> = 1...20
     static let alwaysShowsAllOutputDevicesDefaultsKey = "alwaysShowsAllOutputDevices"
     static let outputDeviceOrderDefaultsKey = "outputDeviceOrder"
+    static let externalVolumeConfigurationsDefaultsKey = "externalVolumeConfigurations.v1"
     static let popupSectionOrderDefaultsKey = "popupSectionOrder"
     static let enabledPopupSectionsDefaultsKey = "enabledPopupSections"
     static let defaultEnabledPopupSections: Set<PopupSection> = [.battery, .network, .vpn, .volume]
@@ -744,6 +745,18 @@ final class SettingsStore: ObservableObject {
         }
     }
 
+    @Published private(set) var externalVolumeConfigurations: [String: ExternalVolumeConfiguration] {
+        didSet {
+            guard !externalVolumeConfigurations.isEmpty,
+                  let data = try? JSONEncoder().encode(externalVolumeConfigurations)
+            else {
+                defaults.removeObject(forKey: Self.externalVolumeConfigurationsDefaultsKey)
+                return
+            }
+            defaults.set(data, forKey: Self.externalVolumeConfigurationsDefaultsKey)
+        }
+    }
+
     @Published var showsBluetoothDeviceList: Bool {
         didSet {
             defaults.set(
@@ -908,6 +921,29 @@ final class SettingsStore: ObservableObject {
 
     func orderedOutputDevices(_ devices: [AudioOutputDevice]) -> [AudioOutputDevice] {
         OutputDeviceListPresentation.orderedDevices(devices, using: outputDeviceOrder)
+    }
+
+    func externalVolumeConfiguration(for uid: String) -> ExternalVolumeConfiguration {
+        let uid = uid.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !uid.isEmpty else { return .default }
+        return externalVolumeConfigurations[uid] ?? .default
+    }
+
+    func setExternalVolumeConfiguration(
+        _ configuration: ExternalVolumeConfiguration,
+        for uid: String
+    ) {
+        let uid = uid.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !uid.isEmpty else { return }
+
+        var updated = externalVolumeConfigurations
+        if let sanitized = configuration.sanitized(), sanitized != .default {
+            updated[uid] = sanitized
+        } else {
+            updated.removeValue(forKey: uid)
+        }
+        guard updated != externalVolumeConfigurations else { return }
+        externalVolumeConfigurations = updated
     }
 
     func moveOutputDevices(
@@ -1271,6 +1307,9 @@ final class SettingsStore: ObservableObject {
         let storedVolumeDisplayStyle = defaults.string(forKey: Self.volumeDisplayStyleDefaultsKey)
         let storedRingStrokeStyle = defaults.string(forKey: Self.ringStrokeStyleDefaultsKey)
         let storedOutputDeviceOrder = defaults.stringArray(forKey: Self.outputDeviceOrderDefaultsKey) ?? []
+        let storedExternalVolumeConfigurations = Self.decodedExternalVolumeConfigurations(
+            defaults.data(forKey: Self.externalVolumeConfigurationsDefaultsKey)
+        )
         let storedPopupSectionOrder = defaults.stringArray(
             forKey: Self.popupSectionOrderDefaultsKey
         ) ?? []
@@ -1471,6 +1510,7 @@ final class SettingsStore: ObservableObject {
             forKey: Self.alwaysShowsAllOutputDevicesDefaultsKey
         ) as? Bool ?? false
         self.outputDeviceOrder = storedOutputDeviceOrder
+        self.externalVolumeConfigurations = storedExternalVolumeConfigurations
         self.popupSectionOrder = Self.sanitizedPopupSectionOrder(
             storedPopupSectionOrder
         )
@@ -1516,6 +1556,32 @@ final class SettingsStore: ObservableObject {
         }
         var seen: Set<UUID> = []
         return decoded.filter { seen.insert($0.id).inserted }
+    }
+
+    private static func decodedExternalVolumeConfigurations(
+        _ data: Data?
+    ) -> [String: ExternalVolumeConfiguration] {
+        guard let data,
+              let decoded = try? JSONDecoder().decode(
+                  [String: ExternalVolumeConfiguration].self,
+                  from: data
+              )
+        else {
+            return [:]
+        }
+
+        var sanitized: [String: ExternalVolumeConfiguration] = [:]
+        for (rawUID, configuration) in decoded {
+            let uid = rawUID.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !uid.isEmpty,
+                  let configuration = configuration.sanitized(),
+                  configuration != .default
+            else {
+                continue
+            }
+            sanitized[uid] = configuration
+        }
+        return sanitized
     }
 
     private static func decodedTrustedAppleDeviceMetadata(_ data: Data?) -> [AppleDeviceCandidate] {

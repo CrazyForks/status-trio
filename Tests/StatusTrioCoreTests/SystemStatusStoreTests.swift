@@ -1318,6 +1318,36 @@ final class SystemStatusStoreTests: XCTestCase {
         store.stop()
     }
 
+    func testOptimisticVolumeAndMutePreserveControlSource() async {
+        for source in [VolumeControlSource.native, .betterDisplay, .directDDC] {
+            let volume = FakeVolumeMonitor()
+            let store = SystemStatusStore(
+                batteryMonitor: FakeBatteryMonitor(), wifiMonitor: FakeWiFiMonitor(),
+                volumeMonitor: volume, volumeFeedback: FakeVolumeFeedbackPlayer(),
+                refreshInterval: .seconds(60)
+            )
+            store.start()
+            volume.send(VolumeStatus(
+                scalar: 0.4, isMuted: false, deviceName: "Speaker",
+                controlSource: source
+            ))
+            await waitUntil { store.liveVolume.scalar == 0.4 }
+
+            store.setVolume(0.7)
+            XCTAssertEqual(store.liveVolume.controlSource, source)
+            XCTAssertEqual(store.snapshot.volume.controlSource, source)
+            XCTAssertEqual(store.liveVolume.scalar, 0.7)
+            XCTAssertEqual(volume.setVolumeValues, [0.7])
+
+            store.toggleMute()
+            XCTAssertEqual(store.liveVolume.controlSource, source)
+            XCTAssertEqual(store.snapshot.volume.controlSource, source)
+            XCTAssertTrue(store.liveVolume.isMuted)
+            XCTAssertEqual(volume.toggleMuteCount, 1)
+            store.stop()
+        }
+    }
+
     func testSetVolumeUpdatesVisibleVolumeImmediately() async {
         let volume = FakeVolumeMonitor()
         let sleeper = ManualSleeper()

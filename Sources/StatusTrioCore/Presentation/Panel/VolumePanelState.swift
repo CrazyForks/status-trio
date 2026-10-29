@@ -37,7 +37,10 @@ struct VolumePanelState: Equatable, Sendable {
     let summary: PanelSummaryState
     let scalar: Double?
     let percentageText: String
+    let outputIdentity: PanelAudioDeviceID?
+    let interactionIdentity: VolumeControlInteractionIdentity
     let muted: Bool
+    let muteState: VolumeMuteState
     let canAdjust: Bool
     let canMute: Bool
     let muteSymbol: String
@@ -64,5 +67,15 @@ struct VolumePanelState: Equatable, Sendable {
             limit: visibleLimit,
             isExpanded: expanded
         )
+    }
+}
+
+enum VolumePanelActionGate {
+    static func toggleMute(
+        in state: VolumePanelState,
+        action: () -> Void
+    ) {
+        guard state.canMute, state.muteState != .unknown else { return }
+        action()
     }
 }
