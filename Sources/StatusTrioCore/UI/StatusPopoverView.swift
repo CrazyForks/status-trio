@@ -1,14 +1,6 @@
 import AppKit
 import SwiftUI
 
-private enum PopoverPanel {
-    case summary
-    case battery
-    case wifi(showDetails: Bool)
-    case ethernet
-    case inputSource
-}
-
 struct StatusPopoverView: View {
     @ObservedObject var panel: StatusPanelViewModel
     /// Observed so the Low Power Mode control appears the moment the helper is
@@ -32,20 +24,16 @@ struct StatusPopoverView: View {
     let openSoundInputSettings: () -> Void
     let openKeyboardSettings: () -> Void
     let quit: () -> Void
-    @State private var currentPanel: PopoverPanel = .summary
 
     var body: some View {
         Group {
-            switch currentPanel {
+            switch panel.route {
             case .summary:
                 summary
             case .battery:
                 BatteryDetailsView(
                     state: panel.batteryDetails,
-                    onBack: {
-                        panel.actions.batteryDetailsClosed()
-                        currentPanel = .summary
-                    },
+                    onBack: { panel.showSummaryPage() },
                     onOpenBatterySettings: openBatterySettings,
                     onOpenAppBatterySettings: openAppBatterySettings,
                     onCopyValue: { copyValue($0) },
@@ -56,13 +44,10 @@ struct StatusPopoverView: View {
                     chargeToFullNow: panel.chargeToFullNowPresentation,
                     onChargeToFullNow: { panel.actions.requestChargeToFullNow() }
                 )
-            case .wifi(let showDetails):
+            case .wifi:
                 WiFiNetworkListView(
                     state: panel.wifiDetails,
-                    onBack: {
-                        panel.actions.wifiDetailsClosed()
-                        currentPanel = .summary
-                    },
+                    onBack: { panel.showSummaryPage() },
                     onRequestNameAccess: requestWiFiNameAccess,
                     onOpenWiFiSettings: openWiFiSettings,
                     onOpenLocationSettings: openLocationSettings,
@@ -70,15 +55,15 @@ struct StatusPopoverView: View {
                     onRefresh: { panel.actions.refreshWiFi() },
                     onOpenSharingSettings: openSharingSettings,
                     onCopyValue: { copyValue($0) },
-                    showsDetailsInitially: showDetails
+                    showsDetails: panel.wifiDisclosure.showsDetails,
+                    showsMore: panel.wifiDisclosure.showsMore,
+                    onSetShowsDetails: { panel.setWiFiShowsDetails($0) },
+                    onSetShowsMore: { panel.setWiFiShowsMore($0) }
                 )
             case .ethernet:
                 EthernetLinkView(
                     state: panel.wiredDetails,
-                    onBack: {
-                        panel.actions.wiredDetailsClosed()
-                        currentPanel = .summary
-                    },
+                    onBack: { panel.showSummaryPage() },
                     onOpenNetworkSettings: openNetworkSettings,
                     onOpenSharingSettings: openSharingSettings,
                     onCopyValue: { copyValue($0) }
@@ -86,7 +71,7 @@ struct StatusPopoverView: View {
             case .inputSource:
                 InputSourceListView(
                     state: panel.inputSource,
-                    onBack: { currentPanel = .summary },
+                    onBack: { panel.showSummaryPage() },
                     onSelect: { panel.actions.selectInputSource($0) },
                     onOpenKeyboardSettings: openKeyboardSettings
                 )
@@ -136,9 +121,7 @@ struct StatusPopoverView: View {
             BatteryStatusView(
                 state: panel.battery,
                 cautionColor: .yellow,
-                onOpenBatteryDetails: {
-                    currentPanel = .battery
-                },
+                onOpenBatteryDetails: { panel.showBatteryPage() },
                 onOpenBatterySettings: openBatterySettings,
                 lowPowerMode: panel.store.lowPowerMode,
                 showsLowPowerToggle: panel.settings.controlsLowPowerMode
@@ -151,14 +134,8 @@ struct StatusPopoverView: View {
         case .network:
             NetworkStatusView(
                 state: panel.network,
-                onOpenWiFiDetails: { showDetails in
-                    panel.actions.wifiDetailsOpened()
-                    currentPanel = .wifi(showDetails: showDetails)
-                },
-                onOpenWiredDetails: {
-                    panel.actions.wiredDetailsOpened()
-                    currentPanel = .ethernet
-                },
+                onOpenWiFiDetails: { panel.showWiFiPage(showsDetailsInitially: $0) },
+                onOpenWiredDetails: { panel.showWiredPage() },
                 onRequestNameAccess: requestWiFiNameAccess,
                 onOpenWiFiSettings: openWiFiSettings,
                 onOpenNetworkSettings: openNetworkSettings,
@@ -205,7 +182,7 @@ struct StatusPopoverView: View {
         case .inputSource:
             InputSourceStatusView(
                 state: panel.inputSource,
-                onOpen: { currentPanel = .inputSource },
+                onOpen: { panel.showInputSourcePage() },
                 onOpenKeyboardSettings: openKeyboardSettings
             )
         }

@@ -418,10 +418,6 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
                 quit: quitAction
             )
         }
-        // Task 2's start() refreshes synchronously from the store before the
-        // first SwiftUI layout pass, so a reused hosting controller cannot show
-        // the values it had when the popover last closed.
-        panelViewModel.start()
         let hostingController = NSHostingController(rootView: rootView)
         if #available(macOS 14.0, *) {
             // The Ventura hosting pass can recurse while AppKit installs the
@@ -534,10 +530,11 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     ) {
         cancelPopoverContentRelease()
         store.setPopoverVisible(true)
-        installPopoverContentIfNeeded()
-        // An unretained hosting controller is installed above; a retained one
-        // still has a stopped panel, so every open restores current state.
+        // A retained route is lightweight. Re-enter its detail source before
+        // installing or laying out content so the first frame uses fresh data.
         panelViewModel.start()
+        panelViewModel.prepareForPresentation()
+        installPopoverContentIfNeeded()
         // One bounded refresh per open covers a lost distributed notification
         // without any polling while the popover is closed.
         refreshInputSourceIfNeeded()
@@ -815,11 +812,10 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         removePopoverDismissMonitor()
         removeVolumeScrollMonitor()
         releasePopoverAnchorWindow()
-        // Read this before closing the popover: a detail panel keeps its own
-        // SwiftUI state, so reusing the built content would reopen on that
-        // panel. The battery page also clears its collector on disappear, so
-        // the flag has to be sampled while the panel is still open.
-        let hadOpenDetails = store.hasOpenPopoverPanel
+        // The route survives as a few bytes, but detail views and collectors do
+        // not. Sample both owners before closing deactivates the collectors.
+        let hadOpenDetails = panelViewModel.isShowingDetailPage
+            || store.hasOpenPopoverPanel
         store.setPopoverVisible(false)
         store.closePopoverDetails()
         // Listening to store publishers is not free and none of their values can

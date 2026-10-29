@@ -31,6 +31,9 @@ final class BatteryDetailsController: ObservableObject {
     deinit { refreshTask?.cancel() }
 
     func activate(state: BatteryPowerState, now: Date = Date()) {
+        // The route and the detail view can both request the same presentation
+        // during one open. Keep the existing read and its demand alive.
+        if active, self.state == state { return }
         if let previous = self.state, previous != state {
             notBefore = now
         }

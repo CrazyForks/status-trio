@@ -386,6 +386,25 @@ final class BatteryDetailsControllerTests: XCTestCase {
         controller.deactivate()
     }
 
+    func testRepeatedActivationWithTheSameStateKeepsTheFirstRead() async {
+        let reader = BlockingBatteryDetailsReader()
+        let controller = BatteryDetailsController { _, _ in reader.read() }
+        defer {
+            controller.deactivate()
+            reader.gate.signal()
+        }
+
+        controller.activate(state: state)
+        await waitUntil { reader.count == 1 }
+
+        controller.activate(state: state)
+        reader.gate.signal()
+        await waitUntil { controller.details != nil }
+
+        XCTAssertEqual(reader.count, 1)
+        XCTAssertTrue(controller.isActive)
+    }
+
     func testActiveReflectsWhetherCollectionIsRunning() {
         let controller = BatteryDetailsController { _, _ in BatteryDetails(cycleCount: 43) }
         XCTAssertFalse(controller.isActive)
