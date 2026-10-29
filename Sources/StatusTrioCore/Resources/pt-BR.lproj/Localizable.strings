@@ -175,7 +175,8 @@
 "battery.state.lowPowerMode" = "Modo de baixo consumo";
 "battery.state.connectedToPower" = "Conectado à energia";
 "battery.state.onBattery" = "Na bateria";
-"battery.action.openSettings" = "Abrir Ajustes da bateria";
+"battery.action.openSettings" = "Abrir Ajustes de Energia do Sistema";
+"battery.action.openAppBatterySettings" = "Abrir Ajustes de Bateria do App";
 "battery.lowPowerMode.control" = "Controle do modo de baixo consumo";
 "battery.lowPowerMode.controlDescription" = "Adiciona um interruptor nos detalhes da bateria para ativar ou desativar o modo de baixo consumo. Requer uma aprovação única em «Itens de Login».";
 "battery.lowPowerMode.requiresApproval" = "Aguardando aprovação. Abra Ajustes do Sistema › Geral › Itens de Login e ative o Status Trio em «Permitir em Segundo Plano».";

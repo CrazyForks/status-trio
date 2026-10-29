@@ -50,7 +50,9 @@ struct ApplicationEnergyRanking: Equatable, Sendable {
         }
         let usesEnergy = hasEnergy && completeEnergyCoverage
         let values = usesEnergy ? energy : cpu
-        let ranked = values.filter { $0.value >= 0.01 }.sorted {
+        // 1 mW of CPU energy, or 0.1 % CPU activity, is small enough to keep
+        // otherwise-idle apps on screen but still suppresses sampling noise.
+        let ranked = values.filter { $0.value >= 0.001 }.sorted {
             $0.value == $1.value ? $0.key.id < $1.key.id : $0.value > $1.value
         }.prefix(5)
         let apps = ranked.map { $0.key }

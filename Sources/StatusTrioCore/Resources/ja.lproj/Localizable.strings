@@ -175,7 +175,8 @@
 "battery.state.lowPowerMode" = "低電力モード";
 "battery.state.connectedToPower" = "電源に接続";
 "battery.state.onBattery" = "バッテリー駆動";
-"battery.action.openSettings" = "バッテリー設定を開く";
+"battery.action.openSettings" = "システムの電源設定を開く";
+"battery.action.openAppBatterySettings" = "アプリのバッテリー設定を開く";
 "battery.lowPowerMode.control" = "低電力モードの制御";
 "battery.lowPowerMode.controlDescription" = "バッテリー詳細に低電力モードをオン／オフするスイッチを追加します。初回は「ログイン項目」での承認が必要です。";
 "battery.lowPowerMode.requiresApproval" = "承認待ちです。システム設定 › 一般 › ログイン項目と機能拡張 を開き、「バックグラウンドでの実行を許可」で Status Trio をオンにしてください。";

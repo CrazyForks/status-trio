@@ -175,7 +175,8 @@
 "battery.state.lowPowerMode" = "Risparmio energia";
 "battery.state.connectedToPower" = "Alimentazione collegata";
 "battery.state.onBattery" = "A batteria";
-"battery.action.openSettings" = "Apri impostazioni batteria";
+"battery.action.openSettings" = "Apri impostazioni energia di sistema";
+"battery.action.openAppBatterySettings" = "Apri impostazioni batteria dell’app";
 "battery.lowPowerMode.control" = "Controllo modalità risparmio energia";
 "battery.lowPowerMode.controlDescription" = "Aggiunge un interruttore nei dettagli della batteria per attivare o disattivare la modalità risparmio energia. Richiede un'approvazione una tantum in «Elementi login».";
 "battery.lowPowerMode.requiresApproval" = "In attesa di approvazione. Apri Impostazioni di Sistema › Generali › Elementi login e attiva Status Trio in «Consenti in background».";

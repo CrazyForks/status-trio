@@ -175,7 +175,8 @@
 "battery.state.lowPowerMode" = "低耗電模式";
 "battery.state.connectedToPower" = "已連接電源";
 "battery.state.onBattery" = "電池供電";
-"battery.action.openSettings" = "打開電池設定";
+"battery.action.openSettings" = "打開系統電源設定";
+"battery.action.openAppBatterySettings" = "打開應用電池設定";
 "battery.lowPowerMode.control" = "低耗電模式控制";
 "battery.lowPowerMode.controlDescription" = "在電池詳細資訊中新增開關，用來開啟或關閉低耗電模式。需要先在「登入項目」中批准一次。";
 "battery.lowPowerMode.requiresApproval" = "正在等待批准。請開啟 系統設定 › 一般 › 登入項目與擴充功能，在「允許在背景執行」中開啟 Status Trio。";

@@ -175,7 +175,8 @@
 "battery.state.lowPowerMode" = "低电量模式";
 "battery.state.connectedToPower" = "已连接电源";
 "battery.state.onBattery" = "电池供电";
-"battery.action.openSettings" = "打开电源设置";
+"battery.action.openSettings" = "打开系统电源设置";
+"battery.action.openAppBatterySettings" = "打开应用电池设置";
 "battery.lowPowerMode.control" = "低电量模式控制";
 "battery.lowPowerMode.controlDescription" = "在电池详情中增加一个开关，用于打开或关闭低电量模式。需要先在“登录项”中批准一次。";
 "battery.lowPowerMode.requiresApproval" = "正在等待批准。请打开 系统设置 › 通用 › 登录项与扩展，在“允许在后台”中打开 Status Trio。";

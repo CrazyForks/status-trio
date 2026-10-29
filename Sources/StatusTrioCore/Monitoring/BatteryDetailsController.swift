@@ -54,6 +54,20 @@ final class BatteryDetailsController: ObservableObject {
         }
     }
 
+    /// Keeps the collector's power-source context current while its page stays
+    /// open. `activate` only sees the state at presentation; a plugin or a
+    /// charge-limit pulse that starts later must reach the next read too.
+    func update(state: BatteryPowerState, now: Date = Date()) {
+        guard active, self.state != state else { return }
+        if self.state?.isConnected != state.isConnected
+            || self.state?.isCharging != state.isCharging {
+            // A registry sample from before the transition cannot stand in for
+            // the new state.
+            notBefore = now
+        }
+        self.state = state
+    }
+
     private func startRefreshLoop() {
         refreshTask?.cancel()
         let interval: Duration = options.showsAnyPower ? .seconds(2) : .seconds(15)

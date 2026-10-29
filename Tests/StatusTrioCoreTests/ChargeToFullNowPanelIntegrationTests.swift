@@ -56,6 +56,43 @@ final class ChargeToFullNowPanelIntegrationTests: XCTestCase {
         XCTAssertEqual(backend.readCount, readsBeforeStop)
     }
 
+    func testChargeToFullClickUpdatesTheSummarySubtitleBeforeTheSnapshot() async {
+        let backend = PanelChargeBackend(state: .activeLimit)
+        let chargeToFullNow = ChargeToFullNowController(backend: backend)
+        let fixture = PanelStoreFixture()
+        fixture.settings.showsChargeToFullNowButton = true
+        let panel = fixture.makePanel(chargeToFullNow: chargeToFullNow)
+
+        panel.start()
+        fixture.store.start()
+        defer {
+            panel.stop()
+            fixture.store.stop()
+        }
+
+        fixture.store.setPopoverVisible(true)
+        fixture.battery.send(BatteryStatus(
+            rawPercentage: 80,
+            isPresent: true,
+            isCharging: false,
+            isLowPowerMode: false,
+            isConnectedToPower: true
+        ))
+        let debounceStarted = await fixture.popupSleeper.waitForCallCount(1, timeout: .seconds(1))
+        XCTAssertTrue(debounceStarted)
+        fixture.popupSleeper.releaseAll()
+        let becameAvailable = await waitUntil {
+            panel.chargeToFullNowPresentation == .available
+        }
+        XCTAssertTrue(becameAvailable)
+
+        chargeToFullNow.performPrimaryAction()
+        XCTAssertEqual(
+            panel.battery.subtitle,
+            fixture.localization.string(.batteryStateCalculatingTimeToFull)
+        )
+    }
+
     private func connectedBattery(percentage: Int) -> BatteryStatus {
         BatteryStatus(
             rawPercentage: percentage,

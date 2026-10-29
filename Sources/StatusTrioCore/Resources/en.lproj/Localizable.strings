@@ -175,7 +175,8 @@
 "battery.state.lowPowerMode" = "Low Power Mode";
 "battery.state.connectedToPower" = "Connected to power";
 "battery.state.onBattery" = "On battery";
-"battery.action.openSettings" = "Open Battery Settings";
+"battery.action.openSettings" = "Open System Power Settings";
+"battery.action.openAppBatterySettings" = "Open App Battery Settings";
 "battery.lowPowerMode.control" = "Low Power Mode Control";
 "battery.lowPowerMode.controlDescription" = "Adds a switch in the battery details that turns Low Power Mode on or off. Requires a one-time approval in Login Items.";
 "battery.lowPowerMode.requiresApproval" = "Waiting for approval. Open System Settings › General › Login Items and turn on Status Trio under “Allow in the Background”.";

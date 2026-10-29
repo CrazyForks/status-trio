@@ -2,9 +2,17 @@ import Foundation
 
 @MainActor
 enum PanelPresentationMapper {
-    static func battery(_ status: BatteryStatus, localization: Localization) -> PanelSummaryState {
+    static func battery(
+        _ status: BatteryStatus,
+        localization: Localization,
+        chargeToFullNow: ChargeToFullNowPresentation = .hidden
+    ) -> PanelSummaryState {
         let title = batteryTitle(status, localization: localization)
-        let subtitle = batterySubtitle(status, localization: localization)
+        let subtitle = batterySubtitle(
+            status,
+            localization: localization,
+            chargeToFullNow: chargeToFullNow
+        )
 
         return PanelSummaryState(
             title: title,
@@ -113,7 +121,11 @@ enum PanelPresentationMapper {
         return localization.format(.batteryTimeToFullHoursMinutes, hours, remainingMinutes)
     }
 
-    static func batterySubtitle(_ battery: BatteryStatus, localization: Localization) -> String {
+    static func batterySubtitle(
+        _ battery: BatteryStatus,
+        localization: Localization,
+        chargeToFullNow: ChargeToFullNowPresentation = .hidden
+    ) -> String {
         if !battery.isPresent {
             return localization.string(.batteryStateNotPresent)
         }
@@ -121,10 +133,29 @@ enum PanelPresentationMapper {
             return localization.string(.batteryStateCharged)
         }
         if battery.isCharging {
+            // A known estimate always wins, including while Charge to Full Now
+            // is running; the click only supplies a placeholder until then.
             return batteryTimeToFullText(
                 minutes: battery.timeToFullChargeMinutes,
                 localization: localization
             )
+        }
+        // The system can report "connected" for a while after the click because
+        // its charging flag trails the actual charge pulse. Show the time-to-full
+        // placeholder immediately instead of leaving the row on "Connected to
+        // power"; once a real estimate arrives the branch above takes over.
+        switch chargeToFullNow {
+        case .applying, .chargingToFull, .cancelling:
+            return localization.string(.batteryStateCalculatingTimeToFull)
+        case .hidden,
+             .available,
+             .failed,
+             .unavailable,
+             .cancelConfirmationRequired,
+             .cancelPending,
+             .cancelFailed,
+             .cancelSucceeded:
+            break
         }
         if battery.isLowPowerMode {
             return localization.string(.batteryStateLowPowerMode)

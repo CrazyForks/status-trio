@@ -72,7 +72,11 @@ struct BatteryDetailsReader: Sendable {
         let sensors = SystemPowerReader().readSensors(
             system: Self.readsSystemPower(for: state) && options.showsSystem,
             input: state.isPresent && state.isConnected && options.showsInput,
-            battery: state.isPresent && state.isConnected && state.isCharging && options.showsCharging
+            // Read the live battery sensor whenever the page can show charging
+            // power. macOS can keep the IOPS/registry charging flags false for
+            // tens of seconds during a short charge pulse, and a stale flag
+            // must not hide real current that the hardware is already moving.
+            battery: state.isPresent && state.isConnected && options.showsCharging
         )
         var result = Self.parse(
             registry: registry,
@@ -113,6 +117,14 @@ struct BatteryDetailsReader: Sendable {
         )
         let registryMatches = (registry["ExternalConnected"] as? Bool) == state.isConnected
             && (registry["IsCharging"] as? Bool) == state.isCharging
+        // A positive SMC battery sample is hardware truth. Charge-limit pulses
+        // can deliver real current while both IOPS and the registry still say
+        // "not charging", so do not gate this sample on those lagging flags.
+        if state.isConnected, let batteryPower, batteryPower.watts > 0,
+           batteryPower.isFresh(at: now, notBefore: notBefore) {
+            result.power = batteryPower
+            result.powerAvailability = .available
+        }
         if state.isConnected && registryMatches {
             if let inputPower, inputPower.isFresh(at: now, notBefore: notBefore) {
                 result.inputPower = inputPower
@@ -150,13 +162,15 @@ struct BatteryDetailsReader: Sendable {
               millivolts.isFinite, timestamp.isFinite,
               (1_000...30_000).contains(millivolts)
         else {
-            result.powerAvailability = state.isConnected && systemPower != nil
+            result.powerAvailability = state.isConnected
+                && (systemPower != nil || result.power != nil)
                 ? .available
                 : .unavailable
             return result
         }
         // From here a usable sample may exist; failures mean it is not in yet.
-        result.powerAvailability = state.isConnected && systemPower != nil
+        result.powerAvailability = state.isConnected
+            && (systemPower != nil || result.power != nil)
             ? .available
             : .collecting
         // A registry that still describes the previous power source is a
@@ -176,7 +190,8 @@ struct BatteryDetailsReader: Sendable {
         guard
               milliamps > 0 ? (connected && charging) : !charging
         else {
-            result.powerAvailability = state.isConnected && systemPower != nil
+            result.powerAvailability = state.isConnected
+                && (systemPower != nil || result.power != nil)
                 ? .available
                 : .unavailable
             return result

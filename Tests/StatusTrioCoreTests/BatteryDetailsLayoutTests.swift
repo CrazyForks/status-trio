@@ -19,17 +19,56 @@ final class BatteryDetailsLayoutTests: XCTestCase {
     }
 
     func testConnectedPageFitsEveryLanguageWithAndWithoutSystemTelemetry() async throws {
+        // The page now carries a second settings action below the system-power
+        // one. Keep the budget tight enough that another whole row still fails.
+        let heightBudget: CGFloat = 470
         for language in AppLanguage.allCases {
             let connected = try await render(language: language, available: true, connected: true)
-            XCTAssertLessThan(connected.height, 440, language.rawValue)
+            XCTAssertLessThan(connected.height, heightBudget, language.rawValue)
             let charging = try await render(language: language, available: true, connected: true, charging: true)
-            XCTAssertLessThan(charging.height, 440, language.rawValue)
+            XCTAssertLessThan(charging.height, heightBudget, language.rawValue)
             let missing = try await render(language: language, available: true, connected: true, systemAvailable: false)
             // An unavailable system reading drops the timestamp row, not just
             // shortens a value, so the page must lose at least one row of height.
             XCTAssertGreaterThanOrEqual(connected.height - missing.height, 10,
                                         "\(language.rawValue) kept the system timestamp row")
         }
+    }
+
+    func testThreeDigitInputPowerStaysInsideTheFlowCard() async throws {
+        let size = try await render(
+            language: .english,
+            available: true,
+            connected: true,
+            allPower: true,
+            inputWatts: 110.23
+        )
+        XCTAssertEqual(size.width, 330, accuracy: 0.5)
+    }
+
+    func testBatteryDetailsShowChargeToFullAboveTheSettingsActions() async throws {
+        let hidden = try await render(language: .english, available: true, connected: true)
+        let available = try await render(
+            language: .english,
+            available: true,
+            connected: true,
+            chargeToFullNow: .available
+        )
+        let applying = try await render(
+            language: .english,
+            available: true,
+            connected: true,
+            chargeToFullNow: .applying
+        )
+
+        XCTAssertEqual(available.width, 330, accuracy: 0.5)
+        XCTAssertEqual(applying.width, 330, accuracy: 0.5)
+        XCTAssertGreaterThanOrEqual(
+            available.height,
+            hidden.height + 20,
+            "the details page must reserve a row for Charge to Full Now"
+        )
+        XCTAssertEqual(applying.height, available.height, accuracy: 0.5)
     }
 
     func testBatteryActionGlyphsShareTheSummaryVisualCenter() async throws {
@@ -161,7 +200,9 @@ final class BatteryDetailsLayoutTests: XCTestCase {
     private func render(language: AppLanguage, available: Bool,
                         collecting: Bool = false, connected: Bool = false,
                         systemAvailable: Bool = true, charging: Bool = false,
-                        allPower: Bool = false, dark: Bool = false, energyApps: Bool = false) async throws -> NSSize {
+                        allPower: Bool = false, dark: Bool = false, energyApps: Bool = false,
+                        chargeToFullNow: ChargeToFullNowPresentation = .hidden,
+                        inputWatts: Double? = nil) async throws -> NSSize {
         let suite = "StatusTrioCoreTests.BatteryDetails.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
         defer { defaults.removeTestSuite(named: suite) }
@@ -176,7 +217,8 @@ final class BatteryDetailsLayoutTests: XCTestCase {
                 amps: allPower ? 3.2968 : (connected ? (charging ? 1.528 : 0) : -1.528), updatedAt: observedAt) : nil,
             powerAvailability: collecting ? .collecting : .unavailable,
             systemPower: connected && systemAvailable ? SystemPowerSample(watts: 25.59, readAt: observedAt) : nil,
-            inputPower: connected ? SystemPowerSample(watts: 67, readAt: observedAt) : nil)
+            inputPower: connected
+                ? SystemPowerSample(watts: inputWatts ?? 67, readAt: observedAt) : nil)
         let battery = BatteryStatus(rawPercentage: 80, isPresent: true, isCharging: charging,
                                     isLowPowerMode: false, isConnectedToPower: connected)
         let panelState = PanelDetailMapper.battery(
@@ -196,7 +238,8 @@ final class BatteryDetailsLayoutTests: XCTestCase {
             onBack: {},
             onOpenBatterySettings: {},
             onCopyValue: { _ in },
-            onAppear: {}
+            onAppear: {},
+            chargeToFullNow: chargeToFullNow
         )
             .padding(14)
             .frame(width: 330)

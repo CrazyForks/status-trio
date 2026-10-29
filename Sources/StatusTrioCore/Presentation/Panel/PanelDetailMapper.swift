@@ -72,12 +72,28 @@ enum PanelDetailMapper {
     private static func powerFlow(status: BatteryStatus, details: BatteryDetails,
                                   options: BatteryPowerDisplayOptions, localization: Localization) -> BatteryPowerFlowState {
         func metric(_ label: LocalizationKey, _ watts: Double?) -> BatteryPowerFlowState.Metric {
-            let value = watts.map {
-                $0.formatted(.number.precision(.fractionLength(2)).locale(localization.resolvedLanguage.locale)) + " W"
+            let value = watts.map { watts -> String in
+                // The flow cards are only 62 pt wide. Three-digit values with
+                // two decimals wrap onto a second line, so drop the fraction
+                // from 100 W upward. Round to the displayed precision first so
+                // 99.996 does not become the equally wide "100.00 W".
+                let roundedMagnitude = (abs(watts) * 100).rounded() / 100
+                let fractionDigits = roundedMagnitude >= 100 ? 0 : 2
+                let number = watts.formatted(
+                    .number
+                        .precision(.fractionLength(fractionDigits))
+                        .locale(localization.resolvedLanguage.locale)
+                )
+                return number + " W"
             } ?? localization.string(.batteryDetailsUnavailable)
             return BatteryPowerFlowState.Metric(label: localization.string(label), value: value, watts: watts)
         }
-        let charging = status.isCharging ? details.power.flatMap { $0.watts > 0 ? $0.watts : nil } : 0
+        // A live positive sample wins over the snapshot's charging flag: during
+        // a charge-limit pulse macOS can keep `isCharging` false for tens of
+        // seconds while the pack is already taking current. Without the flag,
+        // keep showing "—" (unknown) instead of claiming a real 0 W.
+        let sampledCharging = details.power.flatMap { $0.watts > 0 ? $0.watts : nil }
+        let charging: Double? = sampledCharging ?? (status.isCharging ? nil : 0)
         return BatteryPowerFlowState(
             input: options.showsInput ? metric(.batteryPowerInput, details.inputPower?.watts) : nil,
             battery: options.showsCharging ? metric(.batteryPowerCharging, charging) : nil,

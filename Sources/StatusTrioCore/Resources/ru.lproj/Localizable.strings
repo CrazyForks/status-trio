@@ -175,7 +175,8 @@
 "battery.state.lowPowerMode" = "Режим энергосбережения";
 "battery.state.connectedToPower" = "Питание от сети";
 "battery.state.onBattery" = "От батареи";
-"battery.action.openSettings" = "Открыть настройки батареи";
+"battery.action.openSettings" = "Открыть системные настройки питания";
+"battery.action.openAppBatterySettings" = "Открыть настройки батареи приложения";
 "battery.lowPowerMode.control" = "Управление режимом энергосбережения";
 "battery.lowPowerMode.controlDescription" = "Добавляет переключатель режима энергосбережения в сведения о батарее. Требуется однократное подтверждение в разделе «Объекты входа».";
 "battery.lowPowerMode.requiresApproval" = "Ожидается подтверждение. Откройте Системные настройки › Основные › Объекты входа и включите Status Trio в разделе «Разрешить в фоне».";

@@ -63,6 +63,8 @@ struct BatteryPowerFlowView: View {
             Text(value.value)
                 .font(.system(size: 13, weight: .semibold, design: .rounded))
                 .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
             Text(value.label)
                 .font(.system(size: 10))
                 .foregroundStyle(.secondary)

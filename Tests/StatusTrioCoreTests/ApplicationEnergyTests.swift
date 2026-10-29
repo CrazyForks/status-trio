@@ -36,6 +36,23 @@ final class ApplicationEnergyTests: XCTestCase {
         XCTAssertEqual(try XCTUnwrap(result.values[browser]), 0.1, accuracy: 0.000_001)
     }
 
+    func testMilliwattLevelAppsRemainVisible() {
+        let before = ApplicationEnergySnapshot(readAt: 100, processes: [
+            sample(1, browser, cpu: 0, energy: 0)])
+        let after = ApplicationEnergySnapshot(readAt: 105, processes: [
+            sample(1, browser, cpu: 0, energy: 25_000_000)]) // 5 mW over 5 s
+        XCTAssertEqual(
+            ApplicationEnergyRanking.rank(previous: before, current: after).apps.map(\.name),
+            ["Browser"]
+        )
+
+        let quieter = ApplicationEnergySnapshot(readAt: 105, processes: [
+            sample(1, browser, cpu: 0, energy: 2_500_000)]) // 0.5 mW over 5 s
+        XCTAssertTrue(
+            ApplicationEnergyRanking.rank(previous: before, current: quieter).apps.isEmpty
+        )
+    }
+
     func testPartialEnergyCoverageFallsBackToAComparableActivityRanking() {
         let before = ApplicationEnergySnapshot(readAt: 100, processes: [
             sample(1, browser, cpu: 0, energy: 10_000_000_000),

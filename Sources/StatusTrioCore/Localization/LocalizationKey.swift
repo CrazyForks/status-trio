@@ -347,6 +347,7 @@ enum LocalizationKey: String, CaseIterable, Hashable, Sendable {
     case batteryDetailsLoading = "battery.details.loading"
     case batteryDetailsExplanation = "battery.details.explanation"
     case batteryActionOpenSettings = "battery.action.openSettings"
+    case batteryActionOpenAppBatterySettings = "battery.action.openAppBatterySettings"
     case batteryActionChargeToFullNow = "battery.action.chargeToFullNow"
     case batteryActionChargeToFullNowApplying = "battery.action.chargeToFullNowApplying"
     case batteryActionChargeToFullNowCharging = "battery.action.chargeToFullNowCharging"

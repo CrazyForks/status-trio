@@ -20,6 +20,7 @@ struct StatusPopoverView: View {
     let requestWiFiNameAccess: () -> Void
     let requestBluetoothAuthorization: () -> Void
     let openBatterySettings: () -> Void
+    let openAppBatterySettings: () -> Void
     let openWiFiSettings: () -> Void
     let openNetworkSettings: () -> Void
     let openSharingSettings: () -> Void
@@ -46,11 +47,14 @@ struct StatusPopoverView: View {
                         currentPanel = .summary
                     },
                     onOpenBatterySettings: openBatterySettings,
+                    onOpenAppBatterySettings: openAppBatterySettings,
                     onCopyValue: { copyValue($0) },
                     onAppear: { panel.actions.batteryDetailsAppeared() },
                     lowPowerMode: panel.store.lowPowerMode,
                     showsLowPowerControl: panel.settings.controlsLowPowerMode
-                        && helper.isReady
+                        && helper.isReady,
+                    chargeToFullNow: panel.chargeToFullNowPresentation,
+                    onChargeToFullNow: { panel.actions.requestChargeToFullNow() }
                 )
             case .wifi(let showDetails):
                 WiFiNetworkListView(

@@ -428,7 +428,9 @@ final class StatusPanelViewModel: ObservableObject {
         chargeToFullNow.$presentation
             .removeDuplicates()
             .sink { [weak self] presentation in
-                self?.chargeToFullNowPresentation = presentation
+                guard let self else { return }
+                chargeToFullNowPresentation = presentation
+                refreshBatterySummary()
             }
             .store(in: &cancellables)
 
@@ -456,6 +458,18 @@ final class StatusPanelViewModel: ObservableObject {
             )
         }
         .store(in: &cancellables)
+    }
+
+    /// Re-maps the visible battery row when the charge action changes, so the
+    /// subtitle reflects the click before the system's charging flag catches up.
+    private func refreshBatterySummary() {
+        guard isVisible(.battery) else { return }
+        let next = PanelPresentationMapper.battery(
+            store.popupSnapshot.battery,
+            localization: localization,
+            chargeToFullNow: chargeToFullNowPresentation
+        )
+        if battery != next { battery = next }
     }
 
     private func updateChargeToFullNowDemand(
@@ -647,7 +661,11 @@ final class StatusPanelViewModel: ObservableObject {
         let isConstrained = deliveredConstraint ?? store.isNetworkConstrained
         let isResolvingName = deliveredResolutionState ?? store.isResolvingWiFiName
         if isVisible(.battery) {
-            let batteryState = PanelPresentationMapper.battery(snapshot.battery, localization: localization)
+            let batteryState = PanelPresentationMapper.battery(
+                snapshot.battery,
+                localization: localization,
+                chargeToFullNow: chargeToFullNowPresentation
+            )
             if battery != batteryState { battery = batteryState }
         }
         if isVisible(.network) {
@@ -670,8 +688,13 @@ final class StatusPanelViewModel: ObservableObject {
         guard store.batteryDetails.isActive else { return }
         store.batteryDetails.configure(options: settings.batteryPowerDisplayOptions,
             showsHighEnergyApps: settings.showsHighEnergyApps)
+        let status = deliveredStatus ?? store.popupSnapshot.battery
+        // The page can outlive a plugin or a charge-limit pulse. Keep the
+        // collector's context aligned with the latest snapshot so the next
+        // sample is collected for the state the user is actually looking at.
+        store.batteryDetails.update(state: BatteryPowerState(status))
         let state = PanelDetailMapper.battery(
-            status: deliveredStatus ?? store.popupSnapshot.battery,
+            status: status,
             details: store.batteryDetails.details,
             localization: localization,
             powerOptions: settings.batteryPowerDisplayOptions,

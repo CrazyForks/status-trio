@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import SwiftUI
 
 /// Human-centered, multi-column settings window matching modern macOS standards.
@@ -13,6 +14,10 @@ struct SettingsView: View {
     var globalShortcutController: GlobalShortcutController? = nil
     var chargeToFullNow: ChargeToFullNowController? = nil
     let onShowIconGuide: () -> Void
+    /// Returns the tab the window controller wants to reveal, if any. The
+    /// controller stores the request because the first presentation can post
+    /// its notification before SwiftUI has subscribed.
+    var consumePendingSection: () -> Section? = { nil }
 
     @State private var selectedSection: Section = .appIcon
     @State private var previewIsDark: Bool = true
@@ -83,6 +88,21 @@ struct SettingsView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .ignoresSafeArea()
         .environmentObject(localization)
+        .onAppear { applyRequestedSectionIfAvailable() }
+        .onReceive(NotificationCenter.default.publisher(for: .settingsSelectSection)) { _ in
+            applyRequestedSectionIfAvailable()
+        }
+    }
+
+    private func applyRequestedSectionIfAvailable() {
+        guard let section = consumePendingSection() else { return }
+        select(section)
+    }
+
+    private func select(_ section: Section) {
+        withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.16)) {
+            selectedSection = section
+        }
     }
 
     // MARK: - Sidebar
@@ -94,9 +114,7 @@ struct SettingsView: View {
 
             ForEach(Section.allCases) { section in
                 Button {
-                    withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.16)) {
-                        selectedSection = section
-                    }
+                    select(section)
                 } label: {
                     HStack(alignment: .center, spacing: 10) {
                         SettingsIcon(symbol: section.symbol, tint: section.tint)

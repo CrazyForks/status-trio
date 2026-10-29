@@ -66,6 +66,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     private var screenParametersCancellable: AnyCancellable?
     private var refreshIntervalCancellable: AnyCancellable?
     private let openSettings: () -> Void
+    /// Opens Status Trio's own Settings window on the Battery tab.
+    private let openAppBatterySettings: () -> Void
     private let quitAction: () -> Void
     private var appearanceObservations: [NSKeyValueObservation] = []
     private var renderCache = StatusBarRenderCache()
@@ -162,6 +164,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         localization: Localization,
         isVisible: Bool = true,
         openSettings: @escaping () -> Void,
+        openAppBatterySettings: @escaping () -> Void = {},
         quitAction: @escaping () -> Void,
         chargingEffectClock: ChargingEffectClock = ChargingEffectClock(),
         accessibilityValueDidChange: @escaping @MainActor (String) -> Void = { _ in },
@@ -229,6 +232,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         self.activatesApplicationForPopover = activatesApplicationForPopover
         self.chargingEffectClock = chargingEffectClock
         self.openSettings = openSettings
+        self.openAppBatterySettings = openAppBatterySettings
         self.quitAction = quitAction
         self.isStatusItemVisible = isVisible
         self.isMenuBarChargingEffectEnabled = settings.showsMenuBarChargingEffect
@@ -400,6 +404,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
                 requestWiFiNameAccess: { self.handleRequestWiFiNameAccess() },
                 requestBluetoothAuthorization: { self.handleRequestBluetoothAuthorization() },
                 openBatterySettings: { self.handleOpenBatterySettings() },
+                openAppBatterySettings: { self.handleOpenAppBatterySettings() },
                 openWiFiSettings: { self.handleOpenWiFiSettings() },
                 openNetworkSettings: { self.handleOpenNetworkSettings() },
                 openSharingSettings: { self.handleOpenSharingSettings() },
@@ -1260,6 +1265,11 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     @objc private func handleOpenBatterySettings() {
         popover.performClose(nil)
         Self.openSystemSettings(Self.batterySettingsURLs)
+    }
+
+    @objc private func handleOpenAppBatterySettings() {
+        popover.performClose(nil)
+        openAppBatterySettings()
     }
 
     @objc private func handleOpenWiFiSettings() {

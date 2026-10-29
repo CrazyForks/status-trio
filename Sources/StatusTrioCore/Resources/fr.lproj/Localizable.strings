@@ -175,7 +175,8 @@
 "battery.state.lowPowerMode" = "Mode économie d’énergie";
 "battery.state.connectedToPower" = "Sur secteur";
 "battery.state.onBattery" = "Sur batterie";
-"battery.action.openSettings" = "Ouvrir les réglages de batterie";
+"battery.action.openSettings" = "Ouvrir les réglages d’alimentation du système";
+"battery.action.openAppBatterySettings" = "Ouvrir les réglages de batterie de l’app";
 "battery.lowPowerMode.control" = "Contrôle du mode économie d'énergie";
 "battery.lowPowerMode.controlDescription" = "Ajoute un interrupteur dans les détails de la batterie pour activer ou désactiver le mode économie d'énergie. Nécessite une approbation unique dans « Ouverture à la connexion ».";
 "battery.lowPowerMode.requiresApproval" = "En attente d'approbation. Ouvrez Réglages Système › Général › Ouverture à la connexion et activez Status Trio dans « Autoriser en arrière-plan ».";

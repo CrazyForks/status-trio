@@ -468,6 +468,9 @@ final class AppEnvironment {
             localization: localization,
             isVisible: settings.appIconPlacement.showsMenuBarIcon,
             openSettings: { settingsWindowController?.show() },
+            openAppBatterySettings: {
+                settingsWindowController?.show(section: .battery)
+            },
             quitAction: { NSApplication.shared.terminate(nil) },
             chargingEffectClock: chargingEffectClock,
             inputSourceController: inputSourceController,

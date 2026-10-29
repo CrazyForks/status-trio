@@ -175,7 +175,8 @@
 "battery.state.lowPowerMode" = "Energiesparmodus";
 "battery.state.connectedToPower" = "Mit Netzstrom verbunden";
 "battery.state.onBattery" = "Im Batteriebetrieb";
-"battery.action.openSettings" = "Batterieeinstellungen öffnen";
+"battery.action.openSettings" = "System-Energieeinstellungen öffnen";
+"battery.action.openAppBatterySettings" = "App-Batterieeinstellungen öffnen";
 "battery.lowPowerMode.control" = "Steuerung des Energiesparmodus";
 "battery.lowPowerMode.controlDescription" = "Fügt in den Batteriedetails einen Schalter zum Ein- und Ausschalten des Energiesparmodus hinzu. Erfordert eine einmalige Freigabe unter „Anmeldeobjekte“.";
 "battery.lowPowerMode.requiresApproval" = "Warte auf Freigabe. Öffne Systemeinstellungen › Allgemein › Anmeldeobjekte und aktiviere Status Trio unter „Im Hintergrund zulassen“.";
