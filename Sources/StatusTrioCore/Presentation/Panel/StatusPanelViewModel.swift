@@ -57,6 +57,8 @@ final class StatusPanelViewModel: ObservableObject {
     @Published private(set) var wiredDetails: PanelDetailState
     @Published private(set) var chargeToFullNowPresentation: ChargeToFullNowPresentation = .hidden
     @Published private(set) var visiblePopupSections: [PopupSection]
+    @Published private(set) var route: StatusPanelRoute = .summary
+    @Published private(set) var wifiDisclosure = WiFiPanelDisclosureState()
 
     let store: SystemStatusStore
     let settings: SettingsStore
@@ -77,6 +79,8 @@ final class StatusPanelViewModel: ObservableObject {
     /// Tests observe deliveries from the single popup-snapshot subscription
     /// before scheduler coalescing. Production never assigns this closure.
     var popupSourceEventForTesting: (() -> Void)?
+
+    var isShowingDetailPage: Bool { route != .summary }
 
     init(
         store: SystemStatusStore,
@@ -196,6 +200,92 @@ final class StatusPanelViewModel: ObservableObject {
         chargeToFullNow?.clearDemand()
         chargeToFullNowPresentation = .hidden
         cancellables.removeAll()
+    }
+
+    func showBatteryPage() {
+        guard settings.visiblePopupSections.contains(.battery),
+              store.popupSnapshot.battery.isPresent else {
+            showSummaryPage()
+            return
+        }
+        transition(to: .battery)
+        actions.batteryDetailsAppeared()
+        refreshBatteryDetails()
+    }
+
+    func showWiFiPage(showsDetailsInitially: Bool) {
+        guard settings.visiblePopupSections.contains(.network) else {
+            showSummaryPage()
+            return
+        }
+        wifiDisclosure = WiFiPanelDisclosureState(
+            showsDetails: showsDetailsInitially,
+            showsMore: false
+        )
+        transition(to: .wifi)
+        actions.wifiDetailsOpened()
+        refreshWiFiDetails()
+    }
+
+    func showWiredPage() {
+        guard settings.visiblePopupSections.contains(.network) else {
+            showSummaryPage()
+            return
+        }
+        transition(to: .ethernet)
+        actions.wiredDetailsOpened()
+        refreshWiredDetailsAndNetwork()
+    }
+
+    func showInputSourcePage() {
+        guard settings.visiblePopupSections.contains(.inputSource) else {
+            showSummaryPage()
+            return
+        }
+        transition(to: .inputSource)
+    }
+
+    func showSummaryPage() {
+        closeCurrentPage()
+    }
+
+    func setWiFiShowsDetails(_ showsDetails: Bool) {
+        guard wifiDisclosure.showsDetails != showsDetails else { return }
+        var next = wifiDisclosure
+        next.showsDetails = showsDetails
+        wifiDisclosure = next
+    }
+
+    func setWiFiShowsMore(_ showsMore: Bool) {
+        guard wifiDisclosure.showsMore != showsMore else { return }
+        var next = wifiDisclosure
+        next.showsMore = showsMore
+        wifiDisclosure = next
+    }
+
+    /// Re-enters the lightweight route after a close released the detail view
+    /// and its collectors. This runs before the popover's first layout pass.
+    func prepareForPresentation() {
+        guard store.isPopoverVisible, route != .summary else { return }
+        guard isRouteAvailable(route) else {
+            closeCurrentPage()
+            return
+        }
+        switch route {
+        case .summary:
+            break
+        case .battery:
+            actions.batteryDetailsAppeared()
+            refreshBatteryDetails()
+        case .wifi:
+            actions.wifiDetailsOpened()
+            refreshWiFiDetails()
+        case .ethernet:
+            actions.wiredDetailsOpened()
+            refreshWiredDetailsAndNetwork()
+        case .inputSource:
+            break
+        }
     }
 
     /// Called by the popover owner after presentation has stopped and while it
@@ -635,6 +725,7 @@ final class StatusPanelViewModel: ObservableObject {
         let sections = order.filter { enabled.contains($0) }
         if visiblePopupSections != sections { visiblePopupSections = sections }
         reconcileSourceSubscriptions(deliveredSections: sections)
+        if !isRouteAvailable(route) { closeCurrentPage() }
         coalesceControllerUpdate(.all)
     }
 
@@ -664,6 +755,7 @@ final class StatusPanelViewModel: ObservableObject {
         }
         if store.batteryDetails.isActive { refreshBatteryDetails(status: snapshot.battery) }
         if store.wifiNetworks.isActive { refreshWiFiDetails(status: snapshot.wifi) }
+        if !isRouteAvailable(route) { closeCurrentPage() }
     }
 
     private func refreshBatteryDetails(status deliveredStatus: BatteryStatus? = nil) {
@@ -712,6 +804,46 @@ final class StatusPanelViewModel: ObservableObject {
                 localization: localization
             )
             if network != networkState { network = networkState }
+        }
+    }
+
+    private func transition(to next: StatusPanelRoute) {
+        guard route != next else { return }
+        if route != .summary { closeCurrentPage() }
+        route = next
+    }
+
+    private func closeCurrentPage() {
+        guard route != .summary else { return }
+        switch route {
+        case .battery:
+            actions.batteryDetailsClosed()
+        case .wifi:
+            actions.wifiDetailsClosed()
+        case .ethernet:
+            actions.wiredDetailsClosed()
+        case .inputSource:
+            break
+        case .summary:
+            return
+        }
+        route = .summary
+    }
+
+    private func isRouteAvailable(_ route: StatusPanelRoute) -> Bool {
+        let sections = settings.visiblePopupSections
+        switch route {
+        case .summary:
+            return true
+        case .battery:
+            return sections.contains(.battery) && store.popupSnapshot.battery.isPresent
+        case .wifi:
+            return sections.contains(.network)
+        case .ethernet:
+            return sections.contains(.network)
+                && store.popupSnapshot.connection == .ethernet
+        case .inputSource:
+            return sections.contains(.inputSource)
         }
     }
 
