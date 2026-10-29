@@ -58,27 +58,31 @@ between the Sharing preferences pane and InternetSharing" and warns its details
 would be a version-sensitive write to a root-owned file that the system can change
 underneath it, so the popover hands this one job back to the pane that owns it.
 
-## "Charge to Full Now" stays in macOS
+## Charge-limit controls depend on the app version and macOS
 
-When optimized battery charging or a charge limit pauses charging, Status Trio
-reports the state as it is: the icon shows the connected-to-power state, the Battery
-Details page omits the charging row because no power is flowing into the battery, and
-the battery row's gear button opens the Battery pane. The popover deliberately has
-no "charge to full" button.
+The current public GitHub and Homebrew release, **1.7.5**, leaves charge-limit
+overrides to macOS. When charging is paused, it reports the actual state and the
+battery row's gear button opens System Settings.
 
-There is no public API to charge past the limit macOS is holding. An app can only do
-it through the SMC with the firmware's charge-control keys — the approach third-party
-charge limiters take — or through an undocumented PowerUI charging interface. Status
-Trio reads the SMC for the system power estimate only and sends read-key-info and
-read-bytes commands only (see [battery details](battery-details.md)), so charge
-control stays where Apple put it: System Settings › Battery, and the battery section
-of Control Center where macOS offers its own charge-to-full action. The app's one
-privileged helper exists only for Low Power Mode and does not touch charge control;
+The source on `main` adds an optional **Charge to Full Now** button, off by
+default, for supported Apple silicon Macs running macOS 26.4 or later. It uses
+the same private PowerUI request observed behind the native action. There is no
+public API or cross-version guarantee for this operation. Unsupported systems
+do not offer the action.
+
+**The charge limit may remain at 100% after charging completes or the adapter is
+unplugged and reconnected. Status Trio does not restore it automatically.**
+The implementation saves an operation session and offers **Cancel Charge to
+Full** to request restoration. An ambiguous or restored session can require
+another explicit confirmation. A failed request is not proof of restoration:
+check the charge limit in System Settings and restore it there if needed.
+See [implementation, observed native behavior, and verification
+limits](charge-to-full-now-poc.md).
+
+Battery telemetry continues to use read-only SMC commands; the PowerUI action
+does not add SMC writes or a background charge watcher. Low Power Mode uses a
+separate opt-in privileged helper, which does not control the charge limit;
 see [privileged helper](privileged-helper.md).
-
-macOS 26.4 and later add a native charge limit from 80% through 100% on Apple
-silicon Macs, with its own charge-to-full action, so on those versions the limit and
-the override live in the same system place, and this app duplicates neither.
 
 ## One Bluetooth battery source is undocumented
 
