@@ -62,17 +62,18 @@ bash scripts/build-worktree.sh release no-open
 ```
 
 The full-profile result and tested SHA are recorded in
-`.build/local-verification/status.txt` and `.build/local-verification/log.txt`.
+`.build/local-verification/log.txt`; `status.txt` is written only on failure.
 A build or test count is not evidence for WindowServer compositing or a native
 Space gesture.
 
 ## Runtime acceptance boundary
 
 - Standalone I+ two-display appearance and #112: maintainer-observed PASS.
-- Complete development app with this integration: requires acceptance on the
-  generated bundle; do not substitute the probe result.
-- Full charging animation, low/critical/Bluetooth scenes, visibility, popover
-  interaction, sleep/wake, and other display arrangements: not established by
-  the static probe.
+- Development app with this integration: built and launched from this worktree;
+  the charging arc changed across captured frames on the focused display, and
+  the ring appeared dimmed and desaturated on the unfocused display without a
+  duplicate template underlay.
+- Full-app #112 Space dragging, popover interaction, low/critical/Bluetooth
+  scenes, sleep/wake, and other display arrangements: NOT RUN.
 - Real macOS 13 runtime, Universal package, Developer ID signing, notarization,
   publication: NOT RUN.
