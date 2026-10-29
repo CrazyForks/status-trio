@@ -142,24 +142,22 @@ when the switch completes. This is a menu-bar-only behaviour: the Dock icon is a
 single full-colour render and is unaffected. See
 [issue #112](https://github.com/lingyired/status-trio/issues/112).
 
-## Status colours may stay bright on an unfocused display
+## Status colours on an unfocused display
 
 On multiple displays, macOS dims the menu bar of the display that does not have
-the focused app. Status Trio's template primitives follow that dimming, but the
-status-coloured overlay does not always do so and can stay noticeably brighter
-than the rest of the menu bar.
+the focused app. Attaching a coloured CALayer directly to a status button whose
+image is a template can make that coloured content noticeably brighter.
 
-The two-layer menu bar rendering above is the reason. The template base is a
-system-tinted image, while the coloured primitives are a custom raster in a
-layer attached to the status button. The overlay is not part of the template
-image, so it cannot inherit the system's per-display treatment for free.
+For coloured scenes, the button now holds a transparent non-template footprint.
+The monochrome primitives remain a template in an independent, non-interactive
+image view, and the existing coloured CALayer stays above them. Entirely
+monochrome scenes retain the direct template button image. Scene colours, the
+animation timeline, and the Dock renderer are unchanged.
 
-The normal-display rendering and the Dock icon are unaffected; this limitation
-only concerns the appearance of the coloured primitives on an unfocused
-display's menu bar. Real two-display probing confirmed that layer-backed and
-drawn subviews do not inherit the dimming either. A single non-template
-`button.image` does dim, but updating it per animation frame would take away the
-template path that keeps #112's Space drag in sync and would exceed the existing
-20 fps presentation design. See
-[inactive-display icon dimming](verification/inactive-display-icon-dimming.md)
-for the measured evidence and the remaining system-API question.
+The maintainer tested this separate-template arrangement in a standalone probe
+on two real displays and reported both inactive-display appearance and #112
+Space-drag tinting working. This does not establish acceptance for every macOS
+version or for the complete application's animation and lifecycle. See the
+[integration and verification scope](verification/issue-165-template-image-view.md).
+The [earlier experiments](verification/inactive-display-icon-dimming.md) describe
+the rejected full-raster and template-button arrangements.
