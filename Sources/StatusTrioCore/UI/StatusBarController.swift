@@ -71,10 +71,12 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     private var renderCache = StatusBarRenderCache()
     private let chargingFrameCache = StatusBarChargingFrameCache()
     private let animationLayerPresenter = StatusBarAnimationLayerPresenter()
+    private let templateImagePresenter = StatusBarTemplateImagePresenter()
     private let renderCoalescer = IconRenderCoalescer()
-    /// The template base currently on the status item, kept so a custom-raster
-    /// fallback can put the re-tintable image back.
+    /// The template base and button footprint, kept so a custom-raster fallback
+    /// can restore the independent template presentation.
     private var staticBase: NSImage?
+    private var staticButtonImage: NSImage?
     /// The key of a raster drawn while the button had no window yet, so
     /// a guessed backing scale is rasterized once instead of on every call.
     private var provisionalStaticKey: StatusBarRenderKey?
@@ -309,6 +311,17 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             renderLatestScene()
         } else {
             clearAnimationPresentation()
+            // The colored presentation's non-template footprint is transparent.
+            // Keep a readable template behind it while hidden so a failed first
+            // raster after re-showing cannot leave an invisible status item.
+            if let staticBase,
+               let button = statusItem.button,
+               button.image === staticButtonImage,
+               button.image !== staticBase {
+                button.image = staticBase
+                renderCounters.buttonImageAssignments += 1
+            }
+            templateImagePresenter.clear()
             popover.performClose(nil)
             store.setPopoverVisible(false)
             panelViewModel.stop()
@@ -952,12 +965,18 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
                 // tick retries the same key because the cache stays invalid.
                 return
             }
-            // The button always carries the monochrome template image, so the
-            // system keeps re-tinting it for the Space that is on top — including
-            // while a Space switch is being dragged (#112).
-            button.image = base
-            renderCounters.buttonImageAssignments += 1
+            let buttonImage: NSImage
+            if scene.chromaticRegions.isEmpty {
+                buttonImage = base
+            } else {
+                guard let placeholder = StatusIconRenderer.transparentMenuBarImage(
+                    size: CGFloat(iconSize), scale: backingScale
+                ) else { return }
+                buttonImage = placeholder
+            }
+            presentBase(base, buttonImage: buttonImage, in: button)
             staticBase = base
+            staticButtonImage = buttonImage
             staticOverlay = nil
             staticOverlayIsPending = true
             baseIsCustomRaster = false
@@ -973,14 +992,6 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             }
             renderCounters.staticPresentations += 1
             didPresentStaticContent?()
-        }
-
-        // A fallback raster replaced the template base; put the re-tintable image
-        // back as soon as the overlay can be drawn in the layer again.
-        if baseIsCustomRaster, let staticBase {
-            button.image = staticBase
-            renderCounters.buttonImageAssignments += 1
-            baseIsCustomRaster = false
         }
 
         let context = PresentationContext(
@@ -1011,6 +1022,22 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         // `nil` keeps the icon that is already on screen: a later state change
         // retries the same key because the render cache stays invalid.
         return renderMenuBarBase(scene, iconSize, backingScale, appearance)
+    }
+
+    private func presentBase(
+        _ base: NSImage,
+        buttonImage: NSImage,
+        in button: NSStatusBarButton
+    ) {
+        button.image = buttonImage
+        renderCounters.buttonImageAssignments += 1
+        if buttonImage === base {
+            templateImagePresenter.clear()
+        } else {
+            // A non-template footprint lets the colored layer inherit inactive
+            // display styling. The separate template still re-tints live (#112).
+            templateImagePresenter.display(base, in: button, contentSize: buttonImage.size)
+        }
     }
 
     /// The resting overlay: the scene's status colours at their idle values.
@@ -1102,14 +1129,16 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
 
     private func resetStaticPresentation() {
         renderCache = StatusBarRenderCache()
+        templateImagePresenter.clear()
         staticBase = nil
+        staticButtonImage = nil
         provisionalStaticKey = nil
         staticOverlay = nil
         staticOverlayIsPending = false
         baseIsCustomRaster = false
     }
 
-    /// Draws the chromatic overlay in a layer above the button's template image.
+    /// Draws the chromatic overlay above the independent template primitives.
     private func presentOverlayFrame(
         _ image: CGImage,
         in context: PresentationContext
@@ -1122,6 +1151,13 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         ) != nil else {
             animationLayerPresenter.clear()
             return
+        }
+        // Restore the independent template and button footprint only after a
+        // usable overlay exists. Persistent raster failures stay on the single
+        // fallback raster instead of recreating this view on every tick.
+        if baseIsCustomRaster, let staticBase, let staticButtonImage {
+            presentBase(staticBase, buttonImage: staticButtonImage, in: context.button)
+            baseIsCustomRaster = false
         }
         renderCounters.framesPresented += 1
     }
@@ -1143,6 +1179,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         ) else {
             return
         }
+        templateImagePresenter.clear()
         context.button.image = image
         baseIsCustomRaster = true
         renderCounters.buttonImageAssignments += 1
