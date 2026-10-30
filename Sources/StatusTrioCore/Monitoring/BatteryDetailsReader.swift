@@ -29,17 +29,20 @@ struct BatteryDetails: Equatable, Sendable {
     var power: BatteryPowerSample?
     var systemPower: SystemPowerSample?
     var inputPower: SystemPowerSample?
+    var breakdown: BatteryPowerBreakdown?
     var powerAvailability: PowerAvailability
 
     init(adapterWatts: Int? = nil, remainingMinutes: Int? = nil, cycleCount: Int? = nil,
          power: BatteryPowerSample? = nil, powerAvailability: PowerAvailability = .unavailable,
-         systemPower: SystemPowerSample? = nil, inputPower: SystemPowerSample? = nil) {
+         systemPower: SystemPowerSample? = nil, inputPower: SystemPowerSample? = nil,
+         breakdown: BatteryPowerBreakdown? = nil) {
         self.adapterWatts = adapterWatts
         self.remainingMinutes = remainingMinutes
         self.cycleCount = cycleCount
         self.power = power
         self.systemPower = systemPower
         self.inputPower = inputPower
+        self.breakdown = breakdown
         self.powerAvailability = powerAvailability
     }
 }
@@ -58,7 +61,8 @@ struct BatteryPowerState: Hashable, Sendable {
 }
 
 struct BatteryDetailsReader: Sendable {
-    func read(state: BatteryPowerState, notBefore: Date?, options: BatteryPowerDisplayOptions = .default) -> BatteryDetails {
+    func read(state: BatteryPowerState, notBefore: Date?, options: BatteryPowerDisplayOptions = .default,
+              previousBreakdown: BatteryPowerBreakdown? = nil) -> BatteryDetails {
         let adapter = IOPSCopyExternalPowerAdapterDetails()?.takeRetainedValue() as? [String: Any]
         let service = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching("AppleSmartBattery"))
         var registry: [String: Any] = [:]
@@ -71,21 +75,47 @@ struct BatteryDetailsReader: Sendable {
         }
         let sensors = SystemPowerReader().readSensors(
             system: Self.readsSystemPower(for: state) && options.showsSystem,
-            input: state.isPresent && state.isConnected && options.showsInput,
+            input: state.isPresent && state.isConnected && (options.showsInput || options.showsBreakdown),
             // Read the live battery sensor whenever the page can show charging
             // power. macOS can keep the IOPS/registry charging flags false for
             // tens of seconds during a short charge pulse, and a stale flag
             // must not hide real current that the hardware is already moving.
-            battery: state.isPresent && state.isConnected && options.showsCharging
+            // The breakdown residual also needs it even when the branch is hidden.
+            battery: state.isPresent && state.isConnected && (options.showsCharging || options.showsBreakdown),
+            breakdown: Self.readsBreakdown(for: state) && options.showsBreakdown
         )
+        let now = Date()
+        var breakdown: BatteryPowerBreakdown?
+        if options.showsBreakdown, state.isPresent, state.isConnected {
+            let resolved = BatteryPowerBreakdown.resolve(
+                input: sensors.input,
+                charging: sensors.battery.map { max(0, $0.watts) },
+                display: sensors.display,
+                soc: sensors.soc,
+                usb: USBOutputReader.parse(registry: registry, now: now),
+                now: now
+            )
+            // One overall refresh can catch the rails mid-update and show a
+            // transient negative residual. Hold the last coherent split for a
+            // single refresh instead of flickering back to the legacy diagram;
+            // never extend it beyond that, and never publish a stale residual
+            // as a fresh reading.
+            if let resolved {
+                breakdown = resolved
+            } else if let previous = previousBreakdown,
+                      now.timeIntervalSince(previous.readAt) <= Self.breakdownHoldSeconds {
+                breakdown = previous
+            }
+        }
         var result = Self.parse(
             registry: registry,
             adapterWatts: adapter?[kIOPSPowerAdapterWattsKey] as? Int,
             remainingSeconds: IOPSGetTimeRemainingEstimate(),
             state: state,
-            now: Date(),
+            now: now,
             notBefore: notBefore,
-            systemPower: sensors.system, inputPower: sensors.input, batteryPower: sensors.battery
+            systemPower: sensors.system, inputPower: sensors.input, batteryPower: sensors.battery,
+            breakdown: breakdown
         )
         if !options.showsInput { result.inputPower = nil }
         if state.isConnected && !options.showsCharging { result.power = nil }
@@ -99,13 +129,23 @@ struct BatteryDetailsReader: Sendable {
         state.isPresent && state.isConnected
     }
 
+    /// The split only describes power flowing in from an adapter, so it is
+    /// never sampled on battery.
+    static func readsBreakdown(for state: BatteryPowerState) -> Bool {
+        state.isPresent && state.isConnected
+    }
+
+    /// How long a coherent split may stand in while a rail update crosses a
+    /// refresh boundary. One periodic tick, not a general cache.
+    static let breakdownHoldSeconds: TimeInterval = 6
+
     /// IORegistry is public, but these AppleSmartBattery properties are best-effort,
     /// not a stable cross-model API. Never combine values from nested telemetry sources.
     static func parse(
         registry: [String: Any], adapterWatts: Int?, remainingSeconds: Double,
         state: BatteryPowerState, now: Date, notBefore: Date? = nil,
         systemPower: SystemPowerSample? = nil, inputPower: SystemPowerSample? = nil,
-        batteryPower: BatteryPowerSample? = nil
+        batteryPower: BatteryPowerSample? = nil, breakdown: BatteryPowerBreakdown? = nil
     ) -> BatteryDetails {
         guard state.isPresent else { return BatteryDetails(powerAvailability: .unavailable) }
         var result = BatteryDetails(
@@ -113,7 +153,8 @@ struct BatteryDetailsReader: Sendable {
             remainingMinutes: !state.isConnected && remainingSeconds.isFinite && remainingSeconds >= 60
                 && remainingSeconds < Double(Int.max) ? Int(remainingSeconds / 60) : nil,
             cycleCount: (registry["CycleCount"] as? Int).flatMap { $0 >= 0 ? $0 : nil },
-            systemPower: state.isConnected ? systemPower : nil
+            systemPower: state.isConnected ? systemPower : nil,
+            breakdown: state.isConnected ? breakdown : nil
         )
         let registryMatches = (registry["ExternalConnected"] as? Bool) == state.isConnected
             && (registry["IsCharging"] as? Bool) == state.isCharging

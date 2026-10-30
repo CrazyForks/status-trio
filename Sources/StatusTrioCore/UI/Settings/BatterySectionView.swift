@@ -32,6 +32,11 @@ struct BatterySectionView: View {
                 title: localization.string(.batteryPowerCharging),
                 isOn: $store.showsBatteryChargingPower)
             SettingsDivider()
+            SettingsToggleRow(symbol: "cpu", tint: .blue,
+                title: localization.string(.settingsBatteryBreakdown),
+                subtitle: localization.string(.settingsBatteryBreakdownDescription),
+                isOn: $store.showsPowerBreakdown)
+            SettingsDivider()
             SettingsToggleRow(symbol: "laptopcomputer", tint: .blue,
                 title: localization.string(.batteryPowerSystem),
                 isOn: $store.showsSystemPower)

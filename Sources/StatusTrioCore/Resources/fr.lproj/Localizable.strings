@@ -543,11 +543,17 @@
 // Battery panel power flow and application energy
 "settings.battery.powerFlow" = "Flux de puissance du panneau Batterie";
 "settings.battery.powerFlow.description" = "Les puissances sont actualisées uniquement lorsque le panneau Batterie est ouvert. Les capteurs peuvent être retardés et les trois valeurs peuvent différer.";
+"settings.battery.breakdown" = "Répartir la puissance par composant";
+"settings.battery.breakdown.description" = "Affiche l’écran intégré, la sortie USB et la puce comme branches distinctes. Les valeurs indisponibles sont masquées ; sans répartition fiable, la puissance système réapparaît.";
 "settings.battery.energyRefreshInterval" = "Intervalle d’échantillonnage en arrière-plan";
 "settings.battery.energyRefreshInterval.description" = "Utilisé lorsque le panneau est fermé. La page de détails de la batterie continue de s’actualiser toutes les 5 secondes.";
 "battery.power.input" = "Entrée chargeur";
 "battery.power.charging" = "Vers la batterie";
 "battery.power.system" = "Système";
+"battery.power.display" = "Écran";
+"battery.power.usb" = "Sortie USB";
+"battery.power.soc" = "SoC";
+"battery.power.other" = "Autre";
 "battery.energy.apps" = "Impact énergétique CPU";
 "battery.energy.empty" = "Aucune activité notable dans cet échantillon.";
 "battery.energy.cpuExplanation" = "Classement selon les compteurs d’énergie CPU des apps accessibles à votre compte ; il ne s’agit pas de l’impact énergétique composite de Moniteur d’activité. GPU et processus système peuvent manquer.";

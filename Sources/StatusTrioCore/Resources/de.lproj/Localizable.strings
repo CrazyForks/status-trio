@@ -543,11 +543,17 @@
 // Battery panel power flow and application energy
 "settings.battery.powerFlow" = "Leistungsfluss im Batteriepanel";
 "settings.battery.powerFlow.description" = "Leistungswerte werden nur bei geöffnetem Batteriepanel aktualisiert. Sensoren können verzögert sein; die drei Werte müssen sich nicht genau addieren.";
+"settings.battery.breakdown" = "Leistung nach Komponenten aufteilen";
+"settings.battery.breakdown.description" = "Zeigt integriertes Display, USB-Ausgang und Chipleistung als eigene Zweige. Nicht messbare Werte werden ausgeblendet; ohne verlässliche Aufteilung erscheint wieder die Systemleistung.";
 "settings.battery.energyRefreshInterval" = "Intervall für Hintergrundmessung";
 "settings.battery.energyRefreshInterval.description" = "Wird bei geschlossenem Panel verwendet. Die Batteriedetailseite wird weiterhin alle 5 Sekunden aktualisiert.";
 "battery.power.input" = "Ladeeingang";
 "battery.power.charging" = "Zur Batterie";
 "battery.power.system" = "Systemleistung";
+"battery.power.display" = "Display";
+"battery.power.usb" = "USB-Ausgang";
+"battery.power.soc" = "SoC";
+"battery.power.other" = "Sonstiges";
 "battery.energy.apps" = "CPU-Energieauswirkung";
 "battery.energy.empty" = "Keine auffällige App-Aktivität in dieser Messung.";
 "battery.energy.cpuExplanation" = "Nach CPU-Energiezählern der für dein Konto lesbaren Apps sortiert; nicht die zusammengesetzte Energieauswirkung der Aktivitätsanzeige. GPU und Systemprozesse können fehlen.";

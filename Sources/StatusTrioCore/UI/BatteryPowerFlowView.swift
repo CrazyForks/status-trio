@@ -5,8 +5,55 @@ import SwiftUI
 struct BatteryPowerFlowView: View {
     let state: BatteryPowerFlowState
 
-    private var destinations: Int { (state.battery == nil ? 0 : 1) + (state.system == nil ? 0 : 1) }
-    private var height: CGFloat { destinations > 1 ? 132 : 76 }
+    private var destinations: [BatteryPowerFlowState.Metric] { state.destinations }
+    private var isCompact: Bool { destinations.count > 2 }
+    private var nodeHeight: CGFloat { isCompact ? 44 : 60 }
+    private var pitch: CGFloat { isCompact ? 50 : 70 }
+    private var topPadding: CGFloat { isCompact ? 2 : 1 }
+    /// Thickness of a ribbon carrying the whole budget. The compact diagram
+    /// packs more branches into the same column, so each one gets less width.
+    private var ribbonScale: CGFloat { isCompact ? 120 : 46 }
+
+    private var height: CGFloat {
+        switch destinations.count {
+        case 0, 1: return 76
+        case 2: return 132
+        default: return topPadding * 2 + nodeHeight + CGFloat(destinations.count - 1) * pitch
+        }
+    }
+
+    private func centerY(_ index: Int) -> CGFloat {
+        destinations.count == 1 ? height / 2 : topPadding + nodeHeight / 2 + CGFloat(index) * pitch
+    }
+
+    private struct Ribbon: Identifiable {
+        let id: Int
+        let startY: CGFloat
+        let endY: CGFloat
+        let thickness: CGFloat
+        let color: Color
+    }
+
+    /// Ribbons leave the input card stacked by their share of the budget, so
+    /// five branches still read as one bundle instead of overlapping.
+    private func ribbons(center: CGFloat) -> [Ribbon] {
+        let fractions = destinations.map { state.flowFraction(for: $0).map { CGFloat($0) } }
+        let requested = fractions.map { ($0 ?? 0) * ribbonScale }
+        // Independent sensors can add up past the input; shrink the whole
+        // bundle instead of letting it spill outside the card.
+        let available = height - 12
+        let excess = requested.reduce(0, +)
+        let scale = excess > available && excess > 0 ? available / excess : 1
+        let thicknesses = requested.map { $0 * scale }
+        var offset = center - min(available, excess) / 2
+        return destinations.enumerated().map { index, metric in
+            let thickness = thicknesses[index]
+            defer { offset += thickness }
+            return Ribbon(id: index, startY: offset + thickness / 2,
+                          endY: centerY(index), thickness: thickness,
+                          color: Self.color(for: metric.kind))
+        }
+    }
 
     var body: some View {
         GeometryReader { geometry in
@@ -14,64 +61,73 @@ struct BatteryPowerFlowView: View {
             let left: CGFloat = state.input == nil ? 0 : 66
             let right = width - 98
             let center = height / 2
-            let batteryY: CGFloat = destinations > 1 ? 31 : center
-            let systemY: CGFloat = destinations > 1 ? 101 : center
-            let batteryFraction = state.batteryFlowFraction.map { CGFloat($0) }
-            let systemFraction = state.systemFlowFraction.map { CGFloat($0) }
-            if state.input != nil, destinations > 0 {
-                if state.battery != nil {
-                    ribbon(from: left, to: right, startY: center - (systemFraction ?? 0) * 23, endY: batteryY,
-                        thickness: batteryFraction.map { $0 * 46 }, color: .green)
-                }
-                if state.system != nil {
-                    ribbon(from: left, to: right, startY: center + (batteryFraction ?? 0) * 23, endY: systemY,
-                        thickness: systemFraction.map { $0 * 46 }, color: .blue)
+            if state.input != nil, !destinations.isEmpty {
+                ForEach(ribbons(center: center)) { item in
+                    ribbon(from: left, to: right, startY: item.startY, endY: item.endY,
+                           thickness: item.thickness, color: item.color)
                 }
             }
             if let input = state.input {
-                metric(input, symbol: "powerplug.fill", color: .primary)
-                    .frame(width: destinations == 0 ? width : 62, height: height - 8)
+                metric(input, symbol: "powerplug.fill", color: .primary, height: height - 8)
+                    .frame(width: destinations.isEmpty ? width : 62)
                     .background(.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 14))
-                    .position(x: destinations == 0 ? width / 2 : 31, y: center)
+                    .position(x: destinations.isEmpty ? width / 2 : 31, y: center)
             }
-            if let battery = state.battery {
-                destination(battery, symbol: "battery.100.bolt", color: .green,
-                    width: state.input == nil ? width : 94)
-                    .position(x: state.input == nil ? width / 2 : width - 47, y: batteryY)
-            }
-            if let system = state.system {
-                destination(system, symbol: "laptopcomputer", color: .blue,
-                    width: state.input == nil ? width : 94)
-                    .position(x: state.input == nil ? width / 2 : width - 47, y: systemY)
+            ForEach(Array(destinations.enumerated()), id: \.offset) { index, item in
+                metric(item, symbol: Self.symbol(for: item.kind),
+                       color: Self.color(for: item.kind), height: nodeHeight)
+                    .frame(width: state.input == nil ? width : 94)
+                    .background(Self.color(for: item.kind).opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
+                    .position(x: state.input == nil ? width / 2 : width - 47, y: centerY(index))
             }
         }
         .frame(height: height)
     }
 
-    private func destination(_ value: BatteryPowerFlowState.Metric, symbol: String,
-                             color: Color, width: CGFloat) -> some View {
-        metric(value, symbol: symbol, color: color)
-            .frame(width: width, height: 60)
-            .background(color.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
+    private static func symbol(for kind: BatteryPowerFlowState.Kind) -> String {
+        switch kind {
+        case .charging: return "battery.100.bolt"
+        case .display: return "display"
+        case .usb: return "cable.connector"
+        case .soc: return "cpu"
+        case .other: return "ellipsis"
+        case .system: return "laptopcomputer"
+        }
     }
 
-    private func metric(_ value: BatteryPowerFlowState.Metric, symbol: String, color: Color) -> some View {
-        VStack(spacing: 3) {
+    private static func color(for kind: BatteryPowerFlowState.Kind) -> Color {
+        switch kind {
+        case .charging: return .green
+        case .display: return .indigo
+        case .usb: return .orange
+        case .soc: return .blue
+        case .other: return .gray
+        case .system: return .blue
+        }
+    }
+
+    private func metric(_ value: BatteryPowerFlowState.Metric, symbol: String,
+                        color: Color, height: CGFloat) -> some View {
+        VStack(spacing: isCompact ? 1 : 3) {
             Image(systemName: symbol)
                 .foregroundStyle(color)
+                .imageScale(isCompact ? .small : .medium)
                 .accessibilityHidden(true)
             Text(value.value)
-                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                .font(.system(size: isCompact ? 12 : 13, weight: .semibold, design: .rounded))
                 .monospacedDigit()
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
             Text(value.label)
-                .font(.system(size: 10))
+                .font(.system(size: isCompact ? 9 : 10))
                 .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(.horizontal, 3)
+        .frame(height: height)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(value.label + ": " + value.value)
     }

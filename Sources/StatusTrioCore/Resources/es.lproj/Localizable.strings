@@ -543,11 +543,17 @@
 // Battery panel power flow and application energy
 "settings.battery.powerFlow" = "Flujo de energía en el panel Batería";
 "settings.battery.powerFlow.description" = "Las potencias se actualizan solo con el panel Batería abierto. Los sensores pueden tener retraso y las tres lecturas pueden no sumar exactamente.";
+"settings.battery.breakdown" = "Dividir la potencia por componente";
+"settings.battery.breakdown.description" = "Muestra la pantalla integrada, la salida USB y el chip como ramas separadas. Los valores no disponibles se ocultan; sin un desglose fiable vuelve la potencia del sistema.";
 "settings.battery.energyRefreshInterval" = "Intervalo de muestreo en segundo plano";
 "settings.battery.energyRefreshInterval.description" = "Se usa con el panel cerrado. La página de detalles de la batería sigue actualizándose cada 5 segundos.";
 "battery.power.input" = "Entrada cargador";
 "battery.power.charging" = "A la batería";
 "battery.power.system" = "Sistema";
+"battery.power.display" = "Pantalla";
+"battery.power.usb" = "Salida USB";
+"battery.power.soc" = "SoC";
+"battery.power.other" = "Otro";
 "battery.energy.apps" = "Impacto energético de CPU";
 "battery.energy.empty" = "Sin actividad destacada en esta muestra.";
 "battery.energy.cpuExplanation" = "Ordenadas por contadores de energía de CPU de las apps accesibles para tu cuenta; no es el impacto energético compuesto de Monitor de Actividad. Pueden faltar GPU y procesos del sistema.";

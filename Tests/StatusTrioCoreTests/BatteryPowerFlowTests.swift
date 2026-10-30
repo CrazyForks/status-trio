@@ -90,7 +90,7 @@ final class BatteryPowerFlowTests: XCTestCase {
             for charging in [false, true] {
                 for system in [false, true] {
                     let options = BatteryPowerDisplayOptions(showsInput: input,
-                        showsCharging: charging, showsSystem: system)
+                        showsCharging: charging, showsSystem: system, showsBreakdown: false)
                     let state = PanelDetailMapper.battery(status: status, details: details,
                         localization: localization, powerOptions: options)
                     XCTAssertEqual(state.powerFlow?.input?.watts, input ? 67 : nil)
