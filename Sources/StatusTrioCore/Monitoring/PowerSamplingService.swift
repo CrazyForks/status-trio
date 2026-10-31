@@ -1,13 +1,24 @@
 import Combine
 import Foundation
 
-/// The one owner of periodic whole-machine (`PSTR`) power reads.
+/// One refresh's worth of shared power rails. `system` is the whole-machine
+/// total the icon/panel use; `input` and `battery` are only read when a surface
+/// (the provisional power info bar) actually shows them.
+struct PowerSamplingReading: Equatable, Sendable {
+    var system: SystemPowerSample?
+    var input: SystemPowerSample?
+    var battery: BatteryPowerSample?
+
+    static let empty = Self()
+}
+
+/// The one owner of periodic (`PSTR` and, on demand, input/battery) power reads.
 ///
-/// The menu-bar/Dock centre slot, the status panel summary and the battery
-/// details page each need a system power reading. They register a demand here
-/// instead of starting their own timer, so one surface ending never cuts the
-/// sample another surface is still using, and the SMC is never read twice for
-/// the same refresh.
+/// The menu-bar/Dock centre slot, the status panel summary, the provisional
+/// power info bar and the battery details page each need a power reading. They
+/// register a demand here instead of starting their own timer, so one surface
+/// ending never cuts the sample another surface is still using, and the SMC is
+/// never read twice for the same refresh.
 ///
 /// Every demand shares one 2-second rhythm: an icon that keeps showing watts is
 /// as live as an open panel, and the sampler still stops once the last demand
@@ -21,15 +32,20 @@ final class PowerSamplingService: ObservableObject {
         /// The status panel can present power (the battery summary or a
         /// no-battery device's power title).
         case panel
+        /// The provisional power info bar is enabled and the panel is open, so
+        /// the input and battery rails are needed too.
+        case powerInfoBar
         /// The battery details page is open.
         case details
     }
 
-    typealias Reader = @Sendable () -> SystemPowerSample?
+    typealias Reader = @Sendable (_ includeAuxiliaryRails: Bool) -> PowerSamplingReading
 
     static let interval: Duration = .seconds(2)
 
     @Published private(set) var systemPower: SystemPowerSample?
+    @Published private(set) var inputPower: SystemPowerSample?
+    @Published private(set) var batteryPower: BatteryPowerSample?
     /// Exposed for tests and diagnostics.
     private(set) var demands: Set<Demand> = []
     private(set) var isRunning = false
@@ -44,7 +60,18 @@ final class PowerSamplingService: ObservableObject {
     private var inFlight = false
     private var needsRefresh = false
 
-    init(reader: @escaping Reader = { SystemPowerReader().read() }) {
+    init(reader: @escaping Reader = { includeAuxiliaryRails in
+        let sensors = SystemPowerReader().readSensors(
+            system: true,
+            input: includeAuxiliaryRails,
+            battery: includeAuxiliaryRails
+        )
+        return PowerSamplingReading(
+            system: sensors.system,
+            input: sensors.input,
+            battery: sensors.battery
+        )
+    }) {
         self.reader = reader
     }
 
@@ -63,7 +90,12 @@ final class PowerSamplingService: ObservableObject {
 
     func end(_ demand: Demand) {
         guard demands.remove(demand) != nil else { return }
-        if demands.isEmpty { stopLoop() }
+        if demands.isEmpty {
+            stopLoop()
+        } else if demand == .powerInfoBar {
+            // Stop showing input/battery as soon as nothing displays them.
+            clearAuxiliaryRails()
+        }
     }
 
     func stopAll() {
@@ -83,13 +115,18 @@ final class PowerSamplingService: ObservableObject {
         needsRefresh = false
         let generation = generation
         let reader = reader
+        let includeAuxiliaryRails = demands.contains(.powerInfoBar)
         Self.queue.async { [weak self] in
-            let sample = reader()
+            let reading = reader(includeAuxiliaryRails)
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 self.inFlight = false
-                if self.isRunning, self.generation == generation, let sample {
-                    if self.systemPower != sample { self.systemPower = sample }
+                if self.isRunning, self.generation == generation {
+                    if self.systemPower != reading.system { self.systemPower = reading.system }
+                    if includeAuxiliaryRails {
+                        if self.inputPower != reading.input { self.inputPower = reading.input }
+                        if self.batteryPower != reading.battery { self.batteryPower = reading.battery }
+                    }
                 }
                 if self.needsRefresh {
                     self.needsRefresh = false
@@ -125,5 +162,11 @@ final class PowerSamplingService: ObservableObject {
         // A stopped sampler must not leave a value behind for a surface that
         // opens later; a fresh demand starts a new read.
         if systemPower != nil { systemPower = nil }
+        clearAuxiliaryRails()
+    }
+
+    private func clearAuxiliaryRails() {
+        if inputPower != nil { inputPower = nil }
+        if batteryPower != nil { batteryPower = nil }
     }
 }

@@ -61,6 +61,27 @@ details page adapt instead of hiding the module:
 `PSTR` has no cross-model contract; desktop read support is runtime-probed and
 falls back to the unavailable state, never to a fabricated value.
 
+## Provisional power info bar
+
+A single line under the panel's battery module can show **Input / Battery /
+System** power. It is **off by default** and enabled in
+**Settings › Battery Display**. This bar is still under discussion; the notes
+below describe what is implemented, not a frozen specification.
+
+- Each rail is its own reading: a missing or stale rail is absent, and the bar
+  hides when none is fresh. The three values are never added into a total.
+- A Mac with no battery hides the **Battery** rail.
+- It rides the same shared sampler as the icon and details page. Its demand is
+  released when the panel closes or the option is switched off, and that must
+  never interrupt an icon or details demand that is still live. Because it needs
+  the input and battery rails, the sampler reads them only while this demand is
+  registered; otherwise it reads the whole-machine total alone.
+- Current rhythm is the same 2-second cadence as every other surface.
+- Deliberately **not decided** here (left for discussion): 3–5 s panel refresh,
+  5 s icon refresh, first-frame cache, cache-expiry threshold, and placeholder
+  strategy. No cache or placeholder is implemented yet; only fresh readings are
+  drawn.
+
 ## Verification status
 
 - Unit coverage: sampler demand/cadence lifecycle, settings migration, mapper

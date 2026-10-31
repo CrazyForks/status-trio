@@ -51,6 +51,14 @@ final class ConnectionCenterSourceTests: XCTestCase {
         XCTAssertEqual(SettingsStore(defaults: defaults).connectionIconOptions.centerSource, .power)
     }
 
+    func testPowerInfoBarIsOffByDefaultAndPersists() throws {
+        let (_, defaults) = try makeDefaults()
+        let settings = SettingsStore(defaults: defaults)
+        XCTAssertFalse(settings.showsBatteryPowerInfoBar)
+        settings.showsBatteryPowerInfoBar = true
+        XCTAssertTrue(SettingsStore(defaults: defaults).showsBatteryPowerInfoBar)
+    }
+
     func testPowerIsTheOnlyChoiceThatKeepsTheSamplerAlive() {
         XCTAssertTrue(ConnectionCenterSource.power.needsPowerSampling)
         for source in ConnectionCenterSource.allCases where source != .power {

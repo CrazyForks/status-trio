@@ -579,6 +579,8 @@
 "settings.battery.powerFlow.description" = "As potências são atualizadas apenas com o painel Bateria aberto. Os sensores podem ter atraso e as três leituras podem não somar exatamente.";
 "settings.battery.breakdown" = "Dividir a energia por componente";
 "settings.battery.breakdown.description" = "Divide a entrada do adaptador em tela integrada, saída USB e o restante da carga do sistema (incluindo o SoC). Leituras indisponíveis ficam ocultas; sem uma divisão confiável, a energia do sistema volta a aparecer.";
+"settings.battery.powerInfoBar" = "Barra de potência";
+"settings.battery.powerInfoBarDescription" = "Mostra a potência de entrada, da bateria e do sistema abaixo do módulo de bateria com o painel aberto. Desativado por padrão.";
 "settings.battery.energyRefreshInterval" = "Intervalo de amostragem em segundo plano";
 "settings.battery.energyRefreshInterval.description" = "Usado com o painel fechado. A página de detalhes da bateria continua atualizando a cada 5 segundos.";
 "battery.power.input" = "Entrada carregador";
@@ -587,6 +589,9 @@
 "battery.power.system" = "Sistema";
 "battery.power.system.help" = "Potência do sistema (incl. SoC)";
 "battery.power.system.explanation" = "“Sistema” é o que resta após a carga da bateria, a tela e o USB: inclui SoC, memória, controladores de vídeo e outras cargas não medidas separadamente.";
+"power.infoBar.input" = "Entrada";
+"power.infoBar.battery" = "Bateria";
+"power.infoBar.system" = "Sistema";
 "battery.power.display" = "Tela";
 "battery.power.usb" = "Saída USB";
 "battery.power.soc" = "SoC";

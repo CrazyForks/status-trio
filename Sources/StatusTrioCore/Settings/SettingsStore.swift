@@ -33,6 +33,7 @@ final class SettingsStore: ObservableObject {
     static let showsBatteryChargingPowerDefaultsKey = "showsBatteryChargingPower"
     static let showsSystemPowerDefaultsKey = "showsSystemPower"
     static let showsPowerBreakdownDefaultsKey = "showsPowerBreakdown"
+    static let showsBatteryPowerInfoBarDefaultsKey = "showsBatteryPowerInfoBar"
     static let showsHighEnergyAppsDefaultsKey = "showsHighEnergyApps"
     static let highEnergyAppsRefreshIntervalDefaultsKey = "highEnergyAppsRefreshIntervalSeconds"
     static let highEnergyAppsRefreshIntervalRange: ClosedRange<Double> = 10...60
@@ -274,6 +275,11 @@ final class SettingsStore: ObservableObject {
     }
     @Published var showsPowerBreakdown: Bool {
         didSet { defaults.set(showsPowerBreakdown, forKey: Self.showsPowerBreakdownDefaultsKey) }
+    }
+    /// Provisional: shows input/battery/system power under the panel's battery
+    /// module. Off by default; not yet an accepted specification.
+    @Published var showsBatteryPowerInfoBar: Bool {
+        didSet { defaults.set(showsBatteryPowerInfoBar, forKey: Self.showsBatteryPowerInfoBarDefaultsKey) }
     }
     @Published var showsHighEnergyApps: Bool {
         didSet { defaults.set(showsHighEnergyApps, forKey: Self.showsHighEnergyAppsDefaultsKey) }
@@ -1546,6 +1552,7 @@ final class SettingsStore: ObservableObject {
         self.showsBatteryChargingPower = defaults.object(forKey: Self.showsBatteryChargingPowerDefaultsKey) as? Bool ?? true
         self.showsSystemPower = defaults.object(forKey: Self.showsSystemPowerDefaultsKey) as? Bool ?? true
         self.showsPowerBreakdown = defaults.object(forKey: Self.showsPowerBreakdownDefaultsKey) as? Bool ?? true
+        self.showsBatteryPowerInfoBar = defaults.object(forKey: Self.showsBatteryPowerInfoBarDefaultsKey) as? Bool ?? false
         self.showsHighEnergyApps = defaults.object(forKey: Self.showsHighEnergyAppsDefaultsKey) as? Bool ?? false
         self.highEnergyAppsRefreshIntervalSeconds = Self.clampedHighEnergyAppsRefreshInterval(
             defaults.object(forKey: Self.highEnergyAppsRefreshIntervalDefaultsKey) as? Double

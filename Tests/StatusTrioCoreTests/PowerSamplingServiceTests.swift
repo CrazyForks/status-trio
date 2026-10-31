@@ -7,13 +7,13 @@ final class PowerSamplingServiceTests: XCTestCase {
     private let now = Date(timeIntervalSince1970: 1_789_555_974)
 
     private func makeService(
-        reader: @escaping @Sendable () -> SystemPowerSample?
+        reader: @escaping @Sendable (_ includeAuxiliaryRails: Bool) -> PowerSamplingReading
     ) -> PowerSamplingService {
         PowerSamplingService(reader: reader)
     }
 
     func testEverySurfaceSharesOneCadenceAndOnlyTheLastDemandStopsIt() {
-        let service = makeService { nil }
+        let service = makeService { _ in .empty }
 
         XCTAssertFalse(service.isRunning)
         XCTAssertEqual(PowerSamplingService.interval, .seconds(2))
@@ -35,7 +35,7 @@ final class PowerSamplingServiceTests: XCTestCase {
     }
 
     func testRepeatedBeginIsIdempotent() {
-        let service = makeService { nil }
+        let service = makeService { _ in .empty }
         service.begin(.icon)
         service.begin(.icon)
         XCTAssertEqual(service.demands, [.icon])
@@ -45,7 +45,7 @@ final class PowerSamplingServiceTests: XCTestCase {
 
     func testASuccessfulReadPublishesTheSample() async {
         let sample = SystemPowerSample(watts: 17.5, readAt: now)
-        let service = makeService { sample }
+        let service = makeService { _ in PowerSamplingReading(system: sample) }
 
         service.begin(.icon)
         await waitForSample(service)
@@ -56,7 +56,7 @@ final class PowerSamplingServiceTests: XCTestCase {
     }
 
     func testAnUnreadableSampleIsNeverPublishedAsZero() async {
-        let service = makeService { nil }
+        let service = makeService { _ in .empty }
         service.begin(.icon)
         // Give the background read a chance to land before asserting.
         for _ in 0..<20 { await Task.yield() }
@@ -64,8 +64,32 @@ final class PowerSamplingServiceTests: XCTestCase {
         service.end(.icon)
     }
 
+    func testPowerInfoBarDemandReadsThenClearsAuxiliaryRails() async {
+        let input = SystemPowerSample(watts: 30.2, readAt: now)
+        let packed = BatteryPowerSample(volts: 12, amps: 1.0, updatedAt: now)
+        let system = SystemPowerSample(watts: 18.0, readAt: now)
+        let service = makeService { _ in
+            PowerSamplingReading(system: system, input: input, battery: packed)
+        }
+
+        service.begin(.panel)
+        await waitFor { service.systemPower != nil }
+        XCTAssertNil(service.inputPower, "The panel alone must not pay for the auxiliary rails")
+
+        service.begin(.powerInfoBar)
+        await waitFor { service.inputPower != nil }
+        XCTAssertEqual(service.inputPower, input)
+        XCTAssertEqual(service.batteryPower, packed)
+
+        service.end(.powerInfoBar)
+        XCTAssertNil(service.inputPower, "Ending the info-bar demand clears its rails")
+        XCTAssertNil(service.batteryPower)
+        XCTAssertNotNil(service.systemPower, "The panel's whole-machine sample must survive")
+        service.end(.panel)
+    }
+
     func testStopAllReleasesEveryDemand() {
-        let service = makeService { nil }
+        let service = makeService { _ in .empty }
         service.begin(.icon)
         service.begin(.panel)
         service.begin(.details)
@@ -75,8 +99,12 @@ final class PowerSamplingServiceTests: XCTestCase {
     }
 
     private func waitForSample(_ service: PowerSamplingService) async {
+        await waitFor { service.systemPower != nil }
+    }
+
+    private func waitFor(_ condition: () -> Bool) async {
         for _ in 0..<100 {
-            if service.systemPower != nil { return }
+            if condition() { return }
             try? await Task.sleep(for: .milliseconds(2))
         }
     }

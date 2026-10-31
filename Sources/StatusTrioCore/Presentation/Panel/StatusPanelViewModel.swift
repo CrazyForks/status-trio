@@ -103,6 +103,9 @@ final class StatusPanelViewModel: ObservableObject {
         battery = PanelPresentationMapper.battery(
             store.popupSnapshot.battery,
             powerSample: store.powerSampling.systemPower,
+            inputPower: store.powerSampling.inputPower,
+            batteryPower: store.powerSampling.batteryPower,
+            showsPowerInfoBar: settings.showsBatteryPowerInfoBar,
             localization: localization
         )
         network = PanelPresentationMapper.network(
@@ -169,20 +172,36 @@ final class StatusPanelViewModel: ObservableObject {
         updatePowerSamplingDemand()
 
         // A no-battery Mac gets its panel title from the shared whole-machine
-        // reading; refresh the row as soon as the sampler publishes one.
-        store.powerSampling.$systemPower
-            .sink { [weak self] sample in
+        // reading, and the provisional info bar shows the other rails; refresh
+        // the row as soon as any shared sample changes.
+        Publishers.CombineLatest3(
+            store.powerSampling.$systemPower,
+            store.powerSampling.$inputPower,
+            store.powerSampling.$batteryPower
+        )
+            .sink { [weak self] systemPower, inputPower, batteryPower in
                 guard let self else { return }
-                if self.isVisible(.battery), !self.store.popupSnapshot.battery.isPresent {
+                if self.isVisible(.battery) {
                     let next = PanelPresentationMapper.battery(
                         self.store.popupSnapshot.battery,
-                        powerSample: sample,
+                        powerSample: systemPower,
+                        inputPower: inputPower,
+                        batteryPower: batteryPower,
+                        showsPowerInfoBar: self.settings.showsBatteryPowerInfoBar,
                         localization: self.localization,
                         chargeToFullNow: self.chargeToFullNowPresentation
                     )
                     if self.battery != next { self.battery = next }
                 }
                 if !self.isRouteAvailable(self.route) { self.closeCurrentPage() }
+            }
+            .store(in: &cancellables)
+
+        settings.$showsBatteryPowerInfoBar
+            .removeDuplicates()
+            .dropFirst()
+            .sink { [weak self] _ in
+                self?.updatePowerSamplingDemand()
             }
             .store(in: &cancellables)
 
@@ -587,10 +606,18 @@ final class StatusPanelViewModel: ObservableObject {
     /// while the customer can see them. The details page registers its own
     /// demand, so closing the panel never cuts a sample it is still using.
     private func updatePowerSamplingDemand() {
-        if isStarted, visiblePopupSections.contains(.battery) {
+        let panelVisible = isStarted && visiblePopupSections.contains(.battery)
+        if panelVisible {
             store.powerSampling.begin(.panel)
         } else {
             store.powerSampling.end(.panel)
+        }
+        // The provisional info bar needs the input and battery rails; without
+        // it the sampler reads only the whole-machine total.
+        if panelVisible, settings.showsBatteryPowerInfoBar {
+            store.powerSampling.begin(.powerInfoBar)
+        } else {
+            store.powerSampling.end(.powerInfoBar)
         }
     }
 
@@ -601,6 +628,9 @@ final class StatusPanelViewModel: ObservableObject {
         let next = PanelPresentationMapper.battery(
             store.popupSnapshot.battery,
             powerSample: store.powerSampling.systemPower,
+            inputPower: store.powerSampling.inputPower,
+            batteryPower: store.powerSampling.batteryPower,
+            showsPowerInfoBar: settings.showsBatteryPowerInfoBar,
             localization: localization,
             chargeToFullNow: chargeToFullNowPresentation
         )
@@ -801,6 +831,9 @@ final class StatusPanelViewModel: ObservableObject {
             let batteryState = PanelPresentationMapper.battery(
                 snapshot.battery,
                 powerSample: store.powerSampling.systemPower,
+                inputPower: store.powerSampling.inputPower,
+                batteryPower: store.powerSampling.batteryPower,
+                showsPowerInfoBar: settings.showsBatteryPowerInfoBar,
                 localization: localization,
                 chargeToFullNow: chargeToFullNowPresentation
             )

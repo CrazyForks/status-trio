@@ -579,6 +579,8 @@
 "settings.battery.powerFlow.description" = "Мощность обновляется только при открытой панели батареи. Данные датчиков могут запаздывать, поэтому сумма трёх показаний может различаться.";
 "settings.battery.breakdown" = "Разбить мощность по компонентам";
 "settings.battery.breakdown.description" = "Делит входную мощность адаптера на встроенный дисплей, выход USB и остальную нагрузку системы (включая SoC). Недоступные значения скрываются; если разбить нельзя, снова показывается мощность системы.";
+"settings.battery.powerInfoBar" = "Строка мощности";
+"settings.battery.powerInfoBarDescription" = "Показывает мощность входа, батареи и системы под модулем батареи при открытой панели. По умолчанию выключено.";
 "settings.battery.energyRefreshInterval" = "Интервал фонового сбора";
 "settings.battery.energyRefreshInterval.description" = "Используется при закрытой панели. Страница сведений об аккумуляторе по-прежнему обновляется каждые 5 секунд.";
 "battery.power.input" = "От зарядки";
@@ -587,6 +589,9 @@
 "battery.power.system" = "Система";
 "battery.power.system.help" = "Мощность системы (вкл. SoC)";
 "battery.power.system.explanation" = "«Система» — это остаток после зарядки аккумулятора, дисплея и USB: SoC, память, контроллеры дисплея и другие независимо не измеренные нагрузки.";
+"power.infoBar.input" = "Вход";
+"power.infoBar.battery" = "Батарея";
+"power.infoBar.system" = "Система";
 "battery.power.display" = "Дисплей";
 "battery.power.usb" = "USB-выход";
 "battery.power.soc" = "SoC";

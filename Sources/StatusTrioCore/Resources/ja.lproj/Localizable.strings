@@ -579,6 +579,8 @@
 "settings.battery.powerFlow.description" = "電力値はバッテリーパネルを開いている間だけ更新します。センサーの更新に遅延があり、3つの値の合計は一致しない場合があります。";
 "settings.battery.breakdown" = "電力を項目別に分割";
 "settings.battery.breakdown.description" = "アダプター入力を内蔵ディスプレイ、USB 出力、残りのシステム負荷（SoC を含む）に分割します。取得できない項目は非表示になり、分割できない場合はシステム電力の表示に戻ります。";
+"settings.battery.powerInfoBar" = "電力情報バー";
+"settings.battery.powerInfoBarDescription" = "パネルを開いている間、バッテリーモジュールの下に入力・バッテリー・システムの電力を表示します。既定ではオフです。";
 "settings.battery.energyRefreshInterval" = "バックグラウンドサンプリング間隔";
 "settings.battery.energyRefreshInterval.description" = "パネルを閉じている間に使用します。バッテリー詳細ページは引き続き 5 秒ごとに更新されます。";
 "battery.power.input" = "充電器入力";
@@ -587,6 +589,9 @@
 "battery.power.system" = "システム";
 "battery.power.system.help" = "システム電力（SoC を含む）";
 "battery.power.system.explanation" = "「システム」は、バッテリー充電、ディスプレイ、USB を除いた残りです。SoC、メモリ、ディスプレイコントローラーなどを含み、単一のセンサー値ではありません。";
+"power.infoBar.input" = "入力";
+"power.infoBar.battery" = "バッテリー";
+"power.infoBar.system" = "システム";
 "battery.power.display" = "ディスプレイ";
 "battery.power.usb" = "USB 出力";
 "battery.power.soc" = "SoC";

@@ -159,7 +159,12 @@ final class LocalizationTests: XCTestCase {
             .batteryTitlePowerUnavailable,
             .batteryDetailsWatt,
             .settingsNetworkCenterSourceBatteryPercentage,
-            .settingsNetworkCenterSourcePower
+            .settingsNetworkCenterSourcePower,
+            .settingsBatteryPowerInfoBar,
+            .settingsBatteryPowerInfoBarDescription,
+            .powerInfoBarInput,
+            .powerInfoBarBattery,
+            .powerInfoBarSystem
         ]
         for language in AppLanguage.allCases {
             let bundle = try XCTUnwrap(Localization.resourceBundle(for: language))

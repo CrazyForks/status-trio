@@ -579,6 +579,8 @@
 "settings.battery.powerFlow.description" = "Les puissances sont actualisées uniquement lorsque le panneau Batterie est ouvert. Les capteurs peuvent être retardés et les trois valeurs peuvent différer.";
 "settings.battery.breakdown" = "Répartir la puissance par composant";
 "settings.battery.breakdown.description" = "Répartit l’entrée de l’adaptateur entre l’écran intégré, la sortie USB et le reste de la charge système (SoC compris). Les valeurs indisponibles sont masquées ; sans répartition fiable, la puissance système réapparaît.";
+"settings.battery.powerInfoBar" = "Barre d’infos de puissance";
+"settings.battery.powerInfoBarDescription" = "Affiche la puissance d’entrée, de batterie et système sous le module de batterie lorsque le panneau est ouvert. Désactivé par défaut.";
 "settings.battery.energyRefreshInterval" = "Intervalle d’échantillonnage en arrière-plan";
 "settings.battery.energyRefreshInterval.description" = "Utilisé lorsque le panneau est fermé. La page de détails de la batterie continue de s’actualiser toutes les 5 secondes.";
 "battery.power.input" = "Entrée chargeur";
@@ -587,6 +589,9 @@
 "battery.power.system" = "Système";
 "battery.power.system.help" = "Puissance système (SoC incl.)";
 "battery.power.system.explanation" = "« Système » est ce qui reste après la charge de la batterie, l’écran et l’USB : SoC, mémoire, contrôleurs d’affichage et autres charges non mesurées séparément.";
+"power.infoBar.input" = "Entrée";
+"power.infoBar.battery" = "Batterie";
+"power.infoBar.system" = "Système";
 "battery.power.display" = "Écran";
 "battery.power.usb" = "Sortie USB";
 "battery.power.soc" = "SoC";

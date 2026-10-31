@@ -95,6 +95,18 @@ struct BatterySectionView: View {
 
     private var batteryGroup: some View {
         SettingsGroup(localization.string(.settingsBatteryTitle)) {
+            // Provisional panel option: a single line of input / battery /
+            // system power under the battery module. Off by default.
+            SettingsToggleRow(
+                symbol: "chart.bar.fill",
+                tint: .teal,
+                title: localization.string(.settingsBatteryPowerInfoBar),
+                subtitle: localization.string(.settingsBatteryPowerInfoBarDescription),
+                isOn: $store.showsBatteryPowerInfoBar
+            )
+
+            SettingsDivider()
+
             // Low Power Mode control is offered only when this build bundled the
             // privileged helper, so an App-Store-style build never shows a
             // toggle it cannot honour.

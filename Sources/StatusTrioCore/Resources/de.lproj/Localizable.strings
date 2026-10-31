@@ -579,6 +579,8 @@
 "settings.battery.powerFlow.description" = "Leistungswerte werden nur bei geöffnetem Batteriepanel aktualisiert. Sensoren können verzögert sein; die drei Werte müssen sich nicht genau addieren.";
 "settings.battery.breakdown" = "Leistung nach Komponenten aufteilen";
 "settings.battery.breakdown.description" = "Teilt die Adaptereingangsleistung in integriertes Display, USB-Ausgang und die übrige Systemlast (inklusive SoC) auf. Nicht messbare Werte werden ausgeblendet; ohne verlässliche Aufteilung erscheint wieder die Systemleistung.";
+"settings.battery.powerInfoBar" = "Leistungsinfozeile";
+"settings.battery.powerInfoBarDescription" = "Zeigt bei geöffnetem Panel Eingangs-, Batterie- und Systemleistung unter dem Batteriemodul. Standardmäßig aus.";
 "settings.battery.energyRefreshInterval" = "Intervall für Hintergrundmessung";
 "settings.battery.energyRefreshInterval.description" = "Wird bei geschlossenem Panel verwendet. Die Batteriedetailseite wird weiterhin alle 5 Sekunden aktualisiert.";
 "battery.power.input" = "Ladeeingang";
@@ -587,6 +589,9 @@
 "battery.power.system" = "System";
 "battery.power.system.help" = "Systemleistung (inkl. SoC)";
 "battery.power.system.explanation" = "„System“ ist, was nach Akkuladung, Display und USB übrig bleibt: SoC, Speicher, Display-Controller und weitere nicht einzeln gemessene Lasten.";
+"power.infoBar.input" = "Eingang";
+"power.infoBar.battery" = "Batterie";
+"power.infoBar.system" = "System";
 "battery.power.display" = "Display";
 "battery.power.usb" = "USB-Ausgang";
 "battery.power.soc" = "SoC";

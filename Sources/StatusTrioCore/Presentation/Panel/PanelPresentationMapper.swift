@@ -5,6 +5,9 @@ enum PanelPresentationMapper {
     static func battery(
         _ status: BatteryStatus,
         powerSample: SystemPowerSample? = nil,
+        inputPower: SystemPowerSample? = nil,
+        batteryPower: BatteryPowerSample? = nil,
+        showsPowerInfoBar: Bool = false,
         now: Date = Date(),
         localization: Localization,
         chargeToFullNow: ChargeToFullNowPresentation = .hidden
@@ -24,6 +27,16 @@ enum PanelPresentationMapper {
         // that it has a usable whole-machine power reading.
         let canOpenDetails = status.isPresent
             || (powerSample?.isFresh(at: now) ?? false)
+        let infoBar = showsPowerInfoBar
+            ? powerInfoBar(
+                status: status,
+                systemPower: powerSample,
+                inputPower: inputPower,
+                batteryPower: batteryPower,
+                now: now,
+                localization: localization
+            )
+            : nil
 
         return PanelSummaryState(
             title: title,
@@ -34,8 +47,50 @@ enum PanelPresentationMapper {
             accessibilityLabel: title,
             accessibilityValue: subtitle,
             showsSettings: canOpenDetails,
-            intent: canOpenDetails ? .batteryDetails : .none
+            intent: canOpenDetails ? .batteryDetails : .none,
+            powerInfoBar: infoBar
         )
+    }
+
+    /// Provisional power info bar. Each rail is shown on its own and missing or
+    /// stale rails are simply absent; rails are never added into a "total".
+    private static func powerInfoBar(
+        status: BatteryStatus,
+        systemPower: SystemPowerSample?,
+        inputPower: SystemPowerSample?,
+        batteryPower: BatteryPowerSample?,
+        now: Date,
+        localization: Localization
+    ) -> PowerInfoBarState? {
+        let locale = localization.resolvedLanguage.locale
+        func watts(_ value: Double) -> String {
+            value.formatted(.number.precision(.fractionLength(1)).locale(locale)) + " W"
+        }
+        var items: [PowerInfoBarItem] = []
+        if let inputPower, inputPower.watts.isFinite, inputPower.isFresh(at: now) {
+            items.append(PowerInfoBarItem(
+                id: LocalizationKey.powerInfoBarInput.rawValue,
+                title: .powerInfoBarInput,
+                value: watts(inputPower.watts)
+            ))
+        }
+        if status.isPresent, let batteryPower, batteryPower.watts.isFinite, batteryPower.isFresh(at: now) {
+            // Battery power keeps its own sign out of the label; the magnitude
+            // is the flow into (or out of) the pack, never folded into system.
+            items.append(PowerInfoBarItem(
+                id: LocalizationKey.powerInfoBarBattery.rawValue,
+                title: .powerInfoBarBattery,
+                value: watts(abs(batteryPower.watts))
+            ))
+        }
+        if let systemPower, systemPower.watts.isFinite, systemPower.isFresh(at: now) {
+            items.append(PowerInfoBarItem(
+                id: LocalizationKey.powerInfoBarSystem.rawValue,
+                title: .powerInfoBarSystem,
+                value: watts(systemPower.watts)
+            ))
+        }
+        return items.isEmpty ? nil : PowerInfoBarState(items: items)
     }
 
     static func network(
