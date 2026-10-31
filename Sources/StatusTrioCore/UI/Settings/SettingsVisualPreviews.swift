@@ -271,7 +271,8 @@ struct RingStrokeStylePreview: View {
                     showsPercentageWhenConnected: store.showsPercentageWhenConnected,
                     fullThreshold: Int(store.batteryFullThreshold.rounded()),
                     textScale: store.batterySymbolScale * BatteryIconOptions.defaultTextScale,
-                    ringStrokeScale: style.scale
+                    ringStrokeScale: style.scale,
+                    batteryStatusColors: store.batteryStatusColors
                 ),
                 connection: store.connectionIconOptions,
                 volume: VolumeIconOptions(

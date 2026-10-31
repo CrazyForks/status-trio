@@ -177,6 +177,15 @@ final class IconAppearancePublisherTests: XCTestCase {
         IconMutation(name: "showsBatteryPercentageInConnectionSlot") {
             $0.showsBatteryPercentageInConnectionSlot = true
         },
+        IconMutation(name: "batteryStatusColors.charging") {
+            $0.batteryStatusColors.charging = .preset(.mint)
+        },
+        IconMutation(name: "batteryStatusColors.lowPower") {
+            $0.batteryStatusColors.lowPower = .preset(.sky)
+        },
+        IconMutation(name: "batteryStatusColors.critical") {
+            $0.batteryStatusColors.critical = .custom(.init(hue: 0.8, saturation: 0.7, brightness: 0.7))
+        },
         IconMutation(name: "batterySymbolScale") { $0.batterySymbolScale = 1.05 },
         IconMutation(name: "showsWiFiIconForEthernet") { $0.showsWiFiIconForEthernet = true },
         IconMutation(name: "showsWiFiIconForHotspot") { $0.showsWiFiIconForHotspot = true },

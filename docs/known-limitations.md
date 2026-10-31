@@ -139,11 +139,12 @@ battery ring's progress arc, the active volume dots or arc fill, and the whole
 ring while the charging effect animates) are drawn in a custom raster above it
 and cannot follow.
 
-So an icon that is monochrome throughout — the usual unplugged case, or any
-configuration with status colours turned off — tracks a dragged Space perfectly,
-while an icon showing `critical`, `lowPower`, `powered`, or `bluetooth` re-tints
+An icon whose scene has no chromatic regions tracks a dragged Space throughout.
+An icon showing `critical`, `lowPower`, `powered`, or `bluetooth` re-tints
 everything except those coloured primitives and settles on the correct colour
-when the switch completes. This is a menu-bar-only behaviour: the Dock icon is a
+when the switch completes. Charging effects can also require an overlay even
+with status colours turned off; turning colours off does not change the existing
+animation-region policy. This is a menu-bar-only behaviour: the Dock icon is a
 single full-colour render and is unaffected. See
 [issue #112](https://github.com/lingyired/status-trio/issues/112).
 
@@ -165,4 +166,27 @@ Space-drag tinting working. This does not establish acceptance for every macOS
 version or for the complete application's animation and lifecycle. See the
 [integration and verification scope](verification/issue-165-template-image-view.md).
 The [earlier experiments](verification/inactive-display-icon-dimming.md) describe
-the rejected full-raster and template-button arrangements.
+the rejected full-raster and template-button arrangements. Colour settings keep
+this arrangement and require the same Space-drag and unfocused-display acceptance
+checks.
+
+## Custom battery colours and reference contrast
+
+Charging, Low Power Mode and critical-battery ring fills can each use the system
+semantic colour, a preset, or a custom colour. A custom HSB selection is shared
+between light and dark appearances and retained when status colours are disabled.
+Disabling status colours ignores these overrides and preserves the existing
+monochrome animation behaviour.
+
+Custom-colour visibility is checked against black and white reference backgrounds
+and their composited ring tracks. The settings report reference contrast and
+whether the rendered colour was adjusted to reach the 1.2:1 floor; the stored
+selection stays unchanged. These references do not measure the live wallpaper or
+the translucent menu bar, so they cannot guarantee contrast against every
+background. The charging highlight continues to derive from the resolved fill
+using its existing contrast policy.
+
+System semantic green, yellow and red depend on macOS and appearance. They are a
+system-defined baseline, rather than a guarantee of identical pixels to Apple's
+battery menu item. Custom colours remain in the chromatic overlay and inherit
+the Space-drag limitation above.

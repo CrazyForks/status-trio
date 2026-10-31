@@ -41,6 +41,9 @@ final class SettingsStore: ObservableObject {
     static let showsChargingBoltHeartbeatDefaultsKey = "showsChargingBoltHeartbeat"
     static let showsPercentageWhenConnectedDefaultsKey = "showsPercentageWhenConnected"
     static let usesBatteryStatusColorsDefaultsKey = "usesBatteryStatusColors"
+    static let batteryStatusColorsChargingDefaultsKey = "batteryStatusColors.charging"
+    static let batteryStatusColorsLowPowerDefaultsKey = "batteryStatusColors.lowPower"
+    static let batteryStatusColorsCriticalDefaultsKey = "batteryStatusColors.critical"
     static let batteryCriticalThresholdDefaultsKey = "batteryCriticalThreshold"
     static let batteryFullThresholdDefaultsKey = "batteryFullThreshold"
     static let batterySymbolScaleDefaultsKey = "batterySymbolScale"
@@ -369,6 +372,27 @@ final class SettingsStore: ObservableObject {
     @Published var usesBatteryStatusColors: Bool {
         didSet {
             defaults.set(usesBatteryStatusColors, forKey: Self.usesBatteryStatusColorsDefaultsKey)
+        }
+    }
+
+    /// Per-role colour overrides for the charging, low-power and critical states.
+    /// Edited in place by the settings UI, so a nested mutation still triggers
+    /// this `didSet` and publishes one fresh value.
+    @Published var batteryStatusColors: BatteryStatusColors {
+        didSet {
+            guard batteryStatusColors != oldValue else { return }
+            defaults.set(
+                batteryStatusColors.charging.storageValue,
+                forKey: Self.batteryStatusColorsChargingDefaultsKey
+            )
+            defaults.set(
+                batteryStatusColors.lowPower.storageValue,
+                forKey: Self.batteryStatusColorsLowPowerDefaultsKey
+            )
+            defaults.set(
+                batteryStatusColors.critical.storageValue,
+                forKey: Self.batteryStatusColorsCriticalDefaultsKey
+            )
         }
     }
 
@@ -1292,7 +1316,8 @@ final class SettingsStore: ObservableObject {
             showsPercentageWhenConnected: showsPercentageWhenConnected,
             fullThreshold: Int(batteryFullThreshold.rounded()),
             textScale: batterySymbolScale * BatteryIconOptions.defaultTextScale,
-            ringStrokeScale: ringStrokeStyle.scale
+            ringStrokeScale: ringStrokeStyle.scale,
+            batteryStatusColors: batteryStatusColors
         )
     }
 
@@ -1529,6 +1554,17 @@ final class SettingsStore: ObservableObject {
             forKey: Self.showsPercentageWhenConnectedDefaultsKey
         ) as? Bool ?? false
         self.usesBatteryStatusColors = defaults.object(forKey: Self.usesBatteryStatusColorsDefaultsKey) as? Bool ?? true
+        self.batteryStatusColors = BatteryStatusColors(
+            charging: BatteryStatusColorSelection(
+                storageValue: defaults.string(forKey: Self.batteryStatusColorsChargingDefaultsKey) ?? "system"
+            ),
+            lowPower: BatteryStatusColorSelection(
+                storageValue: defaults.string(forKey: Self.batteryStatusColorsLowPowerDefaultsKey) ?? "system"
+            ),
+            critical: BatteryStatusColorSelection(
+                storageValue: defaults.string(forKey: Self.batteryStatusColorsCriticalDefaultsKey) ?? "system"
+            )
+        )
         self.batterySymbolScale = Self.clampedBatterySymbolScale(
             storedBatterySymbolScale ?? Self.defaultBatterySymbolScale
         )

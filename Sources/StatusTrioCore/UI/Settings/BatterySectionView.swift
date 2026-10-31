@@ -258,6 +258,8 @@ struct BatterySectionView: View {
                 isOn: $store.usesBatteryStatusColors
             )
 
+            BatteryStatusColorsView(store: store)
+
             // Critical Threshold (Inline compact slider)
             if store.usesBatteryStatusColors {
                 SettingsDivider()

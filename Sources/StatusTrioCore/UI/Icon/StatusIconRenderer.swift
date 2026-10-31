@@ -1002,7 +1002,9 @@ extension StatusIconRenderer {
         regions: IconSceneRegion = .all
     ) -> Bool {
         guard size.isFinite, size > 0, supports(scene) else { return false }
-        let palette = statusPalette ?? .inferred(foreground: foreground, critical: criticalColor)
+        let darkInk = (NSColor(cgColor: foreground)?.usingColorSpace(.deviceRGB)?.brightnessComponent ?? 0) >= 0.5
+        let palette = (statusPalette ?? .inferred(foreground: foreground, critical: criticalColor))
+            .applying(scene.statusColors, darkAppearance: darkInk)
 
         context.saveGState()
         defer { context.restoreGState() }

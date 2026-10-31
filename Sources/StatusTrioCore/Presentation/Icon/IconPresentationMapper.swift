@@ -9,7 +9,9 @@ enum IconPresentationMapper {
             outerRing: batteryState(inputs.snapshot.battery, options: configuration.battery),
             center: centerState(inputs: inputs, configuration: configuration),
             footer: footerState(inputs.snapshot.volume, options: configuration.volume,
-                                bluetoothOptions: configuration.bluetooth)
+                                bluetoothOptions: configuration.bluetooth),
+            statusColors: configuration.battery.usesStatusColors
+                ? configuration.battery.batteryStatusColors : .standard
         )
     }
 

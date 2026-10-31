@@ -45,6 +45,33 @@ struct BatteryStatusColorPalette {
         )
     }
 
+    func color(for role: BatteryStatusColorRole) -> CGColor {
+        switch role {
+        case .charging: charging
+        case .lowPower: lowPower
+        case .critical: critical
+        }
+    }
+
+    /// Replaces the semantic baselines with the user's per-role selections. The
+    /// `.system` roles keep `self`'s resolved baseline, so a real high-contrast
+    /// appearance is preserved instead of being re-derived from a light/dark flag.
+    func applying(_ statusColors: BatteryStatusColors, darkAppearance: Bool) -> Self {
+        guard statusColors.hasOverrides else { return self }
+        func resolve(_ role: BatteryStatusColorRole, _ baseline: CGColor) -> CGColor {
+            BatteryStatusColorResolver.resolve(
+                selection: statusColors.selection(for: role),
+                systemBaseline: baseline,
+                darkAppearance: darkAppearance
+            ).color
+        }
+        return Self(
+            charging: resolve(.charging, charging),
+            lowPower: resolve(.lowPower, lowPower),
+            critical: resolve(.critical, critical)
+        )
+    }
+
     private static func rgb(_ color: NSColor) -> CGColor {
         color.usingColorSpace(.deviceRGB)?.cgColor ?? color.cgColor
     }
