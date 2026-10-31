@@ -90,8 +90,11 @@ enum IconPresentationMapper {
         let bluetoothOptions = configuration.bluetooth
 
         // The user asked the centre slot to carry whole-machine watts. This is
-        // the one branch that replaces the network content unconditionally.
+        // the one branch that replaces the network content unconditionally. Its
+        // text follows the "Wi-Fi Icon Size" centre-symbol scale so the number
+        // grows and shrinks with the network glyph it replaces.
         if connectionOptions.centerSource == .power {
+            let textScale = connectionOptions.wifiScale
             if let sample = inputs.systemPower,
                sample.isFresh(at: now),
                sample.watts.isFinite {
@@ -99,15 +102,15 @@ enum IconPresentationMapper {
                 // Clamp in Double space so a pathological sample can never trap
                 // an Int conversion.
                 let watts = Int(min(999, max(0, sample.watts)).rounded())
-                return .text(IconTextState(text: "\(watts)", color: .primary, scale: 1))
+                return .text(IconTextState(text: "\(watts)", color: .primary, scale: textScale))
             }
             // Never a fake 0 W. A battery Mac may still show its level; a Mac
             // with no battery shows an honest placeholder instead of inventing
             // a percentage it does not have.
             if battery.isPresent {
-                return .text(IconTextState(text: "\(battery.percentage)", color: .primary, scale: 1))
+                return .text(IconTextState(text: "\(battery.percentage)", color: .primary, scale: textScale))
             }
-            return .text(IconTextState(text: "--", color: .primary, scale: 1))
+            return .text(IconTextState(text: "--", color: .primary, scale: textScale))
         }
 
         if connectionOptions.centerSource == .batteryPercentage, battery.isPresent {

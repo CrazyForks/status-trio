@@ -34,6 +34,9 @@ value; a value that stops refreshing cannot be mistaken for a current one.
 
 - The value is integer watts, no unit and no decimal point, laid out for at most
   three digits (`Int(watts.rounded())`, clamped to `0...999`).
+- The number's size follows the **Wi-Fi Icon Size** setting (the centre-symbol
+  scale), so it grows and shrinks with the network glyph it replaces; the
+  fallback percentage and the `--` placeholder use the same scale.
 - The reading is shown only while it is fresh. There is never a fake `0 W`.
 - On a Mac with a battery, an unreadable reading falls back to the battery
   percentage (the same value the previous centre-slot behaviour showed).

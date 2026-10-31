@@ -270,6 +270,24 @@ final class IconPresentationMapperTests: XCTestCase {
         }
     }
 
+    func testPowerTextFollowsTheWifiIconSizeScale() {
+        let now = Date(timeIntervalSince1970: 1_789_555_974)
+        let config = ConnectionIconOptions(centerSource: .power, wifiScale: 1.8)
+        let sample = SystemPowerSample(watts: 23.6, readAt: now)
+        let scene = IconPresentationMapper.scene(
+            inputs: IconPresentationInputs(
+                snapshot: PresentationFixtures.snapshot(),
+                audioIcon: nil,
+                systemPower: sample
+            ),
+            configuration: configuration(connection: config),
+            now: now
+        )
+        XCTAssertEqual(scene.center,
+                       .text(IconTextState(text: "24", color: .primary, scale: 1.8)),
+                       "The wattage must grow with the Wi-Fi Icon Size setting")
+    }
+
     func testPowerCenterSlotFallsBackToBatteryThenPlaceholder() {
         let now = Date(timeIntervalSince1970: 1_789_555_974)
         let config = ConnectionIconOptions(centerSource: .power)
