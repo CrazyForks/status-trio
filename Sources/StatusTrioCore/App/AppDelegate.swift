@@ -61,9 +61,10 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         let event = AppleEventSenderResolver.currentActivation()
         let placement = environment.settings.appIconPlacement
         let action = DockActivationAction.resolve(
-            isReopenEvent: event.kind == .reopen,
-            sender: event.sender,
-            showsPersistentDockIcon: placement.showsDockIcon
+            event: event,
+            showsPersistentDockIcon: placement.showsDockIcon,
+            backgroundUITesting: environment.backgroundUITesting,
+            hasVisibleOnboarding: environment.onboardingWindowController.window?.isVisible == true
         )
         let settingsWindow = environment.settingsWindowController.window
         dockActivationLogger.notice(

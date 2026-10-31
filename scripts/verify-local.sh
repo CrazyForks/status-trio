@@ -133,6 +133,8 @@ else
         "scripts/test-ci-diagnostics.sh"
         "scripts/test-ci-workflow.sh"
         "scripts/test-build-timing.sh"
+        "scripts/test-launch-computer-use.sh"
+        "scripts/test-background-ui-configuration.sh"
         "scripts/test-release-workflow-policy.sh"
         "scripts/test-release-pipeline.sh"
         "scripts/test-release-notarization.sh"

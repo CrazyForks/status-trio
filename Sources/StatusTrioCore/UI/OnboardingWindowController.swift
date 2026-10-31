@@ -12,6 +12,8 @@ final class OnboardingWindowController: NSWindowController, NSWindowDelegate {
     private let settings: SettingsStore
     private let localization: Localization
     private let activationPolicy: AppActivationPolicy
+    private let backgroundUITesting: BackgroundUITestingConfiguration
+    private let presentWindow: @MainActor (NSWindow, SettingsWindowPresentation) -> Void
     private var localizationCancellable: AnyCancellable?
     private var ownsActivationPolicy = false
     private var previewVisibilityObserver: ((Bool) -> Void)?
@@ -21,11 +23,17 @@ final class OnboardingWindowController: NSWindowController, NSWindowDelegate {
     init(
         settings: SettingsStore,
         localization: Localization,
-        activationPolicy: AppActivationPolicy
+        activationPolicy: AppActivationPolicy,
+        backgroundUITesting: BackgroundUITestingConfiguration = .disabled,
+        presentWindow: @escaping @MainActor (NSWindow, SettingsWindowPresentation) -> Void = {
+            window, presentation in presentation.present(window)
+        }
     ) {
         self.settings = settings
         self.localization = localization
         self.activationPolicy = activationPolicy
+        self.backgroundUITesting = backgroundUITesting
+        self.presentWindow = presentWindow
         super.init(window: nil)
 
         localizationCancellable = localization.$resolvedLanguage
@@ -51,19 +59,25 @@ final class OnboardingWindowController: NSWindowController, NSWindowDelegate {
         previewVisibilityObserver = nil
     }
 
-    func showIfNeeded() {
-        guard IconGuideOnboardingPolicy.shouldPresentGuide(settings: settings) else { return }
+    @discardableResult
+    func showIfNeeded() -> Bool {
+        guard IconGuideOnboardingPolicy.shouldPresentGuide(settings: settings) else {
+            return false
+        }
         show()
+        return true
     }
 
     func show() {
         let window = window ?? makeWindow()
         self.window = window
         applyLocalization()
-        enterActivationPolicyIfNeeded()
-        window.makeKeyAndOrderFront(nil)
-        window.orderFrontRegardless()
-        NSApp.activate(ignoringOtherApps: true)
+        if backgroundUITesting.isEnabled {
+            BackgroundUIWindowPlacement.position(window, display: backgroundUITesting.display)
+        } else {
+            enterActivationPolicyIfNeeded()
+        }
+        presentWindow(window, backgroundUITesting.isEnabled ? .background : .activating)
         setPreviewWindowVisible(true)
     }
 
