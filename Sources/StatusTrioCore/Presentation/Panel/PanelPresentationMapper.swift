@@ -154,7 +154,7 @@ enum PanelPresentationMapper {
              .cancelConfirmationRequired,
              .cancelPending,
              .cancelFailed,
-             .cancelSucceeded:
+             .limitRestored:
             break
         }
         if battery.isLowPowerMode {

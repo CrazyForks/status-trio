@@ -21,6 +21,11 @@ final class SettingsStore: ObservableObject {
     /// usable fraction of the circle instead of a hairline at 1%.
     static let batteryFullThresholdRange: ClosedRange<Double> = 50...100
     static let defaultBatteryFullThreshold: Double = Double(BatteryIconOptions.defaultFullThreshold)
+    /// The charge limit restored when the user cancels Charge to Full Now.
+    /// 100 means "no limit", so cancelling re-enables normal charging to 100%.
+    static let chargeToFullRestoreLimitRange: ClosedRange<Double> = 80...100
+    static let defaultChargeToFullRestoreLimit: Double = 100
+    static let chargeToFullRestoreLimitDefaultsKey = "chargeToFullRestoreLimit"
     static let batterySymbolScaleRange: ClosedRange<Double> = 0.9...1.1
     static let defaultBatterySymbolScale: Double = 1
     static let showsBatteryPercentageDefaultsKey = "showsBatteryPercentage"
@@ -431,6 +436,27 @@ final class SettingsStore: ObservableObject {
                 return
             }
             defaults.set(clamped, forKey: Self.batteryFullThresholdDefaultsKey)
+        }
+    }
+
+    /// The charge limit restored when the user cancels Charge to Full Now.
+    ///
+    /// macOS removes the persisted limit while its own temporary override runs,
+    /// so an explicit setting is more reliable than guessing the old value.
+    /// 100 means "no limit": cancelling simply resumes normal charging to 100%.
+    @Published var chargeToFullRestoreLimit: Double {
+        didSet {
+            let clamped = Self.clampedChargeToFullRestoreLimit(
+                chargeToFullRestoreLimit
+            )
+            guard clamped == chargeToFullRestoreLimit else {
+                chargeToFullRestoreLimit = clamped
+                return
+            }
+            defaults.set(
+                clamped,
+                forKey: Self.chargeToFullRestoreLimitDefaultsKey
+            )
         }
     }
 
@@ -1305,6 +1331,17 @@ final class SettingsStore: ObservableObject {
         batteryFullThreshold = Double(limit)
     }
 
+    /// Fills the restore-limit slider in from the system. Like
+    /// `applySystemChargeLimit`, this is a one-shot convenience: nothing
+    /// re-reads the plist behind the user's back afterwards.
+    func applySystemChargeToFullRestoreLimit(from url: URL? = nil) {
+        let url = url ?? chargeLimitURLForTesting
+        let limit = url.map { SystemChargeLimitReader.chargeLimit(from: $0) }
+            ?? SystemChargeLimitReader.chargeLimit()
+        guard let limit, (80..<100).contains(limit) else { return }
+        chargeToFullRestoreLimit = Double(limit)
+    }
+
     var batteryIconOptions: BatteryIconOptions {
         BatteryIconOptions(
             showsPercentage: showsBatteryPercentage,
@@ -1392,7 +1429,10 @@ final class SettingsStore: ObservableObject {
         trustedAppleDeviceMetadata = updated
     }
 
-    init(defaults: UserDefaults = .standard) {
+    init(
+        defaults: UserDefaults = .standard,
+        systemChargeLimit: () -> Int? = { SystemChargeLimitReader.chargeLimit() }
+    ) {
         self.defaults = defaults
         self.statusPanelShortcut = defaults
             .data(forKey: Self.statusPanelShortcutDefaultsKey)
@@ -1445,6 +1485,9 @@ final class SettingsStore: ObservableObject {
         let storedIconSize = (defaults.object(forKey: Self.iconSizeDefaultsKey) as? NSNumber)?.doubleValue
         let storedCriticalThreshold = (defaults.object(forKey: Self.batteryCriticalThresholdDefaultsKey) as? NSNumber)?.doubleValue
         let storedFullThreshold = (defaults.object(forKey: Self.batteryFullThresholdDefaultsKey) as? NSNumber)?.doubleValue
+        let storedRestoreLimit = (defaults.object(
+            forKey: Self.chargeToFullRestoreLimitDefaultsKey
+        ) as? NSNumber)?.doubleValue
         let storedBatterySymbolScale = (defaults.object(forKey: Self.batterySymbolScaleDefaultsKey) as? NSNumber)?.doubleValue
         let storedOutputDeviceLimit = (defaults.object(forKey: Self.maxVisibleOutputDevicesDefaultsKey) as? NSNumber)?.intValue
         let storedInputDeviceLimit = (defaults.object(forKey: Self.maxVisibleInputDevicesDefaultsKey) as? NSNumber)?.intValue
@@ -1573,6 +1616,10 @@ final class SettingsStore: ObservableObject {
         )
         self.batteryFullThreshold = Self.clampedBatteryFullThreshold(
             storedFullThreshold ?? Self.defaultBatteryFullThreshold
+        )
+        self.chargeToFullRestoreLimit = Self.clampedChargeToFullRestoreLimit(
+            storedRestoreLimit
+                ?? Self.systemChargeToFullRestoreLimit(read: systemChargeLimit)
         )
         self.showsWiFiIconForEthernet = defaults.object(
             forKey: Self.showsWiFiIconForEthernetDefaultsKey
@@ -1832,6 +1879,27 @@ final class SettingsStore: ObservableObject {
             batteryFullThresholdRange.upperBound,
             max(batteryFullThresholdRange.lowerBound, value)
         ).rounded()
+    }
+
+    static func clampedChargeToFullRestoreLimit(_ value: Double) -> Double {
+        guard value.isFinite else { return defaultChargeToFullRestoreLimit }
+        let clamped = min(
+            chargeToFullRestoreLimitRange.upperBound,
+            max(chargeToFullRestoreLimitRange.lowerBound, value)
+        )
+        // PowerUI only accepts the standard five-percent steps.
+        return (clamped / 5).rounded() * 5
+    }
+
+    /// The first-run default: the limit macOS currently enforces, or "no
+    /// limit" (100%) when the system has no readable user limit.
+    static func systemChargeToFullRestoreLimit(
+        read: () -> Int? = { SystemChargeLimitReader.chargeLimit() }
+    ) -> Double {
+        guard let limit = read(), (80..<100).contains(limit) else {
+            return defaultChargeToFullRestoreLimit
+        }
+        return Double(limit)
     }
 
     static func clampedRefreshInterval(_ value: Double) -> Double {

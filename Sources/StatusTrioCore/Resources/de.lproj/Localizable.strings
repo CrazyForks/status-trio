@@ -8,6 +8,7 @@
 "menu.window" = "Fenster";
 "menu.closeWindow" = "Fenster schließen";
 "menu.checkForUpdates" = "Nach Updates suchen…";
+"menu.openMenuBarSettings" = "Menüleisten-Einstellungen öffnen";
 "settings.title" = "Einstellungen";
 "settings.page.appearance" = "Erscheinungsbild";
 "settings.page.general" = "Allgemein";
@@ -594,6 +595,8 @@
 "battery.energy.monitoringDescription" = "Wenn aktiviert, werden App-Aktivitäten auch bei geschlossenem Panel im Hintergrund erfasst. Die Erfassung pausiert beim Deaktivieren, bei System- oder Bildschirmruhezustand und beim Beenden von Status Trio.";
 "settings.battery.showChargeToFullNow" = "„Jetzt vollständig laden“-Taste anzeigen";
 "settings.battery.showChargeToFullNowDescription" = "Zeigt im Statusfeld eine Taste an, die das macOS-Ladelimit vorübergehend aufhebt und bis 100 % lädt.";
+"settings.battery.restoreLimit" = "Ladelimit nach Abbruch wiederherstellen";
+"settings.battery.restoreLimitDescription" = "Das Ladelimit, das beim Abbrechen von „Jetzt vollständig laden“ wiederhergestellt wird. 100 % bedeutet kein Limit.";
 "battery.action.chargeToFullNow" = "Jetzt vollständig laden";
 "battery.action.chargeToFullNowApplying" = "Vollständiges Laden wird angefordert…";
 "battery.action.chargeToFullNowCharging" = "Wird auf 100 % geladen";
@@ -603,6 +606,7 @@
 "battery.action.cancelChargeToFullNowApplying" = "Ladegrenze wird wiederhergestellt…";
 "battery.action.cancelChargeToFullNowFailed" = "Ladegrenze konnte nicht wiederhergestellt werden: %@";
 "battery.action.cancelChargeToFullNowRestored" = "Ladegrenze auf %d%% wiederhergestellt";
+"battery.action.cancelChargeToFullNowRestoredUnlimited" = "Ladelimit aufgehoben";
 "battery.action.cancelChargeToFullNowFallback" = "Ladegrenze auf %d%% gesetzt";
 "battery.action.cancelChargeToFullNowConfirm" = "Wiederherstellung auf %d%% bestätigen";
 "battery.action.cancelChargeToFullNowConfirmFallback" = "Einstellung auf %d%% bestätigen";

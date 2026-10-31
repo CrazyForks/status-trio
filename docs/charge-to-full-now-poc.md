@@ -13,9 +13,28 @@ manually restored the limit to `80`.
 
 The user reviewed that evidence and explicitly chose to replicate the native
 button's behavior, including its lack of automatic recovery. Status Trio stores
-the valid pre-request limit as a fallback, persists the operation session, and
-offers an explicit "Cancel Charge to Full" action. It never restores the limit
-automatically, watches the battery in the background, or runs a periodic task.
+the operation session and offers an explicit "Cancel Charge to Full" action. It
+never restores the limit automatically, watches the battery in the background,
+or runs a periodic task.
+
+Two follow-ups were requested on October 31, 2026:
+
+- The macOS battery menu can start the same temporary override without a
+  Status Trio session. The controller now recognizes that state and offers the
+  same cancellation while the battery can still charge; at 100%, already
+  charged, or unplugged it hides the row.
+- The October 31 re-check showed that `powerd` empties the persisted `policies`
+  array while the native override runs, so there is no reliable limit to read
+  back. Cancel therefore restores an explicit setting, "Restore Limit After
+  Cancelling" (80–100%). Its first-run default is the limit macOS currently
+  enforces, or 100% ("no limit") when the system has none; the settings row
+  can refill it from the system on demand. 100% means the cancel only
+  re-enables normal charging to full.
+- A successful cancellation no longer bounces straight back to the button. The
+  row keeps a "Charge limit restored" status while the system charges toward
+  the restored limit, and the button returns once the battery reaches that
+  limit, charging stops early, or the override ends. This removes the repeated
+  charge/cancel loop when the restored limit is still above the current charge.
 
 Research started October 27, 2026; regression verification continued October 28,
 2026, Asia/Shanghai. Both authorized write experiments ran on October 28, 2026.

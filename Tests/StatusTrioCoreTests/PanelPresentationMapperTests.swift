@@ -70,6 +70,15 @@ final class PanelPresentationMapperTests: XCTestCase {
             )
         }
 
+        XCTAssertEqual(
+            PanelPresentationMapper.battery(
+                connectedNotYetCharging,
+                localization: localization,
+                chargeToFullNow: .limitRestored(limit: 95)
+            ).subtitle,
+            localization.string(.batteryStateConnectedToPower)
+        )
+
         let charging = makeBattery(percentage: 80, isCharging: true, isConnectedToPower: true)
         XCTAssertEqual(
             PanelPresentationMapper.battery(

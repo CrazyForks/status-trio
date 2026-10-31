@@ -116,6 +116,58 @@ struct BatterySectionView: View {
                 )
 
                 SettingsDivider()
+
+                // macOS removes the persisted charge limit while the native
+                // override runs, so the cancel target is an explicit setting
+                // rather than a guess. The link fills it in from the system
+                // once; afterwards it stays a plain editable value.
+                SettingsRow(
+                    "arrow.uturn.backward.circle",
+                    tint: .green,
+                    title: localization.string(.settingsBatteryRestoreLimit),
+                    subtitle: localization.string(
+                        .settingsBatteryRestoreLimitDescription
+                    ),
+                    subtitleLink: Text(
+                        localization.string(
+                            .settingsBatteryFullThresholdUseChargeLimit
+                        )
+                    )
+                    .foregroundColor(Color.accentColor),
+                    subtitleLinkAction: {
+                        store.applySystemChargeToFullRestoreLimit()
+                    },
+                    trailing: {
+                        HStack(spacing: 8) {
+                            Slider(
+                                value: Binding(
+                                    get: { store.chargeToFullRestoreLimit },
+                                    set: {
+                                        store.chargeToFullRestoreLimit =
+                                            $0.rounded()
+                                    }
+                                ),
+                                in: SettingsStore.chargeToFullRestoreLimitRange,
+                                step: 5
+                            )
+                            .controlSize(.small)
+                            .frame(width: 90)
+                            .accessibilityLabel(
+                                localization.string(.settingsBatteryRestoreLimit)
+                            )
+                            .accessibilityValue(
+                                "\(Int(store.chargeToFullRestoreLimit))%"
+                            )
+
+                            Text("\(Int(store.chargeToFullRestoreLimit))%")
+                                .font(.system(size: 12, design: .monospaced))
+                                .foregroundStyle(.secondary)
+                                .frame(width: 44, alignment: .trailing)
+                        }
+                    }
+                )
+
+                SettingsDivider()
             }
 
             // Show Percentage Switch

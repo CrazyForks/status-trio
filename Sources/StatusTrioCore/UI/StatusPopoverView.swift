@@ -24,6 +24,8 @@ struct StatusPopoverView: View {
     let openSoundInputSettings: () -> Void
     let openKeyboardSettings: () -> Void
     let quit: () -> Void
+    /// The footer's Actions menu closes the panel before opening another window.
+    var dismissPanel: () -> Void = {}
 
     var body: some View {
         Group {
@@ -97,7 +99,7 @@ struct StatusPopoverView: View {
                     .padding(.vertical, 2)
             }
 
-            PopoverFooterView(openSettings: openSettings, quit: quit)
+            PopoverFooterView(openSettings: openSettings, quit: quit, dismissPanel: dismissPanel)
         }
         .task(id: [
             panel.listeningModeTaskID,

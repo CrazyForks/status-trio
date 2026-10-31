@@ -581,6 +581,90 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(store.batteryIconOptions.fullThreshold, 80)
     }
 
+    func testChargeToFullRestoreLimitDefaultsToTheSystemLimit() {
+        let store = SettingsStore(
+            defaults: makeSuite().defaults,
+            systemChargeLimit: { 90 }
+        )
+
+        XCTAssertEqual(store.chargeToFullRestoreLimit, 90, accuracy: 0.001)
+    }
+
+    func testChargeToFullRestoreLimitDefaultsToUnlimitedWithoutASystemLimit() {
+        let store = SettingsStore(
+            defaults: makeSuite().defaults,
+            systemChargeLimit: { nil }
+        )
+
+        XCTAssertEqual(store.chargeToFullRestoreLimit, 100, accuracy: 0.001)
+    }
+
+    func testStoredChargeToFullRestoreLimitWinsOverTheSystemValue() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+        suite.defaults.set(
+            85,
+            forKey: SettingsStore.chargeToFullRestoreLimitDefaultsKey
+        )
+
+        let store = SettingsStore(
+            defaults: suite.defaults,
+            systemChargeLimit: { 80 }
+        )
+
+        XCTAssertEqual(store.chargeToFullRestoreLimit, 85, accuracy: 0.001)
+    }
+
+    func testChargeToFullRestoreLimitIsClampedSnappedAndPersisted() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+        let store = SettingsStore(
+            defaults: suite.defaults,
+            systemChargeLimit: { nil }
+        )
+
+        store.chargeToFullRestoreLimit = 140
+        XCTAssertEqual(store.chargeToFullRestoreLimit, 100, accuracy: 0.001)
+
+        store.chargeToFullRestoreLimit = 10
+        XCTAssertEqual(store.chargeToFullRestoreLimit, 80, accuracy: 0.001)
+
+        store.chargeToFullRestoreLimit = 87
+        XCTAssertEqual(store.chargeToFullRestoreLimit, 85, accuracy: 0.001)
+        XCTAssertEqual(
+            suite.defaults.double(
+                forKey: SettingsStore.chargeToFullRestoreLimitDefaultsKey
+            ),
+            85,
+            accuracy: 0.001
+        )
+    }
+
+    func testApplySystemChargeToFullRestoreLimitFillsTheSliderOnce() throws {
+        let suite = makeSuite()
+        defer { clear(suite) }
+        let url = try makeChargeLimitPlist(limit: 85)
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let store = SettingsStore(
+            defaults: suite.defaults,
+            systemChargeLimit: { nil }
+        )
+        store.chargeLimitURLForTesting = url
+
+        store.applySystemChargeToFullRestoreLimit()
+        XCTAssertEqual(store.chargeToFullRestoreLimit, 85, accuracy: 0.001)
+
+        store.chargeToFullRestoreLimit = 95
+        XCTAssertEqual(
+            suite.defaults.double(
+                forKey: SettingsStore.chargeToFullRestoreLimitDefaultsKey
+            ),
+            95,
+            accuracy: 0.001
+        )
+    }
+
     func testStoredBatteryFullThresholdIsClampedOnLoadAndPersisted() {
         let suite = makeSuite()
         defer { clear(suite) }

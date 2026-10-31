@@ -29,7 +29,6 @@ final class StatusBarMemoryPressureTests: XCTestCase {
         defer { harness.cleanUp() }
 
         let popover = harness.controller.popoverForTesting
-        popover.animates = false
         harness.controller.openPopoverFromShortcut()
         XCTAssertTrue(popover.isShown)
         XCTAssertNotNil(harness.controller.popoverAnchorWindowForTesting)
@@ -78,8 +77,7 @@ final class StatusBarMemoryPressureTests: XCTestCase {
         XCTAssertTrue(popover.isShown)
         XCTAssertNotNil(popover.contentViewController)
 
-        let didClose = expectation(forNotification: NSPopover.didCloseNotification, object: popover)
-        popover.animates = false
+        let didClose = expectation(forNotification: AnchoredStatusPanel.didCloseNotification, object: popover)
         popover.performClose(nil)
         wait(for: [didClose], timeout: 2)
         XCTAssertFalse(popover.isShown)
@@ -102,8 +100,7 @@ final class StatusBarMemoryPressureTests: XCTestCase {
         XCTAssertTrue(popover.isShown)
         XCTAssertFalse(harness.controller.panelForTesting.batteryDetails.rows.isEmpty)
 
-        let didClose = expectation(forNotification: NSPopover.didCloseNotification, object: popover)
-        popover.animates = false
+        let didClose = expectation(forNotification: AnchoredStatusPanel.didCloseNotification, object: popover)
         popover.performClose(nil)
         wait(for: [didClose], timeout: 2)
         XCTAssertNotNil(popover.contentViewController)
@@ -122,7 +119,7 @@ final class StatusBarMemoryPressureTests: XCTestCase {
         XCTAssertEqual(ownershipEndCount, 0)
     }
 
-    private func waitUntilClosed(_ popover: NSPopover) {
+    private func waitUntilClosed(_ popover: AnchoredStatusPanel) {
         let deadline = Date().addingTimeInterval(2)
         while popover.isShown, Date() < deadline {
             RunLoop.current.run(until: Date().addingTimeInterval(0.01))
