@@ -86,6 +86,40 @@ struct AudioSectionView: View {
                     }
                 )
             }
+
+            SettingsDivider()
+
+            SettingsToggleRow(
+                symbol: "mic.fill",
+                tint: .orange,
+                title: localization.string(.settingsAudioShowAllInput),
+                subtitle: localization.string(.settingsAudioShowAllInputDescription),
+                isOn: $store.alwaysShowsAllInputDevices
+            )
+
+            if !store.alwaysShowsAllInputDevices {
+                SettingsDivider()
+
+                SettingsRow(
+                    title: localization.string(.settingsAudioMaximumVisibleInput),
+                    subtitle: localization.string(.settingsAudioMaximumVisibleInputDescription),
+                    leading: { SettingsIcon(symbol: "number", tint: .teal) },
+                    trailing: {
+                        HStack(spacing: 10) {
+                            Text("\(store.maxVisibleInputDevices)")
+                                .font(.system(size: 13, design: .monospaced))
+                                .frame(minWidth: 22, alignment: .trailing)
+
+                            Stepper(
+                                localization.string(.settingsAudioMaximumVisibleInput),
+                                value: $store.maxVisibleInputDevices,
+                                in: SettingsStore.inputDeviceLimitRange
+                            )
+                            .labelsHidden()
+                        }
+                    }
+                )
+            }
         }
     }
 

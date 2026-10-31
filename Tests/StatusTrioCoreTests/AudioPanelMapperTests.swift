@@ -332,6 +332,36 @@ final class AudioPanelMapperTests: XCTestCase {
         XCTAssertEqual(state.rows.filter(\.selected).map(\.key.uid), ["built-in"])
     }
 
+    func testInputRowsHonorTheVisibleLimitWithLocalExpansion() {
+        let localization = makeLocalization(.english)
+        let devices = (1...4).map {
+            AudioInputDevice(id: AudioDeviceID($0), uid: "mic-\($0)", name: "Mic \($0)")
+        }
+        let status = makeInputStatus(devices: devices, defaultDeviceID: devices[0].id)
+
+        let limited = AudioPanelMapper.input(
+            status,
+            deviceList: AudioInputListPreferences(visibleLimit: 2),
+            localization: localization
+        )
+
+        XCTAssertEqual(limited.rows.count, 4, "rows stay complete; only the view collapses them")
+        XCTAssertTrue(limited.hasHiddenRows)
+        XCTAssertEqual(limited.visibleRows(expanded: false).map(\.key.uid), ["mic-1", "mic-2"])
+        XCTAssertEqual(limited.visibleRows(expanded: true).count, 4)
+        XCTAssertEqual(limited.expandLabel, "Expand")
+        XCTAssertEqual(limited.collapseLabel, "Collapse")
+
+        let unlimited = AudioPanelMapper.input(
+            status,
+            deviceList: AudioInputListPreferences(visibleLimit: nil),
+            localization: localization
+        )
+
+        XCTAssertFalse(unlimited.hasHiddenRows)
+        XCTAssertEqual(unlimited.visibleRows(expanded: false).count, 4)
+    }
+
     func testInputSettingsListMovesHiddenDevicesBelowShownOnes() {
         let devices = [
             AudioInputDevice(id: AudioDeviceID(1), uid: "a", name: "A"),

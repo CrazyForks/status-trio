@@ -121,6 +121,10 @@
 "settings.audio.maximumVisibleDescription" = "Сколько устройств вывода показывать до кнопки «Развернуть».";
 "settings.audio.showAll" = "Всегда показывать все устройства вывода";
 "settings.audio.showAllDescription" = "Игнорировать ограничение и показывать все доступные устройства вывода.";
+"settings.audio.showAllInput" = "Всегда показывать все устройства ввода";
+"settings.audio.showAllInputDescription" = "Игнорировать ограничение и показывать все доступные устройства ввода.";
+"settings.audio.maximumVisibleInput" = "Максимум видимых устройств ввода";
+"settings.audio.maximumVisibleInputDescription" = "Сколько устройств ввода показывать до кнопки «Развернуть».";
 "settings.audio.orderTitle" = "Порядок устройств вывода";
 "settings.audio.orderDescription" = "Перетаскивайте устройства, чтобы изменить порядок в панели громкости. Снимите флажок с неиспользуемых устройств, чтобы скрыть их; активное устройство вывода всегда отображается. Новые устройства добавляются в конец.";
 "settings.audio.orderEmpty" = "Нет доступных устройств вывода.";
@@ -282,6 +286,8 @@
 "volume.output.unknownDevice" = "Неизвестное выходное устройство";
 "volume.output.expand" = "Развернуть";
 "volume.output.collapse" = "Свернуть";
+"audioInput.expand" = "Развернуть";
+"audioInput.collapse" = "Свернуть";
 "volume.action.openSettings" = "Открыть настройки звука";
 "volume.accessibility.label" = "Громкость";
 "audioInput.title" = "Микрофон";

@@ -117,10 +117,14 @@
 "settings.bluetooth.orderEmpty" = "Nenhum dispositivo emparelhado disponível.";
 "settings.bluetooth.orderFootnote" = "Os dispositivos conectados são sempre listados primeiro.";
 "bluetooth.battery.unavailable" = "Indisponível";
-"settings.audio.maximumVisible" = "Máximo de dispositivos visíveis";
-"settings.audio.maximumVisibleDescription" = "Quantos dispositivos aparecem antes do controle Expandir.";
-"settings.audio.showAll" = "Mostrar sempre todos os dispositivos";
+"settings.audio.maximumVisible" = "Máximo de dispositivos de saída visíveis";
+"settings.audio.maximumVisibleDescription" = "Quantos dispositivos de saída aparecem antes do controle Expandir.";
+"settings.audio.showAll" = "Mostrar sempre todos os dispositivos de saída";
 "settings.audio.showAllDescription" = "Ignorar o limite e mostrar todos os dispositivos de saída disponíveis.";
+"settings.audio.showAllInput" = "Mostrar sempre todos os dispositivos de entrada";
+"settings.audio.showAllInputDescription" = "Ignorar o limite e mostrar todos os dispositivos de entrada disponíveis.";
+"settings.audio.maximumVisibleInput" = "Máximo de dispositivos de entrada visíveis";
+"settings.audio.maximumVisibleInputDescription" = "Quantos dispositivos de entrada aparecem antes do controle Expandir.";
 "settings.audio.orderTitle" = "Ordem dos dispositivos de saída";
 "settings.audio.orderDescription" = "Arraste os dispositivos para alterar a ordem no painel de volume. Desmarque os que você não usa para ocultá-los; a saída ativa sempre aparece. Novos dispositivos aparecem no final.";
 "settings.audio.orderEmpty" = "Nenhum dispositivo de saída disponível.";
@@ -282,6 +286,8 @@
 "volume.output.unknownDevice" = "Dispositivo de saída desconhecido";
 "volume.output.expand" = "Expandir";
 "volume.output.collapse" = "Recolher";
+"audioInput.expand" = "Expandir";
+"audioInput.collapse" = "Recolher";
 "volume.action.openSettings" = "Abrir Ajustes de som";
 "volume.accessibility.label" = "Volume";
 "audioInput.title" = "Microfone";

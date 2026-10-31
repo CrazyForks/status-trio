@@ -104,6 +104,10 @@ final class SettingsStore: ObservableObject {
     static let outputDeviceLimitRange: ClosedRange<Int> = 1...20
     static let defaultMaxVisibleOutputDevices = 5
     static let maxVisibleOutputDevicesDefaultsKey = "maxVisibleOutputDevices"
+    static let inputDeviceLimitRange: ClosedRange<Int> = 1...20
+    static let defaultMaxVisibleInputDevices = 5
+    static let maxVisibleInputDevicesDefaultsKey = "maxVisibleInputDevices"
+    static let alwaysShowsAllInputDevicesDefaultsKey = "alwaysShowsAllInputDevices"
     static let defaultMaxVisibleBluetoothDevices = 5
     static let maxVisibleBluetoothDevicesDefaultsKey = "maxVisibleBluetoothDevices"
     static let showsBluetoothDeviceListDefaultsKey = "showsBluetoothDeviceList"
@@ -742,6 +746,26 @@ final class SettingsStore: ObservableObject {
         }
     }
 
+    @Published var maxVisibleInputDevices: Int {
+        didSet {
+            let clamped = Self.clampedInputDeviceLimit(maxVisibleInputDevices)
+            guard clamped == maxVisibleInputDevices else {
+                maxVisibleInputDevices = clamped
+                return
+            }
+            defaults.set(clamped, forKey: Self.maxVisibleInputDevicesDefaultsKey)
+        }
+    }
+
+    @Published var alwaysShowsAllInputDevices: Bool {
+        didSet {
+            defaults.set(
+                alwaysShowsAllInputDevices,
+                forKey: Self.alwaysShowsAllInputDevicesDefaultsKey
+            )
+        }
+    }
+
     @Published private(set) var outputDeviceOrder: [String] {
         didSet {
             defaults.set(outputDeviceOrder, forKey: Self.outputDeviceOrderDefaultsKey)
@@ -933,6 +957,10 @@ final class SettingsStore: ObservableObject {
         alwaysShowsAllOutputDevices ? nil : maxVisibleOutputDevices
     }
 
+    var visibleInputDeviceLimit: Int? {
+        alwaysShowsAllInputDevices ? nil : maxVisibleInputDevices
+    }
+
     var bluetoothDeviceListOptions: BluetoothDeviceListOptions {
         BluetoothDeviceListOptions(
             showsList: showsBluetoothDeviceList,
@@ -953,7 +981,11 @@ final class SettingsStore: ObservableObject {
     }
 
     var inputDeviceListPreferences: AudioInputListPreferences {
-        AudioInputListPreferences(order: inputDeviceOrder, hiddenUIDs: hiddenInputDeviceUIDs)
+        AudioInputListPreferences(
+            order: inputDeviceOrder,
+            hiddenUIDs: hiddenInputDeviceUIDs,
+            visibleLimit: visibleInputDeviceLimit
+        )
     }
 
     /// The Settings order list: shown devices first, then the hidden ones.
@@ -1422,6 +1454,7 @@ final class SettingsStore: ObservableObject {
         let storedFullThreshold = (defaults.object(forKey: Self.batteryFullThresholdDefaultsKey) as? NSNumber)?.doubleValue
         let storedBatterySymbolScale = (defaults.object(forKey: Self.batterySymbolScaleDefaultsKey) as? NSNumber)?.doubleValue
         let storedOutputDeviceLimit = (defaults.object(forKey: Self.maxVisibleOutputDevicesDefaultsKey) as? NSNumber)?.intValue
+        let storedInputDeviceLimit = (defaults.object(forKey: Self.maxVisibleInputDevicesDefaultsKey) as? NSNumber)?.intValue
         let storedBluetoothDeviceLimit = (defaults.object(
             forKey: Self.maxVisibleBluetoothDevicesDefaultsKey
         ) as? NSNumber)?.intValue
@@ -1632,6 +1665,12 @@ final class SettingsStore: ObservableObject {
         self.maxVisibleOutputDevices = Self.clampedOutputDeviceLimit(
             storedOutputDeviceLimit ?? Self.defaultMaxVisibleOutputDevices
         )
+        self.maxVisibleInputDevices = Self.clampedInputDeviceLimit(
+            storedInputDeviceLimit ?? Self.defaultMaxVisibleInputDevices
+        )
+        self.alwaysShowsAllInputDevices = defaults.object(
+            forKey: Self.alwaysShowsAllInputDevicesDefaultsKey
+        ) as? Bool ?? false
         self.showsBluetoothDeviceList = defaults.object(
             forKey: Self.showsBluetoothDeviceListDefaultsKey
         ) as? Bool ?? true
@@ -1814,6 +1853,10 @@ final class SettingsStore: ObservableObject {
 
     static func clampedOutputDeviceLimit(_ value: Int) -> Int {
         min(outputDeviceLimitRange.upperBound, max(outputDeviceLimitRange.lowerBound, value))
+    }
+
+    static func clampedInputDeviceLimit(_ value: Int) -> Int {
+        min(inputDeviceLimitRange.upperBound, max(inputDeviceLimitRange.lowerBound, value))
     }
 
     static func clampedBluetoothDeviceLimit(_ value: Int) -> Int {

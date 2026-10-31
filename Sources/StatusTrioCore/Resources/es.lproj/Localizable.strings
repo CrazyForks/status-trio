@@ -117,10 +117,14 @@
 "settings.bluetooth.orderEmpty" = "No hay dispositivos emparejados disponibles.";
 "settings.bluetooth.orderFootnote" = "Los dispositivos conectados siempre aparecen primero.";
 "bluetooth.battery.unavailable" = "No disponible";
-"settings.audio.maximumVisible" = "Máximo de dispositivos visibles";
-"settings.audio.maximumVisibleDescription" = "Cuántos dispositivos se muestran antes del control Expandir.";
-"settings.audio.showAll" = "Mostrar siempre todos los dispositivos";
+"settings.audio.maximumVisible" = "Máximo de dispositivos de salida visibles";
+"settings.audio.maximumVisibleDescription" = "Cuántos dispositivos de salida se muestran antes del control Expandir.";
+"settings.audio.showAll" = "Mostrar siempre todos los dispositivos de salida";
 "settings.audio.showAllDescription" = "Ignorar el límite y mostrar todos los dispositivos de salida disponibles.";
+"settings.audio.showAllInput" = "Mostrar siempre todos los dispositivos de entrada";
+"settings.audio.showAllInputDescription" = "Ignorar el límite y mostrar todos los dispositivos de entrada disponibles.";
+"settings.audio.maximumVisibleInput" = "Máximo de dispositivos de entrada visibles";
+"settings.audio.maximumVisibleInputDescription" = "Cuántos dispositivos de entrada se muestran antes del control Expandir.";
 "settings.audio.orderTitle" = "Orden de los dispositivos de salida";
 "settings.audio.orderDescription" = "Arrastra los dispositivos para cambiar el orden en el panel de volumen. Desmarca los que no uses para ocultarlos; la salida activa siempre se muestra. Los nuevos aparecen al final.";
 "settings.audio.orderEmpty" = "No hay dispositivos de salida disponibles.";
@@ -282,6 +286,8 @@
 "volume.output.unknownDevice" = "Dispositivo de salida desconocido";
 "volume.output.expand" = "Expandir";
 "volume.output.collapse" = "Contraer";
+"audioInput.expand" = "Expandir";
+"audioInput.collapse" = "Contraer";
 "volume.action.openSettings" = "Abrir ajustes de sonido";
 "volume.accessibility.label" = "Volumen";
 "audioInput.title" = "Micrófono";

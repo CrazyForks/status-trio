@@ -117,10 +117,14 @@
 "settings.bluetooth.orderEmpty" = "Aucun périphérique jumelé disponible.";
 "settings.bluetooth.orderFootnote" = "Les périphériques connectés sont toujours répertoriés en premier.";
 "bluetooth.battery.unavailable" = "Indisponible";
-"settings.audio.maximumVisible" = "Nombre maximal d’appareils visibles";
-"settings.audio.maximumVisibleDescription" = "Nombre d’appareils affichés avant le bouton Développer.";
-"settings.audio.showAll" = "Toujours afficher tous les appareils";
+"settings.audio.maximumVisible" = "Nombre maximal d’appareils de sortie visibles";
+"settings.audio.maximumVisibleDescription" = "Nombre d’appareils de sortie affichés avant le bouton Développer.";
+"settings.audio.showAll" = "Toujours afficher tous les appareils de sortie";
 "settings.audio.showAllDescription" = "Ignorer la limite et afficher tous les appareils de sortie disponibles.";
+"settings.audio.showAllInput" = "Toujours afficher tous les appareils d’entrée";
+"settings.audio.showAllInputDescription" = "Ignorer la limite et afficher tous les appareils d’entrée disponibles.";
+"settings.audio.maximumVisibleInput" = "Nombre maximal d’appareils d’entrée visibles";
+"settings.audio.maximumVisibleInputDescription" = "Nombre d’appareils d’entrée affichés avant le bouton Développer.";
 "settings.audio.orderTitle" = "Ordre des appareils de sortie";
 "settings.audio.orderDescription" = "Faites glisser les appareils pour modifier leur ordre dans le panneau de volume. Décochez ceux que vous n’utilisez pas pour les masquer ; la sortie active reste toujours visible. Les nouveaux appareils apparaissent à la fin.";
 "settings.audio.orderEmpty" = "Aucun appareil de sortie disponible.";
@@ -282,6 +286,8 @@
 "volume.output.unknownDevice" = "Périphérique de sortie inconnu";
 "volume.output.expand" = "Développer";
 "volume.output.collapse" = "Réduire";
+"audioInput.expand" = "Développer";
+"audioInput.collapse" = "Réduire";
 "volume.action.openSettings" = "Ouvrir les réglages du son";
 "volume.accessibility.label" = "Volume";
 "audioInput.title" = "Microphone";

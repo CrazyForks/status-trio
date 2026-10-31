@@ -1049,6 +1049,9 @@ private extension AudioInputPanelState {
             errorText: errorText,
             showsDeviceList: false,
             rows: [],
+            visibleLimit: visibleLimit,
+            expandLabel: expandLabel,
+            collapseLabel: collapseLabel,
             sliderLabel: sliderLabel,
             usageText: usageText,
             completedScalarRequestID: nil

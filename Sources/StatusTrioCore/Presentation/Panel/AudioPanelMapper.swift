@@ -182,6 +182,9 @@ enum AudioPanelMapper {
             errorText: errorText,
             showsDeviceList: presentation.showsDeviceList,
             rows: rows,
+            visibleLimit: deviceList.visibleLimit,
+            expandLabel: localization.string(.audioInputExpand),
+            collapseLabel: localization.string(.audioInputCollapse),
             sliderLabel: localization.string(.audioInputVolume),
             usageText: usageText,
             completedScalarRequestID: status.completedScalarRequestID

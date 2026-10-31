@@ -121,6 +121,10 @@
 "settings.audio.maximumVisibleDescription" = "How many output devices appear before the Expand control.";
 "settings.audio.showAll" = "Always Show All Output Devices";
 "settings.audio.showAllDescription" = "Ignore the limit and show every available output device.";
+"settings.audio.showAllInput" = "Always Show All Input Devices";
+"settings.audio.showAllInputDescription" = "Ignore the limit and show every available input device.";
+"settings.audio.maximumVisibleInput" = "Maximum Visible Input Devices";
+"settings.audio.maximumVisibleInputDescription" = "How many input devices appear before the Expand control.";
 "settings.audio.orderTitle" = "Output Device Order";
 "settings.audio.orderDescription" = "Drag devices to change the order shown in the volume popover. Uncheck devices you don't use to hide them; the active output always stays visible. New devices appear at the end.";
 "settings.audio.orderEmpty" = "No output devices available.";
@@ -282,6 +286,8 @@
 "volume.output.unknownDevice" = "Unknown output device";
 "volume.output.expand" = "Expand";
 "volume.output.collapse" = "Collapse";
+"audioInput.expand" = "Expand";
+"audioInput.collapse" = "Collapse";
 "volume.action.openSettings" = "Open Sound Settings";
 "volume.accessibility.label" = "Volume";
 "audioInput.title" = "Microphone";

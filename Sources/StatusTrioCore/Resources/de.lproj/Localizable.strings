@@ -121,6 +121,10 @@
 "settings.audio.maximumVisibleDescription" = "Anzahl der Ausgabegeräte, die vor „Erweitern“ angezeigt werden.";
 "settings.audio.showAll" = "Immer alle Ausgabegeräte anzeigen";
 "settings.audio.showAllDescription" = "Das Limit ignorieren und alle verfügbaren Ausgabegeräte anzeigen.";
+"settings.audio.showAllInput" = "Immer alle Eingabegeräte anzeigen";
+"settings.audio.showAllInputDescription" = "Das Limit ignorieren und alle verfügbaren Eingabegeräte anzeigen.";
+"settings.audio.maximumVisibleInput" = "Maximal sichtbare Eingabegeräte";
+"settings.audio.maximumVisibleInputDescription" = "Anzahl der Eingabegeräte, die vor „Erweitern“ angezeigt werden.";
 "settings.audio.orderTitle" = "Reihenfolge der Ausgabegeräte";
 "settings.audio.orderDescription" = "Geräte ziehen, um die Reihenfolge im Lautstärke-Popover zu ändern. Nicht genutzte Geräte abwählen, um sie auszublenden; das aktive Ausgabegerät bleibt immer sichtbar. Neue Geräte erscheinen am Ende.";
 "settings.audio.orderEmpty" = "Keine Ausgabegeräte verfügbar.";
@@ -282,6 +286,8 @@
 "volume.output.unknownDevice" = "Unbekanntes Ausgabegerät";
 "volume.output.expand" = "Erweitern";
 "volume.output.collapse" = "Reduzieren";
+"audioInput.expand" = "Erweitern";
+"audioInput.collapse" = "Reduzieren";
 "volume.action.openSettings" = "Soundeinstellungen öffnen";
 "volume.accessibility.label" = "Lautstärke";
 "audioInput.title" = "Mikrofon";

@@ -810,6 +810,43 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(store.maxVisibleOutputDevices, 1)
     }
 
+    func testInputDeviceDisplayDefaults() {
+        let store = SettingsStore(defaults: makeSuite().defaults)
+
+        XCTAssertEqual(SettingsStore.inputDeviceLimitRange, 1...20)
+        XCTAssertEqual(store.maxVisibleInputDevices, 5)
+        XCTAssertFalse(store.alwaysShowsAllInputDevices)
+        XCTAssertEqual(store.visibleInputDeviceLimit, 5)
+        XCTAssertEqual(store.inputDeviceListPreferences.visibleLimit, 5)
+    }
+
+    func testInputDeviceDisplaySettingsPersistIndependentlyOfOutput() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+
+        let first = SettingsStore(defaults: suite.defaults)
+        first.maxVisibleInputDevices = 3
+        first.alwaysShowsAllInputDevices = true
+
+        let second = SettingsStore(defaults: suite.defaults)
+        XCTAssertEqual(second.maxVisibleInputDevices, 3)
+        XCTAssertTrue(second.alwaysShowsAllInputDevices)
+        XCTAssertNil(second.visibleInputDeviceLimit)
+        XCTAssertNil(second.inputDeviceListPreferences.visibleLimit)
+        XCTAssertEqual(second.maxVisibleOutputDevices, 5)
+        XCTAssertFalse(second.alwaysShowsAllOutputDevices)
+    }
+
+    func testMaxVisibleInputDevicesIsClamped() {
+        let store = SettingsStore(defaults: makeSuite().defaults)
+
+        store.maxVisibleInputDevices = 50
+        XCTAssertEqual(store.maxVisibleInputDevices, 20)
+
+        store.maxVisibleInputDevices = 0
+        XCTAssertEqual(store.maxVisibleInputDevices, 1)
+    }
+
     func testBluetoothDeviceListDefaults() {
         let store = SettingsStore(defaults: makeSuite().defaults)
 
