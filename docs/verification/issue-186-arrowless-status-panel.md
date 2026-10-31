@@ -81,18 +81,16 @@ These are deliberate and recorded in `docs/known-limitations.md`:
 
 ## Verification
 
-Branch base: `a42c7dc2` (latest local `main` at delivery time; the branch was
-originally cut from `6630ee95` and rebased with no conflicts).
+Branch base: `e3477268` (`origin/main` at delivery time).
 
 ### Automated
 
 - `bash scripts/test.sh 'StatusPanelContentTests|StatusPanelPlacementTests|StatusBarMemoryPressureTests|StatusBarContentLifecycleTests|PopoverFooterPresentationTests|CompactAudioLayoutTests'`
   — 21 tests pass, including the real close/reopen retention cycles.
 - Full `swift test` suite — 805 tests / 117 suites pass.
-- `bash scripts/verify-local.sh full` — pass on the final tree
-  `87f45a3199bb9b9acc061b403d48885e77f35320` (full Swift suite, Release build,
-  non-Universal app bundle and contracts, native checks and offline release
-  simulations).
+- `bash scripts/verify-local.sh full` — pass on the PR branch head (full Swift
+  suite, Release build, non-Universal app bundle and contracts, native checks and
+  offline release simulations).
 
 ### Visual probe (production panel code, throwaway host)
 
@@ -121,11 +119,10 @@ glass path is live rather than a solid fill.
 - `bash scripts/launch-computer-use.sh` built and launched the isolated Debug
   dev bundle (`com.lingsmbp.StatusTrio.dev.feat-issue-191-186-arrowless-panel`)
   with `--background-ui-testing` and the `--status-trio-ui-test-launch` token.
-  Report: PID `88637`, SHA `87f45a3199bb9b9acc061b403d48885e77f35320`,
-  `sourceDirty: false`, `backgroundUITesting: true`.
+  Report: `sourceDirty: false`, `backgroundUITesting: true`.
 - At sampling time the frontmost application was still Microsoft Edge, so no
   foreground transition was observed. The launcher stopped this worktree's test
-  PID `88637` gracefully afterwards; no other instance was touched.
+  instance gracefully afterwards; no other instance was touched.
 - The **status panel itself** was not opened through the launched app: this
   harness has no permitted Computer Use provider for a status-item click, and
   the project restricts GUI providers to Codex native Computer Use. The visual
