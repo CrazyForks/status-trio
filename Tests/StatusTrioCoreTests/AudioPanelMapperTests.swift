@@ -332,6 +332,42 @@ final class AudioPanelMapperTests: XCTestCase {
         XCTAssertEqual(state.rows.filter(\.selected).map(\.key.uid), ["built-in"])
     }
 
+    func testInputHidesTheDeviceListWhenNoDefaultExistsAndEveryDeviceIsHidden() {
+        let localization = makeLocalization(.english)
+        let devices = [
+            AudioInputDevice(id: AudioDeviceID(1), uid: "built-in", name: "MacBook Pro Microphone"),
+            AudioInputDevice(id: AudioDeviceID(2), uid: "usb", name: "USB Mic")
+        ]
+        let status = makeInputStatus(devices: devices, defaultDeviceID: nil)
+
+        let state = AudioPanelMapper.input(
+            status,
+            deviceList: AudioInputListPreferences(hiddenUIDs: ["built-in", "usb"]),
+            localization: localization
+        )
+
+        XCTAssertTrue(state.rows.isEmpty)
+        XCTAssertFalse(state.showsDeviceList, "an empty list has nothing to show")
+    }
+
+    func testInputKeepsTheDeviceListWhenOneUnhiddenRowRemains() {
+        let localization = makeLocalization(.english)
+        let devices = [
+            AudioInputDevice(id: AudioDeviceID(1), uid: "built-in", name: "MacBook Pro Microphone"),
+            AudioInputDevice(id: AudioDeviceID(2), uid: "usb", name: "USB Mic")
+        ]
+        let status = makeInputStatus(devices: devices, defaultDeviceID: nil)
+
+        let state = AudioPanelMapper.input(
+            status,
+            deviceList: AudioInputListPreferences(hiddenUIDs: ["usb"]),
+            localization: localization
+        )
+
+        XCTAssertEqual(state.rows.map(\.key.uid), ["built-in"])
+        XCTAssertTrue(state.showsDeviceList, "input keeps the list for a single row")
+    }
+
     func testInputRowsHonorTheVisibleLimitWithLocalExpansion() {
         let localization = makeLocalization(.english)
         let devices = (1...4).map {

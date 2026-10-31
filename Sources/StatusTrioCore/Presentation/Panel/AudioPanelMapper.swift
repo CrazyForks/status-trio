@@ -180,7 +180,7 @@ enum AudioPanelMapper {
             canMute: presentation.muteEnabled,
             isBusy: presentation.blocksControls,
             errorText: errorText,
-            showsDeviceList: presentation.showsDeviceList,
+            showsDeviceList: !orderedDevices.isEmpty,
             rows: rows,
             visibleLimit: deviceList.visibleLimit,
             expandLabel: localization.string(.audioInputExpand),
@@ -484,8 +484,6 @@ struct AudioInputPresentation {
         case .timedOut: .audioInputTimedOut
         }
     }
-
-    var showsDeviceList: Bool { !status.devices.isEmpty }
 
     var blocksControls: Bool { status.isBusy && !status.isAdjustingScalar }
 
