@@ -8,6 +8,7 @@
 "menu.window" = "Janela";
 "menu.closeWindow" = "Fechar Janela";
 "menu.checkForUpdates" = "Verificar atualizações…";
+"menu.openMenuBarSettings" = "Abrir Ajustes da Barra de Menus";
 "settings.title" = "Ajustes";
 "settings.page.appearance" = "Aparência";
 "settings.page.general" = "Geral";

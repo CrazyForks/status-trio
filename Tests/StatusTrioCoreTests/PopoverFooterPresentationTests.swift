@@ -2,8 +2,9 @@ import XCTest
 @testable import StatusTrioCore
 
 /// The popover footer shows the settings button and, at the trailing edge, the
-/// running version. These pin the two labels so the version cannot drift back
-/// into the button's own text.
+/// "more actions" menu. The running version now lives in the standard About
+/// panel, so these pin the button label and keep the version from drifting back
+/// into it.
 final class PopoverFooterPresentationTests: XCTestCase {
     func testSettingsLabelIsTheTitleWithoutACodename() {
         XCTAssertEqual(
