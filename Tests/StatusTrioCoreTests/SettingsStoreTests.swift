@@ -1054,7 +1054,7 @@ final class SettingsStoreTests: XCTestCase {
         )
     }
 
-    func testHidingAnOutputDeviceMovesItToTheEndAndPersists() {
+    func testHidingAnOutputDeviceKeepsTheSavedOrderAndPersists() {
         let suite = makeSuite()
         defer { clear(suite) }
 
@@ -1064,19 +1064,21 @@ final class SettingsStoreTests: XCTestCase {
             makeOutputDevice(id: 3, uid: "device-c")
         ]
         let store = SettingsStore(defaults: suite.defaults)
+        store.moveOutputDevices(fromOffsets: IndexSet(integer: 2), toOffset: 0, in: devices)
+        XCTAssertEqual(store.outputDeviceOrder, ["device-c", "device-a", "device-b"])
 
-        store.setOutputDeviceHidden(
-            "device-a",
-            hidden: true,
-            in: store.orderedOutputDevices(devices)
-        )
+        store.setOutputDeviceHidden("device-a", hidden: true)
 
         XCTAssertEqual(store.hiddenOutputDeviceUIDs, ["device-a"])
-        XCTAssertEqual(store.outputDeviceOrder, ["device-b", "device-c", "device-a"])
+        XCTAssertEqual(
+            store.outputDeviceOrder,
+            ["device-c", "device-a", "device-b"],
+            "hiding a device never changes the saved order"
+        )
         XCTAssertEqual(
             store.outputDeviceListPreferences,
             AudioOutputListPreferences(
-                order: ["device-b", "device-c", "device-a"],
+                order: ["device-c", "device-a", "device-b"],
                 hiddenUIDs: ["device-a"],
                 visibleLimit: store.visibleOutputDeviceLimit
             )
@@ -1086,11 +1088,12 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(reloaded.hiddenOutputDeviceUIDs, ["device-a"])
         XCTAssertEqual(
             reloaded.orderedOutputDevices(devices).compactMap(\.uid),
-            ["device-b", "device-c", "device-a"]
+            ["device-c", "device-a", "device-b"],
+            "a hidden device keeps its place in the Settings order list"
         )
     }
 
-    func testShowingAHiddenOutputDeviceAgainPlacesItAfterTheShownDevices() {
+    func testShowingAHiddenOutputDeviceAgainKeepsItsPlace() {
         let suite = makeSuite()
         defer { clear(suite) }
 
@@ -1100,19 +1103,20 @@ final class SettingsStoreTests: XCTestCase {
             makeOutputDevice(id: 3, uid: "device-c")
         ]
         let store = SettingsStore(defaults: suite.defaults)
-        store.setOutputDeviceHidden("device-a", hidden: true, in: store.orderedOutputDevices(devices))
-        store.setOutputDeviceHidden("device-b", hidden: true, in: store.orderedOutputDevices(devices))
+        store.setOutputDeviceHidden("device-a", hidden: true)
+        store.setOutputDeviceHidden("device-b", hidden: true)
         XCTAssertEqual(
             store.orderedOutputDevices(devices).compactMap(\.uid),
-            ["device-c", "device-a", "device-b"]
+            ["device-a", "device-b", "device-c"],
+            "hiding never reorders the list"
         )
 
-        store.setOutputDeviceHidden("device-a", hidden: false, in: store.orderedOutputDevices(devices))
+        store.setOutputDeviceHidden("device-a", hidden: false)
 
         XCTAssertEqual(store.hiddenOutputDeviceUIDs, ["device-b"])
         XCTAssertEqual(
             store.orderedOutputDevices(devices).compactMap(\.uid),
-            ["device-c", "device-a", "device-b"]
+            ["device-a", "device-b", "device-c"]
         )
     }
 
@@ -1173,22 +1177,31 @@ final class SettingsStoreTests: XCTestCase {
         store.moveInputDevices(fromOffsets: IndexSet(integer: 2), toOffset: 0, in: devices)
         XCTAssertEqual(store.inputDeviceOrder, ["usb", "built-in", "airpods"])
 
-        store.setInputDeviceHidden(
-            "usb",
-            hidden: true,
-            in: [devices[2], devices[0], devices[1]]
+        store.setInputDeviceHidden("usb", hidden: true)
+        XCTAssertEqual(
+            store.inputDeviceOrder,
+            ["usb", "built-in", "airpods"],
+            "hiding an input keeps the saved order"
         )
-        XCTAssertEqual(store.inputDeviceOrder, ["built-in", "airpods", "usb"])
         XCTAssertEqual(store.hiddenInputDeviceUIDs, ["usb"])
 
         let reloaded = SettingsStore(defaults: suite.defaults)
         XCTAssertEqual(
             reloaded.inputDeviceListPreferences,
-            AudioInputListPreferences(order: ["built-in", "airpods", "usb"], hiddenUIDs: ["usb"])
+            AudioInputListPreferences(order: ["usb", "built-in", "airpods"], hiddenUIDs: ["usb"])
         )
 
-        reloaded.setInputDeviceHidden("usb", hidden: false, in: devices)
+        reloaded.setInputDeviceHidden("usb", hidden: false)
         XCTAssertEqual(reloaded.hiddenInputDeviceUIDs, [])
+
+        let listed = AudioInputPresentation.ordered(
+            devices,
+            currentID: AudioDeviceID(1),
+            order: reloaded.inputDeviceOrder,
+            locale: Locale(identifier: "en_US"),
+            unknownName: "Unknown"
+        )
+        XCTAssertEqual(listed.compactMap(\.uid), ["usb", "built-in", "airpods"])
     }
 
     func testInputDeviceMovesIgnoreOutOfRangeOffsets() {

@@ -427,22 +427,26 @@ final class AudioPanelMapperTests: XCTestCase {
         XCTAssertEqual(unlimited.visibleRows(expanded: false).count, 4)
     }
 
-    func testInputSettingsListMovesHiddenDevicesBelowShownOnes() {
+    func testInputSettingsListKeepsTheSavedOrderForHiddenDevices() {
         let devices = [
             AudioInputDevice(id: AudioDeviceID(1), uid: "a", name: "A"),
             AudioInputDevice(id: AudioDeviceID(2), uid: "b", name: "B"),
             AudioInputDevice(id: AudioDeviceID(3), uid: nil, name: "C")
         ]
 
-        let listed = AudioInputPresentation.settingsDevices(
+        let listed = AudioInputPresentation.ordered(
             devices,
             currentID: AudioDeviceID(1),
-            preferences: AudioInputListPreferences(order: ["b", "a"], hiddenUIDs: ["b"]),
+            order: ["b", "a"],
             locale: Locale(identifier: "en_US"),
             unknownName: "Unknown"
         )
 
-        XCTAssertEqual(listed.map(\.id), [1, 3, 2])
+        XCTAssertEqual(
+            listed.map(\.id),
+            [2, 1, 3],
+            "the Settings list follows the saved order whether or not a device is hidden"
+        )
     }
 
     private func makeLocalization(_ language: AppLanguage) -> Localization {

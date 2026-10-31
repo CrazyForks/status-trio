@@ -988,13 +988,10 @@ final class SettingsStore: ObservableObject {
         )
     }
 
-    /// The Settings order list: shown devices first, then the hidden ones.
+    /// The Settings order list, in the saved order. Hidden devices keep their
+    /// place here; only the status panel filters them out.
     func orderedOutputDevices(_ devices: [AudioOutputDevice]) -> [AudioOutputDevice] {
-        OutputDeviceListPresentation.settingsDevices(
-            devices,
-            order: outputDeviceOrder,
-            hiddenUIDs: hiddenOutputDeviceUIDs
-        )
+        OutputDeviceListPresentation.orderedDevices(devices, using: outputDeviceOrder)
     }
 
     func externalVolumeConfiguration(for uid: String) -> ExternalVolumeConfiguration {
@@ -1033,25 +1030,15 @@ final class SettingsStore: ObservableObject {
         outputDeviceOrder = Self.mergedDeviceOrder(reordered, previous: outputDeviceOrder)
     }
 
-    /// Shows or hides one output device in the status panel. Hiding it also
-    /// moves it to the end of the order, below every device still shown.
-    func setOutputDeviceHidden(
-        _ uid: String,
-        hidden: Bool,
-        in devices: [AudioOutputDevice]
-    ) {
+    /// Shows or hides one output device in the status panel. Hiding never
+    /// reorders the list, so the saved order stays independent of the checkbox.
+    func setOutputDeviceHidden(_ uid: String, hidden: Bool) {
         guard !uid.isEmpty else { return }
         if hidden {
             hiddenOutputDeviceUIDs.insert(uid)
         } else {
             hiddenOutputDeviceUIDs.remove(uid)
         }
-        outputDeviceOrder = Self.deviceOrder(
-            setting: uid,
-            hidden: hidden,
-            displayed: devices.compactMap(\.uid),
-            previous: outputDeviceOrder
-        )
     }
 
     func moveInputDevices(
@@ -1067,25 +1054,15 @@ final class SettingsStore: ObservableObject {
         inputDeviceOrder = Self.mergedDeviceOrder(reordered, previous: inputDeviceOrder)
     }
 
-    /// Shows or hides one input device in the Audio Input section. Hiding it
-    /// also moves it to the end of the order, below every device still shown.
-    func setInputDeviceHidden(
-        _ uid: String,
-        hidden: Bool,
-        in devices: [AudioInputDevice]
-    ) {
+    /// Shows or hides one input device in the Audio Input section. Hiding never
+    /// reorders the list, so the saved order stays independent of the checkbox.
+    func setInputDeviceHidden(_ uid: String, hidden: Bool) {
         guard !uid.isEmpty else { return }
         if hidden {
             hiddenInputDeviceUIDs.insert(uid)
         } else {
             hiddenInputDeviceUIDs.remove(uid)
         }
-        inputDeviceOrder = Self.deviceOrder(
-            setting: uid,
-            hidden: hidden,
-            displayed: devices.compactMap(\.uid),
-            previous: inputDeviceOrder
-        )
     }
 
     /// The UIDs of `devices` after a drag, or `nil` for an out-of-range move.
@@ -1108,20 +1085,6 @@ final class SettingsStore: ObservableObject {
         let insertionOffset = destination - source.filter { $0 < destination }.count
         reordered.insert(contentsOf: moved, at: min(insertionOffset, reordered.count))
         return reordered.compactMap { $0 }
-    }
-
-    private static func deviceOrder(
-        setting uid: String,
-        hidden: Bool,
-        displayed: [String],
-        previous: [String]
-    ) -> [String] {
-        var displayed = displayed
-        if hidden {
-            displayed.removeAll { $0 == uid }
-            displayed.append(uid)
-        }
-        return mergedDeviceOrder(displayed, previous: previous)
     }
 
     /// Rebuilds a saved device order from the devices on screen. A remembered

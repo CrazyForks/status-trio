@@ -84,16 +84,19 @@ final class OutputDeviceListPresentationTests: XCTestCase {
         XCTAssertEqual(ordered.map(\.id), [2, 4, 1, 3, 5])
     }
 
-    func testSettingsListMovesHiddenDevicesBelowShownOnes() {
+    func testSettingsListKeepsTheSavedOrderForHiddenDevices() {
         let devices = makeDevices(count: 4)
 
-        let listed = OutputDeviceListPresentation.settingsDevices(
+        let listed = OutputDeviceListPresentation.orderedDevices(
             devices,
-            order: ["device-2", "device-1", "device-4", "device-3"],
-            hiddenUIDs: ["device-1"]
+            using: ["device-2", "device-1", "device-4", "device-3"]
         )
 
-        XCTAssertEqual(listed.map(\.id), [2, 4, 3, 1])
+        XCTAssertEqual(
+            listed.map(\.id),
+            [2, 1, 4, 3],
+            "hidden devices are excluded by the panel, not reordered in Settings"
+        )
     }
 
     func testPanelListDropsHiddenDevicesButKeepsTheActiveOutput() {

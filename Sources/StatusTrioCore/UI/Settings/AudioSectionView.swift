@@ -156,13 +156,12 @@ struct AudioSectionView: View {
                                 canHide: device.uid != nil,
                                 setHidden: { hidden in
                                     guard let uid = device.uid else { return }
-                                    store.setOutputDeviceHidden(uid, hidden: hidden, in: orderedDevices)
+                                    store.setOutputDeviceHidden(uid, hidden: hidden)
                                 }
                             ) {
                                 AudioOutputDeviceIconView(source: AudioPanelMapper.iconSource(for: device))
                                     .foregroundStyle(device.isCurrent ? Color.accentColor : Color.secondary)
                             }
-                            .moveDisabled(isHidden)
                         }
                         .onMove { source, destination in
                             store.moveOutputDevices(
@@ -221,13 +220,12 @@ struct AudioSectionView: View {
                                 canHide: device.uid != nil,
                                 setHidden: { hidden in
                                     guard let uid = device.uid else { return }
-                                    store.setInputDeviceHidden(uid, hidden: hidden, in: orderedInputDevices)
+                                    store.setInputDeviceHidden(uid, hidden: hidden)
                                 }
                             ) {
                                 Image(systemName: isCurrent ? "mic.fill" : "mic")
                                     .foregroundStyle(isCurrent ? Color.accentColor : Color.secondary)
                             }
-                            .moveDisabled(isHidden)
                         }
                         .onMove { source, destination in
                             store.moveInputDevices(
@@ -428,10 +426,10 @@ struct AudioSectionView: View {
     }
 
     private var orderedInputDevices: [AudioInputDevice] {
-        AudioInputPresentation.settingsDevices(
+        AudioInputPresentation.ordered(
             statusStore.liveInput.devices,
             currentID: statusStore.liveInput.defaultDeviceID,
-            preferences: store.inputDeviceListPreferences,
+            order: store.inputDeviceListPreferences.order,
             locale: localization.resolvedLanguage.locale,
             unknownName: localization.string(.audioInputUnknownDevice)
         )
@@ -443,8 +441,8 @@ struct AudioSectionView: View {
 }
 
 /// One row of an audio device order list: the show/hide checkbox, icon, name,
-/// current-device badge, and drag handle. A hidden row is dimmed and loses its
-/// handle, since hidden devices stay below the shown ones.
+/// current-device badge, and drag handle. A hidden row is dimmed, but it keeps
+/// its place and stays draggable so ordering never depends on the checkbox.
 private struct AudioDeviceOrderRow<Icon: View>: View {
     @EnvironmentObject private var localization: Localization
 
@@ -491,7 +489,6 @@ private struct AudioDeviceOrderRow<Icon: View>: View {
                 size: 18
             )
             .foregroundStyle(.tertiary)
-            .opacity(isHidden ? 0 : 1)
             .accessibilityHidden(true)
         }
         .padding(.vertical, 3)

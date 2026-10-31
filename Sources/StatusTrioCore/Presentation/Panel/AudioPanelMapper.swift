@@ -377,27 +377,6 @@ struct AudioInputPresentation {
         )
     }
 
-    /// The Settings order list: shown devices first, then the hidden ones.
-    static func settingsDevices(
-        _ devices: [AudioInputDevice],
-        currentID: AudioDeviceID?,
-        preferences: AudioInputListPreferences,
-        locale: Locale,
-        unknownName: String
-    ) -> [AudioInputDevice] {
-        let list = ordered(
-            devices,
-            currentID: currentID,
-            order: preferences.order,
-            locale: locale,
-            unknownName: unknownName
-        )
-        let isHidden = { (device: AudioInputDevice) in
-            AudioDeviceOrder.isHidden(uid: device.uid, in: preferences.hiddenUIDs)
-        }
-        return list.filter { !isHidden($0) } + list.filter(isHidden)
-    }
-
     /// The status-panel list. The current input stays even when it is hidden,
     /// so the list never loses its selected row.
     static func panelDevices(

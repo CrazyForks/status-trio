@@ -36,18 +36,6 @@ enum OutputDeviceListPresentation {
         AudioDeviceOrder.ordered(devices, using: order, uid: \.uid)
     }
 
-    /// The Settings order list: the shown devices in the saved order, then the
-    /// hidden ones, so unchecking a device moves it below every shown device.
-    static func settingsDevices(
-        _ devices: [AudioOutputDevice],
-        order: [String],
-        hiddenUIDs: Set<String>
-    ) -> [AudioOutputDevice] {
-        let ordered = orderedDevices(devices, using: order)
-        return ordered.filter { !isHidden($0, in: hiddenUIDs) }
-            + ordered.filter { isHidden($0, in: hiddenUIDs) }
-    }
-
     /// The status-panel list. A hidden device still appears while it is the
     /// active output, so the list never loses its selected row.
     static func panelDevices(
