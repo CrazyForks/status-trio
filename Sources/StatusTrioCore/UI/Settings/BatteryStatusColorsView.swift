@@ -52,71 +52,118 @@ private struct BatteryStatusColorRow: View {
 
     var body: some View {
         // Resolve both appearances exactly once per role: each resolution builds
-        // an NSAppearance, so recomputing it for tint, previews and the
-        // adjustment note would triple the cost.
+        // an NSAppearance, so recomputing it for the tint, previews and the
+        // adjustment note would multiply the cost.
         let light = resolution(dark: false)
         let dark = resolution(dark: true)
         VStack(alignment: .leading, spacing: 0) {
-            SettingsRow(symbol, tint: Color(cgColor: (colorScheme == .dark ? dark : light).color), title: title) {
-                Picker(title, selection: $selection) {
-                    Text(localization.string(.settingsBatteryColorsSystem))
-                        .tag(BatteryStatusColorSelection.system)
+            SettingsRow(
+                symbol,
+                tint: Color(cgColor: (colorScheme == .dark ? dark : light).color),
+                title: title
+            ) {
+                HStack(spacing: 8) {
+                    systemSwatch
                     ForEach(BatteryStatusColorPreset.allCases, id: \.self) { preset in
-                        Text(localization.string(presetKey(preset)))
-                            .tag(BatteryStatusColorSelection.preset(preset))
+                        presetSwatch(preset)
                     }
-                    Text(localization.string(.settingsBatteryColorsCustom))
-                        .tag(BatteryStatusColorSelection.custom(customComponents(startingFrom: light)))
-                }
-                .labelsHidden()
-                .pickerStyle(.menu)
-                .fixedSize()
-                .accessibilityLabel(title)
-            }
-
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 12) {
-                    if case .custom = selection {
-                        ColorPicker(
-                            localization.string(.settingsBatteryColorsCustom),
-                            selection: customColorBinding(startingFrom: light),
-                            supportsOpacity: false
-                        )
-                        .fixedSize()
-                        .accessibilityLabel("\(title), \(localization.string(.settingsBatteryColorsCustom))")
-                    }
-                    Spacer(minLength: 0)
-                    Button(localization.string(.settingsBatteryColorsReset)) {
+                    ColorPicker(
+                        localization.string(.settingsBatteryColorsCustom),
+                        selection: customColorBinding(startingFrom: light),
+                        supportsOpacity: false
+                    )
+                    .labelsHidden()
+                    .fixedSize()
+                    .accessibilityLabel("\(title), \(localization.string(.settingsBatteryColorsCustom))")
+                    Button {
                         selection = .system
+                    } label: {
+                        Image(systemName: "arrow.counterclockwise")
                     }
+                    .buttonStyle(.borderless)
                     .controlSize(.small)
                     .disabled(selection.isSystem)
+                    .help(localization.string(.settingsBatteryColorsReset))
                     .accessibilityLabel("\(title), \(localization.string(.settingsBatteryColorsReset))")
                 }
-                HStack(spacing: 12) {
-                    referencePreview(light, dark: false)
-                    referencePreview(dark, dark: true)
+            }
+
+            HStack(spacing: 14) {
+                referencePreview(light, dark: false)
+                referencePreview(dark, dark: true)
+                if case .custom = selection {
+                    Text(localization.format(
+                        .settingsBatteryColorsReferenceContrast,
+                        min(light.referenceContrast, dark.referenceContrast)
+                    ))
+                    .font(.caption)
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+                    if light.wasAdjusted || dark.wasAdjusted {
+                        Text(localization.string(.settingsBatteryColorsAdjusted))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel(localization.string(.settingsBatteryColorsPreviews))
-                Text(localization.format(
-                    .settingsBatteryColorsReferenceContrast,
-                    min(light.referenceContrast, dark.referenceContrast)
-                ))
-                .font(.caption)
-                .monospacedDigit()
-                .foregroundStyle(.secondary)
-                if light.wasAdjusted || dark.wasAdjusted {
-                    Text(localization.string(.settingsBatteryColorsAdjusted))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
+                Spacer(minLength: 0)
             }
             .padding(.leading, SettingsMetrics.dividerInset)
             .padding(.trailing, SettingsMetrics.rowPaddingH)
             .padding(.bottom, SettingsMetrics.rowPaddingV)
         }
+    }
+
+    /// A swatch for the system semantic colour; selecting it clears any override.
+    /// It always shows the semantic baseline, not the current selection, so a
+    /// custom colour never changes the "system default" reference swatch.
+    private var systemSwatch: some View {
+        let color = Color(cgColor: BatteryStatusColorResolver.resolution(
+            for: role,
+            selection: .system,
+            darkAppearance: colorScheme == .dark
+        ).color)
+        let isSelected = selection.isSystem
+        return Button {
+            selection = .system
+        } label: {
+            swatchCircle(fill: color, isSelected: isSelected)
+        }
+        .buttonStyle(.plain)
+        .help(localization.string(.settingsBatteryColorsSystem))
+        .accessibilityLabel("\(title), \(localization.string(.settingsBatteryColorsSystem))")
+        .accessibilityAddTraits(isSelected ? [.isSelected] : [])
+    }
+
+    private func presetSwatch(_ preset: BatteryStatusColorPreset) -> some View {
+        let color = Color(cgColor: BatteryStatusColorResolver.presetColor(
+            preset,
+            darkAppearance: colorScheme == .dark
+        ))
+        let isSelected = selection == .preset(preset)
+        return Button {
+            selection = .preset(preset)
+        } label: {
+            swatchCircle(fill: color, isSelected: isSelected)
+        }
+        .buttonStyle(.plain)
+        .help(localization.string(presetKey(preset)))
+        .accessibilityLabel("\(title), \(localization.string(presetKey(preset)))")
+        .accessibilityAddTraits(isSelected ? [.isSelected] : [])
+    }
+
+    private func swatchCircle(fill: Color, isSelected: Bool) -> some View {
+        Circle()
+            .fill(fill)
+            .frame(width: 16, height: 16)
+            .overlay(Circle().strokeBorder(.white.opacity(0.35), lineWidth: 0.5))
+            .overlay(
+                Circle().strokeBorder(
+                    isSelected ? Color.accentColor : Color.secondary.opacity(0.3),
+                    lineWidth: isSelected ? 2 : 1
+                )
+            )
+            .padding(3)
+            .contentShape(Circle())
     }
 
     private var title: String {
@@ -140,9 +187,10 @@ private struct BatteryStatusColorRow: View {
         BatteryStatusColorResolver.resolution(for: role, selection: selection, darkAppearance: dark)
     }
 
-    /// Enter custom mode from the light-resolved colour. Using a fixed appearance
-    /// keeps the picker tag stable when the window's colour scheme changes;
-    /// subsequent edits retain the stored HSB choice rather than the adjusted one.
+    /// The colour the picker starts from. A stored custom choice is reused; a
+    /// system/preset choice seeds the picker from the light-resolved colour so
+    /// switching to custom begins at a visible colour rather than an arbitrary
+    /// one. Subsequent edits retain the stored HSB value.
     private func customComponents(startingFrom light: BatteryStatusColorResolution) -> BatteryStatusColorComponents {
         if case .custom(let components) = selection { return components }
         let color = NSColor(cgColor: light.color) ?? .systemGreen
