@@ -125,6 +125,10 @@
 "settings.audio.orderDescription" = "デバイスをドラッグして、音量ポップオーバーでの表示順を変更します。使わないデバイスのチェックを外すと非表示になります（使用中の出力は常に表示されます）。新しいデバイスは末尾に追加されます。";
 "settings.audio.orderEmpty" = "使用可能な出力デバイスがありません。";
 "settings.audio.showDevice" = "ステータスパネルに表示";
+"settings.audio.inputOrderTitle" = "入力デバイスの順序";
+"settings.audio.inputOrderDescription" = "デバイスをドラッグして、オーディオ入力セクションでの表示順を変更します。使わないデバイスのチェックを外すと非表示になります（現在の入力は常に表示されます）。新しいデバイスは末尾に追加されます。";
+"settings.audio.inputOrderEmpty" = "使用可能な入力デバイスがありません。";
+"settings.audio.inputOrderSectionOff" = "入力デバイスを並べ替えたり非表示にしたりするには、ステータスパネル › 表示項目で「オーディオ入力」をオンにしてください。";
 "settings.about.version" = "バージョン %@";
 "settings.about.description" = "Wi-Fi、バッテリー、音量をひとつのコンパクトなメニューバーアイコンにまとめるネイティブ macOS アプリです。iPhone Duo の組み合わせステータスバーアイコンに着想を得て、Mac ではモバイル通信の代わりに音量を表示します。";
 "settings.about.project" = "ウェブサイト";

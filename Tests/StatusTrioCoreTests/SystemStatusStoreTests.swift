@@ -673,6 +673,35 @@ final class SystemStatusStoreTests: XCTestCase {
         XCTAssertEqual(input.stopCount, 1)
     }
 
+    func testSettingsWindowKeepsInputListCurrentWhileThePopoverIsClosed() async {
+        let input = FakeAudioInputMonitor()
+        let suite = makeSuite()
+        defer { suite.defaults.removeTestSuite(named: suite.name) }
+        let settings = SettingsStore(defaults: suite.defaults)
+        let store = makeStore(
+            battery: FakeBatteryMonitor(),
+            wifi: FakeWiFiMonitor(),
+            volume: FakeVolumeMonitor(),
+            inputMonitor: input
+        )
+        store.bindInputSettings(settings)
+        store.start()
+        settings.setPopupSection(.audioInput, enabled: true)
+        XCTAssertEqual(input.visibleValues, [false])
+
+        store.setSettingsVisible(true)
+        XCTAssertEqual(input.visibleValues.last, true)
+
+        // Closing the popover while Settings stays open keeps the list live.
+        store.setPopoverVisible(true)
+        store.setPopoverVisible(false)
+        XCTAssertEqual(input.visibleValues.last, true)
+
+        store.setSettingsVisible(false)
+        XCTAssertEqual(input.visibleValues.last, false)
+        store.stop()
+    }
+
     func testInputUpdatesDoNotChangeOutputOrIconProjections() async {
         let battery = FakeBatteryMonitor()
         let wifi = FakeWiFiMonitor()

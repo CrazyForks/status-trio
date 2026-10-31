@@ -120,6 +120,8 @@ final class SettingsStore: ObservableObject {
     static let alwaysShowsAllOutputDevicesDefaultsKey = "alwaysShowsAllOutputDevices"
     static let outputDeviceOrderDefaultsKey = "outputDeviceOrder"
     static let hiddenOutputDeviceUIDsDefaultsKey = "hiddenOutputDeviceUIDs"
+    static let inputDeviceOrderDefaultsKey = "inputDeviceOrder"
+    static let hiddenInputDeviceUIDsDefaultsKey = "hiddenInputDeviceUIDs"
     static let externalVolumeConfigurationsDefaultsKey = "externalVolumeConfigurations.v1"
     static let popupSectionOrderDefaultsKey = "popupSectionOrder"
     static let enabledPopupSectionsDefaultsKey = "enabledPopupSections"
@@ -754,6 +756,20 @@ final class SettingsStore: ObservableObject {
         }
     }
 
+    @Published private(set) var inputDeviceOrder: [String] {
+        didSet {
+            defaults.set(inputDeviceOrder, forKey: Self.inputDeviceOrderDefaultsKey)
+        }
+    }
+
+    /// UIDs of input devices the user unchecked in Settings. The Audio Input
+    /// section leaves them out unless one is the current input.
+    @Published private(set) var hiddenInputDeviceUIDs: Set<String> {
+        didSet {
+            defaults.set(Array(hiddenInputDeviceUIDs), forKey: Self.hiddenInputDeviceUIDsDefaultsKey)
+        }
+    }
+
     @Published private(set) var externalVolumeConfigurations: [String: ExternalVolumeConfiguration] {
         didSet {
             guard !externalVolumeConfigurations.isEmpty,
@@ -936,6 +952,10 @@ final class SettingsStore: ObservableObject {
         )
     }
 
+    var inputDeviceListPreferences: AudioInputListPreferences {
+        AudioInputListPreferences(order: inputDeviceOrder, hiddenUIDs: hiddenInputDeviceUIDs)
+    }
+
     /// The Settings order list: shown devices first, then the hidden ones.
     func orderedOutputDevices(_ devices: [AudioOutputDevice]) -> [AudioOutputDevice] {
         OutputDeviceListPresentation.settingsDevices(
@@ -973,27 +993,12 @@ final class SettingsStore: ObservableObject {
         toOffset destination: Int,
         in devices: [AudioOutputDevice]
     ) {
-        guard !source.isEmpty,
-              source.allSatisfy({ devices.indices.contains($0) }),
-              (0...devices.count).contains(destination) else {
-            return
-        }
-
-        let movedDevices = source.map { devices[$0] }
-        let remainingDevices = devices.enumerated()
-            .filter { !source.contains($0.offset) }
-            .map(\.element)
-        let insertionOffset = destination - source.filter { $0 < destination }.count
-
-        var reorderedDevices = remainingDevices
-        reorderedDevices.insert(
-            contentsOf: movedDevices,
-            at: min(insertionOffset, reorderedDevices.count)
-        )
-        outputDeviceOrder = Self.mergedDeviceOrder(
-            reorderedDevices.compactMap(\.uid),
-            previous: outputDeviceOrder
-        )
+        guard let reordered = Self.movedDeviceUIDs(
+            devices.map(\.uid),
+            fromOffsets: source,
+            toOffset: destination
+        ) else { return }
+        outputDeviceOrder = Self.mergedDeviceOrder(reordered, previous: outputDeviceOrder)
     }
 
     /// Shows or hides one output device in the status panel. Hiding it also
@@ -1004,15 +1009,87 @@ final class SettingsStore: ObservableObject {
         in devices: [AudioOutputDevice]
     ) {
         guard !uid.isEmpty else { return }
-        var displayed = devices.compactMap(\.uid)
         if hidden {
-            displayed.removeAll { $0 == uid }
-            displayed.append(uid)
             hiddenOutputDeviceUIDs.insert(uid)
         } else {
             hiddenOutputDeviceUIDs.remove(uid)
         }
-        outputDeviceOrder = Self.mergedDeviceOrder(displayed, previous: outputDeviceOrder)
+        outputDeviceOrder = Self.deviceOrder(
+            setting: uid,
+            hidden: hidden,
+            displayed: devices.compactMap(\.uid),
+            previous: outputDeviceOrder
+        )
+    }
+
+    func moveInputDevices(
+        fromOffsets source: IndexSet,
+        toOffset destination: Int,
+        in devices: [AudioInputDevice]
+    ) {
+        guard let reordered = Self.movedDeviceUIDs(
+            devices.map(\.uid),
+            fromOffsets: source,
+            toOffset: destination
+        ) else { return }
+        inputDeviceOrder = Self.mergedDeviceOrder(reordered, previous: inputDeviceOrder)
+    }
+
+    /// Shows or hides one input device in the Audio Input section. Hiding it
+    /// also moves it to the end of the order, below every device still shown.
+    func setInputDeviceHidden(
+        _ uid: String,
+        hidden: Bool,
+        in devices: [AudioInputDevice]
+    ) {
+        guard !uid.isEmpty else { return }
+        if hidden {
+            hiddenInputDeviceUIDs.insert(uid)
+        } else {
+            hiddenInputDeviceUIDs.remove(uid)
+        }
+        inputDeviceOrder = Self.deviceOrder(
+            setting: uid,
+            hidden: hidden,
+            displayed: devices.compactMap(\.uid),
+            previous: inputDeviceOrder
+        )
+    }
+
+    /// The UIDs of `devices` after a drag, or `nil` for an out-of-range move.
+    /// Devices without a UID take part in the move but are not saved.
+    private static func movedDeviceUIDs(
+        _ uids: [String?],
+        fromOffsets source: IndexSet,
+        toOffset destination: Int
+    ) -> [String]? {
+        guard !source.isEmpty,
+              source.allSatisfy({ uids.indices.contains($0) }),
+              (0...uids.count).contains(destination) else {
+            return nil
+        }
+
+        let moved = source.map { uids[$0] }
+        var reordered = uids.enumerated()
+            .filter { !source.contains($0.offset) }
+            .map(\.element)
+        let insertionOffset = destination - source.filter { $0 < destination }.count
+        reordered.insert(contentsOf: moved, at: min(insertionOffset, reordered.count))
+        return reordered.compactMap { $0 }
+    }
+
+    private static func deviceOrder(
+        setting uid: String,
+        hidden: Bool,
+        displayed: [String],
+        previous: [String]
+    ) -> [String] {
+        var displayed = displayed
+        if hidden {
+            displayed.removeAll { $0 == uid }
+            displayed.append(uid)
+        }
+        return mergedDeviceOrder(displayed, previous: previous)
     }
 
     /// Rebuilds a saved device order from the devices on screen. A remembered
@@ -1372,6 +1449,10 @@ final class SettingsStore: ObservableObject {
         let storedHiddenOutputDeviceUIDs = Set(
             defaults.stringArray(forKey: Self.hiddenOutputDeviceUIDsDefaultsKey) ?? []
         )
+        let storedInputDeviceOrder = defaults.stringArray(forKey: Self.inputDeviceOrderDefaultsKey) ?? []
+        let storedHiddenInputDeviceUIDs = Set(
+            defaults.stringArray(forKey: Self.hiddenInputDeviceUIDsDefaultsKey) ?? []
+        )
         let storedExternalVolumeConfigurations = Self.decodedExternalVolumeConfigurations(
             defaults.data(forKey: Self.externalVolumeConfigurationsDefaultsKey)
         )
@@ -1576,6 +1657,8 @@ final class SettingsStore: ObservableObject {
         ) as? Bool ?? false
         self.outputDeviceOrder = storedOutputDeviceOrder
         self.hiddenOutputDeviceUIDs = storedHiddenOutputDeviceUIDs
+        self.inputDeviceOrder = storedInputDeviceOrder
+        self.hiddenInputDeviceUIDs = storedHiddenInputDeviceUIDs
         self.externalVolumeConfigurations = storedExternalVolumeConfigurations
         self.popupSectionOrder = Self.sanitizedPopupSectionOrder(
             storedPopupSectionOrder

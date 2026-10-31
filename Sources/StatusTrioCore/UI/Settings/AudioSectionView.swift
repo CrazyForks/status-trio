@@ -18,6 +18,7 @@ struct AudioSectionView: View {
             displayRulesGroup
             externalVolumeGroup
             deviceOrderGroup
+            inputDeviceOrderGroup
         }
         .onAppear {
             statusStore.refreshAll()
@@ -110,58 +111,23 @@ struct AudioSectionView: View {
                 } else {
                     List {
                         ForEach(orderedDevices) { device in
-                            let name = device.name ?? localization.string(.volumeOutputUnknownDevice)
                             let isHidden = OutputDeviceListPresentation.isHidden(
                                 device,
                                 in: store.hiddenOutputDeviceUIDs
                             )
-                            HStack(alignment: .center, spacing: 10) {
-                                Toggle(name, isOn: Binding(
-                                    get: { !isHidden },
-                                    set: { isShown in
-                                        guard let uid = device.uid else { return }
-                                        store.setOutputDeviceHidden(
-                                            uid,
-                                            hidden: !isShown,
-                                            in: orderedDevices
-                                        )
-                                    }
-                                ))
-                                .toggleStyle(.checkbox)
-                                .labelsHidden()
-                                .disabled(device.uid == nil)
-                                .help(localization.string(.settingsAudioShowDevice))
-
+                            AudioDeviceOrderRow(
+                                name: device.name ?? localization.string(.volumeOutputUnknownDevice),
+                                badge: device.isCurrent ? localization.string(.settingsAudioInUse) : nil,
+                                isHidden: isHidden,
+                                canHide: device.uid != nil,
+                                setHidden: { hidden in
+                                    guard let uid = device.uid else { return }
+                                    store.setOutputDeviceHidden(uid, hidden: hidden, in: orderedDevices)
+                                }
+                            ) {
                                 AudioOutputDeviceIconView(source: AudioPanelMapper.iconSource(for: device))
                                     .foregroundStyle(device.isCurrent ? Color.accentColor : Color.secondary)
-                                    .frame(width: 18, height: 18, alignment: .center)
-                                    .opacity(isHidden ? 0.45 : 1)
-
-                                Text(name)
-                                    .font(.system(size: 13))
-                                    .foregroundStyle(isHidden ? Color.secondary : Color.primary)
-                                    .lineLimit(1)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                                if device.isCurrent {
-                                    Text(localization.string(.settingsAudioInUse))
-                                        .font(.system(size: 10, weight: .medium))
-                                        .foregroundStyle(Color.accentColor)
-                                        .padding(.horizontal, 6)
-                                        .padding(.vertical, 2)
-                                        .background(Capsule().fill(Color.accentColor.opacity(0.12)))
-                                }
-
-                                PanelActionGlyph(
-                                    systemName: "line.3.horizontal",
-                                    font: .caption,
-                                    size: 18
-                                )
-                                .foregroundStyle(.tertiary)
-                                .opacity(isHidden ? 0 : 1)
-                                .accessibilityHidden(true)
                             }
-                            .padding(.vertical, 3)
                             .moveDisabled(isHidden)
                         }
                         .onMove { source, destination in
@@ -173,7 +139,72 @@ struct AudioSectionView: View {
                         }
                     }
                     .listStyle(.inset)
-                    .frame(height: orderListHeight)
+                    .frame(height: orderListHeight(for: orderedDevices.count))
+                }
+            }
+        }
+    }
+
+    private var inputDeviceOrderGroup: some View {
+        SettingsGroup(localization.string(.settingsAudioInputOrderTitle)) {
+            SettingsCustomRow(
+                "mic",
+                tint: .orange,
+                title: localization.string(.settingsAudioInputOrderTitle),
+                subtitle: localization.string(.settingsAudioInputOrderDescription)
+            ) {
+                if !store.enabledPopupSections.contains(.audioInput) {
+                    Label(
+                        localization.string(.settingsAudioInputOrderSectionOff),
+                        systemImage: "info.circle"
+                    )
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                    .padding(.vertical, 8)
+                } else if orderedInputDevices.isEmpty {
+                    Label(
+                        localization.string(.settingsAudioInputOrderEmpty),
+                        systemImage: "questionmark.circle"
+                    )
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                    .padding(.vertical, 8)
+                } else {
+                    List {
+                        ForEach(orderedInputDevices) { device in
+                            let isCurrent = device.id == statusStore.liveInput.defaultDeviceID
+                            let isHidden = AudioDeviceOrder.isHidden(
+                                uid: device.uid,
+                                in: store.hiddenInputDeviceUIDs
+                            )
+                            AudioDeviceOrderRow(
+                                name: AudioInputPresentation.displayName(
+                                    for: device,
+                                    unknownName: localization.string(.audioInputUnknownDevice)
+                                ),
+                                badge: isCurrent ? localization.string(.audioInputCurrent) : nil,
+                                isHidden: isHidden,
+                                canHide: device.uid != nil,
+                                setHidden: { hidden in
+                                    guard let uid = device.uid else { return }
+                                    store.setInputDeviceHidden(uid, hidden: hidden, in: orderedInputDevices)
+                                }
+                            ) {
+                                Image(systemName: isCurrent ? "mic.fill" : "mic")
+                                    .foregroundStyle(isCurrent ? Color.accentColor : Color.secondary)
+                            }
+                            .moveDisabled(isHidden)
+                        }
+                        .onMove { source, destination in
+                            store.moveInputDevices(
+                                fromOffsets: source,
+                                toOffset: destination,
+                                in: orderedInputDevices
+                            )
+                        }
+                    }
+                    .listStyle(.inset)
+                    .frame(height: orderListHeight(for: orderedInputDevices.count))
                 }
             }
         }
@@ -362,8 +393,74 @@ struct AudioSectionView: View {
             ?? statusStore.liveVolume.outputDevices.first(where: \.isCurrent)
     }
 
-    private var orderListHeight: CGFloat {
-        min(max(CGFloat(orderedDevices.count) * 32 + 12, 48), 180)
+    private var orderedInputDevices: [AudioInputDevice] {
+        AudioInputPresentation.settingsDevices(
+            statusStore.liveInput.devices,
+            currentID: statusStore.liveInput.defaultDeviceID,
+            preferences: store.inputDeviceListPreferences,
+            locale: localization.resolvedLanguage.locale,
+            unknownName: localization.string(.audioInputUnknownDevice)
+        )
+    }
+
+    private func orderListHeight(for count: Int) -> CGFloat {
+        min(max(CGFloat(count) * 32 + 12, 48), 180)
+    }
+}
+
+/// One row of an audio device order list: the show/hide checkbox, icon, name,
+/// current-device badge, and drag handle. A hidden row is dimmed and loses its
+/// handle, since hidden devices stay below the shown ones.
+private struct AudioDeviceOrderRow<Icon: View>: View {
+    @EnvironmentObject private var localization: Localization
+
+    let name: String
+    let badge: String?
+    let isHidden: Bool
+    let canHide: Bool
+    let setHidden: (Bool) -> Void
+    @ViewBuilder let icon: Icon
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 10) {
+            Toggle(name, isOn: Binding(
+                get: { !isHidden },
+                set: { isShown in setHidden(!isShown) }
+            ))
+            .toggleStyle(.checkbox)
+            .labelsHidden()
+            .disabled(!canHide)
+            .help(localization.string(.settingsAudioShowDevice))
+
+            icon
+                .frame(width: 18, height: 18, alignment: .center)
+                .opacity(isHidden ? 0.45 : 1)
+
+            Text(name)
+                .font(.system(size: 13))
+                .foregroundStyle(isHidden ? Color.secondary : Color.primary)
+                .lineLimit(1)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            if let badge {
+                Text(badge)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(Color.accentColor)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Capsule().fill(Color.accentColor.opacity(0.12)))
+            }
+
+            PanelActionGlyph(
+                systemName: "line.3.horizontal",
+                font: .caption,
+                size: 18
+            )
+            .foregroundStyle(.tertiary)
+            .opacity(isHidden ? 0 : 1)
+            .accessibilityHidden(true)
+        }
+        .padding(.vertical, 3)
     }
 }
 

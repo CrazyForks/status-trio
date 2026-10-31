@@ -379,7 +379,7 @@ final class SystemStatusStore: ObservableObject {
             inputMonitor.setEnabled(inputSettingEnabled)
             isInputEnabled = inputSettingEnabled
             if inputSettingEnabled {
-                inputMonitor.setVisible(isPopoverVisible)
+                inputMonitor.setVisible(isInputSurfaceVisible)
             }
         }
 
@@ -910,7 +910,7 @@ final class SystemStatusStore: ObservableObject {
         }
         mobileBattery.setSurfaceVisible(visible)
         updateAppleRefreshDemand()
-        inputMonitor?.setVisible(visible)
+        inputMonitor?.setVisible(isInputSurfaceVisible)
         if !visible { batteryDetails.deactivate() }
         updateDetailsVisibility()
         updatePrimaryLinkActivation()
@@ -942,6 +942,7 @@ final class SystemStatusStore: ObservableObject {
         guard !hasStopped, isSettingsVisible != visible else { return }
         isSettingsVisible = visible
         updateDetailsVisibility()
+        inputMonitor?.setVisible(isInputSurfaceVisible)
 
         if visible {
             refreshAll()
@@ -1053,6 +1054,12 @@ final class SystemStatusStore: ObservableObject {
         vpnUpdateTask?.cancel()
         vpnUpdateTask = nil
         vpnMonitor?.stop()
+    }
+
+    /// The Audio settings pane lists input devices for ordering and hiding, so
+    /// an open Settings window keeps the input list current like the popover.
+    private var isInputSurfaceVisible: Bool {
+        isPopoverVisible || isSettingsVisible
     }
 
     private var needsVolumeDetails: Bool {
@@ -1315,7 +1322,7 @@ final class SystemStatusStore: ObservableObject {
         isInputEnabled = enabled
         inputMonitor?.setEnabled(enabled)
         if enabled {
-            inputMonitor?.setVisible(isPopoverVisible)
+            inputMonitor?.setVisible(isInputSurfaceVisible)
         }
     }
 

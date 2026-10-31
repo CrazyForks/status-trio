@@ -107,6 +107,7 @@ enum AudioPanelMapper {
 
     static func input(
         _ status: AudioInputStatus,
+        deviceList: AudioInputListPreferences = .default,
         localization: Localization
     ) -> AudioInputPanelState {
         let presentation = AudioInputPresentation(
@@ -114,9 +115,10 @@ enum AudioPanelMapper {
             locale: localization.resolvedLanguage.locale
         )
         let unknownName = localization.string(.audioInputUnknownDevice)
-        let orderedDevices = AudioInputPresentation.ordered(
+        let orderedDevices = AudioInputPresentation.panelDevices(
             status.devices,
             currentID: status.defaultDeviceID,
+            preferences: deviceList,
             locale: presentation.locale,
             unknownName: unknownName
         )
@@ -349,6 +351,64 @@ struct AudioInputPresentation {
                 )
             if comparison == .orderedSame { return lhs.id < rhs.id }
             return comparison == .orderedAscending
+        }
+    }
+
+    /// The saved order first. Devices it doesn't name follow in the default
+    /// order: the current input, then by name.
+    static func ordered(
+        _ devices: [AudioInputDevice],
+        currentID: AudioDeviceID?,
+        order: [String],
+        locale: Locale,
+        unknownName: String
+    ) -> [AudioInputDevice] {
+        AudioDeviceOrder.ordered(
+            ordered(devices, currentID: currentID, locale: locale, unknownName: unknownName),
+            using: order,
+            uid: \.uid
+        )
+    }
+
+    /// The Settings order list: shown devices first, then the hidden ones.
+    static func settingsDevices(
+        _ devices: [AudioInputDevice],
+        currentID: AudioDeviceID?,
+        preferences: AudioInputListPreferences,
+        locale: Locale,
+        unknownName: String
+    ) -> [AudioInputDevice] {
+        let list = ordered(
+            devices,
+            currentID: currentID,
+            order: preferences.order,
+            locale: locale,
+            unknownName: unknownName
+        )
+        let isHidden = { (device: AudioInputDevice) in
+            AudioDeviceOrder.isHidden(uid: device.uid, in: preferences.hiddenUIDs)
+        }
+        return list.filter { !isHidden($0) } + list.filter(isHidden)
+    }
+
+    /// The status-panel list. The current input stays even when it is hidden,
+    /// so the list never loses its selected row.
+    static func panelDevices(
+        _ devices: [AudioInputDevice],
+        currentID: AudioDeviceID?,
+        preferences: AudioInputListPreferences,
+        locale: Locale,
+        unknownName: String
+    ) -> [AudioInputDevice] {
+        ordered(
+            devices,
+            currentID: currentID,
+            order: preferences.order,
+            locale: locale,
+            unknownName: unknownName
+        )
+        .filter {
+            $0.id == currentID || !AudioDeviceOrder.isHidden(uid: $0.uid, in: preferences.hiddenUIDs)
         }
     }
 

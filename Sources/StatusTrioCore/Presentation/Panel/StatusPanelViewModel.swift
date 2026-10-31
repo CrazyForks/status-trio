@@ -124,7 +124,11 @@ final class StatusPanelViewModel: ObservableObject {
             deviceList: settings.outputDeviceListPreferences,
             localization: localization
         )
-        audioInput = AudioPanelMapper.input(store.liveInput, localization: localization)
+        audioInput = AudioPanelMapper.input(
+            store.liveInput,
+            deviceList: settings.inputDeviceListPreferences,
+            localization: localization
+        )
         inputSource = InputSourcePanelMapper.map(
             state: resolvedInputSourceController.state,
             failure: resolvedInputSourceController.selectionFailure,
@@ -442,8 +446,12 @@ final class StatusPanelViewModel: ObservableObject {
         if listeningModeTaskID != next { listeningModeTaskID = next }
     }
 
-    private func mapInput(_ status: AudioInputStatus) -> AudioInputPanelState? {
-        AudioPanelMapper.input(status, localization: localization)
+    private func mapInput(_ status: AudioInputStatus) -> AudioInputPanelState {
+        AudioPanelMapper.input(
+            status,
+            deviceList: settings.inputDeviceListPreferences,
+            localization: localization
+        )
     }
 
     private func subscribeToPopupPresentationSources() {
@@ -708,7 +716,7 @@ final class StatusPanelViewModel: ObservableObject {
             updateListeningModeTaskID(outputDevices: store.liveVolume.outputDevices)
         }
         if isVisible(.audioInput) {
-            publishAudioInput(AudioPanelMapper.input(store.liveInput, localization: localization))
+            publishAudioInput(mapInput(store.liveInput))
         }
         if isVisible(.inputSource) {
             publishInputSource(
@@ -895,7 +903,7 @@ final class StatusPanelViewModel: ObservableObject {
             }
             if regions.contains(.localIP) { refreshWiredDetailsAndNetwork() }
             if regions.contains(.audioInput), isVisible(.audioInput) {
-                publishAudioInput(AudioPanelMapper.input(store.liveInput, localization: localization))
+                publishAudioInput(mapInput(store.liveInput))
             }
             if regions.contains(.inputSource), isVisible(.inputSource) {
                 publishInputSource(

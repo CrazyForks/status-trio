@@ -125,6 +125,10 @@
 "settings.audio.orderDescription" = "Geräte ziehen, um die Reihenfolge im Lautstärke-Popover zu ändern. Nicht genutzte Geräte abwählen, um sie auszublenden; das aktive Ausgabegerät bleibt immer sichtbar. Neue Geräte erscheinen am Ende.";
 "settings.audio.orderEmpty" = "Keine Ausgabegeräte verfügbar.";
 "settings.audio.showDevice" = "Im Statusbereich anzeigen";
+"settings.audio.inputOrderTitle" = "Reihenfolge der Eingabegeräte";
+"settings.audio.inputOrderDescription" = "Geräte ziehen, um die Reihenfolge im Bereich „Audioeingang“ zu ändern. Nicht genutzte Geräte abwählen, um sie auszublenden; das aktuelle Eingabegerät bleibt immer sichtbar. Neue Geräte erscheinen am Ende.";
+"settings.audio.inputOrderEmpty" = "Keine Eingabegeräte verfügbar.";
+"settings.audio.inputOrderSectionOff" = "Aktiviere „Audioeingang“ unter Statusbereich › Angezeigte Elemente, um Eingabegeräte zu sortieren oder auszublenden.";
 "settings.about.version" = "Version %@";
 "settings.about.description" = "Eine native macOS-Menüleisten-App, die WLAN, Batterie und Lautstärke in einem kompakten Statussymbol vereint. Inspiriert vom kombinierten Statusleisten-Symbol des iPhone Duo, verwendet sie auf dem Mac die Lautstärke statt Mobilfunkdaten.";
 "settings.about.project" = "Website";

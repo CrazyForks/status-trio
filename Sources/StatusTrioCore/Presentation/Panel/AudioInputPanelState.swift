@@ -10,6 +10,18 @@ struct PanelAudioInputIdentity: Equatable, Hashable, Sendable {
     }
 }
 
+struct AudioInputListPreferences: Equatable, Sendable {
+    let order: [String]
+    let hiddenUIDs: Set<String>
+
+    init(order: [String] = [], hiddenUIDs: Set<String> = []) {
+        self.order = order
+        self.hiddenUIDs = hiddenUIDs
+    }
+
+    static let `default` = Self()
+}
+
 struct AudioInputPanelState: Equatable, Sendable {
     let summary: PanelSummaryState
     let selectedDeviceIdentity: PanelAudioInputIdentity?

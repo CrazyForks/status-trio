@@ -125,6 +125,10 @@
 "settings.audio.orderDescription" = "Arraste os dispositivos para alterar a ordem no painel de volume. Desmarque os que você não usa para ocultá-los; a saída ativa sempre aparece. Novos dispositivos aparecem no final.";
 "settings.audio.orderEmpty" = "Nenhum dispositivo de saída disponível.";
 "settings.audio.showDevice" = "Mostrar no painel de status";
+"settings.audio.inputOrderTitle" = "Ordem dos dispositivos de entrada";
+"settings.audio.inputOrderDescription" = "Arraste os dispositivos para alterar a ordem na seção Entrada de áudio. Desmarque os que você não usa para ocultá-los; a entrada atual sempre aparece. Novos dispositivos aparecem no final.";
+"settings.audio.inputOrderEmpty" = "Nenhum dispositivo de entrada disponível.";
+"settings.audio.inputOrderSectionOff" = "Ative Entrada de áudio em Painel de status › Itens exibidos para reordenar ou ocultar dispositivos de entrada.";
 "settings.about.version" = "Versão %@";
 "settings.about.description" = "Um app nativo do macOS que reúne Wi-Fi, bateria e volume em um ícone compacto na barra de menus. Inspirado no ícone combinado da barra de status do iPhone Duo, usa o volume em vez dos dados celulares no Mac.";
 "settings.about.project" = "Site";

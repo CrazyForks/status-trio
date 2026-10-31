@@ -125,6 +125,10 @@
 "settings.audio.orderDescription" = "Drag devices to change the order shown in the volume popover. Uncheck devices you don't use to hide them; the active output always stays visible. New devices appear at the end.";
 "settings.audio.orderEmpty" = "No output devices available.";
 "settings.audio.showDevice" = "Show in Status Panel";
+"settings.audio.inputOrderTitle" = "Input Device Order";
+"settings.audio.inputOrderDescription" = "Drag devices to change the order shown in the Audio Input section. Uncheck devices you don't use to hide them; the current input always stays visible. New devices appear at the end.";
+"settings.audio.inputOrderEmpty" = "No input devices available.";
+"settings.audio.inputOrderSectionOff" = "Turn on Audio Input in Status Panel › Displayed Items to reorder or hide input devices.";
 "settings.about.version" = "Version %@";
 "settings.about.description" = "A native macOS menu bar app that combines Wi-Fi, battery, and volume into one compact status icon. Inspired by the iPhone Duo combined status bar icon, with volume replacing cellular data on Mac.";
 "settings.about.project" = "Website";

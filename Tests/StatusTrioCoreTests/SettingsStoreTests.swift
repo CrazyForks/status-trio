@@ -1121,6 +1121,55 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(SettingsStore.mergedDeviceOrder(["a", "b"], previous: []), ["a", "b"])
     }
 
+    func testInputDeviceOrderAndHiddenDevicesPersist() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+
+        let devices = [
+            AudioInputDevice(id: 1, uid: "built-in", name: "Built-in"),
+            AudioInputDevice(id: 2, uid: "airpods", name: "AirPods"),
+            AudioInputDevice(id: 3, uid: "usb", name: "USB")
+        ]
+        let store = SettingsStore(defaults: suite.defaults)
+        XCTAssertEqual(store.inputDeviceListPreferences, .default)
+
+        store.moveInputDevices(fromOffsets: IndexSet(integer: 2), toOffset: 0, in: devices)
+        XCTAssertEqual(store.inputDeviceOrder, ["usb", "built-in", "airpods"])
+
+        store.setInputDeviceHidden(
+            "usb",
+            hidden: true,
+            in: [devices[2], devices[0], devices[1]]
+        )
+        XCTAssertEqual(store.inputDeviceOrder, ["built-in", "airpods", "usb"])
+        XCTAssertEqual(store.hiddenInputDeviceUIDs, ["usb"])
+
+        let reloaded = SettingsStore(defaults: suite.defaults)
+        XCTAssertEqual(
+            reloaded.inputDeviceListPreferences,
+            AudioInputListPreferences(order: ["built-in", "airpods", "usb"], hiddenUIDs: ["usb"])
+        )
+
+        reloaded.setInputDeviceHidden("usb", hidden: false, in: devices)
+        XCTAssertEqual(reloaded.hiddenInputDeviceUIDs, [])
+    }
+
+    func testInputDeviceMovesIgnoreOutOfRangeOffsets() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+
+        let devices = [
+            AudioInputDevice(id: 1, uid: "a", name: "A"),
+            AudioInputDevice(id: 2, uid: "b", name: "B")
+        ]
+        let store = SettingsStore(defaults: suite.defaults)
+
+        store.moveInputDevices(fromOffsets: IndexSet(integer: 0), toOffset: 3, in: devices)
+        store.moveInputDevices(fromOffsets: IndexSet(integer: 5), toOffset: 0, in: devices)
+
+        XCTAssertEqual(store.inputDeviceOrder, [])
+    }
+
     func testPopupSectionOrderDefaultsToAllSectionsWithInputSourceLast() {
         let store = SettingsStore(defaults: makeSuite().defaults)
 

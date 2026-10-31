@@ -299,6 +299,57 @@ final class AudioPanelMapperTests: XCTestCase {
         XCTAssertFalse(single.showsDeviceList, "one remaining row is not a choice")
     }
 
+    func testInputRowsFollowTheSavedOrderAndDropHiddenDevicesExceptTheCurrentInput() {
+        let localization = makeLocalization(.english)
+        let builtIn = AudioInputDevice(id: AudioDeviceID(1), uid: "built-in", name: "MacBook Pro Microphone")
+        let airPods = AudioInputDevice(id: AudioDeviceID(2), uid: "airpods", name: "AirPods")
+        let usb = AudioInputDevice(id: AudioDeviceID(3), uid: "usb", name: "USB Mic")
+        let camera = AudioInputDevice(id: AudioDeviceID(4), uid: "camera", name: "Camera Mic")
+        let status = makeInputStatus(
+            devices: [builtIn, airPods, usb, camera],
+            defaultDeviceID: builtIn.id
+        )
+
+        let unordered = AudioPanelMapper.input(status, localization: localization)
+        XCTAssertEqual(
+            unordered.rows.map(\.key.uid),
+            ["built-in", "airpods", "camera", "usb"],
+            "without a saved order the current input leads, then names sort"
+        )
+
+        let state = AudioPanelMapper.input(
+            status,
+            deviceList: AudioInputListPreferences(
+                order: ["usb", "airpods"],
+                hiddenUIDs: ["airpods", "built-in"]
+            ),
+            localization: localization
+        )
+
+        // built-in is hidden but stays as the current input; camera is not in
+        // the saved order, so it follows the ordered devices.
+        XCTAssertEqual(state.rows.map(\.key.uid), ["usb", "built-in", "camera"])
+        XCTAssertEqual(state.rows.filter(\.selected).map(\.key.uid), ["built-in"])
+    }
+
+    func testInputSettingsListMovesHiddenDevicesBelowShownOnes() {
+        let devices = [
+            AudioInputDevice(id: AudioDeviceID(1), uid: "a", name: "A"),
+            AudioInputDevice(id: AudioDeviceID(2), uid: "b", name: "B"),
+            AudioInputDevice(id: AudioDeviceID(3), uid: nil, name: "C")
+        ]
+
+        let listed = AudioInputPresentation.settingsDevices(
+            devices,
+            currentID: AudioDeviceID(1),
+            preferences: AudioInputListPreferences(order: ["b", "a"], hiddenUIDs: ["b"]),
+            locale: Locale(identifier: "en_US"),
+            unknownName: "Unknown"
+        )
+
+        XCTAssertEqual(listed.map(\.id), [1, 3, 2])
+    }
+
     private func makeLocalization(_ language: AppLanguage) -> Localization {
         let suiteName = "AudioPanelMapperTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
