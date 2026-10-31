@@ -48,6 +48,7 @@ final class PowerSamplingService: ObservableObject {
     )
     private let reader: Reader
     private var loopTask: Task<Void, Never>?
+    private var runningDetailedCadence: Bool?
     private var generation = 0
     private var inFlight = false
     private var needsRefresh = false
@@ -64,6 +65,9 @@ final class PowerSamplingService: ObservableObject {
         if !isRunning {
             isRunning = true
             startLoop()
+        } else if runningDetailedCadence != wantsDetailedCadence {
+            // The remaining idle sleep must not delay the new 2 s cadence.
+            startLoop()
         }
         // The first demand or a cadence change must not wait a full cycle.
         refresh()
@@ -71,7 +75,11 @@ final class PowerSamplingService: ObservableObject {
 
     func end(_ demand: Demand) {
         guard demands.remove(demand) != nil else { return }
-        if demands.isEmpty { stopLoop() }
+        if demands.isEmpty {
+            stopLoop()
+        } else if runningDetailedCadence != wantsDetailedCadence {
+            startLoop()
+        }
     }
 
     func stopAll() {
@@ -109,6 +117,7 @@ final class PowerSamplingService: ObservableObject {
 
     private func startLoop() {
         generation += 1
+        runningDetailedCadence = wantsDetailedCadence
         loopTask?.cancel()
         loopTask = Task { @MainActor [weak self] in
             while !Task.isCancelled {
@@ -128,6 +137,7 @@ final class PowerSamplingService: ObservableObject {
     private func stopLoop() {
         loopTask?.cancel()
         loopTask = nil
+        runningDetailedCadence = nil
         isRunning = false
         generation += 1
         needsRefresh = false
