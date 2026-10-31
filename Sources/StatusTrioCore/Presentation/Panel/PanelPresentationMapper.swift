@@ -64,7 +64,7 @@ enum PanelPresentationMapper {
     ) -> PowerInfoBarState? {
         let locale = localization.resolvedLanguage.locale
         func watts(_ value: Double) -> String {
-            value.formatted(.number.precision(.fractionLength(2)).locale(locale)) + " W"
+            value.formatted(.number.precision(.fractionLength(1)).locale(locale)) + " W"
         }
         var items: [PowerInfoBarItem] = []
         if let inputPower, inputPower.watts.isFinite, inputPower.isFresh(at: now) {

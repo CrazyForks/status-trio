@@ -89,7 +89,7 @@ final class PanelPresentationMapperTests: XCTestCase {
             localization: makeLocalization(.english)
         )
         XCTAssertEqual(on.powerInfoBar?.items.map(\.kind), [.input, .battery, .system])
-        XCTAssertEqual(on.powerInfoBar?.items.map(\.value), ["30.20 W", "12.00 W", "18.00 W"])
+        XCTAssertEqual(on.powerInfoBar?.items.map(\.value), ["30.2 W", "12.0 W", "18.0 W"])
 
         let off = PanelPresentationMapper.battery(
             battery,

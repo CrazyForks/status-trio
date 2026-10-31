@@ -19,26 +19,26 @@ struct PowerInfoBarView: View {
 
     private func card(_ item: PowerInfoBarItem) -> some View {
         let tint = Self.tint(for: item.kind)
-        return VStack(alignment: .leading, spacing: 1) {
-            HStack(spacing: 6) {
+        return VStack(alignment: .center, spacing: 1) {
+            HStack(spacing: 5) {
                 Image(systemName: Self.symbolName(for: item.kind))
                     .font(.system(size: Self.iconSize(for: item.kind), weight: .medium))
                     .foregroundStyle(tint)
-                    .frame(width: 20)
                     .accessibilityHidden(true)
                 Text(item.value)
-                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
                     .monospacedDigit()
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
 
             Text(localization.string(item.title))
                 .font(.caption2)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
+                .multilineTextAlignment(.center)
         }
+        .frame(maxWidth: .infinity)
         .padding(.horizontal, 10)
         .padding(.vertical, 7)
         .frame(maxWidth: .infinity, alignment: .leading)

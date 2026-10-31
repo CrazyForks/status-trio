@@ -69,7 +69,7 @@ System** power. It is **off by default** and enabled in
 below describe what is implemented, not a frozen specification.
 
 - Each rail is drawn as its own small card (plug / battery / laptop icon,
-  label and a two-decimal wattage). A missing or stale rail is absent, and the
+  label and a one-decimal wattage). A missing or stale rail is absent, and the
   bar hides when none is fresh. The three values are never added into a total.
 - A Mac with no battery hides the **Battery** rail.
 - It rides the same shared sampler as the icon and details page. Its demand is
