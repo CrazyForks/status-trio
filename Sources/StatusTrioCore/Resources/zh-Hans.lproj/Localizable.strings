@@ -66,6 +66,8 @@
 "settings.network.centerSource.description" = "选择状态图标中间位置显示的内容。「自动」保留原有的网络与蓝牙行为。";
 "settings.network.centerSource.automatic" = "自动";
 "settings.network.centerSource.inputSource" = "当前输入法";
+"settings.network.centerSource.batteryPercentage" = "电池百分比";
+"settings.network.centerSource.power" = "功耗（瓦）";
 "settings.network.centerSource.bluetoothFallback" = "选择输入法后，蓝牙与网络图标仅作为回退显示。";
 "settings.network.centerSource.networkWarnings" = "优先显示网络异常";
 "settings.network.centerSource.networkWarnings.description" = "当 Mac 确实离线时，中间位置改为显示网络状态而不是输入法。";
@@ -145,8 +147,6 @@
 "settings.about.copyright" = "© lingyired";
 "settings.battery.title" = "电池显示";
 "settings.battery.showPercentage" = "显示电量数字";
-"settings.battery.showPercentageInConnectionSlot" = "在连接位置显示电量数字";
-"settings.battery.showPercentageInConnectionSlotDescription" = "替换 Wi-Fi 或连接图标；此选项与顶部电池指示器可分别开启。";
 "settings.battery.showChargingIndicator" = "充电/连接电源时显示指示图标";
 "settings.battery.chargingDescription" = "开启后，正在充电或已连接电源时，电量数字会替换为闪电或插头图标；关闭则继续显示数字。";
 "settings.battery.chargingEffect" = "充电动效";
@@ -194,6 +194,8 @@
 "settings.updates.automatic" = "自动检查更新";
 "settings.updates.check" = "检查更新…";
 "battery.title" = "电池 · %d%%";
+"battery.title.power" = "功耗 · %d W";
+"battery.title.powerUnavailable" = "功耗 · 暂不可用";
 "battery.state.notPresent" = "无电池设备";
 "battery.state.charged" = "已充满";
 "battery.state.calculatingTimeToFull" = "正在计算充满时间";
@@ -460,6 +462,7 @@
 // On-demand battery details.
 "battery.details.title" = "电池详情";
 "battery.details.systemPower" = "整机功耗（估算）";
+"battery.details.watt" = "功耗";
 "battery.details.systemReadAt" = "整机读取时间";
 "battery.details.power" = "电池功率（估算）";
 "battery.details.charging" = "充电（估算）";

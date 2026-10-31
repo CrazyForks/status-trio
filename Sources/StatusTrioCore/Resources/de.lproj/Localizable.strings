@@ -66,6 +66,8 @@
 "settings.network.centerSource.description" = "Wähle, was das Status-Symbol in der Mitte zeigt. „Automatisch“ behält das bisherige Netzwerk- und Bluetooth-Verhalten bei.";
 "settings.network.centerSource.automatic" = "Automatisch";
 "settings.network.centerSource.inputSource" = "Aktuelle Eingabequelle";
+"settings.network.centerSource.batteryPercentage" = "Batterieprozentsatz";
+"settings.network.centerSource.power" = "Leistung (Watt)";
 "settings.network.centerSource.bluetoothFallback" = "Bei gewählter Eingabequelle dienen Bluetooth- und Netzwerksymbole nur als Ersatz.";
 "settings.network.centerSource.networkWarnings" = "Netzwerkprobleme bevorzugen";
 "settings.network.centerSource.networkWarnings.description" = "Wenn der Mac wirklich offline ist, zeigt die Mitte den Netzwerkstatus statt der Eingabequelle.";
@@ -145,8 +147,6 @@
 "settings.about.copyright" = "© lingyired";
 "settings.battery.title" = "Batterieanzeige";
 "settings.battery.showPercentage" = "Batterieprozentsatz anzeigen";
-"settings.battery.showPercentageInConnectionSlot" = "Batterieprozentsatz an der Verbindungsposition anzeigen";
-"settings.battery.showPercentageInConnectionSlotDescription" = "Ersetzt das WLAN- oder Verbindungssymbol und ist unabhängig von der oberen Batterieanzeige.";
 "settings.battery.showChargingIndicator" = "Symbol beim Laden oder Netzbetrieb anzeigen";
 "settings.battery.chargingDescription" = "Wenn aktiviert, wird der Prozentsatz beim Laden oder Netzbetrieb durch ein Blitz- oder Steckersymbol ersetzt.";
 "settings.battery.chargingEffect" = "Ladeeffekt";
@@ -194,6 +194,8 @@
 "settings.updates.automatic" = "Automatisch nach Updates suchen";
 "settings.updates.check" = "Nach Updates suchen…";
 "battery.title" = "Batterie · %d%%";
+"battery.title.power" = "Leistung · %d W";
+"battery.title.powerUnavailable" = "Leistung · Nicht verfügbar";
 "battery.state.notPresent" = "Keine Batterie";
 "battery.state.charged" = "Vollständig geladen";
 "battery.state.calculatingTimeToFull" = "Ladezeit bis voll wird berechnet";
@@ -460,6 +462,7 @@
 // On-demand battery details.
 "battery.details.title" = "Batteriedetails";
 "battery.details.systemPower" = "Systemleistung (geschätzt)";
+"battery.details.watt" = "Leistung";
 "battery.details.systemReadAt" = "System ausgelesen um";
 "battery.details.power" = "Batterieleistung (geschätzt)";
 "battery.details.charging" = "Laden (geschätzt)";

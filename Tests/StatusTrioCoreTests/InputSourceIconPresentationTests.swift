@@ -81,7 +81,7 @@ final class InputSourceIconPresentationTests: XCTestCase {
         let scene = scene(
             snapshot: snapshot(batteryPercentage: 68),
             inputSource: descriptor(iconURL: iconURL),
-            configuration: configuration(centerSource: .inputSource, showsPercentageInConnectionSlot: true)
+            configuration: configuration(centerSource: .batteryPercentage)
         )
 
         XCTAssertEqual(scene.center, .text(IconTextState(text: "68", color: .primary, scale: 1)))
@@ -251,13 +251,11 @@ final class InputSourceIconPresentationTests: XCTestCase {
         centerSource: ConnectionCenterSource,
         prioritizesNetworkErrors: Bool = true,
         bluetoothReplacesNetworkIcon: Bool = false,
-        showsPercentageInConnectionSlot: Bool = false,
         wifiScale: Double = 1.6
     ) -> IconPresentationConfiguration {
         IconPresentationConfiguration(
             battery: .standard,
             connection: ConnectionIconOptions(
-                showsBatteryPercentageInConnectionSlot: showsPercentageInConnectionSlot,
                 centerSource: centerSource,
                 prioritizesNetworkErrorsOverInputSource: prioritizesNetworkErrors,
                 wifiScale: wifiScale

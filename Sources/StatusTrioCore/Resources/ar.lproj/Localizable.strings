@@ -49,6 +49,8 @@
 "settings.network.centerSource.description" = "اختر ما تعرضه أيقونة الحالة في الوسط. «تلقائي» يحافظ على سلوك الشبكة والبلوتوث المعتاد.";
 "settings.network.centerSource.automatic" = "تلقائي";
 "settings.network.centerSource.inputSource" = "مصدر الإدخال الحالي";
+"settings.network.centerSource.batteryPercentage" = "نسبة البطارية";
+"settings.network.centerSource.power" = "الطاقة (واط)";
 "settings.network.centerSource.bluetoothFallback" = "عند اختيار مصدر الإدخال، تُستخدم أيقونات البلوتوث والشبكة كخيار احتياطي فقط.";
 "settings.network.centerSource.networkWarnings" = "إعطاء الأولوية لمشاكل الشبكة";
 "settings.network.centerSource.networkWarnings.description" = "عندما يكون الـ Mac غير متصل فعلياً، يعرض الوسط حالة الشبكة بدلاً من مصدر الإدخال.";
@@ -128,8 +130,6 @@
 "settings.about.copyright" = "© lingyired";
 "settings.battery.title" = "عرض البطارية";
 "settings.battery.showPercentage" = "إظهار نسبة البطارية";
-"settings.battery.showPercentageInConnectionSlot" = "إظهار نسبة البطارية في موضع الاتصال";
-"settings.battery.showPercentageInConnectionSlotDescription" = "يستبدل رمز Wi-Fi أو الاتصال، وهو مستقل عن مؤشر البطارية العلوي.";
 "settings.battery.showChargingIndicator" = "إظهار رمز أثناء الشحن أو الاتصال بالطاقة";
 "settings.battery.chargingDescription" = "عند التفعيل، تتحول النسبة إلى رمز برق أو قابس أثناء الشحن أو الاتصال بالطاقة.";
 "settings.battery.chargingEffect" = "تأثير الشحن";
@@ -177,6 +177,8 @@
 "settings.updates.automatic" = "التحقق تلقائيًا من وجود تحديثات";
 "settings.updates.check" = "التحقق من وجود تحديثات…";
 "battery.title" = "البطارية · %d%%";
+"battery.title.power" = "الطاقة · %d واط";
+"battery.title.powerUnavailable" = "الطاقة · غير متاحة";
 "battery.state.notPresent" = "لا توجد بطارية";
 "battery.state.charged" = "ممتلئة بالكامل";
 "battery.state.calculatingTimeToFull" = "جارٍ حساب الوقت حتى الامتلاء";
@@ -460,6 +462,7 @@
 // On-demand battery details.
 "battery.details.title" = "تفاصيل البطارية";
 "battery.details.systemPower" = "قدرة النظام (تقديرية)";
+"battery.details.watt" = "الطاقة";
 "battery.details.systemReadAt" = "وقت قراءة النظام";
 "battery.details.power" = "قدرة البطارية (تقديرية)";
 "battery.details.charging" = "الشحن (تقديري)";

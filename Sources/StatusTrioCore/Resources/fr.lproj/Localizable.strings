@@ -66,6 +66,8 @@
 "settings.network.centerSource.description" = "Choisissez ce que l’icône d’état affiche au centre. « Automatique » conserve le comportement réseau et Bluetooth habituel.";
 "settings.network.centerSource.automatic" = "Automatique";
 "settings.network.centerSource.inputSource" = "Source de saisie actuelle";
+"settings.network.centerSource.batteryPercentage" = "Pourcentage de batterie";
+"settings.network.centerSource.power" = "Puissance (watts)";
 "settings.network.centerSource.bluetoothFallback" = "Avec la source de saisie sélectionnée, les icônes Bluetooth et réseau ne servent que de secours.";
 "settings.network.centerSource.networkWarnings" = "Prioriser les problèmes réseau";
 "settings.network.centerSource.networkWarnings.description" = "Quand le Mac est réellement hors ligne, le centre affiche l’état du réseau plutôt que la source de saisie.";
@@ -145,8 +147,6 @@
 "settings.about.copyright" = "© lingyired";
 "settings.battery.title" = "Affichage de la batterie";
 "settings.battery.showPercentage" = "Afficher le pourcentage de batterie";
-"settings.battery.showPercentageInConnectionSlot" = "Afficher le pourcentage de batterie à l’emplacement de connexion";
-"settings.battery.showPercentageInConnectionSlotDescription" = "Remplace le symbole Wi-Fi ou de connexion. Cette option est indépendante de l’indicateur de batterie supérieur.";
 "settings.battery.showChargingIndicator" = "Afficher un indicateur pendant la charge ou sur secteur";
 "settings.battery.chargingDescription" = "Lorsque cette option est activée, le pourcentage devient un éclair ou une prise pendant la charge ou sur secteur.";
 "settings.battery.chargingEffect" = "Effet de charge";
@@ -194,6 +194,8 @@
 "settings.updates.automatic" = "Rechercher automatiquement les mises à jour";
 "settings.updates.check" = "Rechercher les mises à jour…";
 "battery.title" = "Batterie · %d%%";
+"battery.title.power" = "Puissance · %d W";
+"battery.title.powerUnavailable" = "Puissance · Indisponible";
 "battery.state.notPresent" = "Aucune batterie";
 "battery.state.charged" = "Entièrement chargée";
 "battery.state.calculatingTimeToFull" = "Calcul du temps de charge restant";
@@ -460,6 +462,7 @@
 // On-demand battery details.
 "battery.details.title" = "Détails de la batterie";
 "battery.details.systemPower" = "Puissance système (estimée)";
+"battery.details.watt" = "Puissance";
 "battery.details.systemReadAt" = "Lecture du système";
 "battery.details.power" = "Puissance de la batterie (estimée)";
 "battery.details.charging" = "Charge (estimation)";

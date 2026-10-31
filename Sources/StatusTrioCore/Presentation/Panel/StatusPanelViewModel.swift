@@ -100,7 +100,11 @@ final class StatusPanelViewModel: ObservableObject {
         self.updateScheduler = updateScheduler
         self.actions = actions
         visiblePopupSections = settings.visiblePopupSections
-        battery = PanelPresentationMapper.battery(store.popupSnapshot.battery, localization: localization)
+        battery = PanelPresentationMapper.battery(
+            store.popupSnapshot.battery,
+            powerSample: store.powerSampling.systemPower,
+            localization: localization
+        )
         network = PanelPresentationMapper.network(
             wifi: store.popupSnapshot.wifi,
             connection: store.popupSnapshot.connection,
@@ -162,6 +166,25 @@ final class StatusPanelViewModel: ObservableObject {
         subscribeToChargeToFullNow()
         reconcileSourceSubscriptions()
         refreshAll()
+        updatePowerSamplingDemand()
+
+        // A no-battery Mac gets its panel title from the shared whole-machine
+        // reading; refresh the row as soon as the sampler publishes one.
+        store.powerSampling.$systemPower
+            .sink { [weak self] sample in
+                guard let self else { return }
+                if self.isVisible(.battery), !self.store.popupSnapshot.battery.isPresent {
+                    let next = PanelPresentationMapper.battery(
+                        self.store.popupSnapshot.battery,
+                        powerSample: sample,
+                        localization: self.localization,
+                        chargeToFullNow: self.chargeToFullNowPresentation
+                    )
+                    if self.battery != next { self.battery = next }
+                }
+                if !self.isRouteAvailable(self.route) { self.closeCurrentPage() }
+            }
+            .store(in: &cancellables)
 
         store.$isPopoverVisible
             .dropFirst()
@@ -200,12 +223,13 @@ final class StatusPanelViewModel: ObservableObject {
         subscribedSourceDemand = nil
         chargeToFullNow?.clearDemand()
         chargeToFullNowPresentation = .hidden
+        store.powerSampling.end(.panel)
         cancellables.removeAll()
     }
 
     func showBatteryPage() {
         guard settings.visiblePopupSections.contains(.battery),
-              store.popupSnapshot.battery.isPresent else {
+              canOpenBatteryPage else {
             showSummaryPage()
             return
         }
@@ -552,12 +576,31 @@ final class StatusPanelViewModel: ObservableObject {
         .store(in: &cancellables)
     }
 
+    /// True when the battery page has something to show: a real battery, or a
+    /// whole-machine power reading on a Mac that has none.
+    private var canOpenBatteryPage: Bool {
+        store.popupSnapshot.battery.isPresent
+            || (store.powerSampling.systemPower?.isFresh(at: Date()) ?? false)
+    }
+
+    /// The panel summary and a no-battery page need the shared sampler only
+    /// while the customer can see them. The details page registers its own
+    /// demand, so closing the panel never cuts a sample it is still using.
+    private func updatePowerSamplingDemand() {
+        if isStarted, visiblePopupSections.contains(.battery) {
+            store.powerSampling.begin(.panel)
+        } else {
+            store.powerSampling.end(.panel)
+        }
+    }
+
     /// Re-maps the visible battery row when the charge action changes, so the
     /// subtitle reflects the click before the system's charging flag catches up.
     private func refreshBatterySummary() {
         guard isVisible(.battery) else { return }
         let next = PanelPresentationMapper.battery(
             store.popupSnapshot.battery,
+            powerSample: store.powerSampling.systemPower,
             localization: localization,
             chargeToFullNow: chargeToFullNowPresentation
         )
@@ -741,6 +784,7 @@ final class StatusPanelViewModel: ObservableObject {
         let sections = order.filter { enabled.contains($0) }
         if visiblePopupSections != sections { visiblePopupSections = sections }
         reconcileSourceSubscriptions(deliveredSections: sections)
+        updatePowerSamplingDemand()
         if !isRouteAvailable(route) { closeCurrentPage() }
         coalesceControllerUpdate(.all)
     }
@@ -756,6 +800,7 @@ final class StatusPanelViewModel: ObservableObject {
         if isVisible(.battery) {
             let batteryState = PanelPresentationMapper.battery(
                 snapshot.battery,
+                powerSample: store.powerSampling.systemPower,
                 localization: localization,
                 chargeToFullNow: chargeToFullNowPresentation
             )
@@ -861,7 +906,7 @@ final class StatusPanelViewModel: ObservableObject {
         case .summary:
             return true
         case .battery:
-            return sections.contains(.battery) && store.popupSnapshot.battery.isPresent
+            return sections.contains(.battery) && canOpenBatteryPage
         case .wifi:
             return sections.contains(.network)
         case .ethernet:

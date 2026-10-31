@@ -11,7 +11,11 @@ enum PanelDetailMapper {
     ) -> PanelDetailState {
         var rows: [PanelDetailRow] = []
         if let details {
-            let reading = BatteryPowerPresentation(details: details, isConnectedToPower: battery.isConnectedToPower)
+            let reading = BatteryPowerPresentation(
+                details: details,
+                isConnectedToPower: battery.isConnectedToPower,
+                isBatteryPresent: battery.isPresent
+            )
             let watts = reading.watts.map {
                 $0.formatted(.number.precision(.fractionLength(1)).locale(localization.resolvedLanguage.locale)) + " W"
             } ?? localization.string(reading.unavailableTitle)
@@ -32,20 +36,20 @@ enum PanelDetailMapper {
                     localization: localization
                 ))
             }
-            if let power = details.power {
+            if battery.isPresent, let power = details.power {
                 rows.append(row(.batteryDetailsVoltage, value: power.volts.formatted(.number.precision(.fractionLength(2)).locale(localization.resolvedLanguage.locale)) + " V", localization: localization))
                 rows.append(row(.batteryDetailsCurrent, value: power.amps.formatted(.number.precision(.fractionLength(2)).locale(localization.resolvedLanguage.locale)) + " A", localization: localization))
             }
-            if let watts = details.adapterWatts {
+            if battery.isPresent, let watts = details.adapterWatts {
                 rows.append(row(.batteryDetailsAdapter, value: watts.formatted(.number.locale(localization.resolvedLanguage.locale)) + " W", localization: localization))
             }
-            if !battery.isConnectedToPower {
+            if battery.isPresent, !battery.isConnectedToPower {
                 let remaining = details.remainingMinutes.map {
                     Duration.seconds($0 * 60).formatted(.units(allowed: [.hours, .minutes], width: .abbreviated).locale(localization.resolvedLanguage.locale))
                 } ?? localization.string(.batteryDetailsUnavailable)
                 rows.append(row(.batteryDetailsRemaining, value: remaining, localization: localization))
             }
-            if let count = details.cycleCount {
+            if battery.isPresent, let count = details.cycleCount {
                 rows.append(row(.batteryDetailsCycles, value: count.formatted(.number.locale(localization.resolvedLanguage.locale)), localization: localization))
             }
         }
@@ -55,7 +59,11 @@ enum PanelDetailMapper {
             localization: localization
         ))
         return PanelDetailState(
-            title: PanelPresentationMapper.batteryTitle(battery, localization: localization),
+            title: PanelPresentationMapper.batteryTitle(
+                battery,
+                powerSample: details?.systemPower,
+                localization: localization
+            ),
             rows: rows,
             isLoading: details == nil,
             errorText: nil,

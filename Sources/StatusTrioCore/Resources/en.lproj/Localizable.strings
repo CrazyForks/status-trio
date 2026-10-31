@@ -66,6 +66,8 @@
 "settings.network.centerSource.description" = "Choose what the status icon’s middle slot shows. Automatic keeps the usual network and Bluetooth behavior.";
 "settings.network.centerSource.automatic" = "Automatic";
 "settings.network.centerSource.inputSource" = "Current Input Source";
+"settings.network.centerSource.batteryPercentage" = "Battery Percentage";
+"settings.network.centerSource.power" = "Power (Watts)";
 "settings.network.centerSource.bluetoothFallback" = "With the input source selected, Bluetooth and network icons are used only as fallbacks.";
 "settings.network.centerSource.networkWarnings" = "Show network problems instead";
 "settings.network.centerSource.networkWarnings.description" = "When the Mac is genuinely offline, the middle slot shows the network state instead of the input source.";
@@ -145,8 +147,6 @@
 "settings.about.copyright" = "© lingyired";
 "settings.battery.title" = "Battery Display";
 "settings.battery.showPercentage" = "Show battery percentage";
-"settings.battery.showPercentageInConnectionSlot" = "Show battery percentage in the connection position";
-"settings.battery.showPercentageInConnectionSlotDescription" = "Replaces the Wi-Fi or connection symbol. This is independent from the top battery indicator.";
 "settings.battery.showChargingIndicator" = "Show an indicator while charging or connected to power";
 "settings.battery.chargingDescription" = "When enabled, the percentage becomes a bolt or plug while charging or connected to power.";
 "settings.battery.chargingEffect" = "Charging effect";
@@ -194,6 +194,8 @@
 "settings.updates.automatic" = "Automatically check for updates";
 "settings.updates.check" = "Check for Updates…";
 "battery.title" = "Battery · %d%%";
+"battery.title.power" = "Power · %d W";
+"battery.title.powerUnavailable" = "Power · Unavailable";
 "battery.state.notPresent" = "No battery";
 "battery.state.charged" = "Fully charged";
 "battery.state.calculatingTimeToFull" = "Calculating time to full";
@@ -460,6 +462,7 @@
 // On-demand battery details.
 "battery.details.title" = "Battery Details";
 "battery.details.systemPower" = "System power (estimate)";
+"battery.details.watt" = "Power";
 "battery.details.systemReadAt" = "System read at";
 "battery.details.power" = "Battery power (estimate)";
 "battery.details.charging" = "Charging (estimate)";

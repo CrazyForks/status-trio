@@ -4,15 +4,26 @@ import Foundation
 enum PanelPresentationMapper {
     static func battery(
         _ status: BatteryStatus,
+        powerSample: SystemPowerSample? = nil,
+        now: Date = Date(),
         localization: Localization,
         chargeToFullNow: ChargeToFullNowPresentation = .hidden
     ) -> PanelSummaryState {
-        let title = batteryTitle(status, localization: localization)
+        let title = batteryTitle(
+            status,
+            powerSample: powerSample,
+            now: now,
+            localization: localization
+        )
         let subtitle = batterySubtitle(
             status,
             localization: localization,
             chargeToFullNow: chargeToFullNow
         )
+        // A Mac with no battery can still open the page when the runtime shows
+        // that it has a usable whole-machine power reading.
+        let canOpenDetails = status.isPresent
+            || (powerSample?.isFresh(at: now) ?? false)
 
         return PanelSummaryState(
             title: title,
@@ -22,8 +33,8 @@ enum PanelPresentationMapper {
             tint: batteryTint(status),
             accessibilityLabel: title,
             accessibilityValue: subtitle,
-            showsSettings: status.isPresent,
-            intent: status.isPresent ? .batteryDetails : .none
+            showsSettings: canOpenDetails,
+            intent: canOpenDetails ? .batteryDetails : .none
         )
     }
 
@@ -101,8 +112,23 @@ enum PanelPresentationMapper {
         )
     }
 
-    static func batteryTitle(_ battery: BatteryStatus, localization: Localization) -> String {
-        localization.format(.batteryTitle, battery.percentage)
+    static func batteryTitle(
+        _ battery: BatteryStatus,
+        powerSample: SystemPowerSample? = nil,
+        now: Date = Date(),
+        localization: Localization
+    ) -> String {
+        guard battery.isPresent else {
+            // A Mac with no battery has no percentage to show. Use the runtime
+            // whole-machine reading when it is fresh; otherwise say so instead
+            // of inventing 0 W or 100%.
+            guard let powerSample, powerSample.isFresh(at: now), powerSample.watts.isFinite else {
+                return localization.string(.batteryTitlePowerUnavailable)
+            }
+            let watts = min(999, max(0, Int(powerSample.watts.rounded())))
+            return localization.format(.batteryTitlePower, watts)
+        }
+        return localization.format(.batteryTitle, battery.percentage)
     }
 
     static func batteryTimeToFullText(minutes: Int?, localization: Localization) -> String {

@@ -59,6 +59,8 @@ final class SettingsStore: ObservableObject {
     /// Draws the private LAN address on the network row's second line. Off by
     /// default: the address is a diagnostic, not something every panel needs.
     static let showsLocalIPAddressDefaultsKey = "showsLocalIPAddress"
+    /// Migration-only: superseded by `connectionCenterSource`. Read once at
+    /// launch, then removed so it can never override a later selection.
     static let showsBatteryPercentageInConnectionSlotDefaultsKey = "showsBatteryPercentageInConnectionSlot"
     /// Raw value of `ConnectionCenterSource`. Missing or unknown values decode
     /// to `.automatic`, so a downgrade or corrupted default never changes the
@@ -519,15 +521,6 @@ final class SettingsStore: ObservableObject {
             defaults.set(
                 showsLocalIPAddress,
                 forKey: Self.showsLocalIPAddressDefaultsKey
-            )
-        }
-    }
-
-    @Published var showsBatteryPercentageInConnectionSlot: Bool {
-        didSet {
-            defaults.set(
-                showsBatteryPercentageInConnectionSlot,
-                forKey: Self.showsBatteryPercentageInConnectionSlotDefaultsKey
             )
         }
     }
@@ -1364,7 +1357,6 @@ final class SettingsStore: ObservableObject {
             showsWiFiIconForHotspot: showsWiFiIconForHotspot,
             showsWiFiIconForTemporaryConnection: showsWiFiIconForTemporaryConnection,
             showsWiFiIconForInternetSharing: showsWiFiIconForInternetSharing,
-            showsBatteryPercentageInConnectionSlot: showsBatteryPercentageInConnectionSlot,
             centerSource: connectionCenterSource,
             prioritizesNetworkErrorsOverInputSource: prioritizesNetworkErrorsOverInputSource,
             wifiScale: wifiSymbolScale
@@ -1636,14 +1628,23 @@ final class SettingsStore: ObservableObject {
         self.showsLocalIPAddress = defaults.object(
             forKey: Self.showsLocalIPAddressDefaultsKey
         ) as? Bool ?? false
-        self.showsBatteryPercentageInConnectionSlot = defaults.object(
+        // One-time migration: the centre slot used to be a network-source
+        // choice plus a separate "battery percentage in the connection slot"
+        // switch, and the switch won at draw time. Preserve that effective
+        // choice, then drop the legacy key so a later manual change survives.
+        let legacyPercentageInSlot = defaults.object(
             forKey: Self.showsBatteryPercentageInConnectionSlotDefaultsKey
         ) as? Bool ?? false
-        self.connectionCenterSource = defaults.string(
+        let storedCenterSource = defaults.string(
             forKey: Self.connectionCenterSourceDefaultsKey
         )
         .flatMap(ConnectionCenterSource.init(rawValue:))
-            ?? .automatic
+        self.connectionCenterSource = legacyPercentageInSlot
+            ? .batteryPercentage
+            : (storedCenterSource ?? .automatic)
+        if legacyPercentageInSlot {
+            defaults.removeObject(forKey: Self.showsBatteryPercentageInConnectionSlotDefaultsKey)
+        }
         self.prioritizesNetworkErrorsOverInputSource = defaults.object(
             forKey: Self.prioritizesNetworkErrorsOverInputSourceDefaultsKey
         ) as? Bool ?? true

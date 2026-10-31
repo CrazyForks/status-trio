@@ -19,9 +19,56 @@ final class PanelPresentationMapperTests: XCTestCase {
         XCTAssertEqual(row.intent, .none)
         XCTAssertFalse(row.showsSettings)
         XCTAssertEqual(row.symbol, .symbol(name: "battery.slash", variableValue: nil, fallback: nil))
-        XCTAssertEqual(row.title, "Battery · 100%")
+        XCTAssertEqual(row.title, "Power · Unavailable")
         XCTAssertEqual(row.subtitle, "No battery")
         XCTAssertEqual(row.tint, .secondary)
+    }
+
+    func testAbsentBatteryShowsWholeMachinePowerWhenReadable() {
+        let now = Date(timeIntervalSince1970: 1_789_555_974)
+        let battery = BatteryStatus(
+            rawPercentage: nil,
+            isPresent: false,
+            isCharging: false,
+            isLowPowerMode: false,
+            isConnectedToPower: false
+        )
+        let sample = SystemPowerSample(watts: 23.6, readAt: now)
+
+        let row = PanelPresentationMapper.battery(
+            battery,
+            powerSample: sample,
+            now: now,
+            localization: makeLocalization(.english)
+        )
+
+        XCTAssertEqual(row.title, "Power · 24 W")
+        XCTAssertEqual(row.subtitle, "No battery")
+        XCTAssertEqual(row.intent, .batteryDetails)
+        XCTAssertTrue(row.showsSettings)
+    }
+
+    func testAbsentBatteryRejectsAStalePowerReading() {
+        let now = Date(timeIntervalSince1970: 1_789_555_974)
+        let battery = BatteryStatus(
+            rawPercentage: nil,
+            isPresent: false,
+            isCharging: false,
+            isLowPowerMode: false,
+            isConnectedToPower: false
+        )
+        let stale = SystemPowerSample(watts: 23.6, readAt: now.addingTimeInterval(-120))
+
+        let row = PanelPresentationMapper.battery(
+            battery,
+            powerSample: stale,
+            now: now,
+            localization: makeLocalization(.english)
+        )
+
+        XCTAssertEqual(row.title, "Power · Unavailable")
+        XCTAssertEqual(row.intent, .none)
+        XCTAssertFalse(row.showsSettings, "A disabled entry must explain itself instead of opening an empty page")
     }
 
     func testBatterySummaryUsesTwentyPercentCriticalBoundary() {
