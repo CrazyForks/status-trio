@@ -71,8 +71,8 @@ struct ChargeToFullNowActionView: View {
                 .accessibilityLabel(actionLabel)
             }
 
-            if case .limitRestored(let limit, let usedFallback) = presentation {
-                restoredLimitRow(limit: limit, usedFallback: usedFallback)
+            if case .limitRestored(let limit) = presentation {
+                restoredLimitRow(limit: limit)
             }
 
             switch presentation {
@@ -126,11 +126,9 @@ struct ChargeToFullNowActionView: View {
             localization.string(.batteryActionCancelChargeToFullNowApplying)
         case .cancelFailed, .cancelPending:
             localization.string(.batteryActionCancelChargeToFullNow)
-        case .cancelConfirmationRequired(let limit, let usedFallback):
+        case .cancelConfirmationRequired(let limit):
             localization.format(
-                usedFallback
-                    ? .batteryActionCancelChargeToFullNowConfirmFallback
-                    : .batteryActionCancelChargeToFullNowConfirm,
+                .batteryActionCancelChargeToFullNowConfirm,
                 limit
             )
         case .hidden, .available, .failed, .unavailable, .limitRestored:
@@ -158,20 +156,13 @@ struct ChargeToFullNowActionView: View {
     /// A static confirmation replaces the button until the battery finishes
     /// charging to the restored limit, so cancelling cannot bounce the user
     /// straight back into another Charge to Full Now request.
-    private func restoredLimitRow(limit: Int, usedFallback: Bool) -> some View {
+    private func restoredLimitRow(limit: Int) -> some View {
         HStack(spacing: 7) {
             Image(systemName: "checkmark.circle.fill")
                 .frame(width: 14, height: 14)
                 .foregroundStyle(.green)
 
-            Text(
-                localization.format(
-                    usedFallback
-                        ? .batteryActionCancelChargeToFullNowFallback
-                        : .batteryActionCancelChargeToFullNowRestored,
-                    limit
-                )
-            )
+            Text(restoredLimitText(limit))
             .font(.caption)
             .foregroundStyle(.secondary)
             .lineLimit(1)
@@ -182,6 +173,12 @@ struct ChargeToFullNowActionView: View {
         .padding(.horizontal, 10)
         .frame(maxWidth: .infinity, minHeight: 28, alignment: .leading)
         .accessibilityElement(children: .combine)
+    }
+
+    private func restoredLimitText(_ limit: Int) -> String {
+        limit >= 100
+            ? localization.string(.batteryActionCancelChargeToFullNowRestoredUnlimited)
+            : localization.format(.batteryActionCancelChargeToFullNowRestored, limit)
     }
 
     private func notice(_ key: LocalizationKey) -> some View {

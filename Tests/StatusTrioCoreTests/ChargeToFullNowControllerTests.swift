@@ -56,26 +56,23 @@ final class ChargeToFullNowControllerTests: XCTestCase {
         XCTAssertTrue(supported.isSettingAvailable)
     }
 
-    func testInactiveChargeLimitHidesTheButton() {
-        let backend = StubBatteryChargeController(
-            deviceState: ChargeToFullNowDeviceState(
-                mclEnabledRawValue: 3,
-                mclLimit: 100,
-                chargingOverrideAllowed: false
-            )
+    func testSystemStartedOverrideHidesWhenTheBatteryIsAlreadyFull() {
+        let backend = StubBatteryChargeController(deviceState: .temporaryOverride)
+        let controller = ChargeToFullNowController(
+            backend: backend,
+            restoreLimit: { 80 }
         )
-        let controller = ChargeToFullNowController(backend: backend)
 
-        controller.update(demand())
+        controller.update(demand(percentage: 100, isCharged: true))
 
         XCTAssertEqual(controller.presentation, .hidden)
     }
 
-    func testSystemStartedOverrideOffersCancelWhenThePersistedLimitIsKnown() {
+    func testSystemStartedOverrideOffersCancelWithoutAStoredLimit() {
         let backend = StubBatteryChargeController(deviceState: .temporaryOverride)
         let controller = ChargeToFullNowController(
             backend: backend,
-            persistedChargeLimit: { 80 }
+            restoreLimit: { 80 }
         )
 
         controller.update(demand(percentage: 90, isCharging: true))
@@ -84,147 +81,68 @@ final class ChargeToFullNowControllerTests: XCTestCase {
         XCTAssertTrue(controller.presentation.showsButton)
     }
 
-    func testSystemStartedOverrideStaysHiddenWithoutAPersistedLimit() {
-        let backend = StubBatteryChargeController(deviceState: .temporaryOverride)
-        let controller = ChargeToFullNowController(backend: backend)
-
-        controller.update(demand(percentage: 90, isCharging: true))
-
-        XCTAssertEqual(controller.presentation, .hidden)
-    }
-
-    func testSystemStartedOverrideCancelRestoresThePersistedLimit() async {
+    func testSystemStartedOverrideCancelRestoresTheConfiguredLimit() async {
         let backend = StubBatteryChargeController(deviceState: .temporaryOverride)
         let controller = ChargeToFullNowController(
             backend: backend,
-            persistedChargeLimit: { 95 }
+            restoreLimit: { 95 }
         )
         controller.update(demand(percentage: 85, isCharging: true))
         backend.restoreState = activeLimit(95)
 
         controller.performPrimaryAction()
         await waitUntil {
-            controller.presentation == .limitRestored(
-                limit: 95,
-                usedFallback: false
-            )
+            controller.presentation == .limitRestored(limit: 95)
         }
 
         XCTAssertEqual(backend.restoreTargets, [95])
         XCTAssertEqual(backend.restoreCount, 1)
     }
 
-    func testSystemStartedOverrideKeepsCancelAfterThePersistedPolicyDisappears() {
-        var persisted: Int? = 80
+    func testSystemStartedOverrideCancelCanClearTheLimit() async {
         let backend = StubBatteryChargeController(deviceState: .temporaryOverride)
         let controller = ChargeToFullNowController(
             backend: backend,
-            persistedChargeLimit: { persisted }
-        )
-        controller.update(demand(percentage: 90, isCharging: true))
-        XCTAssertEqual(controller.presentation, .chargingToFull)
-
-        persisted = nil
-        controller.update(demand(percentage: 91, isCharging: true))
-
-        XCTAssertEqual(controller.presentation, .chargingToFull)
-    }
-
-    func testRememberedLimitNeedsConfirmationAndSurvivesBatteryUpdates() async {
-        var persisted: Int? = 80
-        let backend = StubBatteryChargeController(deviceState: .temporaryOverride)
-        let controller = ChargeToFullNowController(
-            backend: backend,
-            persistedChargeLimit: { persisted }
+            restoreLimit: { 100 }
         )
         controller.update(demand(percentage: 85, isCharging: true))
-        persisted = nil
-        controller.update(demand(percentage: 86, isCharging: true))
-
-        controller.performPrimaryAction()
-        XCTAssertEqual(
-            controller.presentation,
-            .cancelConfirmationRequired(limit: 80, usedFallback: false)
-        )
-        XCTAssertEqual(backend.restoreCount, 0)
-
-        controller.update(demand(percentage: 87, isCharging: true))
-        XCTAssertEqual(
-            controller.presentation,
-            .cancelConfirmationRequired(limit: 80, usedFallback: false)
-        )
-
-        backend.restoreState = activeLimit(80)
-        controller.performPrimaryAction()
-        await waitUntil {
-            controller.presentation == .limitRestored(
-                limit: 80,
-                usedFallback: false
-            )
-        }
-        XCTAssertEqual(backend.restoreTargets, [80])
-    }
-
-    func testObservedLimitIsRememberedForALaterSystemStartedOverride() {
-        let memory = VolatileChargeLimitMemoryStore()
-        let before = StubBatteryChargeController(deviceState: activeLimit(90))
-        let first = ChargeToFullNowController(
-            backend: before,
-            limitMemory: memory
-        )
-        first.update(demand(percentage: 85))
-        XCTAssertEqual(first.presentation, .available)
-
-        let after = StubBatteryChargeController(deviceState: .temporaryOverride)
-        let second = ChargeToFullNowController(
-            backend: after,
-            limitMemory: memory
-        )
-        second.update(demand(percentage: 85, isCharging: true))
-
-        XCTAssertEqual(second.presentation, .chargingToFull)
-    }
-
-    func testSystemStartedOverrideHidesWhenTheBatteryIsAlreadyFull() {
-        let backend = StubBatteryChargeController(deviceState: .temporaryOverride)
-        let controller = ChargeToFullNowController(
-            backend: backend,
-            persistedChargeLimit: { 80 }
-        )
-
-        controller.update(demand(percentage: 100, isCharged: true))
-
-        XCTAssertEqual(controller.presentation, .hidden)
-    }
-
-    func testClearingTheChargeLimitForgetsTheRememberedValue() {
-        let memory = VolatileChargeLimitMemoryStore(limit: 80)
-        let backend = StubBatteryChargeController(deviceState: activeLimit(80))
-        let controller = ChargeToFullNowController(
-            backend: backend,
-            limitMemory: memory
-        )
-        controller.update(demand(percentage: 90))
-        XCTAssertEqual(memory.load(), 80)
-
-        backend.deviceState = ChargeToFullNowDeviceState(
+        backend.restoreState = ChargeToFullNowDeviceState(
             mclEnabledRawValue: 1,
             mclLimit: 100,
             chargingOverrideAllowed: false
         )
-        controller.update(demand(percentage: 100, isCharged: true))
-        XCTAssertNil(memory.load())
 
-        backend.deviceState = .temporaryOverride
-        controller.update(demand(percentage: 90, isCharging: true))
-        XCTAssertEqual(controller.presentation, .hidden)
+        controller.performPrimaryAction()
+        await waitUntil {
+            controller.presentation == .limitRestored(limit: 100)
+        }
+
+        XCTAssertEqual(backend.restoreTargets, [100])
     }
+
+    func testConfiguredRestoreLimitSnapsToTheStandardSteps() async {
+        let backend = StubBatteryChargeController(deviceState: .temporaryOverride)
+        let controller = ChargeToFullNowController(
+            backend: backend,
+            restoreLimit: { 87 }
+        )
+        controller.update(demand(percentage: 85, isCharging: true))
+        backend.restoreState = activeLimit(85)
+
+        controller.performPrimaryAction()
+        await waitUntil {
+            controller.presentation == .limitRestored(limit: 85)
+        }
+
+        XCTAssertEqual(backend.restoreTargets, [85])
+    }
+
 
     func testRestoredLimitHoldsUntilTheBatteryReachesIt() async {
         let backend = StubBatteryChargeController(deviceState: activeLimit(95))
         let controller = ChargeToFullNowController(
             backend: backend,
-            persistedChargeLimit: { 95 }
+            restoreLimit: { 95 }
         )
         controller.update(demand(percentage: 85, isCharging: true))
         XCTAssertEqual(controller.presentation, .available)
@@ -234,16 +152,13 @@ final class ChargeToFullNowControllerTests: XCTestCase {
         backend.restoreState = activeLimit(95)
         controller.performPrimaryAction()
         await waitUntil {
-            controller.presentation == .limitRestored(
-                limit: 95,
-                usedFallback: false
-            )
+            controller.presentation == .limitRestored(limit: 95)
         }
 
         controller.update(demand(percentage: 88, isCharging: true))
         XCTAssertEqual(
             controller.presentation,
-            .limitRestored(limit: 95, usedFallback: false)
+            .limitRestored(limit: 95)
         )
         XCTAssertFalse(controller.presentation.showsButton)
 
@@ -255,7 +170,7 @@ final class ChargeToFullNowControllerTests: XCTestCase {
         let backend = StubBatteryChargeController(deviceState: activeLimit(95))
         let controller = ChargeToFullNowController(
             backend: backend,
-            persistedChargeLimit: { 95 }
+            restoreLimit: { 95 }
         )
         controller.update(demand(percentage: 85, isCharging: true))
         await beginCharge(controller, backend)
@@ -264,16 +179,13 @@ final class ChargeToFullNowControllerTests: XCTestCase {
         backend.restoreState = activeLimit(95)
         controller.performPrimaryAction()
         await waitUntil {
-            controller.presentation == .limitRestored(
-                limit: 95,
-                usedFallback: false
-            )
+            controller.presentation == .limitRestored(limit: 95)
         }
 
         controller.update(demand(percentage: 88, isCharging: true))
         XCTAssertEqual(
             controller.presentation,
-            .limitRestored(limit: 95, usedFallback: false)
+            .limitRestored(limit: 95)
         )
 
         controller.update(demand(percentage: 89, isCharging: false))
@@ -494,7 +406,7 @@ final class ChargeToFullNowControllerTests: XCTestCase {
         XCTAssertEqual(backend.readCount, readsAfterActivation)
     }
 
-    func testCancelRestoresEverySupportedStartingLimit() async {
+    func testCancelRestoresEverySupportedConfiguredLimit() async {
         for limit in [80, 85, 90, 95] {
             let backend = StubBatteryChargeController(
                 deviceState: activeLimit(limit)
@@ -502,7 +414,8 @@ final class ChargeToFullNowControllerTests: XCTestCase {
             let store = VolatileChargeToFullNowSessionStore()
             let controller = ChargeToFullNowController(
                 backend: backend,
-                sessionStore: store
+                sessionStore: store,
+                restoreLimit: { limit }
             )
             controller.update(demand())
             await beginCharge(controller, backend)
@@ -511,10 +424,7 @@ final class ChargeToFullNowControllerTests: XCTestCase {
             backend.restoreState = activeLimit(limit)
             controller.performPrimaryAction()
             await waitUntil {
-                controller.presentation == .limitRestored(
-                    limit: limit,
-                    usedFallback: false
-                )
+                controller.presentation == .limitRestored(limit: limit)
             }
 
             XCTAssertEqual(backend.restoreTargets, [limit])
@@ -522,30 +432,30 @@ final class ChargeToFullNowControllerTests: XCTestCase {
         }
     }
 
-    func testCancelPrefersAValidLimitReportedDuringOverride() async {
+    func testCancelRestoresTheConfiguredLimitDuringOverride() async {
         let backend = StubBatteryChargeController(deviceState: .activeLimit)
-        let controller = ChargeToFullNowController(backend: backend)
+        let controller = ChargeToFullNowController(
+            backend: backend,
+            restoreLimit: { 90 }
+        )
         controller.update(demand())
         await beginCharge(controller, backend)
 
         backend.deviceState = ChargeToFullNowDeviceState(
             mclEnabledRawValue: 3,
-            mclLimit: 90,
+            mclLimit: 100,
             chargingOverrideAllowed: false
         )
         backend.restoreState = activeLimit(90)
         controller.performPrimaryAction()
         await waitUntil {
-            controller.presentation == .limitRestored(
-                limit: 90,
-                usedFallback: false
-            )
+            controller.presentation == .limitRestored(limit: 90)
         }
 
         XCTAssertEqual(backend.restoreTargets, [90])
     }
 
-    func testCancelTreatsOneHundredAsTemporaryAndUsesTheSessionSnapshot() async {
+    func testCancelUsesTheConfiguredLimitWhenOverrideReportsOneHundred() async {
         let backend = StubBatteryChargeController(deviceState: .activeLimit)
         let controller = ChargeToFullNowController(backend: backend)
         controller.update(demand())
@@ -555,10 +465,7 @@ final class ChargeToFullNowControllerTests: XCTestCase {
         backend.restoreState = .activeLimit
         controller.performPrimaryAction()
         await waitUntil {
-            controller.presentation == .limitRestored(
-                limit: 80,
-                usedFallback: false
-            )
+            controller.presentation == .limitRestored(limit: 80)
         }
 
         XCTAssertEqual(backend.restoreTargets, [80])
@@ -580,15 +487,12 @@ final class ChargeToFullNowControllerTests: XCTestCase {
         controller.performPrimaryAction()
         XCTAssertEqual(
             controller.presentation,
-            .cancelConfirmationRequired(limit: 80, usedFallback: false)
+            .cancelConfirmationRequired(limit: 80)
         )
         XCTAssertEqual(backend.restoreCount, 0)
         controller.performPrimaryAction()
         await waitUntil {
-            controller.presentation == .limitRestored(
-                limit: 80,
-                usedFallback: false
-            )
+            controller.presentation == .limitRestored(limit: 80)
         }
 
         XCTAssertEqual(backend.restoreTargets, [80])
@@ -612,14 +516,17 @@ final class ChargeToFullNowControllerTests: XCTestCase {
         controller.performPrimaryAction()
         XCTAssertEqual(
             controller.presentation,
-            .cancelConfirmationRequired(limit: 80, usedFallback: false)
+            .cancelConfirmationRequired(limit: 80)
         )
         XCTAssertEqual(backend.restoreCount, 0)
     }
 
-    func testCancelPrefersReadableStoredLimitDespiteOtherReadErrors() async {
+    func testCancelConfirmationUsesTheConfiguredLimitDuringReadErrors() async {
         let backend = StubBatteryChargeController(deviceState: .activeLimit)
-        let controller = ChargeToFullNowController(backend: backend)
+        let controller = ChargeToFullNowController(
+            backend: backend,
+            restoreLimit: { 90 }
+        )
         controller.update(demand())
         await beginCharge(controller, backend)
         backend.deviceState = ChargeToFullNowDeviceState(
@@ -632,7 +539,7 @@ final class ChargeToFullNowControllerTests: XCTestCase {
         controller.performPrimaryAction()
         XCTAssertEqual(
             controller.presentation,
-            .cancelConfirmationRequired(limit: 90, usedFallback: false)
+            .cancelConfirmationRequired(limit: 90)
         )
         XCTAssertEqual(backend.restoreCount, 0)
     }
@@ -657,10 +564,7 @@ final class ChargeToFullNowControllerTests: XCTestCase {
         backend.restoreState = .activeLimit
         controller.performPrimaryAction()
         await waitUntil {
-            controller.presentation == .limitRestored(
-                limit: 80,
-                usedFallback: false
-            )
+            controller.presentation == .limitRestored(limit: 80)
         }
     }
 
@@ -697,7 +601,7 @@ final class ChargeToFullNowControllerTests: XCTestCase {
         XCTAssertTrue(controller.presentation.showsButton)
     }
 
-    func testRestartRequiresConfirmationBeforeRestoringTheStoredLimit() async {
+    func testRestartRequiresConfirmationBeforeRestoringTheConfiguredLimit() async {
         let store = VolatileChargeToFullNowSessionStore(
             session: ChargeToFullNowSession(
                 originalLimit: 90,
@@ -707,7 +611,8 @@ final class ChargeToFullNowControllerTests: XCTestCase {
         let backend = StubBatteryChargeController(deviceState: .temporaryOverride)
         let controller = ChargeToFullNowController(
             backend: backend,
-            sessionStore: store
+            sessionStore: store,
+            restoreLimit: { 90 }
         )
         controller.update(demand(percentage: 95))
         XCTAssertEqual(controller.presentation, .chargingToFull)
@@ -715,22 +620,19 @@ final class ChargeToFullNowControllerTests: XCTestCase {
         controller.performPrimaryAction()
         XCTAssertEqual(
             controller.presentation,
-            .cancelConfirmationRequired(limit: 90, usedFallback: false)
+            .cancelConfirmationRequired(limit: 90)
         )
         XCTAssertEqual(backend.restoreCount, 0)
 
         backend.restoreState = activeLimit(90)
         controller.performPrimaryAction()
         await waitUntil {
-            controller.presentation == .limitRestored(
-                limit: 90,
-                usedFallback: false
-            )
+            controller.presentation == .limitRestored(limit: 90)
         }
         XCTAssertEqual(backend.restoreTargets, [90])
     }
 
-    func testRestartConfirmsBeforeUsingTheEightyPercentFallback() async {
+    func testRestartConfirmsBeforeRestoringTheConfiguredLimit() async {
         let store = VolatileChargeToFullNowSessionStore(
             session: ChargeToFullNowSession(
                 originalLimit: nil,
@@ -747,17 +649,14 @@ final class ChargeToFullNowControllerTests: XCTestCase {
         controller.performPrimaryAction()
         XCTAssertEqual(
             controller.presentation,
-            .cancelConfirmationRequired(limit: 80, usedFallback: true)
+            .cancelConfirmationRequired(limit: 80)
         )
         XCTAssertEqual(backend.restoreCount, 0)
 
         backend.restoreState = .activeLimit
         controller.performPrimaryAction()
         await waitUntil {
-            controller.presentation == .limitRestored(
-                limit: 80,
-                usedFallback: true
-            )
+            controller.presentation == .limitRestored(limit: 80)
         }
         XCTAssertEqual(backend.restoreTargets, [80])
     }
@@ -788,10 +687,7 @@ final class ChargeToFullNowControllerTests: XCTestCase {
         backend.restoreState = .activeLimit
         controller.performPrimaryAction()
         await waitUntil {
-            controller.presentation == .limitRestored(
-                limit: 80,
-                usedFallback: false
-            )
+            controller.presentation == .limitRestored(limit: 80)
         }
         XCTAssertEqual(backend.restoreTargets, [80, 80])
         XCTAssertNil(store.load())
@@ -834,7 +730,7 @@ final class ChargeToFullNowControllerTests: XCTestCase {
 
         XCTAssertEqual(
             controller.presentation,
-            .cancelConfirmationRequired(limit: 80, usedFallback: false)
+            .cancelConfirmationRequired(limit: 80)
         )
         XCTAssertEqual(backend.restoreCount, 0)
     }
@@ -897,10 +793,7 @@ final class ChargeToFullNowControllerTests: XCTestCase {
         controller.performPrimaryAction()
         controller.performPrimaryAction()
         await waitUntil {
-            controller.presentation == .limitRestored(
-                limit: 80,
-                usedFallback: false
-            )
+            controller.presentation == .limitRestored(limit: 80)
         }
 
         XCTAssertEqual(backend.restoreCount, 1)
@@ -960,27 +853,6 @@ final class ChargeToFullNowControllerTests: XCTestCase {
         XCTAssertNil(
             UserDefaultsChargeToFullNowSessionStore(defaults: defaults).load()
         )
-    }
-
-    func testUserDefaultsLimitMemoryStoreRoundTripsAndRejectsInvalidValues() throws {
-        let suite = "StatusTrioCoreTests.ChargeLimitMemory.\(UUID().uuidString)"
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
-        defer { defaults.removePersistentDomain(forName: suite) }
-        let store = UserDefaultsChargeLimitMemoryStore(defaults: defaults)
-
-        XCTAssertNil(store.load())
-        store.save(90)
-        XCTAssertEqual(
-            UserDefaultsChargeLimitMemoryStore(defaults: defaults).load(),
-            90
-        )
-
-        defaults.set(10, forKey: UserDefaultsChargeLimitMemoryStore.defaultsKey)
-        XCTAssertNil(store.load())
-
-        store.save(85)
-        store.clear()
-        XCTAssertNil(store.load())
     }
 
     private func beginCharge(

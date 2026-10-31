@@ -458,12 +458,9 @@ final class AppEnvironment {
             sessionStore: UserDefaultsChargeToFullNowSessionStore(
                 defaults: .standard
             ),
-            persistedChargeLimit: {
-                SystemChargeLimitReader.chargeLimit()
-            },
-            limitMemory: UserDefaultsChargeLimitMemoryStore(
-                defaults: .standard
-            )
+            restoreLimit: {
+                Int(settings.chargeToFullRestoreLimit.rounded())
+            }
         )
         let dockChargingAnimationPresenter: any DockChargingAnimationPresenting =
             DockChargingAnimationRendererMode.usesApplicationIconFrames()

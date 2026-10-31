@@ -288,17 +288,19 @@ static STPowerUIChargeWriteResult *STRestoreChargeLimit(
     NSInteger limit
 ) {
     @try {
-        if (![client isMCLSupported] || limit < 80 || limit >= 100) {
+        if (![client isMCLSupported] || limit < 80 || limit > 100) {
             return [[STPowerUIChargeWriteResult alloc]
                 initWithSucceeded:NO
                      errorMessage:@"The requested charge limit is not supported."];
         }
 
         STPowerUIChargeState *before = STReadState(client, NULL);
-        if ((before.availableChargeLimits.count > 0
-                && ![before.availableChargeLimits containsObject:@(limit)])
-            || (before.availableChargeLimits.count == 0
-                && ![@[@80, @85, @90, @95] containsObject:@(limit)])) {
+        // 100% is "no limit", not a limit PowerUI has to offer in its list.
+        BOOL supported = (limit == 100)
+            || (before.availableChargeLimits.count > 0
+                ? [before.availableChargeLimits containsObject:@(limit)]
+                : [@[@80, @85, @90, @95] containsObject:@(limit)]);
+        if (!supported) {
             return [[STPowerUIChargeWriteResult alloc]
                 initWithSucceeded:NO
                      errorMessage:@"The requested charge limit is not supported."];

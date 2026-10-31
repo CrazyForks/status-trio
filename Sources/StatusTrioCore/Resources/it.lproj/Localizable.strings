@@ -577,6 +577,8 @@
 "battery.energy.monitoringDescription" = "Se attivato, campiona l’attività delle app in background anche a pannello chiuso. Il campionamento si interrompe quando lo disattivi, durante la sospensione del sistema o dello schermo e all’uscita da Status Trio.";
 "settings.battery.showChargeToFullNow" = "Mostra pulsante Completa carica ora";
 "settings.battery.showChargeToFullNowDescription" = "Mostra nel pannello di stato un pulsante per ignorare temporaneamente il limite di carica di macOS e caricare fino al 100%.";
+"settings.battery.restoreLimit" = "Limite ripristinato dopo l’annullamento";
+"settings.battery.restoreLimitDescription" = "Limite di carica ripristinato quando annulli «Completa carica ora». 100% significa nessun limite.";
 "battery.action.chargeToFullNow" = "Completa carica ora";
 "battery.action.chargeToFullNowApplying" = "Richiesta di carica completa…";
 "battery.action.chargeToFullNowCharging" = "Caricamento fino al 100%";
@@ -586,6 +588,7 @@
 "battery.action.cancelChargeToFullNowApplying" = "Ripristino del limite di carica…";
 "battery.action.cancelChargeToFullNowFailed" = "Impossibile ripristinare il limite di carica: %@";
 "battery.action.cancelChargeToFullNowRestored" = "Limite di carica ripristinato al %d%%";
+"battery.action.cancelChargeToFullNowRestoredUnlimited" = "Limite di carica rimosso";
 "battery.action.cancelChargeToFullNowFallback" = "Limite di carica impostato al %d%%";
 "battery.action.cancelChargeToFullNowConfirm" = "Conferma ripristino al %d%%";
 "battery.action.cancelChargeToFullNowConfirmFallback" = "Conferma impostazione al %d%%";
