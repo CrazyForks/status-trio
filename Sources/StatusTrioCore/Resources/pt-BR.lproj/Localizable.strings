@@ -589,9 +589,9 @@
 "battery.power.system" = "Sistema";
 "battery.power.system.help" = "Potência do sistema (incl. SoC)";
 "battery.power.system.explanation" = "“Sistema” é o que resta após a carga da bateria, a tela e o USB: inclui SoC, memória, controladores de vídeo e outras cargas não medidas separadamente.";
-"power.infoBar.input" = "Entrada";
-"power.infoBar.battery" = "Bateria";
-"power.infoBar.system" = "Sistema";
+"power.infoBar.input" = "Entrada do carregador";
+"power.infoBar.battery" = "Carga da bateria";
+"power.infoBar.system" = "Potência do sistema";
 "battery.power.display" = "Tela";
 "battery.power.usb" = "Saída USB";
 "battery.power.soc" = "SoC";

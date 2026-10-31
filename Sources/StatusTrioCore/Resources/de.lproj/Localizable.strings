@@ -589,9 +589,9 @@
 "battery.power.system" = "System";
 "battery.power.system.help" = "Systemleistung (inkl. SoC)";
 "battery.power.system.explanation" = "„System“ ist, was nach Akkuladung, Display und USB übrig bleibt: SoC, Speicher, Display-Controller und weitere nicht einzeln gemessene Lasten.";
-"power.infoBar.input" = "Eingang";
-"power.infoBar.battery" = "Batterie";
-"power.infoBar.system" = "System";
+"power.infoBar.input" = "Ladegeräteingang";
+"power.infoBar.battery" = "Batterieladung";
+"power.infoBar.system" = "Systemleistung";
 "battery.power.display" = "Display";
 "battery.power.usb" = "USB-Ausgang";
 "battery.power.soc" = "SoC";

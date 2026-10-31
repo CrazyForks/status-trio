@@ -589,9 +589,9 @@
 "battery.power.system" = "システム";
 "battery.power.system.help" = "システム電力（SoC を含む）";
 "battery.power.system.explanation" = "「システム」は、バッテリー充電、ディスプレイ、USB を除いた残りです。SoC、メモリ、ディスプレイコントローラーなどを含み、単一のセンサー値ではありません。";
-"power.infoBar.input" = "入力";
-"power.infoBar.battery" = "バッテリー";
-"power.infoBar.system" = "システム";
+"power.infoBar.input" = "充電器入力";
+"power.infoBar.battery" = "バッテリー充電";
+"power.infoBar.system" = "システム電力";
 "battery.power.display" = "ディスプレイ";
 "battery.power.usb" = "USB 出力";
 "battery.power.soc" = "SoC";
