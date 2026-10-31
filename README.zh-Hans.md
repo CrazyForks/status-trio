@@ -202,6 +202,17 @@ ad-hoc 签名的应用包适合本地个人使用。如果应用包携带 quaran
 
 Status Trio 默认跟随 macOS 首选语言，支持 English、简体中文、繁体中文、日本語、한국어、Español、Français、Deutsch、Italiano、Português (Brasil)、Русский 和 العربية。
 
+## 交流群
+
+Status Trio 设有中文交流群，欢迎反馈问题、交流使用体验和了解版本动态。
+
+- **QQ 群：** `735856753`
+- **微信群：** 扫描下方二维码加入（有效期至 2026 年 11 月 7 日）。
+
+<p align="center">
+  <img src="screenshots/status-trio-wechat-group-2026-10-31.png" width="220" alt="Status Trio 微信群二维码，有效期至 2026 年 11 月 7 日">
+</p>
+
 ## 隐私
 
 Status Trio 在本机读取系统状态。匿名使用统计为可选功能，只有主动开启后才会向第一方服务发送简短心跳；升级用户默认关闭，新安装用户会在引导中选择。心跳包含随机安装 ID、应用和 macOS 版本、语言及图标位置，不包含姓名、账户详情、网络详情或硬件标识符。详见[遥测与隐私说明](docs/privacy-telemetry.md)。Status Trio 不读取或保存 Wi-Fi 密码，也不请求钥匙串访问。定位权限仅用于可选的当前 Wi-Fi 名称与详情；蓝牙权限在启用蓝牙面板时请求。`main` 中可选的立即充满电控制仅在启用后使用私有 PowerUI 接口，行为与限制见前文。

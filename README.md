@@ -204,6 +204,17 @@ Two boundaries macOS and this project draw deliberately. Both are explained in [
 
 Status Trio follows the macOS preferred language by default and includes English, Simplified Chinese, Traditional Chinese, Japanese, Korean, Spanish, French, German, Italian, Brazilian Portuguese, Russian, and Arabic.
 
+## Community
+
+Status Trio has a Chinese-language community for questions, feedback, and release discussion.
+
+- **QQ group:** `735856753`
+- **WeChat group:** Scan the QR code below (valid through November 7, 2026).
+
+<p align="center">
+  <img src="screenshots/status-trio-wechat-group-2026-10-31.png" width="220" alt="Status Trio WeChat group QR code, valid through November 7, 2026">
+</p>
+
 ## Privacy
 
 Status Trio reads system status locally. Optional anonymous usage statistics are sent to the first-party service only after you enable them; upgrades start with statistics off, and new installs ask during onboarding. The heartbeat contains a random installation ID, app and macOS versions, language, and icon placement, with no names, account details, network details, or hardware identifiers. See [telemetry and privacy](docs/privacy-telemetry.md). Status Trio does not read or store Wi-Fi passwords or request Keychain access. Location access is optional for the current Wi-Fi network name and details; Bluetooth access is requested when you enable the Bluetooth panel. On `main`, the optional charge-to-full control uses a private PowerUI interface only when enabled; see its behavior and limits above.
