@@ -99,20 +99,92 @@ struct SettingsHintRow: View {
     }
 }
 
+/// The mark a settings tile draws.
+///
+/// Most rows hand the tile an SF Symbol. Bluetooth cannot: no macOS release
+/// ships a Bluetooth symbol, and the two nearest stand-ins misread at tile
+/// size — `wave.3.right.circle.fill` fills the squircle with a disc, and
+/// `wave.3.right` repeats the Wi-Fi fan drawn one row above it. The rune is
+/// stroked here instead so the tile carries the mark System Settings carries.
+enum SettingsGlyph: Equatable {
+    case symbol(String)
+    case bluetoothRune
+}
+
 /// The rounded, tinted squircle icon that carries a row's symbol, matching System Settings.
 struct SettingsIcon: View {
-    let symbol: String
+    let glyph: SettingsGlyph
     var tint: Color = .accentColor
+
+    init(glyph: SettingsGlyph, tint: Color = .accentColor) {
+        self.glyph = glyph
+        self.tint = tint
+    }
+
+    init(symbol: String, tint: Color = .accentColor) {
+        self.init(glyph: .symbol(symbol), tint: tint)
+    }
 
     var body: some View {
         RoundedRectangle(cornerRadius: SettingsMetrics.iconCorner, style: .continuous)
             .fill(tint.gradient)
             .frame(width: SettingsMetrics.iconSize, height: SettingsMetrics.iconSize)
-            .overlay(
-                Image(systemName: SymbolFallback.name(symbol, "questionmark.circle"))
-                    .font(.system(size: SettingsMetrics.iconSize * 0.52, weight: .semibold))
-                    .foregroundStyle(.white)
-            )
+            .overlay(mark.foregroundStyle(.white))
+    }
+
+    @ViewBuilder
+    private var mark: some View {
+        switch glyph {
+        case .symbol(let symbol):
+            Image(systemName: SymbolFallback.name(symbol, "questionmark.circle"))
+                .font(.system(size: SettingsMetrics.iconSize * 0.52, weight: .semibold))
+        case .bluetoothRune:
+            BluetoothRuneShape()
+                .stroke(
+                    style: StrokeStyle(
+                        lineWidth: SettingsMetrics.iconSize * BluetoothRuneShape.strokeRatio,
+                        lineCap: .round,
+                        lineJoin: .round
+                    )
+                )
+        }
+    }
+}
+
+/// The Bluetooth rune as one continuous stroke: down the stem, then through
+/// both chevrons, which is how the mark is drawn rather than an outline of it.
+///
+/// The path is normalized inside a box smaller than the tile so the mark holds
+/// the same optical size as the 13.5 pt SF Symbols beside it.
+private struct BluetoothRuneShape: Shape {
+    /// How much of the tile's side the rune spans.
+    static let widthRatio: CGFloat = 0.50
+    static let heightRatio: CGFloat = 0.58
+    /// Stroke width as a fraction of the tile, tuned against the tile size
+    /// rather than the box so it stays legible at 26 pt. Wider reads heavy:
+    /// the chevrons close up and the mark turns into a blob.
+    static let strokeRatio: CGFloat = 0.070
+
+    func path(in rect: CGRect) -> Path {
+        let box = CGRect(
+            x: rect.midX - rect.width * Self.widthRatio / 2,
+            y: rect.midY - rect.height * Self.heightRatio / 2,
+            width: rect.width * Self.widthRatio,
+            height: rect.height * Self.heightRatio
+        )
+
+        func point(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
+            CGPoint(x: box.minX + box.width * x, y: box.minY + box.height * y)
+        }
+
+        var path = Path()
+        path.move(to: point(0.16, 0.28))
+        path.addLine(to: point(0.84, 0.72))
+        path.addLine(to: point(0.50, 1.00))
+        path.addLine(to: point(0.50, 0.00))
+        path.addLine(to: point(0.84, 0.28))
+        path.addLine(to: point(0.16, 0.72))
+        return path
     }
 }
 
@@ -187,9 +259,32 @@ extension SettingsRow where Leading == SettingsIcon {
         @ViewBuilder trailing: () -> Trailing
     ) {
         self.init(
+            glyph: .symbol(symbol),
+            tint: tint,
             title: title,
             subtitle: subtitle,
-            leading: { SettingsIcon(symbol: symbol, tint: tint) },
+            subtitleStatus: subtitleStatus,
+            subtitleLink: subtitleLink,
+            subtitleLinkAction: subtitleLinkAction,
+            trailing: trailing
+        )
+    }
+
+    /// The same row with a tile that is not an SF Symbol, such as the rune.
+    init(
+        glyph: SettingsGlyph,
+        tint: Color = .accentColor,
+        title: String,
+        subtitle: String? = nil,
+        subtitleStatus: Text? = nil,
+        subtitleLink: Text? = nil,
+        subtitleLinkAction: (() -> Void)? = nil,
+        @ViewBuilder trailing: () -> Trailing
+    ) {
+        self.init(
+            title: title,
+            subtitle: subtitle,
+            leading: { SettingsIcon(glyph: glyph, tint: tint) },
             trailing: trailing,
             subtitleLink: subtitleLink,
             subtitleLinkAction: subtitleLinkAction,
@@ -221,16 +316,51 @@ extension SettingsRow where Leading == EmptyView {
 
 /// A convenient row with an SF symbol, title, and a switch toggle.
 struct SettingsToggleRow: View {
-    let symbol: String
+    let glyph: SettingsGlyph
     var tint: Color = .accentColor
     let title: String
     var subtitle: String? = nil
     var subtitleStatus: Text? = nil
     @Binding var isOn: Bool
 
+    init(
+        symbol: String,
+        tint: Color = .accentColor,
+        title: String,
+        subtitle: String? = nil,
+        subtitleStatus: Text? = nil,
+        isOn: Binding<Bool>
+    ) {
+        self.init(
+            glyph: .symbol(symbol),
+            tint: tint,
+            title: title,
+            subtitle: subtitle,
+            subtitleStatus: subtitleStatus,
+            isOn: isOn
+        )
+    }
+
+    /// The same row whose tile is not an SF Symbol, such as the rune.
+    init(
+        glyph: SettingsGlyph,
+        tint: Color = .accentColor,
+        title: String,
+        subtitle: String? = nil,
+        subtitleStatus: Text? = nil,
+        isOn: Binding<Bool>
+    ) {
+        self.glyph = glyph
+        self.tint = tint
+        self.title = title
+        self.subtitle = subtitle
+        self.subtitleStatus = subtitleStatus
+        self._isOn = isOn
+    }
+
     var body: some View {
         SettingsRow(
-            symbol,
+            glyph: glyph,
             tint: tint,
             title: title,
             subtitle: subtitle,

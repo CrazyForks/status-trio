@@ -35,7 +35,7 @@ NSImage(systemSymbolName: symbol, accessibilityDescription: nil) != nil
 ## What the audit checked
 
 Every string literal under `Sources` was matched against the table. The source
-uses 166 SF Symbol names. Of those, 26 were introduced after macOS 13.0.
+uses 165 SF Symbol names. Of those, 26 were introduced after macOS 13.0.
 
 Three are not icons at all:
 

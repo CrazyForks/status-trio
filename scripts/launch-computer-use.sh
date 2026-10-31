@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+TEST_DISPLAY="automatic"
+case "$#" in
+    0) ;;
+    2)
+        if [[ "$1" != "--display" || "$2" != "secondary" ]]; then
+            echo "Usage: bash scripts/launch-computer-use.sh [--display secondary]" >&2
+            exit 2
+        fi
+        TEST_DISPLAY="secondary"
+        ;;
+    *)
+        echo "Usage: bash scripts/launch-computer-use.sh [--display secondary]" >&2
+        exit 2
+        ;;
+esac
+
+BRANCH="$(git -C "$ROOT" branch --show-current)"
+if [[ -z "$BRANCH" || "$BRANCH" == "main" || "$BRANCH" == "master" ]]; then
+    echo "Error: run this from a named development branch in an isolated worktree." >&2
+    exit 2
+fi
+SUFFIX="$(
+    printf '%s' "$BRANCH" | sed -E 's#^codex/##' | tr '[:upper:]' '[:lower:]' \
+        | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//'
+)"
+if [[ -z "$SUFFIX" ]]; then
+    echo "Error: branch has no usable development identity." >&2
+    exit 2
+fi
+BUNDLE_ID="com.lingsmbp.StatusTrio.dev.$SUFFIX"
+APP_PATH="$ROOT/dist/StatusTrio.app"
+
+mkdir -p "$ROOT/.build"
+LOCK_DIR="$ROOT/.build/computer-use-launch.lock"
+if ! mkdir "$LOCK_DIR" 2>/dev/null; then
+    echo "Error: a Computer Use launch already owns $LOCK_DIR; inspect the owner before retrying." >&2
+    exit 1
+fi
+printf '%s\n' "$$" > "$LOCK_DIR/owner.pid"
+release_lock() {
+    rm -f "$LOCK_DIR/owner.pid"
+    rmdir "$LOCK_DIR"
+}
+trap release_lock EXIT
+
+# Inspect before building so a running non-test bundle is never replaced.
+swift "$ROOT/scripts/computer-use-instance.swift" prepare "$BUNDLE_ID" "$APP_PATH"
+BUNDLE_ID="$BUNDLE_ID" bash "$ROOT/scripts/build-worktree.sh" debug no-open
+
+PLIST="$APP_PATH/Contents/Info.plist"
+if [[ ! -x "$APP_PATH/Contents/MacOS/StatusTrio" ]]; then
+    echo "Error: development app executable is missing: $APP_PATH" >&2
+    exit 1
+fi
+read_plist() { /usr/libexec/PlistBuddy -c "Print :$1" "$PLIST" 2>/dev/null || true; }
+if [[ "$(read_plist CFBundleIdentifier)" != "$BUNDLE_ID" \
+    || "$(read_plist STBackgroundUITestingSupported)" != "true" \
+    || "$(read_plist STBuildCommit)" != "$(git -C "$ROOT" rev-parse HEAD)" \
+    || -z "$(read_plist STDevelopmentCodename)" ]]; then
+    echo "Error: bundle must be this branch's Debug dev app with current-SHA testing capability." >&2
+    exit 1
+fi
+
+swift "$ROOT/scripts/computer-use-instance.swift" launch "$BUNDLE_ID" "$APP_PATH" "$TEST_DISPLAY"
+shasum -a 256 "$APP_PATH/Contents/MacOS/StatusTrio"

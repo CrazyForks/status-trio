@@ -55,7 +55,7 @@ struct BluetoothSectionView: View {
                 SettingsDivider()
 
                 SettingsRow(
-                    "wave.3.right.circle.fill",
+                    glyph: .bluetoothRune,
                     tint: .blue,
                     title: localization.string(.settingsBluetoothSymbolScale),
                     subtitle: localization.string(.settingsBluetoothSymbolScaleDescription)
@@ -85,7 +85,7 @@ struct BluetoothSectionView: View {
                 SettingsDivider()
 
                 SettingsToggleRow(
-                    symbol: "wave.3.right.circle.fill",
+                    glyph: .bluetoothRune,
                     tint: .blue,
                     title: localization.string(.settingsBluetoothReplaceNetworkIcon),
                     subtitle: localization.string(.settingsBluetoothReplaceNetworkIconDescription),

@@ -34,16 +34,21 @@ struct SettingsView: View {
 
         var id: String { rawValue }
 
-        var symbol: String {
+        /// The mark the sidebar tile carries.
+        ///
+        /// Bluetooth has no SF Symbol on any release, so its tile draws the
+        /// rune. Audio borrows the speaker the Audio page's own rows use, so
+        /// the sidebar and the page it opens agree on one glyph.
+        var glyph: SettingsGlyph {
             switch self {
-            case .appIcon: return "macwindow.on.rectangle"
-            case .battery: return SymbolFallback.name("battery.100percent", "battery.100")
-            case .network: return "wifi"
-            case .bluetooth: return "wave.3.right.circle.fill"
-            case .audio:   return "hifispeaker.fill"
-            case .popover: return "list.bullet.rectangle"
-            case .general: return "gearshape.fill"
-            case .about:   return "info.circle.fill"
+            case .appIcon: return .symbol("macwindow.on.rectangle")
+            case .battery: return .symbol(SymbolFallback.name("battery.100percent", "battery.100"))
+            case .network: return .symbol("wifi")
+            case .bluetooth: return .bluetoothRune
+            case .audio:   return .symbol("speaker.wave.3.fill")
+            case .popover: return .symbol("list.bullet.rectangle")
+            case .general: return .symbol("gearshape.fill")
+            case .about:   return .symbol("info.circle.fill")
             }
         }
 
@@ -117,7 +122,7 @@ struct SettingsView: View {
                     select(section)
                 } label: {
                     HStack(alignment: .center, spacing: 10) {
-                        SettingsIcon(symbol: section.symbol, tint: section.tint)
+                        SettingsIcon(glyph: section.glyph, tint: section.tint)
 
                         VStack(alignment: .leading, spacing: 1) {
                             Text(section.title(localization))

@@ -217,6 +217,33 @@ detailed release and recovery rules.
   running app/process from it. Never use destructive bulk deletion.
 - Do not alter another agent's worktree, shared branch, or uncommitted files.
 
+## Codex Native Computer Use
+
+- Start an isolated Debug test instance with
+  `bash scripts/launch-computer-use.sh [--display secondary]`. This always builds
+  through `build-worktree.sh`, checks this branch's dev identity, and starts a
+  new background test process. Release does not interpret the test flags.
+- Use Codex native Computer Use only. First trace foreground PID/Bundle ID with
+  the bounded `scripts/measure-ui-focus.swift` tool; continue a background step
+  only when its actual setting change, sidebar navigation and screenshot work
+  without a foreground transition. Do not activate an app and restore focus.
+- Background support covers Settings presentation, the first-run guide's
+  verified Next/Back/preview/Customize path, and verified Settings controls.
+  Menu-bar/shortcut popovers, real Dock activation, text input, shortcut
+  recording, guide menu-bar help/links/system dialogs and system permission
+  dialogs need separate evidence.
+  Pause a step that requires activation or an unavailable/unlocked display and
+  report `FAIL`, `BLOCKED` or `NOT RUN`; do not substitute another GUI MCP,
+  global clicks, private APIs or additional permissions.
+- In background mode, do not enable the Bluetooth row from either the
+  Bluetooth page's "Show in status panel" control or the status-panel page's
+  Bluetooth visibility control: both retain explicit app activation, even
+  after permission is granted. Pause these tests and report `NOT RUN`.
+- The launcher may gracefully stop only this path's existing test instance.
+  A non-test instance or a Bundle ID collision stops the launch. It never
+  terminates production or other worktrees. See
+  `docs/background-computer-use-testing.md` for evidence and rollback.
+
 ## Project Skills
 
 - Skills live in `.agents/skills/<skill-name>/`; the directory name must match
