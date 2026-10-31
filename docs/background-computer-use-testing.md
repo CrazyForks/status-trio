@@ -2,6 +2,21 @@
 
 ## Scope and current decision
 
+The reusable procedure is
+[`background-ui-testing`](../.agents/skills/background-ui-testing/SKILL.md).
+Its non-interference contract applies to every agent and harness. This document
+is Status Trio's project adapter: Debug launch flags, supported presentation,
+verified controls, diagnostics, and rollback. The project's native Codex CU
+restriction remains in force; the general skill does not enable other GUI
+providers or confer permissions.
+
+Functional and background acceptance are separate. A manual menu-bar/Dock
+click that opens an activating popover can pass functional acceptance while
+failing a non-activation criterion. A recording that expires before an action
+does not cover it; inspect action timestamps before citing zero activations.
+No skill or instruction file enforces behavior in a harness that did not
+actually load it.
+
 This is an opt-in **Debug Settings and first-run guide mode**, tested with Codex
 native Computer Use. It is not a separate input session. Spaces, displays and
 applications still share foreground and keyboard focus.

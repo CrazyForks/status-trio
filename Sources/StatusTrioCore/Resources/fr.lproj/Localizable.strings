@@ -446,7 +446,8 @@
 "battery.details.unavailable" = "Indisponible";
 "battery.details.collecting" = "Mesure en cours…";
 "battery.details.loading" = "Mise à jour…";
-"battery.details.explanation" = "Les puissances sont des estimations de capteurs indépendants et peuvent être retardées ou différer. La puissance nominale n’est pas l’entrée réelle. Sur batterie, la décharge nette est affichée. Certains modèles ont environ une minute de retard.";
+"battery.details.explanation" = "Les valeurs de puissance sont des estimations ; la collecte peut être retardée jusqu’à une minute.";
+"battery.details.info" = "À propos de ces valeurs";
 /* Compact popover controls. */
 "menu.more" = "Autres actions";
 
@@ -543,11 +544,20 @@
 // Battery panel power flow and application energy
 "settings.battery.powerFlow" = "Flux de puissance du panneau Batterie";
 "settings.battery.powerFlow.description" = "Les puissances sont actualisées uniquement lorsque le panneau Batterie est ouvert. Les capteurs peuvent être retardés et les trois valeurs peuvent différer.";
+"settings.battery.breakdown" = "Répartir la puissance par composant";
+"settings.battery.breakdown.description" = "Répartit l’entrée de l’adaptateur entre l’écran intégré, la sortie USB et le reste de la charge système (SoC compris). Les valeurs indisponibles sont masquées ; sans répartition fiable, la puissance système réapparaît.";
 "settings.battery.energyRefreshInterval" = "Intervalle d’échantillonnage en arrière-plan";
 "settings.battery.energyRefreshInterval.description" = "Utilisé lorsque le panneau est fermé. La page de détails de la batterie continue de s’actualiser toutes les 5 secondes.";
 "battery.power.input" = "Entrée chargeur";
+"battery.power.source.battery" = "Batterie";
 "battery.power.charging" = "Vers la batterie";
 "battery.power.system" = "Système";
+"battery.power.system.help" = "Puissance système (SoC incl.)";
+"battery.power.system.explanation" = "« Système » est ce qui reste après la charge de la batterie, l’écran et l’USB : SoC, mémoire, contrôleurs d’affichage et autres charges non mesurées séparément.";
+"battery.power.display" = "Écran";
+"battery.power.usb" = "Sortie USB";
+"battery.power.soc" = "SoC";
+"battery.power.other" = "Autre";
 "battery.energy.apps" = "Impact énergétique CPU";
 "battery.energy.empty" = "Aucune activité notable dans cet échantillon.";
 "battery.energy.cpuExplanation" = "Classement selon les compteurs d’énergie CPU des apps accessibles à votre compte ; il ne s’agit pas de l’impact énergétique composite de Moniteur d’activité. GPU et processus système peuvent manquer.";

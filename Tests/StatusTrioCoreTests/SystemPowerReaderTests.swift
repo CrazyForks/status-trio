@@ -93,4 +93,20 @@ final class SystemPowerReaderTests: XCTestCase {
             request[42] == 9 ? self.info(type: [0x36, 0x31, 0x69, 0x73], size: 2) : self.value([1, 0])
         }, "A battery-current type must never be interpreted as adapter watts")
     }
+
+    func testBacklightRailUsesItsOwnKeyAndRange() throws {
+        func read(_ sensor: SystemPowerReader.Sensor, key: [UInt8], payload: [UInt8]) -> Double? {
+            SystemPowerReader.readValue(sensor: sensor) { request in
+                XCTAssertEqual(Array(request.prefix(4)), key)
+                return request[42] == 9 ? self.info() : self.value(payload)
+            }
+        }
+        // PDBR travels as a little-endian key word, like PSTR/PDTR.
+        XCTAssertEqual(read(.display, key: [0x52, 0x42, 0x44, 0x50],
+                            payload: [0, 0, 0x04, 0x41]), 8.25) // PDBR
+        XCTAssertEqual(read(.display, key: [0x52, 0x42, 0x44, 0x50], payload: [0, 0, 0, 0]), 0,
+                       "A dark backlight is a real zero, not a missing reading")
+        XCTAssertNil(read(.display, key: [0x52, 0x42, 0x44, 0x50],
+                          payload: [0, 0, 0x7a, 0x43]), "250 W is outside any backlight rail")
+    }
 }

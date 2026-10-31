@@ -217,13 +217,48 @@ detailed release and recovery rules.
   running app/process from it. Never use destructive bulk deletion.
 - Do not alter another agent's worktree, shared branch, or uncommitted files.
 
-## Codex Native Computer Use
+## Background UI Testing
 
+- **Default route:** unless the task explicitly requires human visual
+  inspection or a documented foreground-only step, every agent and harness
+  that will operate or observe a live macOS UI must first read
+  `.agents/skills/background-ui-testing/SKILL.md` and start through
+  `bash scripts/launch-computer-use.sh [--display secondary]`. Do not choose a
+  normal foreground launch or ask the user to operate the app merely because
+  that path is more familiar. Non-GUI unit tests, headless tests, static
+  inspection and command-line diagnostics retain their normal workflows.
+- Default background UI scenarios include: opening, navigating or changing
+  Settings and verifying the resulting state; first-run guide and transition
+  checks; supported menu-bar, status-panel, Dock and shortcut interactions;
+  screenshot, layout and visual-regression capture; secondary-display checks;
+  permission-recovery paths before a system-owned prompt requires handoff; and
+  any request to inspect or test the running app while the user continues
+  working. "Background" is the default test entry point, not a promise that
+  every control can be operated without activation.
+- Pause only the affected step and request a foreground/manual handoff when
+  explicit human visual or UX judgement is required; the user must see or
+  physically operate something; a system authorization, password, security
+  prompt, locked-screen action or app installation requires the user; the
+  current harness cannot perform the action without foreground/global input;
+  or the test specifically verifies normal/Release activation semantics that
+  the Debug background mode intentionally changes. Continue any remaining
+  background-safe work before or after the handoff, and report manual and
+  automated evidence separately. Ask at the blocked step, not pre-emptively.
+- The Skill defines the common non-interference contract; this section
+  supplies Status Trio's adapter. A secondary display does not isolate focus
+  or input. Establish the active harness's capabilities before live
+  attachment/input and stop unsafe steps.
+- Scope every acceptance claim to its actual app instance, harness, controls,
+  and observation interval. Check that manual actions occurred before the
+  recording deadline; expired sampling is not zero interference. Report
+  functional behavior and background non-activation separately.
 - Start an isolated Debug test instance with
   `bash scripts/launch-computer-use.sh [--display secondary]`. This always builds
   through `build-worktree.sh`, checks this branch's dev identity, and starts a
   new background test process. Release does not interpret the test flags.
-- Use Codex native Computer Use only. First trace foreground PID/Bundle ID with
+- Status Trio currently permits Codex native Computer Use only. The reusable
+  skill does not authorize another GUI provider for this project.
+  First trace foreground PID/Bundle ID with
   the bounded `scripts/measure-ui-focus.swift` tool; continue a background step
   only when its actual setting change, sidebar navigation and screenshot work
   without a foreground transition. Do not activate an app and restore focus.
@@ -243,6 +278,8 @@ detailed release and recovery rules.
   A non-test instance or a Bundle ID collision stops the launch. It never
   terminates production or other worktrees. See
   `docs/background-computer-use-testing.md` for evidence and rollback.
+- Restore this run's isolated preference changes and stop its observers and
+  test instance after testing. Preserve concurrent user/agent changes.
 
 ## Project Skills
 
