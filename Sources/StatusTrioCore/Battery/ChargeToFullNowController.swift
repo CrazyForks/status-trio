@@ -33,11 +33,13 @@ enum ChargeToFullNowPresentation: Equatable, Sendable {
     case cancelPending
     case cancelling
     case cancelFailed(message: String?)
-    case cancelSucceeded(limit: Int, usedFallback: Bool)
+    /// The limit is back and the battery is still charging toward it. No button
+    /// is offered until that charge completes or the system stops it.
+    case limitRestored(limit: Int, usedFallback: Bool)
 
     var showsButton: Bool {
         switch self {
-        case .hidden, .unavailable:
+        case .hidden, .unavailable, .limitRestored:
             false
         case .available,
              .applying,
@@ -46,10 +48,16 @@ enum ChargeToFullNowPresentation: Equatable, Sendable {
              .cancelConfirmationRequired,
              .cancelPending,
              .cancelling,
-             .cancelFailed,
-             .cancelSucceeded:
+             .cancelFailed:
             true
         }
+    }
+
+    var isRestoredLimit: Bool {
+        if case .limitRestored = self {
+            return true
+        }
+        return false
     }
 
     var isApplying: Bool {
@@ -79,22 +87,35 @@ final class ChargeToFullNowController: ObservableObject {
 
     private let backend: any BatteryChargeControlling
     private let sessionStore: any ChargeToFullNowSessionStoring
+    /// The user's persisted charge limit, used only to restore a temporary
+    /// override that macOS itself started. It never writes until the user asks.
+    private let persistedChargeLimit: () -> Int?
     private let now: () -> Date
     private var currentDemand: ChargeToFullNowDemand?
     private var session: ChargeToFullNowSession?
+    private var restoredLimit: RestoredLimitState?
     private var sessionNeedsConfirmation = false
     private var isApplying = false
     private var isCancelling = false
     private var hasObservedTemporaryOverride = false
 
+    private struct RestoredLimitState {
+        let limit: Int
+        let usedFallback: Bool
+        let restoredAt: Date
+        var hasObservedCharging: Bool
+    }
+
     init(
         backend: any BatteryChargeControlling,
         sessionStore: any ChargeToFullNowSessionStoring =
             VolatileChargeToFullNowSessionStore(),
+        persistedChargeLimit: @escaping () -> Int? = { nil },
         now: @escaping () -> Date = Date.init
     ) {
         self.backend = backend
         self.sessionStore = sessionStore
+        self.persistedChargeLimit = persistedChargeLimit
         self.now = now
         session = sessionStore.load()
         sessionNeedsConfirmation = session != nil
@@ -109,6 +130,23 @@ final class ChargeToFullNowController: ObservableObject {
         }
 
         let state = backend.readState()
+        if var restored = restoredLimit {
+            if demand.battery.isCharging {
+                restored.hasObservedCharging = true
+                restoredLimit = restored
+            }
+            if shouldHoldRestoredLimit(restored, demand: demand, state: state) {
+                publish(
+                    .limitRestored(
+                        limit: restored.limit,
+                        usedFallback: restored.usedFallback
+                    )
+                )
+                return
+            }
+            restoredLimit = nil
+        }
+
         if state.errorMessage != nil {
             if session != nil {
                 sessionNeedsConfirmation = true
@@ -136,6 +174,14 @@ final class ChargeToFullNowController: ObservableObject {
             return
         }
 
+        // macOS can start the same temporary override from its own battery
+        // menu. There is no session, but the persisted limit lets us offer the
+        // same cancellation instead of hiding the row.
+        if externalRestoreLimit(in: state) != nil {
+            publish(.chargingToFull)
+            return
+        }
+
         guard demand.canStartChargeToFull else {
             publish(.hidden)
             return
@@ -154,9 +200,9 @@ final class ChargeToFullNowController: ObservableObject {
         switch presentation {
         case .chargingToFull, .cancelConfirmationRequired, .cancelPending, .cancelFailed:
             requestCancelChargeToFullNow()
-        case .available, .failed, .cancelSucceeded:
+        case .available, .failed:
             requestChargeToFullNow()
-        case .hidden, .applying, .cancelling, .unavailable:
+        case .hidden, .applying, .cancelling, .unavailable, .limitRestored:
             break
         }
     }
@@ -211,7 +257,6 @@ final class ChargeToFullNowController: ObservableObject {
     func requestCancelChargeToFullNow() {
         guard !isApplying,
               !isCancelling,
-              let activeSession = session,
               let requestedDemand = currentDemand,
               requestedDemand.showsSurface,
               capability.isAvailable else {
@@ -219,46 +264,70 @@ final class ChargeToFullNowController: ObservableObject {
         }
 
         let state = backend.readState()
-        if state.hasActiveChargeLimit {
-            if mayBeStaleActiveLimit(state) {
-                publish(.cancelPending)
+
+        if let activeSession = session {
+            if state.hasActiveChargeLimit {
+                if mayBeStaleActiveLimit(state) {
+                    publish(.cancelPending)
+                    return
+                }
+                clearSession()
+                publish(
+                    requestedDemand.canStartChargeToFull
+                        ? .available
+                        : .hidden
+                )
                 return
             }
-            clearSession()
+
+            let target = validatedLimit(
+                state.reportedChargeLimit ?? activeSession.originalLimit,
+                in: state
+            )
+            let limit = target ?? 80
+            let usedFallback = target == nil
+            let needsConfirmation = sessionNeedsConfirmation
+                || state.errorMessage != nil
+                || usedFallback
+                || (state.errorMessage == nil
+                    && !state.indicatesTemporaryOverride)
+
+            if needsConfirmation,
+               presentation != .cancelConfirmationRequired(
+                   limit: limit,
+                   usedFallback: usedFallback
+               ) {
+                publish(
+                    .cancelConfirmationRequired(
+                        limit: limit,
+                        usedFallback: usedFallback
+                    )
+                )
+                return
+            }
+
+            beginRestore(limit: limit, usedFallback: usedFallback)
+            return
+        }
+
+        // No session: the temporary override was started by macOS itself, for
+        // example from the system battery menu. Restore the limit the user
+        // picked in System Settings without pretending we started the request.
+        guard state.errorMessage == nil,
+              state.indicatesTemporaryOverride,
+              let limit = externalRestoreLimit(in: state) else {
             publish(
                 requestedDemand.canStartChargeToFull
+                    && state.hasActiveChargeLimit
                     ? .available
                     : .hidden
             )
             return
         }
+        beginRestore(limit: limit, usedFallback: false)
+    }
 
-        let target = validatedLimit(
-            state.reportedChargeLimit ?? activeSession.originalLimit,
-            in: state
-        )
-        let limit = target ?? 80
-        let usedFallback = target == nil
-        let needsConfirmation = sessionNeedsConfirmation
-            || state.errorMessage != nil
-            || usedFallback
-            || (state.errorMessage == nil
-                && !state.indicatesTemporaryOverride)
-
-        if needsConfirmation,
-           presentation != .cancelConfirmationRequired(
-               limit: limit,
-               usedFallback: usedFallback
-           ) {
-            publish(
-                .cancelConfirmationRequired(
-                    limit: limit,
-                    usedFallback: usedFallback
-                )
-            )
-            return
-        }
-
+    private func beginRestore(limit: Int, usedFallback: Bool) {
         isCancelling = true
         publish(.cancelling)
         Task { @MainActor [weak self] in
@@ -272,6 +341,12 @@ final class ChargeToFullNowController: ObservableObject {
 
             if verified {
                 clearSession()
+                restoredLimit = RestoredLimitState(
+                    limit: limit,
+                    usedFallback: usedFallback,
+                    restoredAt: now(),
+                    hasObservedCharging: false
+                )
             }
 
             guard let currentDemand,
@@ -282,7 +357,7 @@ final class ChargeToFullNowController: ObservableObject {
 
             if verified {
                 publish(
-                    .cancelSucceeded(
+                    .limitRestored(
                         limit: limit,
                         usedFallback: usedFallback
                     )
@@ -297,6 +372,41 @@ final class ChargeToFullNowController: ObservableObject {
                 )
             }
         }
+    }
+
+    /// The restored limit stays visible while the system keeps charging toward
+    /// it. The action comes back once the battery reaches the limit or the
+    /// system stops charging before it.
+    private func shouldHoldRestoredLimit(
+        _ restored: RestoredLimitState,
+        demand: ChargeToFullNowDemand,
+        state: ChargeToFullNowDeviceState
+    ) -> Bool {
+        guard state.errorMessage == nil,
+              state.hasActiveChargeLimit,
+              state.reportedChargeLimit == restored.limit,
+              demand.canStartChargeToFull,
+              demand.battery.percentage < restored.limit else {
+            return false
+        }
+        if restored.hasObservedCharging {
+            return demand.battery.isCharging
+        }
+        // The system needs a moment to resume charging after the restore. Give
+        // it a bounded grace period instead of keeping an inert row forever.
+        return now().timeIntervalSince(restored.restoredAt) < 30
+    }
+
+    /// A temporary override without a session can only be cancelled when the
+    /// persisted limit is a valid value PowerUI accepts.
+    private func externalRestoreLimit(
+        in state: ChargeToFullNowDeviceState
+    ) -> Int? {
+        guard state.indicatesTemporaryOverride,
+              let persisted = persistedChargeLimit() else {
+            return nil
+        }
+        return validatedLimit(persisted, in: state)
     }
 
     private func validatedLimit(

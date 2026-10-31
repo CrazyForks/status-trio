@@ -77,6 +77,19 @@ The implementation saves an operation session and offers **Cancel Charge to
 Full** to request restoration. An ambiguous or restored session can require
 another explicit confirmation. A failed request is not proof of restoration:
 check the charge limit in System Settings and restore it there if needed.
+
+The same cancellation is offered when the override starts from the macOS
+battery menu instead: while PowerUI reports a temporary override and the
+world-readable `powerd` charging plist still holds a valid user limit, the row
+offers **Cancel Charge to Full** and restores that persisted limit. If no
+usable persisted limit can be read, the row stays hidden rather than guessing
+a value.
+
+After a successful cancel, the action area keeps a **Charge limit restored**
+status instead of immediately offering **Charge to Full Now** again. The
+button returns once the battery reaches the restored limit, the system stops
+charging early, or the override ends. This avoids a charge/cancel loop when
+the restored limit is still above the current charge.
 See [implementation, observed native behavior, and verification
 limits](charge-to-full-now-poc.md).
 

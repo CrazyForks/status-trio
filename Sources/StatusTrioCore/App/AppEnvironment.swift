@@ -457,7 +457,10 @@ final class AppEnvironment {
             backend: PowerUIChargeController(),
             sessionStore: UserDefaultsChargeToFullNowSessionStore(
                 defaults: .standard
-            )
+            ),
+            persistedChargeLimit: {
+                SystemChargeLimitReader.chargeLimit()
+            }
         )
         let dockChargingAnimationPresenter: any DockChargingAnimationPresenting =
             DockChargingAnimationRendererMode.usesApplicationIconFrames()

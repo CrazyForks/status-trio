@@ -24,7 +24,7 @@ final class ChargeToFullNowLayoutTests: XCTestCase {
             .cancelPending,
             .cancelling,
             .cancelFailed(message: "PowerUI rejected the request."),
-            .cancelSucceeded(limit: 80, usedFallback: false)
+            .limitRestored(limit: 80, usedFallback: false)
         ] {
             let size = try render(presentation)
             XCTAssertEqual(size.width, 330, accuracy: 1)
@@ -55,8 +55,8 @@ final class ChargeToFullNowLayoutTests: XCTestCase {
                 .cancelPending,
                 .cancelling,
                 .cancelFailed(message: "PowerUI rejected the request."),
-                .cancelSucceeded(limit: 80, usedFallback: false),
-                .cancelSucceeded(limit: 80, usedFallback: true)
+                .limitRestored(limit: 80, usedFallback: false),
+                .limitRestored(limit: 80, usedFallback: true)
             ] {
                 let size = try render(presentation, language: language)
                 XCTAssertEqual(

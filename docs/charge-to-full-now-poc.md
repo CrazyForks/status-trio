@@ -17,6 +17,19 @@ the valid pre-request limit as a fallback, persists the operation session, and
 offers an explicit "Cancel Charge to Full" action. It never restores the limit
 automatically, watches the battery in the background, or runs a periodic task.
 
+Two follow-ups were requested on October 31, 2026:
+
+- The macOS battery menu can start the same temporary override without a
+  Status Trio session. The controller now recognizes that state and offers the
+  same cancellation, restoring the limit from the persisted `powerd` charging
+  plist (`SystemChargeLimitReader`) instead of guessing `80%`. Without a valid
+  persisted limit the row stays hidden.
+- A successful cancellation no longer bounces straight back to the button. The
+  row keeps a "Charge limit restored" status while the system charges toward
+  the restored limit, and the button returns once the battery reaches that
+  limit, charging stops early, or the override ends. This removes the repeated
+  charge/cancel loop when the restored limit is still above the current charge.
+
 Research started October 27, 2026; regression verification continued October 28,
 2026, Asia/Shanghai. Both authorized write experiments ran on October 28, 2026.
 
