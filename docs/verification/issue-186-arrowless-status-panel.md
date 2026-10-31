@@ -81,14 +81,18 @@ These are deliberate and recorded in `docs/known-limitations.md`:
 
 ## Verification
 
+Branch base: `a42c7dc2` (latest local `main` at delivery time; the branch was
+originally cut from `6630ee95` and rebased with no conflicts).
+
 ### Automated
 
 - `bash scripts/test.sh 'StatusPanelContentTests|StatusPanelPlacementTests|StatusBarMemoryPressureTests|StatusBarContentLifecycleTests|PopoverFooterPresentationTests|CompactAudioLayoutTests'`
   — 21 tests pass, including the real close/reopen retention cycles.
 - Full `swift test` suite — 805 tests / 117 suites pass.
-- `bash scripts/verify-local.sh full` — pass (full Swift suite, Release build,
+- `bash scripts/verify-local.sh full` — pass on the final tree
+  `87f45a3199bb9b9acc061b403d48885e77f35320` (full Swift suite, Release build,
   non-Universal app bundle and contracts, native checks and offline release
-  simulations) on the committed branch SHA.
+  simulations).
 
 ### Visual probe (production panel code, throwaway host)
 
@@ -114,17 +118,22 @@ glass path is live rather than a solid fill.
 
 ### Background UI testing
 
-- The isolated Debug dev bundle launched through
-  `scripts/launch-computer-use.sh` with `--background-ui-testing`; the app
-  started without activating and the test instance was stopped afterwards. No
-  menu-bar/Dock click was injected (see below).
+- `bash scripts/launch-computer-use.sh` built and launched the isolated Debug
+  dev bundle (`com.lingsmbp.StatusTrio.dev.feat-issue-191-186-arrowless-panel`)
+  with `--background-ui-testing` and the `--status-trio-ui-test-launch` token.
+  Report: PID `88637`, SHA `87f45a3199bb9b9acc061b403d48885e77f35320`,
+  `sourceDirty: false`, `backgroundUITesting: true`.
+- At sampling time the frontmost application was still Microsoft Edge, so no
+  foreground transition was observed. The launcher stopped this worktree's test
+  PID `88637` gracefully afterwards; no other instance was touched.
 - The **status panel itself** was not opened through the launched app: this
   harness has no permitted Computer Use provider for a status-item click, and
   the project restricts GUI providers to Codex native Computer Use. The visual
   evidence above comes from the standalone probe, not a click-driven background
   session.
-- Status: app launch **PASS**, panel visual/interaction background gate
-  **NOT RUN** (no permitted input path), manual visual acceptance **NOT RUN**.
+- Status: app launch / non-activation **PASS**, panel visual/interaction
+  background gate **NOT RUN** (no permitted input path), manual visual
+  acceptance **NOT RUN**.
 
 ### Not proven
 
