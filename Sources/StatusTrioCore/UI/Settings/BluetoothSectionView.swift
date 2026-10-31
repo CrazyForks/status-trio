@@ -478,34 +478,30 @@ struct BluetoothSectionView: View {
                                 store.hiddenBluetoothDeviceAddresses.contains(BluetoothDeviceIdentity.preferenceKey($0))
                             }
                             HStack(alignment: .center, spacing: 10) {
-                                Image(systemName: BluetoothDeviceRowIcon.symbolName(for: device))
-                                    .foregroundStyle(device.isConnected ? Color.accentColor : Color.secondary)
-                                    .frame(width: 18, height: 18, alignment: .center)
-
-                                Text(device.name)
-                                    .font(.system(size: 13))
-                                    .lineLimit(1)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                                Button {
-                                    for sourceID in displayRow.sourceIDs {
-                                        store.setBluetoothDeviceHidden(sourceID, hidden: !isHidden)
+                                Toggle(device.name, isOn: Binding(
+                                    get: { !isHidden },
+                                    set: { isShown in
+                                        for sourceID in displayRow.sourceIDs {
+                                            store.setBluetoothDeviceHidden(sourceID, hidden: !isShown)
+                                        }
                                     }
-                                } label: {
-                                    PanelActionGlyph(
-                                        systemName: isHidden ? "eye.slash" : "eye",
-                                        font: .system(size: 13),
-                                        size: 22
-                                    )
-                                }
-                                .buttonStyle(.plain)
+                                ))
+                                .toggleStyle(.checkbox)
+                                .labelsHidden()
                                 .help(isHidden
                                       ? localization.string(.settingsBluetoothShowDevice)
                                       : localization.string(.settingsBluetoothHideDevice))
-                                .accessibilityLabel(isHidden
-                                      ? localization.string(.settingsBluetoothShowDevice)
-                                      : localization.string(.settingsBluetoothHideDevice))
-                                .frame(width: 26)
+
+                                Image(systemName: BluetoothDeviceRowIcon.symbolName(for: device))
+                                    .foregroundStyle(device.isConnected ? Color.accentColor : Color.secondary)
+                                    .frame(width: 18, height: 18, alignment: .center)
+                                    .opacity(isHidden ? 0.45 : 1)
+
+                                Text(device.name)
+                                    .font(.system(size: 13))
+                                    .foregroundStyle(isHidden ? Color.secondary : Color.primary)
+                                    .lineLimit(1)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
 
                                 PanelActionGlyph(
                                     systemName: "line.3.horizontal",
@@ -516,7 +512,6 @@ struct BluetoothSectionView: View {
                                 .accessibilityHidden(true)
                             }
                             .frame(height: 30)
-                            .opacity(isHidden ? 0.45 : 1)
                         }
                         .onMove { source, destination in
                             store.moveBluetoothDevices(
