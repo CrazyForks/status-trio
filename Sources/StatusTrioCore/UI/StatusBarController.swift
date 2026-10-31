@@ -418,14 +418,15 @@ final class StatusBarController: NSObject {
                 openSoundSettings: { self.handleOpenSoundSettings() },
                 openSoundInputSettings: { self.handleOpenSoundInputSettings() },
                 openKeyboardSettings: { self.handleOpenKeyboardSettings() },
-                quit: quitAction
+                quit: quitAction,
+                dismissPanel: { [weak self] in self?.closePopover() }
             )
         }
-        let hostingController = NSHostingController(rootView: rootView)
+        let hostingController = StatusPanelHostingController(rootView: rootView)
         if #available(macOS 14.0, *) {
             // The Ventura hosting pass can recurse while AppKit installs the
-            // popover content. Leave sizing to the popover's measured content
-            // there, and keep preferred sizing on the newer path.
+            // panel content. Leave sizing to the measured content there, and
+            // keep preferred sizing on the newer path.
             hostingController.sizingOptions = [.preferredContentSize]
         }
         popover.installContent(hostingController)

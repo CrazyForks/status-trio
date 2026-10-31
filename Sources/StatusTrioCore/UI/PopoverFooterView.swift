@@ -32,6 +32,10 @@ struct PopoverFooterView: View {
     @ObservedObject private var updaterManager: UpdaterManager = .shared
     let openSettings: () -> Void
     let quit: () -> Void
+    /// Closes the status panel before an action opens another window. The panel
+    /// sits above normal windows, so About / updates / System Settings must not
+    /// be left behind it.
+    var dismissPanel: () -> Void = {}
 
     private var settingsTitle: String {
         PopoverFooterPresentation.settingsLabel(
@@ -54,6 +58,7 @@ struct PopoverFooterView: View {
 
             Menu {
                 Button(localization.string(.menuCheckForUpdates)) {
+                    dismissPanel()
                     updaterManager.checkForUpdates()
                 }
                 // Sparkle reports `canCheckForUpdates == false` while a check is
@@ -62,10 +67,12 @@ struct PopoverFooterView: View {
                 .disabled(!updaterManager.canCheckForUpdates)
 
                 Button(localization.format(.menuAbout, AppMetadata.name)) {
+                    dismissPanel()
                     NSApplication.shared.orderFrontStandardAboutPanel(nil)
                 }
 
                 Button(localization.string(.menuOpenMenuBarSettings)) {
+                    dismissPanel()
                     PopoverFooterPresentation.openMenuBarSettings()
                 }
 

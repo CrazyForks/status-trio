@@ -1,7 +1,8 @@
 # Issue #186 — arrowless status panel (custom `NSPanel`)
 
-Status: **implemented locally, focused tests pass; live visual and background
-UI verification pending.**
+Status: **implemented; automated `full` profile passes; the production panel code
+was visually probed on macOS 27.2. A click-driven background UI session and
+Ventura runtime checks were not possible in this harness.**
 
 Related issues:
 
@@ -79,18 +80,56 @@ These are deliberate and recorded in `docs/known-limitations.md`:
 
 ## Verification
 
-Done locally:
+### Automated
 
-- `bash scripts/test.sh 'StatusPanelPlacementTests|StatusBarMemoryPressureTests|StatusBarContentLifecycleTests|PopoverWindowPlacementTests'`
-  — pass.
-- Full `swift test` suite — see the delivery report.
-- Release build and the `full` local profile — see the delivery report.
+- `bash scripts/test.sh 'StatusPanelContentTests|StatusPanelPlacementTests|StatusBarMemoryPressureTests|StatusBarContentLifecycleTests|PopoverFooterPresentationTests|CompactAudioLayoutTests'`
+  — 21 tests pass, including the real close/reopen retention cycles.
+- Full `swift test` suite — 805 tests / 117 suites pass.
+- `bash scripts/verify-local.sh full` — pass (full Swift suite, Release build,
+  non-Universal app bundle and contracts, native checks and offline release
+  simulations) on the committed branch SHA.
 
-Not proven by local tests:
+### Visual probe (production panel code, throwaway host)
 
-- Whether the glass corner radius, shadow shape and content insets match the
-  previous popover visually on macOS 26/27.
+A throwaway executable compiled the real `AnchoredStatusPanel` /
+`StatusPanelPlacement` / `StatusPanelContentViewController` sources with a
+sample SwiftUI body and a 1×1 anchor window at the status-item position
+(`/tmp/panelprobe`, not part of the repo). It ran on this machine
+(macOS 27.2, single 2048×1152 @2× display) and produced:
+
+- `issue-186-arrowless-panel-static.png` — panel below the menu bar, no arrow,
+  rounded glass corners, native shadow.
+- `issue-186-arrowless-panel-expanded.png` — the same window after the sample
+  content grew from 168 pt to 343 pt; the top edge stayed at
+  `visibleFrame.maxY - 6` and the content was not clipped.
+
+Captured frames: `(1718, 954, 330, 168)` → `(1718, 779, 330, 343)`. This
+confirms the `NSHostingView.fittingSize` sizing path and the top-anchored
+placement work on macOS 26+.
+
+Region captures (not committed because they include the user's menu bar) showed
+the menu bar and wallpaper blurred through the panel, confirming the public
+glass path is live rather than a solid fill.
+
+### Background UI testing
+
+- The isolated Debug dev bundle launched through
+  `scripts/launch-computer-use.sh` with `--background-ui-testing`; the app
+  started without activating and the test instance was stopped afterwards. No
+  menu-bar/Dock click was injected (see below).
+- The **status panel itself** was not opened through the launched app: this
+  harness has no permitted Computer Use provider for a status-item click, and
+  the project restricts GUI providers to Codex native Computer Use. The visual
+  evidence above comes from the standalone probe, not a click-driven background
+  session.
+- Status: app launch **PASS**, panel visual/interaction background gate
+  **NOT RUN** (no permitted input path), manual visual acceptance **NOT RUN**.
+
+### Not proven
+
 - Ventura (macOS 13) runtime behaviour of the `NSVisualEffectView` fallback and
-  the `NSHostingView.fittingSize` sizing path.
+  the hosting-controller sizing path.
 - Real multi-display placement, full-screen Spaces and Dock anchoring.
-- Background UI testing and any manual visual approval.
+- Reduce Transparency appearance and appearance changes while open.
+- Manual visual approval of the exact glass/shadow against the old popover.
+

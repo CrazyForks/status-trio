@@ -66,11 +66,15 @@ final class AnchoredStatusPanel: NSPanel {
 
     /// Wraps the SwiftUI hosting controller in the panel's glass background and
     /// keeps the window sized to the content's intrinsic size.
-    func installContent(_ hostingController: NSViewController) {
-        let controller = StatusPanelContentViewController(hostingController: hostingController)
-        controller.onIntrinsicSizeChange = { [weak self] size in
+    ///
+    /// Sizing is driven by `StatusPanelHostingController.viewDidLayout`, not by
+    /// the wrapper's own layout pass: the hosting view is the thing whose
+    /// intrinsic size changes when a row expands.
+    func installContent<Content: View>(_ hostingController: StatusPanelHostingController<Content>) {
+        hostingController.onLayout = { [weak self] size in
             self?.applyContentSize(size)
         }
+        let controller = StatusPanelContentViewController(hostingController: hostingController)
         contentViewController = controller
     }
 
@@ -192,17 +196,29 @@ final class AnchoredStatusPanel: NSPanel {
 
 // MARK: - Content view controller
 
-/// Hosts the SwiftUI content inside the panel's background. `viewDidLayout` is
-/// the sizing signal: `NSHostingView` reports the SwiftUI content's ideal size
-/// through `fittingSize`, and the panel follows it for expanding rows and
-/// detail pages.
+/// A hosting controller that reports the SwiftUI content's ideal size whenever
+/// it lays out. It is the panel's sizing signal for expanding rows and detail
+/// pages, and it replaces the layout feedback `NSPopover` used to provide.
+@MainActor
+final class StatusPanelHostingController<Content: View>: NSHostingController<Content> {
+    var onLayout: ((NSSize) -> Void)?
+    private var lastReportedSize: NSSize = .zero
+
+    override func viewDidLayout() {
+        super.viewDidLayout()
+        let size = view.fittingSize
+        guard size.width > 0, size.height > 0, size != lastReportedSize else { return }
+        lastReportedSize = size
+        onLayout?(size)
+    }
+}
+
+/// Hosts the SwiftUI content inside the panel's background.
 @MainActor
 final class StatusPanelContentViewController: NSViewController {
     let hostingController: NSViewController
-    var onIntrinsicSizeChange: ((NSSize) -> Void)?
 
     private var backgroundView: NSView?
-    private var lastReportedSize: NSSize = .zero
 
     init(hostingController: NSViewController) {
         self.hostingController = hostingController
@@ -266,11 +282,6 @@ final class StatusPanelContentViewController: NSViewController {
         } else {
             hostingController.view.frame = view.bounds
         }
-
-        let size = intrinsicContentSize
-        guard size.width > 0, size.height > 0, size != lastReportedSize else { return }
-        lastReportedSize = size
-        onIntrinsicSizeChange?(size)
     }
 
     var intrinsicContentSize: NSSize {
