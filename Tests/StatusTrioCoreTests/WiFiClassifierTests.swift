@@ -2002,6 +2002,24 @@ final class WiFiClassifierTests: XCTestCase {
         XCTAssertEqual(reader.includeSSIDRequests.count, 2)
     }
 
+    func testDeniedNameAccessStillPublishesConnectionStateAndMeasurements() async {
+        let reader = DeferredWiFiStatusReader()
+        let monitor = makeMonitor(
+            statusReader: reader,
+            nameAuthorizer: FakeWiFiNameAuthorizer(access: .denied)
+        )
+        var iterator = monitor.updates.makeAsyncIterator()
+        monitor.start()
+        reader.complete(makeReading(rssi: -50, ssid: "Hidden network", band: .fiveGHz))
+        let status = await iterator.next()
+        XCTAssertEqual(status?.state, .connected)
+        XCTAssertEqual(status?.rssi, -50)
+        XCTAssertEqual(status?.band, .fiveGHz)
+        XCTAssertNil(status?.ssid)
+        XCTAssertEqual(status?.nameAccess, .denied)
+        monitor.stop()
+    }
+
     func testPermissionChangeDiscardsInFlightRead() async {
         let reader = DeferredWiFiStatusReader()
         let authorizer = FakeWiFiNameAuthorizer(access: .authorized)

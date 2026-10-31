@@ -457,7 +457,8 @@
 "battery.details.unavailable" = "取得できません";
 "battery.details.collecting" = "計測中…";
 "battery.details.loading" = "更新中…";
-"battery.details.explanation" = "電力は独立したセンサーの推定値で、遅延や差異があります。定格電力は実際の入力ではありません。バッテリー使用時は正味の放電電力です。機種によってはバッテリーの更新が約1分遅れます。";
+"battery.details.explanation" = "電力は推定値です。データ収集には最大約 1 分の遅延が生じることがあります。";
+"battery.details.info" = "この数値について";
 /* Compact popover controls. */
 "menu.more" = "その他の操作";
 
@@ -554,11 +555,20 @@
 // Battery panel power flow and application energy
 "settings.battery.powerFlow" = "バッテリーパネルの電力フロー";
 "settings.battery.powerFlow.description" = "電力値はバッテリーパネルを開いている間だけ更新します。センサーの更新に遅延があり、3つの値の合計は一致しない場合があります。";
+"settings.battery.breakdown" = "電力を項目別に分割";
+"settings.battery.breakdown.description" = "アダプター入力を内蔵ディスプレイ、USB 出力、残りのシステム負荷（SoC を含む）に分割します。取得できない項目は非表示になり、分割できない場合はシステム電力の表示に戻ります。";
 "settings.battery.energyRefreshInterval" = "バックグラウンドサンプリング間隔";
 "settings.battery.energyRefreshInterval.description" = "パネルを閉じている間に使用します。バッテリー詳細ページは引き続き 5 秒ごとに更新されます。";
 "battery.power.input" = "充電器入力";
+"battery.power.source.battery" = "バッテリー";
 "battery.power.charging" = "バッテリーへ";
-"battery.power.system" = "システム電力";
+"battery.power.system" = "システム";
+"battery.power.system.help" = "システム電力（SoC を含む）";
+"battery.power.system.explanation" = "「システム」は、バッテリー充電、ディスプレイ、USB を除いた残りです。SoC、メモリ、ディスプレイコントローラーなどを含み、単一のセンサー値ではありません。";
+"battery.power.display" = "ディスプレイ";
+"battery.power.usb" = "USB 出力";
+"battery.power.soc" = "SoC";
+"battery.power.other" = "その他";
 "battery.energy.apps" = "CPU エネルギー影響";
 "battery.energy.empty" = "今回の測定では目立ったアプリ動作はありません。";
 "battery.energy.cpuExplanation" = "現在のユーザーが読み取れる CPU エネルギーカウンターで並べ替えます。アクティビティモニタの総合的なエネルギー影響とは異なります。GPU とシステムプロセスは含まれない場合があります。";

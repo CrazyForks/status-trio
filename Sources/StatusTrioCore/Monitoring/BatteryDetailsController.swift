@@ -107,6 +107,10 @@ final class BatteryDetailsController: ObservableObject {
         if let sample = details?.inputPower, !sample.isFresh(at: now) {
             details?.inputPower = nil
         }
+        if let split = details?.breakdown,
+           now.timeIntervalSince(split.readAt) > BatteryDetailsReader.breakdownHoldSeconds {
+            details?.breakdown = nil
+        }
         guard !inFlight else {
             needsRefresh = true
             return
@@ -117,10 +121,12 @@ final class BatteryDetailsController: ObservableObject {
         let notBefore = notBefore
         let reader = reader
         let options = options
+        let previousBreakdown = details?.breakdown
         Self.queue.async { [weak self] in
             guard self != nil else { return }
             let result = reader?(state, notBefore)
-                ?? BatteryDetailsReader().read(state: state, notBefore: notBefore, options: options)
+                ?? BatteryDetailsReader().read(state: state, notBefore: notBefore, options: options,
+                                                previousBreakdown: previousBreakdown)
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 self.inFlight = false
@@ -136,6 +142,10 @@ final class BatteryDetailsController: ObservableObject {
                     }
                     if let sample = current.inputPower, !sample.isFresh(at: Date(), notBefore: self.notBefore) {
                         current.inputPower = nil
+                    }
+                    if let split = current.breakdown,
+                       Date().timeIntervalSince(split.readAt) > BatteryDetailsReader.breakdownHoldSeconds {
+                        current.breakdown = nil
                     }
                     self.details = current
                 }

@@ -457,7 +457,8 @@
 "battery.details.unavailable" = "غير متاح";
 "battery.details.collecting" = "جارٍ القياس…";
 "battery.details.loading" = "جارٍ التحديث…";
-"battery.details.explanation" = "قراءات الطاقة تقديرات من مستشعرات مستقلة وقد تتأخر أو تختلف. القدرة الاسمية ليست الدخل الفعلي. عند استخدام البطارية يظهر صافي التفريغ. قد يتأخر تحديث البطارية نحو دقيقة في بعض الطرازات.";
+"battery.details.explanation" = "قيم الطاقة تقديرية، وقد يتأخر جمع البيانات حتى دقيقة تقريبًا.";
+"battery.details.info" = "حول هذه القراءات";
 /* Compact popover controls. */
 "menu.more" = "إجراءات أخرى";
 
@@ -554,11 +555,20 @@
 // Battery panel power flow and application energy
 "settings.battery.powerFlow" = "تدفق الطاقة في لوحة البطارية";
 "settings.battery.powerFlow.description" = "تُحدّث قراءات الطاقة فقط عند فتح لوحة البطارية. قد تتأخر المستشعرات وقد لا تتطابق القراءات الثلاث تمامًا.";
+"settings.battery.breakdown" = "تقسيم الطاقة حسب المكوّن";
+"settings.battery.breakdown.description" = "يقسّم دخل المحول إلى الشاشة المدمجة وخرج USB وبقية حمل النظام (بما في ذلك SoC). تُخفى القيم غير المتاحة، وتعود الواجهة إلى طاقة النظام عند تعذّر التقسيم.";
 "settings.battery.energyRefreshInterval" = "الفاصل الزمني لأخذ العينات في الخلفية";
 "settings.battery.energyRefreshInterval.description" = "يُستخدم عندما تكون اللوحة مغلقة. تستمر صفحة تفاصيل البطارية في التحديث كل 5 ثوانٍ.";
 "battery.power.input" = "دخل الشاحن";
+"battery.power.source.battery" = "البطارية";
 "battery.power.charging" = "إلى البطارية";
-"battery.power.system" = "طاقة النظام";
+"battery.power.system" = "النظام";
+"battery.power.system.help" = "طاقة النظام (بما في ذلك SoC)";
+"battery.power.system.explanation" = "“النظام” هو ما يتبقى بعد شحن البطارية والشاشة وUSB، ويشمل SoC والذاكرة ومتحكمات الشاشة وغيرها.";
+"battery.power.display" = "الشاشة";
+"battery.power.usb" = "خرج USB";
+"battery.power.soc" = "SoC";
+"battery.power.other" = "أخرى";
 "battery.energy.apps" = "تأثير استهلاك طاقة المعالج";
 "battery.energy.empty" = "لا يوجد نشاط ملحوظ للتطبيقات في هذه العينة.";
 "battery.energy.cpuExplanation" = "مرتبة حسب عدادات طاقة المعالج للتطبيقات المتاحة لحسابك؛ هذا ليس تأثير الطاقة المركب في مراقب النشاط. قد لا تشمل معالج الرسومات وعمليات النظام.";

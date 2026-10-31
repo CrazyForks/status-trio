@@ -64,6 +64,7 @@ SH
         test-macos13-sparkle-contract.sh test-mobile-battery-source-cache.sh \
         test-mobile-battery-build-cache.sh test-ci-diagnostics.sh \
         test-ci-workflow.sh test-build-timing.sh \
+        test-launch-computer-use.sh test-background-ui-configuration.sh \
         test-mobile-battery-clang-version.sh test-release-workflow-policy.sh \
         test-release-pipeline.sh test-release-notarization.sh \
         test-verify-local.sh test-verify-local-bundle.sh; do
@@ -122,7 +123,9 @@ for expected in \
     "platform dist/StatusTrio.app/Contents/MacOS/StatusTrio 13.0 26" \
     "mobile-bundle dist/StatusTrio.app" \
     "helper-bundle dist/StatusTrio.app" \
-    "test-powerui-charge-restore.sh"; do
+    "test-powerui-charge-restore.sh" \
+    "test-launch-computer-use.sh" \
+    "test-background-ui-configuration.sh"; do
     grep -Fq "$expected" "$VERIFY_BUNDLE_TRACE" ||
         fail "full verification did not run $expected"
 done

@@ -11,6 +11,19 @@ struct SystemPowerSample: Equatable, Sendable {
     }
 }
 
+/// One refresh's worth of SMC power sensors. Every field is a best-effort
+/// reading from the same short-lived connection.
+struct PowerSensorReadings: Equatable, Sendable {
+    var system: SystemPowerSample?
+    var input: SystemPowerSample?
+    var battery: BatteryPowerSample?
+    /// Built-in display backlight power (`PDBR`); `PBwo` on newer chips is not
+    /// read yet, so machines without `PDBR` simply report nil.
+    var display: SystemPowerSample?
+
+    static let empty = Self()
+}
+
 struct SystemPowerReader: Sendable {
     /// Best-effort SMC system-total power (the PSTR sensor used by Stats).
     /// Apple does not publish a cross-model contract for this sensor. Read only;
@@ -20,15 +33,14 @@ struct SystemPowerReader: Sendable {
     }
 
     /// One short-lived connection per refresh; fixed read-only keys, no scanning.
-    func readSensors(system: Bool, input: Bool, battery: Bool) ->
-        (system: SystemPowerSample?, input: SystemPowerSample?, battery: BatteryPowerSample?) {
-        let empty: (SystemPowerSample?, SystemPowerSample?, BatteryPowerSample?) = (nil, nil, nil)
-        guard system || input || battery else { return empty }
+    func readSensors(system: Bool, input: Bool, battery: Bool, breakdown: Bool = false) -> PowerSensorReadings {
+        var readings = PowerSensorReadings.empty
+        guard system || input || battery || breakdown else { return readings }
         let service = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching("AppleSMC"))
-        guard service != 0 else { return empty }
+        guard service != 0 else { return readings }
         defer { IOObjectRelease(service) }
         var connection: io_connect_t = 0
-        guard IOServiceOpen(service, mach_task_self_, 0, &connection) == KERN_SUCCESS else { return empty }
+        guard IOServiceOpen(service, mach_task_self_, 0, &connection) == KERN_SUCCESS else { return readings }
         defer { IOServiceClose(connection) }
         // SMC supplies no hardware timestamp. Record the start of the read so
         // an IPC call that stalls cannot make an old result appear fresh.
@@ -44,25 +56,32 @@ struct SystemPowerReader: Sendable {
             }
             return result == KERN_SUCCESS && size == 80 ? response : nil
         }
-        let systemSample = system ? Self.readValue(sensor: .system, exchange: exchange)
-            .map { SystemPowerSample(watts: $0, readAt: readAt) } : nil
-        let inputSample = input ? Self.readValue(sensor: .input, exchange: exchange)
-            .map { SystemPowerSample(watts: $0, readAt: readAt) } : nil
-        var batterySample: BatteryPowerSample?
+        if system, let watts = Self.readValue(sensor: .system, exchange: exchange) {
+            readings.system = SystemPowerSample(watts: watts, readAt: readAt)
+        }
+        if input, let watts = Self.readValue(sensor: .input, exchange: exchange) {
+            readings.input = SystemPowerSample(watts: watts, readAt: readAt)
+        }
         // The captured integer battery-sensor ABI below is Apple Silicon.
         // Intel keeps the validated AppleSmartBattery voltage/current fallback.
         #if arch(arm64)
         if battery, let volts = Self.readValue(sensor: .batteryVoltage, exchange: exchange),
            let amps = Self.readValue(sensor: .batteryCurrent, exchange: exchange) {
-            batterySample = BatteryPowerSample(volts: volts, amps: amps, updatedAt: readAt)
+            readings.battery = BatteryPowerSample(volts: volts, amps: amps, updatedAt: readAt)
         }
         #endif
-        return (systemSample, inputSample, batterySample)
+        // Backlight is its own SMC key. A machine that does not export it
+        // reports nil and the caller hides the branch.
+        if breakdown, let watts = Self.readValue(sensor: .display, exchange: exchange) {
+            readings.display = SystemPowerSample(watts: watts, readAt: readAt)
+        }
+        return readings
     }
 
     enum Sensor: UInt32 {
         case system = 0x50535452 // PSTR, system total
         case input = 0x50445452 // PDTR, adapter input
+        case display = 0x50444252 // PDBR, built-in display backlight
         case batteryCurrent = 0x42304143 // B0AC
         case batteryVoltage = 0x42304156 // B0AV
     }
@@ -109,6 +128,9 @@ struct SystemPowerReader: Sendable {
         case .input: return (0...1_000).contains(watts) ? watts : nil
         case .batteryCurrent: return abs(watts) <= 30 ? watts : nil
         case .batteryVoltage: return (1...30).contains(watts) ? watts : nil
+        // A closed lid or a dark backlight can legitimately read 0 W; anything
+        // outside the plausible rail range means the key is not this reading.
+        case .display: return (0...150).contains(watts) ? watts : nil
         }
     }
 

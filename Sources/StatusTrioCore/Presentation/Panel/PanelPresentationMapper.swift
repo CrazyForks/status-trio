@@ -251,42 +251,34 @@ enum PanelPresentationMapper {
             subtitle = ssid
         } else if isResolvingName {
             subtitle = " "
-        } else if wifi.state.isNetworkAssociated && wifi.nameAccess == .notDetermined {
-            subtitle = localization.string(.wifiActionRequestNameAccess)
-        } else if wifi.state.isNetworkAssociated
-                    && (wifi.nameAccess == .denied || wifi.nameAccess == .restricted) {
-            subtitle = localization.string(.wifiActionOpenLocationSettings)
         } else {
-            subtitle = wifiSubtitle(wifi, localization: localization)
+            // A missing network name is not a connection state. The row keeps
+            // the connection state, and its link measurements when the radio
+            // still reports them; the detail page owns the permission action.
+            let stateText = wifiSubtitle(wifi, localization: localization)
+            subtitle = NetworkRowSubtitle.prepending(stateText, to: linkSubtitle) ?? stateText
         }
 
-        // The address leads the second line, ahead of the band and signal, so a
-        // reader finds it where the network's own details already live.
-        let measurements = NetworkRowSubtitle.prepending(localIPAddress, to: linkSubtitle)
+        // The address leads the second line, and the measurement value keeps
+        // only the link facts: the connection state is already in the label, so
+        // VoiceOver must not hear it twice. The placeholder line describes no
+        // link at all.
+        let measurements = subtitle == " "
+            ? nil
+            : NetworkRowSubtitle.prepending(localIPAddress, to: linkSubtitle)
         // The single-space subtitle is the row holding its line height while the
         // Wi-Fi name resolves. An address fills that line on its own rather than
         // trailing the placeholder's blank.
-        let action = StatusMappings.wifiSummaryAction(for: wifi)
         let displayedSubtitle: String
         if subtitle == " " {
             displayedSubtitle = localIPAddress ?? subtitle
-        } else if action == .requestNameAccess || action == .openLocationSettings {
-            // The permission action is the row's next step. Keep it visible at
-            // the start of the line instead of letting the address occlude it.
-            displayedSubtitle = NetworkRowSubtitle.prepending(subtitle, to: localIPAddress) ?? subtitle
         } else {
             displayedSubtitle = NetworkRowSubtitle.prepending(localIPAddress, to: subtitle) ?? subtitle
         }
 
-        let intent: PanelSummaryIntent
-        switch action {
-        case .openDetails:
-            intent = .wifiDetails
-        case .requestNameAccess:
-            intent = .requestWiFiNameAccess
-        case .openLocationSettings:
-            intent = .locationSettings
-        }
+        // The row itself is always the way into the Wi-Fi details, where the
+        // network-name permission action lives.
+        let intent: PanelSummaryIntent = .wifiDetails
 
         let title = summarySSID ?? localization.string(.wifiTitle)
         let accessibilityLabel: String

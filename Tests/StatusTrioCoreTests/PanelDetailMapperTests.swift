@@ -228,8 +228,41 @@ final class PanelDetailMapperTests: XCTestCase {
         XCTAssertEqual(denied.messageIntent, .locationSettings)
         XCTAssertEqual(off.message, localization.string(.wifiPanelOff))
         XCTAssertFalse(off.powerIsOn)
-        XCTAssertEqual(empty.message, localization.string(.wifiNoNetworks))
+        XCTAssertEqual(empty.message, localization.string(.wifiPermissionDenied))
         XCTAssertTrue(empty.canRefresh)
+    }
+
+    func testWiFiMapperPrefersTheNameRequestOverAnEmptyUnauthorizedList() {
+        let localization = makeLocalization()
+        // CoreWLAN can answer an unauthorized scan with an empty list and no
+        // error. That is "no permission", not "no networks in range".
+        let notDetermined = WiFiStatus(state: .connected, rssi: -50, nameAccess: .notDetermined)
+        let state = PanelDetailMapper.wifi(
+            status: notDetermined,
+            networks: [],
+            details: .unavailable,
+            listState: .ready,
+            localization: localization
+        )
+        XCTAssertEqual(state.message, localization.string(.wifiActionRequestNameAccess))
+        XCTAssertEqual(state.messageIntent, .requestWiFiNameAccess)
+    }
+
+    func testWiFiMapperOffersTheNameRequestWhenUnauthorizedScanFails() {
+        let localization = makeLocalization()
+        // A never-authorized app (for example after Location Services was
+        // turned off and on again) cannot scan, so the list state is `failed`.
+        // That must still offer the explicit request instead of "scan failed".
+        let status = WiFiStatus(state: .connected, rssi: -50, nameAccess: .notDetermined)
+        let state = PanelDetailMapper.wifi(
+            status: status,
+            networks: [],
+            details: .unavailable,
+            listState: .failed,
+            localization: localization
+        )
+        XCTAssertEqual(state.message, localization.string(.wifiActionRequestNameAccess))
+        XCTAssertEqual(state.messageIntent, .requestWiFiNameAccess)
     }
 
     private func network(ssid: String, security: WiFiSecurityKind, bssid: String, known: Bool) -> WiFiNetwork {

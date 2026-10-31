@@ -27,6 +27,7 @@ final class SettingsStore: ObservableObject {
     static let showsChargerInputPowerDefaultsKey = "showsChargerInputPower"
     static let showsBatteryChargingPowerDefaultsKey = "showsBatteryChargingPower"
     static let showsSystemPowerDefaultsKey = "showsSystemPower"
+    static let showsPowerBreakdownDefaultsKey = "showsPowerBreakdown"
     static let showsHighEnergyAppsDefaultsKey = "showsHighEnergyApps"
     static let highEnergyAppsRefreshIntervalDefaultsKey = "highEnergyAppsRefreshIntervalSeconds"
     static let highEnergyAppsRefreshIntervalRange: ClosedRange<Double> = 10...60
@@ -261,6 +262,9 @@ final class SettingsStore: ObservableObject {
     @Published var showsSystemPower: Bool {
         didSet { defaults.set(showsSystemPower, forKey: Self.showsSystemPowerDefaultsKey) }
     }
+    @Published var showsPowerBreakdown: Bool {
+        didSet { defaults.set(showsPowerBreakdown, forKey: Self.showsPowerBreakdownDefaultsKey) }
+    }
     @Published var showsHighEnergyApps: Bool {
         didSet { defaults.set(showsHighEnergyApps, forKey: Self.showsHighEnergyAppsDefaultsKey) }
     }
@@ -277,7 +281,8 @@ final class SettingsStore: ObservableObject {
 
     var batteryPowerDisplayOptions: BatteryPowerDisplayOptions {
         BatteryPowerDisplayOptions(showsInput: showsChargerInputPower,
-            showsCharging: showsBatteryChargingPower, showsSystem: showsSystemPower)
+            showsCharging: showsBatteryChargingPower, showsSystem: showsSystemPower,
+            showsBreakdown: showsPowerBreakdown)
     }
 
     @Published var showsChargeToFullNowButton: Bool {
@@ -1480,6 +1485,7 @@ final class SettingsStore: ObservableObject {
         self.showsChargerInputPower = defaults.object(forKey: Self.showsChargerInputPowerDefaultsKey) as? Bool ?? false
         self.showsBatteryChargingPower = defaults.object(forKey: Self.showsBatteryChargingPowerDefaultsKey) as? Bool ?? true
         self.showsSystemPower = defaults.object(forKey: Self.showsSystemPowerDefaultsKey) as? Bool ?? true
+        self.showsPowerBreakdown = defaults.object(forKey: Self.showsPowerBreakdownDefaultsKey) as? Bool ?? true
         self.showsHighEnergyApps = defaults.object(forKey: Self.showsHighEnergyAppsDefaultsKey) as? Bool ?? false
         self.highEnergyAppsRefreshIntervalSeconds = Self.clampedHighEnergyAppsRefreshInterval(
             defaults.object(forKey: Self.highEnergyAppsRefreshIntervalDefaultsKey) as? Double
