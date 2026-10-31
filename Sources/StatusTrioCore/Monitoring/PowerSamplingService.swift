@@ -9,9 +9,10 @@ import Foundation
 /// sample another surface is still using, and the SMC is never read twice for
 /// the same refresh.
 ///
-/// Cadence follows the active demand: a panel or a details page is being read
-/// by a person, so it gets the 2-second detail rhythm; an icon that keeps
-/// showing watts while the panel is closed uses the 5-second idle rhythm.
+/// Every demand shares one 2-second rhythm: an icon that keeps showing watts is
+/// as live as an open panel, and the sampler still stops once the last demand
+/// ends. This keeps periodic reads alive while power is drawn — it is not a
+/// promise of no extra wakeups.
 @MainActor
 final class PowerSamplingService: ObservableObject {
     enum Demand: Hashable, Sendable {
@@ -26,21 +27,12 @@ final class PowerSamplingService: ObservableObject {
 
     typealias Reader = @Sendable () -> SystemPowerSample?
 
-    static let detailedInterval: Duration = .seconds(2)
-    static let iconOnlyInterval: Duration = .seconds(5)
+    static let interval: Duration = .seconds(2)
 
     @Published private(set) var systemPower: SystemPowerSample?
-    /// Exposed for tests and diagnostics; production reads `wantsDetailedCadence`.
+    /// Exposed for tests and diagnostics.
     private(set) var demands: Set<Demand> = []
     private(set) var isRunning = false
-
-    var wantsDetailedCadence: Bool {
-        demands.contains(.panel) || demands.contains(.details)
-    }
-
-    var currentInterval: Duration {
-        wantsDetailedCadence ? Self.detailedInterval : Self.iconOnlyInterval
-    }
 
     private static let queue = DispatchQueue(
         label: "com.lingsmbp.StatusTrio.power-sampling",
@@ -48,7 +40,6 @@ final class PowerSamplingService: ObservableObject {
     )
     private let reader: Reader
     private var loopTask: Task<Void, Never>?
-    private var runningDetailedCadence: Bool?
     private var generation = 0
     private var inFlight = false
     private var needsRefresh = false
@@ -65,21 +56,14 @@ final class PowerSamplingService: ObservableObject {
         if !isRunning {
             isRunning = true
             startLoop()
-        } else if runningDetailedCadence != wantsDetailedCadence {
-            // The remaining idle sleep must not delay the new 2 s cadence.
-            startLoop()
         }
-        // The first demand or a cadence change must not wait a full cycle.
+        // The first demand must not wait a full cycle.
         refresh()
     }
 
     func end(_ demand: Demand) {
         guard demands.remove(demand) != nil else { return }
-        if demands.isEmpty {
-            stopLoop()
-        } else if runningDetailedCadence != wantsDetailedCadence {
-            startLoop()
-        }
+        if demands.isEmpty { stopLoop() }
     }
 
     func stopAll() {
@@ -117,14 +101,12 @@ final class PowerSamplingService: ObservableObject {
 
     private func startLoop() {
         generation += 1
-        runningDetailedCadence = wantsDetailedCadence
         loopTask?.cancel()
         loopTask = Task { @MainActor [weak self] in
             while !Task.isCancelled {
                 guard let self else { return }
-                let interval = self.currentInterval
                 do {
-                    try await Task.sleep(for: interval, tolerance: .milliseconds(200))
+                    try await Task.sleep(for: Self.interval, tolerance: .milliseconds(200))
                 } catch {
                     return
                 }
@@ -137,7 +119,6 @@ final class PowerSamplingService: ObservableObject {
     private func stopLoop() {
         loopTask?.cancel()
         loopTask = nil
-        runningDetailedCadence = nil
         isRunning = false
         generation += 1
         needsRefresh = false

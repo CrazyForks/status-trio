@@ -22,13 +22,12 @@ never cuts a sample the details page or the icon still needs. `BatteryDetailsRea
 receives the shared sample instead of opening its own system-power connection,
 so the same refresh is never read twice.
 
-Cadence follows the active demand:
+Cadence is a single **2-second** rhythm for every demand: the panel, the
+details page and an icon that keeps showing watts are equally live. The sampler
+still stops as soon as the last demand ends.
 
-- **2 seconds** while the panel or a details page is open;
-- **5 seconds** while only the icon needs it.
-
-These are demand changes, not a promise of lower wakeups: an icon that keeps
-showing watts keeps a periodic read alive. A stopped sampler clears its last
+This is not a promise of no extra wakeups: an icon that keeps showing watts
+keeps a periodic read alive. A stopped sampler clears its last
 value; a value that stops refreshing cannot be mistaken for a current one.
 
 ## Rendering

@@ -12,37 +12,26 @@ final class PowerSamplingServiceTests: XCTestCase {
         PowerSamplingService(reader: reader)
     }
 
-    func testDemandSelectsTheCadenceAndOnlyTheLastDemandStopsIt() {
+    func testEverySurfaceSharesOneCadenceAndOnlyTheLastDemandStopsIt() {
         let service = makeService { nil }
 
         XCTAssertFalse(service.isRunning)
+        XCTAssertEqual(PowerSamplingService.interval, .seconds(2))
 
         service.begin(.icon)
         XCTAssertTrue(service.isRunning)
-        XCTAssertEqual(service.currentInterval, .seconds(5))
-        XCTAssertFalse(service.wantsDetailedCadence)
 
         service.begin(.panel)
-        XCTAssertEqual(service.currentInterval, .seconds(2))
-        XCTAssertTrue(service.wantsDetailedCadence)
+        service.begin(.details)
 
-        // Closing the panel must not cut the icon's sample.
+        // Closing the panel and the details page must not cut the icon's sample.
         service.end(.panel)
+        service.end(.details)
         XCTAssertTrue(service.isRunning)
-        XCTAssertEqual(service.currentInterval, .seconds(5))
 
         service.end(.icon)
         XCTAssertFalse(service.isRunning)
         XCTAssertTrue(service.demands.isEmpty)
-    }
-
-    func testDetailsDemandAlsoUsesTheDetailedCadence() {
-        let service = makeService { nil }
-        service.begin(.icon)
-        service.begin(.details)
-        XCTAssertEqual(service.currentInterval, .seconds(2))
-        service.end(.details)
-        service.end(.icon)
     }
 
     func testRepeatedBeginIsIdempotent() {
