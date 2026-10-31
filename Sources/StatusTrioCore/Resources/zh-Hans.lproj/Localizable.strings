@@ -8,6 +8,7 @@
 "menu.window" = "窗口";
 "menu.closeWindow" = "关闭窗口";
 "menu.checkForUpdates" = "检查更新…";
+"menu.openMenuBarSettings" = "打开系统菜单栏";
 "settings.title" = "设置";
 "settings.page.appearance" = "外观";
 "settings.page.general" = "通用";

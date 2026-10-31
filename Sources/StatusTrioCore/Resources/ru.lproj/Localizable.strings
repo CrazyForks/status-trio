@@ -8,6 +8,7 @@
 "menu.window" = "Окно";
 "menu.closeWindow" = "Закрыть окно";
 "menu.checkForUpdates" = "Проверить обновления…";
+"menu.openMenuBarSettings" = "Открыть настройки строки меню";
 "settings.title" = "Настройки";
 "settings.page.appearance" = "Оформление";
 "settings.page.general" = "Основные";

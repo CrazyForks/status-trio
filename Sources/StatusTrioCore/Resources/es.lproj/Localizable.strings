@@ -8,6 +8,7 @@
 "menu.window" = "Ventana";
 "menu.closeWindow" = "Cerrar ventana";
 "menu.checkForUpdates" = "Buscar actualizaciones…";
+"menu.openMenuBarSettings" = "Abrir ajustes de la barra de menús";
 "settings.title" = "Ajustes";
 "settings.page.appearance" = "Aspecto";
 "settings.page.general" = "General";

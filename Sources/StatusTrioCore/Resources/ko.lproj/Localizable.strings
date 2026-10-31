@@ -8,6 +8,7 @@
 "menu.window" = "윈도우";
 "menu.closeWindow" = "윈도우 닫기";
 "menu.checkForUpdates" = "업데이트 확인…";
+"menu.openMenuBarSettings" = "메뉴 막대 설정 열기";
 "settings.title" = "설정";
 "settings.page.appearance" = "모양";
 "settings.page.general" = "일반";

@@ -13,7 +13,7 @@ private struct StatusBarAccessibilityKey: Equatable {
 }
 
 @MainActor
-final class StatusBarController: NSObject, NSPopoverDelegate {
+final class StatusBarController: NSObject {
     static let popoverToggleLockoutInterval: TimeInterval = 0.25
     static let popoverContentReleaseDelay: TimeInterval = 5
 
@@ -41,7 +41,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     }
 
     private let statusItem: NSStatusItem
-    private let popover = NSPopover()
+    private let popover = AnchoredStatusPanel()
     private let store: SystemStatusStore
     private let settings: SettingsStore
     private let panelActions: StatusPanelActions
@@ -96,7 +96,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     var sublayerCountForTesting: Int { statusItem.button?.layer?.sublayers?.count ?? 0 }
     var cachedChargingFrameRebuildCount: Int { chargingFrameCache.rebuildCount }
     var rasterizedChargingFrameCount: Int { chargingFrameCache.rasterizedFrameCount }
-    var popoverForTesting: NSPopover { popover }
+    var popoverForTesting: AnchoredStatusPanel { popover }
     var popoverAnchorWindowForTesting: NSWindow? { popoverAnchorWindow }
     var panelForTesting: StatusPanelViewModel { panelViewModel }
     /// Invokes once when the controller clears a present
@@ -391,8 +391,11 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     }
 
     private func configurePopover() {
-        popover.behavior = .transient
-        popover.delegate = self
+        // The panel replaces NSPopover (issue #186); close teardown runs through
+        // the panel's own callback instead of NSPopoverDelegate.
+        popover.onClose = { [weak self] in
+            self?.handlePanelDidClose()
+        }
     }
 
     private func installPopoverContentIfNeeded() {
@@ -415,17 +418,18 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
                 openSoundSettings: { self.handleOpenSoundSettings() },
                 openSoundInputSettings: { self.handleOpenSoundInputSettings() },
                 openKeyboardSettings: { self.handleOpenKeyboardSettings() },
-                quit: quitAction
+                quit: quitAction,
+                dismissPanel: { [weak self] in self?.closePopover() }
             )
         }
-        let hostingController = NSHostingController(rootView: rootView)
+        let hostingController = StatusPanelHostingController(rootView: rootView)
         if #available(macOS 14.0, *) {
             // The Ventura hosting pass can recurse while AppKit installs the
-            // popover content. Leave sizing to the popover's measured content
-            // there, and keep preferred sizing on the newer path.
+            // panel content. Leave sizing to the measured content there, and
+            // keep preferred sizing on the newer path.
             hostingController.sizingOptions = [.preferredContentSize]
         }
-        popover.contentViewController = hostingController
+        popover.installContent(hostingController)
     }
 
     private func togglePopover() {
@@ -636,6 +640,12 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         guard !isPopoverClosing else { return }
         isPopoverClosing = true
         popover.performClose(nil)
+        // The panel's close is synchronous. If it was already off screen the
+        // panel intentionally posts no close callback, so never leave the gate
+        // stuck closed for the next shortcut/toggle.
+        if !popover.isShown {
+            isPopoverClosing = false
+        }
     }
 
     /// The Dock icon has no public frame, but the click happens on the icon, so
@@ -799,7 +809,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         volumeScrollSession.reset()
     }
 
-    func popoverDidClose(_ notification: Notification) {
+    private func handlePanelDidClose() {
         let popoverWindow = popover.contentViewController?.view.window
         dockActivationLogger.notice(
             """

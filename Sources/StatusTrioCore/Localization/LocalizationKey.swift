@@ -48,6 +48,7 @@ enum LocalizationKey: String, CaseIterable, Hashable, Sendable {
     case menuQuit = "menu.quit"
     case menuMore = "menu.more"
     case menuAbout = "menu.about"
+    case menuOpenMenuBarSettings = "menu.openMenuBarSettings"
     case menuHide = "menu.hide"
     case menuHideOthers = "menu.hideOthers"
     case menuShowAll = "menu.showAll"

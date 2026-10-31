@@ -166,3 +166,25 @@ version or for the complete application's animation and lifecycle. See the
 [integration and verification scope](verification/issue-165-template-image-view.md).
 The [earlier experiments](verification/inactive-display-icon-dimming.md) describe
 the rejected full-raster and template-button arrangements.
+
+## Custom status panel instead of `NSPopover`
+
+The status panel is a custom borderless `NSPanel` rather than an `NSPopover`,
+because AppKit has no public API to remove the popover's arrow (issue #186).
+The visible result is the same panel without the arrow, but a few popover
+behaviours are intentionally not reproduced:
+
+- The panel repositions when it is shown, when its content size changes and when
+  the screen configuration changes. It does not continuously follow the status
+  item frame while it is open.
+- There is no popover show/close animation and no detach-by-drag interaction.
+- Clicking another window of this app (for example an already-open Settings
+  window) does not dismiss the panel. Clicking another app, the status item,
+  pressing Escape, or choosing any panel action closes it; actions that open
+  Settings close it explicitly.
+- The glass background uses public `NSGlassEffectView` (macOS 26+) or
+  `NSVisualEffectView` (macOS 13–25), not the private `NSPopoverFrame`. See
+  [the issue #186 verification record](verification/issue-186-arrowless-status-panel.md).
+- The Reduce Transparency state is read when the panel background is built.
+  Toggling it while the retained content is still cached applies on the next
+  content rebuild (the five-second retention window after close), not live.

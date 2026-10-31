@@ -8,6 +8,7 @@
 "menu.window" = "نافذة";
 "menu.closeWindow" = "إغلاق النافذة";
 "menu.checkForUpdates" = "التحقق من وجود تحديثات…";
+"menu.openMenuBarSettings" = "فتح إعدادات شريط القوائم";
 "settings.title" = "الإعدادات";
 "settings.page.appearance" = "المظهر";
 "settings.page.general" = "عام";
