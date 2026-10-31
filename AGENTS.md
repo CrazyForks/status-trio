@@ -217,13 +217,24 @@ detailed release and recovery rules.
   running app/process from it. Never use destructive bulk deletion.
 - Do not alter another agent's worktree, shared branch, or uncommitted files.
 
-## Codex Native Computer Use
+## Background UI Testing
 
+- Every agent/harness testing UI while the user continues working must read
+  `.agents/skills/background-ui-testing/SKILL.md`. It defines the common
+  non-interference contract; this section supplies Status Trio's adapter.
+  A secondary display does not isolate focus or input. Establish the active
+  harness's capabilities before live attachment/input and stop unsafe steps.
+- Scope every acceptance claim to its actual app instance, harness, controls,
+  and observation interval. Check that manual actions occurred before the
+  recording deadline; expired sampling is not zero interference. Report
+  functional behavior and background non-activation separately.
 - Start an isolated Debug test instance with
   `bash scripts/launch-computer-use.sh [--display secondary]`. This always builds
   through `build-worktree.sh`, checks this branch's dev identity, and starts a
   new background test process. Release does not interpret the test flags.
-- Use Codex native Computer Use only. First trace foreground PID/Bundle ID with
+- Status Trio currently permits Codex native Computer Use only. The reusable
+  skill does not authorize another GUI provider for this project.
+  First trace foreground PID/Bundle ID with
   the bounded `scripts/measure-ui-focus.swift` tool; continue a background step
   only when its actual setting change, sidebar navigation and screenshot work
   without a foreground transition. Do not activate an app and restore focus.
@@ -243,6 +254,8 @@ detailed release and recovery rules.
   A non-test instance or a Bundle ID collision stops the launch. It never
   terminates production or other worktrees. See
   `docs/background-computer-use-testing.md` for evidence and rollback.
+- Restore this run's isolated preference changes and stop its observers and
+  test instance after testing. Preserve concurrent user/agent changes.
 
 ## Project Skills
 
