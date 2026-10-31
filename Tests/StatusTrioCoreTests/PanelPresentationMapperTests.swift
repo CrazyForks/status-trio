@@ -88,12 +88,8 @@ final class PanelPresentationMapperTests: XCTestCase {
             now: now,
             localization: makeLocalization(.english)
         )
-        XCTAssertEqual(on.powerInfoBar?.items.map(\.id), [
-            LocalizationKey.powerInfoBarInput.rawValue,
-            LocalizationKey.powerInfoBarBattery.rawValue,
-            LocalizationKey.powerInfoBarSystem.rawValue
-        ])
-        XCTAssertEqual(on.powerInfoBar?.items.map(\.value), ["30.2 W", "12.0 W", "18.0 W"])
+        XCTAssertEqual(on.powerInfoBar?.items.map(\.kind), [.input, .battery, .system])
+        XCTAssertEqual(on.powerInfoBar?.items.map(\.value), ["30.20 W", "12.00 W", "18.00 W"])
 
         let off = PanelPresentationMapper.battery(
             battery,
@@ -122,7 +118,7 @@ final class PanelPresentationMapperTests: XCTestCase {
             now: now,
             localization: makeLocalization(.english)
         )
-        XCTAssertEqual(row.powerInfoBar?.items.map(\.id), [LocalizationKey.powerInfoBarInput.rawValue],
+        XCTAssertEqual(row.powerInfoBar?.items.map(\.kind), [.input],
                        "A no-battery Mac hides the battery rail; missing system power is absent")
     }
 

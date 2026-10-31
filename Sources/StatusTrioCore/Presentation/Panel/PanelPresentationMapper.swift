@@ -64,31 +64,19 @@ enum PanelPresentationMapper {
     ) -> PowerInfoBarState? {
         let locale = localization.resolvedLanguage.locale
         func watts(_ value: Double) -> String {
-            value.formatted(.number.precision(.fractionLength(1)).locale(locale)) + " W"
+            value.formatted(.number.precision(.fractionLength(2)).locale(locale)) + " W"
         }
         var items: [PowerInfoBarItem] = []
         if let inputPower, inputPower.watts.isFinite, inputPower.isFresh(at: now) {
-            items.append(PowerInfoBarItem(
-                id: LocalizationKey.powerInfoBarInput.rawValue,
-                title: .powerInfoBarInput,
-                value: watts(inputPower.watts)
-            ))
+            items.append(PowerInfoBarItem(kind: .input, value: watts(inputPower.watts)))
         }
         if status.isPresent, let batteryPower, batteryPower.watts.isFinite, batteryPower.isFresh(at: now) {
             // Battery power keeps its own sign out of the label; the magnitude
             // is the flow into (or out of) the pack, never folded into system.
-            items.append(PowerInfoBarItem(
-                id: LocalizationKey.powerInfoBarBattery.rawValue,
-                title: .powerInfoBarBattery,
-                value: watts(abs(batteryPower.watts))
-            ))
+            items.append(PowerInfoBarItem(kind: .battery, value: watts(abs(batteryPower.watts))))
         }
         if let systemPower, systemPower.watts.isFinite, systemPower.isFresh(at: now) {
-            items.append(PowerInfoBarItem(
-                id: LocalizationKey.powerInfoBarSystem.rawValue,
-                title: .powerInfoBarSystem,
-                value: watts(systemPower.watts)
-            ))
+            items.append(PowerInfoBarItem(kind: .system, value: watts(systemPower.watts)))
         }
         return items.isEmpty ? nil : PowerInfoBarState(items: items)
     }
