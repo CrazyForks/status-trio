@@ -25,6 +25,25 @@ final class WiFiNetworkScanCadenceTests: XCTestCase {
         )
     }
 
+    func testDeniedPermissionNeverScansAndGrantRefreshesImmediately() async {
+        let scanner = FakeWiFiNetworkScanner()
+        let controller = makeController(scanner: scanner)
+        controller.activate(nameAccess: .denied)
+        await waitUntil { controller.state == .permissionDenied }
+        XCTAssertEqual(scanner.scanCount, 0)
+        controller.refreshNow(nameAccess: .denied)
+        await Task.yield()
+        XCTAssertEqual(scanner.scanCount, 0)
+        controller.refresh(nameAccess: .authorized)
+        await waitUntil { controller.state == .ready }
+        XCTAssertEqual(scanner.scanCount, 1)
+        controller.refresh(nameAccess: .restricted)
+        await waitUntil { controller.state == .permissionDenied }
+        XCTAssertTrue(controller.networks.isEmpty)
+        XCTAssertEqual(scanner.scanCount, 1)
+        controller.deactivate()
+    }
+
     func testActivationScansOnce() async {
         let scanner = FakeWiFiNetworkScanner()
         let controller = makeController(scanner: scanner)
@@ -214,6 +233,7 @@ final class WiFiNetworkScanCadenceTests: XCTestCase {
         )
 
         store.activateWiFiPanel()
+        networks.refresh(nameAccess: .authorized)
         await waitUntil { scanner.scanCount == 1 }
         _ = await sleeper.waitForCallCount(1, timeout: .seconds(1))
         XCTAssertTrue(store.hasOpenPopoverPanel)
@@ -242,6 +262,7 @@ final class WiFiNetworkScanCadenceTests: XCTestCase {
         )
 
         store.activateWiFiPanel()
+        networks.refresh(nameAccess: .authorized)
         await waitUntil { scanner.scanCount == 1 }
         store.closePopoverDetails()
 
