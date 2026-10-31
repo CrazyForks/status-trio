@@ -33,8 +33,9 @@ two-display setup that this I+ arrangement passed both the #112 slow Space-drag
 check and an unfocused-display visual check, with the colour ring appearing
 dimmed and desaturated on the inactive display. Those are **maintainer-observed
 probe results, not automated Space-gesture or dimming tests**; no gesture video
-or exhaustive OS/appearance matrix was captured. This change adds no focus
-detector, dimming compensation, opacity heuristic, settings or permission.
+or exhaustive OS/appearance matrix was captured. This baseline commit adds no
+focus detector, dimming compensation, opacity heuristic, settings or permission;
+the #193 commit on top adds only the per-role colour settings.
 
 ## Automated verification
 
@@ -53,7 +54,19 @@ detector, dimming compensation, opacity heuristic, settings or permission.
   `IconSceneRendererParityTests`, `ChargingEffectRenderingTests`,
   `Issue30WiFiAlignmentTests`, `IconSurfaceIntegrationTests`,
   `StatusBarTemplateImagePresenterTests`, `StatusBarChargingAnimationTickTests`
-  pass unchanged (the static charging fingerprint did not move).
+  pass unchanged. The static charging fingerprint test was not loosened; one
+  concurrent full-suite run produced an unexplained `55ad…` variant that
+  differed only inside the Wi-Fi glyph (ring and volume pixels identical, the
+  ink-offset measurement and symbol bounds unchanged). No new hash was approved
+  and no tolerance was widened; the final full run passed without it. It stays
+  a documented finding rather than a fixed cause.
+- `ChargingEffectFrameCacheTests` builds its expected pixels from the same
+  opaque-ink environment instead of the previous translucent `labelColor`, and
+  `Support/AppIcon.icon/Assets/AppIcon-{light,dark}.png` were regenerated from
+  the renderer so the committed bundle artwork matches the new semantic green.
+  The AppIcon fingerprint table was re-recorded for this local environment; the
+  prior CI/headless pair is not claimed and must be re-recorded on that
+  hardware (NOT RUN here).
 
 Commands (all run locally on the tested worktree):
 

@@ -34,11 +34,15 @@ struct IconSceneState: Equatable, Hashable, Sendable {
     let outerRing: OuterRingState?
     let center: CenterState?
     let footer: FooterState?
+    /// Per-role battery colour overrides; `.standard` follows the semantic
+    /// colours. Part of the scene so every surface and cache key sees it.
+    let statusColors: BatteryStatusColors
 
     init(
         outerRing: OuterRingState? = nil,
         center: CenterState? = nil,
-        footer: FooterState? = nil
+        footer: FooterState? = nil,
+        statusColors: BatteryStatusColors = .standard
     )
 }
 ```
