@@ -79,13 +79,15 @@ another explicit confirmation. A failed request is not proof of restoration:
 check the charge limit in System Settings and restore it there if needed.
 
 The same cancellation is offered when the override starts from the macOS
-battery menu instead. macOS removes the persisted policy from the
-world-readable `powerd` charging plist while that override runs, so the row
-uses the live plist value when it is still present and otherwise the last
-limit the app observed. A remembered value requires an explicit confirmation
-before the write. If neither source yields a usable limit, the row stays
-hidden rather than guessing a value; restore the limit in System Settings in
-that case.
+battery menu instead. It only appears while the battery can still charge: at
+100%, already charged, or unplugged, the row hides like the native action
+disappears. macOS removes the persisted policy from the world-readable
+`powerd` charging plist while that override runs, so the row uses the live
+plist value when it is still present and otherwise the last limit the app
+observed. A remembered value requires an explicit confirmation before the
+write. Clearing the limit (enabling the 100% setting) forgets the remembered
+value. If neither source yields a usable limit, the row stays hidden rather
+than guessing a value; restore the limit in System Settings in that case.
 
 After a successful cancel, the action area keeps a **Charge limit restored**
 status instead of immediately offering **Charge to Full Now** again. The

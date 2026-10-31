@@ -71,6 +71,7 @@ final class VolatileChargeToFullNowSessionStore: ChargeToFullNowSessionStoring {
 protocol ChargeLimitMemoryStoring: AnyObject {
     func load() -> Int?
     func save(_ limit: Int)
+    func clear()
 }
 
 @MainActor
@@ -94,6 +95,10 @@ final class UserDefaultsChargeLimitMemoryStore: ChargeLimitMemoryStoring {
     func save(_ limit: Int) {
         defaults.set(limit, forKey: Self.defaultsKey)
     }
+
+    func clear() {
+        defaults.removeObject(forKey: Self.defaultsKey)
+    }
 }
 
 @MainActor
@@ -110,5 +115,9 @@ final class VolatileChargeLimitMemoryStore: ChargeLimitMemoryStoring {
 
     func save(_ limit: Int) {
         self.limit = limit
+    }
+
+    func clear() {
+        limit = nil
     }
 }

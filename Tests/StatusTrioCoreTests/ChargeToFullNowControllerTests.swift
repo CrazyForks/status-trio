@@ -185,6 +185,41 @@ final class ChargeToFullNowControllerTests: XCTestCase {
         XCTAssertEqual(second.presentation, .chargingToFull)
     }
 
+    func testSystemStartedOverrideHidesWhenTheBatteryIsAlreadyFull() {
+        let backend = StubBatteryChargeController(deviceState: .temporaryOverride)
+        let controller = ChargeToFullNowController(
+            backend: backend,
+            persistedChargeLimit: { 80 }
+        )
+
+        controller.update(demand(percentage: 100, isCharged: true))
+
+        XCTAssertEqual(controller.presentation, .hidden)
+    }
+
+    func testClearingTheChargeLimitForgetsTheRememberedValue() {
+        let memory = VolatileChargeLimitMemoryStore(limit: 80)
+        let backend = StubBatteryChargeController(deviceState: activeLimit(80))
+        let controller = ChargeToFullNowController(
+            backend: backend,
+            limitMemory: memory
+        )
+        controller.update(demand(percentage: 90))
+        XCTAssertEqual(memory.load(), 80)
+
+        backend.deviceState = ChargeToFullNowDeviceState(
+            mclEnabledRawValue: 1,
+            mclLimit: 100,
+            chargingOverrideAllowed: false
+        )
+        controller.update(demand(percentage: 100, isCharged: true))
+        XCTAssertNil(memory.load())
+
+        backend.deviceState = .temporaryOverride
+        controller.update(demand(percentage: 90, isCharging: true))
+        XCTAssertEqual(controller.presentation, .hidden)
+    }
+
     func testRestoredLimitHoldsUntilTheBatteryReachesIt() async {
         let backend = StubBatteryChargeController(deviceState: activeLimit(95))
         let controller = ChargeToFullNowController(
@@ -941,6 +976,10 @@ final class ChargeToFullNowControllerTests: XCTestCase {
         )
 
         defaults.set(10, forKey: UserDefaultsChargeLimitMemoryStore.defaultsKey)
+        XCTAssertNil(store.load())
+
+        store.save(85)
+        store.clear()
         XCTAssertNil(store.load())
     }
 

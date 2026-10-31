@@ -162,9 +162,12 @@ final class ChargeToFullNowController: ObservableObject {
         }
 
         // A confirmation is an explicit user step. Keep it across live battery
-        // ticks; the next tap re-reads the state before any write.
+        // ticks, but drop it once its target is gone; the next tap re-reads the
+        // state before any write anyway.
         if case .cancelConfirmationRequired = presentation {
-            return
+            if session != nil || externalRestoreTarget(in: state) != nil {
+                return
+            }
         }
 
         if state.errorMessage != nil {
@@ -180,6 +183,10 @@ final class ChargeToFullNowController: ObservableObject {
         if state.hasActiveChargeLimit,
            let reportedLimit = state.reportedChargeLimit {
             rememberLimit(reportedLimit)
+        } else if state.mclEnabledRawValue == 1 {
+            // MCL is enabled without a sub-100 limit: the user cleared the
+            // limit, so a previously remembered value must not resurface.
+            forgetLimit()
         }
 
         if session != nil, state.hasActiveChargeLimit {
@@ -201,8 +208,11 @@ final class ChargeToFullNowController: ObservableObject {
 
         // macOS can start the same temporary override from its own battery
         // menu. There is no session, but a known user limit lets us offer the
-        // same cancellation instead of hiding the row.
-        if externalRestoreTarget(in: state) != nil {
+        // same cancellation instead of hiding the row. Once the battery is
+        // full, unplugged, or already charged there is nothing left to charge
+        // to, so the row disappears like it does for the native action.
+        if demand.canStartChargeToFull,
+           externalRestoreTarget(in: state) != nil {
             publish(.chargingToFull)
             return
         }
@@ -463,6 +473,12 @@ final class ChargeToFullNowController: ObservableObject {
         }
         rememberedLimit = limit
         limitMemory.save(limit)
+    }
+
+    private func forgetLimit() {
+        guard rememberedLimit != nil else { return }
+        rememberedLimit = nil
+        limitMemory.clear()
     }
 
     private func validatedLimit(
