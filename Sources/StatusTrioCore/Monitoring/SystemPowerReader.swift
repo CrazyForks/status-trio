@@ -20,9 +20,6 @@ struct PowerSensorReadings: Equatable, Sendable {
     /// Built-in display backlight power (`PDBR`); `PBwo` on newer chips is not
     /// read yet, so machines without `PDBR` simply report nil.
     var display: SystemPowerSample?
-    /// Chip package power (`PHPC`, the heatpipe sensor). Not a published
-    /// total-SoC figure, so it is never used as one without a breakdown.
-    var soc: SystemPowerSample?
 
     static let empty = Self()
 }
@@ -73,13 +70,10 @@ struct SystemPowerReader: Sendable {
             readings.battery = BatteryPowerSample(volts: volts, amps: amps, updatedAt: readAt)
         }
         #endif
-        // Backlight and chip-package rails are separate SMC keys. A machine
-        // that does not export them reports nil and the caller hides the branch.
+        // Backlight is its own SMC key. A machine that does not export it
+        // reports nil and the caller hides the branch.
         if breakdown, let watts = Self.readValue(sensor: .display, exchange: exchange) {
             readings.display = SystemPowerSample(watts: watts, readAt: readAt)
-        }
-        if breakdown, let watts = Self.readValue(sensor: .soc, exchange: exchange) {
-            readings.soc = SystemPowerSample(watts: watts, readAt: readAt)
         }
         return readings
     }
@@ -88,7 +82,6 @@ struct SystemPowerReader: Sendable {
         case system = 0x50535452 // PSTR, system total
         case input = 0x50445452 // PDTR, adapter input
         case display = 0x50444252 // PDBR, built-in display backlight
-        case soc = 0x50485043 // PHPC, chip package (heatpipe)
         case batteryCurrent = 0x42304143 // B0AC
         case batteryVoltage = 0x42304156 // B0AV
     }
@@ -138,7 +131,6 @@ struct SystemPowerReader: Sendable {
         // A closed lid or a dark backlight can legitimately read 0 W; anything
         // outside the plausible rail range means the key is not this reading.
         case .display: return (0...150).contains(watts) ? watts : nil
-        case .soc: return (0...400).contains(watts) ? watts : nil
         }
     }
 

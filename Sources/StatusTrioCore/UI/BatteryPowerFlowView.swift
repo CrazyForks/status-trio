@@ -7,23 +7,64 @@ struct BatteryPowerFlowView: View {
 
     private var destinations: [BatteryPowerFlowState.Metric] { state.destinations }
     private var isCompact: Bool { destinations.count > 2 }
-    private var nodeHeight: CGFloat { isCompact ? 44 : 60 }
+    private var nodeHeight: CGFloat { isCompact ? 46 : 60 }
     private var pitch: CGFloat { isCompact ? 50 : 70 }
     private var topPadding: CGFloat { isCompact ? 2 : 1 }
-    /// Thickness of a ribbon carrying the whole budget. The compact diagram
-    /// packs more branches into the same column, so each one gets less width.
-    private var ribbonScale: CGFloat { isCompact ? 120 : 46 }
+
+    /// Rows grow with the branch's share of the budget so the card column reads
+    /// in the same proportion as the ribbons: a minimum one-line row, a maximum
+    /// two-line row, linear in between. A row that reaches the label height
+    /// shows the branch name; shorter rows only fit "icon + watts".
+    private static let minRow: CGFloat = 16
+    private static let maxRow: CGFloat = 80
+    private static let labelRow: CGFloat = 34
+    /// Rows at or below this height are too small for the normal type scale;
+    /// their icon, number and padding shrink so a 2-4% branch stays readable
+    /// without looking as heavy as a large one.
+    private static let denseRow: CGFloat = 22
+    private static let rowGap: CGFloat = 6
+    /// The input card holds one number and its label, so it stays a small node;
+    /// the branch column is allowed to grow taller than it.
+    private static let inputCardHeight: CGFloat = 84
+    /// The ribbon bundle is centred in the input card with a 5% margin above
+    /// and below, so it reads as one stream leaving the middle of the card.
+    private static let bundleInset: CGFloat = 0.05
+
+    private func rowHeight(_ index: Int) -> CGFloat {
+        guard isCompact else { return nodeHeight }
+        let share = min(1, max(0, state.flowFraction(for: destinations[index]) ?? 0))
+        return Self.minRow + (Self.maxRow - Self.minRow) * share
+    }
+
+    private func showsLabel(_ index: Int) -> Bool {
+        !isCompact || rowHeight(index) >= Self.labelRow
+    }
+
+    /// Height of the branch column itself, without the view's padding.
+    private var columnHeight: CGFloat {
+        guard !destinations.isEmpty else { return 0 }
+        if !isCompact { return nodeHeight + CGFloat(destinations.count - 1) * pitch }
+        return destinations.indices.reduce(CGFloat.zero) { $0 + rowHeight($1) }
+            + Self.rowGap * CGFloat(destinations.count - 1)
+    }
 
     private var height: CGFloat {
         switch destinations.count {
-        case 0, 1: return 76
-        case 2: return 132
-        default: return topPadding * 2 + nodeHeight + CGFloat(destinations.count - 1) * pitch
+        case 0, 1: return Self.inputCardHeight
+        default: return topPadding * 2 + max(Self.inputCardHeight, columnHeight)
         }
     }
 
     private func centerY(_ index: Int) -> CGFloat {
-        destinations.count == 1 ? height / 2 : topPadding + nodeHeight / 2 + CGFloat(index) * pitch
+        guard isCompact else {
+            return destinations.count == 1 ? height / 2 : topPadding + nodeHeight / 2 + CGFloat(index) * pitch
+        }
+        let rows = destinations.indices.reduce(0) { $0 + rowHeight($1) }
+        let column = rows + Self.rowGap * CGFloat(destinations.count - 1)
+        // A short column sits centred against the taller input card.
+        var top = topPadding + max(0, (Self.inputCardHeight - column) / 2)
+        for row in 0..<index { top += rowHeight(row) + Self.rowGap }
+        return top + rowHeight(index) / 2
     }
 
     private struct Ribbon: Identifiable {
@@ -31,51 +72,85 @@ struct BatteryPowerFlowView: View {
         let startY: CGFloat
         let endY: CGFloat
         let thickness: CGFloat
+        let endThickness: CGFloat
         let color: Color
     }
 
-    /// Ribbons leave the input card stacked by their share of the budget, so
-    /// five branches still read as one bundle instead of overlapping.
-    private func ribbons(center: CGFloat) -> [Ribbon] {
-        let fractions = destinations.map { state.flowFraction(for: $0).map { CGFloat($0) } }
-        let requested = fractions.map { ($0 ?? 0) * ribbonScale }
-        // Independent sensors can add up past the input; shrink the whole
-        // bundle instead of letting it spill outside the card.
-        let available = height - 12
-        let excess = requested.reduce(0, +)
-        let scale = excess > available && excess > 0 ? available / excess : 1
-        let thicknesses = requested.map { $0 * scale }
-        var offset = center - min(available, excess) / 2
-        return destinations.enumerated().map { index, metric in
+    /// Ribbons leave the input card as one bundle that fills it, so the left
+    /// edge reads as a single stream. Every branch that carries power gets a
+    /// minimum width and the rest of the bundle is shared by the branches'
+    /// percentages; a band that would cross into a neighbour is trimmed and the
+    /// trimmed height goes to the bands that still have room.
+    private func ribbons() -> [Ribbon] {
+        let count = destinations.count
+        guard count > 0 else { return [] }
+        let fractions = destinations.map {
+            max(0, state.flowFraction(for: $0).map { CGFloat($0) } ?? 0)
+        }
+        let total = fractions.reduce(0, +)
+        let bundleHeight = Self.inputCardHeight * (1 - 2 * Self.bundleInset)
+        let top = height / 2 - bundleHeight / 2
+        let live = destinations.indices.filter { fractions[$0] > 0 }
+        guard total > 0 else { return [] }
+        let minimum = min(CGFloat(6), bundleHeight / CGFloat(live.count))
+        var thicknesses = Array(repeating: CGFloat.zero, count: count)
+        var remaining = bundleHeight
+        var pending = live
+        // Apply the lower bound only to small shares; preserve proportional
+        // allocation among all branches that remain above it.
+        while !pending.isEmpty {
+            let weight = pending.reduce(CGFloat.zero) { $0 + fractions[$1] }
+            let small = pending.filter { remaining * fractions[$0] / weight < minimum }
+            if small.isEmpty {
+                for index in pending { thicknesses[index] = remaining * fractions[index] / weight }
+                break
+            }
+            for index in small { thicknesses[index] = minimum; remaining -= minimum }
+            pending.removeAll { small.contains($0) }
+        }
+        var offset = top
+        return live.map { index in
             let thickness = thicknesses[index]
-            defer { offset += thickness }
-            return Ribbon(id: index, startY: offset + thickness / 2,
-                          endY: centerY(index), thickness: thickness,
-                          color: Self.color(for: metric.kind))
+            let startY = offset + thickness / 2
+            offset += thickness
+            // The source keeps the branch's full share; only the end is tapered
+            // to fit its card, so a dominant branch does not shrink the others.
+            let endThickness = min(thickness, max(0, rowHeight(index) - 8))
+            return Ribbon(id: index, startY: startY, endY: centerY(index),
+                          thickness: thickness, endThickness: endThickness,
+                          color: Self.color(for: destinations[index].kind))
         }
     }
 
     var body: some View {
         GeometryReader { geometry in
             let width = geometry.size.width
-            let left: CGFloat = state.input == nil ? 0 : 66
-            let right = width - 98
+            // Attach the ribbons to both cards: the input card is 62 wide and
+            // centred at x=31, each branch card is 94 wide at the right edge.
+            let left: CGFloat = state.input == nil ? 0 : 62
+            let right = width - 94
             let center = height / 2
             if state.input != nil, !destinations.isEmpty {
-                ForEach(ribbons(center: center)) { item in
+                ForEach(ribbons().filter { $0.thickness > 0.5 }) { item in
                     ribbon(from: left, to: right, startY: item.startY, endY: item.endY,
-                           thickness: item.thickness, color: item.color)
+                           thickness: item.thickness, endThickness: item.endThickness, color: item.color)
                 }
             }
             if let input = state.input {
-                metric(input, symbol: "powerplug.fill", color: .primary, height: height - 8)
+                metric(input, symbol: "powerplug.fill", color: .primary,
+                       height: Self.inputCardHeight, singleLine: false, iconSize: 15,
+                       iconLeading: false)
                     .frame(width: destinations.isEmpty ? width : 62)
                     .background(.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 14))
                     .position(x: destinations.isEmpty ? width / 2 : 31, y: center)
             }
             ForEach(Array(destinations.enumerated()), id: \.offset) { index, item in
                 metric(item, symbol: Self.symbol(for: item.kind),
-                       color: Self.color(for: item.kind), height: nodeHeight)
+                       color: Self.color(for: item.kind), height: rowHeight(index),
+                       singleLine: isCompact && !showsLabel(index),
+                       dense: isCompact && !showsLabel(index) && rowHeight(index) <= Self.denseRow,
+                       iconSize: isCompact && !showsLabel(index) && rowHeight(index) <= Self.denseRow
+                           ? 10 : Self.iconSize(for: item.kind))
                     .frame(width: state.input == nil ? width : 94)
                     .background(Self.color(for: item.kind).opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
                     .position(x: state.input == nil ? width / 2 : width - 47, y: centerY(index))
@@ -89,9 +164,7 @@ struct BatteryPowerFlowView: View {
         case .charging: return "battery.100.bolt"
         case .display: return "display"
         case .usb: return "cable.connector"
-        case .soc: return "cpu"
-        case .other: return "ellipsis"
-        case .system: return "laptopcomputer"
+        case .system: return "cpu"
         }
     }
 
@@ -100,50 +173,111 @@ struct BatteryPowerFlowView: View {
         case .charging: return .green
         case .display: return .indigo
         case .usb: return .orange
-        case .soc: return .blue
-        case .other: return .gray
         case .system: return .blue
         }
     }
 
-    private func metric(_ value: BatteryPowerFlowState.Metric, symbol: String,
-                        color: Color, height: CGFloat) -> some View {
-        VStack(spacing: isCompact ? 1 : 3) {
-            Image(systemName: symbol)
-                .foregroundStyle(color)
-                .imageScale(isCompact ? .small : .medium)
-                .accessibilityHidden(true)
-            Text(value.value)
-                .font(.system(size: isCompact ? 12 : 13, weight: .semibold, design: .rounded))
-                .monospacedDigit()
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-            Text(value.label)
-                .font(.system(size: isCompact ? 9 : 10))
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.85)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
+    /// SF Symbols do not share one optical weight: the battery glyph reads
+    /// larger than the display and connector glyphs at the same point size.
+    private static func iconSize(for kind: BatteryPowerFlowState.Kind) -> CGFloat {
+        switch kind {
+        case .charging: return 12
+        case .display, .usb, .system: return 13
         }
-        .padding(.horizontal, 3)
+    }
+
+    private func metric(_ value: BatteryPowerFlowState.Metric, symbol: String,
+                        color: Color, height: CGFloat, singleLine: Bool,
+                        dense: Bool = false, iconSize: CGFloat = 14,
+                        iconLeading: Bool = true) -> some View {
+        Group {
+            if iconLeading {
+            // Icon and number share the first row (so the icon reads as part of
+            // that number, not as a separate column) and the branch name sits
+            // underneath, centred. The icon column is fixed so every card puts
+            // its icon on the same vertical line.
+            if singleLine {
+                HStack(spacing: dense ? 4 : 6) {
+                    Image(systemName: symbol)
+                        .foregroundStyle(color)
+                        .font(.system(size: iconSize, weight: .medium))
+                        // Keep the icon column fixed so every row lines its
+                        // icon up, even when the glyph itself is smaller.
+                        .frame(width: 20)
+                        .accessibilityHidden(true)
+                    Text(value.value)
+                        .font(.system(size: dense ? 10 : 11, weight: .semibold, design: .rounded))
+                        .monospacedDigit()
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                VStack(spacing: 1) {
+                    HStack(spacing: 6) {
+                        Image(systemName: symbol)
+                            .foregroundStyle(color)
+                            .font(.system(size: iconSize, weight: .medium))
+                            .frame(width: 20)
+                            .accessibilityHidden(true)
+                        Text(value.value)
+                            .font(.system(size: isCompact ? 12 : 13, weight: .semibold, design: .rounded))
+                            .monospacedDigit()
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    Text(value.label)
+                        .font(.system(size: isCompact ? 9 : 10))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                }
+            }
+            } else {
+                // The narrow input card keeps its icon above the number.
+                VStack(spacing: 3) {
+                    Image(systemName: symbol)
+                        .foregroundStyle(color)
+                        .font(.system(size: 16, weight: .medium))
+                        .accessibilityHidden(true)
+                    Text(value.value)
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .monospacedDigit()
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                    Text(value.label)
+                        .font(.system(size: 10))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+        .padding(.horizontal, 8)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .frame(height: height)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(value.label + ": " + value.value)
+        .accessibilityLabel((value.help ?? value.label) + ": " + value.value)
+        .help(value.help ?? value.label)
     }
 
     private func ribbon(from start: CGFloat, to end: CGFloat, startY: CGFloat,
-                        endY: CGFloat, thickness: CGFloat?, color: Color) -> some View {
+                        endY: CGFloat, thickness: CGFloat?, endThickness: CGFloat, color: Color) -> some View {
         let thickness = max(0, thickness ?? 0)
         return Path { path in
             let control = (end - start) * 0.5
             path.move(to: CGPoint(x: start, y: startY - thickness / 2))
-            path.addCurve(to: CGPoint(x: end, y: endY - thickness / 2),
+            path.addCurve(to: CGPoint(x: end, y: endY - endThickness / 2),
                 control1: CGPoint(x: start + control, y: startY - thickness / 2),
-                control2: CGPoint(x: end - control, y: endY - thickness / 2))
-            path.addLine(to: CGPoint(x: end, y: endY + thickness / 2))
+                control2: CGPoint(x: end - control, y: endY - endThickness / 2))
+            path.addLine(to: CGPoint(x: end, y: endY + endThickness / 2))
             path.addCurve(to: CGPoint(x: start, y: startY + thickness / 2),
-                control1: CGPoint(x: end - control, y: endY + thickness / 2),
+                control1: CGPoint(x: end - control, y: endY + endThickness / 2),
                 control2: CGPoint(x: start + control, y: startY + thickness / 2))
             path.closeSubpath()
         }

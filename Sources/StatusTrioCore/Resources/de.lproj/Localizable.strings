@@ -446,7 +446,8 @@
 "battery.details.unavailable" = "Nicht verfügbar";
 "battery.details.collecting" = "Wird gemessen…";
 "battery.details.loading" = "Wird aktualisiert…";
-"battery.details.explanation" = "Leistungswerte sind Schätzungen unabhängiger Sensoren und können verzögert sein oder abweichen. Die Nennleistung ist nicht die tatsächliche Eingangsleistung. Im Batteriebetrieb wird die Nettoentladung angezeigt. Manche Modelle aktualisieren etwa eine Minute später.";
+"battery.details.explanation" = "Leistungswerte sind Schätzungen; die Erfassung kann bis zu einer Minute verzögert sein.";
+"battery.details.info" = "Hinweise";
 /* Compact popover controls. */
 "menu.more" = "Weitere Aktionen";
 
@@ -544,12 +545,15 @@
 "settings.battery.powerFlow" = "Leistungsfluss im Batteriepanel";
 "settings.battery.powerFlow.description" = "Leistungswerte werden nur bei geöffnetem Batteriepanel aktualisiert. Sensoren können verzögert sein; die drei Werte müssen sich nicht genau addieren.";
 "settings.battery.breakdown" = "Leistung nach Komponenten aufteilen";
-"settings.battery.breakdown.description" = "Zeigt integriertes Display, USB-Ausgang und Chipleistung als eigene Zweige. Nicht messbare Werte werden ausgeblendet; ohne verlässliche Aufteilung erscheint wieder die Systemleistung.";
+"settings.battery.breakdown.description" = "Teilt die Adaptereingangsleistung in integriertes Display, USB-Ausgang und die übrige Systemlast (inklusive SoC) auf. Nicht messbare Werte werden ausgeblendet; ohne verlässliche Aufteilung erscheint wieder die Systemleistung.";
 "settings.battery.energyRefreshInterval" = "Intervall für Hintergrundmessung";
 "settings.battery.energyRefreshInterval.description" = "Wird bei geschlossenem Panel verwendet. Die Batteriedetailseite wird weiterhin alle 5 Sekunden aktualisiert.";
 "battery.power.input" = "Ladeeingang";
+"battery.power.source.battery" = "Batterie";
 "battery.power.charging" = "Zur Batterie";
-"battery.power.system" = "Systemleistung";
+"battery.power.system" = "System";
+"battery.power.system.help" = "Systemleistung (inkl. SoC)";
+"battery.power.system.explanation" = "„System“ ist, was nach Akkuladung, Display und USB übrig bleibt: SoC, Speicher, Display-Controller und weitere nicht einzeln gemessene Lasten.";
 "battery.power.display" = "Display";
 "battery.power.usb" = "USB-Ausgang";
 "battery.power.soc" = "SoC";

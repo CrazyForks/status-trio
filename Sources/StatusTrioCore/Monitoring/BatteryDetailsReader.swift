@@ -81,17 +81,18 @@ struct BatteryDetailsReader: Sendable {
             // tens of seconds during a short charge pulse, and a stale flag
             // must not hide real current that the hardware is already moving.
             // The breakdown residual also needs it even when the branch is hidden.
-            battery: state.isPresent && state.isConnected && (options.showsCharging || options.showsBreakdown),
+            battery: state.isPresent && (state.isConnected || options.showsBreakdown)
+                && (options.showsCharging || options.showsBreakdown),
             breakdown: Self.readsBreakdown(for: state) && options.showsBreakdown
         )
         let now = Date()
         var breakdown: BatteryPowerBreakdown?
-        if options.showsBreakdown, state.isPresent, state.isConnected {
+        if options.showsBreakdown, state.isPresent {
             let resolved = BatteryPowerBreakdown.resolve(
-                input: sensors.input,
+                adapterInput: sensors.input,
                 charging: sensors.battery.map { max(0, $0.watts) },
+                discharge: sensors.battery.map { max(0, -$0.watts) },
                 display: sensors.display,
-                soc: sensors.soc,
                 usb: USBOutputReader.parse(registry: registry, now: now),
                 now: now
             )
@@ -129,10 +130,10 @@ struct BatteryDetailsReader: Sendable {
         state.isPresent && state.isConnected
     }
 
-    /// The split only describes power flowing in from an adapter, so it is
-    /// never sampled on battery.
+    /// The split covers both directions: an adapter feeding the Mac, or the
+    /// pack discharging into it when the charger is idle or absent.
     static func readsBreakdown(for state: BatteryPowerState) -> Bool {
-        state.isPresent && state.isConnected
+        state.isPresent
     }
 
     /// How long a coherent split may stand in while a rail update crosses a

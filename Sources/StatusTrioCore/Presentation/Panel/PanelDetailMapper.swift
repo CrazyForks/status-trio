@@ -62,7 +62,11 @@ enum PanelDetailMapper {
             explanation: localization.string(.batteryDetailsExplanation),
             lifecycleIdentity: "\(battery.isPresent)-\(battery.isConnectedToPower)-\(battery.isCharging)",
             powerFlow: details.flatMap { details -> BatteryPowerFlowState? in
-                guard battery.isConnectedToPower && powerOptions.showsAnyPower else { return nil }
+                // On battery the diagram still has a source (the pack), but only
+                // when a verified split exists; otherwise the legacy flow stays
+                // adapter-only.
+                guard powerOptions.showsAnyPower,
+                      battery.isConnectedToPower || details.breakdown != nil else { return nil }
                 let flow = powerFlow(status: battery, details: details,
                                      options: powerOptions, localization: localization)
                 // Every switch can be off while the split still requests
@@ -76,7 +80,8 @@ enum PanelDetailMapper {
     private static func powerFlow(status: BatteryStatus, details: BatteryDetails,
                                   options: BatteryPowerDisplayOptions, localization: Localization) -> BatteryPowerFlowState {
         func metric(_ label: LocalizationKey, _ watts: Double?,
-                    kind: BatteryPowerFlowState.Kind = .system) -> BatteryPowerFlowState.Metric {
+                    kind: BatteryPowerFlowState.Kind = .system,
+                    help: LocalizationKey? = nil) -> BatteryPowerFlowState.Metric {
             let value = watts.map { watts -> String in
                 // The flow cards are only 62 pt wide. Three-digit values with
                 // two decimals wrap onto a second line, so drop the fraction
@@ -91,8 +96,9 @@ enum PanelDetailMapper {
                 )
                 return number + " W"
             } ?? localization.string(.batteryDetailsUnavailable)
-            return BatteryPowerFlowState.Metric(label: localization.string(label), value: value,
-                                                watts: watts, kind: kind)
+            return BatteryPowerFlowState.Metric(
+                label: localization.string(label), value: value, watts: watts, kind: kind,
+                help: help.map { localization.string($0) })
         }
         // A live positive sample wins over the snapshot's charging flag: during
         // a charge-limit pulse macOS can keep `isCharging` false for tens of
@@ -100,12 +106,20 @@ enum PanelDetailMapper {
         // keep showing "—" (unknown) instead of claiming a real 0 W.
         let sampledCharging = details.power.flatMap { $0.watts > 0 ? $0.watts : nil }
         let charging: Double? = sampledCharging ?? (status.isCharging ? nil : 0)
-        let input = options.showsInput ? metric(.batteryPowerInput, details.inputPower?.watts) : nil
+        // The left node names whichever rail feeds the diagram: the adapter
+        // input, or the pack when it is discharging into the machine.
+        let sourceLabel: LocalizationKey = details.breakdown?.source == .battery
+            ? .batteryPowerBatterySource : .batteryPowerInput
+        let sourceWatts = details.breakdown?.sourceWatts ?? details.inputPower?.watts
+        let input = options.showsInput ? metric(sourceLabel, sourceWatts) : nil
         // A verified split replaces the single system node. Without one the
         // legacy two-branch diagram stays exactly as it was.
         if options.showsBreakdown, let split = details.breakdown {
             var destinations: [BatteryPowerFlowState.Metric] = []
-            if options.showsCharging {
+            // A battery that is not taking current has no flow to draw: showing
+            // a 0.00 W node would claim a branch that does not exist. The pack is
+            // the source, not a destination, when it is discharging.
+            if options.showsCharging, split.source == .adapter, let charging, charging > 0.05 {
                 destinations.append(metric(.batteryPowerCharging, charging, kind: .charging))
             }
             if let display = split.display {
@@ -114,11 +128,11 @@ enum PanelDetailMapper {
             if let usb = split.usb {
                 destinations.append(metric(.batteryPowerUSB, usb.watts, kind: .usb))
             }
-            destinations.append(metric(.batteryPowerSoC, split.soc.watts, kind: .soc))
-            // "Other" is a real residual of the same input budget, so it takes
-            // the system node's place and its switch.
+            // The residual covers the SoC and every DC load not measured above,
+            // so it takes the system node's place and its switch.
             if options.showsSystem {
-                destinations.append(metric(.batteryPowerOther, split.other.watts, kind: .other))
+                destinations.append(metric(.batteryPowerSystem, split.system.watts, kind: .system,
+                                           help: .batteryPowerSystemHelp))
             }
             return BatteryPowerFlowState(input: input, destinations: destinations)
         }

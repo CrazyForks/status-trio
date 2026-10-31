@@ -446,7 +446,8 @@
 "battery.details.unavailable" = "暂不可用";
 "battery.details.collecting" = "采集中…";
 "battery.details.loading" = "更新中…";
-"battery.details.explanation" = "功率为估算值，各传感器读数可能延迟或存在差异，各分项功率不一定完全相加。额定功率并非实际输入。拔电后显示电池放电功率；部分机型的电池数据可能延迟约一分钟。";
+"battery.details.explanation" = "功率为估算值，数据收集会有一定延迟，最多约一分钟。";
+"battery.details.info" = "说明";
 /* Compact popover controls. */
 "menu.more" = "更多操作";
 
@@ -544,12 +545,15 @@
 "settings.battery.powerFlow" = "电池面板功率流向";
 "settings.battery.powerFlow.description" = "功率读数仅在电池面板打开时更新。传感器读数可能延迟，各分项功率不一定完全相加。";
 "settings.battery.breakdown" = "按部件细分功耗";
-"settings.battery.breakdown.description" = "把内建屏、USB 对外供电和芯片功耗拆成独立支路。读不到的分项会隐藏；无法可靠拆分时仍显示系统供电。";
+"settings.battery.breakdown.description" = "把适配器输入拆成内建屏、USB 对外供电和其余系统负载（含 SoC）。读不到的分项会隐藏；无法可靠拆分时仍显示系统总功耗。";
 "settings.battery.energyRefreshInterval" = "后台采样间隔";
 "settings.battery.energyRefreshInterval.description" = "面板关闭时按此间隔采样；打开电池详情后仍每 5 秒刷新。";
 "battery.power.input" = "充电器输入";
+"battery.power.source.battery" = "电池";
 "battery.power.charging" = "充入电池";
-"battery.power.system" = "系统供电";
+"battery.power.system" = "系统功耗";
+"battery.power.system.help" = "系统功耗（含 SoC）";
+"battery.power.system.explanation" = "“系统”是扣除电池充电、显示器和 USB 后的其余负载，包含 SoC、内存与显示控制器等，不是单一传感器读数。";
 "battery.power.display" = "显示器";
 "battery.power.usb" = "USB 供电";
 "battery.power.soc" = "SoC";

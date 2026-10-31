@@ -94,22 +94,18 @@ final class SystemPowerReaderTests: XCTestCase {
         }, "A battery-current type must never be interpreted as adapter watts")
     }
 
-    func testBacklightAndChipRailsUseTheirOwnKeysAndRanges() throws {
+    func testBacklightRailUsesItsOwnKeyAndRange() throws {
         func read(_ sensor: SystemPowerReader.Sensor, key: [UInt8], payload: [UInt8]) -> Double? {
             SystemPowerReader.readValue(sensor: sensor) { request in
                 XCTAssertEqual(Array(request.prefix(4)), key)
                 return request[42] == 9 ? self.info() : self.value(payload)
             }
         }
-        // PDBR and PHPC travel as little-endian key words, like PSTR/PDTR.
+        // PDBR travels as a little-endian key word, like PSTR/PDTR.
         XCTAssertEqual(read(.display, key: [0x52, 0x42, 0x44, 0x50],
                             payload: [0, 0, 0x04, 0x41]), 8.25) // PDBR
-        XCTAssertEqual(read(.soc, key: [0x43, 0x50, 0x48, 0x50],
-                            payload: [0, 0, 0xf8, 0x41]), 31) // PHPC
         XCTAssertEqual(read(.display, key: [0x52, 0x42, 0x44, 0x50], payload: [0, 0, 0, 0]), 0,
                        "A dark backlight is a real zero, not a missing reading")
-        XCTAssertNil(read(.soc, key: [0x43, 0x50, 0x48, 0x50],
-                          payload: [0, 0, 0xfa, 0x43]), "500 W is outside any chip package rail")
         XCTAssertNil(read(.display, key: [0x52, 0x42, 0x44, 0x50],
                           payload: [0, 0, 0x7a, 0x43]), "250 W is outside any backlight rail")
     }

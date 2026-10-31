@@ -7,9 +7,8 @@ struct BatteryPowerFlowState: Equatable, Sendable {
         case charging
         case display
         case usb
-        case soc
-        case other
-        /// Legacy system total, used when no reliable split exists.
+        /// System total: the residual split branch, or the legacy total when no
+        /// reliable split exists.
         case system
     }
 
@@ -18,6 +17,9 @@ struct BatteryPowerFlowState: Equatable, Sendable {
         let value: String
         let watts: Double?
         var kind: Kind = .system
+        /// Longer, unambiguous wording for the tooltip and VoiceOver when the
+        /// card label has to stay short.
+        var help: String? = nil
     }
 
     let input: Metric?
@@ -39,7 +41,7 @@ struct BatteryPowerFlowState: Equatable, Sendable {
     }
 
     var battery: Metric? { destination(.charging) }
-    var system: Metric? { destination(.system) ?? destination(.other) }
+    var system: Metric? { destination(.system) }
 
     var batteryFlowFraction: Double? { flowFraction(battery?.watts) }
     var systemFlowFraction: Double? { flowFraction(system?.watts) }

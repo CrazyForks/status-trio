@@ -234,11 +234,11 @@ final class BatteryDetailsLayoutTests: XCTestCase {
             inputPower: connected
                 ? SystemPowerSample(watts: inputWatts ?? 67, readAt: observedAt) : nil,
             breakdown: breakdown && connected ? BatteryPowerBreakdown(
-                inputWatts: 67,
+                source: .adapter,
+                sourceWatts: 67,
                 display: .init(watts: 8.07, readAt: observedAt),
-                soc: .init(watts: 10.5, readAt: observedAt),
                 usb: .init(watts: 4.5, readAt: observedAt),
-                other: .init(watts: 2.72, readAt: observedAt),
+                system: .init(watts: 13.22, readAt: observedAt),
                 readAt: observedAt) : nil)
         let battery = BatteryStatus(rawPercentage: 80, isPresent: true, isCharging: charging,
                                     isLowPowerMode: false, isConnectedToPower: connected)
