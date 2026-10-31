@@ -592,6 +592,7 @@
 "power.infoBar.input" = "充电器输入";
 "power.infoBar.battery" = "电池充电";
 "power.infoBar.system" = "系统功耗";
+"power.infoBar.notCharging" = "未在充电";
 "battery.power.display" = "显示器";
 "battery.power.usb" = "USB 供电";
 "battery.power.soc" = "SoC";

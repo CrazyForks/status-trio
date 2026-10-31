@@ -164,7 +164,8 @@ final class LocalizationTests: XCTestCase {
             .settingsBatteryPowerInfoBarDescription,
             .powerInfoBarInput,
             .powerInfoBarBattery,
-            .powerInfoBarSystem
+            .powerInfoBarSystem,
+            .powerInfoBarNotCharging
         ]
         for language in AppLanguage.allCases {
             let bundle = try XCTUnwrap(Localization.resourceBundle(for: language))

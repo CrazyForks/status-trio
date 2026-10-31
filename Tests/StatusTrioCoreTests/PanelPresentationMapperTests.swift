@@ -103,6 +103,25 @@ final class PanelPresentationMapperTests: XCTestCase {
         XCTAssertNil(off.powerInfoBar, "The info bar must stay hidden until the setting is on")
     }
 
+    func testPowerInfoBarSaysNotChargingAtZeroBatteryWatts() {
+        let now = Date(timeIntervalSince1970: 1_789_555_974)
+        let localization = makeLocalization(.english)
+        let battery = BatteryStatus(rawPercentage: 80, isPresent: true, isCharging: false,
+                                    isLowPowerMode: false, isConnectedToPower: true)
+        let idleBattery = BatteryPowerSample(volts: 12, amps: 0, updatedAt: now)
+
+        let row = PanelPresentationMapper.battery(
+            battery,
+            batteryPower: idleBattery,
+            showsPowerInfoBar: true,
+            now: now,
+            localization: localization
+        )
+
+        let batteryItem = row.powerInfoBar?.items.first { $0.kind == .battery }
+        XCTAssertEqual(batteryItem?.value, localization.string(.powerInfoBarNotCharging))
+    }
+
     func testPowerInfoBarHidesBatteryAndMissingRails() {
         let now = Date(timeIntervalSince1970: 1_789_555_974)
         let noBattery = BatteryStatus(rawPercentage: nil, isPresent: false, isCharging: false,

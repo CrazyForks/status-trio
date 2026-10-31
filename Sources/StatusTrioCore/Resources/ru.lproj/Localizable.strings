@@ -592,6 +592,7 @@
 "power.infoBar.input" = "Вход зарядного устройства";
 "power.infoBar.battery" = "Заряд батареи";
 "power.infoBar.system" = "Мощность системы";
+"power.infoBar.notCharging" = "Не заряжается";
 "battery.power.display" = "Дисплей";
 "battery.power.usb" = "USB-выход";
 "battery.power.soc" = "SoC";

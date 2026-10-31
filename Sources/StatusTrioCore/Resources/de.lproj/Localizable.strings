@@ -592,6 +592,7 @@
 "power.infoBar.input" = "Ladegeräteingang";
 "power.infoBar.battery" = "Batterieladung";
 "power.infoBar.system" = "Systemleistung";
+"power.infoBar.notCharging" = "Wird nicht geladen";
 "battery.power.display" = "Display";
 "battery.power.usb" = "USB-Ausgang";
 "battery.power.soc" = "SoC";

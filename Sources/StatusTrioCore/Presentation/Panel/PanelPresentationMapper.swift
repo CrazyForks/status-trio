@@ -73,7 +73,15 @@ enum PanelPresentationMapper {
         if status.isPresent, let batteryPower, batteryPower.watts.isFinite, batteryPower.isFresh(at: now) {
             // Battery power keeps its own sign out of the label; the magnitude
             // is the flow into (or out of) the pack, never folded into system.
-            items.append(PowerInfoBarItem(kind: .battery, value: watts(abs(batteryPower.watts))))
+            // A pack sitting at 0 W is idle, not charging, so say that instead
+            // of printing a misleading 0.0 W.
+            let magnitude = abs(batteryPower.watts)
+            items.append(PowerInfoBarItem(
+                kind: .battery,
+                value: magnitude < 0.05
+                    ? localization.string(.powerInfoBarNotCharging)
+                    : watts(magnitude)
+            ))
         }
         if let systemPower, systemPower.watts.isFinite, systemPower.isFresh(at: now) {
             items.append(PowerInfoBarItem(kind: .system, value: watts(systemPower.watts)))

@@ -592,6 +592,7 @@
 "power.infoBar.input" = "دخل الشاحن";
 "power.infoBar.battery" = "شحن البطارية";
 "power.infoBar.system" = "طاقة النظام";
+"power.infoBar.notCharging" = "لا يتم الشحن";
 "battery.power.display" = "الشاشة";
 "battery.power.usb" = "خرج USB";
 "battery.power.soc" = "SoC";

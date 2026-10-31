@@ -592,6 +592,7 @@
 "power.infoBar.input" = "Ingresso caricatore";
 "power.infoBar.battery" = "Carica batteria";
 "power.infoBar.system" = "Potenza sistema";
+"power.infoBar.notCharging" = "Non in carica";
 "battery.power.display" = "Display";
 "battery.power.usb" = "Uscita USB";
 "battery.power.soc" = "SoC";
