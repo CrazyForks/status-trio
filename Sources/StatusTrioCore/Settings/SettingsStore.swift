@@ -29,10 +29,7 @@ final class SettingsStore: ObservableObject {
     static let batterySymbolScaleRange: ClosedRange<Double> = 0.9...1.1
     static let defaultBatterySymbolScale: Double = 1
     static let showsBatteryPercentageDefaultsKey = "showsBatteryPercentage"
-    static let showsChargerInputPowerDefaultsKey = "showsChargerInputPower"
-    static let showsBatteryChargingPowerDefaultsKey = "showsBatteryChargingPower"
-    static let showsSystemPowerDefaultsKey = "showsSystemPower"
-    static let showsPowerBreakdownDefaultsKey = "showsPowerBreakdown"
+    static let showsBatteryPowerFlowDefaultsKey = "showsBatteryPowerFlow"
     static let showsBatteryPowerInfoBarDefaultsKey = "showsBatteryPowerInfoBar"
     static let showsHighEnergyAppsDefaultsKey = "showsHighEnergyApps"
     static let highEnergyAppsRefreshIntervalDefaultsKey = "highEnergyAppsRefreshIntervalSeconds"
@@ -264,17 +261,11 @@ final class SettingsStore: ObservableObject {
         }
     }
 
-    @Published var showsChargerInputPower: Bool {
-        didSet { defaults.set(showsChargerInputPower, forKey: Self.showsChargerInputPowerDefaultsKey) }
-    }
-    @Published var showsBatteryChargingPower: Bool {
-        didSet { defaults.set(showsBatteryChargingPower, forKey: Self.showsBatteryChargingPowerDefaultsKey) }
-    }
-    @Published var showsSystemPower: Bool {
-        didSet { defaults.set(showsSystemPower, forKey: Self.showsSystemPowerDefaultsKey) }
-    }
-    @Published var showsPowerBreakdown: Bool {
-        didSet { defaults.set(showsPowerBreakdown, forKey: Self.showsPowerBreakdownDefaultsKey) }
+    /// The single switch for the details page's power flow diagram. When on it
+    /// draws the full diagram (input, battery, breakdown/system); when off the
+    /// diagram is hidden. The old per-rail switches were folded into this one.
+    @Published var showsBatteryPowerFlow: Bool {
+        didSet { defaults.set(showsBatteryPowerFlow, forKey: Self.showsBatteryPowerFlowDefaultsKey) }
     }
     /// Provisional: shows input/battery/system power under the panel's battery
     /// module. Off by default; not yet an accepted specification.
@@ -296,9 +287,14 @@ final class SettingsStore: ObservableObject {
     }
 
     var batteryPowerDisplayOptions: BatteryPowerDisplayOptions {
-        BatteryPowerDisplayOptions(showsInput: showsChargerInputPower,
-            showsCharging: showsBatteryChargingPower, showsSystem: showsSystemPower,
-            showsBreakdown: showsPowerBreakdown)
+        // One switch drives every rail; the reader still only samples what the
+        // diagram needs.
+        BatteryPowerDisplayOptions(
+            showsInput: showsBatteryPowerFlow,
+            showsCharging: showsBatteryPowerFlow,
+            showsSystem: showsBatteryPowerFlow,
+            showsBreakdown: showsBatteryPowerFlow
+        )
     }
 
     @Published var showsChargeToFullNowButton: Bool {
@@ -1548,10 +1544,7 @@ final class SettingsStore: ObservableObject {
             ?? .system
         self.iconSize = Self.clampedIconSize(storedIconSize ?? Self.defaultIconSize)
         self.showsBatteryPercentage = defaults.object(forKey: Self.showsBatteryPercentageDefaultsKey) as? Bool ?? true
-        self.showsChargerInputPower = defaults.object(forKey: Self.showsChargerInputPowerDefaultsKey) as? Bool ?? false
-        self.showsBatteryChargingPower = defaults.object(forKey: Self.showsBatteryChargingPowerDefaultsKey) as? Bool ?? true
-        self.showsSystemPower = defaults.object(forKey: Self.showsSystemPowerDefaultsKey) as? Bool ?? true
-        self.showsPowerBreakdown = defaults.object(forKey: Self.showsPowerBreakdownDefaultsKey) as? Bool ?? true
+        self.showsBatteryPowerFlow = defaults.object(forKey: Self.showsBatteryPowerFlowDefaultsKey) as? Bool ?? true
         self.showsBatteryPowerInfoBar = defaults.object(forKey: Self.showsBatteryPowerInfoBarDefaultsKey) as? Bool ?? false
         self.showsHighEnergyApps = defaults.object(forKey: Self.showsHighEnergyAppsDefaultsKey) as? Bool ?? false
         self.highEnergyAppsRefreshIntervalSeconds = Self.clampedHighEnergyAppsRefreshInterval(

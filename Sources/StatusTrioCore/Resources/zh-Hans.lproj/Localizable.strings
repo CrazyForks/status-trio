@@ -580,6 +580,8 @@
 "settings.battery.breakdown" = "按部件细分功耗";
 "settings.battery.breakdown.description" = "把适配器输入拆成内建屏、USB 对外供电和其余系统负载（含 SoC）。读不到的分项会隐藏；无法可靠拆分时仍显示系统总功耗。";
 "settings.battery.powerInfoBar" = "功耗信息条";
+"settings.battery.powerFlowDiagram" = "功耗流向图";
+"settings.battery.powerFlowDiagramDescription" = "在电池详情页显示输入 / 电池 / 系统功耗流向图。";
 "settings.battery.powerInfoBarDescription" = "面板打开时，在电池模块下方显示输入、电池、系统功耗。默认关闭。";
 "settings.battery.energyRefreshInterval" = "后台采样间隔";
 "settings.battery.energyRefreshInterval.description" = "面板关闭时按此间隔采样；打开电池详情后仍每 5 秒刷新。";

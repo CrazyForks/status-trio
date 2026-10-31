@@ -580,6 +580,8 @@
 "settings.battery.breakdown" = "Répartir la puissance par composant";
 "settings.battery.breakdown.description" = "Répartit l’entrée de l’adaptateur entre l’écran intégré, la sortie USB et le reste de la charge système (SoC compris). Les valeurs indisponibles sont masquées ; sans répartition fiable, la puissance système réapparaît.";
 "settings.battery.powerInfoBar" = "Barre d’infos de puissance";
+"settings.battery.powerFlowDiagram" = "Diagramme de flux de puissance";
+"settings.battery.powerFlowDiagramDescription" = "Affiche le diagramme de flux (entrée / batterie / système) dans la page de détails de la batterie.";
 "settings.battery.powerInfoBarDescription" = "Affiche la puissance d’entrée, de batterie et système sous le module de batterie lorsque le panneau est ouvert. Désactivé par défaut.";
 "settings.battery.energyRefreshInterval" = "Intervalle d’échantillonnage en arrière-plan";
 "settings.battery.energyRefreshInterval.description" = "Utilisé lorsque le panneau est fermé. La page de détails de la batterie continue de s’actualiser toutes les 5 secondes.";

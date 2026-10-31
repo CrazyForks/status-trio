@@ -580,6 +580,8 @@
 "settings.battery.breakdown" = "Dividir a energia por componente";
 "settings.battery.breakdown.description" = "Divide a entrada do adaptador em tela integrada, saída USB e o restante da carga do sistema (incluindo o SoC). Leituras indisponíveis ficam ocultas; sem uma divisão confiável, a energia do sistema volta a aparecer.";
 "settings.battery.powerInfoBar" = "Barra de potência";
+"settings.battery.powerFlowDiagram" = "Diagrama de fluxo de potência";
+"settings.battery.powerFlowDiagramDescription" = "Mostra o diagrama de fluxo de potência (entrada / bateria / sistema) na página de detalhes da bateria.";
 "settings.battery.powerInfoBarDescription" = "Mostra a potência de entrada, da bateria e do sistema abaixo do módulo de bateria com o painel aberto. Desativado por padrão.";
 "settings.battery.energyRefreshInterval" = "Intervalo de amostragem em segundo plano";
 "settings.battery.energyRefreshInterval.description" = "Usado com o painel fechado. A página de detalhes da bateria continua atualizando a cada 5 segundos.";

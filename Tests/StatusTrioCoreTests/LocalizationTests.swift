@@ -160,6 +160,8 @@ final class LocalizationTests: XCTestCase {
             .batteryDetailsWatt,
             .settingsNetworkCenterSourceBatteryPercentage,
             .settingsNetworkCenterSourcePower,
+            .settingsBatteryPowerFlowDiagram,
+            .settingsBatteryPowerFlowDiagramDescription,
             .settingsBatteryPowerInfoBar,
             .settingsBatteryPowerInfoBarDescription,
             .powerInfoBarInput,

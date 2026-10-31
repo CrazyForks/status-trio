@@ -580,6 +580,8 @@
 "settings.battery.breakdown" = "Разбить мощность по компонентам";
 "settings.battery.breakdown.description" = "Делит входную мощность адаптера на встроенный дисплей, выход USB и остальную нагрузку системы (включая SoC). Недоступные значения скрываются; если разбить нельзя, снова показывается мощность системы.";
 "settings.battery.powerInfoBar" = "Строка мощности";
+"settings.battery.powerFlowDiagram" = "Схема потока мощности";
+"settings.battery.powerFlowDiagramDescription" = "Показывает схему потока мощности (вход / батарея / система) на странице сведений о батарее.";
 "settings.battery.powerInfoBarDescription" = "Показывает мощность входа, батареи и системы под модулем батареи при открытой панели. По умолчанию выключено.";
 "settings.battery.energyRefreshInterval" = "Интервал фонового сбора";
 "settings.battery.energyRefreshInterval.description" = "Используется при закрытой панели. Страница сведений об аккумуляторе по-прежнему обновляется каждые 5 секунд.";

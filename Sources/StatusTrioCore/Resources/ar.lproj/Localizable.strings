@@ -580,6 +580,8 @@
 "settings.battery.breakdown" = "تقسيم الطاقة حسب المكوّن";
 "settings.battery.breakdown.description" = "يقسّم دخل المحول إلى الشاشة المدمجة وخرج USB وبقية حمل النظام (بما في ذلك SoC). تُخفى القيم غير المتاحة، وتعود الواجهة إلى طاقة النظام عند تعذّر التقسيم.";
 "settings.battery.powerInfoBar" = "شريط معلومات الطاقة";
+"settings.battery.powerFlowDiagram" = "مخطط تدفق الطاقة";
+"settings.battery.powerFlowDiagramDescription" = "يعرض مخطط تدفق الطاقة (الدخل / البطارية / النظام) في صفحة تفاصيل البطارية.";
 "settings.battery.powerInfoBarDescription" = "يعرض طاقة الدخل والبطارية والنظام أسفل وحدة البطارية أثناء فتح اللوحة. معطّل افتراضيًا.";
 "settings.battery.energyRefreshInterval" = "الفاصل الزمني لأخذ العينات في الخلفية";
 "settings.battery.energyRefreshInterval.description" = "يُستخدم عندما تكون اللوحة مغلقة. تستمر صفحة تفاصيل البطارية في التحديث كل 5 ثوانٍ.";

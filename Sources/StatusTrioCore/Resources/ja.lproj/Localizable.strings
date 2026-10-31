@@ -580,6 +580,8 @@
 "settings.battery.breakdown" = "電力を項目別に分割";
 "settings.battery.breakdown.description" = "アダプター入力を内蔵ディスプレイ、USB 出力、残りのシステム負荷（SoC を含む）に分割します。取得できない項目は非表示になり、分割できない場合はシステム電力の表示に戻ります。";
 "settings.battery.powerInfoBar" = "電力情報バー";
+"settings.battery.powerFlowDiagram" = "電力フロー図";
+"settings.battery.powerFlowDiagramDescription" = "バッテリー詳細ページに電力の流れ（入力 / バッテリー / システム）を表示します。";
 "settings.battery.powerInfoBarDescription" = "パネルを開いている間、バッテリーモジュールの下に入力・バッテリー・システムの電力を表示します。既定ではオフです。";
 "settings.battery.energyRefreshInterval" = "バックグラウンドサンプリング間隔";
 "settings.battery.energyRefreshInterval.description" = "パネルを閉じている間に使用します。バッテリー詳細ページは引き続き 5 秒ごとに更新されます。";

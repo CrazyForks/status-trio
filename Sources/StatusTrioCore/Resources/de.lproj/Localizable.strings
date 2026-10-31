@@ -580,6 +580,8 @@
 "settings.battery.breakdown" = "Leistung nach Komponenten aufteilen";
 "settings.battery.breakdown.description" = "Teilt die Adaptereingangsleistung in integriertes Display, USB-Ausgang und die übrige Systemlast (inklusive SoC) auf. Nicht messbare Werte werden ausgeblendet; ohne verlässliche Aufteilung erscheint wieder die Systemleistung.";
 "settings.battery.powerInfoBar" = "Leistungsinfozeile";
+"settings.battery.powerFlowDiagram" = "Leistungsflussdiagramm";
+"settings.battery.powerFlowDiagramDescription" = "Zeigt das Leistungsflussdiagramm (Eingang / Batterie / System) auf der Batteriedetailseite.";
 "settings.battery.powerInfoBarDescription" = "Zeigt bei geöffnetem Panel Eingangs-, Batterie- und Systemleistung unter dem Batteriemodul. Standardmäßig aus.";
 "settings.battery.energyRefreshInterval" = "Intervall für Hintergrundmessung";
 "settings.battery.energyRefreshInterval.description" = "Wird bei geschlossenem Panel verwendet. Die Batteriedetailseite wird weiterhin alle 5 Sekunden aktualisiert.";

@@ -7,6 +7,7 @@ enum PanelDetailMapper {
         details: BatteryDetails?,
         localization: Localization,
         powerOptions: BatteryPowerDisplayOptions = .default,
+        showsPowerFlow: Bool = true,
         energyApps: ApplicationEnergyRanking? = nil
     ) -> PanelDetailState {
         var rows: [PanelDetailRow] = []
@@ -73,7 +74,7 @@ enum PanelDetailMapper {
                 // On battery the diagram still has a source (the pack), but only
                 // when a verified split exists; otherwise the legacy flow stays
                 // adapter-only.
-                guard powerOptions.showsAnyPower,
+                guard showsPowerFlow, powerOptions.showsAnyPower,
                       battery.isConnectedToPower || details.breakdown != nil else { return nil }
                 let flow = powerFlow(status: battery, details: details,
                                      options: powerOptions, localization: localization)

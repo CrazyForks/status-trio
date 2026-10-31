@@ -580,6 +580,8 @@
 "settings.battery.breakdown" = "Split power by component";
 "settings.battery.breakdown.description" = "Splits the adapter input into built-in display, USB output, and the remaining system load (including the SoC). Unavailable readings are hidden; without a reliable split the system total returns.";
 "settings.battery.powerInfoBar" = "Power info bar";
+"settings.battery.powerFlowDiagram" = "Power Flow Diagram";
+"settings.battery.powerFlowDiagramDescription" = "Shows the input / battery / system power flow diagram in the battery details page.";
 "settings.battery.powerInfoBarDescription" = "Shows input, battery and system power below the battery module while the panel is open. Off by default.";
 "settings.battery.energyRefreshInterval" = "Background sampling interval";
 "settings.battery.energyRefreshInterval.description" = "Used while the panel is closed. The battery detail page still refreshes every 5 seconds.";

@@ -24,22 +24,10 @@ struct BatterySectionView: View {
 
     private var powerFlowGroup: some View {
         SettingsGroup(localization.string(.settingsBatteryPowerFlow)) {
-            SettingsToggleRow(symbol: "powerplug.fill", tint: .orange,
-                title: localization.string(.batteryPowerInput),
-                isOn: $store.showsChargerInputPower)
-            SettingsDivider()
-            SettingsToggleRow(symbol: "battery.100.bolt", tint: .green,
-                title: localization.string(.batteryPowerCharging),
-                isOn: $store.showsBatteryChargingPower)
-            SettingsDivider()
-            SettingsToggleRow(symbol: "cpu", tint: .blue,
-                title: localization.string(.settingsBatteryBreakdown),
-                subtitle: localization.string(.settingsBatteryBreakdownDescription),
-                isOn: $store.showsPowerBreakdown)
-            SettingsDivider()
-            SettingsToggleRow(symbol: "laptopcomputer", tint: .blue,
-                title: localization.string(.batteryPowerSystem),
-                isOn: $store.showsSystemPower)
+            SettingsToggleRow(symbol: "arrow.triangle.branch", tint: .orange,
+                title: localization.string(.settingsBatteryPowerFlowDiagram),
+                subtitle: localization.string(.settingsBatteryPowerFlowDiagramDescription),
+                isOn: $store.showsBatteryPowerFlow)
             SettingsDivider()
             SettingsToggleRow(symbol: "app", tint: .purple,
                 title: localization.string(.batteryHighEnergyApps),
