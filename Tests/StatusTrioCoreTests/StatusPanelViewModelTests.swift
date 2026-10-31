@@ -810,6 +810,7 @@ final class PanelInputMonitor: AudioInputMonitoring {
     private(set) var enabledValues: [Bool] = []
     func setEnabled(_ enabled: Bool) { enabledValues.append(enabled) }
     func setVisible(_ visible: Bool) {}
+    func setDeviceListVisible(_ visible: Bool) {}
     func recover() {}
     func select(_ id: AudioDeviceID) {}
     func setScalar(_ value: Double, requestID: UUID) {}
