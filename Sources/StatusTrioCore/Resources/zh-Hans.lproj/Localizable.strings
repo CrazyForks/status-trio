@@ -122,8 +122,9 @@
 "settings.audio.showAll" = "始终全部展开";
 "settings.audio.showAllDescription" = "忽略数量限制，始终显示所有可用输出设备。";
 "settings.audio.orderTitle" = "输出设备顺序";
-"settings.audio.orderDescription" = "拖动设备可调整音量弹层中的显示顺序。新设备会排在末尾。";
+"settings.audio.orderDescription" = "拖动设备可调整音量弹层中的显示顺序。取消勾选不用的设备即可将其隐藏，当前输出设备始终显示。新设备会排在末尾。";
 "settings.audio.orderEmpty" = "无可用输出设备。";
+"settings.audio.showDevice" = "在状态面板中显示";
 "settings.about.version" = "版本 %@";
 "settings.about.description" = "将 Wi-Fi、电池和音量整合为一个简洁菜单栏状态图标的原生 macOS 应用。灵感源自 iPhone Duo 的组合状态栏图标，并在 Mac 上以音量替代蜂窝网络。";
 "settings.about.project" = "项目主页";

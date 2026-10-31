@@ -1017,6 +1017,110 @@ final class SettingsStoreTests: XCTestCase {
         )
     }
 
+    func testHidingAnOutputDeviceMovesItToTheEndAndPersists() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+
+        let devices = [
+            makeOutputDevice(id: 1, uid: "device-a"),
+            makeOutputDevice(id: 2, uid: "device-b"),
+            makeOutputDevice(id: 3, uid: "device-c")
+        ]
+        let store = SettingsStore(defaults: suite.defaults)
+
+        store.setOutputDeviceHidden(
+            "device-a",
+            hidden: true,
+            in: store.orderedOutputDevices(devices)
+        )
+
+        XCTAssertEqual(store.hiddenOutputDeviceUIDs, ["device-a"])
+        XCTAssertEqual(store.outputDeviceOrder, ["device-b", "device-c", "device-a"])
+        XCTAssertEqual(
+            store.outputDeviceListPreferences,
+            AudioOutputListPreferences(
+                order: ["device-b", "device-c", "device-a"],
+                hiddenUIDs: ["device-a"],
+                visibleLimit: store.visibleOutputDeviceLimit
+            )
+        )
+
+        let reloaded = SettingsStore(defaults: suite.defaults)
+        XCTAssertEqual(reloaded.hiddenOutputDeviceUIDs, ["device-a"])
+        XCTAssertEqual(
+            reloaded.orderedOutputDevices(devices).compactMap(\.uid),
+            ["device-b", "device-c", "device-a"]
+        )
+    }
+
+    func testShowingAHiddenOutputDeviceAgainPlacesItAfterTheShownDevices() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+
+        let devices = [
+            makeOutputDevice(id: 1, uid: "device-a"),
+            makeOutputDevice(id: 2, uid: "device-b"),
+            makeOutputDevice(id: 3, uid: "device-c")
+        ]
+        let store = SettingsStore(defaults: suite.defaults)
+        store.setOutputDeviceHidden("device-a", hidden: true, in: store.orderedOutputDevices(devices))
+        store.setOutputDeviceHidden("device-b", hidden: true, in: store.orderedOutputDevices(devices))
+        XCTAssertEqual(
+            store.orderedOutputDevices(devices).compactMap(\.uid),
+            ["device-c", "device-a", "device-b"]
+        )
+
+        store.setOutputDeviceHidden("device-a", hidden: false, in: store.orderedOutputDevices(devices))
+
+        XCTAssertEqual(store.hiddenOutputDeviceUIDs, ["device-b"])
+        XCTAssertEqual(
+            store.orderedOutputDevices(devices).compactMap(\.uid),
+            ["device-c", "device-a", "device-b"]
+        )
+    }
+
+    func testRearrangingOutputDevicesKeepsTheSlotOfAnAbsentDevice() {
+        let suite = makeSuite()
+        defer { clear(suite) }
+
+        let speakers = makeOutputDevice(id: 1, uid: "speakers")
+        let airPods = makeOutputDevice(id: 2, uid: "airpods")
+        let display = makeOutputDevice(id: 3, uid: "display")
+        let interface = makeOutputDevice(id: 4, uid: "interface")
+        let store = SettingsStore(defaults: suite.defaults)
+        store.moveOutputDevices(
+            fromOffsets: IndexSet(integer: 1),
+            toOffset: 0,
+            in: [speakers, airPods, display, interface]
+        )
+        XCTAssertEqual(store.outputDeviceOrder, ["airpods", "speakers", "display", "interface"])
+
+        // AirPods are disconnected while the remaining devices are rearranged.
+        store.moveOutputDevices(
+            fromOffsets: IndexSet(integer: 2),
+            toOffset: 0,
+            in: store.orderedOutputDevices([speakers, display, interface])
+        )
+
+        XCTAssertEqual(store.outputDeviceOrder, ["airpods", "interface", "speakers", "display"])
+        XCTAssertEqual(
+            store.orderedOutputDevices([speakers, airPods, display, interface]).compactMap(\.uid),
+            ["airpods", "interface", "speakers", "display"]
+        )
+    }
+
+    func testMergedDeviceOrderPlacesAbsentDevicesAfterTheirPreviousNeighbor() {
+        XCTAssertEqual(
+            SettingsStore.mergedDeviceOrder(["a", "c", "b"], previous: ["a", "gone", "b", "c"]),
+            ["a", "gone", "c", "b"]
+        )
+        XCTAssertEqual(
+            SettingsStore.mergedDeviceOrder(["b"], previous: ["gone-1", "gone-2", "b"]),
+            ["gone-1", "gone-2", "b"]
+        )
+        XCTAssertEqual(SettingsStore.mergedDeviceOrder(["a", "b"], previous: []), ["a", "b"])
+    }
+
     func testPopupSectionOrderDefaultsToAllSectionsWithInputSourceLast() {
         let store = SettingsStore(defaults: makeSuite().defaults)
 

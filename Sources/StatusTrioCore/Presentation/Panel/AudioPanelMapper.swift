@@ -64,9 +64,10 @@ enum AudioPanelMapper {
             intent: .none
         )
 
-        let orderedDevices = OutputDeviceListPresentation.orderedDevices(
+        let orderedDevices = OutputDeviceListPresentation.panelDevices(
             status.outputDevices,
-            using: deviceList.order
+            order: deviceList.order,
+            hiddenUIDs: deviceList.hiddenUIDs
         )
         let rows = outputRows(orderedDevices, listeningModes: listeningModes, localization: localization)
         let previewRows = outputRows(
@@ -93,7 +94,7 @@ enum AudioPanelMapper {
                     : .volumeMuteUnavailable
             ),
             sliderLabel: localization.string(.volumeAccessibilityLabel),
-            showsDeviceList: status.outputDevices.count > 1 || !previewRows.isEmpty,
+            showsDeviceList: orderedDevices.count > 1 || !previewRows.isEmpty,
             rows: rows,
             previewRows: previewRows,
             visibleLimit: deviceList.visibleLimit,

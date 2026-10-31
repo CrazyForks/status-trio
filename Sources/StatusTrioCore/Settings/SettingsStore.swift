@@ -119,6 +119,7 @@ final class SettingsStore: ObservableObject {
     static let bluetoothDeviceLimitRange: ClosedRange<Int> = 1...20
     static let alwaysShowsAllOutputDevicesDefaultsKey = "alwaysShowsAllOutputDevices"
     static let outputDeviceOrderDefaultsKey = "outputDeviceOrder"
+    static let hiddenOutputDeviceUIDsDefaultsKey = "hiddenOutputDeviceUIDs"
     static let externalVolumeConfigurationsDefaultsKey = "externalVolumeConfigurations.v1"
     static let popupSectionOrderDefaultsKey = "popupSectionOrder"
     static let enabledPopupSectionsDefaultsKey = "enabledPopupSections"
@@ -745,6 +746,14 @@ final class SettingsStore: ObservableObject {
         }
     }
 
+    /// UIDs of output devices the user unchecked in Settings. The status panel
+    /// leaves them out unless one is the active output.
+    @Published private(set) var hiddenOutputDeviceUIDs: Set<String> {
+        didSet {
+            defaults.set(Array(hiddenOutputDeviceUIDs), forKey: Self.hiddenOutputDeviceUIDsDefaultsKey)
+        }
+    }
+
     @Published private(set) var externalVolumeConfigurations: [String: ExternalVolumeConfiguration] {
         didSet {
             guard !externalVolumeConfigurations.isEmpty,
@@ -919,8 +928,21 @@ final class SettingsStore: ObservableObject {
         )
     }
 
+    var outputDeviceListPreferences: AudioOutputListPreferences {
+        AudioOutputListPreferences(
+            order: outputDeviceOrder,
+            hiddenUIDs: hiddenOutputDeviceUIDs,
+            visibleLimit: visibleOutputDeviceLimit
+        )
+    }
+
+    /// The Settings order list: shown devices first, then the hidden ones.
     func orderedOutputDevices(_ devices: [AudioOutputDevice]) -> [AudioOutputDevice] {
-        OutputDeviceListPresentation.orderedDevices(devices, using: outputDeviceOrder)
+        OutputDeviceListPresentation.settingsDevices(
+            devices,
+            order: outputDeviceOrder,
+            hiddenUIDs: hiddenOutputDeviceUIDs
+        )
     }
 
     func externalVolumeConfiguration(for uid: String) -> ExternalVolumeConfiguration {
@@ -968,7 +990,47 @@ final class SettingsStore: ObservableObject {
             contentsOf: movedDevices,
             at: min(insertionOffset, reorderedDevices.count)
         )
-        outputDeviceOrder = reorderedDevices.compactMap(\.uid)
+        outputDeviceOrder = Self.mergedDeviceOrder(
+            reorderedDevices.compactMap(\.uid),
+            previous: outputDeviceOrder
+        )
+    }
+
+    /// Shows or hides one output device in the status panel. Hiding it also
+    /// moves it to the end of the order, below every device still shown.
+    func setOutputDeviceHidden(
+        _ uid: String,
+        hidden: Bool,
+        in devices: [AudioOutputDevice]
+    ) {
+        guard !uid.isEmpty else { return }
+        var displayed = devices.compactMap(\.uid)
+        if hidden {
+            displayed.removeAll { $0 == uid }
+            displayed.append(uid)
+            hiddenOutputDeviceUIDs.insert(uid)
+        } else {
+            hiddenOutputDeviceUIDs.remove(uid)
+        }
+        outputDeviceOrder = Self.mergedDeviceOrder(displayed, previous: outputDeviceOrder)
+    }
+
+    /// Rebuilds a saved device order from the devices on screen. A remembered
+    /// device that is absent right now stays right after the device it followed
+    /// before, so AirPods that are disconnected while the list is rearranged
+    /// keep their place instead of dropping to the end when they reconnect.
+    static func mergedDeviceOrder(_ displayed: [String], previous: [String]) -> [String] {
+        var merged = displayed
+        var placed = Set(displayed)
+        var anchor: String?
+        for uid in previous {
+            if placed.insert(uid).inserted {
+                let index = anchor.flatMap { merged.firstIndex(of: $0) }.map { $0 + 1 } ?? 0
+                merged.insert(uid, at: index)
+            }
+            anchor = uid
+        }
+        return merged
     }
 
     func moveBluetoothDevices(
@@ -1307,6 +1369,9 @@ final class SettingsStore: ObservableObject {
         let storedVolumeDisplayStyle = defaults.string(forKey: Self.volumeDisplayStyleDefaultsKey)
         let storedRingStrokeStyle = defaults.string(forKey: Self.ringStrokeStyleDefaultsKey)
         let storedOutputDeviceOrder = defaults.stringArray(forKey: Self.outputDeviceOrderDefaultsKey) ?? []
+        let storedHiddenOutputDeviceUIDs = Set(
+            defaults.stringArray(forKey: Self.hiddenOutputDeviceUIDsDefaultsKey) ?? []
+        )
         let storedExternalVolumeConfigurations = Self.decodedExternalVolumeConfigurations(
             defaults.data(forKey: Self.externalVolumeConfigurationsDefaultsKey)
         )
@@ -1510,6 +1575,7 @@ final class SettingsStore: ObservableObject {
             forKey: Self.alwaysShowsAllOutputDevicesDefaultsKey
         ) as? Bool ?? false
         self.outputDeviceOrder = storedOutputDeviceOrder
+        self.hiddenOutputDeviceUIDs = storedHiddenOutputDeviceUIDs
         self.externalVolumeConfigurations = storedExternalVolumeConfigurations
         self.popupSectionOrder = Self.sanitizedPopupSectionOrder(
             storedPopupSectionOrder

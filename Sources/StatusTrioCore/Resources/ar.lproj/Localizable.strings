@@ -105,8 +105,9 @@
 "settings.audio.showAll" = "إظهار كل أجهزة الإخراج دائمًا";
 "settings.audio.showAllDescription" = "تجاهل الحد وإظهار كل أجهزة الإخراج المتاحة.";
 "settings.audio.orderTitle" = "ترتيب أجهزة الإخراج";
-"settings.audio.orderDescription" = "اسحب الأجهزة لتغيير ترتيبها في نافذة مستوى الصوت. تظهر الأجهزة الجديدة في النهاية.";
+"settings.audio.orderDescription" = "اسحب الأجهزة لتغيير ترتيبها في نافذة مستوى الصوت. ألغِ تحديد الأجهزة التي لا تستخدمها لإخفائها، ويظل جهاز الإخراج النشط ظاهرًا دائمًا. تظهر الأجهزة الجديدة في النهاية.";
 "settings.audio.orderEmpty" = "لا تتوفر أجهزة إخراج.";
+"settings.audio.showDevice" = "إظهار في لوحة الحالة";
 "settings.about.version" = "الإصدار %@";
 "settings.about.description" = "تطبيق macOS أصلي يجمع Wi-Fi والبطارية ومستوى الصوت في رمز مدمج واحد في شريط القوائم. مستوحى من رمز شريط الحالة المدمج في iPhone Duo، ويستخدم مستوى الصوت بدل بيانات الشبكة الخلوية على Mac.";
 "settings.about.project" = "الموقع";

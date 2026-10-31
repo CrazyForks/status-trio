@@ -230,6 +230,7 @@ enum LocalizationKey: String, CaseIterable, Hashable, Sendable {
     case settingsAudioOrderTitle = "settings.audio.orderTitle"
     case settingsAudioOrderDescription = "settings.audio.orderDescription"
     case settingsAudioOrderEmpty = "settings.audio.orderEmpty"
+    case settingsAudioShowDevice = "settings.audio.showDevice"
     case settingsAudioExternalVolumeTitle = "settings.audio.externalVolume.title"
     case settingsAudioExternalVolumeCurrentOutput = "settings.audio.externalVolume.currentOutput"
     case settingsAudioExternalVolumeCurrentOutputDescription = "settings.audio.externalVolume.currentOutputDescription"

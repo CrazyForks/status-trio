@@ -122,8 +122,9 @@
 "settings.audio.showAll" = "Mostrar siempre todos los dispositivos";
 "settings.audio.showAllDescription" = "Ignorar el límite y mostrar todos los dispositivos de salida disponibles.";
 "settings.audio.orderTitle" = "Orden de los dispositivos de salida";
-"settings.audio.orderDescription" = "Arrastra los dispositivos para cambiar el orden en el panel de volumen. Los nuevos aparecen al final.";
+"settings.audio.orderDescription" = "Arrastra los dispositivos para cambiar el orden en el panel de volumen. Desmarca los que no uses para ocultarlos; la salida activa siempre se muestra. Los nuevos aparecen al final.";
 "settings.audio.orderEmpty" = "No hay dispositivos de salida disponibles.";
+"settings.audio.showDevice" = "Mostrar en el panel de estado";
 "settings.about.version" = "Versión %@";
 "settings.about.description" = "Una app nativa de macOS que reúne Wi-Fi, batería y volumen en un icono compacto de la barra de menús. Inspirada en el icono combinado de la barra de estado del iPhone Duo, usa el volumen en lugar de los datos móviles en el Mac.";
 "settings.about.project" = "Sitio web";

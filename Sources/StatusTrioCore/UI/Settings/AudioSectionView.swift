@@ -110,13 +110,36 @@ struct AudioSectionView: View {
                 } else {
                     List {
                         ForEach(orderedDevices) { device in
+                            let name = device.name ?? localization.string(.volumeOutputUnknownDevice)
+                            let isHidden = OutputDeviceListPresentation.isHidden(
+                                device,
+                                in: store.hiddenOutputDeviceUIDs
+                            )
                             HStack(alignment: .center, spacing: 10) {
+                                Toggle(name, isOn: Binding(
+                                    get: { !isHidden },
+                                    set: { isShown in
+                                        guard let uid = device.uid else { return }
+                                        store.setOutputDeviceHidden(
+                                            uid,
+                                            hidden: !isShown,
+                                            in: orderedDevices
+                                        )
+                                    }
+                                ))
+                                .toggleStyle(.checkbox)
+                                .labelsHidden()
+                                .disabled(device.uid == nil)
+                                .help(localization.string(.settingsAudioShowDevice))
+
                                 AudioOutputDeviceIconView(source: AudioPanelMapper.iconSource(for: device))
                                     .foregroundStyle(device.isCurrent ? Color.accentColor : Color.secondary)
                                     .frame(width: 18, height: 18, alignment: .center)
+                                    .opacity(isHidden ? 0.45 : 1)
 
-                                Text(device.name ?? localization.string(.volumeOutputUnknownDevice))
+                                Text(name)
                                     .font(.system(size: 13))
+                                    .foregroundStyle(isHidden ? Color.secondary : Color.primary)
                                     .lineLimit(1)
                                     .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -135,9 +158,11 @@ struct AudioSectionView: View {
                                     size: 18
                                 )
                                 .foregroundStyle(.tertiary)
+                                .opacity(isHidden ? 0 : 1)
                                 .accessibilityHidden(true)
                             }
                             .padding(.vertical, 3)
+                            .moveDisabled(isHidden)
                         }
                         .onMove { source, destination in
                             store.moveOutputDevices(

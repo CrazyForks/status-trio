@@ -162,12 +162,7 @@ final class StatusPanelActions {
             toggleMute: { store.toggleMute() },
             setInputScalar: { scalar, requestID in store.setInputScalar(scalar, requestID: requestID) },
             toggleInputMute: { store.toggleInputMute() },
-            outputPreferences: {
-                AudioOutputListPreferences(
-                    order: settings.outputDeviceOrder,
-                    visibleLimit: settings.visibleOutputDeviceLimit
-                )
-            },
+            outputPreferences: { settings.outputDeviceListPreferences },
             bluetoothDevices: { store.bluetoothDevices.devices },
             bluetoothAvailability: { store.bluetoothDevices.availability },
             refreshBluetooth: { store.bluetoothDevices.refreshFromUser() },

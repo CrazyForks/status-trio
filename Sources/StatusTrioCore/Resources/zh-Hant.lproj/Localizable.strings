@@ -122,8 +122,9 @@
 "settings.audio.showAll" = "一律全部展開";
 "settings.audio.showAllDescription" = "忽略數量限制，一律顯示所有可用的輸出裝置。";
 "settings.audio.orderTitle" = "輸出裝置順序";
-"settings.audio.orderDescription" = "拖移裝置可調整音量彈出式視窗中的顯示順序。新裝置會排在最後。";
+"settings.audio.orderDescription" = "拖移裝置可調整音量彈出式視窗中的顯示順序。取消勾選不使用的裝置即可將其隱藏，目前的輸出裝置一律會顯示。新裝置會排在最後。";
 "settings.audio.orderEmpty" = "沒有可用的輸出裝置。";
+"settings.audio.showDevice" = "在狀態面板中顯示";
 "settings.about.version" = "版本 %@";
 "settings.about.description" = "將 Wi-Fi、電池和音量整合為一個簡潔選單列狀態圖示的原生 macOS 應用程式。靈感源自 iPhone Duo 的組合狀態列圖示，並在 Mac 上以音量取代行動網路。";
 "settings.about.project" = "專案首頁";

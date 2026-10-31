@@ -263,6 +263,42 @@ final class AudioPanelMapperTests: XCTestCase {
         XCTAssertEqual(state.rows[2].name, "Unknown output device")
     }
 
+    func testHiddenOutputRowsAreDroppedExceptTheActiveOutput() {
+        let localization = makeLocalization(.english)
+        let speakers = AudioOutputDevice(id: 1, name: "Speakers", uid: "speakers", isCurrent: false)
+        let display = AudioOutputDevice(id: 2, name: "Display", uid: "display", isCurrent: true)
+        let airPods = AudioOutputDevice(id: 3, name: "AirPods", uid: "airpods", isCurrent: false)
+        let status = VolumeStatus(
+            scalar: 0.5,
+            isMuted: false,
+            deviceName: nil,
+            currentDevice: display,
+            outputDevices: [speakers, display, airPods],
+            canSetVolume: true,
+            canMute: true
+        )
+
+        let state = AudioPanelMapper.volume(
+            status,
+            controllerAvailable: true,
+            deviceList: AudioOutputListPreferences(hiddenUIDs: ["speakers", "display"]),
+            localization: localization
+        )
+
+        XCTAssertEqual(state.rows.map(\.key.uid), ["display", "airpods"])
+        XCTAssertTrue(state.showsDeviceList)
+
+        let single = AudioPanelMapper.volume(
+            status,
+            controllerAvailable: true,
+            deviceList: AudioOutputListPreferences(hiddenUIDs: ["speakers", "airpods"]),
+            localization: localization
+        )
+
+        XCTAssertEqual(single.rows.map(\.key.uid), ["display"])
+        XCTAssertFalse(single.showsDeviceList, "one remaining row is not a choice")
+    }
+
     private func makeLocalization(_ language: AppLanguage) -> Localization {
         let suiteName = "AudioPanelMapperTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!

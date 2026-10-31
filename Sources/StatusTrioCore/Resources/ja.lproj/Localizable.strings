@@ -122,8 +122,9 @@
 "settings.audio.showAll" = "常にすべての出力デバイスを表示";
 "settings.audio.showAllDescription" = "上限を無視して、利用可能なすべての出力デバイスを表示します。";
 "settings.audio.orderTitle" = "出力デバイスの順序";
-"settings.audio.orderDescription" = "デバイスをドラッグして、音量ポップオーバーでの表示順を変更します。新しいデバイスは末尾に追加されます。";
+"settings.audio.orderDescription" = "デバイスをドラッグして、音量ポップオーバーでの表示順を変更します。使わないデバイスのチェックを外すと非表示になります（使用中の出力は常に表示されます）。新しいデバイスは末尾に追加されます。";
 "settings.audio.orderEmpty" = "使用可能な出力デバイスがありません。";
+"settings.audio.showDevice" = "ステータスパネルに表示";
 "settings.about.version" = "バージョン %@";
 "settings.about.description" = "Wi-Fi、バッテリー、音量をひとつのコンパクトなメニューバーアイコンにまとめるネイティブ macOS アプリです。iPhone Duo の組み合わせステータスバーアイコンに着想を得て、Mac ではモバイル通信の代わりに音量を表示します。";
 "settings.about.project" = "ウェブサイト";

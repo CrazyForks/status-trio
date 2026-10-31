@@ -121,10 +121,7 @@ final class StatusPanelViewModel: ObservableObject {
                 for: store.liveVolume,
                 settings: settings
             ),
-            deviceList: AudioOutputListPreferences(
-                order: settings.outputDeviceOrder,
-                visibleLimit: settings.visibleOutputDeviceLimit
-            ),
+            deviceList: settings.outputDeviceListPreferences,
             localization: localization
         )
         audioInput = AudioPanelMapper.input(store.liveInput, localization: localization)
@@ -367,10 +364,7 @@ final class StatusPanelViewModel: ObservableObject {
     }
 
     private var outputPreferences: AudioOutputListPreferences {
-        AudioOutputListPreferences(
-            order: settings.outputDeviceOrder,
-            visibleLimit: settings.visibleOutputDeviceLimit
-        )
+        settings.outputDeviceListPreferences
     }
 
     private func mapVPN(_ status: VPNStatus) -> PanelSummaryState? {

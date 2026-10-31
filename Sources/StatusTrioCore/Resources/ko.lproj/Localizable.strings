@@ -122,8 +122,9 @@
 "settings.audio.showAll" = "항상 모든 출력 장치 표시";
 "settings.audio.showAllDescription" = "제한을 무시하고 사용 가능한 모든 출력 장치를 표시합니다.";
 "settings.audio.orderTitle" = "출력 장치 순서";
-"settings.audio.orderDescription" = "장치를 드래그하여 볼륨 팝오버의 표시 순서를 변경합니다. 새 장치는 끝에 표시됩니다.";
+"settings.audio.orderDescription" = "장치를 드래그하여 볼륨 팝오버의 표시 순서를 변경합니다. 사용하지 않는 장치는 선택 해제하면 숨겨지며, 사용 중인 출력 장치는 항상 표시됩니다. 새 장치는 끝에 표시됩니다.";
 "settings.audio.orderEmpty" = "사용 가능한 출력 장치가 없습니다.";
+"settings.audio.showDevice" = "상태 패널에 표시";
 "settings.about.version" = "버전 %@";
 "settings.about.description" = "Wi-Fi, 배터리, 음량을 하나의 간결한 메뉴 막대 아이콘으로 결합한 네이티브 macOS 앱입니다. iPhone Duo의 결합 상태 막대 아이콘에서 영감을 받아 Mac에서는 셀룰러 데이터 대신 음량을 표시합니다.";
 "settings.about.project" = "웹사이트";
