@@ -24,12 +24,13 @@ it is to stop using `NSPopover` and draw/position the panel ourselves.
 - New `Sources/StatusTrioCore/UI/AnchoredStatusPanel.swift`:
   - `AnchoredStatusPanel: NSPanel` — borderless, `.nonactivatingPanel`,
     `.statusBar` level, `canBecomeKey == true`, `canBecomeMain == false`,
-    `.canJoinAllSpaces + .fullScreenAuxiliary` (replacing the popover's
-    `enableDisplayOnFullScreenSpaces()` call — the helper is still applied for
-    the same contract).
-  - `StatusPanelContentViewController` wraps the SwiftUI hosting controller in a
-    native glass background and follows `NSHostingView.fittingSize` so expanding
-    rows and detail pages resize the window exactly as the popover did.
+    `.canJoinAllSpaces + .fullScreenAuxiliary`. The ex-
+    `enableDisplayOnFullScreenSpaces()` helper is still applied after showing,
+    as a second guarantee of the same contract.
+  - `StatusPanelHostingController` reports `NSHostingView.fittingSize` from
+    `viewDidLayout`, so expanding rows and detail pages resize the window
+    exactly as the popover did. `StatusPanelContentViewController` wraps that
+    hosting controller in the glass background.
   - `close()` / `performClose(_:)` order the window out, post
     `AnchoredStatusPanel.didCloseNotification` and call `onClose`; this replaces
     `NSPopoverDelegate.popoverDidClose(_:)`. The controller's five-second

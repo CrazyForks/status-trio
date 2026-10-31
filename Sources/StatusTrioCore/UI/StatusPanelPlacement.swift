@@ -67,9 +67,9 @@ enum StatusPanelPlacement {
                 y: anchorRect.maxY + gap
             )
             if anchor.preferredEdge == .minY {
-                origin = fits(below, size: size, in: visibleFrame) ? below : above
+                origin = fitsVertically(below, size: size, in: visibleFrame) ? below : above
             } else {
-                origin = fits(above, size: size, in: visibleFrame) ? above : below
+                origin = fitsVertically(above, size: size, in: visibleFrame) ? above : below
             }
         case .maxX, .minX:
             let toRight = NSPoint(
@@ -81,9 +81,9 @@ enum StatusPanelPlacement {
                 y: anchorRect.midY - size.height / 2
             )
             if anchor.preferredEdge == .maxX {
-                origin = fits(toRight, size: size, in: visibleFrame) ? toRight : toLeft
+                origin = fitsHorizontally(toRight, size: size, in: visibleFrame) ? toRight : toLeft
             } else {
-                origin = fits(toLeft, size: size, in: visibleFrame) ? toLeft : toRight
+                origin = fitsHorizontally(toLeft, size: size, in: visibleFrame) ? toLeft : toRight
             }
         @unknown default:
             origin = NSPoint(
@@ -114,8 +114,23 @@ enum StatusPanelPlacement {
         return screens.first { $0.frame.contains(center) } ?? screens.first
     }
 
-    private static func fits(_ origin: NSPoint, size: NSSize, in visibleFrame: NSRect) -> Bool {
-        let rect = NSRect(origin: origin, size: size)
-        return visibleFrame.contains(rect)
+    /// Vertical edges flip only on the vertical axis: a wide panel that
+    /// overflows the side of the screen is clamped horizontally, not flipped
+    /// above/below the anchor.
+    private static func fitsVertically(
+        _ origin: NSPoint,
+        size: NSSize,
+        in visibleFrame: NSRect
+    ) -> Bool {
+        origin.y >= visibleFrame.minY && origin.y + size.height <= visibleFrame.maxY
+    }
+
+    /// Horizontal edges flip only on the horizontal axis, for the same reason.
+    private static func fitsHorizontally(
+        _ origin: NSPoint,
+        size: NSSize,
+        in visibleFrame: NSRect
+    ) -> Bool {
+        origin.x >= visibleFrame.minX && origin.x + size.width <= visibleFrame.maxX
     }
 }

@@ -38,6 +38,9 @@ struct StatusPanelPlacementTests {
 
         #expect(frame.maxX == 1440)
         #expect(frame.minX == 1110)
+        // Horizontal overflow must clamp, not flip: the panel stays below the
+        // menu bar with the regular gap.
+        #expect(frame.maxY == anchor.screenRect.minY - StatusPanelPlacement.gap)
     }
 
     @Test func flipsAboveWhenThereIsNoRoomBelow() {

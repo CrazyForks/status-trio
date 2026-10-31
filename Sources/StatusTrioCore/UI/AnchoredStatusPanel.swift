@@ -267,6 +267,12 @@ final class StatusPanelContentViewController: NSViewController {
             container.addSubview(background)
             backgroundView = background
 
+            // The hosting view is a sibling of the rounded background on this
+            // path, so clip the container too. Otherwise content drawn right at
+            // the corner could square it off.
+            container.layer?.cornerRadius = AnchoredStatusPanel.cornerRadius
+            container.layer?.masksToBounds = true
+
             hostingController.view.frame = container.bounds
             hostingController.view.autoresizingMask = [.width, .height]
             container.addSubview(hostingController.view)

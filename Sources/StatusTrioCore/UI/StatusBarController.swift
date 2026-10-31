@@ -640,6 +640,12 @@ final class StatusBarController: NSObject {
         guard !isPopoverClosing else { return }
         isPopoverClosing = true
         popover.performClose(nil)
+        // The panel's close is synchronous. If it was already off screen the
+        // panel intentionally posts no close callback, so never leave the gate
+        // stuck closed for the next shortcut/toggle.
+        if !popover.isShown {
+            isPopoverClosing = false
+        }
     }
 
     /// The Dock icon has no public frame, but the click happens on the icon, so
