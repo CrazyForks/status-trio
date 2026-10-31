@@ -79,11 +79,13 @@ another explicit confirmation. A failed request is not proof of restoration:
 check the charge limit in System Settings and restore it there if needed.
 
 The same cancellation is offered when the override starts from the macOS
-battery menu instead: while PowerUI reports a temporary override and the
-world-readable `powerd` charging plist still holds a valid user limit, the row
-offers **Cancel Charge to Full** and restores that persisted limit. If no
-usable persisted limit can be read, the row stays hidden rather than guessing
-a value.
+battery menu instead. macOS removes the persisted policy from the
+world-readable `powerd` charging plist while that override runs, so the row
+uses the live plist value when it is still present and otherwise the last
+limit the app observed. A remembered value requires an explicit confirmation
+before the write. If neither source yields a usable limit, the row stays
+hidden rather than guessing a value; restore the limit in System Settings in
+that case.
 
 After a successful cancel, the action area keeps a **Charge limit restored**
 status instead of immediately offering **Charge to Full Now** again. The

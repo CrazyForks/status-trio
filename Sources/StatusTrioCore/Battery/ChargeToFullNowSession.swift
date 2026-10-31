@@ -63,3 +63,52 @@ final class VolatileChargeToFullNowSessionStore: ChargeToFullNowSessionStoring {
         session = nil
     }
 }
+
+/// The last user charge limit the app observed. macOS removes the persisted
+/// `powerd` policy while its own temporary override runs, so this value is the
+/// only restore target left when the override starts outside the app.
+@MainActor
+protocol ChargeLimitMemoryStoring: AnyObject {
+    func load() -> Int?
+    func save(_ limit: Int)
+}
+
+@MainActor
+final class UserDefaultsChargeLimitMemoryStore: ChargeLimitMemoryStoring {
+    static let defaultsKey = "chargeToFullNow.lastKnownLimit.v1"
+
+    private let defaults: UserDefaults
+
+    init(defaults: UserDefaults) {
+        self.defaults = defaults
+    }
+
+    func load() -> Int? {
+        guard defaults.object(forKey: Self.defaultsKey) != nil else {
+            return nil
+        }
+        let limit = defaults.integer(forKey: Self.defaultsKey)
+        return (80..<100).contains(limit) ? limit : nil
+    }
+
+    func save(_ limit: Int) {
+        defaults.set(limit, forKey: Self.defaultsKey)
+    }
+}
+
+@MainActor
+final class VolatileChargeLimitMemoryStore: ChargeLimitMemoryStoring {
+    private var limit: Int?
+
+    init(limit: Int? = nil) {
+        self.limit = limit
+    }
+
+    func load() -> Int? {
+        limit
+    }
+
+    func save(_ limit: Int) {
+        self.limit = limit
+    }
+}

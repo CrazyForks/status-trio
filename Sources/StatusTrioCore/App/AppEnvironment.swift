@@ -460,7 +460,10 @@ final class AppEnvironment {
             ),
             persistedChargeLimit: {
                 SystemChargeLimitReader.chargeLimit()
-            }
+            },
+            limitMemory: UserDefaultsChargeLimitMemoryStore(
+                defaults: .standard
+            )
         )
         let dockChargingAnimationPresenter: any DockChargingAnimationPresenting =
             DockChargingAnimationRendererMode.usesApplicationIconFrames()

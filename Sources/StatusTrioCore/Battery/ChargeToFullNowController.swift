@@ -90,9 +90,12 @@ final class ChargeToFullNowController: ObservableObject {
     /// The user's persisted charge limit, used only to restore a temporary
     /// override that macOS itself started. It never writes until the user asks.
     private let persistedChargeLimit: () -> Int?
+    /// Last limit observed before macOS removed the persisted policy.
+    private let limitMemory: any ChargeLimitMemoryStoring
     private let now: () -> Date
     private var currentDemand: ChargeToFullNowDemand?
     private var session: ChargeToFullNowSession?
+    private var rememberedLimit: Int?
     private var restoredLimit: RestoredLimitState?
     private var sessionNeedsConfirmation = false
     private var isApplying = false
@@ -106,19 +109,30 @@ final class ChargeToFullNowController: ObservableObject {
         var hasObservedCharging: Bool
     }
 
+    private struct ExternalRestoreTarget {
+        let limit: Int
+        /// True when the live plist value is gone and the remembered value is
+        /// the only source; the user must confirm that guess before a write.
+        let isFromMemory: Bool
+    }
+
     init(
         backend: any BatteryChargeControlling,
         sessionStore: any ChargeToFullNowSessionStoring =
             VolatileChargeToFullNowSessionStore(),
         persistedChargeLimit: @escaping () -> Int? = { nil },
+        limitMemory: any ChargeLimitMemoryStoring =
+            VolatileChargeLimitMemoryStore(),
         now: @escaping () -> Date = Date.init
     ) {
         self.backend = backend
         self.sessionStore = sessionStore
         self.persistedChargeLimit = persistedChargeLimit
+        self.limitMemory = limitMemory
         self.now = now
         session = sessionStore.load()
         sessionNeedsConfirmation = session != nil
+        rememberedLimit = limitMemory.load()
     }
 
     func update(_ demand: ChargeToFullNowDemand) {
@@ -147,6 +161,12 @@ final class ChargeToFullNowController: ObservableObject {
             restoredLimit = nil
         }
 
+        // A confirmation is an explicit user step. Keep it across live battery
+        // ticks; the next tap re-reads the state before any write.
+        if case .cancelConfirmationRequired = presentation {
+            return
+        }
+
         if state.errorMessage != nil {
             if session != nil {
                 sessionNeedsConfirmation = true
@@ -155,6 +175,11 @@ final class ChargeToFullNowController: ObservableObject {
                 publish(.unavailable)
             }
             return
+        }
+
+        if state.hasActiveChargeLimit,
+           let reportedLimit = state.reportedChargeLimit {
+            rememberLimit(reportedLimit)
         }
 
         if session != nil, state.hasActiveChargeLimit {
@@ -175,9 +200,9 @@ final class ChargeToFullNowController: ObservableObject {
         }
 
         // macOS can start the same temporary override from its own battery
-        // menu. There is no session, but the persisted limit lets us offer the
+        // menu. There is no session, but a known user limit lets us offer the
         // same cancellation instead of hiding the row.
-        if externalRestoreLimit(in: state) != nil {
+        if externalRestoreTarget(in: state) != nil {
             publish(.chargingToFull)
             return
         }
@@ -315,7 +340,7 @@ final class ChargeToFullNowController: ObservableObject {
         // picked in System Settings without pretending we started the request.
         guard state.errorMessage == nil,
               state.indicatesTemporaryOverride,
-              let limit = externalRestoreLimit(in: state) else {
+              let target = externalRestoreTarget(in: state) else {
             publish(
                 requestedDemand.canStartChargeToFull
                     && state.hasActiveChargeLimit
@@ -324,7 +349,20 @@ final class ChargeToFullNowController: ObservableObject {
             )
             return
         }
-        beginRestore(limit: limit, usedFallback: false)
+        if target.isFromMemory,
+           presentation != .cancelConfirmationRequired(
+               limit: target.limit,
+               usedFallback: false
+           ) {
+            publish(
+                .cancelConfirmationRequired(
+                    limit: target.limit,
+                    usedFallback: false
+                )
+            )
+            return
+        }
+        beginRestore(limit: target.limit, usedFallback: false)
     }
 
     private func beginRestore(limit: Int, usedFallback: Bool) {
@@ -341,6 +379,7 @@ final class ChargeToFullNowController: ObservableObject {
 
             if verified {
                 clearSession()
+                rememberLimit(limit)
                 restoredLimit = RestoredLimitState(
                     limit: limit,
                     usedFallback: usedFallback,
@@ -397,16 +436,33 @@ final class ChargeToFullNowController: ObservableObject {
         return now().timeIntervalSince(restored.restoredAt) < 30
     }
 
-    /// A temporary override without a session can only be cancelled when the
-    /// persisted limit is a valid value PowerUI accepts.
-    private func externalRestoreLimit(
+    /// macOS can remove the persisted policy while its own temporary override
+    /// runs. Prefer the live plist value, then fall back to the last limit the
+    /// app observed; a remembered value always requires confirmation.
+    private func externalRestoreTarget(
         in state: ChargeToFullNowDeviceState
-    ) -> Int? {
-        guard state.indicatesTemporaryOverride,
-              let persisted = persistedChargeLimit() else {
+    ) -> ExternalRestoreTarget? {
+        guard state.indicatesTemporaryOverride else {
             return nil
         }
-        return validatedLimit(persisted, in: state)
+        if let persisted = persistedChargeLimit(),
+           let limit = validatedLimit(persisted, in: state) {
+            rememberLimit(limit)
+            return ExternalRestoreTarget(limit: limit, isFromMemory: false)
+        }
+        if let remembered = rememberedLimit,
+           let limit = validatedLimit(remembered, in: state) {
+            return ExternalRestoreTarget(limit: limit, isFromMemory: true)
+        }
+        return nil
+    }
+
+    private func rememberLimit(_ limit: Int) {
+        guard (80..<100).contains(limit), rememberedLimit != limit else {
+            return
+        }
+        rememberedLimit = limit
+        limitMemory.save(limit)
     }
 
     private func validatedLimit(

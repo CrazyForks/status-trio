@@ -21,9 +21,12 @@ Two follow-ups were requested on October 31, 2026:
 
 - The macOS battery menu can start the same temporary override without a
   Status Trio session. The controller now recognizes that state and offers the
-  same cancellation, restoring the limit from the persisted `powerd` charging
-  plist (`SystemChargeLimitReader`) instead of guessing `80%`. Without a valid
-  persisted limit the row stays hidden.
+  same cancellation. It restores the persisted `powerd` charging plist value
+  (`SystemChargeLimitReader`) when macOS has not removed it yet. The October 31
+  re-check showed that `powerd` empties the `policies` array while the native
+  override runs, so the controller also remembers the last limit it observed
+  and asks for confirmation before restoring a remembered value. Without either
+  source the row stays hidden rather than guessing `80%`.
 - A successful cancellation no longer bounces straight back to the button. The
   row keeps a "Charge limit restored" status while the system charges toward
   the restored limit, and the button returns once the battery reaches that
