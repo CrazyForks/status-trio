@@ -138,9 +138,6 @@ enum PanelDetailMapper {
         case .scanning:
             message = localization.string(.wifiScanning)
             intent = .none
-        case .ready where !hasVisibleNetworks:
-            message = localization.string(.wifiNoNetworks)
-            intent = .none
         case .poweredOff:
             message = localization.string(.wifiPanelOff)
             intent = .none
@@ -150,13 +147,34 @@ enum PanelDetailMapper {
         case .permissionDenied:
             message = localization.string(.wifiPermissionDenied)
             intent = .locationSettings
+        case .failed where status.nameAccess == .notDetermined:
+            // The scan needs location access the app was never granted, so the
+            // failure is the permission prompt's job, not "scan failed".
+            message = localization.string(.wifiActionRequestNameAccess)
+            intent = .requestWiFiNameAccess
         case .failed:
             message = localization.string(.wifiScanFailed)
             intent = .none
         case .idle where status.nameAccess == .notDetermined,
-             .ready where status.nameAccess == .notDetermined:
+             .ready where status.nameAccess == .notDetermined
+                && !hasVisibleNetworks:
+            // CoreWLAN can answer an unauthorized scan with an empty list and no
+            // error, so this must precede the empty-list message: the missing
+            // permission is the cause, not the range.
             message = localization.string(.wifiActionRequestNameAccess)
             intent = .requestWiFiNameAccess
+        case .ready where !hasVisibleNetworks && status.nameAccess != .authorized:
+            // Without authorization an empty scan says nothing about the range,
+            // so only an authorized scan may claim there are no networks.
+            message = status.nameAccess == .denied || status.nameAccess == .restricted
+                ? localization.string(.wifiPermissionDenied)
+                : localization.string(.wifiActionRequestNameAccess)
+            intent = status.nameAccess == .denied || status.nameAccess == .restricted
+                ? .locationSettings
+                : .requestWiFiNameAccess
+        case .ready where !hasVisibleNetworks:
+            message = localization.string(.wifiNoNetworks)
+            intent = .none
         case .idle, .ready:
             message = nil
             intent = .none

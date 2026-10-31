@@ -157,8 +157,8 @@ final class PanelPresentationMapperTests: XCTestCase {
             isResolvingName: false,
             localization: localization
         )
-        XCTAssertEqual(needsPermission.subtitle, "Allow location to show Wi-Fi name")
-        XCTAssertEqual(needsPermission.intent, .requestWiFiNameAccess)
+        XCTAssertEqual(needsPermission.subtitle, "Connected · -58 dBm")
+        XCTAssertEqual(needsPermission.intent, .wifiDetails)
 
         let denied = PanelPresentationMapper.network(
             wifi: WiFiStatus(state: .connected, rssi: -58, nameAccess: .denied),
@@ -168,7 +168,43 @@ final class PanelPresentationMapperTests: XCTestCase {
             isResolvingName: false,
             localization: localization
         )
-        XCTAssertEqual(denied.intent, .locationSettings)
+        XCTAssertEqual(denied.intent, .wifiDetails)
+    }
+
+    func testUnauthorizedNameDoesNotHideTheConnectionState() {
+        let localization = makeLocalization(.english)
+        for access in [WiFiNameAccess.denied, .restricted, .notDetermined] {
+            let row = PanelPresentationMapper.network(
+                wifi: WiFiStatus(
+                    state: .connected,
+                    rssi: -50,
+                    nameAccess: access,
+                    band: .fiveGHz
+                ),
+                connection: .wifi,
+                wired: nil,
+                isConstrained: false,
+                isResolvingName: false,
+                localIPAddress: "192.168.1.20",
+                localization: localization
+            )
+            XCTAssertEqual(row.title, "Wi-Fi")
+            XCTAssertEqual(row.subtitle, "192.168.1.20 · Connected · 5 GHz · -50 dBm")
+            XCTAssertEqual(row.measurements, "192.168.1.20 · 5 GHz · -50 dBm")
+            XCTAssertEqual(row.accessibilityValue, "192.168.1.20 · 5 GHz · -50 dBm")
+            XCTAssertEqual(row.intent, .wifiDetails)
+        }
+
+        let notAssociated = PanelPresentationMapper.network(
+            wifi: WiFiStatus(state: .notAssociated, rssi: nil, nameAccess: .denied),
+            connection: .wifi,
+            wired: nil,
+            isConstrained: false,
+            isResolvingName: false,
+            localization: localization
+        )
+        XCTAssertEqual(notAssociated.subtitle, localization.string(.wifiSubtitleNotAssociated))
+        XCTAssertEqual(notAssociated.intent, .wifiDetails)
     }
 
     /// The address rides at the front of the second line, and the Wi-Fi band and
@@ -216,8 +252,8 @@ final class PanelPresentationMapperTests: XCTestCase {
             localization: localization
         )
 
-        XCTAssertEqual(row.subtitle, "Allow location to show Wi-Fi name · 192.168.1.20")
-        XCTAssertEqual(row.intent, .requestWiFiNameAccess)
+        XCTAssertEqual(row.subtitle, "192.168.1.20 · Connected · 5 GHz · -58 dBm")
+        XCTAssertEqual(row.intent, .wifiDetails)
     }
 
     func testWiFiLocationSettingsActionLeadsTheLocalIPAddress() {
@@ -239,9 +275,9 @@ final class PanelPresentationMapperTests: XCTestCase {
 
         XCTAssertEqual(
             row.subtitle,
-            "\(localization.string(.wifiActionOpenLocationSettings)) · 192.168.1.20"
+            "192.168.1.20 · Connected · 5 GHz · -58 dBm"
         )
-        XCTAssertEqual(row.intent, .locationSettings)
+        XCTAssertEqual(row.intent, .wifiDetails)
     }
 
     func testLocalIPIsAbsentWhenTheRowIsNotGivenOne() {
