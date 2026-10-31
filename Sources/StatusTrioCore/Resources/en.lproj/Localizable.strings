@@ -577,6 +577,8 @@
 "battery.energy.monitoringDescription" = "When enabled, samples app activity in the background even while the panel is closed. Sampling pauses during sleep, when disabled, or when Status Trio quits.";
 "settings.battery.showChargeToFullNow" = "Show Charge to Full Now Button";
 "settings.battery.showChargeToFullNowDescription" = "Show a button in the status panel to temporarily override the macOS charge limit and charge to 100%.";
+"settings.battery.restoreLimit" = "Restore Limit After Cancelling";
+"settings.battery.restoreLimitDescription" = "The charge limit to restore when you cancel Charge to Full Now. 100% means no limit.";
 "battery.action.chargeToFullNow" = "Charge to Full Now";
 "battery.action.chargeToFullNowApplying" = "Requesting Charge to Full…";
 "battery.action.chargeToFullNowCharging" = "Charging to 100%";
@@ -586,6 +588,7 @@
 "battery.action.cancelChargeToFullNowApplying" = "Restoring Charge Limit…";
 "battery.action.cancelChargeToFullNowFailed" = "Couldn’t restore the charge limit: %@";
 "battery.action.cancelChargeToFullNowRestored" = "Charge limit restored to %d%%";
+"battery.action.cancelChargeToFullNowRestoredUnlimited" = "Charge limit cleared";
 "battery.action.cancelChargeToFullNowFallback" = "Charge limit set to %d%%";
 "battery.action.cancelChargeToFullNowConfirm" = "Confirm Restore to %d%%";
 "battery.action.cancelChargeToFullNowConfirmFallback" = "Confirm Set to %d%%";

@@ -577,6 +577,8 @@
 "battery.energy.monitoringDescription" = "عند التفعيل، يتم قياس نشاط التطبيقات في الخلفية حتى عندما تكون اللوحة مغلقة. يتوقف القياس عند التعطيل أو أثناء سكون النظام أو الشاشة أو عند إنهاء Status Trio.";
 "settings.battery.showChargeToFullNow" = "إظهار زر الشحن حتى الامتلاء الآن";
 "settings.battery.showChargeToFullNowDescription" = "يعرض زرًا في لوحة الحالة لتجاوز حد الشحن في macOS مؤقتًا والشحن حتى 100%.";
+"settings.battery.restoreLimit" = "حد الشحن بعد الإلغاء";
+"settings.battery.restoreLimitDescription" = "حد الشحن الذي يُستعاد عند إلغاء «الشحن بشكل كامل الآن». تعني 100% عدم وجود حد.";
 "battery.action.chargeToFullNow" = "الشحن بشكل كامل الآن";
 "battery.action.chargeToFullNowApplying" = "جارٍ طلب الشحن الكامل…";
 "battery.action.chargeToFullNowCharging" = "جارٍ الشحن حتى 100%";
@@ -586,6 +588,7 @@
 "battery.action.cancelChargeToFullNowApplying" = "جارٍ استعادة حد الشحن…";
 "battery.action.cancelChargeToFullNowFailed" = "تعذّر استعادة حد الشحن: %@";
 "battery.action.cancelChargeToFullNowRestored" = "تمت استعادة حد الشحن إلى %d%%";
+"battery.action.cancelChargeToFullNowRestoredUnlimited" = "تمت إزالة حد الشحن";
 "battery.action.cancelChargeToFullNowFallback" = "تم ضبط حد الشحن على %d%%";
 "battery.action.cancelChargeToFullNowConfirm" = "تأكيد الاستعادة إلى %d%%";
 "battery.action.cancelChargeToFullNowConfirmFallback" = "تأكيد الضبط على %d%%";

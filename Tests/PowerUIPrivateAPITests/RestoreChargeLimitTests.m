@@ -169,6 +169,15 @@ int main(void) {
         active.limit = 80;
         Check(@"already restored is a no-op", active, 80, YES, @[]);
 
+        FakeChargeClient *unlimited = [FakeChargeClient new];
+        unlimited.limit = 100;
+        Check(@"100% restore only enables MCL", unlimited, 100, YES, @[@"enable"]);
+
+        FakeChargeClient *unlimitedActive = [FakeChargeClient new];
+        unlimitedActive.enabled = 1;
+        unlimitedActive.limit = 100;
+        Check(@"100% already active is a no-op", unlimitedActive, 100, YES, @[]);
+
         FakeChargeClient *noMCL = [FakeChargeClient new];
         noMCL.supported = NO;
         Check(@"unsupported hardware never writes", noMCL, 80, NO, @[]);
