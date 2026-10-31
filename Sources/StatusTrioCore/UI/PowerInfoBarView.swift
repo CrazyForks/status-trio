@@ -1,8 +1,9 @@
 import SwiftUI
 
-/// Provisional power info bar under the panel's battery module. It draws one
-/// card per rail (input, battery, system); each number is its own reading and
-/// the cards are never summed into a whole-machine total.
+/// Provisional power info bar under the panel's battery module. It mirrors the
+/// details-page metric cards: icon and wattage on the first row, the rail name
+/// underneath. Each number is its own reading and the cards are never summed
+/// into a whole-machine total.
 struct PowerInfoBarView: View {
     @EnvironmentObject private var localization: Localization
     let state: PowerInfoBarState
@@ -18,30 +19,30 @@ struct PowerInfoBarView: View {
 
     private func card(_ item: PowerInfoBarItem) -> some View {
         let tint = Self.tint(for: item.kind)
-        return HStack(spacing: 9) {
-            Image(systemName: Self.symbolName(for: item.kind))
-                .font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(tint)
-                .frame(width: 20)
-                .accessibilityHidden(true)
-
-            VStack(alignment: .leading, spacing: 1) {
-                Text(localization.string(item.title))
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+        return VStack(alignment: .leading, spacing: 1) {
+            HStack(spacing: 6) {
+                Image(systemName: Self.symbolName(for: item.kind))
+                    .font(.system(size: Self.iconSize(for: item.kind), weight: .medium))
+                    .foregroundStyle(tint)
+                    .frame(width: 20)
+                    .accessibilityHidden(true)
                 Text(item.value)
-                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
                     .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
             }
-            .lineLimit(1)
-            .minimumScaleFactor(0.75)
+            .frame(maxWidth: .infinity, alignment: .leading)
 
-            Spacer(minLength: 0)
+            Text(localization.string(item.title))
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 7)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(tint.opacity(0.10), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .background(tint.opacity(0.08), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .accessibilityElement(children: .combine)
     }
 
@@ -50,6 +51,16 @@ struct PowerInfoBarView: View {
         case .input: return "powerplug.fill"
         case .battery: return "battery.100.bolt"
         case .system: return "laptopcomputer"
+        }
+    }
+
+    /// SF Symbols do not share one optical weight; keep the battery glyph a
+    /// touch smaller so the three cards read evenly.
+    private static func iconSize(for kind: PowerInfoBarKind) -> CGFloat {
+        switch kind {
+        case .input: return 15
+        case .battery: return 12
+        case .system: return 13
         }
     }
 
