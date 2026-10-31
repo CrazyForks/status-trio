@@ -96,7 +96,9 @@ enum IconPresentationMapper {
                sample.isFresh(at: now),
                sample.watts.isFinite {
                 // Integer watts, no unit, laid out for at most three digits.
-                let watts = min(999, max(0, Int(sample.watts.rounded())))
+                // Clamp in Double space so a pathological sample can never trap
+                // an Int conversion.
+                let watts = Int(min(999, max(0, sample.watts)).rounded())
                 return .text(IconTextState(text: "\(watts)", color: .primary, scale: 1))
             }
             // Never a fake 0 W. A battery Mac may still show its level; a Mac

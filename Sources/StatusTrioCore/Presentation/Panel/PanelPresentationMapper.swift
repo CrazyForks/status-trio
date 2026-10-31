@@ -125,7 +125,7 @@ enum PanelPresentationMapper {
             guard let powerSample, powerSample.isFresh(at: now), powerSample.watts.isFinite else {
                 return localization.string(.batteryTitlePowerUnavailable)
             }
-            let watts = min(999, max(0, Int(powerSample.watts.rounded())))
+            let watts = Int(min(999, max(0, powerSample.watts)).rounded())
             return localization.format(.batteryTitlePower, watts)
         }
         return localization.format(.batteryTitle, battery.percentage)

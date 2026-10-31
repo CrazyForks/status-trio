@@ -289,6 +289,19 @@ final class IconPresentationMapperTests: XCTestCase {
         XCTAssertEqual(withBattery, .text(IconTextState(text: "68", color: .primary, scale: 1)),
                        "A battery Mac may still show its level instead of a fake wattage")
 
+        let nonFinite = SystemPowerSample(watts: .infinity, readAt: now)
+        let nonFiniteCenter = IconPresentationMapper.scene(
+            inputs: IconPresentationInputs(
+                snapshot: snapshot(battery: present),
+                audioIcon: nil,
+                systemPower: nonFinite
+            ),
+            configuration: configuration(connection: config),
+            now: now
+        ).center
+        XCTAssertEqual(nonFiniteCenter, .text(IconTextState(text: "68", color: .primary, scale: 1)),
+                       "A non-finite sample must fall back instead of trapping Int conversion")
+
         let noBattery = BatteryStatus(rawPercentage: nil, isPresent: false, isCharging: false,
                                       isLowPowerMode: false, isConnectedToPower: false)
         let placeholder = IconPresentationMapper.scene(
