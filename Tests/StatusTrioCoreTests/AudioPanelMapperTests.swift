@@ -299,6 +299,35 @@ final class AudioPanelMapperTests: XCTestCase {
         XCTAssertFalse(single.showsDeviceList, "one remaining row is not a choice")
     }
 
+    func testHiddenActiveOutputKeepsTheListEvenWhenItIsTheOnlyRow() {
+        let localization = makeLocalization(.english)
+        let speakers = AudioOutputDevice(id: 1, name: "Speakers", uid: "speakers", isCurrent: false)
+        let display = AudioOutputDevice(id: 2, name: "Display", uid: "display", isCurrent: true)
+        let airPods = AudioOutputDevice(id: 3, name: "AirPods", uid: "airpods", isCurrent: false)
+        let status = VolumeStatus(
+            scalar: 0.5,
+            isMuted: false,
+            deviceName: nil,
+            currentDevice: display,
+            outputDevices: [speakers, display, airPods],
+            canSetVolume: true,
+            canMute: true
+        )
+
+        let state = AudioPanelMapper.volume(
+            status,
+            controllerAvailable: true,
+            deviceList: AudioOutputListPreferences(hiddenUIDs: ["speakers", "display", "airpods"]),
+            localization: localization
+        )
+
+        XCTAssertEqual(state.rows.map(\.key.uid), ["display"])
+        XCTAssertTrue(
+            state.showsDeviceList,
+            "hiding every device must still show the active output the panel keeps"
+        )
+    }
+
     func testInputRowsFollowTheSavedOrderAndDropHiddenDevicesExceptTheCurrentInput() {
         let localization = makeLocalization(.english)
         let builtIn = AudioInputDevice(id: AudioDeviceID(1), uid: "built-in", name: "MacBook Pro Microphone")

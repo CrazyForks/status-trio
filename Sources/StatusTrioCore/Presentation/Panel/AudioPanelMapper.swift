@@ -70,6 +70,10 @@ enum AudioPanelMapper {
             hiddenUIDs: deviceList.hiddenUIDs
         )
         let rows = outputRows(orderedDevices, listeningModes: listeningModes, localization: localization)
+        // A lone row is not a choice, unless the panel kept it because it is the active
+        // output: hiding every device must never hide what is playing right now.
+        let keepsHiddenActiveDevice = orderedDevices.count == 1
+            && OutputDeviceListPresentation.isHidden(orderedDevices[0], in: deviceList.hiddenUIDs)
         let previewRows = outputRows(
             previewDevices,
             listeningModes: listeningModes,
@@ -94,7 +98,7 @@ enum AudioPanelMapper {
                     : .volumeMuteUnavailable
             ),
             sliderLabel: localization.string(.volumeAccessibilityLabel),
-            showsDeviceList: orderedDevices.count > 1 || !previewRows.isEmpty,
+            showsDeviceList: orderedDevices.count > 1 || keepsHiddenActiveDevice || !previewRows.isEmpty,
             rows: rows,
             previewRows: previewRows,
             visibleLimit: deviceList.visibleLimit,
