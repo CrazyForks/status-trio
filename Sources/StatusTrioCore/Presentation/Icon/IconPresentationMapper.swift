@@ -114,7 +114,14 @@ enum IconPresentationMapper {
         }
 
         if connectionOptions.centerSource == .batteryPercentage, battery.isPresent {
-            return .text(IconTextState(text: "\(battery.percentage)", color: .primary, scale: 1))
+            // Every numeric centre mode shares the same size rule: the Wi-Fi
+            // Icon Size scale, so switching between percentage and watts does
+            // not change the number's size.
+            return .text(IconTextState(
+                text: "\(battery.percentage)",
+                color: .primary,
+                scale: connectionOptions.wifiScale
+            ))
         }
 
         // The user asked the centre slot to carry the current input source.

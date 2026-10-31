@@ -288,6 +288,15 @@ final class IconPresentationMapperTests: XCTestCase {
                        "The wattage must grow with the Wi-Fi Icon Size setting")
     }
 
+    func testBatteryPercentageCentreUsesTheSameWifiIconSizeScale() {
+        let config = ConnectionIconOptions(centerSource: .batteryPercentage, wifiScale: 1.8)
+        let center = scene(snapshot: snapshot(battery: BatteryStatus(
+            rawPercentage: 68, isPresent: true, isCharging: false,
+            isLowPowerMode: false, isConnectedToPower: false
+        )), connectionOptions: config).center
+        XCTAssertEqual(center, .text(IconTextState(text: "68", color: .primary, scale: 1.8)))
+    }
+
     func testPowerCenterSlotFallsBackToBatteryThenPlaceholder() {
         let now = Date(timeIntervalSince1970: 1_789_555_974)
         let config = ConnectionIconOptions(centerSource: .power)

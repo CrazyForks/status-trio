@@ -84,7 +84,8 @@ final class InputSourceIconPresentationTests: XCTestCase {
             configuration: configuration(centerSource: .batteryPercentage)
         )
 
-        XCTAssertEqual(scene.center, .text(IconTextState(text: "68", color: .primary, scale: 1)))
+        XCTAssertEqual(scene.center, .text(IconTextState(text: "68", color: .primary, scale: 1.6)),
+                       "A numeric centre mode follows the Wi-Fi Icon Size scale")
     }
 
     func testNetworkOutageOverridesTheInputSourceWhenAskedTo() {
