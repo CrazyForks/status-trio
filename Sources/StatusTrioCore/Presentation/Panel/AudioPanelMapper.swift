@@ -64,11 +64,16 @@ enum AudioPanelMapper {
             intent: .none
         )
 
-        let orderedDevices = OutputDeviceListPresentation.orderedDevices(
+        let orderedDevices = OutputDeviceListPresentation.panelDevices(
             status.outputDevices,
-            using: deviceList.order
+            order: deviceList.order,
+            hiddenUIDs: deviceList.hiddenUIDs
         )
         let rows = outputRows(orderedDevices, listeningModes: listeningModes, localization: localization)
+        // A lone row is not a choice, unless the panel kept it because it is the active
+        // output: hiding every device must never hide what is playing right now.
+        let keepsHiddenActiveDevice = orderedDevices.count == 1
+            && OutputDeviceListPresentation.isHidden(orderedDevices[0], in: deviceList.hiddenUIDs)
         let previewRows = outputRows(
             previewDevices,
             listeningModes: listeningModes,
@@ -93,7 +98,7 @@ enum AudioPanelMapper {
                     : .volumeMuteUnavailable
             ),
             sliderLabel: localization.string(.volumeAccessibilityLabel),
-            showsDeviceList: status.outputDevices.count > 1 || !previewRows.isEmpty,
+            showsDeviceList: orderedDevices.count > 1 || keepsHiddenActiveDevice || !previewRows.isEmpty,
             rows: rows,
             previewRows: previewRows,
             visibleLimit: deviceList.visibleLimit,
@@ -106,6 +111,7 @@ enum AudioPanelMapper {
 
     static func input(
         _ status: AudioInputStatus,
+        deviceList: AudioInputListPreferences = .default,
         localization: Localization
     ) -> AudioInputPanelState {
         let presentation = AudioInputPresentation(
@@ -113,9 +119,10 @@ enum AudioPanelMapper {
             locale: localization.resolvedLanguage.locale
         )
         let unknownName = localization.string(.audioInputUnknownDevice)
-        let orderedDevices = AudioInputPresentation.ordered(
+        let orderedDevices = AudioInputPresentation.panelDevices(
             status.devices,
             currentID: status.defaultDeviceID,
+            preferences: deviceList,
             locale: presentation.locale,
             unknownName: unknownName
         )
@@ -177,8 +184,11 @@ enum AudioPanelMapper {
             canMute: presentation.muteEnabled,
             isBusy: presentation.blocksControls,
             errorText: errorText,
-            showsDeviceList: presentation.showsDeviceList,
+            showsDeviceList: !orderedDevices.isEmpty,
             rows: rows,
+            visibleLimit: deviceList.visibleLimit,
+            expandLabel: localization.string(.audioInputExpand),
+            collapseLabel: localization.string(.audioInputCollapse),
             sliderLabel: localization.string(.audioInputVolume),
             usageText: usageText,
             completedScalarRequestID: status.completedScalarRequestID
@@ -351,6 +361,43 @@ struct AudioInputPresentation {
         }
     }
 
+    /// The saved order first. Devices it doesn't name follow in the default
+    /// order: the current input, then by name.
+    static func ordered(
+        _ devices: [AudioInputDevice],
+        currentID: AudioDeviceID?,
+        order: [String],
+        locale: Locale,
+        unknownName: String
+    ) -> [AudioInputDevice] {
+        AudioDeviceOrder.ordered(
+            ordered(devices, currentID: currentID, locale: locale, unknownName: unknownName),
+            using: order,
+            uid: \.uid
+        )
+    }
+
+    /// The status-panel list. The current input stays even when it is hidden,
+    /// so the list never loses its selected row.
+    static func panelDevices(
+        _ devices: [AudioInputDevice],
+        currentID: AudioDeviceID?,
+        preferences: AudioInputListPreferences,
+        locale: Locale,
+        unknownName: String
+    ) -> [AudioInputDevice] {
+        ordered(
+            devices,
+            currentID: currentID,
+            order: preferences.order,
+            locale: locale,
+            unknownName: unknownName
+        )
+        .filter {
+            $0.id == currentID || !AudioDeviceOrder.isHidden(uid: $0.uid, in: preferences.hiddenUIDs)
+        }
+    }
+
     static func displayName(for device: AudioInputDevice, unknownName: String) -> String {
         guard let name = device.name?.trimmingCharacters(in: .whitespacesAndNewlines),
               !name.isEmpty else { return unknownName }
@@ -420,8 +467,6 @@ struct AudioInputPresentation {
         case .timedOut: .audioInputTimedOut
         }
     }
-
-    var showsDeviceList: Bool { !status.devices.isEmpty }
 
     var blocksControls: Bool { status.isBusy && !status.isAdjustingScalar }
 

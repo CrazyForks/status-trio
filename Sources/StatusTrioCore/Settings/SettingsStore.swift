@@ -105,6 +105,10 @@ final class SettingsStore: ObservableObject {
     static let outputDeviceLimitRange: ClosedRange<Int> = 1...20
     static let defaultMaxVisibleOutputDevices = 5
     static let maxVisibleOutputDevicesDefaultsKey = "maxVisibleOutputDevices"
+    static let inputDeviceLimitRange: ClosedRange<Int> = 1...20
+    static let defaultMaxVisibleInputDevices = 5
+    static let maxVisibleInputDevicesDefaultsKey = "maxVisibleInputDevices"
+    static let alwaysShowsAllInputDevicesDefaultsKey = "alwaysShowsAllInputDevices"
     static let defaultMaxVisibleBluetoothDevices = 5
     static let maxVisibleBluetoothDevicesDefaultsKey = "maxVisibleBluetoothDevices"
     static let showsBluetoothDeviceListDefaultsKey = "showsBluetoothDeviceList"
@@ -120,6 +124,9 @@ final class SettingsStore: ObservableObject {
     static let bluetoothDeviceLimitRange: ClosedRange<Int> = 1...20
     static let alwaysShowsAllOutputDevicesDefaultsKey = "alwaysShowsAllOutputDevices"
     static let outputDeviceOrderDefaultsKey = "outputDeviceOrder"
+    static let hiddenOutputDeviceUIDsDefaultsKey = "hiddenOutputDeviceUIDs"
+    static let inputDeviceOrderDefaultsKey = "inputDeviceOrder"
+    static let hiddenInputDeviceUIDsDefaultsKey = "hiddenInputDeviceUIDs"
     static let externalVolumeConfigurationsDefaultsKey = "externalVolumeConfigurations.v1"
     static let popupSectionOrderDefaultsKey = "popupSectionOrder"
     static let enabledPopupSectionsDefaultsKey = "enabledPopupSections"
@@ -744,9 +751,51 @@ final class SettingsStore: ObservableObject {
         }
     }
 
+    @Published var maxVisibleInputDevices: Int {
+        didSet {
+            let clamped = Self.clampedInputDeviceLimit(maxVisibleInputDevices)
+            guard clamped == maxVisibleInputDevices else {
+                maxVisibleInputDevices = clamped
+                return
+            }
+            defaults.set(clamped, forKey: Self.maxVisibleInputDevicesDefaultsKey)
+        }
+    }
+
+    @Published var alwaysShowsAllInputDevices: Bool {
+        didSet {
+            defaults.set(
+                alwaysShowsAllInputDevices,
+                forKey: Self.alwaysShowsAllInputDevicesDefaultsKey
+            )
+        }
+    }
+
     @Published private(set) var outputDeviceOrder: [String] {
         didSet {
             defaults.set(outputDeviceOrder, forKey: Self.outputDeviceOrderDefaultsKey)
+        }
+    }
+
+    /// UIDs of output devices the user unchecked in Settings. The status panel
+    /// leaves them out unless one is the active output.
+    @Published private(set) var hiddenOutputDeviceUIDs: Set<String> {
+        didSet {
+            defaults.set(Array(hiddenOutputDeviceUIDs), forKey: Self.hiddenOutputDeviceUIDsDefaultsKey)
+        }
+    }
+
+    @Published private(set) var inputDeviceOrder: [String] {
+        didSet {
+            defaults.set(inputDeviceOrder, forKey: Self.inputDeviceOrderDefaultsKey)
+        }
+    }
+
+    /// UIDs of input devices the user unchecked in Settings. The Audio Input
+    /// section leaves them out unless one is the current input.
+    @Published private(set) var hiddenInputDeviceUIDs: Set<String> {
+        didSet {
+            defaults.set(Array(hiddenInputDeviceUIDs), forKey: Self.hiddenInputDeviceUIDsDefaultsKey)
         }
     }
 
@@ -913,6 +962,10 @@ final class SettingsStore: ObservableObject {
         alwaysShowsAllOutputDevices ? nil : maxVisibleOutputDevices
     }
 
+    var visibleInputDeviceLimit: Int? {
+        alwaysShowsAllInputDevices ? nil : maxVisibleInputDevices
+    }
+
     var bluetoothDeviceListOptions: BluetoothDeviceListOptions {
         BluetoothDeviceListOptions(
             showsList: showsBluetoothDeviceList,
@@ -924,6 +977,24 @@ final class SettingsStore: ObservableObject {
         )
     }
 
+    var outputDeviceListPreferences: AudioOutputListPreferences {
+        AudioOutputListPreferences(
+            order: outputDeviceOrder,
+            hiddenUIDs: hiddenOutputDeviceUIDs,
+            visibleLimit: visibleOutputDeviceLimit
+        )
+    }
+
+    var inputDeviceListPreferences: AudioInputListPreferences {
+        AudioInputListPreferences(
+            order: inputDeviceOrder,
+            hiddenUIDs: hiddenInputDeviceUIDs,
+            visibleLimit: visibleInputDeviceLimit
+        )
+    }
+
+    /// The Settings order list, in the saved order. Hidden devices keep their
+    /// place here; only the status panel filters them out.
     func orderedOutputDevices(_ devices: [AudioOutputDevice]) -> [AudioOutputDevice] {
         OutputDeviceListPresentation.orderedDevices(devices, using: outputDeviceOrder)
     }
@@ -956,24 +1027,87 @@ final class SettingsStore: ObservableObject {
         toOffset destination: Int,
         in devices: [AudioOutputDevice]
     ) {
+        guard let reordered = Self.movedDeviceUIDs(
+            devices.map(\.uid),
+            fromOffsets: source,
+            toOffset: destination
+        ) else { return }
+        outputDeviceOrder = Self.mergedDeviceOrder(reordered, previous: outputDeviceOrder)
+    }
+
+    /// Shows or hides one output device in the status panel. Hiding never
+    /// reorders the list, so the saved order stays independent of the checkbox.
+    func setOutputDeviceHidden(_ uid: String, hidden: Bool) {
+        guard !uid.isEmpty else { return }
+        if hidden {
+            hiddenOutputDeviceUIDs.insert(uid)
+        } else {
+            hiddenOutputDeviceUIDs.remove(uid)
+        }
+    }
+
+    func moveInputDevices(
+        fromOffsets source: IndexSet,
+        toOffset destination: Int,
+        in devices: [AudioInputDevice]
+    ) {
+        guard let reordered = Self.movedDeviceUIDs(
+            devices.map(\.uid),
+            fromOffsets: source,
+            toOffset: destination
+        ) else { return }
+        inputDeviceOrder = Self.mergedDeviceOrder(reordered, previous: inputDeviceOrder)
+    }
+
+    /// Shows or hides one input device in the Audio Input section. Hiding never
+    /// reorders the list, so the saved order stays independent of the checkbox.
+    func setInputDeviceHidden(_ uid: String, hidden: Bool) {
+        guard !uid.isEmpty else { return }
+        if hidden {
+            hiddenInputDeviceUIDs.insert(uid)
+        } else {
+            hiddenInputDeviceUIDs.remove(uid)
+        }
+    }
+
+    /// The UIDs of `devices` after a drag, or `nil` for an out-of-range move.
+    /// Devices without a UID take part in the move but are not saved.
+    private static func movedDeviceUIDs(
+        _ uids: [String?],
+        fromOffsets source: IndexSet,
+        toOffset destination: Int
+    ) -> [String]? {
         guard !source.isEmpty,
-              source.allSatisfy({ devices.indices.contains($0) }),
-              (0...devices.count).contains(destination) else {
-            return
+              source.allSatisfy({ uids.indices.contains($0) }),
+              (0...uids.count).contains(destination) else {
+            return nil
         }
 
-        let movedDevices = source.map { devices[$0] }
-        let remainingDevices = devices.enumerated()
+        let moved = source.map { uids[$0] }
+        var reordered = uids.enumerated()
             .filter { !source.contains($0.offset) }
             .map(\.element)
         let insertionOffset = destination - source.filter { $0 < destination }.count
+        reordered.insert(contentsOf: moved, at: min(insertionOffset, reordered.count))
+        return reordered.compactMap { $0 }
+    }
 
-        var reorderedDevices = remainingDevices
-        reorderedDevices.insert(
-            contentsOf: movedDevices,
-            at: min(insertionOffset, reorderedDevices.count)
-        )
-        outputDeviceOrder = reorderedDevices.compactMap(\.uid)
+    /// Rebuilds a saved device order from the devices on screen. A remembered
+    /// device that is absent right now stays right after the device it followed
+    /// before, so AirPods that are disconnected while the list is rearranged
+    /// keep their place instead of dropping to the end when they reconnect.
+    static func mergedDeviceOrder(_ displayed: [String], previous: [String]) -> [String] {
+        var merged = displayed
+        var placed = Set(displayed)
+        var anchor: String?
+        for uid in previous {
+            if placed.insert(uid).inserted {
+                let index = anchor.flatMap { merged.firstIndex(of: $0) }.map { $0 + 1 } ?? 0
+                merged.insert(uid, at: index)
+            }
+            anchor = uid
+        }
+        return merged
     }
 
     func moveBluetoothDevices(
@@ -1288,6 +1422,7 @@ final class SettingsStore: ObservableObject {
         let storedFullThreshold = (defaults.object(forKey: Self.batteryFullThresholdDefaultsKey) as? NSNumber)?.doubleValue
         let storedBatterySymbolScale = (defaults.object(forKey: Self.batterySymbolScaleDefaultsKey) as? NSNumber)?.doubleValue
         let storedOutputDeviceLimit = (defaults.object(forKey: Self.maxVisibleOutputDevicesDefaultsKey) as? NSNumber)?.intValue
+        let storedInputDeviceLimit = (defaults.object(forKey: Self.maxVisibleInputDevicesDefaultsKey) as? NSNumber)?.intValue
         let storedBluetoothDeviceLimit = (defaults.object(
             forKey: Self.maxVisibleBluetoothDevicesDefaultsKey
         ) as? NSNumber)?.intValue
@@ -1312,6 +1447,13 @@ final class SettingsStore: ObservableObject {
         let storedVolumeDisplayStyle = defaults.string(forKey: Self.volumeDisplayStyleDefaultsKey)
         let storedRingStrokeStyle = defaults.string(forKey: Self.ringStrokeStyleDefaultsKey)
         let storedOutputDeviceOrder = defaults.stringArray(forKey: Self.outputDeviceOrderDefaultsKey) ?? []
+        let storedHiddenOutputDeviceUIDs = Set(
+            defaults.stringArray(forKey: Self.hiddenOutputDeviceUIDsDefaultsKey) ?? []
+        )
+        let storedInputDeviceOrder = defaults.stringArray(forKey: Self.inputDeviceOrderDefaultsKey) ?? []
+        let storedHiddenInputDeviceUIDs = Set(
+            defaults.stringArray(forKey: Self.hiddenInputDeviceUIDsDefaultsKey) ?? []
+        )
         let storedExternalVolumeConfigurations = Self.decodedExternalVolumeConfigurations(
             defaults.data(forKey: Self.externalVolumeConfigurationsDefaultsKey)
         )
@@ -1492,6 +1634,12 @@ final class SettingsStore: ObservableObject {
         self.maxVisibleOutputDevices = Self.clampedOutputDeviceLimit(
             storedOutputDeviceLimit ?? Self.defaultMaxVisibleOutputDevices
         )
+        self.maxVisibleInputDevices = Self.clampedInputDeviceLimit(
+            storedInputDeviceLimit ?? Self.defaultMaxVisibleInputDevices
+        )
+        self.alwaysShowsAllInputDevices = defaults.object(
+            forKey: Self.alwaysShowsAllInputDevicesDefaultsKey
+        ) as? Bool ?? false
         self.showsBluetoothDeviceList = defaults.object(
             forKey: Self.showsBluetoothDeviceListDefaultsKey
         ) as? Bool ?? true
@@ -1516,6 +1664,9 @@ final class SettingsStore: ObservableObject {
             forKey: Self.alwaysShowsAllOutputDevicesDefaultsKey
         ) as? Bool ?? false
         self.outputDeviceOrder = storedOutputDeviceOrder
+        self.hiddenOutputDeviceUIDs = storedHiddenOutputDeviceUIDs
+        self.inputDeviceOrder = storedInputDeviceOrder
+        self.hiddenInputDeviceUIDs = storedHiddenInputDeviceUIDs
         self.externalVolumeConfigurations = storedExternalVolumeConfigurations
         self.popupSectionOrder = Self.sanitizedPopupSectionOrder(
             storedPopupSectionOrder
@@ -1671,6 +1822,10 @@ final class SettingsStore: ObservableObject {
 
     static func clampedOutputDeviceLimit(_ value: Int) -> Int {
         min(outputDeviceLimitRange.upperBound, max(outputDeviceLimitRange.lowerBound, value))
+    }
+
+    static func clampedInputDeviceLimit(_ value: Int) -> Int {
+        min(inputDeviceLimitRange.upperBound, max(inputDeviceLimitRange.lowerBound, value))
     }
 
     static func clampedBluetoothDeviceLimit(_ value: Int) -> Int {

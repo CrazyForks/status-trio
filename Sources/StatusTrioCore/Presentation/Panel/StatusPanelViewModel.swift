@@ -121,13 +121,14 @@ final class StatusPanelViewModel: ObservableObject {
                 for: store.liveVolume,
                 settings: settings
             ),
-            deviceList: AudioOutputListPreferences(
-                order: settings.outputDeviceOrder,
-                visibleLimit: settings.visibleOutputDeviceLimit
-            ),
+            deviceList: settings.outputDeviceListPreferences,
             localization: localization
         )
-        audioInput = AudioPanelMapper.input(store.liveInput, localization: localization)
+        audioInput = AudioPanelMapper.input(
+            store.liveInput,
+            deviceList: settings.inputDeviceListPreferences,
+            localization: localization
+        )
         inputSource = InputSourcePanelMapper.map(
             state: resolvedInputSourceController.state,
             failure: resolvedInputSourceController.selectionFailure,
@@ -367,10 +368,7 @@ final class StatusPanelViewModel: ObservableObject {
     }
 
     private var outputPreferences: AudioOutputListPreferences {
-        AudioOutputListPreferences(
-            order: settings.outputDeviceOrder,
-            visibleLimit: settings.visibleOutputDeviceLimit
-        )
+        settings.outputDeviceListPreferences
     }
 
     private func mapVPN(_ status: VPNStatus) -> PanelSummaryState? {
@@ -448,8 +446,12 @@ final class StatusPanelViewModel: ObservableObject {
         if listeningModeTaskID != next { listeningModeTaskID = next }
     }
 
-    private func mapInput(_ status: AudioInputStatus) -> AudioInputPanelState? {
-        AudioPanelMapper.input(status, localization: localization)
+    private func mapInput(_ status: AudioInputStatus) -> AudioInputPanelState {
+        AudioPanelMapper.input(
+            status,
+            deviceList: settings.inputDeviceListPreferences,
+            localization: localization
+        )
     }
 
     private func subscribeToPopupPresentationSources() {
@@ -714,7 +716,7 @@ final class StatusPanelViewModel: ObservableObject {
             updateListeningModeTaskID(outputDevices: store.liveVolume.outputDevices)
         }
         if isVisible(.audioInput) {
-            publishAudioInput(AudioPanelMapper.input(store.liveInput, localization: localization))
+            publishAudioInput(mapInput(store.liveInput))
         }
         if isVisible(.inputSource) {
             publishInputSource(
@@ -901,7 +903,7 @@ final class StatusPanelViewModel: ObservableObject {
             }
             if regions.contains(.localIP) { refreshWiredDetailsAndNetwork() }
             if regions.contains(.audioInput), isVisible(.audioInput) {
-                publishAudioInput(AudioPanelMapper.input(store.liveInput, localization: localization))
+                publishAudioInput(mapInput(store.liveInput))
             }
             if regions.contains(.inputSource), isVisible(.inputSource) {
                 publishInputSource(
@@ -1047,6 +1049,9 @@ private extension AudioInputPanelState {
             errorText: errorText,
             showsDeviceList: false,
             rows: [],
+            visibleLimit: visibleLimit,
+            expandLabel: expandLabel,
+            collapseLabel: collapseLabel,
             sliderLabel: sliderLabel,
             usageText: usageText,
             completedScalarRequestID: nil

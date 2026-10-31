@@ -380,6 +380,7 @@ final class SystemStatusStore: ObservableObject {
             isInputEnabled = inputSettingEnabled
             if inputSettingEnabled {
                 inputMonitor.setVisible(isPopoverVisible)
+                inputMonitor.setDeviceListVisible(isSettingsVisible)
             }
         }
 
@@ -942,6 +943,7 @@ final class SystemStatusStore: ObservableObject {
         guard !hasStopped, isSettingsVisible != visible else { return }
         isSettingsVisible = visible
         updateDetailsVisibility()
+        inputMonitor?.setDeviceListVisible(visible)
 
         if visible {
             refreshAll()
@@ -1314,9 +1316,10 @@ final class SystemStatusStore: ObservableObject {
 
         isInputEnabled = enabled
         inputMonitor?.setEnabled(enabled)
-        if enabled {
-            inputMonitor?.setVisible(isPopoverVisible)
-        }
+        // The monitor keeps the two surfaces separate: the popover owns the
+        // 1 Hz usage poll, while Settings only keeps the device inventory live.
+        inputMonitor?.setVisible(isPopoverVisible)
+        inputMonitor?.setDeviceListVisible(isSettingsVisible)
     }
 
     private func applyInput(_ value: AudioInputStatus) {

@@ -2,7 +2,6 @@ import SwiftUI
 
 struct OutputDeviceList: View {
     @EnvironmentObject private var localization: Localization
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let rows: [PanelAudioDeviceRow]
     let previewRows: [PanelAudioDeviceRow]
     let visibleLimit: Int?
@@ -36,27 +35,11 @@ struct OutputDeviceList: View {
                 .environmentObject(PreviewLocalization.forCode(previewLanguageCode) ?? localization)
 
                 if OutputDeviceListPresentation.canToggleExpansion(for: rows, limit: visibleLimit) {
-                    Button {
-                        withAnimation(reduceMotion ? nil : .snappy(duration: 0.2)) {
-                            isExpanded.toggle()
-                        }
-                    } label: {
-                        HStack(alignment: .center, spacing: 8) {
-                            PanelActionGlyph(
-                                systemName: "chevron.down",
-                                font: .caption.weight(.semibold),
-                                size: 16
-                            )
-                                .rotationEffect(.degrees(isExpanded ? 180 : 0))
-                            Text(isExpanded ? collapseLabel : expandLabel)
-                                .font(.callout)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .center)
-                        .foregroundStyle(.secondary)
-                        .padding(.vertical, 5)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
+                    DeviceListExpansionButton(
+                        isExpanded: $isExpanded,
+                        expandLabel: expandLabel,
+                        collapseLabel: collapseLabel
+                    )
                 }
             }
         }
